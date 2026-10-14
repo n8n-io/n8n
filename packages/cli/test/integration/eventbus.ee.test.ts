@@ -1,4 +1,4 @@
-import { OutboundHttp, type HttpRequestClient, type HttpTransport } from '@n8n/backend-network';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -12,8 +12,6 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import type http from 'node:http';
-import type https from 'node:https';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -39,10 +37,6 @@ vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 const webhookRequest = vi.fn();
 const outboundHttp = mockInstance(OutboundHttp);
 outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: webhookRequest }));
-const webhookAgents = { httpAgent: mock<http.Agent>(), httpsAgent: mock<https.Agent>() };
-outboundHttp.transport.mockReturnValue(
-	mock<HttpTransport>({ getNodeAgent: vi.fn().mockReturnValue(webhookAgents) }),
-);
 
 mockInstance(Publisher);
 
@@ -317,10 +311,9 @@ test('should send message to webhook ', async () => {
 	await onFirstWorkerMessage('confirmMessageSent', async () => {
 		await confirmIdInAll(testMessage.id);
 		await confirmIdSent(testMessage.id);
-		expect(outboundHttp.requests).toHaveBeenCalledWith({
-			useDefaultSsrfPolicy: 'unsafe',
-			agents: webhookAgents,
-		});
+		expect(outboundHttp.requests).toHaveBeenCalledWith(
+			expect.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
+		);
 		expect(webhookRequest).toHaveBeenCalledWith(
 			expect.objectContaining({
 				url: testWebhookDestination.url,

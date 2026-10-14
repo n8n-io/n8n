@@ -11,6 +11,7 @@ import type { SsrfProtectionService } from '../../ssrf';
 import { makeSsrfBridge, useCleanProxyEnv } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { getBeforeRedirectFn, setAxiosAgents } from '../axios/utils';
 import { type LocalServer, startServer } from '../local-server';
+import type { HttpRequestClientOptions } from '../client-options';
 import { buildNodeAgents } from '../node-agents';
 import { OutboundHttp } from '../outbound-http';
 
@@ -215,27 +216,25 @@ describe('outbound transport integration', () => {
 			clientPorts.clear();
 		});
 
-		const sendThreeRequests = async (agents?: ReturnType<typeof buildNodeAgents>) => {
+		const sendThreeRequests = async (options?: HttpRequestClientOptions) => {
 			const client = new OutboundHttp(
 				mock<SsrfProtectionService>(),
 				mock<SsrfProtectionConfig>({ enabled: false }),
 				mock<Logger>(),
-			).requests({ agents });
+			).requests(options);
 			for (let i = 0; i < 3; i++) {
 				await client.request({ url: `${server.url}/x`, method: 'GET' });
 			}
+			client.close();
 		};
 
-		it('reuses one connection for sequential requests with the given agents', async () => {
-			const agents = buildNodeAgents(false, 'disabled', { keepAlive: true });
-
-			await sendThreeRequests(agents);
-			agents.httpAgent.destroy();
+		it('reuses one connection for sequential requests with a connection pool', async () => {
+			await sendThreeRequests({ connectionPool: { agentOptions: { keepAlive: true } } });
 
 			expect(clientPorts.size).toBe(1);
 		});
 
-		it('opens a new connection per request without given agents', async () => {
+		it('opens a new connection per request without a connection pool', async () => {
 			await sendThreeRequests();
 
 			expect(clientPorts.size).toBe(3);

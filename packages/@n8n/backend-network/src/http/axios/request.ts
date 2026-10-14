@@ -24,12 +24,14 @@ import {
 	validateUrlSsrf,
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
-import type { HttpRequestClientOptions } from '../client-options';
+import type { buildNodeAgents } from '../node-agents';
+
+type NodeAgents = ReturnType<typeof buildNodeAgents>;
 
 export function convertN8nRequestToAxios(
 	n8nRequest: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
-	agents?: HttpRequestClientOptions['agents'],
+	agents?: NodeAgents,
 ): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -179,22 +181,20 @@ export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOp
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions & { returnFullResponse: true },
 	ssrfBridge?: SsrfBridge,
-	agents?: HttpRequestClientOptions['agents'],
 ): Promise<IN8nHttpFullResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
 	ssrfBridge?: SsrfBridge,
-	agents?: HttpRequestClientOptions['agents'],
 ): Promise<IN8nHttpResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
-	agents?: HttpRequestClientOptions['agents'],
+	agents?: NodeAgents,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
-	agents?: HttpRequestClientOptions['agents'],
+	agents?: NodeAgents,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 

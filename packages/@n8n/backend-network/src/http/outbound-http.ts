@@ -15,6 +15,7 @@ import type { Dispatcher } from 'undici';
 
 import { passthroughEgressFilter, SsrfProtectionService } from '../ssrf';
 import { httpRequest } from './axios/request';
+import { buildAgentOptions, buildAgentsForProxy } from './axios/utils';
 import { withClientDefaults } from './client-default-headers';
 import { HttpRequestClientOptions } from './client-options';
 import { markHttpRequestError } from './client-request-error';
@@ -121,6 +122,8 @@ export interface HttpRequestClient {
 	 */
 	// oxlint-disable-next-line typescript/no-deprecated
 	requestLegacy(options: IRequestOptions, callbacks?: LegacyRequestCallbacks): Promise<unknown>;
+
+	close(): void;
 }
 
 /**
@@ -189,6 +192,9 @@ export class OutboundHttp {
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
 			withClientDefaults(requestOptions, options?.baseURL, options?.headers, options?.timeout);
 
+		const pool = options?.connectionPool;
+		const agents = pool && buildAgentsForProxy(pool.proxy, ssrf, buildAgentOptions(pool));
+
 		function request<T = IN8nHttpResponse | Readable>(
 			requestOptions: IHttpRequestOptions & { returnFullResponse: true },
 		): Promise<TypedHttpFullResponse<T>>;
@@ -200,7 +206,7 @@ export class OutboundHttp {
 		): Promise<T | TypedHttpFullResponse<T>>;
 		async function request(requestOptions: IHttpRequestOptions): Promise<unknown> {
 			try {
-				return await httpRequest(applyDefaults(requestOptions), ssrfBridge, options?.agents);
+				return await httpRequest(applyDefaults(requestOptions), ssrfBridge, agents);
 			} catch (error) {
 				// Tag so callers can recognize a client-rejected error transport-agnostically.
 				throw markHttpRequestError(error);
@@ -216,6 +222,10 @@ export class OutboundHttp {
 				} catch (error) {
 					throw markHttpRequestError(error);
 				}
+			},
+			close: () => {
+				agents?.httpAgent.destroy();
+				agents?.httpsAgent.destroy();
 			},
 		};
 	}

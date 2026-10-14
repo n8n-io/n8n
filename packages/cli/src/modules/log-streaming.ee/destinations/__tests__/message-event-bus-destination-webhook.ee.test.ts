@@ -1,17 +1,8 @@
-import type { HttpRequestClient, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import {
-	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
-	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
-	LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
-	LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
-} from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { IHttpRequestOptions, MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
-
-import type http from 'node:http';
-import type https from 'node:https';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -40,12 +31,10 @@ const mockOutboundHttp = (
 	response: { statusCode: number; body: unknown } = { statusCode: 200, body: {} },
 ) => {
 	const request = vi.fn().mockResolvedValue(response);
-	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
-	const agents = { httpAgent: mock<http.Agent>(), httpsAgent: mock<https.Agent>() };
-	const getNodeAgent = vi.fn().mockReturnValue(agents);
-	const transport = vi.fn().mockReturnValue(mock<HttpTransport>({ getNodeAgent }));
-	const outboundHttp = mock<OutboundHttp>({ requests, transport });
-	return { outboundHttp, requests, request, transport, getNodeAgent, agents };
+	const close = vi.fn();
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request, close }));
+	const outboundHttp = mock<OutboundHttp>({ requests });
+	return { outboundHttp, requests, request, close };
 };
 
 /**
@@ -53,7 +42,7 @@ const mockOutboundHttp = (
  * request through the injected facade, returning the captured request options.
  */
 const sendThroughDestination = async (options: MessageEventBusDestinationWebhookOptions) => {
-	const { outboundHttp, requests, request, transport, getNodeAgent, agents } = mockOutboundHttp();
+	const { outboundHttp, requests, request, close } = mockOutboundHttp();
 
 	const destination = new MessageEventBusDestinationWebhook(mockEventBus, options, outboundHttp);
 	await destination.receiveFromEventBus({
@@ -64,9 +53,7 @@ const sendThroughDestination = async (options: MessageEventBusDestinationWebhook
 	return {
 		destination,
 		requests,
-		transport,
-		getNodeAgent,
-		agents,
+		close,
 		sentOptions: request.mock.calls[0][0] as IHttpRequestOptions,
 	};
 };
@@ -119,15 +106,15 @@ describe('MessageEventBusDestinationWebhook', () => {
 
 	describe('receiveFromEventBus', () => {
 		it('should send through OutboundHttp with SSRF disabled', async () => {
-			const { requests, transport, agents, sentOptions } = await sendThroughDestination({
+			const { requests, sentOptions } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 			});
 
-			expect(transport).toHaveBeenCalledWith(
-				expect.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
-			);
-			expect(requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe', agents });
+			expect(requests).toHaveBeenCalledWith({
+				useDefaultSsrfPolicy: 'unsafe',
+				connectionPool: expect.objectContaining({ agentOptions: sentOptions.agentOptions }),
+			});
 			expect(sentOptions).toMatchObject({
 				url: 'https://example.com/webhook',
 				method: 'POST',
@@ -269,8 +256,8 @@ describe('MessageEventBusDestinationWebhook', () => {
 	});
 
 	describe('connection reuse', () => {
-		it('should build the agents and client once and reuse them for every event', async () => {
-			const { outboundHttp, request, transport, getNodeAgent } = mockOutboundHttp();
+		it('should create one client and reuse it for every event', async () => {
+			const { outboundHttp, requests, request } = mockOutboundHttp();
 			const destination = new MessageEventBusDestinationWebhook(
 				mockEventBus,
 				{ __type: MessageEventBusDestinationTypeNames.webhook, url: 'https://example.com/webhook' },
@@ -285,35 +272,30 @@ describe('MessageEventBusDestinationWebhook', () => {
 			}
 
 			expect(request).toHaveBeenCalledTimes(3);
-			expect(transport).toHaveBeenCalledTimes(1);
-			expect(getNodeAgent).toHaveBeenCalledTimes(1);
+			expect(requests).toHaveBeenCalledTimes(1);
 		});
 
-		it('should destroy the agents on close', async () => {
-			const { destination, agents } = await sendThroughDestination({
+		it('should close the client on close', async () => {
+			const { destination, close } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 			});
 
 			await destination.close();
 
-			expect(agents.httpAgent.destroy).toHaveBeenCalled();
-			expect(agents.httpsAgent.destroy).toHaveBeenCalled();
+			expect(close).toHaveBeenCalled();
 		});
 	});
 
 	describe('TLS option mapping', () => {
 		it('should map allowUnauthorizedCerts to skipSslCertificateValidation', async () => {
-			const { sentOptions, getNodeAgent } = await sendThroughDestination({
+			const { sentOptions } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: { allowUnauthorizedCerts: true },
 			});
 
 			expect(sentOptions.skipSslCertificateValidation).toBe(true);
-			expect(getNodeAgent).toHaveBeenCalledWith(
-				expect.objectContaining({ rejectUnauthorized: false }),
-			);
 		});
 
 		it('should not set skipSslCertificateValidation when certs are validated', async () => {
@@ -369,39 +351,25 @@ describe('MessageEventBusDestinationWebhook', () => {
 				keepAlive: false,
 				maxSockets: 10,
 				maxFreeSockets: 2,
+				timeout: 5000,
 			});
 		});
 
 		it('should map the socket timeout to the top-level timeout', async () => {
-			const { sentOptions, getNodeAgent } = await sendThroughDestination({
+			const { sentOptions } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: { timeout: 1234 },
 			});
 
 			expect(sentOptions.timeout).toBe(1234);
-			expect(getNodeAgent).toHaveBeenCalledWith(expect.objectContaining({ timeout: 1234 }));
-		});
-
-		it('should build the agents with the socket pool settings and a default idle timeout', async () => {
-			const { getNodeAgent } = await sendThroughDestination({
-				__type: MessageEventBusDestinationTypeNames.webhook,
-				url: 'https://example.com/webhook',
-			});
-
-			expect(getNodeAgent).toHaveBeenCalledWith({
-				keepAlive: true,
-				maxSockets: LOGSTREAMING_DEFAULT_MAX_SOCKETS,
-				maxFreeSockets: LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
-				maxTotalSockets: LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
-				timeout: LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
-			});
+			expect(sentOptions.agentOptions?.timeout).toBe(1234);
 		});
 	});
 
 	describe('proxy option mapping', () => {
 		it('should unwrap nested proxy from fixedCollection shape (options.proxy.proxy)', async () => {
-			const { sentOptions, transport } = await sendThroughDestination({
+			const { sentOptions } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: {
@@ -420,9 +388,6 @@ describe('MessageEventBusDestinationWebhook', () => {
 				host: '127.0.0.1',
 				port: 3128,
 			});
-			expect(transport).toHaveBeenCalledWith(
-				expect.objectContaining({ proxy: 'http://127.0.0.1:3128/' }),
-			);
 		});
 
 		it('should handle flat proxy from legacy DB data', async () => {
@@ -446,13 +411,12 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 
 		it('should leave proxy unset when options.proxy is absent (env is used)', async () => {
-			const { sentOptions, transport } = await sendThroughDestination({
+			const { sentOptions } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 			});
 
 			expect(sentOptions.proxy).toBeUndefined();
-			expect(transport).toHaveBeenCalledWith(expect.objectContaining({ proxy: 'env' }));
 		});
 	});
 

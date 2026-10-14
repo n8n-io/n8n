@@ -1,5 +1,6 @@
+import type { IHttpRequestOptions } from 'n8n-workflow';
+
 import type { HttpRequestDefaultHeaders } from './client-default-headers';
-import type { HttpTransport } from './outbound-http';
 import type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 
 export interface HttpRequestClientOptions {
@@ -29,5 +30,8 @@ export interface HttpRequestClientOptions {
 	 */
 	timeout?: number;
 
-	agents?: ReturnType<HttpTransport['getNodeAgent']>;
+	connectionPool?: Pick<
+		IHttpRequestOptions,
+		'proxy' | 'agentOptions' | 'skipSslCertificateValidation'
+	>;
 }

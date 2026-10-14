@@ -65,6 +65,34 @@ describe('OutboundHttp.requests', () => {
 		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined, undefined);
 	});
 
+	describe('connection pool', () => {
+		it('builds the pooled agents from the pool options', async () => {
+			const client = makeFacade().requests({
+				connectionPool: { agentOptions: { keepAlive: true }, skipSslCertificateValidation: true },
+			});
+
+			await client.request(REQUEST);
+
+			expect(mockedHttpRequest.mock.calls[0][2]?.httpsAgent.options).toMatchObject({
+				keepAlive: true,
+				rejectUnauthorized: false,
+			});
+		});
+
+		it('destroys the pooled agents on close', async () => {
+			const client = makeFacade().requests({ connectionPool: {} });
+			await client.request(REQUEST);
+			const agents = mockedHttpRequest.mock.calls[0][2]!;
+			const destroyHttp = vi.spyOn(agents.httpAgent, 'destroy');
+			const destroyHttps = vi.spyOn(agents.httpsAgent, 'destroy');
+
+			client.close();
+
+			expect(destroyHttp).toHaveBeenCalled();
+			expect(destroyHttps).toHaveBeenCalled();
+		});
+	});
+
 	describe('bound baseURL', () => {
 		it('injects the bound baseURL when the request has none', async () => {
 			const client = makeFacade().requests({ baseURL: 'https://vault.test/v1/' });

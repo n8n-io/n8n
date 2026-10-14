@@ -270,7 +270,7 @@ export function isFormDataInstance(data: unknown): data is FormData {
  * Builds the per-request Node agent options (TLS `servername`, cert validation, ...) from an `IHttpRequestOptions`.
  * Shared by the axios config builder and the manual redirect follower so both derive agents the same way.
  */
-export function buildAgentOptions(n8nRequest: IHttpRequestOptions): AgentOptions {
+export function buildAgentOptions(n8nRequest: Partial<IHttpRequestOptions>): AgentOptions {
 	const servername = sniFor(getHostFromRequestObject(n8nRequest));
 	const agentOptions: AgentOptions = { ...n8nRequest.agentOptions };
 	if (servername) {
@@ -398,12 +398,21 @@ export function setAxiosAgents(
 
 	if (!targetUrl) return;
 
-	const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
-	const proxy = resolveProxyOption(customProxyUrl);
-
-	const { httpAgent, httpsAgent } = buildNodeAgents(proxy, ssrf, agentOptions);
+	const { httpAgent, httpsAgent } = buildAgentsForProxy(proxyConfig, ssrf, agentOptions);
 	config.httpAgent = httpAgent;
 	config.httpsAgent = httpsAgent;
+}
+
+export function buildAgentsForProxy(
+	proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
+	ssrf: SsrfOption,
+	agentOptions?: AgentOptions,
+) {
+	return buildNodeAgents(
+		resolveProxyOption(getUrlFromProxyConfig(proxyConfig)),
+		ssrf,
+		agentOptions,
+	);
 }
 
 /** Validates a URL against SSRF protection rules. Throws UserError if blocked. */

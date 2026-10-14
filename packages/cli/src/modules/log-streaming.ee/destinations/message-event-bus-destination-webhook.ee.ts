@@ -1,12 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import {
-	getUrlFromProxyConfig,
-	resolveProxyOption,
-	type HttpRequestClient,
-	type HttpRequestClientOptions,
-	type OutboundHttp,
-} from '@n8n/backend-network';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import {
 	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
@@ -84,7 +78,7 @@ export class MessageEventBusDestinationWebhook
 
 	requestOptions?: IHttpRequestOptions;
 
-	private agents?: HttpRequestClientOptions['agents'];
+	private httpClient?: HttpRequestClient;
 
 	constructor(
 		eventBusInstance: MessageEventBus,
@@ -149,16 +143,11 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	private getHttpClient(): HttpRequestClient {
-		// The destination URL is admin-configured, so SSRF protection is disabled.
-		const useDefaultSsrfPolicy = 'unsafe';
-		if (!this.agents) {
-			const proxy = resolveProxyOption(getUrlFromProxyConfig(this.resolveProxy(this.options)));
-			this.agents = this.outboundHttp.transport({ proxy, useDefaultSsrfPolicy }).getNodeAgent({
-				...this.buildAgentOptions(this.options),
-				...(this.options?.allowUnauthorizedCerts && { rejectUnauthorized: false }),
-			});
-		}
-		return this.outboundHttp.requests({ useDefaultSsrfPolicy, agents: this.agents });
+		this.httpClient ??= this.outboundHttp.requests({
+			useDefaultSsrfPolicy: 'unsafe',
+			connectionPool: this.buildConnectionOptions(),
+		});
+		return this.httpClient;
 	}
 
 	private buildConnectionOptions(): IHttpRequestOptions {
@@ -466,7 +455,6 @@ export class MessageEventBusDestinationWebhook
 
 	async close() {
 		await super.close();
-		this.agents?.httpAgent.destroy();
-		this.agents?.httpsAgent.destroy();
+		this.httpClient?.close();
 	}
 }
