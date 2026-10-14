@@ -7,7 +7,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeVersionNotFoundError, VersionedNodeType } from 'n8n-workflow';
+import { NodeVersionNotFoundError, splitNodeTypeName, VersionedNodeType } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -249,8 +249,21 @@ describe('NodeTypes', () => {
 		},
 	};
 
+	const dottedScopeNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: mock<INodeTypeDescription>({
+				name: '@my.org/n8n-nodes-my-org.myNode',
+				displayName: 'My Org Node',
+				usableAsTool: true,
+				properties: [],
+			}),
+			supplyData: undefined,
+		},
+	};
+
 	loadNodesAndCredentials.getNode.mockImplementation((fullNodeType) => {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = splitNodeTypeName(fullNodeType);
 		if (packageName === 'n8n-nodes-base') {
 			if (nodeType === 'nonVersioned') return nonVersionedNode;
 			if (nodeType === 'versioned') return versionedNode;
@@ -266,6 +279,7 @@ describe('NodeTypes', () => {
 			if (nodeType === 'replacementToolNode') return replacementToolNode;
 			if (nodeType === 'versionedToolCapable') return versionedToolCapableNode;
 		} else if (fullNodeType === 'n8n-nodes-community.testNode') return communityNode;
+		else if (fullNodeType === '@my.org/n8n-nodes-my-org.myNode') return dottedScopeNode;
 		throw new UnrecognizedNodeTypeError(packageName, nodeType);
 	});
 
@@ -384,6 +398,21 @@ describe('NodeTypes', () => {
 			expect(result).not.toEqual(toolSupportingNode.type);
 			expect(result.description.name).toEqual('n8n-nodes-community.testNodeTool');
 			expect(result.description.displayName).toEqual('TestNode Tool');
+			expect(result.description.codex?.categories).toContain('AI');
+			expect(result.description.inputs).toEqual([]);
+			expect(result.description.outputs).toEqual(['ai_tool']);
+		});
+
+		it('should return a node-type from a package with a dot in its scope', () => {
+			const result = nodeTypes.getByNameAndVersion('@my.org/n8n-nodes-my-org.myNode');
+			expect(result).toBe(dottedScopeNode.type);
+		});
+
+		it('should return a tool node-type from a package with a dot in its scope, when requested as tool', () => {
+			const result = nodeTypes.getByNameAndVersion('@my.org/n8n-nodes-my-org.myNodeTool');
+			expect(result).not.toEqual(dottedScopeNode.type);
+			expect(result.description.name).toEqual('@my.org/n8n-nodes-my-org.myNodeTool');
+			expect(result.description.displayName).toEqual('My Org Node Tool');
 			expect(result.description.codex?.categories).toContain('AI');
 			expect(result.description.inputs).toEqual([]);
 			expect(result.description.outputs).toEqual(['ai_tool']);

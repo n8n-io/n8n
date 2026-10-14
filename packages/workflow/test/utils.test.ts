@@ -14,6 +14,7 @@ import {
 	containsUnsafeObjectPropertyToken,
 	setSafeObjectProperty,
 	isCommunityPackageName,
+	splitNodeTypeName,
 	sanitizeFilename,
 	sanitizeXmlName,
 } from '../src/utils';
@@ -731,6 +732,24 @@ describe('isCommunityPackageName', () => {
 		expect(isCommunityPackageName('@user/n8n-nodes-example')).toBe(true);
 		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
 		expect(isCommunityPackageName('@test-scope/n8n-nodes-test')).toBe(true);
+	});
+});
+
+describe('splitNodeTypeName', () => {
+	it.each([
+		['n8n-nodes-base.httpRequest', 'n8n-nodes-base', 'httpRequest'],
+		['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain', 'agent'],
+		['n8n-nodes-foo.bar', 'n8n-nodes-foo', 'bar'],
+		['@my-org/n8n-nodes-foo.bar', '@my-org/n8n-nodes-foo', 'bar'],
+		['@seven.io/n8n-nodes-seven.seven', '@seven.io/n8n-nodes-seven', 'seven'],
+		['@my.org.io/n8n-nodes-foo.barTool', '@my.org.io/n8n-nodes-foo', 'barTool'],
+		['n8n-nodes-foo.js.bar', 'n8n-nodes-foo.js', 'bar'],
+	])('should split %s into package and node name', (fullNodeType, packageName, nodeType) => {
+		expect(splitNodeTypeName(fullNodeType)).toEqual([packageName, nodeType]);
+	});
+
+	it('should return an empty node name when there is no dot', () => {
+		expect(splitNodeTypeName('n8n-nodes-base')).toEqual(['n8n-nodes-base', '']);
 	});
 });
 

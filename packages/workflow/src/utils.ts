@@ -453,6 +453,13 @@ export function isCommunityPackageName(packageName: string): boolean {
 	return !!nameMatch;
 }
 
+/** Splits at the last dot, since package names may contain dots but node names never do. */
+export function splitNodeTypeName(fullNodeType: string): [packageName: string, nodeType: string] {
+	const lastDotIndex = fullNodeType.lastIndexOf('.');
+	if (lastDotIndex === -1) return [fullNodeType, ''];
+	return [fullNodeType.slice(0, lastDotIndex), fullNodeType.slice(lastDotIndex + 1)];
+}
+
 export function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
 }

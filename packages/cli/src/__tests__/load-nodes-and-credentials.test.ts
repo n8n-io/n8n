@@ -6,12 +6,19 @@ import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
-import { CUSTOM_NODES_PACKAGE_NAME, CustomDirectoryLoader, DirectoryLoader } from 'n8n-core';
+import {
+	CUSTOM_NODES_PACKAGE_NAME,
+	CustomDirectoryLoader,
+	DirectoryLoader,
+	UnrecognizedNodeTypeError,
+} from 'n8n-core';
 import type {
 	ICredentialType,
 	INodeProperties,
+	INodeType,
 	INodeTypeDescription,
 	KnownNodesAndCredentials,
+	LoadedClass,
 	NodeLoader,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -202,6 +209,73 @@ describe('LoadNodesAndCredentials', () => {
 				'dist/nodes/Test/Test.node.js',
 			);
 			expect(result).toBe('dist/nodes/Test/Test.node.js');
+		});
+	});
+
+	describe('node type parsing', () => {
+		let instance: LoadNodesAndCredentials;
+
+		const createLoader = (nodeType: string) => {
+			const loader = mock<DirectoryLoader>({
+				known: {
+					nodes: { [nodeType]: { className: 'Node', sourcePath: 'dist/Node.node.js' } },
+					credentials: {},
+				},
+			});
+			loader.getNode.mockReturnValue(
+				mock<LoadedClass<INodeType>>({ type: { description: { name: nodeType } } }),
+			);
+			loader.resolveSourcePath.mockImplementation((sourcePath) => `/resolved/${sourcePath}`);
+			return loader;
+		};
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.loaders = {
+				'n8n-nodes-base': createLoader('httpRequest'),
+				'@n8n/n8n-nodes-langchain': createLoader('agent'),
+				'n8n-nodes-foo': createLoader('bar'),
+				'@seven.io/n8n-nodes-seven': createLoader('seven'),
+			};
+		});
+
+		describe.each([
+			['n8n-nodes-base', 'httpRequest'],
+			['@n8n/n8n-nodes-langchain', 'agent'],
+			['n8n-nodes-foo', 'bar'],
+			['@seven.io/n8n-nodes-seven', 'seven'],
+		])('for %s.%s', (packageName, nodeType) => {
+			const fullNodeType = `${packageName}.${nodeType}`;
+
+			it('should recognize the node', () => {
+				expect(instance.recognizesNode(fullNodeType)).toBe(true);
+			});
+
+			it('should get the node from the loader of its package', () => {
+				const loader = instance.loaders[packageName] as ReturnType<typeof createLoader>;
+
+				expect(instance.getNode(fullNodeType).type.description.name).toBe(nodeType);
+				expect(loader.getNode).toHaveBeenCalledWith(nodeType);
+			});
+
+			it('should resolve the source path with the loader of its package', () => {
+				expect(instance.resolveNodeSourcePath(fullNodeType, 'dist/Node.node.js')).toBe(
+					'/resolved/dist/Node.node.js',
+				);
+			});
+		});
+
+		it('should not recognize an unknown node in a package with a dot in its scope', () => {
+			expect(instance.recognizesNode('@seven.io/n8n-nodes-seven.unknown')).toBe(false);
+		});
+
+		it('should throw with the full node type for an unknown package with a dot in its scope', () => {
+			expect(() => instance.getNode('@other.io/n8n-nodes-other.node')).toThrow(
+				UnrecognizedNodeTypeError,
+			);
+			expect(() => instance.getNode('@other.io/n8n-nodes-other.node')).toThrow(
+				'Unrecognized node type: @other.io/n8n-nodes-other.node',
+			);
 		});
 	});
 

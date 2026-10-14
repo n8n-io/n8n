@@ -40,7 +40,12 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	injectDomainRestrictionFields,
+	splitNodeTypeName,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -680,14 +685,14 @@ export class LoadNodesAndCredentials {
 	}
 
 	recognizesNode(fullNodeType: string): boolean {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = splitNodeTypeName(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		return !!loader && nodeType in loader.known.nodes;
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = splitNodeTypeName(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {
@@ -708,7 +713,7 @@ export class LoadNodesAndCredentials {
 	 * its own package directory, so it must be resolved before any file access.
 	 */
 	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
-		const [packageName] = fullNodeType.split('.');
+		const [packageName] = splitNodeTypeName(fullNodeType);
 		const loader = this.loaders[packageName];
 		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
 	}
