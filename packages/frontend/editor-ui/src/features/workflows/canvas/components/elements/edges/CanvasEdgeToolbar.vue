@@ -58,7 +58,7 @@ function onDelete() {
 			"
 		>
 			<N8nIconButton
-				variant="subtle"
+				variant="outline"
 				class="canvas-edge-toolbar-button"
 				data-test-id="add-connection-button"
 				size="small"
@@ -70,7 +70,7 @@ function onDelete() {
 		</CanvasEdgeTooltip>
 		<CanvasEdgeTooltip :content="i18n.baseText('node.delete')">
 			<N8nIconButton
-				variant="subtle"
+				variant="outline"
 				data-test-id="delete-connection-button"
 				class="canvas-edge-toolbar-button"
 				size="small"

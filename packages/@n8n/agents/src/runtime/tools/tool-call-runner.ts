@@ -401,6 +401,7 @@ export class ToolCallRunner {
 							continuation,
 							resumeSchema,
 							onSuspend,
+							onGuardrailNotice: params.guardrails?.onNotice,
 						}),
 					abortSignal,
 				),

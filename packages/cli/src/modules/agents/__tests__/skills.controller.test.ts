@@ -1,0 +1,28 @@
+import { ControllerRegistryMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+
+import { SkillsController } from '../skills.controller';
+
+/**
+ * The skills routes carry no scope decorator: `SkillsApiService` checks each skill row.
+ * A new route must add that check on purpose, so the set of routes is pinned here.
+ */
+const ROW_CHECKED_HANDLERS = ['create', 'delete', 'get', 'list', 'update'];
+
+describe('SkillsController routes', () => {
+	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+		SkillsController as never,
+	);
+
+	it('has only the routes that check access for each skill', () => {
+		expect([...metadata.routes.keys()].sort()).toEqual(ROW_CHECKED_HANDLERS);
+	});
+
+	it.each(ROW_CHECKED_HANDLERS)('%s needs a login and carries no route scope', (handlerName) => {
+		const route = metadata.routes.get(handlerName);
+
+		expect(route?.accessScope).toBeUndefined();
+		expect(route?.skipAuth).toBe(false);
+		expect(route?.allowUnauthenticated).toBe(false);
+	});
+});

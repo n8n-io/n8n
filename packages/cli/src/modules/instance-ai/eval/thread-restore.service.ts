@@ -279,12 +279,14 @@ export class EvalThreadRestoreService {
 		}
 	}
 
-	/** Recreate each seed agent, config and skill bodies in one insert — an agent is
-	 *  a single row, so there are no skill files to write. Rolls back on failure.
+	/** Recreate each seed agent from its config. A seed skill body becomes a new
+	 *  skill of that agent only, and the agent ref points to the new id. Deleting
+	 *  the agent deletes the skill, so a rollback on failure leaves no skills behind.
 	 *  Names are not uniquified as seed data tables' are; see `remapSeedArtifactIds`. */
 	async restoreAgents(
 		agents: InstanceAiEvalSeedAgent[],
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string> = new Map(),
 		allowedCredentialIds?: Set<string>,
 	): Promise<string[]> {
@@ -311,9 +313,10 @@ export class EvalThreadRestoreService {
 				// `create` refuses a colliding id rather than overwriting, so a seed can
 				// never clobber an agent that already exists.
 				await agentsService.create(projectId, schema.name, {
+					actor: { kind: 'user', user },
 					id: agent.id,
 					schema,
-					...(agent.skills ? { skills: agent.skills } : {}),
+					...(agent.skills ? { skills: agent.skills, skillCreator: user } : {}),
 				});
 				created.push(agent.id);
 			}

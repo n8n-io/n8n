@@ -28,8 +28,8 @@ export class OAuthServerModule implements ModuleInterface {
 		}
 
 		// Main and webhook processes mint access tokens (Form and Chat flows mint
-		// on webhook processes), so they load the private signing key. Workers never
-		// mint.
+		// on webhook processes), so they load the private signing key. Workers only
+		// verify, and load the public keys on first use.
 		if (instanceType === 'main' || instanceType === 'webhook') {
 			const { OAuthSigningKeyService } = await import('./oauth-signing-key.service.js');
 			await Container.get(OAuthSigningKeyService).initialize();
@@ -41,6 +41,13 @@ export class OAuthServerModule implements ModuleInterface {
 			const { OAuthSigningJwksProvider } = await import('./oauth-signing-jwks.provider.js');
 			Container.get(JwksRegistry).register(Container.get(OAuthSigningJwksProvider));
 		}
+
+		// Discovery reads this server's metadata and keys in process, like any other trusted source.
+		const { LocalAuthorizationServer } = await import('@n8n/inbound-auth');
+		const { OAuthServerLocalAuthorizationServer } = await import(
+			'./oauth-local-authorization-server.js'
+		);
+		Container.set(LocalAuthorizationServer, Container.get(OAuthServerLocalAuthorizationServer));
 
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core

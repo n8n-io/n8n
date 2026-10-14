@@ -2,7 +2,7 @@ operationId: updateOtelSettings
 tags:
   - SettingsOtel
 summary: Set the OpenTelemetry configuration
-description: 'Set the OpenTelemetry configuration. This is a full replacement: every field must be provided, and a partial body is rejected. The one exception is `exporterProtocol`, which defaults to `http/protobuf` when omitted. The update takes effect exactly as it would from the UI, using the same validation, and is applied to the running instance immediately. Fields managed declaratively via environment variables are read-only: attempting to change one is rejected with 409, while re-submitting its current value (as returned by GET) is accepted. Requires the `otel:manage` scope.'
+description: 'Set the OpenTelemetry configuration. This is a full replacement: every field must be provided, and a partial body is rejected. The exceptions are `exporterProtocol`, which defaults to `http/protobuf` when omitted, and `emitWorkflowStartSpan` and `emitNodeStartSpan`, which default to `false` when omitted. The update takes effect exactly as it would from the UI, using the same validation, and is applied to the running instance immediately. Fields managed declaratively via environment variables are read-only: attempting to change one is rejected with 409, while re-submitting its current value (as returned by GET) is accepted. Requires the `otel:manage` scope.'
 x-required-scope: otel:manage
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -60,6 +60,16 @@ requestBody:
             type: boolean
             description: Whether to emit a span for each node execution in addition to the workflow span.
             example: true
+          emitWorkflowStartSpan:
+            type: boolean
+            default: false
+            description: 'Whether to emit a `workflow.execute.started` span with a duration of 0 ms when each execution or resumed segment starts. Optional: a write that omits it selects `false`, but an instance that sets this field to `true` with an environment variable rejects that write with 409.'
+            example: false
+          emitNodeStartSpan:
+            type: boolean
+            default: false
+            description: 'Whether to emit a `node.execute.started` span with a duration of 0 ms when each node span starts. This doubles the number of node spans. Has no effect when `includeNodeSpans` is false. Optional: a write that omits it selects `false`, but an instance that sets this field to `true` with an environment variable rejects that write with 409.'
+            example: false
           injectOutbound:
             type: boolean
             description: Whether to inject trace context headers into outbound HTTP requests made by nodes.
@@ -80,7 +90,7 @@ requestBody:
           - injectOutbound
           - productionExecutionsOnly
         additionalProperties: false
-        description: 'The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a full replacement: every field must be provided, except `exporterProtocol`, which defaults to `http/protobuf` when omitted. Fields managed declaratively via environment variables are returned with their effective value. A write can repeat these values, but changing them returns 409.'
+        description: 'The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a full replacement: every field must be provided, except `exporterProtocol`, which defaults to `http/protobuf` when omitted, and `emitWorkflowStartSpan` and `emitNodeStartSpan`, which default to `false` when omitted. Fields managed declaratively via environment variables are returned with their effective value. A write can repeat these values, but changing them returns 409.'
 responses:
   '200':
     description: Operation successful.

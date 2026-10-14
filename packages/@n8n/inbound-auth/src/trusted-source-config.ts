@@ -16,7 +16,6 @@ export const JwtAlgorithmSchema = z.enum([
 	'PS256',
 	'PS384',
 	'PS512',
-	'EdDSA',
 ]);
 export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
 
@@ -39,7 +38,7 @@ export const ManagedBySchema = z.enum(['system', 'admin']);
 export type ManagedBy = z.infer<typeof ManagedBySchema>;
 
 // An admin-supplied endpoint is fetched server-side, so it must be https.
-const HttpsUrl = z
+export const HttpsUrl = z
 	.string()
 	.url()
 	.refine((url) => url.startsWith('https://'), { message: 'must be an https URL' });
@@ -68,6 +67,7 @@ export const Oauth2AuthenticationSchema = z.object({
 	verification: z
 		.discriminatedUnion('mode', [z.object({ mode: z.literal('jwt') })])
 		.default({ mode: 'jwt' }),
+	allowedTokenTypes: z.array(z.string().min(1)).min(1).default(['at+jwt', 'application/at+jwt']),
 	algorithms: z
 		.array(JwtAlgorithmSchema)
 		.min(1)
@@ -181,6 +181,14 @@ export const TrustedSourceConfigSchema = z
 				code: z.ZodIssueCode.custom,
 				message: 'manual discovery with jwks-uri keys requires jwksUri or metadataUrl',
 				path: ['authentication', 'discovery'],
+			});
+		}
+		// Without a lookup, provisioning would create a second user for an email that exists.
+		if (identity.provision.human === 'jit' && identity.linkByEmail === 'off') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'jit provisioning requires email linking',
+				path: ['identity', 'linkByEmail'],
 			});
 		}
 		if (identity.provision.human === 'jit' && identity.roleMapping.mode === 'off') {

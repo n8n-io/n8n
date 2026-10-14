@@ -93,6 +93,7 @@ export interface FrontendSettings {
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
 	endpointHealth: string;
+	healthCheckTimeoutMs: number;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -307,6 +308,12 @@ export interface FrontendSettings {
 		 * `101_agent_evals` flag would otherwise never resolve.
 		 */
 		agentEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_FORCE_AGENT_WORTH_TESTING`) that forces the
+		 * "Test your agent" offer's capability check to pass regardless of the
+		 * agent's actual model/tools/skills.
+		 */
+		forceAgentWorthTesting: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -458,6 +465,8 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/** Whether agents use the skills hub (PostHog flag `125_context_skills`, read at startup). */
+		skillsHubEnabled?: boolean;
 	};
 };
 

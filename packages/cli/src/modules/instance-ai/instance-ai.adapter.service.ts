@@ -171,6 +171,7 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
+import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -204,6 +205,10 @@ import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
+import {
+	assertExecutionTimeoutWithinMax,
+	exceedsMaxExecutionTimeout,
+} from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -486,6 +491,9 @@ export class InstanceAiAdapterService {
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
+			/** Eval-only: the provider stand-in for a credential type's connection test.
+			 *  A getter for the same reason as the bypass predicate. */
+			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
@@ -528,6 +536,7 @@ export class InstanceAiAdapterService {
 			getCredentialIdAllowlist,
 			resumeAgentBuild = false,
 			shouldBypassCredentialTest,
+			getCredentialTestTarget,
 			agentId,
 			configEvalsEnabled,
 			setupPanelVariant,
@@ -553,6 +562,7 @@ export class InstanceAiAdapterService {
 			projectId,
 			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
+			getCredentialTestTarget,
 		);
 		return {
 			userId: user.id,
@@ -884,7 +894,9 @@ export class InstanceAiAdapterService {
 		return {
 			execute: async (request) => {
 				this.assertInstanceNotReadOnly('executions');
-				const projectId = await resolveProjectId(['workflow:execute']);
+				// The caller supplies the node type and parameters, so a standalone run
+				// authors a workflow. See ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.
+				const projectId = await resolveProjectId(['workflow:create', 'workflow:execute']);
 				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
@@ -1070,6 +1082,7 @@ export class InstanceAiAdapterService {
 			workflowDependencyQueryService,
 		} = this;
 		const logger = this.logger;
+		const maxExecutionTimeout = this.globalConfig.executions.maxTimeout;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
 		// the method's presence, so nothing downstream has to know a rollout flag exists.
@@ -1686,6 +1699,7 @@ export class InstanceAiAdapterService {
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
 				} as IWorkflowSettings;
+				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
@@ -1821,12 +1835,26 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				assertParameterValuesAvailable();
 				await assertNotLockedByEditor(workflowId);
+				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				// Loaded on first use only. The checks below share one query.
+				let storedWorkflow: Promise<WorkflowEntity | null> | undefined;
+				const getStoredWorkflow = async () =>
+					await (storedWorkflow ??= workflowRepository.findOne({ where: { id: workflowId } }));
+
+				// Only a changed value is checked, so a workflow saved before the
+				// maximum was lowered stays saveable.
+				if (exceedsMaxExecutionTimeout(settings.executionTimeout, maxExecutionTimeout)) {
+					const existingWorkflow = await getStoredWorkflow();
+					if (existingWorkflow?.settings?.executionTimeout !== settings.executionTimeout) {
+						assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
+					}
+				}
+
 				// Strip redactionPolicy if the user lacks the required directional scope —
 				// mirrors the check in WorkflowService.update().
-				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
 					const [existingWorkflow, ownerProject] = await Promise.all([
-						workflowRepository.findOne({ where: { id: workflowId } }),
+						getStoredWorkflow(),
 						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
 					]);
 
@@ -2153,6 +2181,9 @@ export class InstanceAiAdapterService {
 					},
 					userId: user.id,
 					pushRef,
+					// The agent awaits this run's result and prunes its pins afterwards, so
+					// a worker must not park a trigger-mode run at shutdown.
+					callerAwaitsOutcome: 'completion',
 					// A verification run picks a production execution mode above so the
 					// trigger behaves realistically. Without this opt-out, a failed build
 					// attempt would dispatch the user's error workflow as if production
@@ -2733,6 +2764,7 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
+		getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined,
 	): InstanceAiCredentialService {
 		const {
 			credentialsService,
@@ -2842,11 +2874,18 @@ export class InstanceAiAdapterService {
 					return { success: true, message: 'Connection tested successfully' };
 				}
 
+				const data = await credentialsService.decryptForUse(
+					credential,
+					{ kind: 'user', user },
+					boundProjectId,
+				);
+				// Eval-only: aim the test at the thread's stand-in.
+				const target = getCredentialTestTarget?.(credential.type);
 				const credentialsToTest: ICredentialsDecrypted = {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: await credentialsService.decrypt(credential, true),
+					data: target ? { ...data, [target.urlField]: target.baseUrl } : data,
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);
@@ -4253,9 +4292,8 @@ export class InstanceAiAdapterService {
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
 				assertNotReadOnly('executions');
-				// Access-check the workflow with execute scope (matches controller behavior)
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-					'workflow:execute',
+					'execution:delete',
 				]);
 				if (!workflow) {
 					throw new WorkflowNotFoundError(workflowId);
@@ -4280,12 +4318,15 @@ export class InstanceAiAdapterService {
 
 				const ids = executions.map((e) => e.id);
 
-				// Use the canonical deletion pipeline (handles binary data and fs blobs)
-				await executionPersistence.hardDeleteBy({
-					filters: { workflowId, mode: 'manual' },
-					accessibleWorkflowIds: [workflowId],
-					deleteConditions: { deleteBefore: cutoff },
-				});
+				// Use the canonical deletion pipeline (handles binary data and fs blobs).
+				// Delete by ID so only the counted manual executions are removed.
+				for (let start = 0; start < ids.length; start += EXECUTION_DELETE_CHUNK_SIZE) {
+					await executionPersistence.hardDeleteBy({
+						filters: undefined,
+						accessibleWorkflowIds: [workflowId],
+						deleteConditions: { ids: ids.slice(start, start + EXECUTION_DELETE_CHUNK_SIZE) },
+					});
+				}
 
 				// Emit audit event (matches controller behavior)
 				eventService.emit('execution-deleted', {
@@ -5364,6 +5405,10 @@ function readParentFolder(workflow: WorkflowEntity): { id: string; name: string 
 	const parent = workflow.parentFolder ?? undefined;
 	return parent ? { id: parent.id, name: parent.name } : undefined;
 }
+
+/** Execution ids per deletion query. The query binds one parameter per id
+ *  and SQLite allows 999 of them, so the ids are deleted in chunks. */
+const EXECUTION_DELETE_CHUNK_SIZE = 500;
 
 /** Folder ids per path query. `getFolderPathsToRoot` binds one parameter per id
  *  and SQLite allows 999 of them, so the ids are read in chunks. */

@@ -55,6 +55,7 @@ export { FolderRepository } from './folder.repository';
 export { FolderAccessRepository } from './folder-access.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
+export { IdempotencyKeyRepository } from './idempotency-key.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
@@ -100,7 +101,11 @@ export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
-export { WorkflowRepository, agentToolReferenceWhere } from './workflow.repository';
+export {
+	WorkflowRepository,
+	agentToolReferenceWhere,
+	type WorkflowIdsQuery,
+} from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
 export { WorkflowPublicationRetryStateRepository } from './workflow-publication-retry-state.repository';
 export {
@@ -111,7 +116,10 @@ export {
 	WorkflowPublishedVersionRepository,
 	type PublishedWorkflowDataForExecution,
 } from './workflow-published-version.repository';
-export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+export {
+	WorkflowPublishHistoryRepository,
+	type PublishHistoryScope,
+} from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
 	type WorkflowReviewRequestForWorkflowRow,

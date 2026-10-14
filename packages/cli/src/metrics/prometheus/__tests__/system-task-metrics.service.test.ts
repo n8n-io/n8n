@@ -1,12 +1,14 @@
 import type { CacheService, EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { ScheduledJob, ScheduledJobRepository } from '@n8n/db';
+import type { DbConnection, ScheduledJob, ScheduledJobRepository } from '@n8n/db';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { CachedMetricQueryFactory } from '../cached-metric-query';
 import { LAG_BUCKETS_SECONDS } from '../constant';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 import { PrometheusSystemTaskMetricsService } from '../system-task-metrics.service';
 
 vi.mock('prom-client');
@@ -21,6 +23,9 @@ describe('PrometheusSystemTaskMetricsService', () => {
 	const eventService = mock<EventService>();
 	const cacheService = mock<CacheService>();
 	const scheduledJobRepository = mock<ScheduledJobRepository>();
+	const dbConnection = mock<DbConnection>({
+		connectionState: { connected: true, migrated: true },
+	});
 
 	let service: PrometheusSystemTaskMetricsService;
 	const ctorByType = { Counter: vi.fn(), Gauge: vi.fn(), Histogram: vi.fn() };
@@ -80,11 +85,18 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		});
 
 		cacheService.get.mockResolvedValue(undefined);
+		dbConnection.connectionState.connected = true;
 		service = new PrometheusSystemTaskMetricsService(
 			config,
 			eventService,
-			cacheService,
-			scheduledJobRepository,
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				scheduledJobRepository,
+			),
 		);
 	});
 
@@ -484,6 +496,17 @@ describe('PrometheusSystemTaskMetricsService', () => {
 
 			await expect(scrape()).resolves.toBeUndefined();
 
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
+		});
+
+		it('keeps the last values without reading the jobs while the database is disconnected', async () => {
+			dbConnection.connectionState.connected = false;
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await expect(scrape()).resolves.toBeUndefined();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).not.toHaveBeenCalled();
 			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
 		});
 	});

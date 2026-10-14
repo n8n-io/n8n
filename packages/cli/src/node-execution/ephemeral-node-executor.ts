@@ -27,6 +27,8 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations, type NonEmptyViolations } from '@/policy/policy-violation.error';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -70,6 +72,23 @@ export interface NodeExecutionResult {
 	status: 'success' | 'error';
 	data: INodeExecutionData[];
 	error?: string;
+	/** Set when a policy refused the run. */
+	violations?: NonEmptyViolations;
+}
+
+type SupplyDataToolOutcome<T> =
+	| { ok: true; value: T }
+	| { ok: false; error: string; violations?: NonEmptyViolations };
+
+/** The `{ status: 'error' }` result for a caught error, keeping a refusal's violations. */
+function errorResult(error: unknown): NodeExecutionResult {
+	const violations = findPolicyViolations(error);
+	return {
+		status: 'error',
+		data: [],
+		error: getErrorMessage(error),
+		...(violations && { violations }),
+	};
 }
 
 /**
@@ -89,7 +108,7 @@ export const AGENT_TOOL_NODE_DENYLIST = new Set<string>([
 /**
  * The node-types resolver may hand us the `*Tool` variant of a node
  * (e.g. `executeCommand` -> `executeCommandTool`, see `resolveToolNodeType`
- * in `node-tool-factory.ts`). Strip that suffix before checking the denylist
+ * in `resolve-tool-node-type.ts`). Strip that suffix before checking the denylist
  * so both the base and tool-wrapped forms are caught.
  */
 function stripAgentToolSuffix(nodeType: string): string {
@@ -155,6 +174,7 @@ export class EphemeralNodeExecutor {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly logger: Logger,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	/**
@@ -284,6 +304,17 @@ export class EphemeralNodeExecutor {
 	}
 
 	/**
+	 * Every node run goes through `executeNodeDirectly` or `withSupplyDataTool`, so both call
+	 * this. Not a `WorkflowRunner` run, so `workflowExecuteBefore` never polices it.
+	 */
+	private async enforceRunPolicy(node: INode, projectId: string) {
+		await this.policyEnforcementService.enforceWorkflowStart(
+			{ workflow: { id: null, name: node.name, nodes: [node], artifactKind: 'agent' }, projectId },
+			{ kind: 'system', reason: 'execution' },
+		);
+	}
+
+	/**
 	 * Assemble the shared pieces (node, ephemeral workflow, additionalData,
 	 * execute data) both context classes need. Keeps `executeNodeDirectly` and
 	 * `withSupplyDataTool` from drifting — the setup is identical up to the
@@ -337,25 +368,26 @@ export class EphemeralNodeExecutor {
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
 	): Promise<NodeExecutionResult> {
-		const parts = await this.buildEphemeralContextParts(tool, inputItems);
-
-		const context = new ExecuteContext(
-			parts.workflow,
-			parts.node,
-			parts.additionalData,
-			parts.mode,
-			parts.runExecutionData,
-			0,
-			inputItems,
-			parts.inputData,
-			parts.executeData,
-			[],
-		);
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-
 		let output: NodeOutput | undefined;
 		try {
+			const parts = await this.buildEphemeralContextParts(tool, inputItems);
+			await this.enforceRunPolicy(parts.node, tool.projectId);
+
+			const context = new ExecuteContext(
+				parts.workflow,
+				parts.node,
+				parts.additionalData,
+				parts.mode,
+				parts.runExecutionData,
+				0,
+				inputItems,
+				parts.inputData,
+				parts.executeData,
+				[],
+			);
+
+			const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+
 			const executionResult = await withExpressionIsolate(
 				parts.workflow,
 				async (): Promise<NodeExecutionResult> => {
@@ -378,9 +410,9 @@ export class EphemeralNodeExecutor {
 			);
 			return executionResult;
 		} catch (error) {
-			const message = getErrorMessage(error);
-			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
-			return { status: 'error', data: [], error: message };
+			const result = errorResult(error);
+			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: result.error });
+			return result;
 		}
 	}
 
@@ -500,31 +532,33 @@ export class EphemeralNodeExecutor {
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
 		onTool: (response: LangChainToolType | StructuredToolkit) => Promise<T> | T,
-	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
-		const parts = await this.buildEphemeralContextParts(tool, inputItems);
+	): Promise<SupplyDataToolOutcome<T>> {
 		const closeFunctions: CloseFunction[] = [];
 
-		const context = new SupplyDataContext(
-			parts.workflow,
-			parts.node,
-			parts.additionalData,
-			parts.mode,
-			parts.runExecutionData,
-			0,
-			inputItems,
-			parts.inputData,
-			NodeConnectionTypes.AiTool,
-			parts.executeData,
-			closeFunctions,
-		);
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
-		const supplyData = nodeType.supplyData;
-		if (typeof supplyData !== 'function') {
-			return { ok: false, error: 'Node does not implement supplyData' };
-		}
-
 		try {
+			const parts = await this.buildEphemeralContextParts(tool, inputItems);
+			await this.enforceRunPolicy(parts.node, tool.projectId);
+
+			const context = new SupplyDataContext(
+				parts.workflow,
+				parts.node,
+				parts.additionalData,
+				parts.mode,
+				parts.runExecutionData,
+				0,
+				inputItems,
+				parts.inputData,
+				NodeConnectionTypes.AiTool,
+				parts.executeData,
+				closeFunctions,
+			);
+
+			const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+			const supplyData = nodeType.supplyData;
+			if (typeof supplyData !== 'function') {
+				return { ok: false, error: 'Node does not implement supplyData' };
+			}
+
 			return await withExpressionIsolate(parts.workflow, async () => {
 				const supplyDataResult = await supplyData.call(context, 0);
 				const response = supplyDataResult.response as
@@ -544,8 +578,8 @@ export class EphemeralNodeExecutor {
 				};
 			});
 		} catch (error) {
-			const message = getErrorMessage(error);
-			return { ok: false, error: message };
+			const violations = findPolicyViolations(error);
+			return { ok: false, error: getErrorMessage(error), ...(violations && { violations }) };
 		} finally {
 			for (const closeFunction of closeFunctions) {
 				try {
@@ -595,7 +629,12 @@ export class EphemeralNodeExecutor {
 				nodeType: tool.nodeType,
 				error: result.error,
 			});
-			return { status: 'error', data: [], error: result.error };
+			return {
+				status: 'error',
+				data: [],
+				error: result.error,
+				...(result.violations && { violations: result.violations }),
+			};
 		}
 
 		return {

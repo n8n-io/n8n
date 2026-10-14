@@ -439,6 +439,29 @@ describe('PolicyDecisionService', () => {
 			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('wf-claimed');
 		});
 
+		it('names an agent as an agent, not as a workflow', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+			const agent = {
+				id: 'agent-1',
+				name: 'Support agent',
+				nodes: [],
+				artifactKind: 'agent' as const,
+			};
+
+			await service.enforce(
+				'workflowSave',
+				{ workflow: agent, storedWorkflow: agent, projectId: 'proj-1' },
+				asAlice,
+			);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
 		it('records the project a transfer moves into', async () => {
 			const { service, audit } = auditedServiceWith(OtherPointsCheck);
 

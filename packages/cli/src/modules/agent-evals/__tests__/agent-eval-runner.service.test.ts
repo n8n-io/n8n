@@ -12,9 +12,11 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import type { License } from '@/license';
+import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -22,6 +24,7 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { generateFixSuggestion } from '../agent-eval-fix-suggestion';
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
@@ -46,6 +49,34 @@ vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
 }));
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn().mockResolvedValue(true),
+}));
+// The judging step's own collaborators — stubbed the same way
+// `agent-eval-case-generation.service.test.ts` stubs them for its (non-judge)
+// model call: model+credential resolution touches credentials/DB, and the SDK
+// is heavy. `correctnessRunMock` (gold answers) and `criteriaRunMock` (rules)
+// drive the judge's verdict per test.
+const { correctnessRunMock, criteriaRunMock } = vi.hoisted(() => ({
+	correctnessRunMock: vi.fn(),
+	criteriaRunMock: vi.fn(),
+}));
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
+	evals: {
+		correctness: () => ({
+			model: () => ({ run: (...args: unknown[]) => correctnessRunMock(...args) }),
+		}),
+		criteria: () => ({
+			model: () => ({ run: (...args: unknown[]) => criteriaRunMock(...args) }),
+		}),
+	},
+}));
+vi.mock('../agent-eval-fix-suggestion', () => ({ generateFixSuggestion: vi.fn() }));
+const { resolveModelMock } = vi.hoisted(() => ({ resolveModelMock: vi.fn() }));
+vi.mock('@/modules/agents/json-config/model-config', () => ({
+	resolveCredentialAwareModelConfig: (...args: unknown[]) => resolveModelMock(...args),
+}));
+vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
+	createAgentCredentialProvider: vi.fn(() => ({})),
 }));
 
 type StatusCounts = {
@@ -107,6 +138,8 @@ describe('AgentEvalRunnerService', () => {
 	let license: MockProxy<License>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
 	let agentsSettingsService: MockProxy<AgentsSettingsService>;
+	let agentConfigService: MockProxy<AgentConfigService>;
+	let credentialsService: MockProxy<CredentialsService>;
 	let service: AgentEvalRunnerService;
 
 	const dataset = mock<AgentEvalDataset>({
@@ -139,6 +172,23 @@ describe('AgentEvalRunnerService', () => {
 		license = mock<License>();
 		flagGate = mock<AgentEvalsFlagGate>();
 		agentsSettingsService = mock<AgentsSettingsService>();
+		agentConfigService = mock<AgentConfigService>();
+		credentialsService = mock<CredentialsService>();
+
+		correctnessRunMock.mockReset();
+		correctnessRunMock.mockResolvedValue({ pass: true, reasoning: 'Matches the expected answer.' });
+		criteriaRunMock.mockReset();
+		vi.mocked(generateFixSuggestion).mockReset();
+		vi.mocked(generateFixSuggestion).mockResolvedValue(null);
+		criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Satisfies the rule.' });
+		resolveModelMock.mockReset();
+		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
+		// Most tests have no reason to grade — only the dedicated "judging" suite
+		// sets a `criteria`/`expectedOutput` column mapping that reaches this.
+		agentConfigService.getConfig.mockResolvedValue({
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'cred-1',
+		} as never);
 
 		datasetRepository.findById.mockResolvedValue(dataset);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -170,6 +220,8 @@ describe('AgentEvalRunnerService', () => {
 			license,
 			flagGate,
 			agentsSettingsService,
+			agentConfigService,
+			credentialsService,
 		);
 	});
 
@@ -447,6 +499,297 @@ describe('AgentEvalRunnerService', () => {
 			expect(resultRepository.seedResults).toHaveBeenCalledTimes(1);
 			expect(resultRepository.seedResults.mock.calls[0]?.[0]).toHaveLength(120);
 			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(120);
+		});
+	});
+
+	describe('judging', () => {
+		it('judges a successful case and records a pass verdict', async () => {
+			seedFor([{ id: 'row-1', question: 'What is 2+2?', answer: '4', check: 'is 4' }], {
+				success: 1,
+			});
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Correctly answers 4.' });
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			// `criteria` ("check" column) wins over `expectedOutput` ("answer" column),
+			// and is judged as a rule to satisfy rather than an answer to match.
+			expect(criteriaRunMock).toHaveBeenCalledWith({
+				input: 'What is 2+2?',
+				output: 'the answer',
+				criteria: 'is 4',
+			});
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'completed',
+						outcome: 'pass',
+						reasoning: 'Correctly answers 4.',
+					},
+				}),
+			);
+		});
+
+		// No rule, only a gold answer: the answer-matching judge stays in use.
+		it('judges a case that only has a gold answer by matching it, not as a rule', async () => {
+			seedFor([{ id: 'row-1', question: 'What is 2+2?', answer: '4' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			correctnessRunMock.mockResolvedValue({ pass: true, reasoning: 'Matches 4.' });
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(correctnessRunMock).toHaveBeenCalledWith({
+				input: 'What is 2+2?',
+				output: 'the answer',
+				expected: '4',
+			});
+			expect(criteriaRunMock).not.toHaveBeenCalled();
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'completed',
+						outcome: 'pass',
+						reasoning: 'Matches 4.',
+					},
+				}),
+			);
+		});
+
+		// The row stays `running` (which a rerun cannot claim) until judging settles,
+		// and completion and verdict land in one write — a second rerun can't start
+		// mid-judge, and a stale judge can't overwrite a newer attempt's verdict.
+		it('keeps the case unfinished while the judge is pending, then writes completion and verdict together', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			let resolveJudge!: (value: { pass: boolean; reasoning: string }) => void;
+			criteriaRunMock.mockImplementation(
+				async () =>
+					await new Promise<{ pass: boolean; reasoning: string }>((resolve) => {
+						resolveJudge = resolve;
+					}),
+			);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await vi.waitFor(() => expect(criteriaRunMock).toHaveBeenCalled());
+
+			expect(resultRepository.markAsCompleted).not.toHaveBeenCalled();
+
+			resolveJudge({ pass: true, reasoning: 'ok' });
+			await finished;
+
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: { status: 'completed', outcome: 'pass', reasoning: 'ok' },
+				}),
+			);
+			expect(resultRepository.updateVerdict).not.toHaveBeenCalled();
+		});
+
+		it('records a fail verdict from the judge', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			criteriaRunMock.mockResolvedValue({ pass: false, reasoning: 'Never mentions C.' });
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'completed',
+						outcome: 'fail',
+						reasoning: 'Never mentions C.',
+					},
+				}),
+			);
+		});
+
+		describe('fix suggestion', () => {
+			const failRule = () => {
+				seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				criteriaRunMock.mockResolvedValue({ pass: false, reasoning: 'Never mentions C.' });
+			};
+
+			it('stores a suggestion on the verdict of a failed rule', async () => {
+				failRule();
+				vi.mocked(generateFixSuggestion).mockResolvedValue('Always mention C.');
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).toHaveBeenCalledWith(
+					expect.anything(),
+					{ input: 'Q', output: 'the answer', rule: 'C', reasoning: 'Never mentions C.' },
+					expect.objectContaining({ agentId: 'agent-1', projectId: 'proj-1' }),
+				);
+				expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+					'res-0',
+					expect.objectContaining({
+						verdict: {
+							status: 'completed',
+							outcome: 'fail',
+							reasoning: 'Never mentions C.',
+							suggestion: 'Always mention C.',
+						},
+					}),
+				);
+			});
+
+			it('keeps the plain verdict when no suggestion comes back', async () => {
+				failRule();
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+					'res-0',
+					expect.objectContaining({
+						verdict: { status: 'completed', outcome: 'fail', reasoning: 'Never mentions C.' },
+					}),
+				);
+			});
+
+			it('does not suggest for a passing rule', async () => {
+				seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+			});
+
+			it('does not suggest when the judge itself fails', async () => {
+				seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				criteriaRunMock.mockRejectedValue(new Error('judge model timed out'));
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+			});
+
+			it('does not suggest for a gold answer mismatch without a rule', async () => {
+				seedFor([{ id: 'row-1', question: 'What is 2+2?', answer: '4' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				correctnessRunMock.mockResolvedValue({ pass: false, reasoning: 'Wrong.' });
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+			});
+
+			it('does not suggest when the case is skipped for having nothing to grade', async () => {
+				datasetRepository.findById.mockResolvedValue({
+					...dataset,
+					columnMapping: { input: 'question' },
+				} as AgentEvalDataset);
+				dataTableService.getColumns.mockResolvedValue([{ name: 'question' }] as never);
+				seedFor([{ id: 'row-1', question: 'Q' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+
+				expect(generateFixSuggestion).not.toHaveBeenCalled();
+			});
+		});
+
+		it('skips judging when the dataset maps neither criteria nor expectedOutput', async () => {
+			// A plain object, not `mock<AgentEvalDataset>()`: wrapping a nested
+			// `columnMapping` literal through the deep-mock proxy again would
+			// auto-mock its unset optional keys (`criteria`/`expectedOutput`) as
+			// mock functions instead of leaving them `undefined`.
+			datasetRepository.findById.mockResolvedValue({
+				...dataset,
+				columnMapping: { input: 'question' },
+			} as AgentEvalDataset);
+			dataTableService.getColumns.mockResolvedValue([{ name: 'question' }] as never);
+			seedFor([{ id: 'row-1', question: 'Q' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(criteriaRunMock).not.toHaveBeenCalled();
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'skipped',
+						outcome: null,
+						reasoning: null,
+					},
+				}),
+			);
+		});
+
+		it('never judges a case whose execution itself failed', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { error: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(failExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(criteriaRunMock).not.toHaveBeenCalled();
+			expect(resultRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		it('records a verdict error, but still reports the case successful, when the judge throws', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			criteriaRunMock.mockRejectedValue(new Error('judge model timed out'));
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'error',
+						outcome: null,
+						reasoning: 'judge model timed out',
+					},
+				}),
+			);
+			// A grading failure never flips an already-succeeded case to `error`.
+			expect(resultRepository.markAsCompleted).toHaveBeenCalled();
+			expect(resultRepository.markAsError).not.toHaveBeenCalled();
+			expect(runRepository.markAsCompleted).toHaveBeenCalledWith(
+				'run-1',
+				expect.objectContaining({ success: 1 }),
+			);
+		});
+
+		it('records a verdict error without failing the case when the agent has no judge credential', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			agentConfigService.getConfig.mockResolvedValue({ model: '', credential: '' } as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(criteriaRunMock).not.toHaveBeenCalled();
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({ verdict: expect.objectContaining({ status: 'error' }) }),
+			);
+			expect(resultRepository.markAsError).not.toHaveBeenCalled();
 		});
 	});
 
@@ -838,6 +1181,234 @@ describe('AgentEvalRunnerService', () => {
 				status: 'completed',
 				counts: { total: 5, success: 3, error: 1, cancelled: 0, pending: 1 },
 			});
+		});
+	});
+
+	describe('rerunResult', () => {
+		const result = mock<AgentEvalResult>({
+			id: 'res-1',
+			runId: 'run-1',
+			sourceRowId: 'row-1',
+			input: { input: 'What is 2+2?' },
+			status: 'error',
+		});
+
+		beforeEach(() => {
+			resultRepository.claimForRerun.mockResolvedValue(true);
+		});
+
+		it('refuses when the flag is off for the requesting user', async () => {
+			flagGate.assertEnabled.mockRejectedValue(new NotFoundError('Not found'));
+
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
+		it('refuses in queue mode', async () => {
+			globalConfig.executions.mode = 'queue';
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				'queue mode',
+			);
+		});
+
+		it('rejects when the user cannot run agents in the project', async () => {
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				'permission to run agents',
+			);
+		});
+
+		it('rejects a result with no persisted input to rerun', async () => {
+			await expect(
+				service.rerunResult(
+					mock<AgentEvalResult>({ ...result, input: null }),
+					'agent-1',
+					'proj-1',
+					user,
+				),
+			).rejects.toThrow('no input to rerun');
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
+		it('executes only when it wins the atomic claim, so concurrent requests run the case once', async () => {
+			resultRepository.claimForRerun.mockResolvedValue(false);
+
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				'already running',
+			);
+
+			expect(resultRepository.claimForRerun).toHaveBeenCalledWith('res-1');
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
+		describe('editing the rule', () => {
+			it('needs agent:update on top of agent:execute, and changes nothing without it', async () => {
+				vi.mocked(userHasScopes).mockImplementation(
+					async (_user, scopes) => !scopes.includes('agent:update'),
+				);
+
+				await expect(
+					service.rerunResult(result, 'agent-1', 'proj-1', user, { whatToCheck: 'New rule' }),
+				).rejects.toThrow(ForbiddenError);
+
+				expect(resultRepository.claimForRerun).not.toHaveBeenCalled();
+				expect(resultRepository.updateInput).not.toHaveBeenCalled();
+				expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+			});
+
+			it('lets an execute-only user rerun as-is, since nothing is written', async () => {
+				vi.mocked(userHasScopes).mockImplementation(
+					async (_user, scopes) => !scopes.includes('agent:update'),
+				);
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				resultRepository.findById.mockResolvedValue(
+					mock<AgentEvalResult>({ ...result, status: 'success' }),
+				);
+
+				await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+				expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalled();
+			});
+
+			it('settles the claimed row as an error instead of leaving it running when saving the rule fails', async () => {
+				resultRepository.updateInput.mockRejectedValue(new Error('db down'));
+
+				await expect(
+					service.rerunResult(result, 'agent-1', 'proj-1', user, { whatToCheck: 'New rule' }),
+				).rejects.toThrow('db down');
+
+				expect(resultRepository.markAsError).toHaveBeenCalledWith('res-1', 'rerun_failed', {
+					message: 'db down',
+				});
+				expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+			});
+		});
+
+		it('rejects a whitespace-only input, like the batch path does', async () => {
+			await expect(
+				service.rerunResult(
+					mock<AgentEvalResult>({ ...result, input: { input: '   ' } }),
+					'agent-1',
+					'proj-1',
+					user,
+				),
+			).rejects.toThrow('no input to rerun');
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
+		it("re-executes the result's own persisted input, not a re-resolved dataset row", async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				user,
+				{ projectId: 'proj-1' },
+				'What is 2+2?',
+			);
+			expect(resultRepository.markAsRunning).toHaveBeenCalledWith('res-1');
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-1',
+				expect.objectContaining({ output: expect.objectContaining({ finalText: 'the answer' }) }),
+			);
+		});
+
+		it('returns the refreshed row, not the stale one passed in — no new run is created', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			const refreshed = mock<AgentEvalResult>({ ...result, status: 'success' });
+			resultRepository.findById.mockResolvedValue(refreshed);
+
+			const updated = await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(updated).toBe(refreshed);
+			expect(runRepository.createRun).not.toHaveBeenCalled();
+		});
+
+		it('records a failed execution as an error, same as a batch run would', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(failExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'error' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(resultRepository.markAsError).toHaveBeenCalledWith(
+				'res-1',
+				'execution_failed',
+				expect.objectContaining({ errors: ['model exploded'] }),
+			);
+		});
+
+		it('404s if the result vanished between execution and the refresh read', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(null);
+
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		// The checks view has no editable case row of its own — only this
+		// result's own snapshot — so an edited rule is persisted onto it directly,
+		// ahead of the case that reruns using it.
+		it('persists an edited rule onto the snapshot before rerunning, keeping the request text', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user, {
+				whatToCheck: 'Mentions the refund window.',
+			});
+
+			expect(resultRepository.updateInput).toHaveBeenCalledWith('res-1', {
+				input: 'What is 2+2?',
+				criteria: 'Mentions the refund window.',
+			});
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				user,
+				{ projectId: 'proj-1' },
+				'What is 2+2?',
+			);
+		});
+
+		it('leaves the snapshot untouched for a plain rerun with no edited rule', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(resultRepository.updateInput).not.toHaveBeenCalled();
+		});
+
+		// The payoff of persisting the edited rule ahead of the rerun: the judge
+		// reads the NEW text, not whatever criteria this case last ran with.
+		it('judges against the edited rule, not the text the case last ran with', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user, {
+				whatToCheck: 'Mentions the refund window.',
+			});
+
+			expect(criteriaRunMock).toHaveBeenCalledWith(
+				expect.objectContaining({ criteria: 'Mentions the refund window.' }),
+			);
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-1',
+				expect.objectContaining({ verdict: expect.objectContaining({ status: 'completed' }) }),
+			);
 		});
 	});
 

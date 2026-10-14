@@ -160,6 +160,17 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
 
+	it('fails loudly instead of returning an extends rule, which no node type write accepts', async () => {
+		service.getEffectivePolicy.mockResolvedValue({
+			...effectivePolicy,
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } }],
+		});
+
+		await expect(controller.getNodeTypeInstancePolicy()).rejects.toThrow(
+			'A node type policy holds an extends rule',
+		);
+	});
+
 	it('getNodeTypeInstancePolicy reads the null-project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue(effectivePolicy);
 

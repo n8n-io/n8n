@@ -39,7 +39,7 @@ describe('InstanceContextService', () => {
 
 	/** The bracketed entry ids a block rendered, newest first — the ids every tool takes. */
 	function shownIds(block: string): number[] {
-		return [...block.matchAll(/^\[(\d+)\]/gm)].map((match) => Number(match[1]));
+		return [...block.matchAll(/^\[id:(\d+)\]/gm)].map((match) => Number(match[1]));
 	}
 
 	function cursorOf(result: InstanceContextResult): InstanceContextCursor {
@@ -364,7 +364,8 @@ describe('InstanceContextService', () => {
 		expect(blockOf(built)).not.toContain('ran ');
 	});
 
-	it("expands an entry with the rest of that resource's history", async () => {
+	it.each(['initial', 'delta'])('expands a labeled id from the %s block', async (blockType) => {
+		let cursor: InstanceContextCursor | null = null;
 		for (const action of ['created', 'saved']) {
 			await record({
 				category: 'workflow',
@@ -374,14 +375,22 @@ describe('InstanceContextService', () => {
 				resourceId: 'wf-1',
 				resourceName: 'Lead enrichment',
 			});
+			if (blockType === 'delta' && action === 'created') {
+				cursor = cursorOf(
+					await service.buildBlock({ enabled: true, user, scope: bound(project.id), cursor }),
+				);
+			}
 		}
-		const [newest] = await activity.findFeed({
-			projectIds: [project.id],
-			allowedCategories: ['workflow', 'credential'],
-			limit: 1,
+		const built = await service.buildBlock({
+			enabled: true,
+			user,
+			scope: bound(project.id),
+			cursor,
 		});
+		const ids = shownIds(blockOf(built));
+		expect(ids).toHaveLength(blockType === 'delta' ? 1 : 2);
 
-		const expansion = await service.expand({ id: newest.id, user, scope: bound(project.id) });
+		const expansion = await service.expand({ id: ids[0], user, scope: bound(project.id) });
 
 		expect(expansion?.entry.action).toBe('saved');
 		expect(expansion?.resourceHistory.map((other) => other.action)).toEqual(['created']);
@@ -821,7 +830,7 @@ describe('InstanceContextService', () => {
 				scope: bound(project.id),
 				cursor,
 			});
-			expect(blockOf(built).match(/^\[\d+\]/gm)).toHaveLength(30);
+			expect(blockOf(built).match(/^\[id:\d+\]/gm)).toHaveLength(30);
 			cursor = cursorOf(built);
 		}
 		for (let turn = 0; turn < 2; turn++) {

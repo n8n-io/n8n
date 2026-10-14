@@ -64,6 +64,7 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
@@ -114,7 +115,6 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 
 const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
@@ -402,10 +402,6 @@ const currentBreadcrumbsProjectName = computed(() => {
 		: project.name;
 });
 
-const currentParentName = computed(
-	() => currentFolder.value?.name ?? currentBreadcrumbsProjectName.value,
-);
-
 const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	const project = currentBreadcrumbsProject.value;
 	if (!project) return [];
@@ -686,6 +682,11 @@ const refreshWorkflows = async () => {
 	]);
 };
 
+const onFolderCreated = async (payload: { projectId: string }) => {
+	if (currentBreadcrumbsProject.value?.id !== payload.projectId) return;
+	await refreshWorkflows();
+};
+
 const onFolderDeleted = async (payload: {
 	folderId: string;
 	workflowCount: number;
@@ -759,6 +760,7 @@ onMounted(async () => {
 	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
+	foldersEventBus.on('folder-created', onFolderCreated);
 	promotionEventBus.on('applied', onPromotionApplied);
 });
 
@@ -771,6 +773,7 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('folder-transferred', onFolderTransferred);
 	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.off('workflow-transferred', onWorkflowTransferred);
+	foldersEventBus.off('folder-created', onFolderCreated);
 });
 
 /**
@@ -2254,30 +2257,6 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="showRegisteredCommunityCTA" #add-button>
-			<N8nTooltip placement="top">
-				<template #content>
-					<span>
-						{{
-							currentParentName
-								? i18n.baseText('folders.add.to.parent.message', {
-										interpolate: { parent: currentParentName },
-									})
-								: i18n.baseText('folders.add.here.message')
-						}}
-					</span>
-				</template>
-				<N8nButton
-					variant="outline"
-					size="medium"
-					iconOnly
-					icon="folder-plus"
-					:aria-label="i18n.baseText('workflows.addFolder')"
-					data-test-id="add-folder-button"
-					@click="createFolderInCurrent"
-				/>
-			</N8nTooltip>
-		</template>
 		<template #callout>
 			<N8nCallout
 				v-if="showAIStarterCollectionCallout"
@@ -2289,7 +2268,7 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="easy-ai-button"
 							size="small"
 							@click="createAIStarterWorkflows('callout')"
@@ -2327,7 +2306,7 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="easy-ai-button"
 							size="small"
 							@click="handleCreateReadyToRunWorkflows('callout')"

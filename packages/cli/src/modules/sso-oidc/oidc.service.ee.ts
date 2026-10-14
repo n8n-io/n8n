@@ -320,11 +320,9 @@ export class OidcService {
 
 		let userInfo;
 		try {
-			userInfo = await this.openidClient.fetchUserInfo(
-				configuration,
-				tokens.access_token,
-				claims.sub,
-			);
+			userInfo = configuration.serverMetadata().userinfo_endpoint
+				? await this.openidClient.fetchUserInfo(configuration, tokens.access_token, claims.sub)
+				: claims;
 		} catch (error) {
 			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
@@ -334,9 +332,10 @@ export class OidcService {
 			throw new BadRequestError('An email is required');
 		}
 
-		if (!isValidEmail(userInfo.email)) {
+		if (typeof userInfo.email !== 'string' || !isValidEmail(userInfo.email)) {
 			throw new BadRequestError('Invalid email format');
 		}
+		const email = userInfo.email;
 
 		await this.assertProvisioningLoginAllowed(claims, userInfo);
 
@@ -356,7 +355,7 @@ export class OidcService {
 		}
 
 		const foundUser = await this.userRepository.findOne({
-			where: { email: userInfo.email },
+			where: { email },
 			relations: ['authIdentities', 'role'],
 		});
 
@@ -384,9 +383,9 @@ export class OidcService {
 		const user = await this.userRepository.manager.transaction(async (trx) => {
 			const { user: newUser } = await this.userRepository.createUserWithProject(
 				{
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
+					firstName: typeof userInfo.given_name === 'string' ? userInfo.given_name : undefined,
+					lastName: typeof userInfo.family_name === 'string' ? userInfo.family_name : undefined,
+					email,
 					authIdentities: [],
 					role: GLOBAL_MEMBER_ROLE,
 					password: 'no password set',
@@ -558,11 +557,9 @@ export class OidcService {
 
 		let userInfo;
 		try {
-			userInfo = await this.openidClient.fetchUserInfo(
-				configuration,
-				tokens.access_token,
-				claims.sub,
-			);
+			userInfo = configuration.serverMetadata().userinfo_endpoint
+				? await this.openidClient.fetchUserInfo(configuration, tokens.access_token, claims.sub)
+				: claims;
 		} catch (error) {
 			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');

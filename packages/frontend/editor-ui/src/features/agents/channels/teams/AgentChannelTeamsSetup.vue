@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
-import { N8nButton, N8nCopyInput, N8nIcon, N8nStepper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCopyInput, N8nIcon, N8nLink, N8nStepper, N8nText } from '@n8n/design-system';
 import type {
 	AgentJsonConfig,
 	AgentTeamsIntegrationSettings,
@@ -19,13 +19,13 @@ import {
 import type { PermissionsRecord } from '@n8n/permissions';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
-import AgentChannelTeamsAvailability, {
-	type TeamsAvailability,
-} from './AgentChannelTeamsAvailability.vue';
+import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
+import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
+import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
-import { OFFER_READ_PERMISSIONS } from './constants';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -47,6 +47,14 @@ const props = withDefaults(
 		savedSettings?: AgentTeamsIntegrationSettings;
 		personalisation?: AgentJsonConfig['personalisation'] | null;
 		ensureAgentPersisted?: () => Promise<void>;
+		/** Saves without closing the modal, so the card can act on saved settings. */
+		persistChannel?: () => Promise<boolean>;
+		/**
+		 * Present when the recommended setup is available here. The settings then
+		 * offer publishing to the organisation, in place of the package the
+		 * manual route hands over.
+		 */
+		managedRuntime?: TeamsChannelRuntime;
 	}>(),
 	{
 		credentialsLoading: false,
@@ -59,6 +67,7 @@ const props = withDefaults(
 		savedSettings: undefined,
 		personalisation: null,
 		ensureAgentPersisted: undefined,
+		persistChannel: undefined,
 	},
 );
 
@@ -66,6 +75,7 @@ const emit = defineEmits<{
 	create: [];
 	edit: [];
 	connect: [];
+	done: [];
 }>();
 
 const i18n = useI18n();
@@ -73,25 +83,42 @@ const rootStore = useRootStore();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 
+// The bot's subscription and resource group are picked in Azure, so this lists every Azure Bot.
+const AZURE_BOTS_URL = 'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
 const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
 
 const setupState = ref<TeamsAgentSetupState | null>(null);
+/**
+ * Who built the channel's app, held apart from `setupState` because that is
+ * cleared whenever the read fails. Reading a failure as "built by hand" makes
+ * the save hand over a package instead of publishing, so the change never
+ * reaches the organisation's catalogue. `null` means nobody has answered yet.
+ */
+const provisionedByN8n = ref<boolean | null>(null);
 // Only a picked credential makes the setup state worth retrying.
 const setupLoadFailed = ref(false);
 const showEndpoint = ref(false);
 
 // A hidden read permission is never kept on: nothing here could turn it off.
-function availabilityFrom(saved?: AgentTeamsIntegrationSettings): TeamsAvailability {
-	return {
-		teamChannels: saved?.teamChannels ?? false,
-		groupChats: saved?.groupChats ?? false,
-		readAllChannelMessages: OFFER_READ_PERMISSIONS && (saved?.readAllChannelMessages ?? false),
-		readAllGroupMessages: OFFER_READ_PERMISSIONS && (saved?.readAllGroupMessages ?? false),
-	};
-}
-
 const availability = ref<TeamsAvailability>(availabilityFrom(props.savedSettings));
+
+/**
+ * Whether this channel's app is one n8n made, which is what the managed card
+ * acts on: it publishes that app, and it builds that app's package. Provenance
+ * only -- it says nothing about whether anybody published, so nothing here may
+ * publish on its own.
+ */
+const offerManagedApp = computed(() => {
+	const managed = props.managedRuntime?.managedSetup.value;
+	return Boolean(
+		// Provenance first: a channel wired up by hand keeps the manual block,
+		// even in a project that also happens to carry a Microsoft sign-in.
+		provisionedByN8n.value === true &&
+			managed?.managedSetupAvailable &&
+			managed.managerCredentials.some(({ connected }) => connected),
+	);
+});
 
 // The credential the saved channel runs on, so a swap counts as an app change.
 const savedCredentialId = credentialId.value;
@@ -250,7 +277,7 @@ async function downloadPackage(
 			packageCredentialId || undefined,
 			settings,
 		);
-		saveAs(blob, 'n8n-agent-teams-app.zip');
+		saveAs(blob, TEAMS_PACKAGE_FILENAME);
 		agentTelemetry.trackDownloadedTeamsAppPackage({ agentId: props.agentId, status: 'success' });
 		return true;
 	} catch {
@@ -267,8 +294,9 @@ onBeforeUnmount(() => (unmounted = true));
 
 // Set when the credential changed during a download, so the saved zip is for the old bot.
 const staleDownload = ref(false);
+// The credential the last package was built for. Done waits for one of the current credential.
+const downloadedFor = ref<string | null>(null);
 
-// Connecting closes the modal, so it waits for the package to be saved.
 async function downloadAndConnect() {
 	const id = credentialId.value;
 	staleDownload.value = false;
@@ -279,11 +307,44 @@ async function downloadAndConnect() {
 		staleDownload.value = true;
 		return;
 	}
+	downloadedFor.value = id;
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
 	});
 	if (!props.connected) emit('connect');
+}
+
+// The package fixes these settings, and connecting saves them, so they lock from the download on.
+// Channel settings is where they change after that.
+const availabilityLocked = computed(
+	() =>
+		!ready.value ||
+		props.connected ||
+		downloading.value ||
+		downloadedFor.value === credentialId.value,
+);
+
+const canFinish = computed(() => downloadedFor.value === credentialId.value && props.connected);
+
+function addToText(scopes?: { teamChannels?: boolean; groupChats?: boolean }) {
+	if (scopes?.teamChannels && scopes.groupChats)
+		return i18n.baseText('agents.channels.teams.setup.install.addTo.both');
+	if (scopes?.teamChannels) return i18n.baseText('agents.channels.teams.setup.install.addTo.teams');
+	if (scopes?.groupChats) return i18n.baseText('agents.channels.teams.setup.install.addTo.chats');
+	return null;
+}
+
+function uploadInstruction(scopes?: { teamChannels?: boolean; groupChats?: boolean }) {
+	const upload = i18n.baseText('agents.channels.teams.setup.install.description');
+	const addTo = addToText(scopes);
+	// Composed through a key rather than joined here, so a locale owns both the
+	// separator and the order of the two sentences.
+	return addTo
+		? i18n.baseText('agents.channels.teams.setup.install.descriptionWithScope', {
+				interpolate: { upload, addTo },
+			})
+		: upload;
 }
 
 // The modal clears the error when the credential changes. A conflict is about
@@ -317,7 +378,10 @@ async function loadSetupState() {
 			props.agentId,
 			credentialId.value || undefined,
 		);
-		if (request === latestSetupState) setupState.value = state;
+		if (request === latestSetupState) {
+			setupState.value = state;
+			provisionedByN8n.value = state.provisionedByN8n;
+		}
 	} catch {
 		if (request !== latestSetupState) return;
 		setupState.value = null;
@@ -374,9 +438,14 @@ const steps = computed(() => [
 		description: i18n.baseText('agents.channels.teams.setup.availability.description'),
 	},
 	{
+		id: 'download',
+		title: i18n.baseText('agents.channels.teams.setup.download.title'),
+		description: i18n.baseText('agents.channels.teams.setup.download.description'),
+	},
+	{
 		id: 'install',
 		title: i18n.baseText('agents.channels.teams.setup.install.title'),
-		description: i18n.baseText('agents.channels.teams.setup.install.description'),
+		description: uploadInstruction(availability.value),
 	},
 ]);
 
@@ -391,10 +460,12 @@ const currentSettings = computed<AgentTeamsIntegrationSettings>(() => {
 	return { ...rest, ...availability.value };
 });
 
+// Saving closes the modal, so after "Save and download" the toast is the only place left for the hint.
 function showDownloaded() {
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
+		message: i18n.baseText('agents.channels.teams.setup.install.hint'),
 	});
 }
 
@@ -404,19 +475,33 @@ async function downloadSaved() {
 	if (await downloadPackage(props.savedSettings, savedCredentialId)) showDownloaded();
 }
 
-const saveLabel = computed(() =>
-	manifestChanged.value
-		? i18n.baseText('agents.channels.teams.settings.saveAndDownload')
-		: undefined,
-);
+/**
+ * A manifest change on a hand-made channel reaches Teams one way, as a new
+ * package, so the save hands it over: the modal closes on the save, and a
+ * download costs the user nothing.
+ *
+ * The managed route keeps a plain Save. Publishing reaches everyone in the
+ * organisation, or asks an administrator to approve it, and a channel somebody
+ * installed only for themselves has asked for neither. The card below offers
+ * both routes by name, and the notice above it says to take one.
+ */
+const saveLabel = computed(() => {
+	if (!manifestChanged.value || offerManagedApp.value) return undefined;
+	return i18n.baseText('agents.channels.teams.settings.saveAndDownload');
+});
 
 // Captured before the save, because the saved settings then catch up with the form.
 let pendingPackage: { settings: AgentTeamsIntegrationSettings; credentialId: string } | null = null;
 
 async function beforeSave() {
-	pendingPackage = manifestChanged.value
-		? { settings: currentSettings.value, credentialId: credentialId.value }
-		: null;
+	// A save that carries a manifest change picks its route from the provenance,
+	// so an unanswered read is worth one more attempt before it decides.
+	if (manifestChanged.value && provisionedByN8n.value === null) await loadSetupState();
+
+	pendingPackage =
+		manifestChanged.value && !offerManagedApp.value
+			? { settings: currentSettings.value, credentialId: credentialId.value }
+			: null;
 }
 
 /**
@@ -444,6 +529,7 @@ defineExpose({
 	saveLabel,
 	beforeSave,
 	afterSave,
+	keepOpenAfterConnect: computed(() => props.mode === 'setup'),
 });
 </script>
 
@@ -459,7 +545,7 @@ defineExpose({
 						<N8nButton
 							:href="ENTRA_APP_REGISTRATION_URL"
 							target="_blank"
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							icon="entra"
 							data-testid="teams-entra-register-link"
@@ -543,7 +629,7 @@ defineExpose({
 							<N8nButton
 								:href="deployToAzureUrl ?? undefined"
 								target="_blank"
-								variant="subtle"
+								variant="outline"
 								size="medium"
 								icon="azure"
 								:disabled="!deployToAzureUrl"
@@ -615,8 +701,8 @@ defineExpose({
 
 					<div
 						v-else-if="step.id === 'availability'"
-						:class="[$style.stepStack, { [$style.locked]: !ready }]"
-						:inert="!ready || undefined"
+						:class="[$style.stepStack, { [$style.locked]: availabilityLocked }]"
+						:inert="availabilityLocked || undefined"
 						data-testid="teams-availability-step"
 					>
 						<AgentChannelTeamsAvailability
@@ -626,11 +712,7 @@ defineExpose({
 						/>
 					</div>
 
-					<div v-else-if="step.id === 'install'" :class="$style.stepStack">
-						<N8nText :class="$style.hint" size="small">
-							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
-						</N8nText>
-
+					<div v-else-if="step.id === 'download'" :class="$style.stepStack">
 						<AgentChannelTeamsIdentityCard
 							:name="defaultDisplayName"
 							:description="defaultDescription"
@@ -658,7 +740,25 @@ defineExpose({
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.install.needsReady') }}
 						</N8nText>
-						<!-- Connect errors otherwise land in step 2, far from this button. -->
+						<N8nText
+							v-if="downloadError"
+							size="small"
+							:class="$style.error"
+							data-testid="teams-download-error"
+						>
+							{{ downloadError }}
+						</N8nText>
+					</div>
+
+					<div
+						v-else-if="step.id === 'install'"
+						:class="$style.stepStack"
+						data-testid="teams-install-step"
+					>
+						<N8nText :class="$style.hint" size="small" data-testid="teams-upload-hint">
+							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
+						</N8nText>
+						<!-- Connect errors otherwise land in step 2, far from this step. -->
 						<div v-if="showConnectError" :class="$style.actions">
 							<N8nText size="small" :class="$style.error" data-testid="teams-connect-error">
 								{{
@@ -679,14 +779,6 @@ defineExpose({
 							</N8nButton>
 						</div>
 						<N8nText
-							v-if="downloadError"
-							size="small"
-							:class="$style.error"
-							data-testid="teams-download-error"
-						>
-							{{ downloadError }}
-						</N8nText>
-						<N8nText
 							v-if="connected && !isPublished"
 							:class="$style.hint"
 							size="small"
@@ -694,6 +786,15 @@ defineExpose({
 						>
 							{{ i18n.baseText('agents.channels.teams.setup.publishNotice') }}
 						</N8nText>
+						<N8nButton
+							variant="solid"
+							size="medium"
+							:disabled="!canFinish"
+							data-testid="teams-done"
+							@click="emit('done')"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.install.done') }}
+						</N8nButton>
 					</div>
 				</div>
 			</template>
@@ -716,40 +817,75 @@ defineExpose({
 				>
 					{{
 						i18n.baseText(
-							manifestChanged
-								? 'agents.channels.teams.settings.updateNoticeChanged'
+							offerManagedApp
+								? manifestChanged
+									? 'agents.channels.teams.settings.updateNoticeManaged'
+									: 'agents.channels.teams.settings.updateNoticeManagedUnchanged'
 								: 'agents.channels.teams.settings.updateNotice',
 						)
 					}}
 				</N8nText>
 			</div>
 
-			<div :class="$style.field" data-testid="teams-identity-field">
-				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.channels.teams.settings.identityLabel') }}
-				</N8nText>
-				<AgentChannelTeamsIdentityCard
-					:name="effectiveDisplayName"
-					:description="effectiveDescription"
-					:personalisation="personalisation"
-					:tooltip="
-						savedIdentityOverride
-							? ''
-							: i18n.baseText('agents.channels.teams.setup.install.identityTooltip')
-					"
-					:ready="canDownloadPackage"
-					:loading="downloading"
-					@download="downloadSaved"
-				/>
-				<N8nText
-					v-if="downloadError"
+			<!-- The managed route publishes to the organisation; the manual one hands
+			     over a package. Only one of them is this channel's, so only one is shown. -->
+			<AgentChannelTeamsManagedApp
+				v-if="offerManagedApp && managedRuntime"
+				:runtime="managedRuntime"
+				:name="effectiveDisplayName"
+				:description="effectiveDescription"
+				:credential-id="credentialId"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:settings="savedSettings"
+				:pending-settings="currentSettings"
+				:unsaved-changes="manifestChanged"
+				:persist-channel="persistChannel"
+			/>
+			<template v-else>
+				<div :class="$style.field" data-testid="teams-identity-field">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.channels.teams.settings.identityLabel') }}
+					</N8nText>
+					<AgentChannelTeamsIdentityCard
+						:name="effectiveDisplayName"
+						:description="effectiveDescription"
+						:personalisation="personalisation"
+						:tooltip="
+							savedIdentityOverride
+								? ''
+								: i18n.baseText('agents.channels.teams.setup.install.identityTooltip')
+						"
+						:ready="canDownloadPackage"
+						:loading="downloading"
+						@download="downloadSaved"
+					/>
+					<N8nText :class="$style.hint" size="small" data-testid="teams-upload-instructions">
+						{{ i18n.baseText('agents.channels.teams.settings.uploadHint') }}
+					</N8nText>
+					<N8nText
+						v-if="downloadError"
+						size="small"
+						:class="$style.error"
+						data-testid="teams-download-error"
+					>
+						{{ downloadError }}
+					</N8nText>
+				</div>
+				<N8nLink
+					:href="AZURE_BOTS_URL"
+					target="_blank"
+					rel="noopener noreferrer"
 					size="small"
-					:class="$style.error"
-					data-testid="teams-download-error"
+					:class="$style.azureLink"
+					data-testid="teams-azure-bot-link"
 				>
-					{{ downloadError }}
-				</N8nText>
-			</div>
+					<span :class="$style.linkContent">
+						{{ i18n.baseText('agents.channels.teams.settings.findBot') }}
+						<N8nIcon icon="external-link" size="xsmall" />
+					</span>
+				</N8nLink>
+			</template>
 		</div>
 	</div>
 </template>
@@ -811,6 +947,16 @@ defineExpose({
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
+}
+
+.azureLink {
+	align-self: flex-start;
+}
+
+.linkContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .urlInput {

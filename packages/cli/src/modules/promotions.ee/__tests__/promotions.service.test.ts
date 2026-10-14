@@ -17,8 +17,8 @@ import type {
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
-	MissingWorkflowDependencyPolicy,
-	WorkflowVersionPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -34,7 +34,7 @@ import { WorkingCopyUpdater } from '../working-copy-updater';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
 	const fs = await importOriginal<typeof import('node:fs/promises')>();
-	return { ...fs, rm: vi.fn(fs.rm) };
+	return { ...fs, rm: vi.fn(fs.rm), stat: vi.fn(fs.stat) };
 });
 
 const CONFIG_ID = 'cfg1';
@@ -149,6 +149,7 @@ describe('PromotionsService', () => {
 
 	afterEach(async () => {
 		vi.mocked(rm).mockReset();
+		vi.mocked(stat).mockReset();
 		await rm(n8nFolder, { recursive: true, force: true });
 	});
 
@@ -232,6 +233,7 @@ describe('PromotionsService', () => {
 					return {
 						manifest: emptyManifest,
 						counts: {
+							agents: 0,
 							workflows: 0,
 							folders: 0,
 							credentials: 0,
@@ -266,12 +268,13 @@ describe('PromotionsService', () => {
 				{
 					user: actor,
 					projectIds: ['project-a', 'project-b'],
+					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
 					includeArchivedWorkflows: true,
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.Fail,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -289,6 +292,7 @@ describe('PromotionsService', () => {
 				connectionId: 'conn1',
 				configId: CONFIG_ID,
 				counts: {
+					agents: 0,
 					workflows: 0,
 					folders: 0,
 					credentials: 0,
@@ -552,6 +556,7 @@ describe('PromotionsService', () => {
 					return {
 						manifest,
 						counts: {
+							agents: 0,
 							workflows: manifest.workflows?.length ?? 0,
 							folders: manifest.folders?.length ?? 0,
 							credentials: manifest.credentials?.length ?? 0,
@@ -620,8 +625,8 @@ describe('PromotionsService', () => {
 					projectWorkflowIds: ['w1', 'w2'],
 					includeArchivedWorkflows: true,
 					canExportVariableValues: true,
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+					versionPolicy: ExportVersionPolicy.Latest,
 				}),
 				expect.any(Object),
 			);
@@ -664,17 +669,23 @@ describe('PromotionsService', () => {
 			);
 		});
 
-		it('refuses a selection when the branch has no package', async () => {
-			await mkdir(repositoryFolder, { recursive: true });
+		it('fails without exporting when the package folder cannot be read', async () => {
+			const readError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+			const { stat: realStat } =
+				await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+			vi.mocked(stat).mockImplementation(async (target, options) => {
+				if (target === packageFolder) throw readError;
+				return await realStat(target, options);
+			});
 			ownedByP1('w1');
 
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
-					commitMessage: 'first selective',
+					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('Promote the instance first');
+			).rejects.toBe(readError);
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
@@ -1120,7 +1131,7 @@ describe('PromotionsService', () => {
 					],
 				}),
 			);
-			expect(branch.commitSha).toBe(commitSha);
+			expect(branch).toMatchObject({ configId: CONFIG_ID, branchName: 'dev', commitSha });
 			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
 				{ entityId: 'p1', type: 'project' },
 				{ entityId: 'w1', type: 'workflow' },
@@ -1143,7 +1154,12 @@ describe('PromotionsService', () => {
 
 			const branch = await service.readBranchPackage('p1', 'apply');
 
-			expect(branch).toMatchObject({ commitSha: null, files: [] });
+			expect(branch).toMatchObject({
+				configId: CONFIG_ID,
+				branchName: 'dev',
+				commitSha: null,
+				files: [],
+			});
 			await expect(branch.readFiles(['n8n-export/manifest.json'])).rejects.toThrow(
 				'no exported package',
 			);
@@ -1182,7 +1198,7 @@ describe('PromotionsService', () => {
 				removedFolders: [{}, {}],
 				bindings: { workflows: {}, credentials: {} },
 				credentials: { matched: ['c1'], stubbed: ['c2', 'c3'] },
-				dataTables: { matched: 1, created: 2 },
+				dataTables: { matched: 1, created: 2, updated: 3 },
 				variables: { matched: ['v1'], created: ['v2'], updated: ['v3'], stubbed: [], missing: [] },
 				tags: { matched: [], created: ['t1'], renamed: ['t2'], reconciled: [], skipped: [] },
 			}) as unknown as Awaited<ReturnType<N8nPackagesService['importPackageFromDirectory']>>;
@@ -1225,7 +1241,7 @@ describe('PromotionsService', () => {
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
-					dataTableSchemaConflictPolicy: 'fail',
+					dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 					variableMissingMode: 'must-preexist',
 					variableConflictPolicy: 'keep-existing',
 					tagMissingMode: 'create',
@@ -1256,7 +1272,7 @@ describe('PromotionsService', () => {
 						publishing: { published: 1, unpublished: 0, unchanged: 1, blocked: 1, failed: 0 },
 					},
 					credentials: { matched: 1, stubbed: 2 },
-					dataTables: { matched: 1, created: 2 },
+					dataTables: { matched: 1, created: 2, updated: 3 },
 					variables: { matched: 1, created: 1, updated: 1, stubbed: 0, missing: 0 },
 					tags: { matched: 0, created: 1, renamed: 1, reconciled: 0, skipped: 0 },
 				},
@@ -1464,6 +1480,7 @@ describe('PromotionsService', () => {
 				workflows: [branchWorkflow, foreignWorkflow, movedWorkflow],
 				credentials: [],
 				variables: [],
+				dataTables: [],
 			};
 
 			beforeEach(async () => {
@@ -1509,7 +1526,11 @@ describe('PromotionsService', () => {
 					},
 				});
 				expect(n8nPackagesService.importPackageSelectionFromDirectory).toHaveBeenCalledWith(
-					{ user: actor, overwriteDeletionPolicy: 'hard-delete' },
+					{
+						user: actor,
+						overwriteDeletionPolicy: 'hard-delete',
+						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+					},
 					{ sourceDir: packageFolder },
 					{
 						selectedProjectId: 'p1',
@@ -1627,7 +1648,11 @@ describe('PromotionsService', () => {
 						expect(
 							n8nPackagesService.importPackageSelectionFromDirectory,
 						).toHaveBeenCalledExactlyOnceWith(
-							{ user: actor, overwriteDeletionPolicy: 'hard-delete' },
+							{
+								user: actor,
+								overwriteDeletionPolicy: 'hard-delete',
+								dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
+							},
 							{ sourceDir: packageFolder },
 							{
 								selectedProjectId: 'p1',
