@@ -4,12 +4,14 @@ import {
 	type RichCardComponentType,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { AdapterPostableMessage, ChatInstance, Logger as ChatLogger, RawMessage } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
+import { createHmac } from 'node:crypto';
 
 import type { WhatsAppRawMessage } from '@chat-adapter/whatsapp';
 
@@ -20,6 +22,8 @@ import {
 	type AgentIntegrationRemovalContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
+	type PlatformActionParams,
+	type PlatformContextQueryParams,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
 	type UnauthenticatedWebhookContext,
@@ -37,10 +41,33 @@ import {
 } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../../esm-loader';
-import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../../integration-helpers';
-import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
+import {
+	connectionUnavailable,
+	deriveWhatsAppVerifyToken,
+	stringProperty,
+	stringValue,
+	unsupportedQuery,
+} from '../../integration-helpers';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from '../../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
+import type { IntegrationActionResult } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
+import { GRAPH_API_BASE_URL } from './whatsapp-credential-check.service';
+import {
+	buildWhatsAppTemplateMessage,
+	listWhatsAppTemplates,
+	type FetchWhatsAppTemplates,
+	type WhatsAppGraphResponse,
+} from './whatsapp-templates';
+import {
+	listTemplatesQueryInputSchema,
+	sendTemplateInputSchema,
+	WHATSAPP_ACTION_TOOL_DEFINITIONS,
+	WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
+} from './whatsapp-tool-definitions';
 import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
@@ -48,11 +75,22 @@ type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 /**
  * WhatsApp only accepts free-form (non-template) replies within 24 hours of
  * the customer's last inbound message. Outside that window the Cloud API
- * rejects the send; template messages are the documented workaround but are
- * explicitly out of scope here, so we fail fast instead.
+ * rejects the send, so we fail fast and point the agent to `send_template`.
  * @see https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
  */
 const WHATSAPP_CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+const WINDOW_CLOSED_MESSAGE =
+	"WhatsApp only allows free-form messages within 24 hours of the customer's last message. " +
+	'That window has closed for this conversation, so this message cannot be sent. ' +
+	'To reach the customer, call list_templates, choose a template that fits, and send it with send_template. ' +
+	'If no template fits, tell the user that the customer cannot be reached until they message again.';
+
+/** Meta's error for a free-form send outside the customer service window. */
+const WHATSAPP_REENGAGEMENT_ERROR_CODE = 131047;
+
+/** Listing templates runs inside an agent turn, so a stalled request has to give up. */
+const WHATSAPP_TEMPLATE_REQUEST_TIMEOUT_MS = 30_000;
 
 /**
  * First-pass default for when WhatsApp starts a fresh agent session on its
@@ -117,6 +155,9 @@ const WHATSAPP_RATE_LIMIT_BACKOFF_CAP_MS = 8_000;
  * - Reply buttons cap at 3 (see {@link normalizeComponents}); WhatsApp lists
  *   (`select`/`radio_select`) are natively supported by the adapter's own
  *   Card conversion, so unlike Telegram/Discord they need no flattening here.
+ * - Outside the 24-hour window, the agent chooses an approved template with
+ *   `list_templates` and sends it with `send_template` (see `whatsapp-templates.ts`).
+ *   Templates are managed in WhatsApp Manager. n8n only reads them.
  *
  * `disableStreaming` mirrors Telegram/Discord: the adapter only supports
  * buffered sends (accumulate-then-post), never incremental edits.
@@ -144,16 +185,17 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			'Respond in the current WhatsApp conversation and send direct WhatsApp messages.',
 			'Add or remove emoji reactions on a WhatsApp message.',
 			'Render WhatsApp-compatible cards with reply buttons or list messages.',
+			'Send an approved utility template message to reach a customer outside the 24-hour customer service window.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from WhatsApp or act as a WhatsApp Business bot.',
 			'The agent needs to reply to a WhatsApp customer in the same 1:1 conversation.',
-			'A scheduled Agent task should proactively message a known WhatsApp customer, within the 24-hour customer service window.',
+			'A scheduled Agent task should proactively message a known WhatsApp customer. Outside the 24-hour customer service window, it can only send an approved utility template.',
 		],
 		useNodeToolWhen: [
 			'WhatsApp is only a backend API step and the agent does not need to be connected as a WhatsApp chat surface.',
 			'The WhatsApp operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
-			'The message must reach a customer outside the 24-hour window — that requires a pre-approved template message, which this integration does not send.',
+			'The message must reach a customer outside the 24-hour window with a marketing or authentication template. The agent can send only utility templates.',
 		],
 	};
 
@@ -166,14 +208,22 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		'fields',
 	];
 
-	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
-		'respond',
-		'send_dm',
-		'add_reaction',
-	]);
+	readonly contextToolDefinitions = [
+		...resolveIntegrationContextQueryDefinitions([
+			'get_current_message_context',
+			'get_current_subject',
+		]),
+		...WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
+	];
+
+	readonly actionToolDefinitions = [
+		...resolveIntegrationActionDefinitions(['respond', 'send_dm', 'add_reaction']),
+		...WHATSAPP_ACTION_TOOL_DEFINITIONS,
+	];
 
 	readonly actionToolGuidance = [
-		'For scheduled tasks without an inbound conversation, use send_dm with the known WhatsApp user ID (the customer phone number, WhatsApp "wa_id" format). This still fails outside the 24-hour customer service window.',
+		'For scheduled tasks without an inbound conversation, use send_dm with the known WhatsApp user ID (the customer phone number, WhatsApp "wa_id" format). This fails outside the 24-hour customer service window.',
+		'When a send fails because the 24-hour window has closed, call list_templates, choose the template that best fits what you wanted to say, and send it with send_template. Use only facts you know as placeholder values. If no template fits, do not send one.',
 		'WhatsApp has no group conversations — every thread is a 1:1 DM.',
 	];
 
@@ -194,8 +244,48 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 		private readonly webhookVerification: WhatsAppWebhookVerificationStore,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		super();
+	}
+
+	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		if (params.query !== 'list_templates') return unsupportedQuery(this.type, params.query);
+		const adapter = templateAdapter(params.chat);
+		if (!adapter) return connectionUnavailable();
+
+		const input = listTemplatesQueryInputSchema.parse(params.input);
+		const result = await listWhatsAppTemplates(
+			async (qs) => await adapter.fetchMessageTemplates(qs),
+			input,
+		);
+		return { ok: true, ...result };
+	}
+
+	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
+		if (params.action !== 'send_template') return undefined;
+		const adapter = templateAdapter(params.chat);
+		if (!adapter) return connectionUnavailable();
+
+		const input = sendTemplateInputSchema.parse(params.input);
+		const message = await buildWhatsAppTemplateMessage(
+			async (qs) => await adapter.fetchMessageTemplates(qs),
+			input,
+		);
+		// Sent straight through the adapter, not `postMessage`: a template is the
+		// one message type the customer service window allows.
+		const threadId = await adapter.openDM(input.userId);
+		const sent = await adapter.sendTemplate(threadId, message);
+		return {
+			ok: true,
+			messageContext: {
+				integrationConnectionId: params.descriptor.integrationConnectionId,
+				platform: params.descriptor.integration.type,
+				target: { type: 'dm', userId: input.userId, threadId },
+				messageId: sent.id,
+				updatedAt: new Date().toISOString(),
+			},
+		};
 	}
 
 	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
@@ -279,11 +369,13 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			userName: WHATSAPP_BOT_USER_NAME,
 			logger: this.createAdapterLogger(),
 		};
-		// WABA ID isn't needed by the adapter for messaging — it's stored on the
-		// credential for future template-management use — but validate it here
-		// so a credential missing it fails at connect time, same as the fields
-		// the adapter does need.
-		this.extractBusinessAccountId(ctx.credential);
+		// The adapter does not need the WABA ID to send. Templates belong to the
+		// WABA, not to the phone number, so `list_templates` reads them from it.
+		const fetchMessageTemplates = this.createTemplateFetcher(
+			this.extractBusinessAccountId(ctx.credential),
+			config.accessToken,
+			config.appSecret,
+		);
 
 		const [{ WhatsAppAdapter: AdapterClass }, sdk] = await Promise.all([
 			loadWhatsAppAdapter(),
@@ -324,11 +416,22 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 			override async graphApiRequest<T = unknown>(path: string, body: unknown): Promise<T> {
 				const recipient = isRecord(body) && typeof body.to === 'string' ? body.to : undefined;
-				return await withWhatsAppRateLimitBackoff(
-					async () => await super.graphApiRequest<T>(path, body),
-					logger,
-					{ guard: channelRateLimitGuard, connectionId, recipient },
-				);
+				try {
+					return await withWhatsAppRateLimitBackoff(
+						async () => await super.graphApiRequest<T>(path, body),
+						logger,
+						{ guard: channelRateLimitGuard, connectionId, recipient },
+					);
+				} catch (error) {
+					// Without cached inbound history the window guard lets a send
+					// through, and Meta then refuses it for the same reason.
+					if (isReengagementError(error)) throw new UserError(WINDOW_CLOSED_MESSAGE);
+					throw error;
+				}
+			}
+
+			async fetchMessageTemplates(qs: Record<string, string>): Promise<WhatsAppGraphResponse> {
+				return await fetchMessageTemplates(qs);
 			}
 
 			// The adapter returns null for `contacts`, which drops the message.
@@ -415,6 +518,32 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			})),
 		});
 		return normalized;
+	}
+
+	/**
+	 * Reads go through `OutboundHttp`, because the adapter can only POST. Each
+	 * request carries an `appsecret_proof`, the same as the credential check.
+	 */
+	private createTemplateFetcher(
+		businessAccountId: string,
+		accessToken: string,
+		appSecret: string,
+	): FetchWhatsAppTemplates {
+		const proof = createHmac('sha256', appSecret).update(accessToken).digest('hex');
+		const client = this.outboundHttp
+			// Fixed public vendor host, not user-controllable.
+			.requests({ useDefaultSsrfPolicy: 'unsafe' });
+		return async (qs) =>
+			await client.request<WhatsAppGraphResponse>({
+				method: 'GET',
+				url: `${GRAPH_API_BASE_URL}/${encodeURIComponent(businessAccountId)}/message_templates`,
+				qs: { ...qs, appsecret_proof: proof },
+				headers: { Authorization: `Bearer ${accessToken}` },
+				json: true,
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
+				timeout: WHATSAPP_TEMPLATE_REQUEST_TIMEOUT_MS,
+			});
 	}
 
 	private createAdapterLogger(): ChatLogger {
@@ -525,12 +654,32 @@ async function assertCustomerServiceWindowOpen(
 	if (!lastInboundAt) return;
 
 	if (Date.now() - lastInboundAt.getTime() > WHATSAPP_CUSTOMER_SERVICE_WINDOW_MS) {
-		throw new UserError(
-			"WhatsApp only allows free-form replies within 24 hours of the customer's last message. " +
-				'That window has closed for this conversation, so this message cannot be sent. ' +
-				'Template messages for re-engaging customers outside the window are not supported.',
-		);
+		throw new UserError(WINDOW_CLOSED_MESSAGE);
 	}
+}
+
+/** The guarded adapter from {@link WhatsAppIntegration.createAdapter}, as the template tools use it. */
+interface WhatsAppTemplateAdapter {
+	fetchMessageTemplates: FetchWhatsAppTemplates;
+	openDM(userId: string): Promise<string>;
+	sendTemplate(
+		threadId: string,
+		template: Awaited<ReturnType<typeof buildWhatsAppTemplateMessage>>,
+	): Promise<{ id: string }>;
+}
+
+function templateAdapter(chat: PlatformActionParams['chat']): WhatsAppTemplateAdapter | undefined {
+	const adapter: unknown = chat?.getAdapter('whatsapp');
+	return isTemplateAdapter(adapter) ? adapter : undefined;
+}
+
+function isTemplateAdapter(adapter: unknown): adapter is WhatsAppTemplateAdapter {
+	return (
+		isRecord(adapter) &&
+		typeof adapter.fetchMessageTemplates === 'function' &&
+		typeof adapter.openDM === 'function' &&
+		typeof adapter.sendTemplate === 'function'
+	);
 }
 
 /**
@@ -591,6 +740,12 @@ function whatsAppRateLimitDetails(error: unknown): WhatsAppApiErrorDetails | und
 		details.status === 429 ||
 		(details.code !== undefined && WHATSAPP_RATE_LIMIT_ERROR_CODES.has(details.code));
 	return isRateLimit ? details : undefined;
+}
+
+/** Meta refused a free-form send because the customer service window has closed. */
+function isReengagementError(error: unknown): boolean {
+	if (!(error instanceof Error) || error.name !== 'AdapterError') return false;
+	return parseWhatsAppApiError(error.message)?.code === WHATSAPP_REENGAGEMENT_ERROR_CODE;
 }
 
 /**

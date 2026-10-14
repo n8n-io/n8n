@@ -105,7 +105,8 @@ export type IntegrationContextQuery =
 	| 'search_labels'
 	| 'search_issue_states'
 	| 'get_issue'
-	| 'search_issues';
+	| 'search_issues'
+	| 'list_templates';
 
 export type IntegrationAction =
 	| 'respond'
@@ -116,7 +117,8 @@ export type IntegrationAction =
 	| 'add_reaction'
 	| 'create_issue'
 	| 'update_issue'
-	| 'create_comment';
+	| 'create_comment'
+	| 'send_template';
 
 export interface IntegrationToolOperationDefinition<Name extends string = string> {
 	name: Name;

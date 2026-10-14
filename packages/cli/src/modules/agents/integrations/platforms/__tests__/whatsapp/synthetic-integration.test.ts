@@ -1,9 +1,13 @@
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Thread } from 'chat';
 import { OperationalError, UserError, type Logger } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { ChatIntegrationService } from '../../../chat-integration.service';
+import { ChatIntegrationRegistry } from '../../../agent-chat-integration';
+import { ChatIntegrationContextQueryExecutor } from '../../../integration-context-query-executor';
 import { deriveWhatsAppVerifyToken } from '../../../integration-helpers';
 import { encodeIntegrationMessageContext } from '../../../integration-message-context';
 import { createIntegrationContextTool } from '../../../integration-tools';
@@ -38,6 +42,21 @@ vi.mock('../../../esm-loader', () => ({
 	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
 	loadWhatsAppAdapter: async () => await import('@chat-adapter/whatsapp'),
 }));
+
+const orderUpdateTemplate = {
+	name: 'order_update',
+	language: 'en_US',
+	status: 'APPROVED',
+	category: 'UTILITY',
+	parameter_format: 'POSITIONAL',
+	components: [
+		{ type: 'HEADER', format: 'TEXT', text: 'Order update' },
+		// Out of order on purpose: values are matched by number, not position.
+		{ type: 'BODY', text: 'Your order {{2}} has shipped, {{1}}.' },
+		{ type: 'FOOTER', text: 'Reply STOP to opt out' },
+		{ type: 'BUTTONS', buttons: [{ type: 'QUICK_REPLY', text: 'Thanks' }] },
+	],
+};
 
 const buttons = (count: number): SuspendComponent[] =>
 	Array.from({ length: count }, (_, i) => ({
@@ -711,6 +730,298 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					ctx.adapter.postMessage(threadId, { markdown: 'Still there?' }),
 				).rejects.toThrow();
 				expect(ctx.apiCalls).toHaveLength(1);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+	});
+
+	describe('template messages', () => {
+		const expiredInbound = (fixtures: ReturnType<typeof whatsAppReplayFixtures>) =>
+			whatsAppWebhook({
+				phoneNumberId: fixtures.phoneNumberId,
+				contact: fixtures.contact,
+				message: whatsAppInboundTextMessage({
+					id: 'wamid.TEST_INBOUND_OLD',
+					timestamp: String(Math.floor(Date.now() / 1000) - 25 * 60 * 60),
+				}),
+			});
+
+		const listTemplates = async (
+			ctx: Awaited<ReturnType<typeof createWhatsAppReplayContext>>,
+			input: Record<string, unknown> = {},
+		) => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.getChatInstanceForTools.mockResolvedValue(ctx.chat);
+			const executor = new ChatIntegrationContextQueryExecutor(
+				chatIntegrationService,
+				Container.get(ChatIntegrationRegistry),
+				ctx.channelRateLimitGuard,
+			);
+			return await executor.execute({ descriptor: ctx.descriptor, query: 'list_templates', input });
+		};
+
+		const sendTemplate = async (
+			ctx: Awaited<ReturnType<typeof createWhatsAppReplayContext>>,
+			input: Record<string, unknown>,
+		) =>
+			await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'send_template',
+				input,
+				awaitResponse: false,
+			});
+
+		const templatePosts = (ctx: Awaited<ReturnType<typeof createWhatsAppReplayContext>>) =>
+			ctx.apiCalls.filter((call) => call.body.type === 'template');
+
+		it('lists only the approved utility templates the agent can fill', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templates: [
+					orderUpdateTemplate,
+					{
+						...orderUpdateTemplate,
+						name: 'with_image',
+						components: [
+							{ type: 'HEADER', format: 'IMAGE' },
+							{ type: 'BODY', text: 'Hi' },
+						],
+					},
+					{
+						...orderUpdateTemplate,
+						name: 'with_link_value',
+						components: [
+							{ type: 'BODY', text: 'Track it' },
+							{
+								type: 'BUTTONS',
+								buttons: [{ type: 'URL', text: 'Track', url: 'https://example.com/{{1}}' }],
+							},
+						],
+					},
+					{ ...orderUpdateTemplate, name: 'promo', category: 'MARKETING' },
+				],
+			});
+			try {
+				const result = await listTemplates(ctx);
+
+				expect(result).toEqual({
+					ok: true,
+					templates: [
+						{
+							name: 'order_update',
+							language: 'en_US',
+							category: 'UTILITY',
+							header: 'Order update',
+							body: 'Your order {{2}} has shipped, {{1}}.',
+							footer: 'Reply STOP to opt out',
+							parameters: ['1', '2'],
+						},
+					],
+				});
+				expect(ctx.templateRequests).toHaveBeenCalledWith(
+					expect.objectContaining({
+						method: 'GET',
+						url: 'https://graph.facebook.com/v25.0/waba-test-1/message_templates',
+						qs: expect.objectContaining({
+							status: 'APPROVED',
+							category: 'UTILITY',
+							appsecret_proof: expect.any(String),
+						}),
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('returns a cursor for the next page of templates', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templateResponse: {
+					statusCode: 200,
+					body: {
+						data: [orderUpdateTemplate],
+						paging: { cursors: { after: 'cursor-2' }, next: 'https://graph.facebook.com/next' },
+					},
+				},
+			});
+			try {
+				await expect(listTemplates(ctx)).resolves.toMatchObject({ nextCursor: 'cursor-2' });
+
+				await listTemplates(ctx, { cursor: 'cursor-2' });
+				expect(ctx.templateRequests).toHaveBeenLastCalledWith(
+					expect.objectContaining({ qs: expect.objectContaining({ after: 'cursor-2' }) }),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('names the missing permission when the token cannot read templates', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templateResponse: { statusCode: 400, body: { error: { code: 200 } } },
+			});
+			try {
+				await expect(listTemplates(ctx)).resolves.toMatchObject({
+					ok: false,
+					error: {
+						code: 'CONTEXT_QUERY_FAILED',
+						message: expect.stringContaining('whatsapp_business_management'),
+					},
+				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('sends a template after the customer service window has closed', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templates: [orderUpdateTemplate],
+			});
+			try {
+				await ctx.sendWebhook(expiredInbound(fixtures));
+
+				const result = await sendTemplate(ctx, {
+					userId: fixtures.contact.wa_id,
+					templateName: 'order_update',
+					language: 'en_US',
+					parameters: { '2': 'A-1001', '1': 'Ana' },
+				});
+
+				expect(result).toMatchObject({
+					ok: true,
+					messageContext: {
+						platform: 'whatsapp',
+						target: { type: 'dm', userId: fixtures.contact.wa_id },
+					},
+				});
+				expect(ctx.lastPost()?.body).toMatchObject({
+					to: fixtures.contact.wa_id,
+					type: 'template',
+					template: {
+						name: 'order_update',
+						language: { code: 'en_US' },
+						components: [
+							{
+								type: 'body',
+								parameters: [
+									{ type: 'text', text: 'Ana' },
+									{ type: 'text', text: 'A-1001' },
+								],
+							},
+						],
+					},
+				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('names each value of a template with named placeholders', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templates: [
+					{
+						...orderUpdateTemplate,
+						parameter_format: 'NAMED',
+						components: [{ type: 'BODY', text: 'Hi {{first_name}}, your booking is confirmed.' }],
+					},
+				],
+			});
+			try {
+				await sendTemplate(ctx, {
+					userId: fixtures.contact.wa_id,
+					templateName: 'order_update',
+					language: 'en_US',
+					parameters: { first_name: 'Ana' },
+				});
+
+				expect(ctx.lastPost()?.body).toMatchObject({
+					template: {
+						components: [
+							{
+								type: 'body',
+								parameters: [{ type: 'text', text: 'Ana', parameter_name: 'first_name' }],
+							},
+						],
+					},
+				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it.each([
+			{
+				scenario: 'a template the agent cannot send',
+				input: { templateName: 'promo', parameters: { '1': 'Ana', '2': 'A-1001' } },
+				message: 'Call list_templates',
+			},
+			{
+				scenario: 'a missing placeholder value',
+				input: { templateName: 'order_update', parameters: { '1': 'Ana' } },
+				message: 'needs a value for these placeholders: 2',
+			},
+			{
+				scenario: 'an unknown placeholder',
+				input: { templateName: 'order_update', parameters: { '1': 'Ana', '2': 'A', '3': 'B' } },
+				message: 'has no placeholders named: 3',
+			},
+			{
+				scenario: 'a value with a new line',
+				input: { templateName: 'order_update', parameters: { '1': 'Ana', '2': 'A\nB' } },
+				message: 'Change the value for: 2',
+			},
+		])('refuses $scenario without sending', async ({ input, message }) => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templates: [orderUpdateTemplate],
+			});
+			try {
+				const result = await sendTemplate(ctx, {
+					userId: fixtures.contact.wa_id,
+					language: 'en_US',
+					...input,
+				});
+
+				expect(result).toMatchObject({
+					ok: false,
+					error: { code: 'ACTION_FAILED', message: expect.stringContaining(message) },
+				});
+				expect(templatePosts(ctx)).toHaveLength(0);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('points the agent to templates when the window has closed', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(expiredInbound(fixtures));
+
+				await expect(
+					ctx.adapter.postMessage(whatsAppThreadId(fixtures), { markdown: 'Still there?' }),
+				).rejects.toThrow(/list_templates.*send_template/);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('points the agent to templates when Meta refuses a send outside the window', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			// No cached inbound message, so only Meta knows the window has closed.
+			const ctx = await createWhatsAppReplayContext(fixtures, { failedApiTypes: ['text'] });
+			try {
+				const promise = ctx.adapter.postMessage(whatsAppThreadId(fixtures), {
+					markdown: 'Still there?',
+				});
+
+				await expect(promise).rejects.toThrow(UserError);
+				await expect(promise).rejects.toThrow(/send_template/);
 			} finally {
 				await ctx.shutdown();
 			}
