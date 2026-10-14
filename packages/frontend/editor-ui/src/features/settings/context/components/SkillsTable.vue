@@ -81,7 +81,11 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else emit('delete', skill);
 }
 
-function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
+function onRowClick(event: MouseEvent, payload: { item: SkillListItem }) {
+	// The selection checkbox lets its click reach the row, which would open the skill
+	// in the middle of a multi-select.
+	const cell = event.target instanceof Element ? event.target.closest('td') : null;
+	if (cell?.querySelector('[role="checkbox"], input[type="checkbox"]')) return;
 	emit('open', payload.item);
 }
 
