@@ -208,7 +208,12 @@ watch(
 			{{ i18n.baseText('agents.channels.teams.settings.identityLabel') }}
 		</N8nText>
 
-		<AgentChannelTeamsIdentityCard :name="name" :description="description" ready>
+		<AgentChannelTeamsIdentityCard
+			:name="name"
+			:description="description"
+			ready
+			:outdated="unsavedChanges"
+		>
 			<template #action>
 				<N8nSpinner v-if="busy" size="medium" data-testid="teams-settings-install-spinner" />
 				<N8nActionDropdown
@@ -231,7 +236,7 @@ watch(
 		<N8nText
 			v-if="unsavedChanges"
 			size="small"
-			color="warning"
+			:class="$style.outdated"
 			data-testid="teams-managed-app-outdated"
 		>
 			{{ i18n.baseText('agents.channels.teams.settings.outdated') }}
@@ -277,6 +282,10 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.outdated {
+	color: var(--text-color--warning);
 }
 
 .bot {

@@ -898,14 +898,13 @@ defineExpose({
 					open-consent-in-place
 					@update:model-value="editAvailability"
 				/>
-				<N8nText size="small" :class="$style.hint" data-testid="teams-update-notice">
-					{{
-						i18n.baseText(
-							offerManagedApp
-								? 'agents.channels.teams.settings.updateNoticeManaged'
-								: 'agents.channels.teams.settings.updateNotice',
-						)
-					}}
+				<N8nText
+					v-if="!offerManagedApp"
+					size="small"
+					:class="$style.hint"
+					data-testid="teams-update-notice"
+				>
+					{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
 				</N8nText>
 			</div>
 

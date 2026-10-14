@@ -123,7 +123,7 @@ describe('AgentChannelTeamsAvailability', () => {
 		});
 
 		expect(getByTestId('teams-file-access')).toHaveTextContent(
-			'An admin needs to approve file access.',
+			'The agent can’t read files in channels and group chats until an admin approves.',
 		);
 		expect(getByTestId('teams-file-access-approve')).toHaveTextContent(
 			'If you are an admin in Acme Corp',

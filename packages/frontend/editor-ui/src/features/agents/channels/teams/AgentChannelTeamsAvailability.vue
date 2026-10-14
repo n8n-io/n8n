@@ -125,7 +125,7 @@ const fileAccess = computed(() => {
 	if (props.fileAccessState === 'hidden') return null;
 	if (props.fileAccessConsentUrl) {
 		return {
-			hint: 'agents.channels.teams.setup.availability.fileAccessNeededHint' as const,
+			hint: 'agents.channels.teams.setup.availability.fileAccessNotApproved' as const,
 			url: props.fileAccessConsentUrl,
 		};
 	}
@@ -202,7 +202,6 @@ const summary = computed(() => {
 			</N8nSettingsRow>
 			<div v-if="fileAccess" :class="$style.fileAccess">
 				<N8nCallout v-if="fileAccessRequest" theme="warning" data-testid="teams-file-access">
-					{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessNeeded') }}
 					{{ i18n.baseText(fileAccessRequest.hint) }}
 					<template #trailingContent>
 						<!-- Left teleported: the row group clips anything that overflows it. -->
@@ -212,7 +211,7 @@ const summary = computed(() => {
 							@select="onFileAccessMenu"
 						>
 							<template #activator>
-								<N8nButton variant="outline" size="small" data-testid="teams-file-access-menu">
+								<N8nButton variant="ghost" size="small" data-testid="teams-file-access-menu">
 									{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
 									<N8nIcon icon="chevron-down" size="small" />
 								</N8nButton>

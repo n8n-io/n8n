@@ -391,20 +391,19 @@ describe('AgentChannelTeamsEditView', () => {
 			await fireEvent.click(getByTestId('teams-scope-groups'));
 		};
 
-		it('says a managed channel installs again, and flags the older version once changed', async () => {
+		it('shows no notice on a managed channel, and flags the older version once changed', async () => {
 			const { getByTestId, queryByTestId } = renderView({
 				props: { ...viewProps, runtime: managedRuntime() },
 				pinia: createTestingPinia(),
 			});
 
-			await waitFor(() =>
-				expect(noticeOf(getByTestId)).toBe('agents.channels.teams.settings.updateNoticeManaged'),
-			);
+			await waitFor(() => expect(getByTestId('teams-managed-app')).toBeVisible());
+			expect(queryByTestId('teams-update-notice')).not.toBeInTheDocument();
 			expect(queryByTestId('teams-managed-app-outdated')).not.toBeInTheDocument();
 
 			await changeAvailability(getByTestId);
 
-			expect(noticeOf(getByTestId)).toBe('agents.channels.teams.settings.updateNoticeManaged');
+			expect(queryByTestId('teams-update-notice')).not.toBeInTheDocument();
 			expect(getByTestId('teams-managed-app-outdated')).toBeVisible();
 		});
 
