@@ -127,7 +127,7 @@ export class InstanceRegistryService {
 			registeredAt: this.registeredAt,
 			lastSeen: Date.now(),
 			memoryLimit: getMemoryLimit(),
-			cpuLimit: getCpuLimit(),
+			cpuLimit: getCpuLimit().limit,
 		};
 
 		if (this.instanceSettings.instanceType === 'worker') {

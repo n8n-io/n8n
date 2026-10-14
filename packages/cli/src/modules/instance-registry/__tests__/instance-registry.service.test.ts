@@ -62,7 +62,7 @@ vi.mock('../storage/redis-instance-storage', () => {
 
 vi.mock('@/utils/container-limits', () => ({
 	getMemoryLimit: vi.fn(() => null),
-	getCpuLimit: vi.fn(() => null),
+	getCpuLimit: vi.fn(() => ({ limit: null, source: 'unreadable', weight: null })),
 }));
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -258,12 +258,12 @@ describe('InstanceRegistryService', () => {
 	describe('resource limits', () => {
 		beforeEach(() => {
 			vi.mocked(getMemoryLimit).mockReturnValue(null);
-			vi.mocked(getCpuLimit).mockReturnValue(null);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: null, source: 'unreadable', weight: null });
 		});
 
 		it('should register the memory and CPU limits', async () => {
 			vi.mocked(getMemoryLimit).mockReturnValue(1_073_741_824);
-			vi.mocked(getCpuLimit).mockReturnValue(0.5);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: 0.5, source: 'cgroup_v2', weight: 100 });
 			service = createService();
 
 			await service.init();
@@ -287,7 +287,7 @@ describe('InstanceRegistryService', () => {
 			await service.init();
 
 			vi.mocked(getMemoryLimit).mockReturnValue(2_147_483_648);
-			vi.mocked(getCpuLimit).mockReturnValue(2);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: 2, source: 'cgroup_v2', weight: 100 });
 			await service.heartbeat();
 
 			const [reg] = await service.getAllInstances();
