@@ -132,6 +132,10 @@ export async function startHttpTransport(opts: {
 	const allowedHosts = buildAllowedHosts(host, port);
 
 	const httpServer = createServer((req, res) => {
+		// Let the OS detect clients that disappear without closing the TCP connection. An open
+		// SSE response otherwise stays in-flight forever and pins its browser session.
+		req.socket.setKeepAlive(true, 60_000);
+
 		// Reject any request that carries an Origin header. The transport has no
 		// browser clients; the only way an Origin header appears is from a
 		// fetch/XHR initiated by web content, which we never want to serve.

@@ -105,6 +105,25 @@ describe('HTTP transport', () => {
 		expect(address.address).toBe('127.0.0.1');
 	});
 
+	it('enables TCP keepalive on client sockets', async () => {
+		const keepAliveCalls: Array<[boolean, number | undefined]> = [];
+		booted.started.httpServer.once('connection', (socket) => {
+			const originalSetKeepAlive = socket.setKeepAlive.bind(socket);
+			socket.setKeepAlive = ((enable: boolean, initialDelay?: number) => {
+				keepAliveCalls.push([enable, initialDelay]);
+				return originalSetKeepAlive(enable, initialDelay);
+			}) as typeof socket.setKeepAlive;
+		});
+
+		await fetch(booted.baseUrl + '/mcp', {
+			method: 'POST',
+			headers: { authorization: 'Bearer ' + token },
+			body: '{}',
+		});
+
+		expect(keepAliveCalls).toContainEqual([true, 60_000]);
+	});
+
 	it('rejects unauthenticated requests with 401', async () => {
 		const res = await fetch(`${booted.baseUrl}/mcp`, { method: 'POST', body: '{}' });
 
