@@ -8,6 +8,7 @@ import type {
 	ChatIntegrationDescriptor,
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
+	TeamsFileAccessCheck,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -22,10 +23,22 @@ import type { AgentCredentialOption } from '../../components/AgentCredentialSele
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
-import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
+import {
+	availabilityFrom,
+	AZURE_BOTS_URL,
+	readsSharedConversations as readsShared,
+	TEAMS_PACKAGE_FILENAME,
+	type TeamsAvailability,
+} from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
+import { fileAccessJustApproved } from './fileAccessConsent';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
-import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import {
+	checkTeamsCredential,
+	checkTeamsFileAccess,
+	fetchTeamsAppPackage,
+	getTeamsSetupState,
+} from './api';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -83,8 +96,6 @@ const rootStore = useRootStore();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 
-// The bot's subscription and resource group are picked in Azure, so this lists every Azure Bot.
-const AZURE_BOTS_URL = 'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
 const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
 
@@ -121,7 +132,23 @@ const offerManagedApp = computed(() => {
 });
 
 // The credential the saved channel runs on, so a swap counts as an app change.
-const savedCredentialId = credentialId.value;
+// The modal can hand it over after mount, so the first one given is the saved one.
+const savedCredentialId = ref(credentialId.value);
+if (!savedCredentialId.value) {
+	const stop = watch(credentialId, (id) => {
+		if (!id) return;
+		savedCredentialId.value = id;
+		stop();
+	});
+}
+
+const organization = computed(() => {
+	const managed = props.managedRuntime;
+	const id = managed?.managerCredentialId.value;
+	return (
+		managed?.managedSetup.value.managerCredentials.find((c) => c.id === id)?.organizationName ?? ''
+	);
+});
 
 const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
 const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
@@ -195,10 +222,16 @@ const manifestChanged = computed(() => {
 		availability.value.groupChats !== (saved?.groupChats ?? false) ||
 		availability.value.readAllChannelMessages !== (saved?.readAllChannelMessages ?? false) ||
 		availability.value.readAllGroupMessages !== (saved?.readAllGroupMessages ?? false) ||
-		credentialId.value !== savedCredentialId ||
+		credentialId.value !== savedCredentialId.value ||
 		savedIdentityOverride.value
 	);
 });
+
+/**
+ * Teams holds an older version: the form holds a change, or the saved channel
+ * already differs from what n8n last handed over, for example after a rename.
+ */
+const appOutdated = computed(() => manifestChanged.value || Boolean(setupState.value?.appOutdated));
 
 /**
  * Saving is gated on the credential actually reaching Microsoft. Without this
@@ -400,6 +433,60 @@ async function refreshForCredential() {
 
 watch(credentialId, refreshForCredential, { immediate: true });
 
+const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | null>(null);
+const readsSharedConversations = computed(() => readsShared(availability.value));
+/**
+ * Microsoft confirms an approval only on the redirect back here, and applying
+ * it can take an hour, so the approval is announced once, from the redirect.
+ * It belongs to the app of the credential picked then, not to the next one.
+ */
+const fileAccessApprovedFor = ref<string | null>(null);
+const fileAccessApprovedNow = computed(() => fileAccessApprovedFor.value === credentialId.value);
+
+/**
+ * Only in the settings: that is where people return after sending the approval
+ * link to an administrator. A failed check leaves the request on show.
+ */
+async function loadFileAccess() {
+	fileAccessStatus.value = null;
+	const id = credentialId.value;
+	// Consumed only by a check that runs: the saved settings can arrive after the first call.
+	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
+	if (fileAccessJustApproved.value) {
+		fileAccessJustApproved.value = false;
+		fileAccessApprovedFor.value = id;
+	}
+	if (fileAccessApprovedNow.value) return;
+	try {
+		const { status } = await checkTeamsFileAccess(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			id,
+		);
+		if (credentialId.value === id) fileAccessStatus.value = status;
+	} catch {
+		// Unchecked reads the same as not approved.
+		if (credentialId.value === id) fileAccessStatus.value = 'unknown';
+	}
+}
+
+watch([credentialId, readsSharedConversations], loadFileAccess, { immediate: true });
+
+/**
+ * The settings say nothing until both the check and the setup state answer:
+ * an approved app never flashes the request, and the request never flips from
+ * the hand-made wording to the one-step consent.
+ */
+const fileAccessState = computed<'request' | 'approved' | 'hidden'>(() => {
+	if (props.mode !== 'edit') return 'request';
+	if (fileAccessApprovedNow.value) return 'approved';
+	if (!setupState.value && !setupLoadFailed.value) return 'hidden';
+	return fileAccessStatus.value === 'notApproved' || fileAccessStatus.value === 'unknown'
+		? 'request'
+		: 'hidden';
+});
+
 // Saving the picked credential keeps its ID, so the watch above does not see the edit.
 listenForCredentialChanges({
 	store: useCredentialsStore(),
@@ -472,7 +559,9 @@ function showDownloaded() {
 // The package matches what n8n has saved, not the unsaved form, so an
 // installed app never runs on settings that were never saved.
 async function downloadSaved() {
-	if (await downloadPackage(props.savedSettings, savedCredentialId)) showDownloaded();
+	if (!(await downloadPackage(props.savedSettings, savedCredentialId.value))) return;
+	showDownloaded();
+	await loadSetupState();
 }
 
 /**
@@ -708,6 +797,8 @@ defineExpose({
 						<AgentChannelTeamsAvailability
 							:model-value="availability"
 							start-collapsed
+							:app-id="setupState?.botId"
+							:file-access-consent-url="setupState?.fileAccessConsentUrl"
 							@update:model-value="editAvailability"
 						/>
 					</div>
@@ -808,22 +899,20 @@ defineExpose({
 				<AgentChannelTeamsAvailability
 					:model-value="availability"
 					start-collapsed
+					:app-id="setupState?.botId"
+					:file-access-consent-url="setupState?.fileAccessConsentUrl"
+					:file-access-state="fileAccessState"
+					:organization="organization"
+					open-consent-in-place
 					@update:model-value="editAvailability"
 				/>
 				<N8nText
+					v-if="!offerManagedApp"
 					size="small"
-					:class="manifestChanged ? undefined : $style.hint"
+					:class="$style.hint"
 					data-testid="teams-update-notice"
 				>
-					{{
-						i18n.baseText(
-							offerManagedApp
-								? manifestChanged
-									? 'agents.channels.teams.settings.updateNoticeManaged'
-									: 'agents.channels.teams.settings.updateNoticeManagedUnchanged'
-								: 'agents.channels.teams.settings.updateNotice',
-						)
-					}}
+					{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
 				</N8nText>
 			</div>
 
@@ -841,6 +930,9 @@ defineExpose({
 				:pending-settings="currentSettings"
 				:unsaved-changes="manifestChanged"
 				:persist-channel="persistChannel"
+				:azure-bot="setupState?.azureBot ?? null"
+				:outdated="appOutdated"
+				@installed="loadSetupState"
 			/>
 			<template v-else>
 				<div :class="$style.field" data-testid="teams-identity-field">
@@ -858,10 +950,16 @@ defineExpose({
 						"
 						:ready="canDownloadPackage"
 						:loading="downloading"
+						:outdated="appOutdated"
 						@download="downloadSaved"
 					/>
-					<N8nText :class="$style.hint" size="small" data-testid="teams-upload-instructions">
-						{{ i18n.baseText('agents.channels.teams.settings.uploadHint') }}
+					<N8nText
+						v-if="appOutdated"
+						size="small"
+						:class="$style.outdated"
+						data-testid="teams-app-outdated"
+					>
+						{{ i18n.baseText('agents.channels.teams.settings.outdated') }}
 					</N8nText>
 					<N8nText
 						v-if="downloadError"
@@ -947,6 +1045,10 @@ defineExpose({
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
+}
+
+.outdated {
+	color: var(--text-color--warning);
 }
 
 .azureLink {

@@ -209,6 +209,14 @@ export function useAgentTelemetry() {
 		}
 	}
 
+	function trackDismissedAgentPublishedModal(params: { agentId: string; dontShowAgain: boolean }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_AGENT_PUBLISHED_MODAL, {
+			agent_id: params.agentId,
+			dont_show_again: params.dontShowAgain,
+			...common(),
+		});
+	}
+
 	function trackSelectedN8nChatAgent(params: { agentId: string; source: N8nChatAgentSource }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_SELECTED_N8N_CHAT_AGENT, {
 			agent_id: params.agentId,
@@ -255,6 +263,7 @@ export function useAgentTelemetry() {
 		trackOpenedAddSkillModal,
 		trackImportedSkill,
 		trackDuplicatedAgent,
+		trackDismissedAgentPublishedModal,
 		trackStartedChannelSetup,
 		trackClosedChannelSetup,
 		trackFailedToConnectChannel,

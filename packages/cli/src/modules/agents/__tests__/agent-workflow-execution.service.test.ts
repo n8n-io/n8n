@@ -1,7 +1,7 @@
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { mockLogger } from '@n8n/backend-test-utils';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -11,6 +11,7 @@ import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflo
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
+import { SkillService } from '../skills/skill.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
@@ -131,6 +132,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 }
 
 function makeService() {
+	const skillRefs = createAgentSkillRefsService();
 	const settingsService = mock<AgentsSettingsService>();
 	const agentRepository = mock<AgentRepository>();
 	const executionService = mock<AgentExecutionService>();
@@ -177,11 +179,12 @@ function makeService() {
 		aiConfigMock,
 		integrationMessageContextService,
 		settingsService,
-		createAgentSkillRefsService(agentRepository),
+		skillRefs,
 	);
 
 	return {
 		service,
+		skillRefs,
 		settingsService,
 		agentRepository,
 		executionService,
@@ -886,6 +889,49 @@ describe('AgentWorkflowExecutionService', () => {
 			},
 		};
 
+		it('runs the embedded skills and never calls the skill service', async () => {
+			const skillService = mockInstance(SkillService);
+			const { service, reconstructionService, skillRefs } = makeService();
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(
+				makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
+			);
+			const embedded = {
+				name: 'Embedded skill',
+				description: 'An inline skill',
+				instructions: 'Use the embedded text.',
+			};
+
+			await service.executeInlineForWorkflow(
+				{
+					config: { ...inlinePayload.config, skills: [{ type: 'skill', id: 'skill_inline' }] },
+					skills: { skill_inline: embedded },
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				'production',
+			);
+
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ skills: { skill_inline: embedded } }),
+			);
+			for (const read of [
+				skillRefs.refsForDraft,
+				skillRefs.refsForVersion,
+				skillRefs.readDraft,
+				skillRefs.readVersion,
+				skillRefs.skillsForRefs,
+				skillService.resolveForAgentDraft,
+				skillService.resolvePinned,
+				skillService.checkRefs,
+				skillService.create,
+			]) {
+				expect(read).not.toHaveBeenCalled();
+			}
+		});
+
 		it('compiles from the embedded config, records no session, and tracks inline telemetry', async () => {
 			const {
 				service,
@@ -1504,7 +1550,10 @@ describe('AgentWorkflowExecutionService', () => {
 				{ prepareForEval },
 			);
 
-			expect(prepareForEval).toHaveBeenCalledWith(schema, { hasChatIntegrations: true });
+			expect(prepareForEval).toHaveBeenCalledWith(
+				{ ...schema, skills: [] },
+				{ hasChatIntegrations: true },
+			);
 			const [entity, , , , , passedInstrumentation] =
 				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
 			expect(entity.agent.schema).toEqual(evalConfig);

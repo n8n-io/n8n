@@ -75,40 +75,30 @@ function copySwaggerTheme() {
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);
 }
 
-// Builds the v1 spec from two sources:
-// - the hand-written routes (eov) at `openapi.yml`
-// - the full `@PublicApiController` decorated routes at `openapi.decorator-routes.generated.yml`
+// Builds the v1 spec. The generated root lists every `@PublicApiController` operation. The build
+// bundles it, then puts its paths and components into the hand-written envelope (`openapi.yml`).
 async function buildPublicApiSpec() {
 	const v1Dir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
-	const { generateDocs, mergeDecoratorDocument, DECORATOR_ROOT_FILENAME } =
-		await loadOpenApiGenerator();
+	const { generateDocs, assembleSpec, DECORATOR_ROOT_FILENAME } = await loadOpenApiGenerator();
 
-	// 1. Generate decorated route OpenAPI specs from source.
+	// 1. Generate the operation fragments and the root from source.
 	generateDocs(v1Dir);
 
-	// 2. Bundle both sources in one redocly process. With several inputs, redocly
-	// writes each bundle into the output directory under its source file name.
+	// 2. Bundle the generated root, resolving its $refs to the fragment files.
 	const v1DistDir = path.resolve(ROOT_DIR, 'dist', 'public-api', 'v1');
-	bundleSpecs(
-		[path.join(v1Dir, SPEC_FILENAME), path.join(v1Dir, DECORATOR_ROOT_FILENAME)],
-		v1DistDir,
-	);
+	const generatedDistSpec = path.join(v1DistDir, DECORATOR_ROOT_FILENAME);
+	bundleSpec(path.join(v1Dir, DECORATOR_ROOT_FILENAME), generatedDistSpec);
 
-	const eovDistSpec = path.join(v1DistDir, SPEC_FILENAME);
-	const decoratorDistSpec = path.join(v1DistDir, DECORATOR_ROOT_FILENAME);
-
-	// 3. Merge the two specs into a single OpenAPI document, writing back to the eov spec path.
-	const eovDoc = parseYaml(readFileSync(eovDistSpec, 'utf8'));
-	const decoratorDoc = parseYaml(readFileSync(decoratorDistSpec, 'utf8'));
-
-	// 4. Merge the two specs and write back to the eov spec path.
+	// 3. Assemble the published spec from the envelope and the bundled root.
+	const envelope = parseYaml(readFileSync(path.join(v1Dir, SPEC_FILENAME), 'utf8'));
+	const generated = parseYaml(readFileSync(generatedDistSpec, 'utf8'));
 	writeFileSync(
-		eovDistSpec,
-		stringifyYaml(mergeDecoratorDocument(eovDoc, decoratorDoc), YAML_STRINGIFY_OPTS),
+		path.join(v1DistDir, SPEC_FILENAME),
+		stringifyYaml(assembleSpec(envelope, generated), YAML_STRINGIFY_OPTS),
 	);
 
-	// 5. Cleanup the decorator spec.
-	rmSync(decoratorDistSpec);
+	// 4. Remove the bundled root. Only the assembled spec is published.
+	rmSync(generatedDistSpec);
 }
 
 // Imports the already-compiled generator from dist rather than the .ts source — by the time
@@ -129,7 +119,7 @@ async function loadOpenApiGenerator() {
 	}
 
 	const generator = await import(pathToFileURL(generatorPath).href);
-	for (const name of ['generateDocs', 'mergeDecoratorDocument', 'DECORATOR_ROOT_FILENAME']) {
+	for (const name of ['generateDocs', 'assembleSpec', 'DECORATOR_ROOT_FILENAME']) {
 		if (generator[name] === undefined) {
 			throw new Error(
 				`OpenAPI doc generator at ${generatorPath} is missing export '${name}' — its contract may have changed.`,
@@ -139,25 +129,19 @@ async function loadOpenApiGenerator() {
 	return generator;
 }
 
-// Bundles specs through redocly, resolving all $refs. Each source becomes one file in `distDir`.
-function bundleSpecs(sourcePaths, distDir) {
-	const distPaths = sourcePaths.map((sourcePath) => path.join(distDir, path.basename(sourcePath)));
+// Bundles a spec through redocly, resolving all $refs, and writes it to `distPath`.
+function bundleSpec(sourcePath, distPath) {
 	// Remove old output, so that the check below cannot pass on a stale file.
-	for (const distPath of distPaths) rmSync(distPath, { force: true });
+	rmSync(distPath, { force: true });
 
-	const sources = sourcePaths.map((sourcePath) => `"${sourcePath}"`).join(' ');
-	const result = shell.exec(`pnpm openapi bundle ${sources} --output "${distDir}"`, {
+	const result = shell.exec(`pnpm openapi bundle "${sourcePath}" --output "${distPath}"`, {
 		silent: true,
 	});
 	if (result.code !== 0) {
-		throw new Error(
-			`redocly failed to bundle ${sourcePaths.join(', ')}:\n${result.stderr || result.stdout}`,
-		);
+		throw new Error(`redocly failed to bundle ${sourcePath}:\n${result.stderr || result.stdout}`);
 	}
-	for (const [i, distPath] of distPaths.entries()) {
-		if (!existsSync(distPath)) {
-			throw new Error(`redocly did not write the bundle for ${sourcePaths[i]} to ${distPath}`);
-		}
+	if (!existsSync(distPath)) {
+		throw new Error(`redocly did not write the bundle for ${sourcePath} to ${distPath}`);
 	}
 }
 

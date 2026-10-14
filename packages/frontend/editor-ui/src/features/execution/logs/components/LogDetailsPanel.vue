@@ -74,7 +74,14 @@ const nodeTypeStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
-const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const {
+	isRedacted,
+	canReveal,
+	isDynamicCredentials,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 
 const nodeEntry = computed(() => (isNodeLog(logEntry) ? logEntry : undefined));
 const groupEntry = computed(() => (isGroupLog(logEntry) ? logEntry : undefined));
@@ -254,6 +261,8 @@ function handleResizeEnd() {
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
 						:can-reveal="canReveal"
+						:credential-to-share="credentialToShare"
+						@share-credential="openCredentialSharing"
 						wide
 						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
 						@reveal="revealData"
@@ -341,6 +350,8 @@ function handleResizeEnd() {
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
 						:can-reveal="canReveal"
+						:credential-to-share="credentialToShare"
+						@share-credential="openCredentialSharing"
 						wide
 						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
 						@reveal="revealData"

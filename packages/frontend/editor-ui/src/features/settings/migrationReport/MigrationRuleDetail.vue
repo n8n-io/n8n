@@ -9,6 +9,7 @@ import type {
 	BreakingChangeWorkflowOwner,
 	MigrationFindingListedStatus,
 	MigrationFindingTriageStatus,
+	MigrationNotifyResult,
 	MigrationNotifySkipReason,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -310,6 +311,14 @@ const openCount = computed(
 // Rows with a state change in flight. One change at a time keeps the revert correct.
 const savingWorkflowIds = ref<Set<string>>(new Set());
 
+// Rows with a notification in flight. Its response sets the status, so a state
+// change must wait for it.
+const notifyingWorkflowIds = ref<Set<string>>(new Set());
+
+function isBusy(workflow: AffectedWorkflow): boolean {
+	return notifyingWorkflowIds.value.has(workflow.id) || savingWorkflowIds.value.has(workflow.id);
+}
+
 // The state is a shallow ref, so replace the list to make the table update.
 function setFindingStatuses(statuses: Map<string, MigrationFindingListedStatus>) {
 	state.value = {
@@ -347,7 +356,7 @@ async function onFindingStatusChange(
 	workflow: AffectedWorkflow,
 	status: MigrationFindingTriageStatus,
 ) {
-	if (status === workflow.status || savingWorkflowIds.value.has(workflow.id)) return;
+	if (status === workflow.status || isBusy(workflow)) return;
 
 	setFindingStatuses(new Map([[workflow.id, status]]));
 	setSaving([workflow.id], true);
@@ -385,10 +394,7 @@ function isSelectable(workflow: AffectedWorkflow): boolean {
  */
 function bulkTargets(status: MigrationFindingTriageStatus): AffectedWorkflow[] {
 	return selectedWorkflows.value.filter(
-		(workflow) =>
-			findingState(workflow) !== status &&
-			isSelectable(workflow) &&
-			!savingWorkflowIds.value.has(workflow.id),
+		(workflow) => findingState(workflow) !== status && isSelectable(workflow) && !isBusy(workflow),
 	);
 }
 
@@ -441,13 +447,10 @@ const unusedOpenWorkflows = computed(() => {
 	return state.value.affectedWorkflows.filter(
 		(workflow) =>
 			isUnresolved(workflow) &&
-			!savingWorkflowIds.value.has(workflow.id) &&
+			!isBusy(workflow) &&
 			matchesWorkflowFilters(workflow, UNUSED_WORKFLOW_FILTERS, now),
 	);
 });
-
-// Rows with a notification in flight.
-const notifyingWorkflowIds = ref<Set<string>>(new Set());
 
 // An email goes to the owner, so a row without one has nobody to notify.
 function canNotifyRow(workflow: AffectedWorkflow): boolean {
@@ -465,46 +468,113 @@ const skipReasonKeys: Record<
 	send_failed: 'settings.migrationReport.detail.notify.skipped.sendFailed',
 };
 
-/** Emails the owner of one workflow. A second call on a notified row is a reminder. */
-async function onNotify(workflow: AffectedWorkflow) {
-	if (notifyingWorkflowIds.value.has(workflow.id) || savingWorkflowIds.value.has(workflow.id))
-		return;
-	notifyingWorkflowIds.value = new Set(notifyingWorkflowIds.value).add(workflow.id);
+/**
+ * Emails the owners of `workflows` in one request and marks the notified rows.
+ * Returns undefined when the request fails.
+ */
+async function notifyOwners(
+	workflows: AffectedWorkflow[],
+): Promise<MigrationNotifyResult | undefined> {
+	const workflowIds = workflows.map((workflow) => workflow.id);
+	setNotifying(workflowIds, true);
 	try {
 		const result = await breakingChangesApi.notifyFindingOwners(
 			rootStore.restApiContext,
 			props.migrationRuleId,
-			[workflow.id],
+			workflowIds,
 		);
-		const skipped = result.skipped.find((entry) => entry.workflowId === workflow.id);
-		if (skipped) {
-			toast.showMessage({
-				type: 'error',
-				title: i18n.baseText('settings.migrationReport.detail.notify.error.title'),
-				message: i18n.baseText(skipReasonKeys[skipped.reason]),
-			});
-			return;
-		}
+		const notified = new Set(result.notifiedWorkflowIds);
+		const notifiedAt = new Date();
 		state.value = {
 			...state.value,
 			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
-				row.id === workflow.id ? { ...row, status: 'notified', notifiedAt: new Date() } : row,
+				notified.has(row.id) ? { ...row, status: 'notified', notifiedAt } : row,
 			),
 		};
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('settings.migrationReport.detail.notify.success.title'),
-			message: i18n.baseText('settings.migrationReport.detail.notify.success.message', {
-				interpolate: { owner: ownerLabel(workflow), name: workflow.name },
-			}),
-		});
+		return result;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.notify.error.title'));
+		return undefined;
 	} finally {
-		const next = new Set(notifyingWorkflowIds.value);
-		next.delete(workflow.id);
-		notifyingWorkflowIds.value = next;
+		setNotifying(workflowIds, false);
 	}
+}
+
+function setNotifying(workflowIds: string[], notifying: boolean) {
+	const next = new Set(notifyingWorkflowIds.value);
+	for (const workflowId of workflowIds) {
+		if (notifying) next.add(workflowId);
+		else next.delete(workflowId);
+	}
+	notifyingWorkflowIds.value = next;
+}
+
+/** Emails the owner of one workflow. A second call on a notified row is a reminder. */
+async function onNotify(workflow: AffectedWorkflow) {
+	if (isBusy(workflow)) return;
+	const result = await notifyOwners([workflow]);
+	if (!result) return;
+
+	const skipped = result.skipped.find((entry) => entry.workflowId === workflow.id);
+	if (skipped) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('settings.migrationReport.detail.notify.error.title'),
+			message: i18n.baseText(skipReasonKeys[skipped.reason]),
+		});
+		return;
+	}
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('settings.migrationReport.detail.notify.success.title'),
+		message: i18n.baseText('settings.migrationReport.detail.notify.success.message', {
+			interpolate: { owner: ownerLabel(workflow), name: workflow.name },
+		}),
+	});
+}
+
+const bulkNotifyTargets = computed(() =>
+	selectedWorkflows.value.filter((workflow) => canNotifyRow(workflow) && !isBusy(workflow)),
+);
+
+const isBulkNotifying = computed(() =>
+	selectedWorkflows.value.some((workflow) => notifyingWorkflowIds.value.has(workflow.id)),
+);
+
+const selectedWithoutOwnerCount = computed(
+	() => selectedWorkflows.value.filter((workflow) => !workflow.owner?.email).length,
+);
+
+async function onBulkNotify() {
+	const workflows = bulkNotifyTargets.value;
+	if (workflows.length === 0) return;
+	const result = await notifyOwners(workflows);
+	if (!result) return;
+
+	const notifiedCount = result.notifiedWorkflowIds.length;
+	if (result.skipped.length > 0) {
+		const reasons = new Set(result.skipped.map((entry) => entry.reason));
+		toast.showMessage({
+			type: 'warning',
+			title: i18n.baseText('settings.migrationReport.detail.bulk.notify.partial.title', {
+				interpolate: { notified: String(notifiedCount), total: String(workflows.length) },
+			}),
+			message: [...reasons].map((reason) => i18n.baseText(skipReasonKeys[reason])).join('. '),
+		});
+	} else {
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.migrationReport.detail.bulk.notify.success.title', {
+				adjustToNumber: notifiedCount,
+				interpolate: { count: String(notifiedCount) },
+			}),
+		});
+	}
+	// Keep the rows that the user selected while the request was in flight.
+	const notified = new Set(result.notifiedWorkflowIds);
+	selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
+		(workflowId) => !notified.has(workflowId),
+	);
 }
 
 // Show only the rows that the callout counts.
@@ -778,7 +848,7 @@ const sortedWorkflows = computed(() => {
 			<div :class="$style.quickFilters">
 				<N8nButton
 					v-if="currentUserId"
-					:variant="workflowFilters.owner === currentUserId ? 'solid' : 'subtle'"
+					:variant="workflowFilters.owner === currentUserId ? 'solid' : 'outline'"
 					size="small"
 					icon="user"
 					:aria-pressed="workflowFilters.owner === currentUserId"
@@ -793,7 +863,7 @@ const sortedWorkflows = computed(() => {
 					}}
 				</N8nButton>
 				<N8nButton
-					:variant="stateFilter === 'open' ? 'solid' : 'subtle'"
+					:variant="stateFilter === 'open' ? 'solid' : 'outline'"
 					size="small"
 					:aria-pressed="stateFilter === 'open'"
 					data-test-id="migration-rule-quick-filter-open"
@@ -802,7 +872,7 @@ const sortedWorkflows = computed(() => {
 					{{ quickFilterLabel('settings.migrationReport.detail.quickFilter.open', openCount) }}
 				</N8nButton>
 				<N8nButton
-					:variant="stateFilter === 'wont_fix' ? 'solid' : 'subtle'"
+					:variant="stateFilter === 'wont_fix' ? 'solid' : 'outline'"
 					size="small"
 					:aria-pressed="stateFilter === 'wont_fix'"
 					data-test-id="migration-rule-quick-filter-wont-fix"
@@ -813,7 +883,7 @@ const sortedWorkflows = computed(() => {
 					}}
 				</N8nButton>
 				<N8nButton
-					:variant="workflowFilters.owner === UNASSIGNED_OWNER ? 'solid' : 'subtle'"
+					:variant="workflowFilters.owner === UNASSIGNED_OWNER ? 'solid' : 'outline'"
 					size="small"
 					:aria-pressed="workflowFilters.owner === UNASSIGNED_OWNER"
 					data-test-id="migration-rule-quick-filter-unassigned"
@@ -850,7 +920,7 @@ const sortedWorkflows = computed(() => {
 				@select="onSortSelect"
 			>
 				<template #trigger>
-					<N8nButton variant="subtle" size="small" data-test-id="migration-rule-sort-trigger">
+					<N8nButton variant="outline" size="small" data-test-id="migration-rule-sort-trigger">
 						{{ sortLabel }}
 					</N8nButton>
 				</template>
@@ -978,7 +1048,7 @@ const sortedWorkflows = computed(() => {
 				<div :class="$style.actions">
 					<N8nButton
 						v-if="canNotifyRow(item)"
-						variant="subtle"
+						variant="outline"
 						size="small"
 						:loading="notifyingWorkflowIds.has(item.id)"
 						:label="
@@ -1032,20 +1102,42 @@ const sortedWorkflows = computed(() => {
 				<template #actions>
 					<N8nButton
 						v-if="showMigrate"
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.migrate')"
 						data-test-id="migration-bulk-migrate-button"
 						@click="openMigrateModal(selectedWorkflows)"
 					/>
+					<template v-if="canNotify">
+						<N8nButton
+							variant="outline"
+							:label="i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners')"
+							:disabled="bulkNotifyTargets.length === 0"
+							:loading="isBulkNotifying"
+							data-test-id="migration-bulk-notify-button"
+							@click="onBulkNotify"
+						/>
+						<N8nText
+							v-if="selectedWithoutOwnerCount > 0"
+							size="small"
+							color="text-light"
+							data-test-id="migration-bulk-notify-no-owner"
+						>
+							{{
+								i18n.baseText('settings.migrationReport.detail.bulk.notify.noOwner', {
+									interpolate: { count: String(selectedWithoutOwnerCount) },
+								})
+							}}
+						</N8nText>
+					</template>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"
 						:disabled="bulkTargets('wont_fix').length === 0"
 						data-test-id="migration-bulk-wont-fix-button"
 						@click="onBulkStatusChange('wont_fix')"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.reopen')"
 						:disabled="bulkTargets('open').length === 0"
 						data-test-id="migration-bulk-reopen-button"

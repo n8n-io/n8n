@@ -771,6 +771,15 @@ export function defaultNodesJsonPath(): string {
 	return path.join(siblingPackage, 'nodes.json');
 }
 
+const EVAL_PACKAGES_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+
+function nodeDefinitionDirs(packagesRoot: string): string[] {
+	return [
+		path.join(packagesRoot, 'nodes-base', 'dist', 'node-definitions'),
+		path.join(packagesRoot, '@n8n', 'nodes-langchain', 'dist', 'node-definitions'),
+	];
+}
+
 /**
  * Resolve the workspace-relative `dist/node-definitions/` directories the
  * production resolver expects. Production reads them via
@@ -779,14 +788,20 @@ export function defaultNodesJsonPath(): string {
  * eval already lives in the monorepo, so we walk up to `packages/` and
  * point at the built dist dirs directly.
  *
- * Returns an empty array if neither package has been built. Callers should
- * surface a clear error rather than silently degrading the agent's view.
+ * Returns an empty array if neither package has been built. The discovery CLI
+ * calls `missingEvalNodeData` at start, so a run without the builds stops.
  */
 export function resolveEvalNodeDefinitionDirs(): string[] {
-	const packagesRoot = path.resolve(__dirname, '..', '..', '..', '..');
-	const candidates = [
-		path.join(packagesRoot, 'nodes-base', 'dist', 'node-definitions'),
-		path.join(packagesRoot, '@n8n', 'nodes-langchain', 'dist', 'node-definitions'),
-	];
-	return candidates.filter((dir) => existsSync(dir));
+	return nodeDefinitionDirs(EVAL_PACKAGES_ROOT).filter((dir) => existsSync(dir));
+}
+
+/**
+ * Returns the node data paths that the stubs need and cannot find. Without
+ * them, the agent gets no node types, and no error shows.
+ */
+export function missingEvalNodeData(
+	nodesJsonPath: string,
+	packagesRoot = EVAL_PACKAGES_ROOT,
+): string[] {
+	return [nodesJsonPath, ...nodeDefinitionDirs(packagesRoot)].filter((p) => !existsSync(p));
 }
