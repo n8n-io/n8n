@@ -3,6 +3,7 @@ import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeVersion,
 	MigrationFindingTriageStatus,
+	MigrationNotifyResult,
 	MigrationWorkflowOwnerResponse,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
@@ -99,4 +100,17 @@ export async function updateFindingStatuses(
 		workflowIds,
 		status,
 	});
+}
+
+export async function notifyFindingOwners(
+	context: IRestApiContext,
+	ruleId: string,
+	workflowIds: string[],
+): Promise<MigrationNotifyResult> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/breaking-changes/report/${ruleId}/workflows/notify`,
+		{ workflowIds },
+	);
 }

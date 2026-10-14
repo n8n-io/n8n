@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'ADO-2230 NDV Pagination Reset',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
 		test('should reset pagination if data size changes to less than current page', async ({

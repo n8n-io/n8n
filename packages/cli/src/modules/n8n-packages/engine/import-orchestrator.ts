@@ -175,7 +175,12 @@ export class ImportOrchestrator {
 			plans.map((plan) => plan.dataTablePlan),
 		);
 
-		for (const { input, variablePlan } of plans) {
+		for (const { input, variablePlan, credentialPlan } of plans) {
+			await this.credentialImporter.assertCanCreate(
+				input.context,
+				input.credentialRequest,
+				credentialPlan,
+			);
 			if (variablePlan.creations.length > 0) {
 				await this.variableImporter.assertCanCreate(
 					input.context,
@@ -385,7 +390,14 @@ export class ImportOrchestrator {
 		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
-			new Set(credentialResult.stubbed),
+			new Set([
+				...credentialResult.stubbed,
+				...credentialResult.seeded.filter(
+					(id) =>
+						!credentialRequest.requirements?.find((requirement) => requirement.id === id)
+							?.packageDataIsComplete,
+				),
+			]),
 		)) {
 			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
 		}
@@ -563,7 +575,10 @@ function toDataTableBlockingIssue(
 		const writtenIds = new Set(
 			failure.missingScope === 'dataTable:create'
 				? plan.creations.map(({ id }) => id)
-				: plan.updates.map(({ table }) => table.id),
+				: [
+						...plan.updates.map(({ table }) => table.id),
+						...plan.columnAlignments.map(({ id }) => id),
+					],
 		);
 		requirements = requirements.filter(({ id }) => writtenIds.has(id));
 	}

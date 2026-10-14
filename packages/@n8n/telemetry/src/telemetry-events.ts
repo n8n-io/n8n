@@ -7,12 +7,14 @@ import { INSTANCE_AI_TELEMETRY } from './events/instance-ai';
 import { MCP_TELEMETRY } from './events/mcp';
 import { MIGRATION_REPORT_TELEMETRY } from './events/migration-report';
 import { PLATFORM_TELEMETRY } from './events/platform';
+import { POLICIES_TELEMETRY } from './events/policies';
 import { TYPE_AVAILABILITY_POLICIES_TELEMETRY } from './events/type-availability-policies';
 import { WORKFLOW_TELEMETRY } from './events/workflow';
 import { WORKFLOW_REVIEWS_TELEMETRY } from './events/workflow-reviews';
 
 export const TELEMETRY_EVENT = {
 	PLATFORM: PLATFORM_TELEMETRY,
+	POLICIES: POLICIES_TELEMETRY,
 	AGENTS: AGENTS_TELEMETRY,
 	CREDENTIALS: CREDENTIALS_TELEMETRY,
 	CONTEXT: CONTEXT_TELEMETRY,

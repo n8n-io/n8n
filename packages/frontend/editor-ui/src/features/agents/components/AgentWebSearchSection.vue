@@ -10,6 +10,7 @@ import {
 	N8nIcon,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
@@ -47,6 +48,7 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
@@ -207,14 +209,12 @@ const managedCredentialOption = computed<ManagedCredentialOption | null>(() => {
 });
 
 const fallbackCredentials = computed<AgentCredentialOption[]>(() =>
-	credentialsStore.allCredentials
-		.filter((credential) => credential.type === fallbackCredentialType.value)
-		.map((credential) => ({
-			id: credential.id,
-			name: credential.name,
-			typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
-			homeProject: credential.homeProject,
-		})),
+	credentialsStore.getUsableCredentialByType(fallbackCredentialType.value).map((credential) => ({
+		id: credential.id,
+		name: credential.name,
+		typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
+		homeProject: credential.homeProject,
+	})),
 );
 
 const projectForPermissions = computed(() => {
@@ -325,7 +325,21 @@ function onCreateFallbackCredential() {
 		undefined,
 		{
 			hideAskAssistant: true,
-			onCredentialCreated: (credential) => onFallbackCredentialChange(credential.id),
+			onCredentialCreated: async (credential) => {
+				// The picker reads the scoped usable list, which only a fetch writes.
+				// Refetch so the new credential is in the list before it is selected.
+				try {
+					await (props.projectId
+						? credentialsStore.fetchUsableCredentials({
+								projectId: props.projectId,
+								forAgent: true,
+							})
+						: credentialsStore.refreshUsableCredentials());
+				} catch (error) {
+					toast.showError(error, i18n.baseText('agents.builder.credentials.refreshError'));
+				}
+				onFallbackCredentialChange(credential.id);
+			},
 		},
 	);
 }

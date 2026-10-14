@@ -171,6 +171,7 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
+import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -490,6 +491,9 @@ export class InstanceAiAdapterService {
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
+			/** Eval-only: the provider stand-in for a credential type's connection test.
+			 *  A getter for the same reason as the bypass predicate. */
+			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
@@ -532,6 +536,7 @@ export class InstanceAiAdapterService {
 			getCredentialIdAllowlist,
 			resumeAgentBuild = false,
 			shouldBypassCredentialTest,
+			getCredentialTestTarget,
 			agentId,
 			configEvalsEnabled,
 			setupPanelVariant,
@@ -557,6 +562,7 @@ export class InstanceAiAdapterService {
 			projectId,
 			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
+			getCredentialTestTarget,
 		);
 		return {
 			userId: user.id,
@@ -888,7 +894,9 @@ export class InstanceAiAdapterService {
 		return {
 			execute: async (request) => {
 				this.assertInstanceNotReadOnly('executions');
-				const projectId = await resolveProjectId(['workflow:execute']);
+				// The caller supplies the node type and parameters, so a standalone run
+				// authors a workflow. See ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.
+				const projectId = await resolveProjectId(['workflow:create', 'workflow:execute']);
 				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
@@ -2756,6 +2764,7 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
+		getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined,
 	): InstanceAiCredentialService {
 		const {
 			credentialsService,
@@ -2865,15 +2874,18 @@ export class InstanceAiAdapterService {
 					return { success: true, message: 'Connection tested successfully' };
 				}
 
+				const data = await credentialsService.decryptForUse(
+					credential,
+					{ kind: 'user', user },
+					boundProjectId,
+				);
+				// Eval-only: aim the test at the thread's stand-in.
+				const target = getCredentialTestTarget?.(credential.type);
 				const credentialsToTest: ICredentialsDecrypted = {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: await credentialsService.decryptForUse(
-						credential,
-						{ kind: 'user', user },
-						boundProjectId,
-					),
+					data: target ? { ...data, [target.urlField]: target.baseUrl } : data,
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);

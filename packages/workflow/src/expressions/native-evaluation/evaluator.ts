@@ -1,5 +1,7 @@
 import { ExpressionExtensionError } from '../../errors/expression-extension.error';
 import { ExpressionError } from '../../errors/expression.error';
+import { DateTime } from 'luxon';
+
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
@@ -10,6 +12,8 @@ import {
 	MAX_WORK,
 	NUMBER_METHODS,
 	STRING_METHODS,
+	TIME_MEMBERS,
+	TIME_METHODS,
 	hasOwn,
 	isArray,
 	isObj,
@@ -118,6 +122,10 @@ const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = Object.freeze({
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): unknown {
+	if (node.object.kind === 'timeRoot') {
+		return evalTimeRead(env.data[node.object.name], TIME_MEMBERS.get(toStr(node.key)));
+	}
+
 	const object = evalNode(node.object, env);
 
 	if (node.optional && (object === null || object === undefined)) {
@@ -358,6 +366,10 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 		return evalNodeRefCall(receiver, node.method);
 	}
 
+	if (node.receiver.kind === 'timeRoot') {
+		return evalTimeRead(receiver, TIME_METHODS.get(node.method));
+	}
+
 	// An own property shadowing the method (an engine-resolved $parameter value
 	// can carry one) would take precedence in the engines.
 	if (hasOwn(receiver, node.method)) {
@@ -429,6 +441,21 @@ function evalNodeRefCall(proxy: unknown, method: string): unknown {
 	return bounded(fn.call(proxy));
 }
 
+/**
+ * A captured Luxon getter or zero-argument method on `$now`/`$today`. The
+ * root is the proxy's own DateTime (anything else is the engine's), and the
+ * result is a primitive by allowlist; a non-primitive would mean a patched
+ * prototype, which is also the engine's.
+ */
+function evalTimeRead(root: unknown, fn: NativeMethod | undefined): unknown {
+	if (fn === undefined || !DateTime.isDateTime(root)) throw new EngineFallbackError();
+
+	const result = fn.call(root);
+	if (!isPrimitive(result)) throw new EngineFallbackError();
+
+	return result;
+}
+
 function evalNodeRef(node: Extract<SimpleNode, { kind: 'nodeRef' }>, env: Env): unknown {
 	if (node.ref === 'input') return env.data.$input;
 	if (node.ref === 'legacy') return env.data.$node[node.name];
@@ -498,6 +525,8 @@ function evalNode(node: SimpleNode, env: Env): unknown {
 			return env.data[node.name];
 		case 'nodeRef':
 			return evalNodeRef(node, env);
+		case 'timeRoot':
+			return env.data[node.name];
 		case 'undefined':
 			return undefined;
 		case 'member':

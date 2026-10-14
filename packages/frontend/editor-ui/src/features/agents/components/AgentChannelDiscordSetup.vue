@@ -95,7 +95,7 @@ defineExpose({ credentialId, validationError: null });
 						v-if="step.id === 'create-application'"
 						:href="DISCORD_APP_SETUP_URL"
 						target="_blank"
-						variant="subtle"
+						variant="outline"
 						size="medium"
 						icon="discord"
 						data-testid="discord-app-setup-link"

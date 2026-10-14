@@ -12,7 +12,7 @@ import { N8nButton, N8nCallout, N8nIcon, N8nLoading, N8nText } from '@n8n/design
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
-import { useTestAgentPreviewExperiment } from '@/experiments/testAgentPreview/useTestAgentPreviewExperiment';
+import { useTestAgentPreviewFlag } from '@/features/agents/composables/useTestAgentPreviewFlag';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { isDataTableDataset, resolveCaseColumns } from '../utils/agentEvalCases.utils';
 import AgentEvalCasesCard from './AgentEvalCasesCard.vue';
@@ -39,7 +39,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
-const { isFeatureEnabled: showEmptyStatePreview } = useTestAgentPreviewExperiment();
+const { isFeatureEnabled: showEmptyStatePreview } = useTestAgentPreviewFlag();
 
 const datasets = computed(() => store.getDatasets(props.agentId));
 // Datasets come back newest-first, and generation makes exactly one; a picker is
