@@ -125,6 +125,8 @@ describe('CustomDirectoryLoader dependencies', () => {
 				}),
 			);
 			writeDependency(projectDir, 'node');
+			writeFile(projectDir, 'dist/nodes/Unlisted.node.js', 'module.exports = {};');
+			writeFile(projectDir, 'dist/credentials/Unlisted.credentials.js', 'module.exports = {};');
 			const packageLink = path.join(customDir, 'node_modules', packageName);
 			mkdirSync(path.dirname(packageLink), { recursive: true });
 			symlinkSync(projectDir, packageLink, 'dir');
