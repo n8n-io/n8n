@@ -11,6 +11,7 @@ import { BadRequestError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
+import { TeamsCredentialNotesService } from './teams-credential-notes.service';
 import { BOT_CREDENTIAL_TYPE } from './teams-entra-provisioning.service';
 import { graphErrorCode, graphErrorMessage, TeamsGraphService } from './teams-graph.service';
 import { TeamsManifestService } from './teams-manifest.service';
@@ -74,22 +75,26 @@ export class TeamsCatalogService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly logger: Logger,
+		private readonly notes: TeamsCredentialNotesService,
 	) {}
 
 	async publish(options: PublishTeamsAppOptions): Promise<TeamsCatalogState> {
-		const state = await this.publishToCatalog(options);
-		await this.rememberPublish(options, state);
-		return state;
-	}
-
-	private async publishToCatalog(options: PublishTeamsAppOptions): Promise<TeamsCatalogState> {
-		const token = await this.graphToken(options);
-		const archive = await this.setupService.buildPackage(
+		const { archive, fingerprint } = await this.setupService.buildPackage(
 			options.user,
 			{ projectId: options.projectId, agentId: options.agentId },
 			options.credentialId,
 			options.settings,
 		);
+		const state = await this.publishToCatalog(options, archive);
+		await this.rememberPublish(options, state, fingerprint);
+		return state;
+	}
+
+	private async publishToCatalog(
+		options: PublishTeamsAppOptions,
+		archive: Buffer,
+	): Promise<TeamsCatalogState> {
+		const token = await this.graphToken(options);
 
 		const existing = await this.findCatalogApp(token, options.agentId);
 		if (existing) {
@@ -210,45 +215,20 @@ export class TeamsCatalogService {
 	private async rememberPublish(
 		options: PublishTeamsAppOptions,
 		state: TeamsCatalogState,
+		fingerprint: string,
 	): Promise<void> {
-		if (!state.teamsAppId || state.status === 'unknown') return;
-		try {
-			const credential = await this.botCredential(options, 'credential:update');
-			if (!credential) return;
-
-			const current = (await this.credentialsService.decrypt(credential, true)) as Record<
-				string,
-				unknown
-			>;
+		if (!options.credentialId) return;
+		// Microsoft took the package even when it has not listed it yet, so what
+		// was handed over is recorded either way.
+		const notes: Record<string, string> = { teamsAppFingerprint: fingerprint };
+		if (state.teamsAppId && state.status !== 'unknown') {
 			// Rewritten even when it says the same thing: the timestamp is what
 			// bounds it, so a re-publish has to push the window out.
-
-			const updated = {
-				...current,
-				publishedTeamsAppId: state.teamsAppId,
-				publishedTeamsAppState: state.status,
-				publishedTeamsAppAt: new Date().toISOString(),
-			};
-			const encrypted = await this.credentialsService.createEncryptedData({
-				id: credential.id,
-				name: credential.name,
-				type: credential.type,
-				data: updated,
-			});
-			await this.credentialsService.update(
-				credential.id,
-				encrypted,
-				{ kind: 'user', user: options.user },
-				updated,
-			);
-		} catch (error) {
-			// Microsoft has the app either way. Losing the note costs the user a
-			// stale step, which is not worth undoing a publish that worked.
-			this.logger.warn('[TeamsCatalog] Could not record the publish', {
-				agentId: options.agentId,
-				error: error instanceof Error ? error.message : String(error),
-			});
+			notes.publishedTeamsAppId = state.teamsAppId;
+			notes.publishedTeamsAppState = state.status;
+			notes.publishedTeamsAppAt = new Date().toISOString();
 		}
+		await this.notes.write(options.user, options.credentialId, notes);
 	}
 
 	/** What the last publish made, for when the catalogue will not say. */
