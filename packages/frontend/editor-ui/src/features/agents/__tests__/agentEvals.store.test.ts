@@ -1368,6 +1368,117 @@ describe('useAgentEvalsStore', () => {
 		});
 	});
 
+	describe.each(['rerun', 'suggestion'] as const)('%s progress', (operation) => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+		it.each([false, true])(
+			'keeps observed server progress after a request fails (recovery read fails: %s)',
+			async (readFails) => {
+				vi.useFakeTimers();
+				const old = result('c1');
+				mockRun({ results: [old], count: 1, ratings: [] });
+				const store = useAgentEvalsStore();
+				await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+				let reject!: (error: Error) => void;
+				(operation === 'rerun' ? rerunResult : applySuggestions).mockImplementation(
+					async () =>
+						await new Promise((_, fail) => {
+							reject = fail;
+						}),
+				);
+				const pending =
+					operation === 'rerun'
+						? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+						: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+				const progress = {
+					...old,
+					status: 'running' as const,
+					runAt: '2026-01-01T01:00:00.000Z',
+					output: null,
+					toolCalls: { calls: [{ tool: 'wait_for_reply', status: 'running' }] },
+				};
+				getRunDetail.mockResolvedValue(runDetail([progress], 1));
+				await vi.advanceTimersByTimeAsync(5000);
+				if (readFails) getRunDetail.mockRejectedValueOnce(new Error('offline'));
+				const rejected = expect(pending).rejects.toThrow('timeout');
+				reject(new Error('timeout'));
+				await rejected;
+				expect(store.getReview(RUN_ID).results[0]).toEqual(progress);
+				const final = {
+					...progress,
+					status: 'success' as const,
+					output: { finalText: 'Finished later' },
+				};
+				getRunDetail.mockResolvedValue(runDetail([final], 1));
+				await vi.advanceTimersByTimeAsync(5000);
+				expect(store.getReview(RUN_ID).results[0]).toEqual(final);
+				expect(vi.getTimerCount()).toBe(0);
+			},
+		);
+		it('clears previous output and polls the new attempt on a completed run, ignoring stale reads', async () => {
+			vi.useFakeTimers();
+			const old = { ...result('c1'), toolCalls: { calls: [{ tool: 'old_tool' }] } };
+			mockRun({ results: [old, result('c2')], count: 2, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			let finish!: (value: unknown) => void;
+			(operation === 'rerun' ? rerunResult : applySuggestions).mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						finish = resolve;
+					}),
+			);
+			const pending =
+				operation === 'rerun'
+					? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+					: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+			expect(store.getReview(RUN_ID).results[0]).toMatchObject({
+				status: 'running',
+				output: null,
+				toolCalls: null,
+				verdict: null,
+			});
+			// A batch refresh before the server claims the attempt must preserve the
+			// optimistic row while still updating siblings.
+			const sibling = { ...result('c2'), output: { finalText: 'Fresh sibling' } };
+			getRunDetail.mockResolvedValue(runDetail([old, sibling], 2));
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results[0].output).toBeNull();
+			expect(store.getReview(RUN_ID).results[1]).toEqual(sibling);
+			const progress = {
+				...old,
+				status: 'running' as const,
+				runAt: '2026-01-01T01:00:00.000Z',
+				output: null,
+				toolCalls: { calls: [{ tool: 'wait_for_reply', status: 'running' }] },
+			};
+			getRunDetail.mockResolvedValue(runDetail([progress], 2));
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(store.getReview(RUN_ID).results[0].toolCalls).toEqual(progress.toolCalls);
+			// A read already in flight cannot overwrite the final request response.
+			let staleRead!: (value: unknown) => void;
+			getRunDetail.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						staleRead = resolve;
+					}),
+			);
+			await vi.advanceTimersByTimeAsync(5000);
+			const final = {
+				...progress,
+				status: 'success' as const,
+				output: { finalText: 'New response' },
+			};
+			finish(operation === 'rerun' ? final : { configHash: 'new', results: [final] });
+			await pending;
+			staleRead(runDetail([progress], 2));
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(final);
+			expect(vi.getTimerCount()).toBe(0);
+		});
+	});
+
 	describe('applySuggestions', () => {
 		const failing = (id: string): AgentEvalResultRecord => ({
 			...result(id),
@@ -1501,7 +1612,9 @@ describe('useAgentEvalsStore', () => {
 			);
 			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
 			// A poll lands first and replaces the optimistic row with settled data.
-			getRunDetail.mockResolvedValue(runDetail([{ ...result('c1'), status: 'success' }], 1));
+			getRunDetail.mockResolvedValue(
+				runDetail([{ ...result('c1'), status: 'success', runAt: '2026-01-01T01:00:00.000Z' }], 1),
+			);
 			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
 
 			rejectRerun(new Error('timeout'));

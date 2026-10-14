@@ -53,15 +53,13 @@ export function toDisplayToolCalls(toolCalls: unknown): ToolCall[] {
 
 	return toolCalls.calls.filter(isPersistedToolCall).map((call, index) => ({
 		tool: call.tool,
-		// The persisted records carry no id, and this is only ever a render key.
-		// Index-prefixed so repeated calls to the same tool stay distinct.
+		// Older records carry no id. The index keeps repeated calls distinct.
 		toolCallId: typeof call.toolCallId === 'string' ? call.toolCallId : `${index}-${call.tool}`,
 		input: call.input,
 		output: call.output,
 		state: resolveState(call.error, call.status),
-		// `error` is deliberately not forwarded as `output`: the only errored
-		// records the runner writes are ledger-only entries whose message is an
-		// internal diagnostic about unattributed requests. Leaving `output` empty
+		// `error` is deliberately not forwarded as `output`: it can be an
+		// internal diagnostic about unattributed requests or interrupted execution. Leaving `output` empty
 		// makes the renderer fall back to its generic tool-error copy, which is
 		// what a reviewer should see.
 	}));
