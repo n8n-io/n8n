@@ -10,6 +10,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
+import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
@@ -146,6 +147,52 @@ describe('node type availability policy instance controller license gating', () 
 });
 
 describe('node type availability policy instance controller admin happy path', () => {
+	test.each([
+		['node-types', 'node-type-policies'],
+		['credential-types', 'credential-type-policies'],
+	])(
+		'GET attachments returns the committed version after a concurrent %s write',
+		async (kind, route) => {
+			const agent = testServer.authAgentFor(owner);
+			const configured = await agent.put(`/${route}/instance`).send({
+				rules: [],
+				defaultAction: 'allow',
+				version: 0,
+			});
+			expect(configured.statusCode).toBe(200);
+			const { scopeId, version } = configured.body.data;
+			const repository = Container.get(TypeAvailabilityPolicyScopeRepository);
+			const findScope = repository.findScopeByIdAndKind.bind(repository);
+			const findSpy = vi
+				.spyOn(repository, 'findScopeByIdAndKind')
+				.mockImplementationOnce(async (id, requestedKind, ctx) => {
+					const scope = await findScope(id, requestedKind, ctx);
+					await Container.get(TypeAvailabilityPolicyService).replaceAttachments(
+						kind,
+						scopeId,
+						[],
+						version,
+						owner.id,
+					);
+					return scope;
+				});
+
+			try {
+				const path = `/${route}/scopes/${scopeId}/attachments`;
+				const read = await agent.get(path);
+
+				expect(read.statusCode).toBe(200);
+				expect(read.body.data).toEqual({ attachments: [], version: version + 1 });
+				const updated = await agent
+					.put(path)
+					.send({ attachments: [], version: read.body.data.version });
+				expect(updated.statusCode).toBe(200);
+			} finally {
+				findSpy.mockRestore();
+			}
+		},
+	);
+
 	test('GET attachments returns rules and a version that PUT accepts without a read audit event', async () => {
 		const agent = testServer.authAgentFor(owner);
 		const rule = { id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } };
