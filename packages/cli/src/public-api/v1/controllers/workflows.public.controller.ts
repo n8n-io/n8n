@@ -123,7 +123,7 @@ function toPublicFolder(folder: Folder) {
 	};
 }
 
-function toPublicFolderSummary(folder: Folder | null | undefined) {
+function toPublicFolderSummary(folder: Folder | null) {
 	return folder
 		? { id: folder.id, name: folder.name, parentFolderId: folder.parentFolderId }
 		: null;
