@@ -14,7 +14,6 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSwitch2,
-	N8nText,
 } from '@n8n/design-system';
 import type { TeamsFileAccessCheck } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -209,9 +208,9 @@ const summary = computed(() => {
 			</N8nSettingsRow>
 			<div v-if="fileAccess || fileAccessApproved" :class="$style.fileAccess">
 				<N8nCallout v-if="fileAccess" theme="warning" data-testid="teams-file-access">
-					<N8nText size="small" bold>
+					<strong :class="$style.lead">
 						{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessNeeded') }}
-					</N8nText>
+					</strong>
 					{{ i18n.baseText(fileAccess.hint) }}
 					<template #trailingContent>
 						<N8nActionDropdown
@@ -233,9 +232,9 @@ const summary = computed(() => {
 					</template>
 				</N8nCallout>
 				<N8nCallout v-else theme="success" data-testid="teams-file-access-approved">
-					<N8nText size="small" bold>
+					<strong :class="$style.lead">
 						{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApproved') }}
-					</N8nText>
+					</strong>
 					{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApprovedHint') }}
 				</N8nCallout>
 			</div>
@@ -253,6 +252,11 @@ const summary = computed(() => {
 
 .fileAccess {
 	padding: 0 var(--spacing--sm) var(--spacing--sm);
+}
+
+/* The text's own bold is medium, which barely shows against regular text. */
+.lead {
+	font-weight: var(--font-weight--bold);
 }
 
 /*
