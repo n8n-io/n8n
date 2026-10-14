@@ -1,0 +1,35 @@
+{
+  "name": "@n8n/hooks-api",
+  "version": "0.1.0",
+  "description": "Versioned in-process contract between n8n and extensions that load into the n8n process",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "node scripts/check-api.mjs",
+    "test:unit": "node scripts/check-api.mjs",
+    "check:api": "node scripts/check-api.mjs",
+    "api:freeze": "node scripts/check-api.mjs --freeze"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}
