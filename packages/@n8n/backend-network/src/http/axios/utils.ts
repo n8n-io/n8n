@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto from 'crypto';
@@ -12,6 +13,7 @@ import {
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 import net from 'node:net';
+import { Readable } from 'node:stream';
 
 import { hasProxyEnvironmentVariables } from '../../proxy/proxy-resolution';
 import type { SsrfBridge } from '../../ssrf';
@@ -230,21 +232,29 @@ const pushFormDataValue = (form: FormData, key: string, value: any) => {
 };
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
+const streamOfFormDataValue = (value: unknown) => {
+	if (value instanceof Readable) return value;
+	if (isRecord(value) && 'options' in value && value.value instanceof Readable) return value.value;
+	return undefined;
+};
+
 /** Converts a plain object into a `FormData` instance, handling arrays and option objects. */
 export const createFormDataObject = (data: Record<string, unknown>) => {
 	const formData = new FormData();
+	const streams: Readable[] = [];
 	const keys = Object.keys(data);
 	keys.forEach((key) => {
 		const formField = data[key];
+		const values: unknown[] = formField instanceof Array ? formField : [formField];
 
-		if (formField instanceof Array) {
-			formField.forEach((item) => {
-				pushFormDataValue(formData, key, item);
-			});
-		} else {
-			pushFormDataValue(formData, key, formField);
-		}
+		values.forEach((value) => {
+			pushFormDataValue(formData, key, value);
+			const stream = streamOfFormDataValue(value);
+			if (stream) streams.push(stream);
+		});
 	});
+	// `FormData.destroy()` drops the appended streams without destroying them.
+	formData.once('close', () => streams.forEach((stream) => stream.destroy()));
 	return formData;
 };
 

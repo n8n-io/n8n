@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { HttpRequestConfig, type SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, type IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
@@ -485,5 +485,68 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				expect(Date.now() - start).toBeLessThan(3000);
 			},
 		);
+	});
+
+	describe('stream request bodies', () => {
+		let refusedUrl: string;
+
+		beforeAll(async () => {
+			nock.enableNetConnect('127.0.0.1');
+			const closed = createServer();
+			await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve));
+			refusedUrl = `http://127.0.0.1:${(closed.address() as AddressInfo).port}/upload`;
+			await new Promise<void>((resolve) => closed.close(() => resolve()));
+		});
+
+		afterAll(() => {
+			nock.disableNetConnect();
+		});
+
+		/** Sends one chunk and then waits, like a large file that is still being read when the request fails. */
+		const pendingStream = () => {
+			let sent = false;
+			return new Readable({
+				read() {
+					if (sent) return;
+					sent = true;
+					this.push(Buffer.alloc(1024));
+				},
+			});
+		};
+
+		const sendLegacy = async (options: IRequestOptions) =>
+			await makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' }).requestLegacy(options);
+
+		it.each([
+			{
+				name: 'a binary body',
+				send: async (stream: Readable) =>
+					await sendLegacy({ url: refusedUrl, method: 'POST', body: stream }),
+			},
+			{
+				name: 'a multipart body',
+				send: async (stream: Readable) =>
+					await sendLegacy({
+						url: refusedUrl,
+						method: 'POST',
+						formData: {
+							file: { value: stream, options: { filename: 'file.bin', knownLength: 1024 } },
+						},
+					}),
+			},
+			{
+				name: 'a binary body of httpRequest',
+				send: async (stream: Readable) =>
+					await makeFacade()
+						.requests({ useDefaultSsrfPolicy: 'unsafe' })
+						.request({ url: refusedUrl, method: 'POST', body: stream }),
+			},
+		])('should destroy the stream of $name when the request fails', async ({ send }) => {
+			const stream = pendingStream();
+
+			await expect(send(stream)).rejects.toThrow(/ECONNREFUSED/);
+
+			expect(stream.destroyed).toBe(true);
+		});
 	});
 });

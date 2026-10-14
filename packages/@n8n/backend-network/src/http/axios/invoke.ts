@@ -1,10 +1,26 @@
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
+import { Readable } from 'node:stream';
 
-import { digestAuthAxiosConfig } from './utils';
+import { digestAuthAxiosConfig, isFormDataInstance } from './utils';
 import { HttpResponseSizeLimitError } from '../response-size-limit.error';
 
 export async function invokeAxios(axiosConfig: AxiosRequestConfig, authSendImmediately?: boolean) {
+	const body: unknown = axiosConfig.data;
+	try {
+		return await invokeWithChallengeAuth(axiosConfig, authSendImmediately);
+	} catch (error) {
+		// Axios does not destroy a stream body when the request fails. An unread file
+		// stream then holds its file handle until garbage collection.
+		if (body instanceof Readable || isFormDataInstance(body)) body.destroy();
+		throw error;
+	}
+}
+
+async function invokeWithChallengeAuth(
+	axiosConfig: AxiosRequestConfig,
+	authSendImmediately?: boolean,
+) {
 	// For challenge-response schemes (sendImmediately === false, e.g. Digest), the first
 	// request must go out unauthenticated so the server issues its challenge. Withhold the
 	// credentials here and keep a copy to answer the challenge with.
