@@ -1,6 +1,8 @@
 import type { namedTypes } from 'ast-types';
 import { DateTime } from 'luxon';
 
+import { ExpressionExtensions } from '../../extensions';
+
 // The closed subset grammar, its operator and method allowlists, and the
 // limits the parser and the evaluator share. See index.ts for the overview.
 
@@ -239,6 +241,55 @@ export const CALLABLE_METHODS = new Set([
 	...NUMBER_METHODS.keys(),
 	...ARRAY_METHODS.keys(),
 ]);
+
+// Expression extensions the native path hands to extend(), the host dispatch
+// the legacy engine calls for them too. The vm and quickjs engines run the
+// copy under @n8n/expression-runtime inside the isolate; the two copies are
+// kept equal except where a Web API is unavailable in the isolate, and those
+// names are excluded here. Pure functions of JSON receiver and arguments,
+// linear in the receiver, so the content weight charged below bounds them.
+// The runtime receiver still picks the implementation (a date string's
+// isEmpty() is the Date extension's), and a non-JSON result bails to the
+// engine.
+const EXCLUDED_EXTENSIONS = new Set([
+	// A Luxon or Date value has no representation here; a random result has
+	// no parity. The Date extensions are left out as a whole below.
+	'toDate',
+	'toDateTime',
+	'randomItem',
+	// A negative size loops forever; the engines kill it, this thread cannot.
+	'chunk',
+	// Quadratic: deep equality per pair, regex backtracking per position, the
+	// tail rebuilt per sentence, or the accumulator copied per element. The
+	// engine's timeout owns those.
+	'unique',
+	'removeDuplicates',
+	'isEmail',
+	'extractEmail',
+	'extractDomain',
+	'removeMarkdown',
+	'toSentenceCase',
+	'isUrl',
+	'isDomain',
+	'merge',
+	// Builds a regex from its argument: the safe-regex budget is per call,
+	// and an iterator repeats the call per element.
+	'quote',
+	// Spread into Math.min/max: the engines overflow at sizes under the cap.
+	'min',
+	'max',
+	// The in-isolate copy diverges: Intl.NumberFormat, URL, URLSearchParams
+	// and TextDecoder are not available there.
+	'format',
+	'extractUrlPath',
+	'urlEncode',
+	'base64Decode',
+]);
+export const EXTENSION_METHODS: ReadonlySet<string> = new Set(
+	ExpressionExtensions.filter((extension) => extension.typeName !== 'Date')
+		.flatMap((extension) => Object.keys(extension.functions))
+		.filter((name) => !EXCLUDED_EXTENSIONS.has(name)),
+);
 
 // The engine evaluates under a timeout and a memory limit; this interpreter
 // has neither. A string or array result above this length is handed to the

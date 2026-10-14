@@ -32,6 +32,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-integrations.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
+		await import('./agent-whatsapp-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
 		await import('./agent-sandbox.controller.js');
@@ -98,7 +99,7 @@ export class AgentsModule implements ModuleInterface {
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
 		const { WhatsAppIntegration } = await import(
-			'./integrations/platforms/whatsapp-integration.js'
+			'./integrations/platforms/whatsapp/whatsapp-integration.js'
 		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
@@ -210,7 +211,14 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentInterruptedExecutionSweepTask } = await import(
 			'./agent-interrupted-execution-sweep.task.js'
 		);
-		return [AgentCheckpointPruningTask, AgentInterruptedExecutionSweepTask];
+		const { AgentChannelMediaRetentionTask } = await import(
+			'./agent-channel-media-retention.task.js'
+		);
+		return [
+			AgentCheckpointPruningTask,
+			AgentInterruptedExecutionSweepTask,
+			AgentChannelMediaRetentionTask,
+		];
 	}
 
 	async settings() {

@@ -740,6 +740,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
 			channelReconcileIntervalSeconds: 60,
+			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
 
