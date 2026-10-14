@@ -8,6 +8,10 @@ describe('app route scopes', () => {
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const routes = metadata.getControllerMetadata(AppsController as never).routes;
 
+	it('registers all app CRUD routes', () => {
+		expect([...routes.keys()].sort()).toEqual(['create', 'delete', 'get', 'list', 'update']);
+	});
+
 	it.each([...routes])('%s requires a project app scope', (_name, route) => {
 		expect(route.skipAuth).not.toBe(true);
 		expect(route.accessScope?.globalOnly).toBe(false);
