@@ -207,6 +207,20 @@ describe('validateAuth', () => {
 				expect(mockContext.establishTriggerIdentity).not.toHaveBeenCalled();
 			});
 
+			it('carries the challenge that names the resource metadata on the 401', async () => {
+				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'not-a-token' });
+				mockContext.validateN8nOAuth2Token.mockResolvedValue({
+					valid: false,
+					reason: 'invalid_token',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+			});
+
 			it('should throw 401 when the resource URL cannot be resolved', async () => {
 				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'as-token' });
 				mockContext.getWebhookResourceUrl.mockReturnValue(undefined);
@@ -337,6 +351,37 @@ describe('establishChatSessionIdentity', () => {
 		);
 		// Redirects to the plain top-level URL — never to the inner-frame URL, which
 		// would render editor-ui/the AS callback inside the sandboxed frame.
+		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
+			Location: '/webhook/abc/chat',
+		});
+	});
+
+	it('sets no refresh cookie when the issuer granted no refresh token', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			query: { code: 'auth-code', state: 'flow-state' },
+			headers: {},
+			originalUrl: '/webhook/abc/chat?code=auth-code&state=flow-state',
+		} as never);
+		mockContext.completeN8nOAuth2Flow.mockResolvedValue({
+			valid: true,
+			token: 'as-token',
+			expiresIn: 3600,
+			user,
+		});
+
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
+
+		expect(result).toBeNull();
+		expect(mockContext.getResponseObject().cookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			expect.stringContaining('as-token'),
+			expect.anything(),
+		);
+		expect(mockContext.getResponseObject().cookie).not.toHaveBeenCalledWith(
+			'n8n-chat-oauth-refresh',
+			expect.anything(),
+			expect.anything(),
+		);
 		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
 			Location: '/webhook/abc/chat',
 		});

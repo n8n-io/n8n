@@ -11,11 +11,12 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
 import {
-	WEBHOOK_TRIGGER_SCOPES,
+	acceptedTrustedSourceIds,
 	methodQueryString,
 	parseMethodParam,
 	trimSlashes,
 	trimTrailingSlash,
+	WEBHOOK_TRIGGER_SCOPES,
 	webhookAllowsBrowserFlow,
 	webhookPathFromResourceUrl,
 	webhookResourcePath,
@@ -170,6 +171,7 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				// them; cross-trigger replay stays impossible because the list is built
 				// only from rows sharing this (workflowId, node).
 				getAudiences: () => audiences,
+				getAcceptedSourceIds: () => acceptedTrustedSourceIds(node),
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
 				...(webhookAllowsBrowserFlow(node, requestedMethod) && { isFirstParty: true }),

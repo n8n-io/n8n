@@ -5,8 +5,9 @@ import type { TrustedSourceConfigInput } from '@n8n/inbound-auth';
 
 import { TrustedSourceDbStore } from './trusted-source.store';
 
-// Only the seeder uses these. Pipeline code must not compare a source id or name with them: the
-// system source is a plain oauth2 source to every surface.
+// The seeder writes these, and a trigger node without a `trustedSource` parameter defaults to the
+// id. Pipeline code must not compare a source id or name with them: the system source is a plain
+// oauth2 source to every surface.
 export const SYSTEM_TRUSTED_SOURCE_ID = 'n8n-internal';
 export const SYSTEM_TRUSTED_SOURCE_NAME = 'n8n';
 export const SYSTEM_TRUSTED_SOURCE_CONFIG = {
