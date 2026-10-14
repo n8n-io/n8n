@@ -2,6 +2,7 @@ import {
 	createTestMigrationContext,
 	initDbUpToMigration,
 	runSingleMigration,
+	undoLastSingleMigration,
 	type TestMigrationContext,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
@@ -147,4 +148,71 @@ describe.skipIf(isSqlite)('ExpandNodeIdColumns migration', () => {
 			);
 		},
 	);
+
+	async function readColumnTypes(): Promise<string[]> {
+		return await withContext(async (context) => {
+			const typeOf = async (table: string, column: string) => {
+				const [{ type }]: Array<{ type: string }> = await context.runQuery(
+					`SELECT format_type(atttypid, atttypmod) AS "type" FROM pg_attribute
+					 WHERE attrelid = to_regclass(:table) AND attname = :column`,
+					{ table: context.escape.tableName(table), column },
+				);
+				return type;
+			};
+			return [
+				await typeOf('workflow_publication_trigger_status', 'nodeId'),
+				await typeOf('poller_state', 'nodeId'),
+				await typeOf('scheduled_job', 'ownerMemberId'),
+			];
+		});
+	}
+
+	const varchar = (length: number) => Array(3).fill(`character varying(${length})`);
+
+	describe('down', () => {
+		it('narrows the columns back to 36 characters and keeps rows that fit', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			const uuidLengthId = 'u'.repeat(36);
+			await insertNodeIdRows(uuidLengthId);
+
+			await undoLastSingleMigration();
+
+			expect(await readColumnTypes()).toEqual(varchar(36));
+			expect(await readNodeIds()).toEqual({
+				triggerStatus: [uuidLengthId],
+				pollerState: [uuidLengthId],
+				scheduledJob: [uuidLengthId],
+			});
+			await expect(insertInto.pollerState('n'.repeat(37))).rejects.toThrow(
+				'value too long for type character varying(36)',
+			);
+		});
+
+		it('lets the migration run again after a revert', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			await undoLastSingleMigration();
+
+			await runSingleMigration(MIGRATION_NAME);
+
+			expect(await readColumnTypes()).toEqual(varchar(64));
+		});
+
+		it('refuses to narrow, and changes nothing, when a column holds an id longer than 36 characters', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			const longNodeId = 'n'.repeat(50);
+			await insertInto.pollerState(longNodeId);
+			await insertInto.scheduledJob(longNodeId);
+
+			await expect(undoLastSingleMigration()).rejects.toThrow(
+				'Cannot narrow node id columns to 36 characters, because these columns hold longer ids: poller_state.nodeId (1 rows), scheduled_job.ownerMemberId (1 rows).',
+			);
+
+			expect(await readColumnTypes()).toEqual(varchar(64));
+			expect(await readNodeIds()).toEqual({
+				triggerStatus: [],
+				pollerState: [longNodeId],
+				scheduledJob: [longNodeId],
+			});
+		});
+	});
 });
