@@ -1,9 +1,7 @@
 # Every n8n image build uses this file. `pnpm build:docker` and CI both drive
 # these targets, so a pin changed here changes both.
 
-variable "NODE_VERSION" { default = "26.10.0" }
-# The Debian track pins its own Node version; see docker/images/n8n/Dockerfile.debian.
-variable "NODE_DEBIAN_VERSION" { default = "26.11.1" }
+variable "NODE_VERSION" { default = "26.11.1" }
 variable "N8N_VERSION" { default = "snapshot" }
 variable "N8N_RELEASE_TYPE" { default = "dev" }
 
@@ -24,7 +22,7 @@ variable "PC_RUNTIME_IMAGE" {
 }
 
 variable "DHI_REF" {
-  default = "dhi.io/node:26.10.0-alpine3.24-dev@sha256:8da859df5dc853c923ace53c4cfe994a909a28917f7fcfc8508869beab8cf132"
+  default = "dhi.io/node:26.11.1-alpine3.24-dev@sha256:b45c7e88727f7d9431cee5e320b72a89a076c40225313671c189250ea0402319"
 }
 
 variable "N8N_TAGS" { default = "" }
@@ -85,7 +83,6 @@ target "n8n-debian" {
   inherits   = ["_app"]
   dockerfile = "docker/images/n8n/Dockerfile.debian"
   tags       = tags(N8N_DEBIAN_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}-debian")
-  args       = { NODE_VERSION = NODE_DEBIAN_VERSION }
 }
 
 target "runners" {
@@ -117,7 +114,7 @@ target "base" {
 target "base-debian" {
   inherits   = ["_context"]
   dockerfile = "docker/images/n8n-base/Dockerfile.debian"
-  tags       = tags(BASE_DEBIAN_TAGS, "n8nio/base:${NODE_DEBIAN_VERSION}-debian")
+  tags       = tags(BASE_DEBIAN_TAGS, "n8nio/base:${NODE_VERSION}-debian")
 }
 
 group "default" { targets = ["n8n", "runners"] }

@@ -3,7 +3,7 @@
 #
 # CI passes the DHI reference (see build-base-image.yml). The default keeps
 # plain `docker build` working.
-ARG DHI_REF=dhi.io/node:26.11.1-debian13-dev@sha256:67027a4f08a737750f5a6820968599c20b3d987cbc84ab826ebfbd7ae05c7f09
+ARG DHI_REF=dhi.io/node:26.11.1-debian13-dev@sha256:be69febce9bc4c7546c4164a352dcff58b44c9172f70b31ab5e478e085e18167
 
 # The DHI Debian mirror has no msttcorefonts installer, so take the same fonts
 # as the Alpine base from Alpine. They are data files: any platform will do.
@@ -16,8 +16,9 @@ FROM ${DHI_REF}
 
 COPY --from=fonts /usr/share/fonts/truetype/msttcorefonts /usr/share/fonts/truetype/msttcorefonts
 
-# git, openssl and ca-certificates come with the DHI base. No `apt-get
-# upgrade`: patched packages come from a bump of the pinned DHI digest.
+# git comes with the DHI base. No `apt-get upgrade`: patched packages come
+# from a bump of the pinned DHI digest. The DHI base also has the librdkafka
+# libraries and ca-certificates today; name them so a DHI bump cannot drop them.
 # libaio is the kernel AIO shim that vendor database clients (Oracle Instant
 # Client) load; they look for the pre-time64 name, so give it that symlink.
 RUN apt-get update && \
@@ -26,7 +27,10 @@ RUN apt-get update && \
         openssh-client \
         graphicsmagick \
         tini \
-        tzdata && \
+        tzdata \
+        # Runtime libraries of the librdkafka that the n8n image bundles
+        libsasl2-2 libssl3t64 liblz4-1 libzstd1 libxxhash0 zlib1g \
+        ca-certificates && \
     for f in /usr/lib/*-linux-gnu/libaio.so.1t64; do ln -s "$(basename "$f")" "${f%t64}"; done && \
     # Drop what n8n does not use: yarn, corepack, and the full perl that only
     # optional git subcommands need (perl-base stays for c_rehash). Then drop
