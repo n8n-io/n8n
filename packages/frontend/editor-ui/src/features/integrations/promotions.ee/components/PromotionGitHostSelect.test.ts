@@ -79,7 +79,7 @@ it('shows a saved URL outside the browse page without searching for it', async (
 	expect(api.fetchPromotionRepositories).toHaveBeenCalledExactlyOnceWith(
 		expect.anything(),
 		'gitlab-1',
-		{ search: undefined, cursor: undefined, limit: 100 },
+		{ search: undefined, cursor: undefined, limit: 25 },
 	);
 	expect(emitted('selected')).toBeUndefined();
 	expect(emitted('update:modelValue')).toBeUndefined();
@@ -132,11 +132,11 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 		onClick.mockClear();
 		await userEvent.click(await screen.findByRole('button', { name: 'Retry' }));
 		await waitFor(() => expect(requests()).toHaveLength(3));
-		expect(requests()[1]).toEqual({ search: 'team', cursor: undefined, limit: 100 });
+		expect(requests()[1]).toEqual({ search: 'team', cursor: undefined, limit: 25 });
 		expect(requests()[2]).toEqual(requests()[1]);
 		await userEvent.click(await screen.findByRole('button', { name: 'Load more' }));
 		await waitFor(() => expect(requests()).toHaveLength(4));
-		expect(requests()[3]).toEqual({ search: 'team', cursor: 'filtered-next', limit: 100 });
+		expect(requests()[3]).toEqual({ search: 'team', cursor: 'filtered-next', limit: 25 });
 		await userEvent.click(await screen.findByRole('button', { name: 'Retry' }));
 		await waitFor(() => expect(requests()).toHaveLength(5));
 		expect(requests()[4]).toEqual(requests()[3]);

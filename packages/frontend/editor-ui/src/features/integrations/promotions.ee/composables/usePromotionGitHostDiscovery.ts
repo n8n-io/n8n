@@ -36,7 +36,7 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 		error.value = undefined;
 		failedCursor = cursor;
 		try {
-			const query = { search: search.value || undefined, cursor, limit: 100 };
+			const query = { search: search.value || undefined, cursor, limit: 25 };
 			let pageOptions: DiscoveryOption[];
 			let continuation: string | null;
 			if (context.kind === 'repository') {
