@@ -307,6 +307,17 @@ describe('WorkflowsView', () => {
 			);
 		});
 
+		it('should not replace the route when the query is already in sync', async () => {
+			// A redundant replace cancels a navigation in flight, e.g. a sidebar click while the list loads
+			const replaceSpy = vi.spyOn(router, 'replace');
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(replaceSpy).not.toHaveBeenCalled();
+			replaceSpy.mockRestore();
+		});
+
 		it('should set search filter based on query parameters', async () => {
 			await router.replace({ query: { search: 'one' } });
 

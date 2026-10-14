@@ -96,6 +96,7 @@ import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
@@ -1028,6 +1029,12 @@ const onClickTag = async (tagId: string) => {
 
 // Query string methods
 
+const replaceQuery = (query: LocationQueryRaw) => {
+	// Even a no-op replace cancels a pending navigation, e.g. a sidebar click while the list loads
+	if (isEqual(query, route.query)) return;
+	void router.replace({ query });
+};
+
 const saveFiltersOnQueryString = () => {
 	// Get current query parameters
 	const currentQuery = { ...route.query };
@@ -1063,9 +1070,7 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.homeProject;
 	}
 
-	void router.replace({
-		query: Object.keys(currentQuery).length ? currentQuery : undefined,
-	});
+	replaceQuery(currentQuery);
 };
 
 const setFiltersFromQueryString = async () => {
@@ -1139,7 +1144,7 @@ const setFiltersFromQueryString = async () => {
 		filters.value.showArchived = false;
 	}
 
-	void router.replace({ query: newQuery });
+	replaceQuery(newQuery);
 };
 
 // Misc methods
