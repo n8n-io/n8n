@@ -10,7 +10,7 @@ import type { Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import { AiPreferenceService, renderAiPreferencesBlock } from '@n8n/backend-services';
 
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';

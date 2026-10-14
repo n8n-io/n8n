@@ -4,8 +4,7 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { ResponseError, ConflictError, ForbiddenError } from '@n8n/errors';
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
-import type { AiPreferenceService } from '@/services/ai-preference.service';
+import { AiPreferenceScopeFullError, type AiPreferenceService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 /**

@@ -12,7 +12,7 @@ import { AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
+import { AiPreferenceScopeFullError } from '../../errors/response-errors/ai-preference-scope-full.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
@@ -23,7 +23,7 @@ import {
 	groupAiPreferences,
 	renderAiPreferences,
 	renderAiPreferencesBlock,
-} from '@/services/ai-preference.service';
+} from '../ai-preference.service';
 
 /**
  * A saved preference now carries its id. Rendering ignores the id, so these fixtures derive one

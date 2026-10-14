@@ -1816,6 +1816,8 @@ import {
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
 	type RoleService,
+	AiPreferenceScopeFullError,
+	type AiPreferenceService,
 } from '@n8n/backend-services';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -1826,7 +1828,6 @@ import {
 	WorkflowSaveConflictError,
 } from '@n8n/instance-ai/errors';
 import type { WorkflowService } from '@/workflows/workflow.service';
-import { AiPreferenceScopeFullError } from '@/errors/response-errors/ai-preference-scope-full.error';
 import {
 	BadRequestError,
 	ConflictError,
@@ -1836,7 +1837,6 @@ import {
 	NotFoundError,
 } from '@n8n/errors';
 import type { License } from '@/license';
-import type { AiPreferenceService } from '@/services/ai-preference.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';

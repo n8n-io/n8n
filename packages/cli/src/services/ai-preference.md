@@ -192,7 +192,7 @@ as removed, so the list the user sees stays the list the turn carried.
 See
 [the streaming protocol](../../../@n8n/instance-ai/docs/streaming-protocol.md#preferences-applied)
 for the frame, and `buildAppliedPreferencesPayload` in
-[`ai-preference.service.ts`](./ai-preference.service.ts) for the mapping.
+[`ai-preference.service.ts`](../../../@n8n/backend-services/src/services/ai-preference.service.ts) for the mapping.
 
 ## Telemetry
 
