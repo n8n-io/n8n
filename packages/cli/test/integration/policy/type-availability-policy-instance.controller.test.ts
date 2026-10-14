@@ -508,7 +508,6 @@ describe('node type availability policy instance controller admin happy path', (
 		expect(response.statusCode).toBe(409);
 	});
 
-	// GOV-181: A write from an old read must preserve the attachments saved by another admin.
 	test('PUT /scopes/:scopeId/attachments with a stale version returns 409 and writes nothing', async () => {
 		const agent = testServer.authAgentFor(owner);
 		const instance = await agent
@@ -539,15 +538,15 @@ describe('node type availability policy instance controller admin happy path', (
 			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
 			.send({ attachments: [], version });
 
-		expect.soft(stale.statusCode).toBe(409);
+		expect(stale.statusCode).toBe(409);
 		const persisted = await agent.get('/node-type-policies/instance');
 		expect(persisted.statusCode).toBe(200);
-		expect.soft(persisted.body.data.version).toBe(first.body.data.version);
-		expect.soft(persisted.body.data.rules).toEqual([rule]);
+		expect(persisted.body.data.version).toBe(first.body.data.version);
+		expect(persisted.body.data.rules).toEqual([rule]);
 		const attachments = await Container.get(
 			TypeAvailabilityPolicyAttachmentRepository,
 		).listAttachmentsForScope(scopeId, {});
-		expect.soft(attachments).toEqual([{ ...attachment, rules: [rule] }]);
+		expect(attachments).toEqual([{ ...attachment, rules: [rule] }]);
 	});
 
 	test('PUT /scopes/:scopeId/attachments persists and fires an audit event', async () => {

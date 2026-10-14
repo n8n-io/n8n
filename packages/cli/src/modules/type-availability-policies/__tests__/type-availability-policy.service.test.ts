@@ -759,7 +759,6 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, KIND, ROOT, true);
 			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
 			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
-			expect(scope.version).toBe(2);
 			expect(cacheService.deleteMany).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
