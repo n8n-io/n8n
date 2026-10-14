@@ -7,6 +7,7 @@ import type {
 	LoadedClass,
 	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
+import { splitNodeTypeName } from 'n8n-workflow';
 import path from 'node:path';
 
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from '../dist/errors';
@@ -98,7 +99,7 @@ export class LoadNodesAndCredentials {
 			return directNode;
 		}
 
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = splitNodeTypeName(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {

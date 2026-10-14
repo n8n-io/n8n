@@ -17,7 +17,13 @@ import type {
 	KnownNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import { isExpression, isSubNodeType, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	isExpression,
+	isSubNodeType,
+	splitNodeTypeName,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import { readdirSync, realpathSync } from 'node:fs';
 import * as path from 'path';
 
@@ -142,7 +148,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 
 	protected extractNodeTypes(fullNodeTypes: string[], packageName: string): string[] {
 		return fullNodeTypes
-			.map((fullNodeType) => fullNodeType.split('.'))
+			.map((fullNodeType) => splitNodeTypeName(fullNodeType))
 			.filter(([pkg]) => pkg === packageName)
 			.map(([_, nodeType]) => nodeType);
 	}

@@ -1,4 +1,5 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { splitNodeTypeName } from 'n8n-workflow';
 
 import type {
 	PolicyAction,
@@ -44,11 +45,13 @@ export type PackageResolver = (typeName: string) => string | null;
 
 /**
  * The `node-types` resolver: a full node type name is always `<packageName>.<nodeName>`, so
- * the package is the segment before the first dot. A credential type name carries no such
+ * the package is everything before the last dot (a package name may contain dots, a node name
+ * never does). A credential type name carries no such
  * prefix and needs a different resolver — see `credentialTypePackageResolver` in
  * `package-resolver.ts`.
  */
-export const nodeTypePackageResolver: PackageResolver = (typeName) => typeName.split('.')[0];
+export const nodeTypePackageResolver: PackageResolver = (typeName) =>
+	splitNodeTypeName(typeName)[0];
 
 /** `ancestors` lists what a credential type is built on through `extends`; empty for node types. */
 export type PolicedType = {
