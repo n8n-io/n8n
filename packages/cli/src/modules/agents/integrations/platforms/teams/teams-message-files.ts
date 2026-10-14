@@ -104,6 +104,33 @@ const MESSAGE_ACCESS_DENIED =
 const FOREIGN_FILE =
 	"the file is not in this channel's files and the sender does not own it, so the agent does not read it";
 
+interface DriveFolder {
+	driveId: string;
+	path: string;
+}
+
+/** Graph may percent-encode a path, but never a name, so both sides are compared decoded. */
+function decodedPath(path: string): string {
+	try {
+		return decodeURIComponent(path);
+	} catch {
+		return path;
+	}
+}
+
+/** Where Graph puts a drive item: its drive, and the path of its parent folder. */
+function locationOf(item: unknown): DriveFolder | undefined {
+	if (!isRecord(item)) return;
+	const driveId = stringProperty(item.parentReference, 'driveId');
+	const path = stringProperty(item.parentReference, 'path');
+	return driveId && path ? { driveId, path: decodedPath(path) } : undefined;
+}
+
+function isInside(item: DriveFolder | undefined, folder: DriveFolder | undefined): boolean {
+	if (!item || !folder || item.driveId !== folder.driveId) return false;
+	return item.path === folder.path || item.path.startsWith(`${folder.path}/`);
+}
+
 async function getOrExplain(
 	http: GraphHttp,
 	url: string,
@@ -126,21 +153,22 @@ const DOWNLOAD = {
 /**
  * The app token reads every file in the tenant, but a message can reference
  * any file. So only a file the conversation already holds is read: one in the
- * channel's files folder, or one the sender owns and chose to share.
+ * channel's files folder, or one the sender owns and chose to share. The rest
+ * of the team's library can have stricter permissions than the channel.
  */
 async function downloadSharedFile(
 	http: GraphHttp,
 	contentUrl: string,
-	channelDriveId: () => Promise<string | undefined>,
+	channelFolder: () => Promise<DriveFolder | undefined>,
 	senderId: string | undefined,
 ): Promise<Buffer> {
-	const [item, channelDrive] = await Promise.all([
+	const [item, folder] = await Promise.all([
 		getOrExplain(
 			http,
 			`${GRAPH_V1}/shares/${shareIdOf(contentUrl)}/driveItem?$select=id,parentReference`,
 			FILE_ACCESS_DENIED,
 		),
-		channelDriveId(),
+		channelFolder(),
 	]);
 	const itemId = stringProperty(item, 'id');
 	const driveId = isRecord(item) ? stringProperty(item.parentReference, 'driveId') : undefined;
@@ -160,7 +188,7 @@ async function downloadSharedFile(
 			stringProperty(drive.owner.user, 'id') === senderId
 		);
 	};
-	if (channelDrive !== driveId && !(await ownedBySender())) {
+	if (!isInside(locationOf(item), folder) && !(await ownedBySender())) {
 		throw new InboundAttachmentAccessError(FOREIGN_FILE);
 	}
 
@@ -182,16 +210,18 @@ export async function fetchTeamsMessageFiles(
 	const message = await getOrExplain(http, `${GRAPH_V1}${paths.message}`, MESSAGE_ACCESS_DENIED);
 	if (!isRecord(message)) return [];
 	const senderId = isRecord(message.from) ? stringProperty(message.from.user, 'id') : undefined;
-	let channelDrive: Promise<string | undefined> | undefined;
-	const channelDriveId = async () =>
-		await (channelDrive ??= paths.filesFolder
+	let folder: Promise<DriveFolder | undefined> | undefined;
+	const channelFolder = async () =>
+		await (folder ??= paths.filesFolder
 			? getOrExplain(
 					http,
-					`${GRAPH_V1}${paths.filesFolder}?$select=parentReference`,
+					`${GRAPH_V1}${paths.filesFolder}?$select=name,parentReference`,
 					FILE_ACCESS_DENIED,
-				).then((folder) =>
-					isRecord(folder) ? stringProperty(folder.parentReference, 'driveId') : undefined,
-				)
+				).then((found) => {
+					const parent = locationOf(found);
+					const name = stringProperty(found, 'name');
+					return parent && name ? { ...parent, path: `${parent.path}/${name}` } : undefined;
+				})
 			: Promise.resolve(undefined));
 
 	const files: Attachment[] = [];
@@ -202,7 +232,7 @@ export async function fetchTeamsMessageFiles(
 			type: 'file',
 			name: stringProperty(attachment, 'name'),
 			url: contentUrl,
-			fetchData: async () => await downloadSharedFile(http, contentUrl, channelDriveId, senderId),
+			fetchData: async () => await downloadSharedFile(http, contentUrl, channelFolder, senderId),
 		});
 	}
 

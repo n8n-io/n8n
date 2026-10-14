@@ -44,15 +44,21 @@ function graphRouting(routes: Record<string, unknown>) {
 	return { http: { get }, get };
 }
 
-/** A message sharing one file, which lives in drive `drive-1`. */
+const DRIVE_ROOT = '/drives/drive-1/root:';
+const inDrive = (driveId: string, path: string) => ({ parentReference: { driveId, path } });
+
+/** A message sharing one file, which lives in the files folder of channel `General`. */
 function sharedFileRoutes(overrides: Record<string, unknown> = {}) {
 	return {
 		[ROOT_PATH]: {
 			from: { user: { id: 'sender-1' } },
 			attachments: [{ contentType: 'reference', contentUrl: CONTENT_URL, name: 'plan.pdf' }],
 		},
-		[`/shares/${SHARE_ID}/driveItem`]: { id: 'item-1', parentReference: { driveId: 'drive-1' } },
-		[`${CHANNEL_PATH}/filesFolder`]: { parentReference: { driveId: 'drive-1' } },
+		[`/shares/${SHARE_ID}/driveItem`]: {
+			id: 'item-1',
+			...inDrive('drive-1', `${DRIVE_ROOT}/General`),
+		},
+		[`${CHANNEL_PATH}/filesFolder`]: { name: 'General', ...inDrive('drive-1', DRIVE_ROOT) },
 		'/drives/drive-1/items/item-1/content': FILE_BYTES,
 		...overrides,
 	};
@@ -99,10 +105,46 @@ describe('fetchTeamsMessageFiles', () => {
 		);
 	});
 
+	it('downloads a file from a folder inside the channel files', async () => {
+		const { http } = graphRouting(
+			sharedFileRoutes({
+				[`/shares/${SHARE_ID}/driveItem`]: {
+					id: 'item-1',
+					...inDrive('drive-1', `${DRIVE_ROOT}/General/Specs%202026`),
+				},
+			}),
+		);
+
+		const [file] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
+
+		expect(await file.fetchData?.()).toEqual(FILE_BYTES);
+	});
+
+	it.each([
+		['another channel', `${DRIVE_ROOT}/Marketing`],
+		['a folder that only starts like the channel', `${DRIVE_ROOT}/General Archive`],
+		['the library root', DRIVE_ROOT],
+	])('refuses a file in %s of the same library', async (_, path) => {
+		const { http, get } = graphRouting(
+			sharedFileRoutes({
+				[`/shares/${SHARE_ID}/driveItem`]: { id: 'item-1', ...inDrive('drive-1', path) },
+				'/drives/drive-1?': { owner: { group: { id: TEAM } } },
+			}),
+		);
+
+		const [file] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
+
+		await expect(file.fetchData?.()).rejects.toBeInstanceOf(InboundAttachmentAccessError);
+		expect(get).not.toHaveBeenCalledWith(expect.stringContaining('/content'), expect.anything());
+	});
+
 	it("downloads a file from the sender's own drive", async () => {
 		const { http } = graphRouting(
 			sharedFileRoutes({
-				[`${CHANNEL_PATH}/filesFolder`]: { parentReference: { driveId: 'team-drive' } },
+				[`${CHANNEL_PATH}/filesFolder`]: {
+					name: 'General',
+					...inDrive('team-drive', '/drives/team-drive/root:'),
+				},
 				'/drives/drive-1?': { owner: { user: { id: 'sender-1' } } },
 			}),
 		);
@@ -115,7 +157,10 @@ describe('fetchTeamsMessageFiles', () => {
 	it('refuses a file that is neither in the conversation nor owned by the sender', async () => {
 		const { http, get } = graphRouting(
 			sharedFileRoutes({
-				[`${CHANNEL_PATH}/filesFolder`]: { parentReference: { driveId: 'team-drive' } },
+				[`${CHANNEL_PATH}/filesFolder`]: {
+					name: 'General',
+					...inDrive('team-drive', '/drives/team-drive/root:'),
+				},
 				'/drives/drive-1?': { owner: { user: { id: 'someone-else' } } },
 			}),
 		);
