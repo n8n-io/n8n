@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import { STORES } from '@n8n/stores';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { TIME } from '@/app/constants';
@@ -78,6 +79,8 @@ const RUN_POLL_INTERVAL_MS = 5 * TIME.SECOND;
 const RUN_POLL_TIMEOUT_MS = 10 * TIME.MINUTE;
 /** One failed poll is a blip worth retrying; a sustained run of them means we've lost the run. */
 const RUN_POLL_MAX_ERRORS = 3;
+/** Briefly confirm an execution whose request failed before any attempt was observed. */
+const RESULT_CONFIRMATION_TIMEOUT_MS = 30 * TIME.SECOND;
 
 /** A run in one of these states is still doing work. */
 const isPendingStatus = (
@@ -1172,43 +1175,62 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		agentId: string,
 		runId: string,
 		result: AgentEvalResultRecord,
-		stopWhenSettled = false,
+		recovering = false,
 	) => {
 		const pending = { previousRunAt: result.runAt };
 		rerunningResults.set(result.id, pending);
+		const ownsProgress = () => rerunningResults.get(result.id) === pending;
 		revisionByResult.set(result.id, ++resultRevision);
 		let timer: ReturnType<typeof setTimeout> | undefined;
 		let stopped = false;
 		let errors = 0;
 		const deadline = Date.now() + RUN_POLL_TIMEOUT_MS;
+		const confirmationDeadline = Date.now() + RESULT_CONFIRMATION_TIMEOUT_MS;
 		const schedule = () => {
-			if (stopped) return;
+			if (stopped || !ownsProgress()) return;
 			timer = setTimeout(async () => {
-				if (stopped) return;
-				if (Date.now() > deadline) {
-					stop();
+				if (stopped || !ownsProgress()) return;
+				const current = findCachedResult(result.id)?.result;
+				const confirmationExpired =
+					recovering && current?.runAt === result.runAt && Date.now() >= confirmationDeadline;
+				if (confirmationExpired || Date.now() > deadline) {
+					stop(true);
 					return;
 				}
 				try {
-					if (!document.hidden) await refreshCachedResult(projectId, agentId, runId, result.id);
+					// Confirmation is brief and must still read in a background tab.
+					if (!document.hidden || (recovering && current?.runAt === result.runAt)) {
+						await refreshCachedResult(projectId, agentId, runId, result.id);
+					}
 					errors = 0;
 				} catch {
 					if (++errors >= RUN_POLL_MAX_ERRORS) {
-						stop();
+						stop(true);
 						return;
 					}
 				}
-				if (stopWhenSettled && !isPendingStatus(findCachedResult(result.id)?.result.status)) {
+				if (recovering && !isPendingStatus(findCachedResult(result.id)?.result.status)) {
 					stop();
 					return;
 				}
 				schedule();
 			}, RUN_POLL_INTERVAL_MS);
 		};
-		const stop = () => {
+		const stop = (exhausted = false) => {
 			if (stopped) return;
 			stopped = true;
 			clearTimeout(timer);
+			if (!ownsProgress()) return;
+			const current = findCachedResult(result.id)?.result;
+			if (
+				recovering &&
+				exhausted &&
+				current?.runAt === result.runAt &&
+				current?.status === 'running'
+			) {
+				// Only an unconfirmed optimistic row can fall back after the retry budget.
+				replaceCachedResult(runId, result.id, result);
+			}
 			rerunningResults.delete(result.id);
 			revisionByResult.set(result.id, ++resultRevision);
 		};
@@ -1220,20 +1242,26 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		projectId: string,
 		agentId: string,
 		cached: { runId: string; result: AgentEvalResultRecord },
+		error: unknown,
 	) => {
-		const refreshed = await refreshCachedResult(
-			projectId,
-			agentId,
-			cached.runId,
-			cached.result.id,
-		).catch(() => false);
+		// A lost POST response is not proof that execution never started. Keep the
+		// attempt boundary through confirmation reads, including stale batch reads.
+		const stopRecovery = startResultProgress(projectId, agentId, cached.runId, cached.result, true);
+		const recovery = rerunningResults.get(cached.result.id);
+		await refreshCachedResult(projectId, agentId, cached.runId, cached.result.id).catch(
+			() => false,
+		);
+		if (rerunningResults.get(cached.result.id) !== recovery) return;
 		const current = findCachedResult(cached.result.id)?.result;
-		const serverStarted = current?.runAt && current.runAt !== cached.result.runAt;
-		if (serverStarted && isPendingStatus(current.status)) {
-			// Losing the POST response does not stop the server. Keep the confirmed
-			// attempt visible and read it until it settles or the polling budget ends.
-			startResultProgress(projectId, agentId, cached.runId, cached.result, true);
-		} else if (!refreshed && !serverStarted && current?.status === 'running') {
+		if (!isPendingStatus(current?.status)) {
+			stopRecovery();
+		} else if (
+			current?.runAt === cached.result.runAt &&
+			error instanceof ResponseError &&
+			(error.httpStatusCode === 401 || error.httpStatusCode === 403)
+		) {
+			// Authorization failures reject execution before the runner can claim it.
+			stopRecovery();
 			replaceCachedResult(cached.runId, cached.result.id, cached.result);
 		}
 	};
@@ -1297,7 +1325,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			return updated;
 		} catch (error) {
 			stopProgress();
-			if (cached) await recoverResult(projectId, agentId, cached);
+			if (cached) await recoverResult(projectId, agentId, cached, error);
 			throw error;
 		} finally {
 			stopProgress();
@@ -1341,7 +1369,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		} catch (error) {
 			stopProgress.forEach((stop) => stop());
 			await Promise.all(
-				targets.map(async (cached) => await recoverResult(projectId, agentId, cached)),
+				targets.map(async (cached) => await recoverResult(projectId, agentId, cached, error)),
 			);
 			throw error;
 		} finally {
