@@ -63,7 +63,12 @@ function onRevoke() {
 </script>
 
 <template>
-	<N8nDialog :open="open" size="medium" @update:open="emit('update:open', $event)">
+	<N8nDialog
+		:open="open"
+		size="medium"
+		data-test-id="mcp-client-details-modal"
+		@update:open="emit('update:open', $event)"
+	>
 		<template v-if="client">
 			<N8nDialogHeader>
 				<N8nDialogTitle>
@@ -79,7 +84,7 @@ function onRevoke() {
 			</N8nDialogHeader>
 
 			<N8nDialogBody>
-				<div :class="$style.details" data-test-id="mcp-client-details-modal">
+				<div :class="$style.details">
 					<template v-if="ownerLabel">
 						<N8nText color="text-light" size="small">
 							{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedBy') }}
