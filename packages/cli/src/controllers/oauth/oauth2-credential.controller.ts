@@ -42,6 +42,31 @@ export class OAuth2CredentialController {
 		try {
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
+				// An administrator approving an app for a whole organisation is sent back
+				// to the same reply URL, and never with a code: that grant lands on the
+				// tenant, not on a credential. Without this it reads as a failed sign-in,
+				// although it succeeded.
+				if (req.query.admin_consent) {
+					// `False` is the refusal, and it does not always carry an `error`.
+					if (req.query.admin_consent === 'False' || req.query.error) {
+						this.logger.error('Administrator consent was refused', {
+							error: req.query.error,
+							errorDescription: req.query.error_description,
+						});
+						// The description arrives in the URL, so it stays out of the page.
+						return this.oauthService.renderCallbackError(
+							res,
+							'The administrator did not approve the requested permissions.',
+						);
+					}
+					// Its own page, and a silent one. `oauth-callback` announces success
+					// on a channel every credential sign-in listens to, and this route
+					// is unauthenticated and carries no state to tie the grant to a
+					// credential -- so rendering it would report whichever sign-in
+					// happened to be open as connected.
+					return res.render('admin-consent-callback');
+				}
+
 				return this.oauthService.renderCallbackError(
 					res,
 					'Insufficient parameters for OAuth2 callback.',

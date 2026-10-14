@@ -30,9 +30,10 @@ import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 	FolderConflictPolicy,
 	MissingNodeTypeMode,
-	MissingWorkflowDependencyPolicy,
 	OverwriteDeletionPolicy,
 	ProjectConflictPolicy,
 	TagConflictPolicy,
@@ -42,7 +43,6 @@ import {
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
-	WorkflowVersionPolicy,
 	type ImportRequest,
 	type ImportResult,
 	type ImportSelection,
@@ -197,6 +197,7 @@ export class PromotionsService {
 				{
 					user: actor,
 					projectIds,
+					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
@@ -204,8 +205,8 @@ export class PromotionsService {
 					includeArchivedWorkflows: true,
 					// personal projects are excluded, so a team workflow calling a personal
 					// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.Fail,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -274,9 +275,20 @@ export class PromotionsService {
 
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
-		if (!(await this.hasExportedPackage(packageFolder))) {
+		// No package yet means this selection becomes the first export.
+		const packageExisted = await pathExists(packageFolder);
+		if (
+			!(await pathExists(path.join(packageFolder, MANIFEST_FILE))) &&
+			(await this.gitService.hasCommittedPath({
+				paths: this.workingDirectory.paths(input.configId),
+				branchName,
+				configId: input.configId,
+				pathspec: `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
+			}))
+		) {
+			// The commit holds a manifest the checkout lost. A push would drop branch content or metadata.
 			throw new BadRequestError(
-				'The local checkout has no exported package. Promote the instance first, then promote a selection.',
+				'The local copy of the promote branch is incomplete. Disconnect and connect it again in the instance connection settings.',
 			);
 		}
 
@@ -288,9 +300,11 @@ export class PromotionsService {
 		let keepPrePushBackup = false;
 
 		try {
-			await rm(prePushBackup, { recursive: true, force: true });
-			await cp(packageFolder, prePushBackup, { recursive: true, verbatimSymlinks: true });
-			backedUp = true;
+			if (packageExisted) {
+				await rm(prePushBackup, { recursive: true, force: true });
+				await cp(packageFolder, prePushBackup, { recursive: true, verbatimSymlinks: true });
+				backedUp = true;
+			}
 
 			// The exporter does the selecting: it writes the selected workflows and
 			// what they need, so nothing has to be filtered out afterwards.
@@ -305,8 +319,8 @@ export class PromotionsService {
 					includeArchivedWorkflows: true,
 					// A sub-workflow nobody selected stays a reference. Failing here would
 					// block a promote whose sub-workflow the branch already holds.
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -365,10 +379,18 @@ export class PromotionsService {
 						{ packageFolder, backupFolder: prePushBackup, error: restoreError },
 					);
 				}
+			} else if (!packageExisted) {
+				await rm(packageFolder, { recursive: true, force: true }).catch((cleanupError: unknown) => {
+					this.logger.warn('Failed to remove the first selection after a failed promote', {
+						packageFolder,
+						error: cleanupError,
+					});
+				});
 			}
 			throw error;
 		} finally {
-			if (!keepPrePushBackup) {
+			// A first push has no backup of its own. Keep any backup left by an earlier failure.
+			if (packageExisted && !keepPrePushBackup) {
 				await rm(prePushBackup, { recursive: true, force: true }).catch((error: unknown) => {
 					this.logger.warn('Failed to remove the selection backup', { prePushBackup, error });
 				});
@@ -835,14 +857,6 @@ export class PromotionsService {
 		}
 	}
 
-	private async hasExportedPackage(packageFolder: string): Promise<boolean> {
-		try {
-			return (await stat(path.join(packageFolder, MANIFEST_FILE))).isFile();
-		} catch {
-			return false;
-		}
-	}
-
 	/**
 	 * A checkout counts as ready only when it exists and was cloned from the
 	 * configuration we just resolved. Another process may have changed the remote or
@@ -964,6 +978,17 @@ export class PromotionsService {
 				skipped: importResult.tags.skipped.length,
 			},
 		};
+	}
+}
+
+/** Throws on any error except a missing path, so an unreadable package never looks empty. */
+async function pathExists(target: string): Promise<boolean> {
+	try {
+		await stat(target);
+		return true;
+	} catch (error) {
+		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false;
+		throw error;
 	}
 }
 

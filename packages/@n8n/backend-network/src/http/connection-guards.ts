@@ -14,8 +14,18 @@ export class UnknownConnectionHostError extends UnexpectedError {
 	}
 }
 
+export class SocketPathConnectionError extends UnexpectedError {
+	constructor() {
+		super('Cannot open a connection to a socket path');
+	}
+}
+
 /** Subset of an agent's connection options we read to find the target host. */
-type ConnectionOptions = { host?: string | null; hostname?: string | null };
+type ConnectionOptions = {
+	host?: string | null;
+	hostname?: string | null;
+	socketPath?: string;
+};
 
 /**
  * Runtime-only `createConnection` method of Node's http(s) agents.
@@ -59,6 +69,16 @@ export function installProxyConnectionGuard(agent: ProxyConnectionAgent, ssrf: S
 	};
 }
 
+function connectionError(
+	ssrf: SsrfBridge | 'disabled',
+	options: ConnectionOptions,
+): Error | undefined {
+	if (options.socketPath) {
+		return new SocketPathConnectionError();
+	}
+	return ssrf === 'disabled' ? undefined : connectionHostError(ssrf, options);
+}
+
 /**
  * Wraps an agent's `createConnection` to validate the connection target before the socket opens.
  *
@@ -68,11 +88,11 @@ export function installProxyConnectionGuard(agent: ProxyConnectionAgent, ssrf: S
  */
 export function installConnectionGuard(
 	target: { createConnection: CreateConnection },
-	ssrf: SsrfBridge,
+	ssrf: SsrfBridge | 'disabled',
 ): void {
 	const createConnection = target.createConnection.bind(target);
 	target.createConnection = (options, onConnect) => {
-		const error = connectionHostError(ssrf, options);
+		const error = connectionError(ssrf, options);
 		if (error) {
 			if (onConnect) {
 				onConnect(error);

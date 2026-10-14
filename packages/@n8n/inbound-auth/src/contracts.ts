@@ -1,4 +1,3 @@
-import type { ConsentUiHints } from '@n8n/api-types';
 import type { AuthPrincipal, SecurityContext } from '@n8n/permissions';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
@@ -8,6 +7,13 @@ import type { SurfaceId } from './trusted-source-config';
 
 /** What a protected resource reads from the user. The `User` entity satisfies it. */
 export type ResourceUser = AuthPrincipal & { id: string; createdAt: Date };
+
+export interface ConsentUiHints {
+	/** design-system icon name (updatedIconSet) for the consent logo tile; omit to fall back to the generic mcp icon */
+	icon?: string;
+	/** noun key inserted into first-party consent copy, e.g. 'form' (later 'webhook'); resolved to a localized word on the frontend */
+	consentType?: string;
+}
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -91,6 +97,14 @@ export interface ProtectedResource {
 
 /** What a resource contributes to advertising: RFC 9728 metadata and the 401 challenge. */
 export type AdvertisedResource = Pick<Inbound, 'surface' | 'resource' | 'acceptedSourceIds'>;
+
+/**
+ * Authenticates, then identifies, in one call. Stops before resource authorization: the
+ * caller decides what the returned context may do.
+ */
+export abstract class AuthenticationPipeline {
+	abstract run(extracted: Extracted): Promise<Result<SecurityContext>>;
+}
 
 /** The dispatcher. Owns what every method shares: driver lookup and surface acceptance. */
 export abstract class AuthenticationService {

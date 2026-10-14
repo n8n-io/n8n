@@ -62,9 +62,11 @@ const {
 	fetchUsableCredentialsMock,
 	fetchAllCredentialsMock,
 	fetchCredentialTypesMock,
+	loadNodeTypesIfNotLoadedMock,
 	setCredentialsMock,
 	agentPermissionsMock,
 } = vi.hoisted(() => ({
+	loadNodeTypesIfNotLoadedMock: vi.fn(),
 	fetchUsableCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
@@ -123,6 +125,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		allCredentials: [],
 		getCredentialsByType: () => [],
+		getUsableCredentialByType: () => [],
 		fetchAllCredentials: fetchAllCredentialsMock,
 		fetchUsableCredentials: fetchUsableCredentialsMock,
 		fetchCredentialTypes: fetchCredentialTypesMock,
@@ -507,6 +510,9 @@ async function renderView({
 			proxyEnabled: false,
 		},
 	};
+	const { useNodeTypesStore } = await import('@/app/stores/nodeTypes.store');
+	loadNodeTypesIfNotLoadedMock.mockResolvedValue(undefined);
+	useNodeTypesStore().loadNodeTypesIfNotLoaded = loadNodeTypesIfNotLoadedMock;
 	seedStores?.();
 	const wrapper = mount(AgentBuilderView, {
 		props,
@@ -1254,11 +1260,22 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		).rejects.toThrow('save failed');
 	});
 
+	it('loads node types when the page opens', async () => {
+		loadNodeTypesIfNotLoadedMock.mockClear();
+
+		await renderView();
+
+		expect(loadNodeTypesIfNotLoadedMock).toHaveBeenCalled();
+	});
+
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
 		await renderView();
 
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
-		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({ projectId: 'p1' });
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			forAgent: true,
+		});
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
 	});
 
@@ -5524,7 +5541,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			name: 'meeting_summary',
 			description: 'Use when extracting decisions from meeting notes',
 			instructions: 'Extract decisions, risks, and action items.',
-			allowedTools: ['load_workflow'],
 			references: [
 				{
 					path: 'references/guide.md',
@@ -5532,6 +5548,8 @@ describe('AgentBuilderView — three-column shell', () => {
 				},
 			],
 		};
+		// Skills drop allowed tools: the edit keeps everything else.
+		const editedSkill = { ...updatedSkill, allowedTools: ['load_workflow'] };
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
@@ -5559,9 +5577,9 @@ describe('AgentBuilderView — three-column shell', () => {
 		await nextTick();
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { id: string; skill: typeof updatedSkill }) => void;
+			onConfirm: (payload: { id: string; skill: typeof editedSkill }) => void;
 		};
-		modalData.onConfirm({ id: 'summarize_notes', skill: updatedSkill });
+		modalData.onConfirm({ id: 'summarize_notes', skill: editedSkill });
 		await nextTick();
 
 		expect(
@@ -5720,19 +5738,29 @@ describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => 
 		return () => wrapper.find('[data-testid="agent-evals-tab-content"]').exists();
 	}
 
-	it('selects the evals tab for a request raised before it mounted', async () => {
+	function savedGenerationCalls() {
+		return generateDraftCasesMock.mock.calls.filter(([, , , options]) => options?.save !== false);
+	}
+
+	it('selects the evals tab and prepares unsaved examples for a request raised before it mounted', async () => {
 		const wrapper = await seedFocusRequest('a1', false);
-		await settle(evalsTabShown(wrapper));
+		await settle(() => evalsTabShown(wrapper)() && generateDraftCasesMock.mock.calls.length > 0);
 
 		expect(evalsTabShown(wrapper)()).toBe(true);
-		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+		expect(generateDraftCasesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {
+			count: 10,
+			save: false,
+		});
+		expect(savedGenerationCalls()).toEqual([]);
 	});
 
-	it('starts generation when the request asks for it', async () => {
+	it('starts one saved generation when the request asks for it', async () => {
 		await seedFocusRequest('a1', true);
-		await settle(() => generateDraftCasesMock.mock.calls.length > 0);
+		await settle(() => savedGenerationCalls().length > 0);
 
-		expect(generateDraftCasesMock).toHaveBeenCalledOnce();
+		// The empty-state preview can also request unsaved examples. Those must
+		// not be mistaken for a second request to persist a dataset.
+		expect(savedGenerationCalls()).toEqual([[expect.anything(), 'p1', 'a1', {}]]);
 	});
 
 	it('ignores a request naming a different agent', async () => {

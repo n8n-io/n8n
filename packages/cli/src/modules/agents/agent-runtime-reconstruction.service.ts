@@ -37,6 +37,8 @@ import { nanoid } from 'nanoid';
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@n8n/backend-services';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
@@ -59,7 +61,6 @@ import {
 } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
-import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,
@@ -76,6 +77,7 @@ import {
 	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
+import { toAgentDocument } from './json-config/agent-document';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentFileRepository } from './repositories/agent-file.repository';
@@ -90,6 +92,7 @@ import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
+import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
@@ -287,10 +290,11 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	async reconstructFromAgentEntity(
-		agentEntity: Agent,
+		{ agent: agentEntity, skillRefs, skills }: AgentRunSource,
 		credentialProvider: CredentialProvider,
 		runType: AgentRunTelemetryType,
 		integrationType?: string,
@@ -315,10 +319,10 @@ export class AgentRuntimeReconstructionService {
 			attributionUserId?: string;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
-		let config = agentEntity.schema;
-		if (!config) {
+		if (!agentEntity.schema) {
 			throw new UserError('Agent has no JSON config.');
 		}
+		let config = toAgentDocument(agentEntity.schema, skillRefs);
 
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
@@ -334,7 +338,7 @@ export class AgentRuntimeReconstructionService {
 			unavailableTools = filtered.unavailable;
 		}
 
-		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity);
+		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity, skills);
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(
 			config,
 			agentEntity.projectId,
@@ -347,7 +351,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			toolDescriptors,
 			toolCodeByName,
-			skills: agentEntity.skills ?? {},
+			skills,
 			runtimeProfile: 'top-level',
 			supportsHitl,
 			runType,
@@ -391,6 +395,10 @@ export class AgentRuntimeReconstructionService {
 		unavailable: UnavailableTool[];
 	}> {
 		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
+		// Load once per pass, and only when a node tool uses credentials.
+		let usableIdsLoad: Promise<Set<string> | undefined> | undefined;
+		const loadUsableIds = async () =>
+			await (usableIdsLoad ??= this.loadAgentUsableCredentialIds(projectId, user));
 		const filtered: AgentJsonToolConfig[] = [];
 		const unavailable: UnavailableTool[] = [];
 		const grantedCredentialIds = new Set<string>();
@@ -403,7 +411,7 @@ export class AgentRuntimeReconstructionService {
 				filtered.push(ref);
 				continue;
 			}
-			const access = await this.checkToolAccess(ref, projectId, user, canExecute);
+			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
 			if (access && 'reason' in access) {
 				unavailable.push(access);
 				continue;
@@ -429,11 +437,26 @@ export class AgentRuntimeReconstructionService {
 		};
 	}
 
+	/** Returns the credential IDs agents can use, or `undefined` when no restriction applies. */
+	private async loadAgentUsableCredentialIds(
+		projectId: string,
+		user: User,
+	): Promise<Set<string> | undefined> {
+		if (!isCredSharingEnabled()) return undefined;
+
+		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+			projectId,
+			excludePersonalRoute: true,
+		});
+		return new Set(usable.map((credential) => credential.id));
+	}
+
 	private async checkToolAccess(
 		ref: Exclude<AgentJsonToolConfig, { type: 'custom' }>,
 		projectId: string,
 		user: User,
 		canExecute: boolean,
+		loadUsableIds: () => Promise<Set<string> | undefined>,
 	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -457,6 +480,10 @@ export class AgentRuntimeReconstructionService {
 			);
 			if (credentials.some((credential) => credential === null)) {
 				return denied('The user cannot read a credential the tool uses');
+			}
+			const usableIds = credentialIds.length > 0 ? await loadUsableIds() : undefined;
+			if (usableIds && !credentialIds.every((id) => usableIds.has(id))) {
+				return denied('The tool uses a personal credential that agents cannot use yet');
 			}
 			return { credentialIds, workflowIds: [] };
 		}
@@ -495,6 +522,10 @@ export class AgentRuntimeReconstructionService {
 			),
 		);
 		if (credentials.some((credential) => credential === null)) return false;
+		if (snapshot.credentialIds.length > 0) {
+			const usableIds = await this.loadAgentUsableCredentialIds(projectId, user);
+			if (usableIds && !snapshot.credentialIds.every((id) => usableIds.has(id))) return false;
+		}
 
 		const workflows = await Promise.all(
 			snapshot.workflowIds.map(
@@ -679,10 +710,13 @@ export class AgentRuntimeReconstructionService {
 		aiMcpFetch: ReturnType<typeof createAiMcpFetch>,
 		mcpServerAttributions: Map<string, string>,
 	) {
-		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation } = options;
+		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
+			options;
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
+				// Inline agents have no checkpoint storage, and their schema rejects approval policies.
+				nonInterrupting: runtimeProfile === 'inline',
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,

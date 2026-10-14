@@ -98,7 +98,12 @@ export const createGetExecutionTool = (
 		};
 
 		try {
-			await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
+			await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:read', 'execution:read'],
+				workflowFinderService,
+			);
 
 			// Use lightweight metadata query when data isn't needed;
 			// split into branches so TypeScript can narrow each return type.
