@@ -48,6 +48,7 @@ const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === t
 
 const skills = ref<SkillListItem[]>([]);
 const loading = ref(true);
+const loadFailed = ref(false);
 const search = ref('');
 const tab = ref<PickerTab>('all');
 const pending = ref(new Set<string>());
@@ -92,12 +93,15 @@ const tabs = computed<Array<TabOptions<PickerTab>>>(() => {
 
 async function load() {
 	loading.value = true;
+	loadFailed.value = false;
 	try {
 		const response = await getSkills(rootStore.restApiContext, {
 			attachableTo: props.data.agentId,
 		});
 		skills.value = response.data;
 	} catch (error) {
+		// A failed load is not an empty hub, so the list says so and offers a retry.
+		loadFailed.value = true;
 		showError(error, i18n.baseText('agents.builder.skills.picker.loadError'));
 	} finally {
 		loading.value = false;
@@ -179,6 +183,19 @@ onMounted(load);
 				</button>
 
 				<N8nLoading v-if="loading" :rows="3" variant="p" />
+				<div v-else-if="loadFailed" :class="$style.empty" data-testid="agent-skill-picker-error">
+					<N8nText size="small" color="danger">
+						{{ i18n.baseText('agents.builder.skills.picker.loadError') }}
+					</N8nText>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						data-testid="agent-skill-picker-retry"
+						@click="load"
+					>
+						{{ i18n.baseText('agents.builder.skills.picker.retry') }}
+					</N8nButton>
+				</div>
 				<N8nText
 					v-else-if="visible.length === 0"
 					size="small"
@@ -295,6 +312,9 @@ onMounted(load);
 }
 
 .empty {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
 }
 </style>

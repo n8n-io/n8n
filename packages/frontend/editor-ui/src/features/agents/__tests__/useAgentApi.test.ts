@@ -23,6 +23,7 @@ import {
 	listN8nChatAgents,
 	listN8nChatThreads,
 	duplicateAgent,
+	createAgentSkill,
 } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
@@ -37,6 +38,29 @@ const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
 describe('useAgentApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('createAgentSkill', () => {
+		const skill = { name: 'brand-voice', description: 'd', instructions: 'Be brief.' };
+
+		it('sends where the skill can be added when the user chose it', async () => {
+			await createAgentSkill(restApiContext, 'p1', 'a1', skill, 'project');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/p1/agents/v2/a1/skills',
+				{ ...skill, availableTo: 'project' },
+			);
+		});
+
+		it('leaves the field out when nobody chose a scope', async () => {
+			await createAgentSkill(restApiContext, 'p1', 'a1', skill);
+
+			const body = vi.mocked(makeRestApiRequest).mock.calls[0]?.[3];
+			expect(body).toEqual(skill);
+			expect(body).not.toHaveProperty('availableTo');
+		});
 	});
 
 	describe('listAgentsPage', () => {

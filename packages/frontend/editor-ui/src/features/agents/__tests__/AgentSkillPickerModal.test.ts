@@ -104,6 +104,20 @@ describe('AgentSkillPickerModal', () => {
 		expect(tabs).toHaveTextContent('Global (1)');
 	});
 
+	it.each([
+		['Darwin (2)', ['research-search', 'study-setup']],
+		['This agent (1)', ['source-interpretation']],
+		['Global (1)', ['code-review']],
+	])('shows only the skills of the %s tab', async (tab, names) => {
+		const { findAllByTestId, getByText, getAllByTestId } = renderPicker();
+		await findAllByTestId('agent-skill-picker-row');
+
+		await fireEvent.click(getByText(tab));
+
+		const rows = getAllByTestId('agent-skill-picker-row');
+		expect(rows.map((row) => row.querySelector('span span')?.textContent?.trim())).toEqual(names);
+	});
+
 	it('filters by search', async () => {
 		const { findAllByTestId, getByTestId, getAllByTestId } = renderPicker();
 		await findAllByTestId('agent-skill-picker-row');
@@ -130,6 +144,32 @@ describe('AgentSkillPickerModal', () => {
 			within(rowFor(rows, 'research-search')).getByTestId('agent-skill-picker-toggle'),
 		);
 		expect(data.onDetach).toHaveBeenCalledWith('s1');
+	});
+
+	it('leaves the toggle off when the attach is refused', async () => {
+		const { findAllByTestId } = renderPicker({ onAttach: vi.fn(async () => false) });
+		const rows = await findAllByTestId('agent-skill-picker-row');
+		const row = rowFor(rows, 'code-review');
+		const toggle = within(row).getByTestId('agent-skill-picker-toggle');
+
+		await fireEvent.click(toggle);
+
+		await waitFor(() => expect(toggle).not.toBeDisabled());
+		expect(row).toHaveTextContent('Detached');
+		expect(toggle).toHaveAttribute('aria-checked', 'false');
+	});
+
+	it('shows a load error with a retry instead of an empty hub', async () => {
+		getSkills.mockRejectedValueOnce(new Error('offline'));
+		const { findByTestId, queryByTestId, findAllByTestId } = renderPicker();
+
+		expect(await findByTestId('agent-skill-picker-error')).toHaveTextContent(
+			'Could not load skills',
+		);
+		expect(queryByTestId('agent-skill-picker-empty')).not.toBeInTheDocument();
+
+		await fireEvent.click(await findByTestId('agent-skill-picker-retry'));
+		expect(await findAllByTestId('agent-skill-picker-row')).toHaveLength(4);
 	});
 
 	it('hands off to create and to Settings, and closes', async () => {

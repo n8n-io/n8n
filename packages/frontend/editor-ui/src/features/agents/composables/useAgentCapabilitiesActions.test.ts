@@ -66,6 +66,7 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 function makeActions(
 	overrides: Partial<AgentJsonConfig> = {},
 	telemetry?: AgentCapabilitiesTelemetry,
+	extraDeps: { ensureAgentPersisted?: () => Promise<void> } = {},
 ) {
 	const scheduleConfigUpdate = vi.fn();
 	const scheduleSkillSave = vi.fn();
@@ -81,6 +82,7 @@ function makeActions(
 		scheduleConfigUpdate,
 		scheduleSkillSave,
 		telemetry,
+		...extraDeps,
 	});
 	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig };
 }
@@ -173,6 +175,7 @@ describe('useAgentCapabilitiesActions', () => {
 		it('offers this agent first, then the project and Global the user may write to', async () => {
 			hub.enabled = true;
 			hub.canWriteProject = true;
+			hub.canWriteInstance = true;
 			const { actions } = makeActions();
 			actions.onOpenAddSkillModal();
 			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
@@ -183,8 +186,86 @@ describe('useAgentCapabilitiesActions', () => {
 			expect(lastModal().data.scopeOptions).toEqual([
 				{ value: 'agent', label: 'agents.builder.skills.scope.agent', icon: 'bot' },
 				{ value: 'project', label: 'Darwin', icon: 'layers' },
+				{ value: 'instance', label: 'settings.context.skills.scope.instance', icon: 'globe' },
 			]);
 			expect(lastModal().data.initialScope).toBe('agent');
+		});
+
+		it('offers only this agent to a user without project or instance rights', async () => {
+			hub.enabled = true;
+			const { actions } = makeActions();
+			actions.onOpenAddSkillModal();
+			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
+
+			(lastModal().data.onCreate as () => void)();
+
+			expect(lastModal().data.scopeOptions).toEqual([
+				{ value: 'agent', label: 'agents.builder.skills.scope.agent', icon: 'bot' },
+			]);
+		});
+
+		it('opens a skill read-only when its permissions cannot be read', async () => {
+			hub.enabled = true;
+			getSkill.mockRejectedValue(new Error('offline'));
+			const skill: AgentSkill = { name: 'brand-voice', description: '', instructions: 'x' };
+			const { actions, agent } = makeActions({
+				skills: [{ type: 'skill', id: 's1' }],
+			} as Partial<AgentJsonConfig>);
+			agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
+
+			actions.onOpenSkillFromList('s1');
+			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
+
+			expect(lastModal().data.readOnly).toBe(true);
+		});
+
+		it('drops the skill editor when the user switched agents before the permission answer', async () => {
+			hub.enabled = true;
+			let answer: (value: unknown) => void = () => {};
+			getSkill.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+			const skill: AgentSkill = { name: 'brand-voice', description: '', instructions: 'x' };
+			const { actions, agent, agentId } = makeActions({
+				skills: [{ type: 'skill', id: 's1' }],
+			} as Partial<AgentJsonConfig>);
+			agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
+
+			actions.onOpenSkillFromList('s1');
+			agentId.value = 'agent-2';
+			answer({ canEdit: true });
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('drops the picker when the user switched agents while the agent was saved', async () => {
+			hub.enabled = true;
+			let saved: () => void = () => {};
+			const ensureAgentPersisted = vi.fn(
+				async () => await new Promise<void>((resolve) => (saved = resolve)),
+			);
+			const { actions, agentId } = makeActions({}, undefined, { ensureAgentPersisted });
+
+			actions.onOpenAddSkillModal();
+			agentId.value = 'agent-2';
+			saved();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('opens the picker after the agent is saved when the agent did not change', async () => {
+			hub.enabled = true;
+			let saved: () => void = () => {};
+			const ensureAgentPersisted = vi.fn(
+				async () => await new Promise<void>((resolve) => (saved = resolve)),
+			);
+			const { actions } = makeActions({}, undefined, { ensureAgentPersisted });
+
+			actions.onOpenAddSkillModal();
+			saved();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(lastModal().name).toBe('agentSkillPickerModal');
 		});
 
 		it('opens an attached skill read-only when the user cannot change it', async () => {

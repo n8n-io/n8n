@@ -344,9 +344,18 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			return;
 		}
 		// A hub skill can be shared, and the user may use it without the right to change it.
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		const isCurrentTarget = () =>
+			projectId.value === targetProjectId && agentId.value === targetAgentId;
 		void getSkill(rootStore.restApiContext, id)
-			.then((detail) => openSkillEditor(id, skill, !detail.canEdit))
-			.catch(() => openSkillEditor(id, skill, false));
+			.then((detail) => {
+				if (isCurrentTarget()) openSkillEditor(id, skill, !detail.canEdit);
+			})
+			.catch(() => {
+				// Without the permission answer, open read-only rather than let an edit fail on save.
+				if (isCurrentTarget()) openSkillEditor(id, skill, true);
+			});
 	}
 
 	function openSkillEditor(id: string, skill: AgentSkill, readOnly: boolean) {
@@ -502,6 +511,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	async function openSkillPicker() {
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
 		// The picker lists what this agent may attach, so the agent must exist first.
 		try {
 			await ensureAgentPersisted?.();
@@ -509,8 +520,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			showError(error, locale.baseText('agents.builder.skills.picker.loadError'));
 			return;
 		}
+		// The user may have switched agents while the agent was saved.
+		if (projectId.value !== targetProjectId || agentId.value !== targetAgentId) return;
 		const data: AgentSkillPickerModalData = {
-			agentId: agentId.value,
+			agentId: targetAgentId,
 			projectLabel: agentProjectLabel().label,
 			attachedIds: () => appliedSkills.value.map(({ id }) => id),
 			onAttach: attachHubSkill,

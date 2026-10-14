@@ -8889,6 +8889,7 @@
 	"agents.builder.skills.picker.empty": "No skills to attach yet",
 	"agents.builder.skills.picker.noResults": "No skills match your search",
 	"agents.builder.skills.picker.loadError": "Could not load skills",
+	"agents.builder.skills.picker.retry": "Try again",
 	"agents.builder.skills.picker.attachError": "Could not attach the skill",
 	"agents.builder.skills.picker.nameClash": "This agent already has a skill with a name like \"{name}\". Rename one of them, or detach the other skill first.",
 	"agents.builder.skills.scope.agent": "This agent only",
