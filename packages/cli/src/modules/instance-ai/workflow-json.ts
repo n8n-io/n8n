@@ -12,6 +12,7 @@ export function toWorkflowJSON(
 ): WorkflowJSON {
 	const redact = options?.redactParameters ?? false;
 	const source = options?.graph ?? workflow;
+
 	return {
 		id: workflow.id,
 		name: workflow.name,

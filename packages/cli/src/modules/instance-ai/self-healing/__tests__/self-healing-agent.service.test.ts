@@ -137,6 +137,7 @@ describe('SelfHealingAgentService', () => {
 		});
 		filesystem.readFile.mockImplementation(async (path) => files.get(path) ?? '');
 		vi.mocked(getWorkspaceRoot).mockResolvedValue('/workspace');
+
 		options = {
 			threadId: 'internal-thread',
 			runId: 'host-run',
@@ -157,6 +158,7 @@ describe('SelfHealingAgentService', () => {
 			getAbortReason: () => 'shutdown',
 			onFinish: vi.fn(),
 		};
+
 		suggestions.requireEditor.mockResolvedValue(user);
 		suggestions.requireCurrentBaseline.mockResolvedValue(user);
 		executions.getReference.mockResolvedValue({ status: 'available', id: '123' });
@@ -164,6 +166,7 @@ describe('SelfHealingAgentService', () => {
 		adapter.createContext.mockReturnValue(mock<InstanceAiContext>());
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(true);
 		credits.claimRunUsage.mockResolvedValue(0.25);
+
 		stream = {
 			status: 'completed',
 			agentRunId: 'sdk-run',
@@ -192,12 +195,14 @@ describe('SelfHealingAgentService', () => {
 				],
 			},
 		};
+
 		vi.mocked(streamAgentRun).mockImplementation(async () => stream);
 	});
 
 	it('prepares the captured baseline, binds verification, and returns a readable candidate', async () => {
 		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async (factoryOptions) => {
 			await factoryOptions.verifyCandidate({ filePath: validOutput.candidateFilePath });
+
 			return mock<Awaited<ReturnType<typeof createSelfHealingAgent>>>();
 		});
 

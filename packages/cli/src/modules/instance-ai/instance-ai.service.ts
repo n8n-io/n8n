@@ -1557,10 +1557,12 @@ export class InstanceAiService {
 					if (this.liveness.consumeRunTimeout(runId).timedOut)
 						return INSTANCE_AI_RUN_TIMEOUT_REASON;
 					if (quotaExhaustedFromSignal(abortController.signal)) return 'quota_exhausted';
+
 					return getAbortReason(abortController.signal);
 				},
 				onFinish: (result, modelId, stream) => {
 					const status = result.status === 'suspended' ? 'errored' : result.status;
+
 					// Shutdown publishes its own finish event before aborting the run.
 					if (abortController.signal.reason !== 'service_shutdown') {
 						this.publishRunFinish(
@@ -1576,6 +1578,7 @@ export class InstanceAiService {
 							},
 						);
 					}
+
 					this.emitRunMetrics(threadId, status, {
 						modelId,
 						workSummary: stream?.workSummary,
@@ -2181,6 +2184,7 @@ export class InstanceAiService {
 		for (const run of activeRuns) {
 			// Already cancelled runs report their own completion during the shutdown drain.
 			if (run.abortController.signal.aborted) continue;
+
 			// Runs holding an inline HITL confirmation (`create-tasks`,
 			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
@@ -2690,6 +2694,7 @@ export class InstanceAiService {
 		if (thread && thread.resourceId !== user.id) {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
+
 		const boundProjectId = await memory.getThreadProjectId(threadId);
 		if (!boundProjectId) {
 			throw new UnexpectedError(
@@ -5496,6 +5501,7 @@ export class InstanceAiService {
 			if (!state || isSelfHealingResourceId(state.persistence?.resourceId)) {
 				return { kind: 'no-checkpoint' };
 			}
+
 			const pendingToolCall = state.pendingToolCalls?.[orphan.toolCallId];
 			if (pendingToolCall?.suspended) {
 				toolName = pendingToolCall.toolName;

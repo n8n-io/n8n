@@ -303,7 +303,9 @@ export class InstanceAiMemoryService {
 
 		const metadata = selfHealingThreadMetadataSchema.safeParse(thread.metadata);
 		if (!metadata.success) return undefined;
+
 		const actorId = metadata.data.selfHealing.backgroundUserId;
+
 		return getSelfHealingResourceId(actorId) === thread.resourceId ? actorId : undefined;
 	}
 
@@ -678,6 +680,7 @@ export class InstanceAiMemoryService {
 		const selfHealingThreads = await this.agentMemory.deleteThreadsByResourceId(
 			getSelfHealingResourceId(userId),
 		);
+
 		return chatThreads + selfHealingThreads;
 	}
 

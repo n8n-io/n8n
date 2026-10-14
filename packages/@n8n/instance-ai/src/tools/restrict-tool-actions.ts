@@ -11,6 +11,8 @@ export function restrictToolActions<T extends z.ZodDiscriminatedUnionOption<'act
 			!allowedActions ||
 			allowedActions.some((action) => schema.shape.action.safeParse(action).success),
 	);
+
 	if (!first) throw new Error('Tool requires at least one allowed action');
+
 	return sanitizeInputSchema(z.discriminatedUnion('action', [first, ...rest]));
 }

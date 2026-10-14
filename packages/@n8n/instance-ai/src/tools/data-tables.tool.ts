@@ -939,6 +939,7 @@ export function createDataTablesTool(
 			if (options.allowedActions && !options.allowedActions.includes(input.action)) {
 				throw new Error('Data table action is not available');
 			}
+
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);

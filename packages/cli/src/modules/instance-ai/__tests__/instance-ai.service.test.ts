@@ -1679,6 +1679,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 				options.signal.addEventListener('abort', () => resolve(), { once: true }),
 			);
 			await cleanup.promise;
+
 			return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
 		});
 
@@ -1706,6 +1707,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
 			const result = { ...completedRun(options), finishReason: 'length' as const };
 			options.onFinish(result, 'model-1');
+
 			return result;
 		});
 
@@ -1735,8 +1737,10 @@ describe('InstanceAiService — self-healing launcher', () => {
 				await settle.promise;
 				const result = { ...completedRun(options), status };
 				options.onFinish(result, 'model-1');
+
 				return result;
 			});
+
 			const run = service.startSelfHealingRun(input);
 			service.tracing.finalizeRunTracing.mockImplementation(async () => {
 				settle.resolve(undefined);
@@ -1788,8 +1792,10 @@ describe('InstanceAiService — self-healing launcher', () => {
 				reason: options.getAbortReason(),
 			};
 			options.onFinish(result, 'model-1');
+
 			return result;
 		});
+
 		const run = service.startSelfHealingRun(input);
 		const options = service.selfHealingAgent.execute.mock.calls[0][1];
 		service.runState.getActiveRun(options.threadId)?.abortController.abort();

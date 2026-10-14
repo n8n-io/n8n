@@ -411,6 +411,7 @@ export class InstanceAiCreditService {
 				}),
 			});
 			if (thread && isSelfHealingResourceId(thread.resourceId)) return undefined;
+
 			return typeof thread?.metadata?.creditsUsed === 'number'
 				? thread.metadata.creditsUsed
 				: undefined;

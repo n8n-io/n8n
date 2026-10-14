@@ -51,6 +51,7 @@ async function createAgent(
 function findTool(tools: BuiltTool[], name: string): BuiltTool {
 	const tool = tools.find((candidate) => candidate.name === name);
 	if (!tool) throw new Error(`Missing tool: ${name}`);
+
 	return tool;
 }
 
@@ -123,6 +124,7 @@ describe('createSelfHealingAgent', () => {
 			doStream: async () => {
 				const turn = turns.shift();
 				if (!turn) throw new Error('Unexpected model call');
+
 				return turn;
 			},
 		});
@@ -132,6 +134,7 @@ describe('createSelfHealingAgent', () => {
 		const agent = await createSelfHealingAgent({ context, modelId: model, verifyCandidate });
 		const eventBus = mock<InstanceAiEventBus>();
 		const signal = new AbortController().signal;
+
 		const result = await streamAgentRun(
 			agent as unknown as StreamableAgent,
 			'Investigate the supplied failure.',
@@ -164,6 +167,7 @@ describe('createSelfHealingAgent', () => {
 			filesystem: mock<WorkspaceFilesystem>({ status: 'ready', basePath: '/workspace' }),
 			sandbox: mock<WorkspaceSandbox>({ status: 'running' }),
 		});
+
 		const agent = await createAgent(context);
 		const config = await (
 			agent as unknown as {
@@ -214,6 +218,7 @@ describe('createSelfHealingAgent', () => {
 	])('rejects unavailable %s actions in the schema and handler', async (name, input) => {
 		const agent = await createAgent();
 		const tool = findTool(agent.declaredTools, name);
+
 		expect(parseToolInput(tool, input).success).toBe(false);
 		await expect(executeTool(tool, input)).rejects.toThrow('action is not available');
 	});
@@ -225,9 +230,11 @@ describe('createSelfHealingAgent', () => {
 			status: 'error',
 		});
 		const tool = findTool((await createAgent(context)).declaredTools, 'executions');
+
 		await expect(
 			executeTool(tool, { action: 'get', executionId: 'execution' }),
 		).resolves.toMatchObject({ status: 'error' });
+
 		vi.mocked(context.executionService.getStatus).mockRejectedValue(new Error('Access denied'));
 		await expect(executeTool(tool, { action: 'get', executionId: 'other' })).rejects.toThrow(
 			'Access denied',
@@ -242,6 +249,7 @@ describe('createSelfHealingAgent', () => {
 		filesystem.readFile.mockImplementation(async (path) => {
 			const content = files.get(path);
 			if (content === undefined) throw new Error('File not found');
+
 			return content;
 		});
 		filesystem.writeFile.mockImplementation(async (path, content) => {
@@ -264,6 +272,7 @@ describe('createSelfHealingAgent', () => {
 			settings: { executionOrder: 'v1' },
 		});
 		const tool = findTool((await createAgent(context)).declaredTools, 'workflows');
+
 		const result = await executeTool(tool, { action: 'get-as-code', workflowId: 'workflow' });
 
 		expect(result).toMatchObject({
@@ -285,6 +294,7 @@ describe('createSelfHealingAgent', () => {
 			data: [{ id: 1, status: 'ready' }],
 		});
 		const tool = findTool((await createAgent(context)).declaredTools, 'data-tables');
+
 		await expect(executeTool(tool, { action: 'list' })).resolves.toEqual({ tables: [] });
 		await expect(
 			executeTool(tool, { action: 'schema', dataTableId: 'table' }),
@@ -306,12 +316,14 @@ describe('createSelfHealingAgent', () => {
 			const tool = findTool((await createAgent(context)).declaredTools, 'research');
 			const suspend = vi.fn();
 			const toolContext = { suspend, resumeData: { approved: true } };
+
 			await expect(
 				executeTool(tool, { action: 'web-search', query: 'API docs' }, toolContext),
 			).resolves.toMatchObject({ unavailable: true });
 			await expect(
 				executeTool(tool, { action: 'fetch-url', url: 'https://example.com' }, toolContext),
 			).resolves.toMatchObject({ unavailable: true });
+
 			expect(suspend).not.toHaveBeenCalled();
 			expect(context.webResearchService?.search).not.toHaveBeenCalled();
 			expect(context.webResearchService?.fetchUrl).not.toHaveBeenCalled();
@@ -338,6 +350,7 @@ describe('createSelfHealingAgent', () => {
 			truncated: false,
 		});
 		const tool = findTool((await createAgent(context)).declaredTools, 'research');
+
 		await expect(
 			executeTool(tool, { action: 'web-search', query: 'API docs' }),
 		).resolves.toMatchObject({ results: [] });
@@ -359,9 +372,11 @@ describe('createSelfHealingAgent', () => {
 		});
 		const tool = findTool(agent.declaredTools, 'verify_candidate');
 		const input = { filePath: 'self-healing/candidate.workflow.ts', validationOnly: true };
+
 		expect(parseToolInput(tool, { ...input, workflowId: 'other' }).success).toBe(false);
 		await expect(executeTool(tool, input)).resolves.toEqual({ valid: true });
 		expect(verifyCandidate).toHaveBeenCalledWith(input, controller.signal);
+
 		controller.abort();
 		await expect(executeTool(tool, input)).rejects.toThrow();
 		expect(verifyCandidate).toHaveBeenCalledTimes(1);

@@ -171,6 +171,7 @@ describe('InstanceAiMemoryService internal thread ownership', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
 	afterEach(() => {
 		mockGetThread.mockReset();
 	});

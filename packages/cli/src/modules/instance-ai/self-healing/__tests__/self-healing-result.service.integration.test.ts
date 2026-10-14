@@ -281,6 +281,7 @@ it('omits token counts from previously stored usage', async () => {
 	await results.update(result.id, { usage: storedUsage });
 
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
+
 	expect(detail.usage).toEqual(input.usage);
 });
 

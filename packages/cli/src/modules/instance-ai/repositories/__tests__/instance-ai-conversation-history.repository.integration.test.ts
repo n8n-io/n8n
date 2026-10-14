@@ -319,6 +319,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			expect(await search('Slack')).toEqual([]);
 			expect(await repository.listRecentProjectThreadsForUser({ ...scope, limit: 5 })).toEqual([]);
 			expect(await repository.countProjectThreadsForUser(scope)).toBe(0);
+
 			for (const userId of [USER_ID, OTHER_USER_ID]) {
 				expect(await repository.findOwnedThread(threadId, userId, project.id)).toBeNull();
 			}
