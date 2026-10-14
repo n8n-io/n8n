@@ -71,6 +71,7 @@ describe('TeamsSetupService', () => {
 		credentialsService = mock<CredentialsService>();
 		urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
@@ -178,6 +179,7 @@ describe('TeamsSetupService', () => {
 				});
 
 				expect(state.provisionedByN8n).toBe(true);
+				expect(state.fileAccessConsentUrl).toContain('/adminconsent?client_id=');
 			});
 
 			it('disclaims a hand-made credential, which carries no provenance', async () => {
@@ -189,6 +191,8 @@ describe('TeamsSetupService', () => {
 				});
 
 				expect(state.provisionedByN8n).toBe(false);
+				// A hand-made app registered no return address for the consent screen.
+				expect(state.fileAccessConsentUrl).toBeNull();
 			});
 
 			it('disclaims one the recommended setup made for a different agent', async () => {

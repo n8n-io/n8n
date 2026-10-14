@@ -4,11 +4,14 @@ import type {
 	AgentConfigValidationIssue,
 	AgentJsonConfig,
 	AgentJsonTaskConfig,
+	TeamsFileAccessConsentState,
 } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { agentsEventBus } from '../agents.eventBus';
 import {
 	agentChannelPlatforms,
@@ -24,6 +27,7 @@ import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
+import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 const props = withDefaults(
 	defineProps<{
@@ -196,6 +200,7 @@ async function loadChannelDetails() {
 	if (!props.agentUnsaved) {
 		await fetchStatus(withN8nChat(integrations).map(({ type }) => type));
 	}
+	openTeamsAfterFileAccessConsent(integrations);
 
 	try {
 		const credentials = await credentialsStore.fetchUsableCredentials({
@@ -257,6 +262,39 @@ function handleChannelConnected(channelType: string) {
 	emit('update:connected-triggers', channels);
 	emit('trigger-added', { triggerType: channelType, triggers: channels });
 	void loadChannelDetails();
+}
+
+const FILE_ACCESS_CONSENT_STATE: TeamsFileAccessConsentState = 'teams-file-access';
+const route = useRoute();
+const router = useRouter();
+const toast = useToast();
+
+/**
+ * Microsoft returns an administrator here after the Teams file access consent,
+ * with `state` passed back unchanged. The Teams settings show the result. The
+ * other query values are Microsoft's and only cleared, never shown. Runs after
+ * the status fetch: the agent's channels can load later than this page, and
+ * until then a connected Teams reads as not connected and opens the setup.
+ */
+function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) {
+	// Optional: the section also renders outside the router, as in tests.
+	if (route?.query.state !== FILE_ACCESS_CONSENT_STATE) return;
+	if (!integrations.some(({ type }) => type === 'teams')) return;
+	const { state, admin_consent, tenant, error, error_description, error_subcode, ...query } =
+		route.query;
+	void router.replace({ query });
+	fileAccessJustApproved.value = admin_consent === 'True';
+	// Microsoft's own error text arrives in the address, so only fixed text is shown.
+	if (error) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.channels.teams.fileAccessConsentFailed'),
+		});
+	}
+	openChannelEdit(
+		'teams',
+		props.connectedTriggers.includes('teams') || integrationStatus.isConfigured('teams'),
+	);
 }
 
 defineExpose({ openChannelModal });
