@@ -36,6 +36,7 @@ describe('AgentWhatsAppIntegrationsController', () => {
 	it.each([
 		['checkCredential', 'agent:update'],
 		['webhookStatus', 'agent:read'],
+		['resetWebhookStatus', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -81,6 +82,39 @@ describe('AgentWhatsAppIntegrationsController', () => {
 
 			expect(webhookVerification.isVerified).toHaveBeenCalledWith('agent-1');
 			expect(result).toEqual({ verified });
+		});
+	});
+
+	describe('resetWebhookStatus', () => {
+		it('throws NotFoundError when the agent is not in the project', async () => {
+			const { controller, agentRepository, webhookVerification } = makeController();
+			agentRepository.existsBy.mockResolvedValue(false);
+
+			await expect(
+				controller.resetWebhookStatus(request, undefined as never, 'agent-1'),
+			).rejects.toThrow(NotFoundError);
+
+			expect(webhookVerification.reset).not.toHaveBeenCalled();
+		});
+
+		it('resets the recorded handshake and reports it as not verified', async () => {
+			const { controller, agentRepository, webhookVerification } = makeController();
+			agentRepository.existsBy.mockResolvedValue(true);
+
+			const result = await controller.resetWebhookStatus(request, undefined as never, 'agent-1');
+
+			expect(webhookVerification.reset).toHaveBeenCalledExactlyOnceWith('agent-1');
+			expect(result).toEqual({ verified: false });
+		});
+
+		it('fails when the reset fails, so the setup does not trust a stale record', async () => {
+			const { controller, agentRepository, webhookVerification } = makeController();
+			agentRepository.existsBy.mockResolvedValue(true);
+			webhookVerification.reset.mockRejectedValue(new Error('cache down'));
+
+			await expect(
+				controller.resetWebhookStatus(request, undefined as never, 'agent-1'),
+			).rejects.toThrow('cache down');
 		});
 	});
 });

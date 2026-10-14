@@ -41,13 +41,22 @@ export class WhatsAppWebhookVerificationStore {
 	 */
 	async clear(agentId: string): Promise<void> {
 		try {
-			await this.cacheService.delete(cacheKey(agentId));
+			await this.reset(agentId);
 		} catch (error) {
 			this.logger.warn('[WhatsAppIntegration] Failed to clear the webhook handshake', {
 				agentId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+
+	/**
+	 * Throws, unlike {@link clear}: the setup resets before it asks for a new
+	 * handshake, and a record that survives would confirm the step for the
+	 * wrong Meta app.
+	 */
+	async reset(agentId: string): Promise<void> {
+		await this.cacheService.delete(cacheKey(agentId));
 	}
 
 	async isVerified(agentId: string): Promise<boolean> {

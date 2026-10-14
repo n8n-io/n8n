@@ -57,6 +57,20 @@ describe('WhatsAppWebhookVerificationStore', () => {
 		});
 	});
 
+	describe('reset', () => {
+		it('deletes the handshake record', async () => {
+			await store.reset(AGENT_ID);
+
+			expect(cacheService.delete).toHaveBeenCalledWith(KEY);
+		});
+
+		it('throws when the cache fails', async () => {
+			cacheService.delete.mockRejectedValue(new Error('cache down'));
+
+			await expect(store.reset(AGENT_ID)).rejects.toThrow('cache down');
+		});
+	});
+
 	describe('isVerified', () => {
 		it('returns true when the cache holds true', async () => {
 			cacheService.get.mockResolvedValue(true);
