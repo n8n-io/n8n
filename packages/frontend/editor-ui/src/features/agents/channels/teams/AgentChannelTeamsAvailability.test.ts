@@ -6,6 +6,7 @@ import type { RenderResult } from '@testing-library/vue';
 
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import { availabilityFrom } from './constants';
+import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
 
 const copy = vi.fn();
 vi.mock('@n8n/composables/useClipboard', () => ({ useClipboard: () => ({ copy }) }));
@@ -14,11 +15,16 @@ configure({ testIdAttribute: 'data-testid' });
 
 const renderComponent = createComponentRenderer(AgentChannelTeamsAvailability, {
 	pinia: createTestingPinia(),
+	global: {
+		stubs: {
+			ActionDropdown: ActionDropdownTestStub,
+		},
+	},
 });
 
 async function openedUrl({ getByTestId }: Pick<RenderResult, 'getByTestId'>) {
 	const open = vi.spyOn(window, 'open').mockReturnValue(null);
-	await fireEvent.click(getByTestId('teams-file-access-link'));
+	await fireEvent.click(getByTestId('teams-file-access-approve'));
 	return String(open.mock.calls[0][0]);
 }
 
@@ -56,7 +62,7 @@ describe('AgentChannelTeamsAvailability', () => {
 			},
 		});
 
-		await fireEvent.click(getByTestId('teams-file-access-link'));
+		await fireEvent.click(getByTestId('teams-file-access-approve'));
 
 		expect(assign).toHaveBeenCalledWith(CONSENT_URL);
 		vi.unstubAllGlobals();
@@ -79,6 +85,49 @@ describe('AgentChannelTeamsAvailability', () => {
 		});
 
 		expect(await openedUrl({ getByTestId })).toContain('ApplicationsListBlade');
+	});
+
+	it('confirms an approval only right after Microsoft returns from it', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				modelValue: availabilityFrom({ teamChannels: true }),
+				fileAccessConsentUrl: CONSENT_URL,
+				fileAccessState: 'approved',
+			},
+		});
+
+		expect(getByTestId('teams-file-access-approved')).toHaveTextContent('File access approved.');
+		expect(queryByTestId('teams-file-access')).toBeNull();
+	});
+
+	it('says nothing while the settings hide it', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				modelValue: availabilityFrom({ teamChannels: true }),
+				fileAccessConsentUrl: CONSENT_URL,
+				fileAccessState: 'hidden',
+			},
+		});
+
+		expect(queryByTestId('teams-file-access')).toBeNull();
+		expect(queryByTestId('teams-file-access-approved')).toBeNull();
+	});
+
+	it('names the organisation an administrator approves for', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: availabilityFrom({ teamChannels: true }),
+				fileAccessConsentUrl: CONSENT_URL,
+				organization: 'Acme Corp',
+			},
+		});
+
+		expect(getByTestId('teams-file-access')).toHaveTextContent(
+			'The agent can’t read files in channels and group chats until an admin approves.',
+		);
+		expect(getByTestId('teams-file-access-approve')).toHaveTextContent(
+			'If you are an admin in Acme Corp',
+		);
 	});
 
 	it('copies the link, to send to an administrator', async () => {

@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
+	runDataUsedCredentialIds,
 	runDataUsedDynamicCredentials,
 	WorkflowExecuteMode,
 	WorkflowSettings,
@@ -318,9 +319,16 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		const credentialIdsByExecution = new Map<RedactableExecution, string[]>();
 		const allCredentialIds = new Set<string>();
 		for (const execution of executions) {
-			const credentialIds = this.credentialsPermissionChecker.getCredentialIdsForNodes(
-				execution.workflowData.nodes,
-			);
+			// The execution's own nodes, plus what its sub-workflows reported onto the calling
+			// nodes' tasks: their output is embedded here.
+			const credentialIds = [
+				...new Set([
+					...this.credentialsPermissionChecker.getCredentialIdsForNodes(
+						execution.workflowData.nodes,
+					),
+					...runDataUsedCredentialIds(execution.data.resultData?.runData),
+				]),
+			];
 			if (credentialIds.length === 0) continue;
 			credentialIdsByExecution.set(execution, credentialIds);
 			for (const id of credentialIds) allCredentialIds.add(id);

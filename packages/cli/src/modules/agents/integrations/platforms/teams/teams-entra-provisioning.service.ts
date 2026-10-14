@@ -516,6 +516,11 @@ export class TeamsEntraProvisioningService {
 			delete existingData.publishedTeamsAppId;
 			delete existingData.publishedTeamsAppState;
 			delete existingData.publishedTeamsAppAt;
+			// The bot signs for the app it was made with, so it does not move either.
+			delete existingData.azureBotName;
+			delete existingData.azureSubscriptionId;
+			// The fingerprint stays: it describes the app Teams still holds, which
+			// names the old bot, so the settings can say it needs installing again.
 		}
 
 		const data = {
