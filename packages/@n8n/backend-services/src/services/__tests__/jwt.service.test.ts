@@ -5,7 +5,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { generateKeyPairSync } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '../jwt.service';
 
 const getJwtSecret = (svc: JwtService) => (svc as unknown as { jwtSecret: string }).jwtSecret;
 

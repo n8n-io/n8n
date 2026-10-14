@@ -55,3 +55,16 @@ export {
 	type Jwk,
 	type SkippedJwk,
 } from './services/oauth-discovery-client';
+
+export {
+	type PurposedSignOptions,
+	type PurposedVerifyOptions,
+	JwtService,
+	type JwtPayload,
+} from './services/jwt.service';
+export {
+	TOKEN_PURPOSES,
+	type TokenPurpose,
+	API_KEY_PURPOSES,
+	LEGACY_UNBOUND_PURPOSES,
+} from './services/token-purposes';
