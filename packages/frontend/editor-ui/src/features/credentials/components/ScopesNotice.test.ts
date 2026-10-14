@@ -7,7 +7,10 @@ import ScopesNotice from './ScopesNotice.vue';
 
 const renderComponent = createComponentRenderer(ScopesNotice);
 
-describe('ScopesNotice', () => {
+describe.each([
+	{ scopeCount: '1 scope', scopes: ['read:items'] },
+	{ scopeCount: '2 scopes', scopes: ['read:items', 'write:items'] },
+])('ScopesNotice ($scopeCount)', ({ scopeCount, scopes }) => {
 	beforeEach(() => {
 		createTestingPinia();
 		useCredentialsStore().state.credentialTypes = {
@@ -23,18 +26,26 @@ describe('ScopesNotice', () => {
 		const { getByText, getByRole } = renderComponent({
 			props: {
 				activeCredentialType: 'testOAuth2Api',
-				scopes: ['read:items', 'write:items'],
+				scopes,
 			},
 		});
 
 		expect(getByRole('region')).not.toHaveTextContent('read:items');
 		expect(getByRole('region')).not.toHaveTextContent('write:items');
 
-		await userEvent.click(getByText('2 scopes'));
+		await userEvent.click(getByText(scopeCount, { exact: false }));
 
-		expect(getByRole('region')).toHaveTextContent('read:items');
-		expect(getByRole('region')).toHaveTextContent('write:items');
+		for (const scope of scopes) {
+			expect(getByRole('region')).toHaveTextContent(scope);
+		}
 		expect(getByText('Show less')).toBeVisible();
+
+		await userEvent.click(getByText('Show less'));
+
+		for (const scope of scopes) {
+			expect(getByRole('region')).not.toHaveTextContent(scope);
+		}
+		expect(getByText(`${scopeCount} available`)).toBeVisible();
 	});
 
 	// NODE-5622: Users expect the "scopes available" control to reveal the scope list.
@@ -42,17 +53,25 @@ describe('ScopesNotice', () => {
 		const { getByText, getByRole } = renderComponent({
 			props: {
 				activeCredentialType: 'testOAuth2Api',
-				scopes: ['read:items', 'write:items'],
+				scopes,
 			},
 		});
 
 		expect(getByRole('region')).not.toHaveTextContent('read:items');
 		expect(getByRole('region')).not.toHaveTextContent('write:items');
 
-		await userEvent.click(getByText('available for Test credentials', { exact: false }));
+		await userEvent.click(getByText(/available/));
 
-		expect(getByRole('region')).toHaveTextContent('read:items');
-		expect(getByRole('region')).toHaveTextContent('write:items');
+		for (const scope of scopes) {
+			expect(getByRole('region')).toHaveTextContent(scope);
+		}
 		expect(getByText('Show less')).toBeVisible();
+
+		await userEvent.click(getByText(/available/));
+
+		for (const scope of scopes) {
+			expect(getByRole('region')).not.toHaveTextContent(scope);
+		}
+		expect(getByText(`${scopeCount} available`)).toBeVisible();
 	});
 });
