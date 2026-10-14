@@ -40,9 +40,10 @@ run them unprompted:
 
 - **Auth errors (401, 403, "unauthorized", "invalid key").** Confirm that the
   credential exists (`credentials(action="list")` or `get`), that the node uses
-  it (`executions(action="get-resolved-node-parameters")` or the workflow
-  definition), and what `credentials(action="test")` reports. A test result of
-  `untested` means the credential type has no connection test. It is not a pass.
+  it (the node's `credentials` in `workflows(action="get")`; resolved
+  parameters show only the auth type, not which credential is bound), and what
+  `credentials(action="test")` reports. A test result of `untested` means the
+  credential type has no connection test. It is not a pass.
 - **Other node errors.** Start from `executions(action="debug")` and the
   resolved parameters of the failed node.
 
