@@ -60,6 +60,18 @@ describe('MessageFormatter', () => {
 				});
 			});
 
+			it('should pass through resource content block containing text and blob', () => {
+				const result = [
+					{
+						type: 'resource',
+						resource: { uri: 'file:///test.txt', text: 'content', blob: 'base64data' },
+					},
+				];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: result,
+				});
+			});
+
 			it('should pass through resource_link content block', () => {
 				const result = [
 					{
@@ -184,23 +196,6 @@ describe('MessageFormatter', () => {
 						{
 							type: 'text',
 							text: '[{"type":"resource","resource":{"uri":"file:///test.txt"}}]',
-						},
-					],
-				});
-			});
-
-			it('should stringify array with resource block containing text and blob', () => {
-				const result = [
-					{
-						type: 'resource',
-						resource: { uri: 'file:///test.txt', text: 'content', blob: 'base64data' },
-					},
-				];
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
-					content: [
-						{
-							type: 'text',
-							text: '[{"type":"resource","resource":{"uri":"file:///test.txt","text":"content","blob":"base64data"}}]',
 						},
 					],
 				});
