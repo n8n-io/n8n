@@ -70,6 +70,8 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 export interface IExecutionPushResponse {
 	executionId?: string;
 	waitingForWebhook?: boolean;
+	/** Names of the trigger nodes whose test webhooks the backend registered for this run. */
+	registeredTriggerNodes?: string[];
 }
 
 export interface IExecutionResponse extends IExecutionBase {
