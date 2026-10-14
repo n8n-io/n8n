@@ -68,7 +68,7 @@ describe('Expression - fast native evaluation parity', () => {
 	sparse[0] = 1;
 	sparse[2] = 3;
 
-	const makeItem = () => ({
+	const makeItem = (oversized = true) => ({
 		pairedItem: { item: 0 },
 		binary: {
 			file: { data: 'aGVsbG8=', mimeType: 'text/plain', fileName: 'hello.txt', fileSize: '5 B' },
@@ -86,14 +86,18 @@ describe('Expression - fast native evaluation parity', () => {
 				mixed: ['a', 1],
 				empty: [] as number[],
 				sparse,
-				manyZeros: new Array<number>(MAX_STEPS + 1).fill(0),
-				filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
-				big: 'y'.repeat(20_000),
-				bigger: 'y'.repeat(150_000),
-				manyEmpty: new Array<string>(20_000).fill(''),
-				manyBig: new Array<string>(2_000).fill('z'.repeat(1_000)),
-				huge: 'h'.repeat(MAX_RESULT_LENGTH + 1),
-				hugeArr: new Array<number>(MAX_RESULT_LENGTH + 1).fill(0),
+				...(oversized
+					? {
+							manyZeros: new Array<number>(MAX_STEPS + 1).fill(0),
+							filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
+							big: 'y'.repeat(20_000),
+							bigger: 'y'.repeat(150_000),
+							manyEmpty: new Array<string>(20_000).fill(''),
+							manyBig: new Array<string>(2_000).fill('z'.repeat(1_000)),
+							huge: 'h'.repeat(MAX_RESULT_LENGTH + 1),
+							hugeArr: new Array<number>(MAX_RESULT_LENGTH + 1).fill(0),
+						}
+					: {}),
 				re: /o/g,
 			},
 		},
@@ -117,6 +121,15 @@ describe('Expression - fast native evaluation parity', () => {
 			},
 		});
 	const runExecutionData = runDataFor([item]);
+	// A node reference hands the whole item to the engine, so under quickjs
+	// every oversized value crosses the bridge. Node reference cases get an
+	// item without them.
+	const slimItem = makeItem(false);
+	const slimRunData = runDataFor([slimItem]);
+	const fixtureFor = (expr: string) =>
+		/\$\(|\$input|\$node\[/.test(expr)
+			? { data: slimRunData, items: [slimItem] }
+			: { data: runExecutionData, items: [item] };
 	// `$vars` comes in through additionalKeys; `$('Source').item` resolves the
 	// paired item through executeData.source.
 	const additionalKeys = { $vars: { region: 'eu' } };
@@ -139,8 +152,8 @@ describe('Expression - fast native evaluation parity', () => {
 	const evaluate = (
 		expr: string,
 		native: boolean,
-		data = runExecutionData,
-		items: Array<ReturnType<typeof makeItem>> = [item],
+		data = fixtureFor(expr).data,
+		items: Array<ReturnType<typeof makeItem>> = fixtureFor(expr).items,
 	) => {
 		Expression.setNativeEvaluation(native);
 		try {
@@ -166,17 +179,18 @@ describe('Expression - fast native evaluation parity', () => {
 	// apart, since a bailout returns the engine's value either way.
 	const nativeOutcome = (expr: string) => {
 		const node = workflow.getNode('Current');
+		const { data, items } = fixtureFor(expr);
 		const proxy = new WorkflowDataProxy(
 			workflow,
-			runExecutionData,
+			data,
 			0,
 			0,
 			'Current',
-			[item],
+			items,
 			node?.parameters ?? {},
 			'manual',
 			additionalKeys,
-			executeDataFor([item]),
+			executeDataFor(items),
 		).getDataProxy();
 
 		Expression.setNativeEvaluation(true);
