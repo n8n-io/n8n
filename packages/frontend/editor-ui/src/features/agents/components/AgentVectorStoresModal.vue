@@ -239,6 +239,7 @@ async function loadCredentials() {
 	try {
 		const allCredentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.data.projectId,
+			forAgent: true,
 		});
 		const types = new Set<string>();
 		for (const definition of Object.values(AGENT_VECTOR_STORE_PROVIDER_DEFINITIONS)) {
@@ -469,7 +470,7 @@ onMounted(() => {
 					</div>
 					<div :class="$style.actions">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							data-testid="agent-vector-stores-modal-connect"
 							@click="selectProvider(provider)"

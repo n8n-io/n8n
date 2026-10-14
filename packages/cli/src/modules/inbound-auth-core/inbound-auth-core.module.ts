@@ -1,3 +1,4 @@
+import { isEnvFeatureEnabled } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -52,6 +53,12 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		if (Container.get(InstanceSettings).instanceType === 'main') {
 			const { SystemTrustedSourceSeeder } = await import('./system-trusted-source.seeder.js');
 			await Container.get(SystemTrustedSourceSeeder).seed();
+
+			// Ships dark. Set `N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED=true` on a main instance to register
+			// the `/trusted-sources` management routes; the license gates only create and update.
+			if (isEnvFeatureEnabled('N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED')) {
+				await import('./trusted-source.controller.js');
+			}
 		}
 
 		const { OAuth2AuthenticationService } = await import('./authentication.service.js');

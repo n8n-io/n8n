@@ -48,8 +48,8 @@ specific-page fetching, use only \`n8n-nodes-base.httpRequestTool\`.
 
 Use only an exact URL explicitly supplied by the user for
 \`n8n-nodes-base.httpRequestTool\`. If the user has not supplied one, you MUST
-ask which URL the tool should fetch. During an initial build, mark this setup
-as blocked and include the URL question in the single trailing \`finish_setup\`
+ask which URL the tool should fetch. During an initial build, add this to the
+pending setup and include the URL question in the single trailing \`finish_setup\`
 call; add the tool with the returned URL after the user answers. On later
 turns, call \`${ASK_QUESTIONS_TOOL_NAME}\` and wait for the answer before
 mutating the config. Do not search for, derive, infer, guess, or invent a URL

@@ -81,6 +81,7 @@ import {
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import DitherTrailGrid from './components/DitherTrailGrid.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './components/LimitedModeNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
@@ -153,7 +154,7 @@ const canSelectProject = computed(
 	() => projectsStore.isTeamProjectFeatureEnabled && projectsStore.myProjects.length > 1,
 );
 const settingsStore = useInstanceAiSettingsStore();
-const { showCreditWarning, quotaLocked, isOutOfCredits } = storeToRefs(store);
+const { isLowCredits, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
@@ -163,14 +164,10 @@ const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 // this view mounts on every entry to the empty route, the parent layout doesn't.
 useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
+const creditBanner = useCreditWarningBanner(isLowCredits);
 const outOfCreditsMessage = computed(() => {
 	if (!isOutOfCredits.value) return undefined;
-	return i18n.baseText(
-		appSettingsStore.moduleSettings?.['instance-ai']?.activationCapped
-			? 'instanceAi.error.outOfCredits.trialTitle'
-			: 'instanceAi.error.outOfCredits.title',
-	);
+	return i18n.baseText('instanceAi.error.outOfCredits.title');
 });
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
@@ -791,7 +788,6 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						v-if="isOutOfCredits || creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
-						:amounts-hidden="quotaLocked"
 						:message="outOfCreditsMessage"
 						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -835,7 +831,6 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							v-if="isOutOfCredits || creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
-							:amounts-hidden="quotaLocked"
 							:message="outOfCreditsMessage"
 							:dismissible="!isOutOfCredits"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -889,7 +884,6 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						v-if="isOutOfCredits || creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
-						:amounts-hidden="quotaLocked"
 						:message="outOfCreditsMessage"
 						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -935,6 +929,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</Transition>
 			</div>
 		</div>
+
+		<DitherTrailGrid :height="640" />
 	</div>
 </template>
 
@@ -949,6 +945,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	border-bottom-left-radius: var(--radius--xl);
 	border-bottom-right-radius: var(--radius--xl);
+	border: var(--border);
 	display: flex;
 	flex-direction: row;
 }
@@ -964,10 +961,12 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 }
 
 .contentArea {
+	position: relative;
 	display: flex;
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	z-index: 1;
 }
 
 .emptyLayout {

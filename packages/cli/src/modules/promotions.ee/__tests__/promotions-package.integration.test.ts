@@ -1934,19 +1934,140 @@ describe('Apply data table changes', () => {
 });
 
 describe('Promote a project selection — branch effects', () => {
-	it('refuses a selection when the branch has no package yet', async () => {
+	it('promotes a first selection to a branch without a package, then adds to it', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
 		await service.clone(connection.id, 'promote');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+		await setupProjectWithWorkflows('Billing', ['b1']);
+		const promoteWorkflow = async (workflowId: string) =>
+			await service.promoteProjectSelection(project.id, owner, {
+				workflowIds: [workflowId],
+				commitMessage: 'Promote selection',
+				canExportVariableValues: true,
+			});
+
+		await promoteWorkflow(workflows[0].id);
+
+		const first = await inspectBranch(remote.bareDir);
+		expect((await readBranchEntities(first.dir, 'workflow.json')).map((w) => w.id)).toEqual([
+			workflows[0].id,
+		]);
+		expect(
+			(await readBranchEntities(first.dir, PACKAGE_ENTITY_LAYOUT.projects.fileName)).map(
+				(p) => p.id,
+			),
+		).toEqual([project.id]);
+		await expect(readFile(path.join(first.dir, 'README.md'), 'utf-8')).resolves.toBe(
+			'# n8n promotions test\n',
+		);
+
+		await promoteWorkflow(workflows[1].id);
+
+		const second = await inspectBranch(remote.bareDir);
+		expect((await readBranchEntities(second.dir, 'workflow.json')).map((w) => w.id).sort()).toEqual(
+			workflows.map((w) => w.id).sort(),
+		);
+	});
+
+	it.each(['n8n-export', 'n8n-export/manifest.json'])(
+		'refuses a selection when the local copy lost committed %s, until it connects again',
+		async (lostPath) => {
+			const remote = await createRemote();
+			const connection = await createInstanceConnection(remote.bareDir);
+			const { configId } = await service.clone(connection.id, 'promote');
+			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+			const promoteWorkflow = async (workflowId: string) =>
+				await service.promoteProjectSelection(project.id, owner, {
+					workflowIds: [workflowId],
+					commitMessage: 'Promote selection',
+					canExportVariableValues: true,
+				});
+			await promoteWorkflow(workflows[0].id);
+			const remoteGit = simpleGit(remote.bareDir);
+			const promotedCommit = (await remoteGit.revparse(['main'])).trim();
+
+			const { repositoryFolder } = workingDirectory.paths(configId);
+			await rm(path.join(repositoryFolder, lostPath), { recursive: true, force: true });
+
+			await expect(promoteWorkflow(workflows[1].id)).rejects.toThrow(
+				'The local copy of the promote branch is incomplete',
+			);
+			expect((await remoteGit.revparse(['main'])).trim()).toBe(promotedCommit);
+
+			await service.clone(connection.id, 'promote');
+			await promoteWorkflow(workflows[1].id);
+
+			const { dir } = await inspectBranch(remote.bareDir);
+			expect((await readBranchEntities(dir, 'workflow.json')).map((w) => w.id).sort()).toEqual(
+				workflows.map((w) => w.id).sort(),
+			);
+		},
+	);
+
+	it('pushes a first selection to an empty repository after a failed attempt', async () => {
+		const bareDir = path.join(testRoot, 'empty-remote.git');
+		await simpleGit().raw(['init', '--bare', bareDir]);
+		const connection = await createInstanceConnection(bareDir);
+		const { configId } = await service.clone(connection.id, 'promote');
+		const { repositoryFolder } = workingDirectory.paths(configId);
+		const checkoutGit = simpleGit(repositoryFolder);
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1']);
+		const request = {
+			workflowIds: [workflows[0].id],
+			commitMessage: 'Add w1',
+			canExportVariableValues: true,
+		};
+
+		await rename(bareDir, `${bareDir}.offline`);
+		await expect(service.promoteProjectSelection(project.id, owner, request)).rejects.toThrow();
+
+		// The checkout is back to a branch with no commits and no package.
+		await expect(stat(path.join(repositoryFolder, 'n8n-export'))).rejects.toMatchObject({
+			code: 'ENOENT',
+		});
+		expect(
+			(await checkoutGit.raw(['for-each-ref', '--format=%(objectname)', 'refs/heads/main'])).trim(),
+		).toBe('');
+		expect((await checkoutGit.status()).isClean()).toBe(true);
+
+		await rename(`${bareDir}.offline`, bareDir);
+		await service.promoteProjectSelection(project.id, owner, request);
+
+		expect((await simpleGit(bareDir).raw(['rev-list', '--count', 'main'])).trim()).toBe('1');
+		const { dir } = await inspectBranch(bareDir);
+		expect((await readBranchEntities(dir, 'workflow.json')).map((w) => w.id)).toEqual([
+			workflows[0].id,
+		]);
+	});
+
+	it('pushes a first branched selection off a base without a package', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(
+			remote.bareDir,
+			{ apply: 'main', promote: 'main' },
+			true,
+		);
+		const { configId } = await service.clone(connection.id, 'promote');
+		const baseCommit = (await remote.git.revparse(['main'])).trim();
 		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1']);
 
-		await expect(
-			service.promoteProjectSelection(project.id, owner, {
-				workflowIds: [workflows[0].id],
-				commitMessage: 'Add w1',
-				canExportVariableValues: true,
-			}),
-		).rejects.toThrow('Promote the instance first');
+		const result = await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [workflows[0].id],
+			commitMessage: 'Add w1',
+			canExportVariableValues: true,
+		});
+
+		const remoteGit = simpleGit(remote.bareDir);
+		expect((await remoteGit.revparse([`${result.git.branchName}^`])).trim()).toBe(baseCommit);
+		expect((await remoteGit.revparse(['main'])).trim()).toBe(baseCommit);
+		const { repositoryFolder } = workingDirectory.paths(configId);
+		expect((await simpleGit(repositoryFolder).revparse(['HEAD'])).trim()).toBe(baseCommit);
+
+		const { dir } = await inspectBranch(remote.bareDir, result.git.branchName);
+		expect((await readBranchEntities(dir, 'workflow.json')).map((w) => w.id)).toEqual([
+			workflows[0].id,
+		]);
 	});
 
 	it('adds only the selected workflow, leaving existing workflows untouched', async () => {

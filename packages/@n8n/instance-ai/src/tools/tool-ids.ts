@@ -1,5 +1,3 @@
-import { isAgentFeatureEnabled } from '../utils/agent-feature-enabled';
-
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: 'workflows',
 	EVAL_CONFIG: 'eval-config',
@@ -95,8 +93,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it
 	// costs 2 LLM rounds (search_tools + load_tool) and a prompt-cache rewrite
-	// on every agent build.
-	...(isAgentFeatureEnabled() ? [ORCHESTRATION_TOOL_IDS.BUILD_AGENT] : []),
+	// on every agent build. Registered only when the host provides a builder
+	// delegate (Agents module active), so an instance without it pays nothing.
+	ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 ]);
 
 export const CHECKPOINT_FOLLOW_UP_TOOL_NAMES = new Set<string>([

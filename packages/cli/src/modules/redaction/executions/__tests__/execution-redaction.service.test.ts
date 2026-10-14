@@ -1050,6 +1050,22 @@ describe('ExecutionRedactionService', () => {
 			expect(context.userCanReveal).toBe(false);
 		});
 
+		it('passes on only the credentials of this execution that the viewer cannot use', async () => {
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [nodeWithCredential('cred-1'), nodeWithCredential('cred-2')],
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.inaccessibleCredentialIds).toEqual(['cred-1']);
+		});
+
 		describe('a sub-workflow credential', () => {
 			// The parent's own nodes reference no credential; its Execute Workflow task
 			// carries the credentials the sub-workflow run reported.
