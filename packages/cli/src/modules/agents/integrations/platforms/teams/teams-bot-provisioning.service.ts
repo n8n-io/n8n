@@ -30,9 +30,13 @@ const BOT_API = '2022-09-15';
 const MAX_PAGES = 50;
 /** Every provisioned bot lands here. Not configurable: it is Azure jargon in a
  * flow that has none, and a wrong value fails late and confusingly. */
-export const RESOURCE_GROUP = 'n8n-agents';
+const RESOURCE_GROUP = 'n8n-agents';
 /** Bot Service is a global resource; its resource group still needs a region. */
 const RESOURCE_GROUP_LOCATION = 'westeurope';
+
+export function botResourceId(subscriptionId: string, botName: string): string {
+	return `/subscriptions/${subscriptionId}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.BotService/botServices/${botName}`;
+}
 
 /** `properties.msaAppId` of an existing bot resource. */
 function botAppIdOf(body: unknown): string | undefined {
@@ -151,7 +155,7 @@ export class TeamsBotProvisioningService {
 			(await this.findBotByAppId(token, options.subscriptionId, options.msaAppId)) ??
 			this.armTemplateService.botNameFor(options.agentName, options.agentId);
 
-		const scope = `/subscriptions/${options.subscriptionId}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.BotService/botServices/${botName}`;
+		const scope = botResourceId(options.subscriptionId, botName);
 
 		// The bot name is derived from the agent, so a re-run lands on the bot made
 		// last time. Azure fixes a bot's app id at creation, so one left over from
@@ -222,6 +226,12 @@ export class TeamsBotProvisioningService {
 				string,
 				unknown
 			>;
+			if (
+				current.azureBotName === botName &&
+				current.azureSubscriptionId === options.subscriptionId
+			) {
+				return;
+			}
 			const updated = {
 				...current,
 				azureBotName: botName,

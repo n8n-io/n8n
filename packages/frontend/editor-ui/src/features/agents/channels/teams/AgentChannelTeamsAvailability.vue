@@ -15,7 +15,6 @@ import {
 	N8nSettingsRowGroup,
 	N8nSwitch2,
 } from '@n8n/design-system';
-import type { TeamsFileAccessCheck } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	ENTRA_APP_REGISTRATIONS_URL,
@@ -23,7 +22,6 @@ import {
 	readsSharedConversations as readsShared,
 	type TeamsAvailability,
 } from './constants';
-import AgentChannelTeamsMenuItem from './AgentChannelTeamsMenuItem.vue';
 import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
 
 export type { TeamsAvailability } from './constants';
@@ -36,10 +34,8 @@ const props = withDefaults(
 		/** Client ID of the app the channel runs on, once a credential is picked. */
 		appId?: string | null;
 		fileAccessConsentUrl?: string | null;
-		/** Checked only where the channel is saved; unchecked shows the request. */
-		fileAccessStatus?: TeamsFileAccessCheck['status'] | 'checking' | null;
-		/** Microsoft just returned from an approval, which is the one time it is confirmed. */
-		fileAccessJustApproved?: boolean;
+		/** What to say about file access. Only the saved channel can check it, so the setup always asks. */
+		fileAccessState?: 'request' | 'approved' | 'hidden';
 		/** The organisation an administrator approves for, where known. */
 		organization?: string;
 		/**
@@ -54,8 +50,7 @@ const props = withDefaults(
 		startCollapsed: false,
 		appId: null,
 		fileAccessConsentUrl: null,
-		fileAccessStatus: null,
-		fileAccessJustApproved: false,
+		fileAccessState: 'request',
 		organization: '',
 		openConsentInPlace: false,
 		hideFileAccess: false,
@@ -127,8 +122,8 @@ const readsSharedConversations = computed(() => readsShared(value.value));
  */
 const fileAccess = computed(() => {
 	if (props.hideFileAccess || !readsSharedConversations.value) return null;
-	if (props.fileAccessJustApproved) return null;
-	if (props.fileAccessStatus === 'approved' || props.fileAccessStatus === 'checking') return null;
+	if (props.fileAccessState === 'approved') return 'approved' as const;
+	if (props.fileAccessState === 'hidden') return null;
 	if (props.fileAccessConsentUrl) {
 		return {
 			hint: 'agents.channels.teams.setup.availability.fileAccessNeededHint' as const,
@@ -141,15 +136,15 @@ const fileAccess = computed(() => {
 	};
 });
 
-const fileAccessApproved = computed(
-	() => !props.hideFileAccess && readsSharedConversations.value && props.fileAccessJustApproved,
+const fileAccessRequest = computed(() =>
+	fileAccess.value && fileAccess.value !== 'approved' ? fileAccess.value : null,
 );
 
 const { items: fileAccessMenuItems, onSelect: onFileAccessMenu } = useTeamsFileAccessMenu({
-	url: () => fileAccess.value?.url ?? '',
+	url: () => fileAccessRequest.value?.url ?? '',
 	organization: () => props.organization,
 	openInPlace: () =>
-		props.openConsentInPlace && fileAccess.value?.url === props.fileAccessConsentUrl,
+		props.openConsentInPlace && fileAccessRequest.value?.url === props.fileAccessConsentUrl,
 });
 
 /** A collapsed panel still has to say what it is set to. */
@@ -206,20 +201,17 @@ const summary = computed(() => {
 					</N8nSettingsRow>
 				</template>
 			</N8nSettingsRow>
-			<div v-if="fileAccess || fileAccessApproved" :class="$style.fileAccess">
-				<N8nCallout v-if="fileAccess" theme="warning" data-testid="teams-file-access">
+			<div v-if="fileAccess" :class="$style.fileAccess">
+				<N8nCallout v-if="fileAccessRequest" theme="warning" data-testid="teams-file-access">
 					{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessNeeded') }}
-					{{ i18n.baseText(fileAccess.hint) }}
+					{{ i18n.baseText(fileAccessRequest.hint) }}
 					<template #trailingContent>
+						<!-- Teleported: the row group clips anything that overflows it. -->
 						<N8nActionDropdown
 							:items="fileAccessMenuItems"
 							placement="bottom-end"
-							:teleported="false"
 							@select="onFileAccessMenu"
 						>
-							<template #menuItem="item">
-								<AgentChannelTeamsMenuItem :label="item.label" :description="item.description" />
-							</template>
 							<template #activator>
 								<N8nButton variant="outline" size="small" data-testid="teams-file-access-menu">
 									{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
@@ -252,7 +244,7 @@ const summary = computed(() => {
 	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 
-/* The text's own bold is medium, which barely shows against regular text. */
+/* The reset makes `strong` medium, which barely shows against regular text. */
 .lead {
 	font-weight: var(--font-weight--bold);
 }
@@ -260,11 +252,9 @@ const summary = computed(() => {
 /*
  * The group paints the page surface, which in dark mode is darker than the
  * modal it sits in. Letting the modal show through keeps it flat in both themes.
- * It also clips, which would cut off the file access menu. The doubled class
- * outranks the group's own single-class rule.
+ * The doubled class outranks the group's own single-class rule.
  */
 .group.group {
 	background: transparent;
-	overflow: visible;
 }
 </style>

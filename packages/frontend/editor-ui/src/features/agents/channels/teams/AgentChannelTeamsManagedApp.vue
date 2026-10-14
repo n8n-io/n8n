@@ -24,7 +24,6 @@ import { saveAs } from 'file-saver';
 import { computed, onMounted, ref, watch } from 'vue';
 
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
-import AgentChannelTeamsMenuItem from './AgentChannelTeamsMenuItem.vue';
 import { fetchTeamsAppPackage } from './api';
 import { AZURE_BOTS_URL, TEAMS_PACKAGE_FILENAME } from './constants';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
@@ -132,19 +131,20 @@ const publish = async () =>
 		// than leaving it behind.
 		if (props.unsavedChanges && !(await props.persistChannel?.())) return;
 		await props.runtime.publishApp(publishing);
-		toast.showMessage(
-			catalogState.value?.status === 'submitted'
-				? {
-						type: 'success',
-						title: i18n.baseText('agents.channels.teams.managed.install.submittedToast'),
-						message: i18n.baseText('agents.channels.teams.managed.install.submitted'),
-					}
-				: {
-						type: 'success',
-						title: i18n.baseText('agents.channels.teams.managed.install.publishedToast'),
-						message: i18n.baseText('agents.channels.teams.managed.install.publishedToastHint'),
-					},
-		);
+		const submitted = catalogState.value?.status === 'submitted';
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText(
+				submitted
+					? 'agents.channels.teams.managed.install.submittedToast'
+					: 'agents.channels.teams.managed.install.publishedToast',
+			),
+			message: i18n.baseText(
+				submitted
+					? 'agents.channels.teams.managed.install.submitted'
+					: 'agents.channels.teams.managed.install.publishedToastHint',
+			),
+		});
 	});
 
 /**
@@ -212,9 +212,6 @@ watch(
 					:teleported="false"
 					@select="onInstallMenu"
 				>
-					<template #menuItem="item">
-						<AgentChannelTeamsMenuItem :label="item.label" :description="item.description" />
-					</template>
 					<template #activator>
 						<N8nButton variant="outline" size="medium" data-testid="teams-settings-install-menu">
 							{{ i18n.baseText('agents.channels.teams.managed.install.menu') }}

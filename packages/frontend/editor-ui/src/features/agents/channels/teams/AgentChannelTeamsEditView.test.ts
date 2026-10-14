@@ -9,6 +9,7 @@ import AgentChannelTeamsEditView from './AgentChannelTeamsEditView.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { checkTeamsFileAccess, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 import { fileAccessJustApproved } from './fileAccessConsent';
+import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -115,12 +116,7 @@ const Host = defineComponent({
 
 const stubs = {
 	AgentIntegrationCredentialConnection: { template: '<div />' },
-	ActionDropdown: {
-		template:
-			'<div><slot name="activator" /><button v-for="item in items" :key="item.id" :data-testid="item.testId" @click="$emit(\'select\', item.id)">{{ item.label }}</button></div>',
-		props: ['items', 'placement', 'teleported'],
-		emits: ['select'],
-	},
+	ActionDropdown: ActionDropdownTestStub,
 };
 
 const renderHost = createComponentRenderer(Host, { global: { stubs } });

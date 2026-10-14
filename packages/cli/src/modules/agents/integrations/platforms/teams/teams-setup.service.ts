@@ -7,7 +7,7 @@ import { UrlService } from '@n8n/backend-services';
 
 import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
-import { RESOURCE_GROUP } from './teams-bot-provisioning.service';
+import { botResourceId } from './teams-bot-provisioning.service';
 import { TeamsManifestService } from './teams-manifest.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -290,7 +290,7 @@ export class TeamsSetupService {
 
 	private azureBot(identity: BotIdentity | null): TeamsAgentSetupState['azureBot'] {
 		if (!identity?.azureBotName || !identity.azureSubscriptionId) return null;
-		const resource = `/subscriptions/${identity.azureSubscriptionId}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.BotService/botServices/${identity.azureBotName}`;
+		const resource = botResourceId(identity.azureSubscriptionId, identity.azureBotName);
 		return {
 			name: identity.azureBotName,
 			portalUrl: `https://portal.azure.com/#@${identity.tenantId}/resource${resource}/overview`,

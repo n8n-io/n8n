@@ -8,6 +8,7 @@ import { computed, ref } from 'vue';
 import { fetchTeamsAppPackage } from './api';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
@@ -72,12 +73,7 @@ const render = (overrides: Record<string, unknown> = {}) => {
 		pinia: createTestingPinia(),
 		global: {
 			stubs: {
-				ActionDropdown: {
-					template:
-						'<div><slot name="activator" /><button v-for="item in items" :key="item.id" :data-testid="item.testId" @click="$emit(\'select\', item.id)">{{ item.label }}</button></div>',
-					props: ['items', 'placement', 'teleported'],
-					emits: ['select'],
-				},
+				ActionDropdown: ActionDropdownTestStub,
 			},
 		},
 	});

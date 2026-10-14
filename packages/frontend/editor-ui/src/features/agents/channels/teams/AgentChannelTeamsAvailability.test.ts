@@ -6,6 +6,7 @@ import type { RenderResult } from '@testing-library/vue';
 
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import { availabilityFrom } from './constants';
+import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
 
 const copy = vi.fn();
 vi.mock('@n8n/composables/useClipboard', () => ({ useClipboard: () => ({ copy }) }));
@@ -16,12 +17,7 @@ const renderComponent = createComponentRenderer(AgentChannelTeamsAvailability, {
 	pinia: createTestingPinia(),
 	global: {
 		stubs: {
-			ActionDropdown: {
-				template:
-					'<div><slot name="activator" /><button v-for="item in items" :key="item.id" :data-testid="item.testId" @click="$emit(\'select\', item.id)">{{ item.label }} {{ item.description }}</button></div>',
-				props: ['items', 'placement', 'teleported'],
-				emits: ['select'],
-			},
+			ActionDropdown: ActionDropdownTestStub,
 		},
 	},
 });
@@ -96,7 +92,7 @@ describe('AgentChannelTeamsAvailability', () => {
 			props: {
 				modelValue: availabilityFrom({ teamChannels: true }),
 				fileAccessConsentUrl: CONSENT_URL,
-				fileAccessJustApproved: true,
+				fileAccessState: 'approved',
 			},
 		});
 
@@ -104,29 +100,17 @@ describe('AgentChannelTeamsAvailability', () => {
 		expect(queryByTestId('teams-file-access')).toBeNull();
 	});
 
-	it('says nothing about an approval given earlier', () => {
+	it('says nothing while the settings hide it', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
 				modelValue: availabilityFrom({ teamChannels: true }),
 				fileAccessConsentUrl: CONSENT_URL,
-				fileAccessStatus: 'approved',
+				fileAccessState: 'hidden',
 			},
 		});
 
 		expect(queryByTestId('teams-file-access')).toBeNull();
 		expect(queryByTestId('teams-file-access-approved')).toBeNull();
-	});
-
-	it('says nothing while the approval is checked', () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				modelValue: availabilityFrom({ teamChannels: true }),
-				fileAccessConsentUrl: CONSENT_URL,
-				fileAccessStatus: 'checking',
-			},
-		});
-
-		expect(queryByTestId('teams-file-access')).toBeNull();
 	});
 
 	it('names the organisation an administrator approves for', () => {

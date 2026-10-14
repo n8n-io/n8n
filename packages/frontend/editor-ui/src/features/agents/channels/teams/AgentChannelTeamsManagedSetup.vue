@@ -15,7 +15,6 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@n8n/composables/useToast';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
@@ -37,7 +36,6 @@ import {
 	type TeamsAvailability,
 } from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
-import AgentChannelTeamsMenuItem from './AgentChannelTeamsMenuItem.vue';
 import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 
@@ -75,7 +73,6 @@ const TEAMS_MANAGE_APPS_URL = 'https://admin.teams.microsoft.com/policies/manage
 
 const i18n = useI18n();
 const clipboard = useClipboard();
-const toast = useToast();
 const rootStore = useRootStore();
 
 const busy = ref<string | null>(null);
@@ -910,9 +907,6 @@ const downloadPackage = async () =>
 						:teleported="false"
 						@select="onFileAccessMenu"
 					>
-						<template #menuItem="item">
-							<AgentChannelTeamsMenuItem :label="item.label" :description="item.description" />
-						</template>
 						<template #activator>
 							<N8nButton variant="outline" size="medium" data-testid="teams-file-access-menu">
 								{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
@@ -954,9 +948,6 @@ const downloadPackage = async () =>
 								:teleported="false"
 								@select="onInstallMenu"
 							>
-								<template #menuItem="item">
-									<AgentChannelTeamsMenuItem :label="item.label" :description="item.description" />
-								</template>
 								<template #activator>
 									<N8nButton
 										variant="solid"

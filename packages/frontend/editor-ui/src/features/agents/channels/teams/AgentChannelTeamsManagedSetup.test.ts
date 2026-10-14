@@ -10,6 +10,7 @@ const copySpy = vi.fn();
 import AgentChannelTeamsManagedSetup from './AgentChannelTeamsManagedSetup.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { entraApiPermissionsUrl } from './constants';
+import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
@@ -97,13 +98,7 @@ const props = (overrides: Record<string, unknown> = {}) => {
  * click the route it means, the way the other dropdown tests here do.
  */
 const stubs = {
-	ActionDropdown: {
-		name: 'ActionDropdown',
-		template:
-			'<div><slot name="activator" /><button v-for="item in items" :key="item.id" :data-testid="item.testId" @click="$emit(\'select\', item.id)">{{ item.label }}</button></div>',
-		props: ['items', 'placement', 'teleported'],
-		emits: ['select'],
-	},
+	ActionDropdown: ActionDropdownTestStub,
 };
 
 const render = (overrides: Record<string, unknown> = {}) =>

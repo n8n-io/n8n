@@ -202,12 +202,15 @@ describe('TeamsBotProvisioningService', () => {
 			type: 'microsoftEntraServicePrincipalApi',
 		});
 
-		it('keeps the bot name and subscription on the channel credential', async () => {
+		const withChannelCredential = () =>
 			credentialsFinderService.findCredentialForUser.mockImplementation(async (id: string) =>
 				id === 'channel-1'
 					? (channelCredential as never)
 					: (mock<CredentialsEntity>({ type: 'microsoftTeamsManagerOAuth2Api' }) as never),
 			);
+
+		it('keeps the bot name and subscription on the channel credential', async () => {
+			withChannelCredential();
 			credentialsService.decrypt.mockResolvedValue({ clientId: 'app-1' } as never);
 
 			await service.provisionBot(provisionOptions);
@@ -220,12 +223,20 @@ describe('TeamsBotProvisioningService', () => {
 			);
 		});
 
+		it('leaves the credential alone when it already names this bot', async () => {
+			withChannelCredential();
+			credentialsService.decrypt.mockResolvedValue({
+				azureBotName: BOT_NAME,
+				azureSubscriptionId: SUBSCRIPTION_ID,
+			} as never);
+
+			await service.provisionBot(provisionOptions);
+
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
 		it('still succeeds when the bot cannot be recorded', async () => {
-			credentialsFinderService.findCredentialForUser.mockImplementation(async (id: string) =>
-				id === 'channel-1'
-					? (channelCredential as never)
-					: (mock<CredentialsEntity>({ type: 'microsoftTeamsManagerOAuth2Api' }) as never),
-			);
+			withChannelCredential();
 			credentialsService.decrypt.mockRejectedValue(new Error('boom'));
 
 			await expect(service.provisionBot(provisionOptions)).resolves.toMatchObject({

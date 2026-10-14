@@ -134,9 +134,13 @@ const offerManagedApp = computed(() => {
 // The credential the saved channel runs on, so a swap counts as an app change.
 // The modal can hand it over after mount, so the first one given is the saved one.
 const savedCredentialId = ref(credentialId.value);
-watch(credentialId, (id) => {
-	if (!savedCredentialId.value) savedCredentialId.value = id;
-});
+if (!savedCredentialId.value) {
+	const stop = watch(credentialId, (id) => {
+		if (!id) return;
+		savedCredentialId.value = id;
+		stop();
+	});
+}
 
 // The sign-in the recommended setup runs on, which names who approves file access.
 const organization = computed(() => {
@@ -424,10 +428,7 @@ async function refreshForCredential() {
 
 watch(credentialId, refreshForCredential, { immediate: true });
 
-// The settings say nothing until the check answers, so an approved app never flashes the request.
-const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | 'checking' | null>(
-	props.mode === 'edit' ? 'checking' : null,
-);
+const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | null>(null);
 const readsSharedConversations = computed(() => readsShared(availability.value));
 /**
  * Microsoft confirms an approval only on the redirect back here, and applying
@@ -440,7 +441,7 @@ const fileAccessApprovedNow = ref(false);
  * link to an administrator. A failed check leaves the request on show.
  */
 async function loadFileAccess() {
-	fileAccessStatus.value = props.mode === 'edit' ? 'checking' : null;
+	fileAccessStatus.value = null;
 	const id = credentialId.value;
 	// Consumed only by a check that runs: the saved settings can arrive after the first call.
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
@@ -464,6 +465,20 @@ async function loadFileAccess() {
 }
 
 watch([credentialId, readsSharedConversations], loadFileAccess, { immediate: true });
+
+/**
+ * The settings say nothing until both the check and the setup state answer:
+ * an approved app never flashes the request, and the request never flips from
+ * the hand-made wording to the one-step consent.
+ */
+const fileAccessState = computed<'request' | 'approved' | 'hidden'>(() => {
+	if (props.mode !== 'edit') return 'request';
+	if (fileAccessApprovedNow.value) return 'approved';
+	if (!setupState.value && !setupLoadFailed.value) return 'hidden';
+	return fileAccessStatus.value === 'notApproved' || fileAccessStatus.value === 'unknown'
+		? 'request'
+		: 'hidden';
+});
 
 // Saving the picked credential keeps its ID, so the watch above does not see the edit.
 listenForCredentialChanges({
@@ -877,8 +892,7 @@ defineExpose({
 					start-collapsed
 					:app-id="setupState?.botId"
 					:file-access-consent-url="setupState?.fileAccessConsentUrl"
-					:file-access-status="setupState || setupLoadFailed ? fileAccessStatus : 'checking'"
-					:file-access-just-approved="fileAccessApprovedNow"
+					:file-access-state="fileAccessState"
 					:organization="organization"
 					open-consent-in-place
 					@update:model-value="editAvailability"
