@@ -7,7 +7,7 @@
  * run of the newest dataset itself rather than depending on a list view.
  */
 import { computed, onMounted, ref, watch } from 'vue';
-import type { AgentEvalDraftCase } from '@n8n/api-types';
+import type { AgentEvalDraftCase, AgentJsonConfig } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +15,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTestAgentPreviewFlag } from '@/features/agents/composables/useTestAgentPreviewFlag';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { isDataTableDataset, resolveCaseColumns } from '../utils/agentEvalCases.utils';
+import AgentEvalMockNotice from './AgentEvalMockNotice.vue';
 import AgentEvalCasesCard from './AgentEvalCasesCard.vue';
 import AgentEvalChecksPanel from './AgentEvalChecksPanel.vue';
 import AgentEvalResultsPanel from './AgentEvalResultsPanel.vue';
@@ -22,6 +23,7 @@ import AgentEvalsEmptyStatePreview from './AgentEvalsEmptyStatePreview.vue';
 
 const props = defineProps<{
 	projectId: string;
+	config?: AgentJsonConfig | null;
 	agentId: string;
 	/** No `agent:update` — cases render but nothing can be changed. */
 	disabled?: boolean;
@@ -220,6 +222,7 @@ watch(() => props.agentId, load);
 
 <template>
 	<div :class="$style.section" data-testid="agent-evals-section">
+		<AgentEvalMockNotice :config="config" :project-id="projectId" />
 		<N8nLoading v-if="awaitingDatasets" :rows="4" data-testid="agent-evals-loading" />
 
 		<AgentEvalChecksPanel

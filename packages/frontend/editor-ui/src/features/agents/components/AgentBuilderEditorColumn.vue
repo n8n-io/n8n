@@ -392,6 +392,7 @@ defineExpose({ onSetupTaskAction });
 					data-testid="agent-evals-tab-content"
 				>
 					<AgentEvalsSection
+						:config="localConfig"
 						:project-id="projectId"
 						:agent-id="agentId"
 						:agent-unsaved="agentUnsaved"

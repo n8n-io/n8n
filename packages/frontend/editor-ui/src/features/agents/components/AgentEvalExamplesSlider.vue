@@ -269,7 +269,7 @@ defineExpose({ sliderValue, focusOwnInput });
 	cursor: ew-resize;
 
 	:global(.el-slider__runway) {
-		background-color: var(--run-data--color--background);
+		background-color: var(--border-color--stronger);
 		border: none;
 		cursor: ew-resize;
 	}

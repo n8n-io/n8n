@@ -4,7 +4,10 @@
  * slider-controlled batch of additional generated examples the user can trim,
  * extend with their own, and hand off to a real check via "Check your agent".
  */
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
+import { useIntervalFn } from '@vueuse/core';
+import { TIME } from '@/app/constants/durations';
+import { formatAgentElapsedTime } from '@/features/agents/utils/agent-elapsed-time';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -12,6 +15,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AgentAvatar, { type AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalExamplesSlider from '@/features/agents/components/AgentEvalExamplesSlider.vue';
 import AgentEvalSuggestionCard from '@/features/agents/components/AgentEvalSuggestionCard.vue';
+import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 
 /** One case of the running suite: its live status and, once settled, its answer. */
@@ -53,6 +57,7 @@ const props = defineProps<{
 	caseRuns: SuiteCaseRun[] | null;
 	/** True from the "Check your agent" click until the run has actually started. */
 	startingRun?: boolean;
+	runStartedAt?: string | null;
 	/** True from the "Stop" click until the cancel request resolves. */
 	stoppingRun?: boolean;
 	/** The cases are saved but their run could not be started or followed. */
@@ -83,6 +88,8 @@ const i18n = useI18n();
 // Collapsed to the summary strip by default once the run settles — expanding
 // is the user's own request, not something a partial success should force.
 const summaryExpanded = ref(false);
+const firstCheckExpanded = ref(false);
+const firstCheckDetailsId = useId();
 
 const waitingCount = computed(
 	() => props.caseRuns?.filter((run) => run.status === 'waiting').length ?? 0,
@@ -97,6 +104,36 @@ const runSettled = computed(() => props.caseRuns !== null && waitingCount.value 
 const allPassed = computed(
 	() => runSettled.value && needsWorkCount.value === 0 && passedCount.value > 0,
 );
+
+const now = ref(Date.now());
+const localStartedAt = ref(now.value);
+const timerActive = computed(
+	() => props.caseRuns !== null && !runSettled.value && !props.runFailed,
+);
+const { pause, resume } = useIntervalFn(
+	() => {
+		now.value = Date.now();
+	},
+	TIME.SECOND,
+	{ immediate: false },
+);
+watch(
+	timerActive,
+	(active) => {
+		if (active) {
+			now.value = Date.now();
+			localStartedAt.value = now.value;
+			resume();
+		} else pause();
+	},
+	{ immediate: true },
+);
+const elapsed = computed(() => {
+	const startedAt = Date.parse(props.runStartedAt ?? '');
+	return formatAgentElapsedTime(
+		now.value - (Number.isFinite(startedAt) ? startedAt : localStartedAt.value),
+	);
+});
 
 // "Keep as is" hides a card until a different suggestion arrives for that case.
 const dismissedSuggestions = ref<string[]>([]);
@@ -153,20 +190,50 @@ function onCheckYourAgent() {
 <template>
 	<div :class="$style.root">
 		<template v-if="!caseRuns">
-			<AgentEvalTryRow
-				:status="previewStatus ?? 'pass'"
-				:input="previewInput"
-				:output="previewOutput"
-				:error-message="previewReasoning"
-				:label="previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')"
-				hide-revise
-				test-id="instance-ai-test-agent-examples-try"
-				@open="emit('open-case', null)"
-			/>
-
-			<N8nText color="text-light" size="small">
-				{{ i18n.baseText('instanceAi.testAgentPreview.savedAsFirstCheck') }}
-			</N8nText>
+			<div
+				:class="$style.firstCheckSummary"
+				data-test-id="instance-ai-test-agent-examples-first-summary"
+			>
+				<AgentAvatar :kind="previewStatus ?? 'pass'" size="sm" />
+				<N8nText color="text-dark">{{
+					i18n.baseText(
+						(previewStatus ?? 'pass') === 'pass'
+							? 'instanceAi.testAgentPreview.firstCheckPassed'
+							: 'instanceAi.testAgentPreview.firstCheckNeedsWork',
+					)
+				}}</N8nText>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					:aria-expanded="firstCheckExpanded"
+					:aria-controls="firstCheckDetailsId"
+					data-test-id="instance-ai-test-agent-examples-view-first"
+					@click="firstCheckExpanded = !firstCheckExpanded"
+				>
+					{{
+						i18n.baseText(
+							firstCheckExpanded
+								? 'instanceAi.testAgentPreview.hideFirstCheck'
+								: 'instanceAi.testAgentPreview.viewFirstCheck',
+						)
+					}}
+				</N8nButton>
+			</div>
+			<div
+				v-if="firstCheckExpanded"
+				:id="firstCheckDetailsId"
+				data-test-id="instance-ai-test-agent-examples-try"
+			>
+				<N8nText color="text-base" size="small">{{
+					previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')
+				}}</N8nText>
+				<EvalInitialSample
+					:preview-input="previewInput"
+					:preview-output="previewOutput"
+					:status="previewStatus ?? 'pass'"
+					:error-message="previewReasoning ?? undefined"
+				/>
+			</div>
 
 			<hr :class="$style.divider" />
 			<N8nText color="text-dark" :class="$style.checkMoreExamplesHint">
@@ -199,13 +266,37 @@ function onCheckYourAgent() {
 			>
 				{{ i18n.baseText('instanceAi.testAgentPreview.runProgressUnavailable') }}
 			</N8nText>
-			<N8nText v-else-if="!runSettled" color="text-dark" :class="$style.runStatus">
-				{{
-					i18n.baseText('instanceAi.testAgentPreview.checkingLeft', {
-						interpolate: { count: String(waitingCount) },
-					})
-				}}
-			</N8nText>
+			<div v-else-if="!runSettled" :class="$style.runningSummary">
+				<div :class="$style.summaryAvatars" aria-hidden="true">
+					<AgentAvatar
+						v-for="run in caseRuns.slice(0, 3)"
+						:key="run.rowId"
+						:kind="run.status"
+						size="row"
+						:class="$style.summaryAvatar"
+					/>
+					<N8nText v-if="caseRuns.length > 3" color="text-base" :class="$style.extraCount"
+						>+{{ caseRuns.length - 3 }}</N8nText
+					>
+				</div>
+				<div>
+					<N8nText color="text-dark" :class="$style.runStatus">{{
+						i18n.baseText('instanceAi.testAgentPreview.runningChecks', {
+							interpolate: {
+								count: String(caseRuns.length),
+								done: String(caseRuns.length - waitingCount),
+							},
+						})
+					}}</N8nText>
+					<div
+						:class="$style.timer"
+						aria-live="off"
+						data-test-id="instance-ai-test-agent-examples-timer"
+					>
+						{{ elapsed }}
+					</div>
+				</div>
+			</div>
 			<N8nText
 				v-else
 				color="text-dark"
@@ -344,8 +435,30 @@ function onCheckYourAgent() {
 	width: 100%;
 }
 
-.tryCard {
-	width: 100%;
+.firstCheckSummary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.runningSummary {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+}
+
+.extraCount {
+	margin-left: var(--spacing--2xs);
+	align-self: center;
+}
+
+.timer {
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	font-variant-numeric: tabular-nums;
 }
 
 .checkMoreExamplesHint {

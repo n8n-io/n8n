@@ -3,6 +3,8 @@
  * Runs and judges the first check with mocked tools before offering a full suite.
  * The preview is not persisted until the user saves the checks.
  */
+import AgentEvalMockNotice from '@/features/agents/components/AgentEvalMockNotice.vue';
+import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { AgentEvalDraftCase, AgentEvalVerdict } from '@n8n/api-types';
 import { N8nButton, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
@@ -52,6 +54,15 @@ const {
 
 type Phase = 'generating-preview' | 'awaiting-confirmation' | 'generating-suite' | 'suite-ready';
 const phase = ref<Phase>('generating-preview');
+const { config, repoint, fetchConfig } = useAgentConfig();
+watch(
+	() => props.target,
+	({ projectId, agentId }) => {
+		repoint(projectId, agentId);
+		void fetchConfig(projectId, agentId).catch(() => {});
+	},
+	{ immediate: true },
+);
 // The drafted test message and the agent's real answer to it — set directly
 // from `previewRun`'s response, which already ran the agent and returned the
 // final text. No run id, no polling: unlike the suite below, this never
@@ -471,6 +482,7 @@ function onDontCreateEvals() {
 				:data-passed="firstCheckPassed"
 				data-test-id="instance-ai-test-agent-preview-first-check"
 			>
+				<AgentEvalMockNotice :config="config" :project-id="target.projectId" />
 				<div :class="$style.firstCheckHeader">
 					<AgentAvatar :kind="firstCheckPassed ? 'pass' : 'work'" size="sm" />
 					<N8nText
@@ -617,6 +629,11 @@ function onDontCreateEvals() {
 				:project-id="target.projectId"
 				:examples="suiteCases"
 				:case-runs="suiteCaseRuns"
+				:run-started-at="
+					suiteRunId && store.isRunInFlight(suiteRunId)
+						? store.getReview(suiteRunId).run?.runAt
+						: null
+				"
 				:starting-run="startingSuiteRun"
 				:stopping-run="stoppingSuiteRun"
 				:run-failed="suiteRunFailed"

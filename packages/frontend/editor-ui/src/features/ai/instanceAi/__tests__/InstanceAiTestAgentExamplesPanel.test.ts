@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -36,24 +36,25 @@ const renderComponent = createComponentRenderer(InstanceAiTestAgentExamplesPanel
 });
 
 describe('InstanceAiTestAgentExamplesPanel', () => {
-	it('shows the try input and a default slice of examples', () => {
-		const { getByText, getAllByTestId } = renderComponent();
+	it('shows a compact first-check summary and a default slice of examples', () => {
+		const { getByText, queryByText, getAllByTestId } = renderComponent();
 
-		expect(getByText('Summarize the thread about the Acme SSO outage')).toBeInTheDocument();
+		expect(getByText('First check passed')).toBeInTheDocument();
+		expect(queryByText('Summarize the thread about the Acme SSO outage')).not.toBeInTheDocument();
 		// Default slider value is 2.
 		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(2);
 	});
 
-	it('shows a right chevron on the try row that emits open-case instead of expanding it', async () => {
+	it('opens and closes the first check details with View', async () => {
 		const user = userEvent.setup();
-		const { getByTestId, queryByTestId, emitted } = renderComponent();
-
-		await user.click(getByTestId('instance-ai-test-agent-examples-try-toggle'));
-
-		expect(emitted('open-case')).toEqual([[null]]);
-		expect(
-			queryByTestId('instance-ai-test-agent-examples-try-placeholder'),
-		).not.toBeInTheDocument();
+		const { getByTestId, queryByText } = renderComponent();
+		const button = getByTestId('instance-ai-test-agent-examples-view-first');
+		expect(button).toHaveAttribute('aria-expanded', 'false');
+		await user.click(button);
+		expect(queryByText('Summarize the thread about the Acme SSO outage')).toBeInTheDocument();
+		expect(button).toHaveAttribute('aria-expanded', 'true');
+		await user.click(button);
+		expect(queryByText('Summarize the thread about the Acme SSO outage')).not.toBeInTheDocument();
 	});
 
 	it('emits add-example with the typed text and clears the input', async () => {
@@ -111,14 +112,16 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		expect(emitted()['check-agent']).toEqual([[3]]);
 	});
 
-	it('labels the confirmed try with its scenario tag', () => {
-		const { getByText } = renderComponent();
+	it('labels the expanded confirmed try with its scenario tag', async () => {
+		const { getByText, getByTestId } = renderComponent();
+		await fireEvent.click(getByTestId('instance-ai-test-agent-examples-view-first'));
 
 		expect(getByText('Upset')).toBeInTheDocument();
 	});
 
-	it('falls back to "Your try" when the confirmed try has no scenario', () => {
-		const { getByText } = renderComponent({ props: { previewScenario: null } });
+	it('falls back to "Your try" when the confirmed try has no scenario', async () => {
+		const { getByText, getByTestId } = renderComponent({ props: { previewScenario: null } });
+		await fireEvent.click(getByTestId('instance-ai-test-agent-examples-view-first'));
 
 		expect(getByText('Your try')).toBeInTheDocument();
 	});
@@ -161,9 +164,27 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 				props: { caseRuns },
 			});
 
-			expect(getByText('Checking, 1 left')).toBeInTheDocument();
+			expect(getByText('Running 2 checks, 1 done')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-try')).not.toBeInTheDocument();
 			expect(queryByText(/Saved as your first check/)).not.toBeInTheDocument();
+		});
+
+		it('updates elapsed time from the run start and removes the timer when settled', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-10-15T12:00:09Z'));
+			try {
+				const { getByTestId, queryByTestId, rerender, unmount } = renderComponent({
+					props: { caseRuns, runStartedAt: '2026-10-15T12:00:00Z' },
+				});
+				expect(getByTestId('instance-ai-test-agent-examples-timer')).toHaveTextContent('0:09');
+				await vi.advanceTimersByTimeAsync(2000);
+				expect(getByTestId('instance-ai-test-agent-examples-timer')).toHaveTextContent('0:11');
+				await rerender({ caseRuns: caseRuns.map((run) => ({ ...run, status: 'pass' })) });
+				expect(queryByTestId('instance-ai-test-agent-examples-timer')).not.toBeInTheDocument();
+				unmount();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('replaces the progress line and Stop with a retry once the run could not start', async () => {
@@ -332,7 +353,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			await rerender({ caseRuns: null });
 
 			expect(queryByTestId('instance-ai-test-agent-examples-run-summary')).not.toBeInTheDocument();
-			expect(getByTestId('instance-ai-test-agent-examples-try')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-first-summary')).toBeInTheDocument();
 		});
 	});
 
@@ -341,7 +362,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(
-				within(getByTestId('instance-ai-test-agent-examples-try')).getByRole('img', {
+				within(getByTestId('instance-ai-test-agent-examples-first-summary')).getByRole('img', {
 					name: /Passed/,
 				}),
 			).toBeInTheDocument();
@@ -349,7 +370,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 		it('reflects the state it was graded in instead of always passing', () => {
 			const { getByTestId } = renderComponent({ props: { previewStatus: 'work' as const } });
-			const row = getByTestId('instance-ai-test-agent-examples-try');
+			const row = getByTestId('instance-ai-test-agent-examples-first-summary');
 
 			expect(within(row).getByRole('img', { name: /Needs work/ })).toBeInTheDocument();
 			expect(within(row).queryByRole('img', { name: /Passed/ })).not.toBeInTheDocument();

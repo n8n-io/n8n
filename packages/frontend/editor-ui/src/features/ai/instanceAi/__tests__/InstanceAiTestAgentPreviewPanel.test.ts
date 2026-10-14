@@ -9,6 +9,7 @@ import type { AgentEvalVerdict } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import * as agentApi from '@/features/agents/composables/useAgentApi';
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import type { AgentEvalDatasetRecord } from '@/features/agents/agentEvals.types';
@@ -158,6 +159,33 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		setActivePinia(createTestingPinia());
 		showErrorMock.mockClear();
 		openAgentConfirmationModal.mockReset();
+	});
+
+	it('clears the previous agent’s service names when the next config read fails', async () => {
+		const store = useAgentEvalsStore();
+		mockPreviewRun(store);
+		const getConfig = vi
+			.spyOn(agentApi, 'getAgentConfig')
+			.mockResolvedValueOnce({
+				config: {
+					name: 'Agent',
+					instructions: '',
+					tools: [{ type: 'workflow', workflow: 'workflow-1', name: 'Slack' }],
+				},
+				configHash: 'first-config',
+			})
+			.mockRejectedValueOnce(new Error('Unable to load config'));
+		const { findByTestId, rerender } = renderComponent();
+		const notice = await findByTestId('agent-eval-mock-notice');
+		await waitFor(() =>
+			expect(notice).toHaveTextContent("Your agent won't really use Slack here."),
+		);
+
+		await rerender({ target: { agentId: 'agent-2', projectId: 'project-1' } });
+		await waitFor(() => expect(getConfig).toHaveBeenCalledTimes(2));
+		expect(notice).toHaveTextContent(
+			"Your agent won't really message anyone or change anything here.",
+		);
 	});
 
 	it('runs a single case, then shows its message and the judge’s findings', async () => {
@@ -338,6 +366,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(within(examples[0]).getByText('c')).toBeInTheDocument();
 		expect(within(examples[1]).getByText('a')).toBeInTheDocument();
 		// Each row labels itself with its own generated scenario tag.
+		await user.click(getByTestId('instance-ai-test-agent-examples-view-first'));
 		expect(getByText('Upset')).toBeInTheDocument();
 		expect(within(examples[0]).getByText('Sensitive data')).toBeInTheDocument();
 		expect(within(examples[1]).getByText('Vague')).toBeInTheDocument();
@@ -635,7 +664,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
 		// One of the two cases has settled — one is still left.
-		expect(await findByText('Checking, 1 left')).toBeInTheDocument();
+		expect(await findByText('Running 2 checks, 1 done')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-test-agent-examples-try')).not.toBeInTheDocument();
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-stop'));
@@ -1435,6 +1464,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 			await user.click(getByTestId(CHECK_HARDER));
 
+			await user.click(await findByTestId('instance-ai-test-agent-examples-view-first'));
 			expect(await findByTestId('instance-ai-test-agent-examples-try')).toHaveTextContent('Upset');
 		});
 
@@ -1636,7 +1666,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		);
 		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 
-		const row = await findByTestId('instance-ai-test-agent-examples-try');
+		const row = await findByTestId('instance-ai-test-agent-examples-first-summary');
 		expect(within(row).getByRole('img', { name: /Needs work/ })).toBeInTheDocument();
 		expect(within(row).queryByRole('img', { name: /Passed/ })).not.toBeInTheDocument();
 	});
