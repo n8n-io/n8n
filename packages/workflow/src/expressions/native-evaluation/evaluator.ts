@@ -307,7 +307,8 @@ function elementContentWork(receiver: unknown[], method: string): number {
 		let content = 0;
 		for (const element of receiver) content += toStr(element).length;
 
-		return content * Math.ceil(Math.log2(receiver.length + 1));
+		// Each comparison reads both operands, so a pass can read the content twice.
+		return 2 * content * Math.ceil(Math.log2(receiver.length + 1));
 	}
 
 	if (method === 'includes' || method === 'indexOf' || method === 'lastIndexOf') {

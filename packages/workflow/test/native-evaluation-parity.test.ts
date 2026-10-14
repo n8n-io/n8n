@@ -446,13 +446,14 @@ describe('Expression - fast native evaluation parity', () => {
 				expect(nativeOn(expr, list(fits + 2))).toEqual({ handled: false });
 				expect(nativeOn(expr, list(fits)).handled).toBe(true);
 			}
-			// Content times log2 of the count: 5 elements cost 15 receivers, 3 cost 6.
-			expect(nativeOn('{{ $json.list.toSorted().length }}', list(5))).toEqual({
+			// Twice the content times log2 of the count: 3 elements cost 12
+			// receivers, 2 cost 8.
+			expect(nativeOn('{{ $json.list.toSorted().length }}', list(3))).toEqual({
 				handled: false,
 			});
-			expect(nativeOn('{{ $json.list.toSorted().length }}', list(3))).toEqual({
+			expect(nativeOn('{{ $json.list.toSorted().length }}', list(2))).toEqual({
 				handled: true,
-				value: 3,
+				value: 2,
 			});
 		});
 
