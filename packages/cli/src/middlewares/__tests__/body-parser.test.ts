@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import { Readable } from 'stream';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
 
 import { parseBody, rawBodyReader } from '../body-parser';
 
@@ -81,5 +81,12 @@ describe('parseBody', () => {
 		const after = xmlRequest('<root><id>after</id></root>');
 		await parseBody(after);
 		expect(after.body).toEqual({ root: { id: 'after' } });
+	});
+
+	it('rejects an XML body that fails inside an element handler', async () => {
+		// An element named `_` collides with the text key and throws while closing the tag.
+		await expect(parseBody(xmlRequest('<a><_>x</_></a>'))).rejects.toThrow(
+			UnprocessableRequestError,
+		);
 	});
 });
