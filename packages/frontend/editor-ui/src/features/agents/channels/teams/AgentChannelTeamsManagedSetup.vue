@@ -15,7 +15,6 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@n8n/composables/useToast';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
@@ -37,6 +36,7 @@ import {
 	type TeamsAvailability,
 } from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
+import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 
 const selectedCredentialId = defineModel<string>({ default: '' });
@@ -73,7 +73,6 @@ const TEAMS_MANAGE_APPS_URL = 'https://admin.teams.microsoft.com/policies/manage
 
 const i18n = useI18n();
 const clipboard = useClipboard();
-const toast = useToast();
 const rootStore = useRootStore();
 
 const busy = ref<string | null>(null);
@@ -218,38 +217,10 @@ const organization = computed(
 	() => provisionedApp.value?.organizationName ?? selectedCredential.value?.organizationName ?? '',
 );
 
-const fileAccessMenuItems = computed(() => [
-	{
-		id: 'approve',
-		testId: 'teams-file-access-approve',
-		label: i18n.baseText('agents.channels.teams.managed.fileAccess.approveNow'),
-		description: i18n.baseText('agents.channels.teams.managed.fileAccess.approveNowHint', {
-			interpolate: { organization: organization.value },
-		}),
-	},
-	{
-		id: 'copy',
-		testId: 'teams-file-access-copy',
-		label: i18n.baseText('agents.channels.teams.managed.fileAccess.copyLink'),
-		description: i18n.baseText('agents.channels.teams.managed.fileAccess.copyLinkHint'),
-	},
-]);
-
-/** A new tab: the setup keeps no progress, and Microsoft returns to the agent page. */
-async function onFileAccessMenu(id: string) {
-	if (id === 'approve') {
-		window.open(fileAccessUrl.value, '_blank', 'noopener');
-		return;
-	}
-	await clipboard.copy(fileAccessUrl.value);
-	toast.showMessage({
-		type: 'success',
-		title: i18n.baseText('agents.channels.teams.managed.fileAccess.copied'),
-		message: i18n.baseText('agents.channels.teams.managed.fileAccess.copiedHint', {
-			interpolate: { organization: organization.value },
-		}),
-	});
-}
+const { items: fileAccessMenuItems, onSelect: onFileAccessMenu } = useTeamsFileAccessMenu({
+	url: fileAccessUrl,
+	organization,
+});
 
 const connectSummary = computed(() =>
 	selectedCredential.value?.organizationName

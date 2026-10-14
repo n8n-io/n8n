@@ -86,6 +86,13 @@ export interface TeamsAgentSetupState {
 	 * the consent screen needs.
 	 */
 	fileAccessConsentUrl: string | null;
+	/** The Azure Bot the recommended setup made. Null for one made by hand or before n8n kept it. */
+	azureBot: { name: string; portalUrl: string } | null;
+	/**
+	 * The saved channel would build a different app than the one n8n last
+	 * handed over, so Teams holds an older version. False when n8n has no record.
+	 */
+	appOutdated: boolean;
 }
 
 /**
