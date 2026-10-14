@@ -653,6 +653,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						deployToAzureUrl: 'https://portal.azure.com/template',
 						credentialClaimedBy: null,
 						provisionedByN8n: true,
+						azureBot: null,
 						fileAccessConsentUrl: null,
 						defaultDisplayName: 'Support Bot',
 						defaultDescription: 'An agent',

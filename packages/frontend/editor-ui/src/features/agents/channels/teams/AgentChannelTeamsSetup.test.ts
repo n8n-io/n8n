@@ -68,6 +68,7 @@ const withBot = () =>
 		deployToAzureUrl: DEPLOY_URL,
 		credentialClaimedBy: null,
 		provisionedByN8n: true,
+		azureBot: null,
 		fileAccessConsentUrl: null,
 		defaultDisplayName: DEFAULT_NAME,
 		defaultDescription: DEFAULT_DESCRIPTION,
@@ -119,6 +120,7 @@ describe('AgentChannelTeamsSetup', () => {
 			credentialClaimedBy: null,
 			provisionedByN8n: true,
 			fileAccessConsentUrl: null,
+			azureBot: null,
 			defaultDisplayName: DEFAULT_NAME,
 			defaultDescription: DEFAULT_DESCRIPTION,
 		});
@@ -277,6 +279,7 @@ describe('AgentChannelTeamsSetup', () => {
 				deployToAzureUrl: null,
 				credentialClaimedBy: null,
 				provisionedByN8n: true,
+				azureBot: null,
 				fileAccessConsentUrl: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
@@ -778,16 +781,6 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-update-notice')).toBeVisible());
 		});
 
-		it('says where to upload a new package in Teams', async () => {
-			const { getByTestId } = renderComponent({ props: settingsProps() });
-
-			await waitFor(() =>
-				expect(getByTestId('teams-upload-instructions')).toHaveTextContent(
-					'agents.channels.teams.settings.uploadHint',
-				),
-			);
-		});
-
 		it('links to the Azure Bot resources, since the bot itself is not known here', async () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
@@ -915,7 +908,7 @@ describe('AgentChannelTeamsSetup', () => {
 			);
 		});
 
-		it('stresses the upload notice once the availability changes', async () => {
+		it('keeps the upload notice as it is when the availability changes', async () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
 			await waitFor(() =>
@@ -930,7 +923,7 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-update-notice')).toHaveTextContent(
 				'agents.channels.teams.settings.updateNotice',
 			);
-			expect(getByTestId('teams-update-notice').className).not.toBe(quiet);
+			expect(getByTestId('teams-update-notice').className).toBe(quiet);
 		});
 
 		it('downloads the saved app from the card, not unsaved changes', async () => {
@@ -1284,6 +1277,7 @@ describe('AgentChannelTeamsSetup', () => {
 				deployToAzureUrl: null,
 				credentialClaimedBy: 'Sales Bot',
 				provisionedByN8n: true,
+				azureBot: null,
 				fileAccessConsentUrl: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,

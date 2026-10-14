@@ -25,6 +25,7 @@ import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import {
 	availabilityFrom,
+	AZURE_BOTS_URL,
 	readsSharedConversations as readsShared,
 	TEAMS_PACKAGE_FILENAME,
 	type TeamsAvailability,
@@ -95,8 +96,6 @@ const rootStore = useRootStore();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 
-// The bot's subscription and resource group are picked in Azure, so this lists every Azure Bot.
-const AZURE_BOTS_URL = 'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
 const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
 
@@ -134,6 +133,15 @@ const offerManagedApp = computed(() => {
 
 // The credential the saved channel runs on, so a swap counts as an app change.
 const savedCredentialId = credentialId.value;
+
+// The sign-in the recommended setup runs on, which names who approves file access.
+const organization = computed(() => {
+	const managed = props.managedRuntime;
+	const id = managed?.managerCredentialId.value;
+	return (
+		managed?.managedSetup.value.managerCredentials.find((c) => c.id === id)?.organizationName ?? ''
+	);
+});
 
 const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
 const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
@@ -414,36 +422,27 @@ watch(credentialId, refreshForCredential, { immediate: true });
 
 const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | 'checking' | null>(null);
 const readsSharedConversations = computed(() => readsShared(availability.value));
-
-// Microsoft can take a minute or two to apply an approval just given.
-const FILE_ACCESS_RECHECK_MS = 10_000;
-const FILE_ACCESS_RECHECKS = 18;
-let fileAccessRecheck: ReturnType<typeof setTimeout> | undefined;
-onBeforeUnmount(() => clearTimeout(fileAccessRecheck));
+/**
+ * Microsoft confirms an approval only on the redirect back here, and applying
+ * it can take an hour, so the approval is announced once, from the redirect.
+ */
+const fileAccessApprovedNow = ref(false);
 
 /**
  * Only in the settings: that is where people return after sending the approval
  * link to an administrator. A failed check leaves the request on show.
  */
 async function loadFileAccess() {
-	clearTimeout(fileAccessRecheck);
 	fileAccessStatus.value = null;
 	const id = credentialId.value;
 	// Consumed only by a check that runs: the saved settings can arrive after the first call.
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
-	fileAccessStatus.value = 'checking';
-	const justApproved = fileAccessJustApproved.value;
-	fileAccessJustApproved.value = false;
-	if (justApproved) {
-		fileAccessRecheck = setTimeout(() => {
-			void checkFileAccess(id, FILE_ACCESS_RECHECKS);
-		}, FILE_ACCESS_RECHECK_MS);
-	} else {
-		await checkFileAccess(id, FILE_ACCESS_RECHECKS);
+	if (fileAccessJustApproved.value) {
+		fileAccessJustApproved.value = false;
+		fileAccessApprovedNow.value = true;
 	}
-}
-
-async function checkFileAccess(id: string, rechecksLeft: number) {
+	if (fileAccessApprovedNow.value) return;
+	fileAccessStatus.value = 'checking';
 	try {
 		const { status } = await checkTeamsFileAccess(
 			rootStore.restApiContext,
@@ -451,13 +450,7 @@ async function checkFileAccess(id: string, rechecksLeft: number) {
 			props.agentId,
 			id,
 		);
-		if (credentialId.value !== id) return;
-		fileAccessStatus.value = status;
-		if (status === 'notApproved' && rechecksLeft > 0) {
-			fileAccessRecheck = setTimeout(() => {
-				void checkFileAccess(id, rechecksLeft - 1);
-			}, FILE_ACCESS_RECHECK_MS);
-		}
+		if (credentialId.value === id) fileAccessStatus.value = status;
 	} catch {
 		// Unchecked reads the same as not approved.
 		if (credentialId.value === id) fileAccessStatus.value = null;
@@ -879,20 +872,16 @@ defineExpose({
 					:app-id="setupState?.botId"
 					:file-access-consent-url="setupState?.fileAccessConsentUrl"
 					:file-access-status="fileAccessStatus"
+					:file-access-just-approved="fileAccessApprovedNow"
+					:organization="organization"
 					open-consent-in-place
 					@update:model-value="editAvailability"
 				/>
-				<N8nText
-					size="small"
-					:class="manifestChanged ? undefined : $style.hint"
-					data-testid="teams-update-notice"
-				>
+				<N8nText size="small" :class="$style.hint" data-testid="teams-update-notice">
 					{{
 						i18n.baseText(
 							offerManagedApp
-								? manifestChanged
-									? 'agents.channels.teams.settings.updateNoticeManaged'
-									: 'agents.channels.teams.settings.updateNoticeManagedUnchanged'
+								? 'agents.channels.teams.settings.updateNoticeManaged'
 								: 'agents.channels.teams.settings.updateNotice',
 						)
 					}}
@@ -913,6 +902,7 @@ defineExpose({
 				:pending-settings="currentSettings"
 				:unsaved-changes="manifestChanged"
 				:persist-channel="persistChannel"
+				:azure-bot="setupState?.azureBot ?? null"
 			/>
 			<template v-else>
 				<div :class="$style.field" data-testid="teams-identity-field">
@@ -932,9 +922,6 @@ defineExpose({
 						:loading="downloading"
 						@download="downloadSaved"
 					/>
-					<N8nText :class="$style.hint" size="small" data-testid="teams-upload-instructions">
-						{{ i18n.baseText('agents.channels.teams.settings.uploadHint') }}
-					</N8nText>
 					<N8nText
 						v-if="downloadError"
 						size="small"

@@ -15,6 +15,9 @@ vi.mock('./api', () => ({
 	fetchTeamsAppPackage: vi.fn().mockResolvedValue(new Blob()),
 }));
 
+const showMessage = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showMessage }) }));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -67,6 +70,16 @@ const render = (overrides: Record<string, unknown> = {}) => {
 			...rest,
 		},
 		pinia: createTestingPinia(),
+		global: {
+			stubs: {
+				ActionDropdown: {
+					template:
+						'<div><slot name="activator" /><button v-for="item in items" :key="item.id" :data-testid="item.testId" @click="$emit(\'select\', item.id)">{{ item.label }}</button></div>',
+					props: ['items', 'placement', 'teleported'],
+					emits: ['select'],
+				},
+			},
+		},
 	});
 };
 
@@ -261,12 +274,9 @@ describe('AgentChannelTeamsManagedApp', () => {
 		const { getByTestId } = render({ runtime });
 
 		await waitFor(() =>
-			expect(getByTestId('teams-managed-app-standing')).toHaveTextContent(
-				'agents.channels.teams.managed.app.unknown',
-			),
+			expect(getByTestId('teams-managed-app-error')).toHaveTextContent('Graph refused the read'),
 		);
-		expect(getByTestId('teams-settings-publish')).not.toHaveAttribute('disabled');
-		expect(getByTestId('teams-managed-app-error')).toHaveTextContent('Graph refused the read');
+		expect(getByTestId('teams-settings-publish')).toBeVisible();
 	});
 
 	/**
@@ -281,5 +291,53 @@ describe('AgentChannelTeamsManagedApp', () => {
 		const { getByTestId } = render({ runtime });
 
 		await waitFor(() => expect(getByTestId('teams-settings-download')).toBeVisible());
+	});
+
+	it('confirms a publish in a toast', async () => {
+		const runtime = buildRuntime({
+			catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
+		});
+
+		const { getByTestId } = render({ runtime });
+		await fireEvent.click(getByTestId('teams-settings-publish'));
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'agents.channels.teams.managed.install.publishedToast',
+				}),
+			),
+		);
+	});
+
+	it('says Teams holds an older version while a manifest change is open', async () => {
+		const { getByTestId, queryByTestId, rerender } = render({ unsavedChanges: false });
+		expect(queryByTestId('teams-managed-app-outdated')).not.toBeInTheDocument();
+
+		await rerender({ unsavedChanges: true });
+
+		expect(getByTestId('teams-managed-app-outdated')).toBeVisible();
+	});
+
+	it('links the Azure Bot the setup made', () => {
+		const { getByTestId } = render({
+			azureBot: { name: 'support-bot-1', portalUrl: 'https://portal.azure.com/#@t/resource/x' },
+		});
+
+		expect(getByTestId('teams-managed-app-bot')).toHaveTextContent(
+			'agents.channels.teams.settings.linkedBot',
+		);
+		expect(getByTestId('teams-managed-app-bot-link')).toHaveAttribute(
+			'href',
+			'https://portal.azure.com/#@t/resource/x',
+		);
+	});
+
+	it('falls back to the bot list when the bot was not kept', () => {
+		const { getByTestId } = render({ azureBot: null });
+
+		expect(getByTestId('teams-managed-app-bot-link').getAttribute('href')).toContain(
+			'BotService%2FbotServices',
+		);
 	});
 });

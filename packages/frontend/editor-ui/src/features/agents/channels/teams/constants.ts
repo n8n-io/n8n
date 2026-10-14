@@ -5,6 +5,9 @@ export function entraApiPermissionsUrl(appId: string): string {
 	return `https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/${encodeURIComponent(appId)}`;
 }
 
+// The bot's subscription and resource group are picked in Azure, so this lists every Azure Bot.
+export const AZURE_BOTS_URL = 'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
+
 export const ENTRA_APP_REGISTRATIONS_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade';
 
