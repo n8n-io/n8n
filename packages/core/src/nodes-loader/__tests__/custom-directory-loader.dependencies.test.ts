@@ -125,12 +125,14 @@ describe('CustomDirectoryLoader dependencies', () => {
 				}),
 			);
 			writeDependency(projectDir, 'node');
+			writeDependency(projectDir, 'credentials');
 			writeFile(projectDir, 'dist/nodes/Unlisted.node.js', 'module.exports = {};');
 			writeFile(projectDir, 'dist/credentials/Unlisted.credentials.js', 'module.exports = {};');
 			const packageLink = path.join(customDir, 'node_modules', packageName);
 			mkdirSync(path.dirname(packageLink), { recursive: true });
 			symlinkSync(projectDir, packageLink, 'dir');
 			const loadNode = vi.spyOn(loader, 'loadNodeFromFile');
+			const loadCredential = vi.spyOn(loader, 'loadCredentialFromFile');
 
 			await expect(loader.loadAll()).resolves.toBeUndefined();
 
@@ -141,6 +143,9 @@ describe('CustomDirectoryLoader dependencies', () => {
 			expect(loader.getCredential('fooApi').type.name).toBe('fooApi');
 			expect(loadNode).not.toHaveBeenCalledWith(
 				path.join(packageLink, 'node_modules/wmf/dist/wmf.node.js'),
+			);
+			expect(loadCredential).not.toHaveBeenCalledWith(
+				path.join(packageLink, 'node_modules/wmf/dist/wmf.credentials.js'),
 			);
 		},
 	);
