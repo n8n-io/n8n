@@ -3042,6 +3042,18 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
+/**
+ * Aims the thread's connection tests for one credential type at a provider
+ * stand-in, so the eval checks the captured secret without the real provider.
+ */
+export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
+	threadId: z.string().uuid(),
+	credentialType: z.string().min(1),
+	baseUrl: z.string().url(),
+	/** Credential field the stand-in URL is written into. */
+	urlField: z.string().min(1),
+}) {}
+
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the
  *  restore remaps ids by whole-document string replace, and a short id would risk
  *  corrupting unrelated substrings — so the restore path refuses shorter ids.
