@@ -25,7 +25,7 @@ import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ControllerRegistry } from '@/controller.registry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import { WorkflowPublishGuardProxy } from '@n8n/backend-services';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createExecution } from '@test-integration/db/executions';

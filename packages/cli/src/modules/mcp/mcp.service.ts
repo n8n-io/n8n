@@ -7,7 +7,13 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RoleService,
+	FolderFinderService,
+	ExecutionRedactionServiceProxy,
+} from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -28,7 +34,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
