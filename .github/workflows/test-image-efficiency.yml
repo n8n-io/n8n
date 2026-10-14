@@ -64,8 +64,8 @@ jobs:
         with:
           name: image-efficiency-${{ github.run_attempt }}
           path: |
-            packages/quality/testing/playwright/test-results/
-            packages/quality/testing/playwright/test-results.json
-            packages/quality/testing/playwright/playwright-report/
+            packages/quality/efficiency/test-results/
+            packages/quality/efficiency/test-results.json
+            packages/quality/efficiency/playwright-report/
           retention-days: 7
           if-no-files-found: ignore

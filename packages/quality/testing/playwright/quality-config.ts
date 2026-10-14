@@ -18,12 +18,9 @@ export function qualityReporters(): ReporterDescription[] {
 
 	return [
 		['list'],
-		[
-			'junit',
-			{ outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? resolve(__dirname, 'results.xml') },
-		],
-		['html', { open: 'never', outputFolder: resolve(__dirname, 'playwright-report') }],
-		['json', { outputFile: resolve(__dirname, 'test-results.json') }],
+		['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'results.xml' }],
+		['html', { open: 'never' }],
+		['json', { outputFile: 'test-results.json' }],
 		...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
 		...shared,
 	];
@@ -42,7 +39,6 @@ export function defineQualityConfig<
 	return defineConfig<TestFixtures & CurrentsFixtures, WorkerFixtures & CurrentsWorkerFixtures>({
 		forbidOnly: !!process.env.CI,
 		retries: process.env.CI ? 2 : 0,
-		outputDir: process.env.CI ? resolve(__dirname, 'test-results') : undefined,
 		...config,
 		reporter: config.reporter ?? qualityReporters(),
 		use: Object.assign(
