@@ -1,3 +1,16 @@
+## [2.43.5](https://github.com/n8n-io/n8n/compare/n8n@2.43.4...n8n@2.43.5) (2026-10-14)
+
+
+### Bug Fixes
+
+* **core:** Validate the size argument of the chunk() expression extension ([#40911](https://github.com/n8n-io/n8n/issues/40911)) ([4bf0ece](https://github.com/n8n-io/n8n/commit/4bf0ece7ae665034b3bd6409d0ec0beef4384a57))
+
+
+### Features
+
+* Show Gemini models by name and list prioritized models first in model pickers ([#41016](https://github.com/n8n-io/n8n/issues/41016)) ([66cece2](https://github.com/n8n-io/n8n/commit/66cece279da3feaab86d773fa0fcefbd9e8b141d))
+
+
 ## [2.43.4](https://github.com/n8n-io/n8n/compare/n8n@2.43.3...n8n@2.43.4) (2026-10-12)
 
 
