@@ -21,7 +21,11 @@ import { GitLabHostClient } from '@/modules/promotions.ee/git-hosts/gitlab-host.
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
+import {
+	createAdminWithApiKey,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+} from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 describe('Promotions in Public API', () => {
@@ -1346,17 +1350,47 @@ describe('Promotions in Public API', () => {
 			expect(response.body.message).toContain('invalid cursor');
 		});
 
-		it.each(routes)('requires the API-key read scope and user permission for %s', async (route) => {
-			const id = await savedProvider();
-			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:list'] });
-			const member = await createMemberWithApiKey({ scopes: ['gitConnection:read'] });
-			for (const user of [restrictedOwner, member]) {
-				const response = await testServer
-					.publicApiAgentFor(user)
-					.get(`/promotions/providers/${id}/${route}`);
-				expect(response.status).toBe(403);
-			}
-		});
+		it.each(routes)(
+			'requires the API-key discovery scope and user permission for %s',
+			async (route) => {
+				const id = await savedProvider();
+				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:read'] });
+				const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:list'] });
+				const member = await createMemberWithApiKey({ scopes: ['gitConnection:discovery'] });
+				for (const user of [readOnlyOwner, listOnlyOwner, member]) {
+					const response = await testServer
+						.publicApiAgentFor(user)
+						.get(`/promotions/providers/${id}/${route}`);
+					expect(response.status).toBe(403);
+				}
+				expect(
+					(await testServer.publicApiAgentFor(readOnlyOwner).get(`/promotions/providers/${id}`))
+						.status,
+				).toBe(200);
+				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:discovery'] });
+				const admin = await createAdminWithApiKey();
+				for (const user of [discoveryOwner, admin]) {
+					const api = (
+						route === 'repositories'
+							? discoveryApi()
+							: discoveryApi('/api/v4/projects/42/repository/branches', {
+									per_page: '100',
+									page: '1',
+								})
+					).reply(200, []);
+					const response = await testServer
+						.publicApiAgentFor(user)
+						.get(`/promotions/providers/${id}/${route}`);
+					expect(response.status).toBe(200);
+					expect(response.body).toEqual({ data: [], nextCursor: null });
+					api.done();
+				}
+				expect(
+					(await testServer.publicApiAgentFor(discoveryOwner).get(`/promotions/providers/${id}`))
+						.status,
+				).toBe(403);
+			},
+		);
 
 		it.each(routes)('requires an active, licensed promotions module for %s', async (route) => {
 			const agent = testServer.publicApiAgentFor(owner);

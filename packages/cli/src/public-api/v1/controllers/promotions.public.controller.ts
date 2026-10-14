@@ -197,8 +197,8 @@ export class PromotionsPublicController {
 
 	@Get('/providers/:promotionProviderId/repositories')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:read')
-	@GlobalScope('gitConnection:read')
+	@ApiKeyScope('gitConnection:discovery')
+	@GlobalScope('gitConnection:discovery')
 	@ApiSummary('List repositories of a promotion provider')
 	@ApiDescription(
 		'Lists repositories accessible to the GitLab token, including repositories where its identity is not a member. Use remoteUrl as a connection target. Supports repository and namespace search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
@@ -228,8 +228,8 @@ export class PromotionsPublicController {
 
 	@Get('/providers/:promotionProviderId/repositories/:repositoryId/branches')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:read')
-	@GlobalScope('gitConnection:read')
+	@ApiKeyScope('gitConnection:discovery')
+	@GlobalScope('gitConnection:discovery')
 	@ApiSummary('List branches of a promotion repository')
 	@ApiDescription(
 		'Lists branches of the selected GitLab repository and identifies its default branch. Use the repository ID from repository discovery. Supports branch search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',

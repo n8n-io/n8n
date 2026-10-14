@@ -188,6 +188,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'List Git Connections',
 		description: 'Allows listing Git connections.',
 	},
+	'gitConnection:discovery': {
+		displayName: 'Discover Git repositories',
+		description: 'Allows listing remote repositories and branches with saved provider credentials.',
+	},
 	'gitConnection:clone': {
 		displayName: 'Clone Git Connection',
 		description: 'Allows cloning and removing the local working copy of a Git connection.',

@@ -25,11 +25,14 @@ change the editor UI.
 ## Discovery
 
 Discovery uses a saved provider, not a connection. A client can pick a repository
-before it creates a connection. Both routes require the `gitConnection:read`
+before it creates a connection. Both routes require the `gitConnection:discovery`
 API-key grant and global user scope:
 
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories`
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories/{repositoryId}/branches`
+
+The `gitConnection:read` scope only grants access to saved configuration. It does
+not grant discovery access. Existing API keys need an explicit discovery grant.
 
 Both routes accept `search`, `limit`, and an opaque `cursor`. The public query
 uses the standard default of 100 and maximum of 250. The limit is an upper bound,
