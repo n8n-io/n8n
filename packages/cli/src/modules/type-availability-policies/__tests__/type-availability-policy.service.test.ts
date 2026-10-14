@@ -1,7 +1,7 @@
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { OperationContext, TransactionRunner } from '@n8n/db';
-import { OperationalError, type NodeLoader } from 'n8n-workflow';
+import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -205,81 +205,14 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(stored).toEqual([normalLate, floorLate, normalEarly, floorEarly]);
 			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, kind, ctx);
 			expect(attachmentRepository.listAttachmentsForScope).toHaveBeenCalledWith(scope.id, ctx);
+			expect(scopeRepository.findScopeByIdAndKind.mock.invocationCallOrder[0]).toBeLessThan(
+				attachmentRepository.listAttachmentsForScope.mock.invocationCallOrder[0],
+			);
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(cacheService.get).not.toHaveBeenCalled();
 			expect(cacheService.set).not.toHaveBeenCalled();
 			expect(cacheService.deleteMany).not.toHaveBeenCalled();
-		});
-
-		it('returns an empty list and reads the current version on every call', async () => {
-			scopeRepository.findScopeByIdAndKind
-				.mockResolvedValueOnce(makeScope({ version: 2 }))
-				.mockResolvedValueOnce(makeScope({ version: 2 }))
-				.mockResolvedValueOnce(makeScope({ version: 3 }))
-				.mockResolvedValueOnce(makeScope({ version: 3 }));
-			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
-
-			await expect(service.getAttachments(KIND, 'scope-1')).resolves.toEqual({
-				attachments: [],
-				version: 2,
-			});
-			await expect(service.getAttachments(KIND, 'scope-1')).resolves.toEqual({
-				attachments: [],
-				version: 3,
-			});
-		});
-
-		it.each([
-			[KIND, true],
-			[KIND, false],
-			[CREDENTIAL_TYPES_KIND, true],
-			[CREDENTIAL_TYPES_KIND, false],
-		])(
-			'reads a consistent attachment list and version after a concurrent write for %s (new attachments: %s)',
-			async (kind, readsUpdatedAttachments) => {
-				const before = makeScope({ kind, version: 2 });
-				const after = makeScope({ kind, version: 3 });
-				const updated: PolicyAttachment = {
-					policyId: 'new-policy',
-					rules: [RULE],
-					priority: 1,
-					isFloor: false,
-				};
-				let currentScope = before;
-				scopeRepository.findScopeByIdAndKind.mockImplementation(async () => currentScope);
-				attachmentRepository.listAttachmentsForScope.mockResolvedValue([updated]);
-				attachmentRepository.listAttachmentsForScope.mockImplementationOnce(async () => {
-					currentScope = after;
-					return readsUpdatedAttachments ? [updated] : [];
-				});
-
-				await expect(service.getAttachments(kind, before.id)).resolves.toEqual({
-					attachments: [updated],
-					version: 3,
-				});
-			},
-		);
-
-		it('stops retrying when writes keep changing the scope', async () => {
-			let version = 1;
-			scopeRepository.findScopeByIdAndKind.mockImplementation(async () => makeScope({ version }));
-			attachmentRepository.listAttachmentsForScope.mockImplementation(async () => {
-				version++;
-				return [];
-			});
-
-			await expect(service.getAttachments(KIND, 'scope-1')).rejects.toThrow(OperationalError);
-			expect(attachmentRepository.listAttachmentsForScope).toHaveBeenCalledTimes(3);
-		});
-
-		it('rejects a scope deleted during the read', async () => {
-			scopeRepository.findScopeByIdAndKind
-				.mockResolvedValueOnce(makeScope())
-				.mockResolvedValueOnce(null);
-			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
-
-			await expect(service.getAttachments(KIND, 'scope-1')).rejects.toThrow(NotFoundError);
 		});
 
 		it.each([KIND, CREDENTIAL_TYPES_KIND])('rejects an unknown scope for %s', async (kind) => {

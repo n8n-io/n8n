@@ -93,8 +93,6 @@ const INVALIDATION_REPEAT_DELAY_MS = 1 * Time.seconds.toMilliseconds;
  */
 const CACHE_CALL_TIMEOUT_MS = 50;
 
-const ATTACHMENT_READ_MAX_ATTEMPTS = 3;
-
 /** `projectId: null` is the instance scope, which every project composes against. */
 function scopeCacheKey(kind: string, projectId: string | null): string {
 	return `type-availability-policy:scope:${kind}:${projectId ?? 'instance'}`;
@@ -146,6 +144,11 @@ export type EffectivePolicy = {
 	readonly version: number;
 	readonly rules: readonly PolicyRule[];
 	readonly attachments: readonly PolicyAttachment[];
+};
+
+export type ScopeAttachments = {
+	readonly attachments: readonly PolicyAttachment[];
+	readonly version: number;
 };
 
 /** The allow-all state of a scope with no row, for a composition with no project to read. */
@@ -683,26 +686,15 @@ export class TypeAvailabilityPolicyService {
 		kind: string,
 		scopeId: string,
 		ctx: OperationContext = {},
-	): Promise<{ attachments: readonly PolicyAttachment[]; version: number }> {
-		for (let attempt = 0; attempt < ATTACHMENT_READ_MAX_ATTEMPTS; attempt++) {
-			const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx);
-			if (!scope) {
-				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
-			}
-
-			const attachments = await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx);
-
-			// Every policy or attachment change also bumps the scope version in the same transaction.
-			const scopeAfter = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx);
-			if (!scopeAfter) {
-				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
-			}
-			if (scope.version === scopeAfter.version) {
-				return { attachments: orderedAttachments(attachments), version: scope.version };
-			}
+	): Promise<ScopeAttachments> {
+		const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx);
+		if (!scope) {
+			throw new NotFoundError(`Policy scope not found: ${scopeId}`);
 		}
 
-		throw new OperationalError('Policy attachments changed during the read. Try again.');
+		const attachments = await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx);
+
+		return { attachments: orderedAttachments(attachments), version: scope.version };
 	}
 
 	/**
@@ -727,7 +719,7 @@ export class TypeAvailabilityPolicyService {
 		attachments: readonly AttachmentInput[],
 		expectedVersion: number,
 		updatedBy: string,
-	): Promise<{ attachments: readonly PolicyAttachment[]; version: number }> {
+	): Promise<ScopeAttachments> {
 		assertNoDuplicateAttachmentSlots(attachments);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {

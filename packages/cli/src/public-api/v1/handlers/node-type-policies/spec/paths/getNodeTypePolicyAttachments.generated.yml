@@ -5,7 +5,7 @@ summary: "Beta: Retrieve a scope's attached policy documents"
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
-  Returns every attached policy document and the scope version. Attachments use evaluation order: floor first, then priority ascending within each group. Use this version when replacing the attachments. `scopeId` comes from `GET /instance` or `GET /projects/{projectId}`. It is null until the scope is first written.
+  Returns every attached policy document and the scope version. Attachments use evaluation order: floor first, then priority ascending within each group. Use this version when replacing the attachments. `scopeId` comes from `GET /instance` or `GET /projects/{projectId}`, and is null until the scope is first written. This route needs instance-level access, also for a project scope.
 x-required-scope: nodeTypePolicy:manage
 parameters:
   - schema:
