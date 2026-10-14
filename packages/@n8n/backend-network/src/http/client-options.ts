@@ -1,7 +1,5 @@
-import type http from 'node:http';
-import type https from 'node:https';
-
 import type { HttpRequestDefaultHeaders } from './client-default-headers';
+import type { HttpTransport } from './outbound-http';
 import type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 
 export interface HttpRequestClientOptions {
@@ -31,5 +29,5 @@ export interface HttpRequestClientOptions {
 	 */
 	timeout?: number;
 
-	agents?: { httpAgent: http.Agent; httpsAgent: https.Agent };
+	agents?: ReturnType<HttpTransport['getNodeAgent']>;
 }

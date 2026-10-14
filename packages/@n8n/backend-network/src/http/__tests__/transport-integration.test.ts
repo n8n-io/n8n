@@ -1,14 +1,18 @@
+import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import dns from 'node:dns';
 import http from 'node:http';
 import type { LookupFunction } from 'node:net';
+import { mock } from 'vitest-mock-extended';
 
+import type { SsrfProtectionService } from '../../ssrf';
 import { makeSsrfBridge, useCleanProxyEnv } from '../../ssrf/__tests__/mock-ssrf-bridge';
-import { httpRequest } from '../axios/request';
 import { getBeforeRedirectFn, setAxiosAgents } from '../axios/utils';
 import { type LocalServer, startServer } from '../local-server';
 import { buildNodeAgents } from '../node-agents';
+import { OutboundHttp } from '../outbound-http';
 
 // End-to-end parity tests for the outbound transport layer. These spin up real
 // local HTTP servers (a target and a proxy) and drive requests through the
@@ -212,8 +216,13 @@ describe('outbound transport integration', () => {
 		});
 
 		const sendThreeRequests = async (agents?: ReturnType<typeof buildNodeAgents>) => {
+			const client = new OutboundHttp(
+				mock<SsrfProtectionService>(),
+				mock<SsrfProtectionConfig>({ enabled: false }),
+				mock<Logger>(),
+			).requests({ agents });
 			for (let i = 0; i < 3; i++) {
-				await httpRequest({ url: `${server.url}/x`, method: 'GET' }, undefined, agents);
+				await client.request({ url: `${server.url}/x`, method: 'GET' });
 			}
 		};
 

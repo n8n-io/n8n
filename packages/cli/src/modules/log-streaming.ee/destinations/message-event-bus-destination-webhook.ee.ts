@@ -84,8 +84,6 @@ export class MessageEventBusDestinationWebhook
 
 	requestOptions?: IHttpRequestOptions;
 
-	private httpClient?: HttpRequestClient;
-
 	private agents?: HttpRequestClientOptions['agents'];
 
 	constructor(
@@ -151,17 +149,16 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	private getHttpClient(): HttpRequestClient {
-		if (!this.httpClient) {
-			// The destination URL is admin-configured, so SSRF protection is disabled.
-			const useDefaultSsrfPolicy = 'unsafe';
+		// The destination URL is admin-configured, so SSRF protection is disabled.
+		const useDefaultSsrfPolicy = 'unsafe';
+		if (!this.agents) {
 			const proxy = resolveProxyOption(getUrlFromProxyConfig(this.resolveProxy(this.options)));
 			this.agents = this.outboundHttp.transport({ proxy, useDefaultSsrfPolicy }).getNodeAgent({
 				...this.buildAgentOptions(this.options),
 				...(this.options?.allowUnauthorizedCerts && { rejectUnauthorized: false }),
 			});
-			this.httpClient = this.outboundHttp.requests({ useDefaultSsrfPolicy, agents: this.agents });
 		}
-		return this.httpClient;
+		return this.outboundHttp.requests({ useDefaultSsrfPolicy, agents: this.agents });
 	}
 
 	private buildConnectionOptions(): IHttpRequestOptions {
@@ -471,7 +468,5 @@ export class MessageEventBusDestinationWebhook
 		await super.close();
 		this.agents?.httpAgent.destroy();
 		this.agents?.httpsAgent.destroy();
-		this.agents = undefined;
-		this.httpClient = undefined;
 	}
 }

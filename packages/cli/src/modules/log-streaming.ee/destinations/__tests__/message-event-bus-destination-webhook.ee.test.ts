@@ -270,7 +270,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 
 	describe('connection reuse', () => {
 		it('should build the agents and client once and reuse them for every event', async () => {
-			const { outboundHttp, requests, request, transport, getNodeAgent } = mockOutboundHttp();
+			const { outboundHttp, request, transport, getNodeAgent } = mockOutboundHttp();
 			const destination = new MessageEventBusDestinationWebhook(
 				mockEventBus,
 				{ __type: MessageEventBusDestinationTypeNames.webhook, url: 'https://example.com/webhook' },
@@ -287,7 +287,6 @@ describe('MessageEventBusDestinationWebhook', () => {
 			expect(request).toHaveBeenCalledTimes(3);
 			expect(transport).toHaveBeenCalledTimes(1);
 			expect(getNodeAgent).toHaveBeenCalledTimes(1);
-			expect(requests).toHaveBeenCalledTimes(1);
 		});
 
 		it('should destroy the agents on close', async () => {
@@ -305,22 +304,13 @@ describe('MessageEventBusDestinationWebhook', () => {
 
 	describe('TLS option mapping', () => {
 		it('should map allowUnauthorizedCerts to skipSslCertificateValidation', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { sentOptions, getNodeAgent } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: { allowUnauthorizedCerts: true },
 			});
 
 			expect(sentOptions.skipSslCertificateValidation).toBe(true);
-		});
-
-		it('should disable certificate validation on the agents when allowUnauthorizedCerts is set', async () => {
-			const { getNodeAgent } = await sendThroughDestination({
-				__type: MessageEventBusDestinationTypeNames.webhook,
-				url: 'https://example.com/webhook',
-				options: { allowUnauthorizedCerts: true },
-			});
-
 			expect(getNodeAgent).toHaveBeenCalledWith(
 				expect.objectContaining({ rejectUnauthorized: false }),
 			);
@@ -383,13 +373,14 @@ describe('MessageEventBusDestinationWebhook', () => {
 		});
 
 		it('should map the socket timeout to the top-level timeout', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { sentOptions, getNodeAgent } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: { timeout: 1234 },
 			});
 
 			expect(sentOptions.timeout).toBe(1234);
+			expect(getNodeAgent).toHaveBeenCalledWith(expect.objectContaining({ timeout: 1234 }));
 		});
 
 		it('should build the agents with the socket pool settings and a default idle timeout', async () => {
@@ -406,21 +397,11 @@ describe('MessageEventBusDestinationWebhook', () => {
 				timeout: LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 			});
 		});
-
-		it('should build the agents with the configured socket timeout', async () => {
-			const { getNodeAgent } = await sendThroughDestination({
-				__type: MessageEventBusDestinationTypeNames.webhook,
-				url: 'https://example.com/webhook',
-				options: { timeout: 1234 },
-			});
-
-			expect(getNodeAgent).toHaveBeenCalledWith(expect.objectContaining({ timeout: 1234 }));
-		});
 	});
 
 	describe('proxy option mapping', () => {
 		it('should unwrap nested proxy from fixedCollection shape (options.proxy.proxy)', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { sentOptions, transport } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 				options: {
@@ -439,6 +420,9 @@ describe('MessageEventBusDestinationWebhook', () => {
 				host: '127.0.0.1',
 				port: 3128,
 			});
+			expect(transport).toHaveBeenCalledWith(
+				expect.objectContaining({ proxy: 'http://127.0.0.1:3128/' }),
+			);
 		});
 
 		it('should handle flat proxy from legacy DB data', async () => {
@@ -461,34 +445,14 @@ describe('MessageEventBusDestinationWebhook', () => {
 			});
 		});
 
-		it('should route the agents through the configured proxy', async () => {
-			const { transport } = await sendThroughDestination({
-				__type: MessageEventBusDestinationTypeNames.webhook,
-				url: 'https://example.com/webhook',
-				options: { proxy: { proxy: { protocol: 'http', host: '127.0.0.1', port: 3128 } } },
-			});
-
-			expect(transport).toHaveBeenCalledWith(
-				expect.objectContaining({ proxy: 'http://127.0.0.1:3128/' }),
-			);
-		});
-
-		it('should route the agents through the environment proxy when none is configured', async () => {
-			const { transport } = await sendThroughDestination({
-				__type: MessageEventBusDestinationTypeNames.webhook,
-				url: 'https://example.com/webhook',
-			});
-
-			expect(transport).toHaveBeenCalledWith(expect.objectContaining({ proxy: 'env' }));
-		});
-
 		it('should leave proxy unset when options.proxy is absent (env is used)', async () => {
-			const { sentOptions } = await sendThroughDestination({
+			const { sentOptions, transport } = await sendThroughDestination({
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				url: 'https://example.com/webhook',
 			});
 
 			expect(sentOptions.proxy).toBeUndefined();
+			expect(transport).toHaveBeenCalledWith(expect.objectContaining({ proxy: 'env' }));
 		});
 	});
 

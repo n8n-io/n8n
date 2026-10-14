@@ -1,8 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { IHttpRequestOptions } from 'n8n-workflow';
-import http from 'node:http';
-import https from 'node:https';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfProtectionService } from '../../ssrf';
@@ -57,15 +55,6 @@ describe('OutboundHttp.requests', () => {
 		await client.request(REQUEST);
 
 		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined, undefined);
-	});
-
-	it('passes the bound agents with every request', async () => {
-		const agents = { httpAgent: new http.Agent(), httpsAgent: new https.Agent() };
-		const client = makeFacade().requests({ agents });
-
-		await client.request(REQUEST);
-
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, expect.anything(), agents);
 	});
 
 	it('omits the bridge when SSRF protection is disabled', async () => {

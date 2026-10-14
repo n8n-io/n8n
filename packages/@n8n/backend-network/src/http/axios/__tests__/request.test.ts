@@ -4,8 +4,6 @@ import FormData from 'form-data';
 import type { Agent as HttpsAgent } from 'https';
 import type { IHttpRequestMethods, IHttpRequestOptions, IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
-import http from 'node:http';
-import https from 'node:https';
 import { gzipSync } from 'node:zlib';
 import { mock } from 'vitest-mock-extended';
 
@@ -266,19 +264,6 @@ describe('convertN8nRequestToAxios', () => {
 
 		expect((axiosConfig.httpsAgent as HttpsAgent).options.rejectUnauthorized).toBe(false);
 		expect((axiosConfig.httpsAgent as HttpsAgent).options.ca).toBe(TEST_CA_CERT);
-	});
-
-	it('should use the given agents instead of building new ones', () => {
-		const agents = { httpAgent: new http.Agent(), httpsAgent: new https.Agent() };
-
-		const axiosConfig = convertN8nRequestToAxios(
-			{ method: 'GET', url: 'https://example.com', skipSslCertificateValidation: true },
-			undefined,
-			agents,
-		);
-
-		expect(axiosConfig.httpAgent).toBe(agents.httpAgent);
-		expect(axiosConfig.httpsAgent).toBe(agents.httpsAgent);
 	});
 });
 
