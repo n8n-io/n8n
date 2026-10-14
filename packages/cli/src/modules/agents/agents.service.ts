@@ -459,13 +459,12 @@ export class AgentsService {
 		return await this.agentExecutionService.findN8nChatThreadForAgents(user.id, agentIds, threadId);
 	}
 
-	/** The agents overview list: every project the user belongs to, no scope check. */
-	async findByUserMembershipPaginated(
+	/** The agents overview list: every project where the user holds `agent:list`. */
+	async findListableByUserPaginated(
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
-		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
-		const projectIds = projectRelations.map((pr) => pr.projectId);
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 

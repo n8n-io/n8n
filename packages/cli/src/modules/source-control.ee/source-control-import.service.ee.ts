@@ -1,16 +1,11 @@
 import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type {
-	FindOptionsWhere,
-	Project,
-	TagEntity,
-	User,
-	Variables,
-	WorkflowEntity,
-} from '@n8n/db';
+import type { FindOptionsWhere, TagEntity, User, Variables, WorkflowEntity } from '@n8n/db';
 import {
 	CredentialsRepository,
+	Folder,
 	FolderRepository,
+	Project,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
@@ -1916,8 +1911,8 @@ export class SourceControlImportService {
 				workflows.map((workflow) => workflow.id),
 			);
 
-			await this.folderRepository.delete({
-				id: In(candidateIds),
+			await this.deleteWithCallerAllowlistPurge(async (trx) => {
+				await trx.delete(Folder, { id: In(candidateIds) });
 			});
 
 			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
@@ -1967,8 +1962,8 @@ export class SourceControlImportService {
 				ownedWorkflows.map((sw) => sw.workflowId),
 			);
 
-			await this.projectRepository.delete({
-				id: In(candidateIds),
+			await this.deleteWithCallerAllowlistPurge(async (trx) => {
+				await trx.delete(Project, { id: In(candidateIds) });
 			});
 
 			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
@@ -2078,6 +2073,19 @@ export class SourceControlImportService {
 	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
 		if (cascadedWorkflowIds.length === 0) return;
 		await this.workflowMutationHooks.afterWorkflowsDeleted(cascadedWorkflowIds);
+	}
+
+	/**
+	 * Run a folder/project row delete and drop every id left without a row from the `callerIds`
+	 * allowlists, in one transaction, so no new workflow can take a freed id first.
+	 */
+	private async deleteWithCallerAllowlistPurge(deleteRows: (trx: EntityManager) => Promise<void>) {
+		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
+			await deleteRows(trx);
+			// Purge by what is gone rather than by the ids collected before the delete: the cascade
+			// also removes a workflow moved into a deleted folder since.
+			await this.workflowRepository.removeMissingFromCallerAllowlists(ctx);
+		});
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */
