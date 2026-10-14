@@ -1,8 +1,10 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import type { IDataObject } from 'n8n-workflow';
 
-import { AgentEvalRun } from '../entities';
+import { AgentEvalRun, AgentEvalResult } from '../entities';
+import type { AgentEvalResultStatusCounts } from './agent-eval-result.repository.ee';
 
 type CreateAgentEvalRunAttrs = {
 	datasetId: string;
@@ -36,13 +38,21 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		});
 	}
 
-	async markAsCompleted(id: string, metrics: IDataObject | null) {
-		return await this.update(id, {
-			status: 'completed',
-			completedAt: new Date(),
-			metrics,
-			runningInstanceId: null,
-		});
+	async markAsCompleted(
+		id: string,
+		metrics: IDataObject | null,
+		counts?: AgentEvalResultStatusCounts,
+	) {
+		return await this.settleWithResultCounts(
+			id,
+			{
+				status: 'completed',
+				completedAt: new Date(),
+				metrics,
+				runningInstanceId: null,
+			},
+			counts,
+		);
 	}
 
 	/**
@@ -54,15 +64,20 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		errorCode: string,
 		errorDetails?: IDataObject | null,
 		metrics?: IDataObject | null,
+		counts?: AgentEvalResultStatusCounts,
 	) {
-		return await this.update(id, {
-			status: 'error',
-			completedAt: new Date(),
-			errorCode,
-			errorDetails: errorDetails ?? null,
-			metrics: metrics ?? null,
-			runningInstanceId: null,
-		});
+		return await this.settleWithResultCounts(
+			id,
+			{
+				status: 'error',
+				completedAt: new Date(),
+				errorCode,
+				errorDetails: errorDetails ?? null,
+				metrics: metrics ?? null,
+				runningInstanceId: null,
+			},
+			counts,
+		);
 	}
 
 	/** Rewrites only the recorded tally — used when a result is removed from a settled run. */
@@ -70,13 +85,50 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		return await this.update(id, { metrics });
 	}
 
-	async markAsCancelled(id: string, metrics: IDataObject | null = null) {
-		return await this.update(id, {
-			status: 'cancelled',
-			completedAt: new Date(),
-			metrics,
-			runningInstanceId: null,
-		});
+	async markAsCancelled(
+		id: string,
+		metrics: IDataObject | null = null,
+		counts?: AgentEvalResultStatusCounts,
+	) {
+		return await this.settleWithResultCounts(
+			id,
+			{
+				status: 'cancelled',
+				completedAt: new Date(),
+				metrics,
+				runningInstanceId: null,
+			},
+			counts,
+		);
+	}
+
+	/** Reject stale aggregation if a result was claimed or settled after the read. */
+	private async settleWithResultCounts(
+		id: string,
+		attributes: QueryDeepPartialEntity<AgentEvalRun>,
+		counts?: AgentEvalResultStatusCounts,
+	) {
+		if (!counts) return await this.update(id, attributes);
+		const query = this.createQueryBuilder()
+			.update()
+			.set(attributes)
+			.where({ id, status: 'running' });
+		if (attributes.status !== 'cancelled') query.andWhere({ cancelRequested: false });
+		for (const status of ['new', 'running', 'success', 'error', 'cancelled'] as const) {
+			const countQuery = this.manager
+				.createQueryBuilder(AgentEvalResult, 'result')
+				.select('COUNT(*)')
+				.where('result.runId = :runId')
+				.andWhere(`result.status = :status_${status}`)
+				.getQuery();
+			const expected = status === 'new' || status === 'running' ? 0 : counts[status];
+			query.andWhere(`(${countQuery}) = :count_${status}`, {
+				runId: id,
+				[`status_${status}`]: status,
+				[`count_${status}`]: expected,
+			});
+		}
+		return await query.execute();
 	}
 
 	/**

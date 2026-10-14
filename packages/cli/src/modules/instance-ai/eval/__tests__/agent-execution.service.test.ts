@@ -160,6 +160,79 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 	const request = { projectId: 'proj-1' };
 
+	it('keeps a detached root config, tools, and resolved skills for each batch case', async () => {
+		const entity = makeEntity({ ...baseConfig });
+		const skills = { skill1: { name: 'Support', description: 'Before', content: 'Old skill' } };
+		const skillRefs = [{ type: 'skill', id: 'skill1' }];
+		const skillService = createAgentSkillRefsService();
+		vi.spyOn(skillService, 'readDraft').mockResolvedValue({ skillRefs, skills } as never);
+		Container.set(AgentSkillRefsService, skillService);
+		const service = buildService();
+		const source = await service.captureRunSource(entity);
+		entity.schema!.instructions = 'Changed instructions';
+		entity.tools!['t-1'].code = 'Changed code';
+		skills.skill1.content = 'Changed skill';
+		findByIdAndProjectId.mockResolvedValue(entity);
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+		});
+
+		await service.executeWithLlmMock('agent-1', user, { projectId: 'proj-1' }, 'First', { source });
+		await service.executeWithLlmMock('agent-1', user, { projectId: 'proj-1' }, 'Second', {
+			source,
+		});
+
+		expect(skillService.readDraft).toHaveBeenCalledOnce();
+		expect(reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		for (const [snapshot] of reconstructFromAgentEntity.mock.calls) {
+			expect(snapshot.agent.schema.instructions).toBe(baseConfig.instructions);
+			expect(snapshot.agent.tools['t-1'].code).toBe('export default 1');
+			expect(snapshot.skills.skill1.content).toBe('Old skill');
+		}
+		expect(source.agent.schema!.instructions).toBe(baseConfig.instructions);
+		expect(userHasScopes).toHaveBeenCalledTimes(2);
+		await service.executeWithLlmMock('agent-1', user, { projectId: 'proj-1' }, 'Rerun');
+		const [current] = reconstructFromAgentEntity.mock.calls[2];
+		expect(current.agent.schema.instructions).toBe('Changed instructions');
+		expect(current.agent.tools['t-1'].code).toBe('Changed code');
+		expect(current.skills.skill1.content).toBe('Changed skill');
+		expect(skillService.readDraft).toHaveBeenCalledTimes(2);
+	});
+
+	it('still checks permissions and project identity for a captured source', async () => {
+		const service = buildService();
+		const source = await service.captureRunSource(makeEntity({ ...baseConfig }));
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		expect(
+			await service.executeWithLlmMock('agent-1', user, { projectId: 'proj-1' }, 'Case', {
+				source,
+			}),
+		).toMatchObject({ success: false });
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		expect(
+			await service.executeWithLlmMock('agent-1', user, { projectId: 'other-project' }, 'Case', {
+				source,
+			}),
+		).toMatchObject({ success: false });
+		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
+	});
+
+	it('refuses a captured source when the agent is no longer in the project', async () => {
+		const service = buildService();
+		const source = await service.captureRunSource(makeEntity({ ...baseConfig }));
+		findByIdAndProjectId.mockResolvedValue(null);
+		const result = await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			{ projectId: 'proj-1' },
+			'Case',
+			{ source },
+		);
+		expect(result.success).toBe(false);
+		expect(result.errors).toEqual(['Agent agent-1 not found or not accessible']);
+		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
+	});
+
 	it('reports tool progress before generation finishes and flushes writes before returning', async () => {
 		const handlers = new Map<AgentEvent, AgentEventHandler>();
 		const onProgress = vi.fn().mockResolvedValue(undefined);

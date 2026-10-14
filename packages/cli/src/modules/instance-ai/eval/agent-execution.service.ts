@@ -23,7 +23,7 @@ import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
-import { nodeNameToToolName } from 'n8n-workflow';
+import { deepCopy, nodeNameToToolName } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 // Static agents-module imports are safe here: the ModuleRegistry gate decides
@@ -32,6 +32,7 @@ import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtim
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
 import { fromAgentDocument, toAgentDocument } from '@/modules/agents/json-config/agent-document';
@@ -158,6 +159,19 @@ export class EvalAgentExecutionService {
 		private readonly credentialsService: CredentialsService,
 	) {}
 
+	/** Keep the root agent and resolved skills fixed while a batch is in flight. */
+	async captureRunSource(agent: AgentEntity): Promise<AgentRunSource> {
+		const detached = {
+			...agent,
+			schema: deepCopy(agent.schema),
+			tools: deepCopy(agent.tools),
+			skills: deepCopy(agent.skills),
+			integrations: deepCopy(agent.integrations),
+		};
+		const skills = await Container.get(AgentSkillRefsService).readDraft(detached, {});
+		return { agent: detached, ...deepCopy(skills) };
+	}
+
 	async executeWithLlmMock(
 		agentId: string,
 		user: User,
@@ -167,7 +181,10 @@ export class EvalAgentExecutionService {
 		// per-tool hints keep the tool mocks coherent), but the message the agent
 		// receives is this input verbatim — how a fixed eval case is executed.
 		caseInput?: string,
-		hooks?: { onProgress?: (calls: InstanceAiEvalAgentToolCallRecord[]) => Promise<void> },
+		hooks?: {
+			onProgress?: (calls: InstanceAiEvalAgentToolCallRecord[]) => Promise<void>;
+			source?: AgentRunSource;
+		},
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool
@@ -192,19 +209,33 @@ export class EvalAgentExecutionService {
 			return this.errorResult(`Agent ${agentId} not found or not accessible`);
 		}
 
-		const agentEntity = await Container.get(AgentRepository).findByIdAndProjectId(
+		const source = hooks?.source;
+		if (source && (source.agent.id !== agentId || source.agent.projectId !== projectId)) {
+			return this.errorResult(`Agent ${agentId} not found or not accessible`);
+		}
+		// Keep the scoped existence check even when content comes from the batch snapshot.
+		const currentAgent = await Container.get(AgentRepository).findByIdAndProjectId(
 			agentId,
 			projectId,
 		);
-		if (!agentEntity) {
+		if (!currentAgent) {
 			return this.errorResult(`Agent ${agentId} not found or not accessible`);
 		}
-		if (!agentEntity.schema) {
+		const storedAgent = source?.agent ?? currentAgent;
+		if (!storedAgent.schema) {
 			return this.errorResult(`Agent ${agentId} has no JSON config to run.`);
 		}
 
-		const agentSkillRefs = Container.get(AgentSkillRefsService);
-		const skillRefs = await agentSkillRefs.refsForDraft(agentEntity, {});
+		// Each case gets its own mutable copy; pruning must not change the batch source.
+		const runSource = source ?? (await this.captureRunSource(storedAgent));
+		const agentEntity = {
+			...runSource.agent,
+			schema: deepCopy(storedAgent.schema),
+			tools: deepCopy(runSource.agent.tools),
+			skills: deepCopy(runSource.agent.skills),
+			integrations: deepCopy(runSource.agent.integrations),
+		};
+		const skillRefs = deepCopy(runSource.skillRefs);
 		const { config, skippedFeatures } = pruneConfigForEval(
 			toAgentDocument(agentEntity.schema, skillRefs),
 		);
@@ -365,7 +396,7 @@ export class EvalAgentExecutionService {
 				{
 					agent: agentEntity,
 					skillRefs: pruned.skillRefs,
-					skills: await agentSkillRefs.skillsForRefs(agentEntity, pruned.skillRefs, {}),
+					skills: deepCopy(runSource.skills),
 				},
 				credentialProvider,
 				'test',

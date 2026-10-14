@@ -111,6 +111,105 @@ afterAll(async () => {
 });
 
 describe('AgentEvalRunnerService (integration)', () => {
+	it('rejects aggregation when a result starts or finishes a new attempt after the count read', async () => {
+		const project = await createTeamProject();
+		const agent = await createAgent(project.id);
+		const dataset = await Container.get(AgentEvalDatasetRepository).createDataset({
+			name: 'ds',
+			agentId: agent.id,
+			datasetSource: 'data_table',
+			datasetRef: { dataTableId: 'table' },
+			columnMapping: { input: 'question' },
+		});
+		const runs = Container.get(AgentEvalRunRepository);
+		const results = Container.get(AgentEvalResultRepository);
+		const run = await runs.createRun({ datasetId: dataset.id });
+		await runs.markAsRunning(run.id);
+		const [result] = await results.seedResults([{ runId: run.id }]);
+		await results.markAsError(result.id, 'execution_failed');
+		const oldCounts = await results.countByStatus(run.id);
+		expect(await results.claimForRerun(result.id)).toBe(true);
+		const oldMetrics = { total: 1, pending: 0, success: 0, error: 1, cancelled: 0 };
+		expect((await runs.markAsCompleted(run.id, oldMetrics, oldCounts)).affected).toBe(0);
+		await results.markAsCompleted(result.id, { output: { finalText: 'Updated answer' } });
+		expect((await runs.markAsCompleted(run.id, oldMetrics, oldCounts)).affected).toBe(0);
+		const currentCounts = await results.countByStatus(run.id);
+		const currentMetrics = { ...oldMetrics, success: 1, error: 0 };
+		await runs.requestCancellation(run.id);
+		expect((await runs.markAsCompleted(run.id, currentMetrics, currentCounts)).affected).toBe(0);
+		expect((await runs.markAsCancelled(run.id, currentMetrics, currentCounts)).affected).toBe(1);
+		expect(await runs.findById(run.id)).toMatchObject({
+			status: 'cancelled',
+			metrics: currentMetrics,
+		});
+	});
+
+	it('keeps an original batch running until a targeted rerun has settled', async () => {
+		const project = await createTeamProject();
+		const agent = await createAgent(project.id);
+		const dataTables = Container.get(DataTableService);
+		const table = await dataTables.createDataTable(project.id, {
+			name: 'cases',
+			columns: [{ name: 'question', type: 'string' }],
+		});
+		await dataTables.insertRows(table.id, project.id, [
+			{ question: 'First' },
+			{ question: 'Second' },
+		]);
+		const dataset = await Container.get(AgentEvalDatasetRepository).createDataset({
+			name: 'ds',
+			agentId: agent.id,
+			datasetSource: 'data_table',
+			datasetRef: { dataTableId: table.id },
+			columnMapping: { input: 'question' },
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		let finishOriginal!: () => void;
+		let finishRerun!: () => void;
+		const original = new Promise<void>((resolve) => {
+			finishOriginal = resolve;
+		});
+		const rerun = new Promise<void>((resolve) => {
+			finishRerun = resolve;
+		});
+		let firstAttempts = 0;
+		evalAgentExecutionService.executeWithLlmMock.mockImplementation(
+			async (_id, _user, _options, input) => {
+				if (input === 'First' && ++firstAttempts > 1) await rerun;
+				if (input === 'Second') await original;
+				return { success: true, finalText: 'Answer', toolCalls: [], skippedFeatures: [] } as never;
+			},
+		);
+		const runner = buildRunner();
+		const { runId, finished } = await runner.startRun(dataset.id, project.id, owner);
+		const results = Container.get(AgentEvalResultRepository);
+		let firstResult;
+		await vi.waitFor(async () => {
+			const [rows] = await results.findAndCountByRunId(runId);
+			firstResult = rows.find((row) => row.input?.input === 'First');
+			expect(firstResult?.status).toBe('success');
+		});
+		if (!firstResult) throw new Error('Missing first result');
+		const rerunFinished = runner.rerunResult(firstResult, agent.id, project.id, owner);
+		await vi.waitFor(() => expect(firstAttempts).toBe(2));
+		finishOriginal();
+		await vi.waitFor(async () => {
+			expect(await results.countByStatus(runId)).toMatchObject({ success: 1, running: 1 });
+		});
+		expect((await Container.get(AgentEvalRunRepository).findById(runId))?.status).toBe('running');
+		finishRerun();
+		await Promise.all([rerunFinished, finished]);
+		expect(await runner.getRunSummary(runId, agent.id)).toMatchObject({
+			status: 'completed',
+			counts: { total: 2, success: 2, pending: 0 },
+		});
+		expect((await Container.get(AgentEvalRunRepository).findById(runId))?.metrics).toMatchObject({
+			total: 2,
+			success: 2,
+			pending: 0,
+		});
+	});
+
 	it('runs each dataset row against the agent and persists results + run status', async () => {
 		const project = await createTeamProject();
 		const agent = await createAgent(project.id);
