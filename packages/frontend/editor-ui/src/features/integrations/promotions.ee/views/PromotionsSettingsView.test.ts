@@ -124,10 +124,13 @@ const otherRepository = {
 	fullPath: 'team/other',
 	remoteUrl: 'https://gitlab.example.com/team/other.git',
 };
-const targetOf = (repo: PromotionRepository) => ({
+const requestTargetOf = (repo: PromotionRepository) => ({
 	schemaVersion: 1 as const,
 	remoteUrl: repo.remoteUrl,
-	repositoryId: repo.id,
+});
+const targetOf = (repo: PromotionRepository) => ({
+	...requestTargetOf(repo),
+	repositoryPath: repo.fullPath,
 });
 const gitlabConnection = (overrides: Partial<PromotionConnection> = {}) =>
 	instanceConnection({
@@ -290,7 +293,7 @@ describe('PromotionsSettingsView', () => {
 				name: 'Production',
 				scope: 'instance',
 				providerId: 'provider-gitlab',
-				target: targetOf(repository),
+				target: requestTargetOf(repository),
 				configs: {
 					apply: { settings: { schemaVersion: 1, branchName: 'main' } },
 					promote: {
@@ -322,7 +325,7 @@ describe('PromotionsSettingsView', () => {
 			expect(cachedConnection.hasPromoteConfig.value).toBe(true);
 		});
 
-		it('clears dependent branches, supports discard, and saves repository identity together', async () => {
+		it('clears dependent branches, supports discard, and converts a saved URL target to a path', async () => {
 			const saved = mockGitlabConnection(
 				gitlabConnection({
 					target: { schemaVersion: 1, remoteUrl: repository.remoteUrl },
@@ -334,12 +337,16 @@ describe('PromotionsSettingsView', () => {
 				.mockResolvedValueOnce({ ...saved, target: targetOf(repository) })
 				.mockResolvedValue({ ...saved, target: targetOf(otherRepository) });
 			await renderReadyView();
+			const hint = screen.getByText('Select a repository again to load its branches', {
+				selector: '[role="status"]',
+			});
+			expect(selectedValue('repository')).toHaveAttribute('aria-describedby', hint.id);
 			await selectRepository(repository);
 			expect(selectedValue('apply-branch')).toHaveValue('main');
 			expect(selectedValue('promote-branch')).toHaveValue('release/test');
 			await save();
 			expect(api.updatePromotionConnection).toHaveBeenCalledWith(expect.anything(), saved.id, {
-				target: targetOf(repository),
+				target: requestTargetOf(repository),
 			});
 			await selectRepository();
 			expect(selectedValue('apply-branch')).toHaveValue('');
@@ -356,7 +363,7 @@ describe('PromotionsSettingsView', () => {
 			await selectBranches('main', 'release/test');
 			await save();
 			expect(api.updatePromotionConnection).toHaveBeenCalledWith(expect.anything(), saved.id, {
-				target: targetOf(otherRepository),
+				target: requestTargetOf(otherRepository),
 			});
 			expect(api.upsertPromotionApplyConfig).not.toHaveBeenCalled();
 			expect(api.upsertPromotionPromoteConfig).not.toHaveBeenCalled();
@@ -365,7 +372,7 @@ describe('PromotionsSettingsView', () => {
 			expect(screen.getByTestId('promotion-connection-apply-branch-input')).toHaveValue('');
 		});
 
-		it('loads saved branches by ID without resolving the repository browse page', async () => {
+		it('loads saved branches by path without resolving the repository browse page', async () => {
 			const saved = mockGitlabConnection();
 			api.fetchPromotionRepositories.mockRejectedValueOnce(new Error('GitLab is unavailable.'));
 			await renderReadyView();
@@ -374,7 +381,7 @@ describe('PromotionsSettingsView', () => {
 			expect(api.fetchPromotionBranches).toHaveBeenCalledWith(
 				expect.anything(),
 				saved.provider.id,
-				'42',
+				repository.fullPath,
 				expect.anything(),
 			);
 			expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(1);
@@ -421,18 +428,39 @@ describe('PromotionsSettingsView', () => {
 			expect(api.upsertPromotionPromoteConfig).toHaveBeenCalledTimes(2);
 		});
 
+		it('keeps the saved repository and its branches after a host edit', async () => {
+			const saved = mockGitlabConnection();
+			const movedRepository = {
+				...repository,
+				remoteUrl: 'https://other.example.com/team/workflows.git',
+			};
+			api.fetchPromotionConnection
+				.mockResolvedValueOnce(saved)
+				.mockResolvedValue({ ...saved, target: targetOf(movedRepository) });
+			await renderReadyView();
+			await userEvent.type(screen.getByTestId('promotion-connection-name-input'), ' draft');
+			api.fetchPromotionRepositories.mockResolvedValue({
+				data: [movedRepository],
+				nextCursor: null,
+			});
+			await editGitlabProvider({ baseUrl: 'https://other.example.com', token: 'test-token' });
+			await waitFor(() => expect(selectedValue('repository')).toHaveValue(repository.fullPath));
+			expect(selectedValue('apply-branch')).toBeEnabled();
+			expect(selectedValue('apply-branch')).toHaveValue('main');
+			api.updatePromotionConnection.mockResolvedValue({ ...saved, name: 'Production draft' });
+			await save();
+			await waitFor(() =>
+				expect(api.updatePromotionConnection).toHaveBeenCalledWith(expect.anything(), saved.id, {
+					name: 'Production draft',
+				}),
+			);
+		});
+
 		it.each(['saved', 'new'] as const)(
-			'invalidates repository selection after a host edit on a %s connection',
+			'clears a repository picked from the old host after a host edit on a %s connection',
 			async (state) => {
-				mockedStore(useUsersStore).currentUser = mock<IUser>({
-					globalScopes: ['gitConnection:clone'],
-				});
 				const saved = mockGitlabConnection();
 				api.fetchPromotionConnections.mockResolvedValue(state === 'saved' ? [saved] : []);
-				api.fetchPromotionConnection.mockResolvedValueOnce(saved).mockResolvedValue({
-					...saved,
-					target: { schemaVersion: 1, remoteUrl: saved.target.remoteUrl },
-				});
 				await renderReadyView();
 				if (state === 'new') {
 					await selectProvider('GitLab');
@@ -443,31 +471,16 @@ describe('PromotionsSettingsView', () => {
 				await selectBranches();
 				await userEvent.type(screen.getByTestId('promotion-connection-name-input'), ' draft');
 				await editGitlabProvider({ baseUrl: 'https://other.example.com', token: 'test-token' });
+				expect(selectedValue('repository')).toHaveValue('');
 				expect(selectedValue('apply-branch')).toBeDisabled();
 				expect(screen.getByTestId('promotion-connection-name-input')).toHaveValue(
 					'Production draft',
 				);
-				const hint = screen.getByText('Select a repository again to load its branches', {
-					selector: '[role="status"]',
-				});
-				expect(selectedValue('repository')).toHaveAttribute('aria-describedby', hint.id);
-				await discard();
-				expect(screen.getByTestId('promotion-connection-name-input')).toHaveValue(
-					state === 'saved' ? 'Production' : '',
-				);
-				if (state === 'saved') {
-					expect(selectedValue('apply-branch')).toBeDisabled();
-					const connect = screen.getByTestId('promotion-checkout-connect');
-					expect(connect).toBeDisabled();
-					await selectRepository(repository);
-					expect(connect).toBeDisabled();
-					api.updatePromotionConnection.mockResolvedValue({
-						...saved,
-						target: targetOf(repository),
-					});
-					await save();
-					await waitFor(() => expect(connect).toBeEnabled());
-				}
+				expect(
+					within(screen.getByTestId('promotion-connection-save-bar')).getByRole('button', {
+						name: /save settings/i,
+					}),
+				).toBeDisabled();
 			},
 		);
 

@@ -91,6 +91,10 @@ watch(
 		savedStateRevision++;
 		// Refresh saved state without replacing the draft.
 		current.value = connection;
+		// A provider host change keeps the path but changes the derived URL.
+		if (form.repositoryPath && form.repositoryPath === connection?.target.repositoryPath) {
+			form.remoteUrl = connection.target.remoteUrl;
+		}
 		form.apply.name = connection?.configs.apply?.name;
 		form.promote.name = connection?.configs.promote?.name;
 		baseline.value = JSON.stringify(
@@ -108,20 +112,24 @@ function applyProviderChange(change: PromotionProviderChange) {
 		savedStateRevision++;
 	}
 	if (change.id !== form.providerId) return;
-	if (change.hostChanged) form.repositoryId = undefined;
+	// The new host rejects a URL picked from the old host, unless it is the saved repository.
+	if (change.hostChanged && form.repositoryPath !== current.value?.target.repositoryPath) {
+		form.remoteUrl = '';
+		form.repositoryPath = undefined;
+	}
 	if (change.hostChanged || change.credentialsChanged) discoveryRevision.value++;
 }
 
 function selectRepository(selected: PromotionRepository) {
 	if (
 		form.remoteUrl !== selected.remoteUrl ||
-		(form.repositoryId !== undefined && form.repositoryId !== selected.id)
+		(form.repositoryPath !== undefined && form.repositoryPath !== selected.fullPath)
 	) {
 		form.apply.branchName = '';
 		form.promote.baseBranchName = '';
 	}
 	form.remoteUrl = selected.remoteUrl;
-	form.repositoryId = selected.id;
+	form.repositoryPath = selected.fullPath;
 }
 
 const resetTo = (connection: PromotionConnection | null) => {
@@ -134,7 +142,7 @@ const resetTo = (connection: PromotionConnection | null) => {
 const isSaving = computed(() => isCreating.value || save.isSaving.value);
 const isDirty = computed(() => JSON.stringify(form) !== baseline.value);
 const needsRepositorySelection = computed(
-	() => hasHostApi.value && !!form.remoteUrl && !form.repositoryId,
+	() => hasHostApi.value && !!form.remoteUrl && !form.repositoryPath,
 );
 
 // Let the API validate remote URLs so frontend rules cannot drift.
@@ -143,7 +151,7 @@ const saveDisabledReason = computed(() => {
 		!form.providerId ||
 		!form.name.trim() ||
 		!form.remoteUrl.trim() ||
-		(hasHostApi.value && !form.repositoryId)
+		(hasHostApi.value && !form.repositoryPath)
 	)
 		return i18n.baseText('settings.promotions.connection.form.incomplete');
 	if (
@@ -342,7 +350,7 @@ function selectProvider(id: string) {
 		form.apply.branchName = '';
 		form.promote.baseBranchName = '';
 	}
-	form.repositoryId = undefined;
+	form.repositoryPath = undefined;
 	form.providerId = id;
 }
 
@@ -478,7 +486,7 @@ defineExpose({ selectProvider, applyProviderChange });
 								kind="branch"
 								input-id="promotion-connection-apply-branch"
 								:provider-id="form.providerId"
-								:repository-id="form.repositoryId"
+								:repository-id="form.repositoryPath"
 								:revision="discoveryRevision"
 								:disabled="isSaving"
 								data-test-id="promotion-connection-apply-branch-select"
@@ -531,7 +539,7 @@ defineExpose({ selectProvider, applyProviderChange });
 								kind="branch"
 								input-id="promotion-connection-promote-branch"
 								:provider-id="form.providerId"
-								:repository-id="form.repositoryId"
+								:repository-id="form.repositoryPath"
 								:revision="discoveryRevision"
 								:disabled="isSaving"
 								data-test-id="promotion-connection-promote-branch-select"

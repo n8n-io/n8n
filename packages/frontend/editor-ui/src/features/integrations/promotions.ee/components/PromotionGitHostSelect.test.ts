@@ -103,7 +103,7 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 
 	const renderPicker = (onClick: () => void) =>
 		renderSelect({
-			props: { kind, repositoryId: kind === 'branch' ? '42' : undefined },
+			props: { kind, repositoryId: kind === 'branch' ? 'team/workflows' : undefined },
 			attrs: { onClick },
 		});
 

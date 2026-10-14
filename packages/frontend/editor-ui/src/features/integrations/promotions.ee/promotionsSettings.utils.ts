@@ -1,7 +1,6 @@
 import type {
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
-	PromotionConnectionTarget,
 	PromotionDirection,
 	PromotionProviderAuthType,
 	PromotionProviderType,
@@ -51,7 +50,7 @@ export type ConnectionFormState = {
 	name: string;
 	providerId: string;
 	remoteUrl: string;
-	repositoryId?: string;
+	repositoryPath?: string;
 	apply: DirectionFormState & { branchName: string };
 	promote: DirectionFormState & { baseBranchName: string; createBranchOnPromotion: boolean };
 };
@@ -87,7 +86,7 @@ export const emptyConnectionForm = (): ConnectionFormState => ({
 	name: '',
 	providerId: '',
 	remoteUrl: '',
-	repositoryId: undefined,
+	repositoryPath: undefined,
 	apply: { enabled: false, name: undefined, branchName: '' },
 	promote: { enabled: false, name: undefined, baseBranchName: '', createBranchOnPromotion: false },
 });
@@ -99,7 +98,7 @@ export const connectionFormFrom = (connection: PromotionConnection): ConnectionF
 		name: connection.name,
 		providerId: connection.provider.id,
 		remoteUrl: connection.target.remoteUrl,
-		repositoryId: connection.target.repositoryId,
+		repositoryPath: connection.target.repositoryPath,
 		apply: {
 			enabled: apply !== undefined,
 			name: apply?.name,
@@ -176,19 +175,13 @@ export const buildProviderUpdatePayload = (
 	return payload;
 };
 
-const connectionTarget = (form: ConnectionFormState): PromotionConnectionTarget => ({
-	schemaVersion: 1,
-	remoteUrl: form.remoteUrl.trim(),
-	...(form.repositoryId && { repositoryId: form.repositoryId }),
-});
-
 export const buildConnectionCreatePayload = (
 	form: ConnectionFormState,
 ): CreatePromotionConnectionDto => ({
 	name: form.name.trim(),
 	scope: 'instance',
 	providerId: form.providerId,
-	target: connectionTarget(form),
+	target: { schemaVersion: 1, remoteUrl: form.remoteUrl.trim() },
 	configs: {
 		...(form.apply.enabled && { apply: applyConfigPayload(form) }),
 		...(form.promote.enabled && { promote: promoteConfigPayload(form) }),
@@ -207,8 +200,12 @@ export const planConnectionWrites = (
 	if (name !== current.name) payload.name = name;
 
 	const remoteUrl = form.remoteUrl.trim();
-	if (remoteUrl !== current.target.remoteUrl || form.repositoryId !== current.target.repositoryId) {
-		payload.target = connectionTarget(form);
+	// A matching URL still needs a write when it converts a saved URL target to a path.
+	if (
+		remoteUrl !== current.target.remoteUrl ||
+		form.repositoryPath !== current.target.repositoryPath
+	) {
+		payload.target = { schemaVersion: 1, remoteUrl };
 	}
 
 	if (form.providerId !== current.provider.id) payload.providerId = form.providerId;
