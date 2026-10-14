@@ -7,8 +7,7 @@ It also provides the result review API.
 
 Call `InstanceAiService.startSelfHealingRun(input, verifyCandidate)` from backend code.
 Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` before startup.
-Supply the acting `user`, captured `WorkflowSuggestionBaseline`, failed `executionId`,
-and failure description in `message`.
+Supply the acting `user`, captured `WorkflowSuggestionBaseline`, and failed `executionId`.
 The actor must match `baseline.backgroundUserId` and have current workflow read and edit access.
 The baseline project and execution must belong to `baseline.workflowId`.
 

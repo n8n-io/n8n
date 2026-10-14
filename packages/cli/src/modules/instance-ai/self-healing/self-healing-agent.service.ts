@@ -56,7 +56,6 @@ export type SelfHealingRunInput = {
 	user: User;
 	baseline: WorkflowSuggestionBaseline;
 	executionId: string;
-	message: string;
 };
 
 /** The backend supplies authority. The model supplies only candidate arguments. */
@@ -79,7 +78,6 @@ export type SelfHealingRunResult = {
 	output?: SelfHealingOutput;
 	validationError?: string;
 	error?: unknown;
-	accountingError?: unknown;
 	usage: SelfHealingResultUsage;
 	candidate?: { filePath: string; read: () => Promise<string | null> };
 };
@@ -113,6 +111,7 @@ export type SelfHealingRunOptions = {
 };
 
 const CANDIDATE_FILE_PATH = 'self-healing/candidate.workflow.ts';
+const INVESTIGATION_MESSAGE = 'Investigate the failed execution using the execution tools.';
 
 @Service()
 export class SelfHealingAgentService {
@@ -147,10 +146,8 @@ export class SelfHealingAgentService {
 		verifyCandidate: SelfHealingVerifier,
 		options: SelfHealingRunOptions,
 	): Promise<SelfHealingRunResult> {
-		this.assertEnabled(verifyCandidate);
-
 		const user = await this.validateInput(input);
-		const { baseline, executionId, message } = input;
+		const { baseline, executionId } = input;
 		const { threadId, runId, signal } = options;
 		const startedAt = Date.now();
 
@@ -208,7 +205,7 @@ export class SelfHealingAgentService {
 				messageGroupId: options.messageGroupId,
 				userId: user.id,
 				modelId,
-				input: { message },
+				input: { message: INVESTIGATION_MESSAGE },
 				metadata,
 				proxyConfig: proxy.tracingProxyConfig,
 				n8nVersion: N8N_VERSION,
@@ -266,7 +263,6 @@ export class SelfHealingAgentService {
 						result.status,
 					)) ?? null;
 			} catch (error) {
-				result.accountingError = error;
 				this.logger.warn('Could not claim self-healing usage.', {
 					runId,
 					error: getErrorMessage(error),
@@ -297,11 +293,10 @@ export class SelfHealingAgentService {
 		return result;
 	}
 
-	private async validateInput({ user, baseline, executionId, message }: SelfHealingRunInput) {
+	private async validateInput({ user, baseline, executionId }: SelfHealingRunInput) {
 		if (user.disabled || user.id !== baseline.backgroundUserId) {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
-		if (!message.trim()) throw new BadRequestError('A failure message is required.');
 
 		const actor = await this.suggestions.requireEditor(user.id, baseline.workflowId);
 		const project = await this.sharedWorkflows.getWorkflowOwningProject(baseline.workflowId);
@@ -375,7 +370,7 @@ export class SelfHealingAgentService {
 		workspace: Workspace;
 		verifyCandidate: SelfHealingVerifier;
 	}): Promise<StreamRunResult> {
-		const { user, baseline, executionId, message } = input;
+		const { user, baseline, executionId } = input;
 		const { runId, threadId, signal } = options;
 		const { tracing } = context;
 		const resourceId = getSelfHealingResourceId(user.id);
@@ -404,7 +399,7 @@ export class SelfHealingAgentService {
 		const consume = async () =>
 			await streamAgentRun(
 				agent,
-				`${message}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
+				`${INVESTIGATION_MESSAGE}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
 				{
 					maxIterations: MAX_STEPS.ORCHESTRATOR,
 					abortSignal: signal,

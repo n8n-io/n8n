@@ -81,7 +81,7 @@ function createSelfHealingTools(
 				const signal = abortSignal ?? ctx.abortSignal;
 				signal?.throwIfAborted();
 
-				return await verifyCandidate(selfHealingCandidateInputSchema.parse(input), signal);
+				return await verifyCandidate(input, signal);
 			})
 			.build(),
 	]);

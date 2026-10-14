@@ -76,7 +76,6 @@ const input: SelfHealingRunInput = {
 	user,
 	baseline,
 	executionId: '123',
-	message: 'The node failed.',
 };
 const validOutput = {
 	outcome: 'fix_ready',
@@ -317,7 +316,6 @@ describe('SelfHealingAgentService', () => {
 		credits.claimRunUsage.mockRejectedValueOnce(failure);
 		const result = await service.execute(input, verifier, options);
 		expect(result.output).toEqual(validOutput);
-		expect(result.accountingError).toBe(failure);
 		expect(result.usage.credits).toBeNull();
 		expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
@@ -405,20 +403,19 @@ describe('SelfHealingAgentService', () => {
 		expect(options.onFinish).toHaveBeenCalledTimes(1);
 	});
 
-	it('rejects a disabled gate or missing verifier before model work', async () => {
+	it('rejects a disabled gate or missing verifier at admission', () => {
 		config.instanceAi.selfHealingEnabled = false;
-		await expect(service.execute(input, verifier, options)).rejects.toThrow('disabled');
+		expect(() => service.assertEnabled(verifier)).toThrow('disabled');
 		config.instanceAi.selfHealingEnabled = true;
-		await expect(
-			service.execute(input, undefined as unknown as SelfHealingVerifier, options),
-		).rejects.toThrow('verifier');
+		expect(() => service.assertEnabled(undefined as unknown as SelfHealingVerifier)).toThrow(
+			'verifier',
+		);
 		expect(models.resolveAgentModelConfig).not.toHaveBeenCalled();
 	});
 
 	it.each([
 		['disabled actor', { ...input, user: mock<User>({ id: 'actor', disabled: true }) }],
 		['mismatched actor', { ...input, user: mock<User>({ id: 'someone-else' }) }],
-		['missing failure', { ...input, message: ' ' }],
 	])('rejects %s before model work', async (_label, invalid) => {
 		await expect(service.execute(invalid, verifier, options)).rejects.toThrow();
 		expect(models.resolveAgentModelConfig).not.toHaveBeenCalled();

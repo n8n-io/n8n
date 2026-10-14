@@ -1551,7 +1551,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 			projectId: 'project-1',
 		}),
 		executionId: 'execution-1',
-		message: 'The execution failed.',
 	};
 	const verifier = vi.fn<SelfHealingVerifier>();
 

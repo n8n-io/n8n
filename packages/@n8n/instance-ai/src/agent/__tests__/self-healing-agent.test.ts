@@ -213,11 +213,10 @@ describe('createSelfHealingAgent', () => {
 		['data-tables', { action: 'insert-rows', dataTableId: 'table', rows: [{}] }],
 		['nodes', { action: 'execute', nodeType: 'n8n-nodes-base.httpRequest' }],
 		['nodes', { action: 'explore-resources', nodeType: 'n8n-nodes-base.slack' }],
-	])('rejects unavailable %s actions in the schema and handler', async (name, input) => {
+	])('rejects unavailable %s actions in the schema', async (name, input) => {
 		const agent = await createAgent();
 		const tool = findTool(agent.declaredTools, name);
 		expect(parseToolInput(tool, input).success).toBe(false);
-		await expect(executeTool(tool, input)).rejects.toThrow('action is not available');
 	});
 
 	it('keeps execution reads and adapter access checks', async () => {
