@@ -29,7 +29,7 @@ import { LinearIntegration } from '../integrations/platforms/linear-integration'
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
 import { SlackIntegration } from '../integrations/platforms/slack/slack-integration';
 import { TelegramIntegration } from '../integrations/platforms/telegram-integration';
-import { WhatsAppIntegration } from '../integrations/platforms/whatsapp-integration';
+import { WhatsAppIntegration } from '../integrations/platforms/whatsapp/whatsapp-integration';
 import { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
 import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.repository';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';

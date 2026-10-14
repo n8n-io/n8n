@@ -28,7 +28,7 @@ import {
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
-import type { WhatsAppWebhookVerificationStore } from '../../whatsapp-webhook-verification.store';
+import type { WhatsAppWebhookVerificationStore } from '../../whatsapp/whatsapp-webhook-verification.store';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
 // `new Function()` hack to dodge the CJS transform, which can't run under vitest;
@@ -1099,11 +1099,15 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				webhookVerification,
 			});
 
-			const response = await ctx.adapter.handleWebhook(handshake(expectedToken));
+			try {
+				const response = await ctx.adapter.handleWebhook(handshake(expectedToken));
 
-			expect(response.status).toBe(200);
-			expect(await response.text()).toBe('12345');
-			expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
+				expect(response.status).toBe(200);
+				expect(await response.text()).toBe('12345');
+				expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
+			} finally {
+				await ctx.shutdown();
+			}
 		});
 
 		it('does not record a rejected handshake', async () => {
@@ -1112,10 +1116,14 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				webhookVerification,
 			});
 
-			const response = await ctx.adapter.handleWebhook(handshake('wrong-token'));
+			try {
+				const response = await ctx.adapter.handleWebhook(handshake('wrong-token'));
 
-			expect(response.status).toBe(403);
-			expect(webhookVerification.markVerified).not.toHaveBeenCalled();
+				expect(response.status).toBe(403);
+				expect(webhookVerification.markVerified).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
 		});
 	});
 

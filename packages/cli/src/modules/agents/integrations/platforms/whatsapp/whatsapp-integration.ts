@@ -13,7 +13,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { WhatsAppRawMessage } from '@chat-adapter/whatsapp';
 
-import { AgentRepository } from '../../repositories/agent.repository';
+import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
@@ -24,20 +24,23 @@ import {
 	type BridgeResumeExecutionContext,
 	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
-} from '../agent-chat-integration';
-import { channelRateLimitMessage, type RecipientScopedRateLimitError } from '../channel-rate-limit';
-import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
+} from '../../agent-chat-integration';
+import {
+	channelRateLimitMessage,
+	type RecipientScopedRateLimitError,
+} from '../../channel-rate-limit';
+import { ChannelRateLimitGuard } from '../../channel-rate-limit.guard';
 import {
 	componentTextToString,
 	type NormalizeComponentsContext,
 	type SuspendComponent,
-} from '../component-mapper';
-import { assertCredentialNotClaimed } from '../credential-claim';
-import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
-import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../integration-helpers';
-import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
-import { buildIntegrationConnectionId } from '../integration-tool-factory';
-import { startTypingIndicator } from './typing-indicator';
+} from '../../component-mapper';
+import { assertCredentialNotClaimed } from '../../credential-claim';
+import { loadChatSdk, loadWhatsAppAdapter } from '../../esm-loader';
+import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../../integration-helpers';
+import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
+import { buildIntegrationConnectionId } from '../../integration-tool-factory';
+import { startTypingIndicator } from '../typing-indicator';
 import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;

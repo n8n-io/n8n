@@ -5,7 +5,7 @@ import { createHmac } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentCredentialLookupService } from '../../../agent-credential-lookup.service';
-import { WhatsAppCredentialCheckService } from '../../whatsapp-credential-check.service';
+import { WhatsAppCredentialCheckService } from '../../whatsapp/whatsapp-credential-check.service';
 
 const PROJECT_ID = 'project-1';
 const CREDENTIAL_ID = 'cred-1';
@@ -51,6 +51,7 @@ describe('WhatsAppCredentialCheckService', () => {
 	let request: ReturnType<typeof vi.fn>;
 	let service: WhatsAppCredentialCheckService;
 	let replies: Record<Route, () => Promise<GraphReply>>;
+	let logger: ReturnType<typeof mock<Logger>>;
 
 	beforeEach(() => {
 		credentialLookup = mock<AgentCredentialLookupService>();
@@ -76,7 +77,8 @@ describe('WhatsAppCredentialCheckService', () => {
 
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(mock({ request }) as never);
-		service = new WhatsAppCredentialCheckService(credentialLookup, outboundHttp, mock<Logger>());
+		logger = mock<Logger>();
+		service = new WhatsAppCredentialCheckService(credentialLookup, outboundHttp, logger);
 	});
 
 	const check = async () => await service.check(user, PROJECT_ID, CREDENTIAL_ID);
@@ -162,6 +164,25 @@ describe('WhatsAppCredentialCheckService', () => {
 		};
 
 		expect(await check()).toEqual({ status: 'failed', reason: 'unreachable' });
+	});
+
+	it('logs only a sanitized message when the request throws', async () => {
+		const proof = createHmac('sha256', APP_SECRET).update(ACCESS_TOKEN).digest('hex');
+		replies.phone = async () => {
+			throw Object.assign(
+				new Error(
+					`connect ETIMEDOUT https://graph.facebook.com/v25.0/${PHONE_NUMBER_ID}?appsecret_proof=${proof}`,
+				),
+				{ config: { headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } } },
+			);
+		};
+
+		await check();
+
+		const logged = JSON.stringify(logger.debug.mock.calls);
+		expect(logged).toContain('connect ETIMEDOUT');
+		expect(logged).not.toContain(ACCESS_TOKEN);
+		expect(logged).not.toContain(proof);
 	});
 
 	it('reports a temporary token when the token expires within 48 hours', async () => {

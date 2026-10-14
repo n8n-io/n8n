@@ -99,7 +99,7 @@ export class AgentsModule implements ModuleInterface {
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
 		const { WhatsAppIntegration } = await import(
-			'./integrations/platforms/whatsapp-integration.js'
+			'./integrations/platforms/whatsapp/whatsapp-integration.js'
 		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'

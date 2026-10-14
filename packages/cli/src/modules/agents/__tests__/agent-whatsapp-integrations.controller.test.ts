@@ -3,8 +3,8 @@ import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentWhatsAppIntegrationsController } from '../agent-whatsapp-integrations.controller';
-import type { WhatsAppCredentialCheckService } from '../integrations/platforms/whatsapp-credential-check.service';
-import type { WhatsAppWebhookVerificationStore } from '../integrations/platforms/whatsapp-webhook-verification.store';
+import type { WhatsAppCredentialCheckService } from '../integrations/platforms/whatsapp/whatsapp-credential-check.service';
+import type { WhatsAppWebhookVerificationStore } from '../integrations/platforms/whatsapp/whatsapp-webhook-verification.store';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	expectProjectScopedAgentRoutes,

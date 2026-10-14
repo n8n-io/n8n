@@ -4,8 +4,8 @@ import { Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators'
 import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 
-import { WhatsAppCredentialCheckService } from './integrations/platforms/whatsapp-credential-check.service';
-import { WhatsAppWebhookVerificationStore } from './integrations/platforms/whatsapp-webhook-verification.store';
+import { WhatsAppCredentialCheckService } from './integrations/platforms/whatsapp/whatsapp-credential-check.service';
+import { WhatsAppWebhookVerificationStore } from './integrations/platforms/whatsapp/whatsapp-webhook-verification.store';
 import { AgentRepository } from './repositories/agent.repository';
 
 @RestController('/projects/:projectId/agents/v2')

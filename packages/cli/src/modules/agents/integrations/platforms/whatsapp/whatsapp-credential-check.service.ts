@@ -3,11 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { createHmac } from 'node:crypto';
 
-import { AgentCredentialLookupService } from '../agent-credential-lookup.service';
-import { numberProperty, stringProperty } from '../integration-helpers';
+import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
+import { numberProperty, stringProperty } from '../../integration-helpers';
 
 const WHATSAPP_CREDENTIAL_TYPE = 'whatsAppBotApi';
 
@@ -23,6 +25,8 @@ const TEMPORARY_TOKEN_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 /** The check gates a button, so a stalled request has to give up quickly. */
 const CHECK_TIMEOUT_MS = 30_000;
+
+const MAX_LOGGED_ERROR_LENGTH = 500;
 
 interface GraphResponse {
 	statusCode: number;
@@ -105,7 +109,11 @@ export class WhatsAppCredentialCheckService {
 				profile: toProfile(phone.body, profile?.statusCode === 200 ? profile.body : undefined),
 			};
 		} catch (error) {
-			this.logger.debug('[WhatsAppCredentialCheck] Could not reach Meta', { error });
+			// Only the cleaned message: the raw error can carry the request config,
+			// which holds the access token and the `appsecret_proof`.
+			this.logger.debug('[WhatsAppCredentialCheck] Could not reach Meta', {
+				error: sanitizeErrorDetail(ensureError(error).message, MAX_LOGGED_ERROR_LENGTH),
+			});
 			return { status: 'failed', reason: 'unreachable' };
 		}
 	}

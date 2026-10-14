@@ -18,8 +18,8 @@ import type {
 	IntegrationMessageContext,
 } from '../../../integration-tools';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
-import { WhatsAppIntegration } from '../../../platforms/whatsapp-integration';
-import type { WhatsAppWebhookVerificationStore } from '../../../platforms/whatsapp-webhook-verification.store';
+import { WhatsAppIntegration } from '../../../platforms/whatsapp/whatsapp-integration';
+import type { WhatsAppWebhookVerificationStore } from '../../../platforms/whatsapp/whatsapp-webhook-verification.store';
 import {
 	createMockAttachmentService,
 	createReplayContextSetup,

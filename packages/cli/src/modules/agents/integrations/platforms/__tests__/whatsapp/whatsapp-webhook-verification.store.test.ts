@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { CacheService } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 
-import { WhatsAppWebhookVerificationStore } from '../../whatsapp-webhook-verification.store';
+import { WhatsAppWebhookVerificationStore } from '../../whatsapp/whatsapp-webhook-verification.store';
 
 const AGENT_ID = 'agent-1';
 const KEY = `agents:whatsapp:webhook-verified:${AGENT_ID}`;
