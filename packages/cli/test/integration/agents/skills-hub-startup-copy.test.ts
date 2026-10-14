@@ -61,14 +61,16 @@ describe('SkillsHubStartupCopy', () => {
 	});
 
 	/** An agent as the legacy path stores it: refs in `schema.skills`, bodies in `skills`. */
-	async function legacyAgent(refs: InlineRef[], bodies: Record<string, AgentSkill>) {
+	async function legacyAgent(refs: unknown[] | null, bodies: Record<string, unknown> | null) {
 		return await agents.save(
 			agents.create({
 				id: randomUUID(),
 				name: 'Agent',
 				projectId: project.id,
-				schema: { name: 'Agent', model: '', instructions: 'Help.', skills: refs } as never,
-				skills: bodies,
+				schema: (refs === null
+					? null
+					: { name: 'Agent', model: '', instructions: 'Help.', skills: refs }) as never,
+				skills: bodies as never,
 				integrations: [],
 				tools: {},
 				versionId: randomUUID(),
@@ -76,20 +78,21 @@ describe('SkillsHubStartupCopy', () => {
 		);
 	}
 
+	let publishedAt = new Date('2026-01-01T00:00:00.000Z');
+
 	/** A published version as the legacy path stores it. */
-	async function legacyVersion(
-		agent: Agent,
-		refs: InlineRef[],
-		bodies: Record<string, AgentSkill>,
-	) {
+	async function legacyVersion(agent: Agent, refs: unknown[], bodies: Record<string, unknown>) {
 		const versionId = randomUUID();
+		// Each publish gets its own time, as real publishes do, so the order is stable.
+		publishedAt = new Date(publishedAt.getTime() + 1000);
 		await histories.save(
 			histories.create({
 				versionId,
 				agentId: agent.id,
 				author: 'Test',
+				createdAt: publishedAt,
 				schema: { name: 'Agent', model: '', instructions: 'Help.', skills: refs } as never,
-				skills: bodies,
+				skills: bodies as never,
 			}),
 		);
 		await agents.update({ id: agent.id }, { activeVersionId: versionId });
@@ -98,6 +101,21 @@ describe('SkillsHubStartupCopy', () => {
 
 	const instructionsOf = (record: Record<string, AgentSkill>) =>
 		Object.fromEntries(Object.entries(record).map(([id, skill]) => [id, skill.instructions]));
+
+	/** The text of each version of one skill of the agent, oldest first. */
+	async function versionTexts(agentId: string, skillId: string) {
+		const rows = (await skills.findAgentSkillVersions(agentId))
+			.filter((row) => row.skillId === skillId)
+			.sort((a, b) => a.version - b.version);
+		const full = await skills.findVersionsByIds(rows.map((row) => row.id));
+		return rows.map((row) => full.get(row.id)?.version.instructions);
+	}
+
+	/** What one published version runs, keyed by skill id. */
+	async function pinnedTexts(versionId: string) {
+		const pinned = await skills.findPinned(versionId);
+		return Object.fromEntries([...pinned].map(([id, row]) => [id, row.version.instructions]));
+	}
 
 	it('copies the draft and the published versions as agent skills, and keeps the legacy columns', async () => {
 		const refs: InlineRef[] = [
@@ -258,6 +276,405 @@ describe('SkillsHubStartupCopy', () => {
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining('The skills hub is off'), {
 			agents: 1,
 			agentIds: [agent.id],
+		});
+	});
+
+	describe('what an agent row holds', () => {
+		it('writes nothing for an agent without a config or without skills', async () => {
+			await legacyAgent(null, {});
+			await legacyAgent([], {});
+
+			const counts = await copy.copyAll();
+
+			expect(counts).toMatchObject({ agents: 0, skills: 0, versions: 0, pins: 0, failed: 0 });
+			expect(await skills.find()).toEqual([]);
+		});
+
+		it('skips a ref without a body and a body without a ref', async () => {
+			const agent = await legacyAgent(
+				[
+					{ type: 'skill', id: 'tone' },
+					{ type: 'skill', id: 'dangling' },
+				],
+				{ tone: body('Tone'), orphan: body('Orphan') },
+			);
+
+			await copy.copyAll();
+
+			expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
+			expect(await skills.findByIds(['dangling', 'orphan'])).toEqual([]);
+		});
+
+		it('ignores refs and bodies the runtime could not load either', async () => {
+			const agent = await legacyAgent(
+				[
+					{ type: 'skill', id: 'tone' },
+					{ type: 'tool', id: 'not-a-skill' },
+					{ type: 'skill' },
+					{ type: 'skill', id: 42 },
+					'garbage',
+					{ type: 'skill', id: 'no_instructions' },
+					{ type: 'skill', id: 'not_an_object' },
+				],
+				{
+					tone: body('Tone'),
+					'not-a-skill': body('Tool'),
+					no_instructions: { name: 'Broken', description: 'No text' },
+					not_an_object: 'text',
+				},
+			);
+
+			const counts = await copy.copyAll();
+
+			expect(counts).toMatchObject({ skills: 1, failed: 0 });
+			expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
+		});
+
+		it('attaches a repeated ref once and keeps the ref order', async () => {
+			const agent = await legacyAgent(
+				[
+					{ type: 'skill', id: 'zeta' },
+					{ type: 'skill', id: 'alpha' },
+					{ type: 'skill', id: 'zeta' },
+					{ type: 'skill', id: 'mid' },
+				],
+				{ zeta: body('Zeta'), alpha: body('Alpha'), mid: body('Mid') },
+			);
+
+			await copy.copyAll();
+
+			expect((await skillRefs.refsForDraft(agent, {})).map((ref) => ref.id)).toEqual([
+				'zeta',
+				'alpha',
+				'mid',
+			]);
+		});
+
+		it('copies name, description, instructions and reference files exactly', async () => {
+			const tone: AgentSkill = {
+				name: '  Tone of Voice  ',
+				description: 'How we write',
+				instructions: 'Be brief.',
+				references: [
+					{ path: 'references/b.md', content: 'B' },
+					{ path: 'references/a.md', content: 'A' },
+				],
+			};
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone });
+
+			await copy.copyAll();
+
+			const { skills: copied } = await skillRefs.readDraft(agent, {});
+			expect(copied.tone).toEqual({
+				...tone,
+				// Files are sorted by path, as everywhere in the hub.
+				references: [
+					{ path: 'references/a.md', content: 'A' },
+					{ path: 'references/b.md', content: 'B' },
+				],
+			});
+			const [skill] = await skills.findByIds(['tone']);
+			expect(skill).toMatchObject({ source: 'agent', createdById: null });
+		});
+
+		it('keeps the first copy of a repeated reference path', async () => {
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], {
+				tone: {
+					...body('Tone'),
+					references: [
+						{ path: 'references/a.md', content: 'First' },
+						{ path: 'references/a.md', content: 'Second' },
+					],
+				},
+			});
+
+			await copy.copyAll();
+
+			const { skills: copied } = await skillRefs.readDraft(agent, {});
+			expect(copied.tone.references).toEqual([{ path: 'references/a.md', content: 'First' }]);
+		});
+
+		it('drops allowedTools, which hub skills ignore', async () => {
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], {
+				tone: { ...body('Tone'), allowedTools: ['search'] },
+			});
+
+			await copy.copyAll();
+
+			const { skills: copied } = await skillRefs.readDraft(agent, {});
+			expect(copied.tone).toEqual(body('Tone'));
+		});
+
+		it('gives a new id when a skill elsewhere already has the inline id', async () => {
+			const other = await createTeamProject();
+			await skills.createSkill(
+				{
+					id: 'tone',
+					target: { projectId: other.id, agentId: null },
+					source: 'ui',
+					createdById: null,
+				},
+				{ name: 'Other', description: 'd', instructions: 'Other.', frontmatter: null, files: [] },
+			);
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], {
+				tone: body('Tone', 'Mine.'),
+			});
+
+			await copy.copyAll();
+
+			const [ref] = await skillRefs.refsForDraft(agent, {});
+			expect(ref.id).not.toBe('tone');
+			expect(instructionsOf((await skillRefs.readDraft(agent, {})).skills)).toEqual({
+				[ref.id]: 'Mine.',
+			});
+		});
+	});
+
+	describe('published versions', () => {
+		it('turns each published text into a version, newest draft text last, and pins each version', async () => {
+			const refs = [{ type: 'skill', id: 'tone' }];
+			const agent = await legacyAgent(refs, { tone: body('Tone', 'C') });
+			const first = await legacyVersion(agent, refs, { tone: body('Tone', 'A') });
+			const second = await legacyVersion(agent, refs, { tone: body('Tone', 'B') });
+
+			await copy.copyAll();
+
+			expect(await versionTexts(agent.id, 'tone')).toEqual(['A', 'B', 'C']);
+			expect(await pinnedTexts(first)).toEqual({ tone: 'A' });
+			expect(await pinnedTexts(second)).toEqual({ tone: 'B' });
+			expect(instructionsOf((await skillRefs.readDraft(agent, {})).skills)).toEqual({
+				tone: 'C',
+			});
+		});
+
+		it('adds no version when the draft runs the published text', async () => {
+			const refs = [{ type: 'skill', id: 'tone' }];
+			const agent = await legacyAgent(refs, { tone: body('Tone', 'Same.') });
+			const versionId = await legacyVersion(agent, refs, { tone: body('Tone', 'Same.') });
+
+			await copy.copyAll();
+
+			expect(await versionTexts(agent.id, 'tone')).toEqual(['Same.']);
+			expect(await pinnedTexts(versionId)).toEqual({ tone: 'Same.' });
+		});
+
+		it('saves an older text again as the newest version when the draft went back to it', async () => {
+			const refs = [{ type: 'skill', id: 'tone' }];
+			const agent = await legacyAgent(refs, { tone: body('Tone', 'A') });
+			await legacyVersion(agent, refs, { tone: body('Tone', 'A') });
+			await legacyVersion(agent, refs, { tone: body('Tone', 'B') });
+
+			await copy.copyAll();
+
+			// The draft follows the newest version, so A must come back as v3.
+			expect(await versionTexts(agent.id, 'tone')).toEqual(['A', 'B', 'A']);
+			expect(instructionsOf((await skillRefs.readDraft(agent, {})).skills)).toEqual({
+				tone: 'A',
+			});
+		});
+
+		it('pins a skill that only a published version has, without attaching it to the draft', async () => {
+			const agent = await legacyAgent([], {});
+			const versionId = await legacyVersion(agent, [{ type: 'skill', id: 'gone' }], {
+				gone: body('Gone', 'Published only.'),
+			});
+
+			await copy.copyAll();
+
+			expect(await pinnedTexts(versionId)).toEqual({ gone: 'Published only.' });
+			expect(await skillRefs.refsForDraft(agent, {})).toEqual([]);
+		});
+
+		it('does not pin a ref that was switched off in a published version', async () => {
+			const agent = await legacyAgent([], {});
+			const versionId = await legacyVersion(
+				agent,
+				[
+					{ type: 'skill', id: 'tone' },
+					{ type: 'skill', id: 'off', enabled: false },
+				],
+				{ tone: body('Tone'), off: body('Off') },
+			);
+
+			await copy.copyAll();
+
+			expect(Object.keys(await pinnedTexts(versionId))).toEqual(['tone']);
+		});
+
+		it('keeps the pins of a published version in ref order', async () => {
+			const refs = [
+				{ type: 'skill', id: 'zeta' },
+				{ type: 'skill', id: 'alpha' },
+			];
+			const agent = await legacyAgent(refs, { zeta: body('Zeta'), alpha: body('Alpha') });
+			const versionId = await legacyVersion(agent, refs, {
+				zeta: body('Zeta'),
+				alpha: body('Alpha'),
+			});
+
+			await copy.copyAll();
+
+			expect(await skills.findPinnedSkillIds(versionId)).toEqual(['zeta', 'alpha']);
+		});
+
+		it('leaves the agent_history rows as they are', async () => {
+			const refs = [{ type: 'skill', id: 'tone' }];
+			const agent = await legacyAgent(refs, { tone: body('Tone') });
+			const versionId = await legacyVersion(agent, refs, { tone: body('Tone', 'Published.') });
+			const before = await histories.findOneByOrFail({ versionId });
+
+			await copy.copyAll();
+
+			expect(await histories.findOneByOrFail({ versionId })).toEqual(before);
+		});
+	});
+
+	describe('running again', () => {
+		it('treats a published version without skills as done on every run', async () => {
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await legacyVersion(agent, [], {});
+			await copy.copyAll();
+
+			expect(await copy.copyAll()).toMatchObject({ agents: 0, versions: 0, pins: 0 });
+		});
+
+		it('keeps hub content when the inline text changed while the flag was off', async () => {
+			// Known gap: the merge rule for this case is open, so the hub wins.
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], {
+				tone: body('Tone', 'Before.'),
+			});
+			await copy.copyAll();
+			await agents.update({ id: agent.id }, { skills: { tone: body('Tone', 'Edited inline.') } });
+
+			await copy.copyAll();
+
+			expect(instructionsOf((await skillRefs.readDraft(agent, {})).skills)).toEqual({
+				tone: 'Before.',
+			});
+		});
+
+		it('copies an agent created while the flag was off on the next run', async () => {
+			await copy.copyAll();
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+
+			await copy.copyAll();
+
+			expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
+		});
+	});
+
+	describe('failures', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('rolls back a failing agent, copies the others, and copies it on the next run', async () => {
+			const broken = await legacyAgent([{ type: 'skill', id: 'broken' }], {
+				broken: body('Broken'),
+			});
+			const fine = await legacyAgent([{ type: 'skill', id: 'fine' }], { fine: body('Fine') });
+			const replace = skills.replaceDependencies.bind(skills);
+			const failFor = vi
+				.spyOn(skills, 'replaceDependencies')
+				.mockImplementation(async (agentId, refs, ctx) => {
+					if (agentId === broken.id) throw new Error('Write failed');
+					return await replace(agentId, refs, ctx);
+				});
+
+			const counts = await copy.copyAll();
+
+			expect(counts).toMatchObject({ agents: 1, failed: 1 });
+			// The failed agent's skill was rolled back with the rest of its copy.
+			expect(await skills.findByIds(['broken'])).toEqual([]);
+			expect(await skillRefs.refsForDraft(fine, {})).toEqual([{ type: 'skill', id: 'fine' }]);
+
+			failFor.mockRestore();
+			await copy.copyAll();
+
+			expect(await skillRefs.refsForDraft(broken, {})).toEqual([{ type: 'skill', id: 'broken' }]);
+		});
+
+		it('retries an agent once after a failed try', async () => {
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			const replace = skills.replaceDependencies.bind(skills);
+			vi.spyOn(skills, 'replaceDependencies')
+				.mockRejectedValueOnce(new Error('Duplicate key'))
+				.mockImplementation(replace);
+
+			const counts = await copy.copyAll();
+
+			expect(counts).toMatchObject({ agents: 1, failed: 0 });
+			expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
+		});
+	});
+
+	describe('scale and instance roles', () => {
+		it('copies every agent across several pages', async () => {
+			const created = [];
+			for (let index = 0; index < 105; index++) {
+				created.push(
+					await legacyAgent([{ type: 'skill', id: `skill_${index}` }], {
+						[`skill_${index}`]: body(`Skill ${index}`),
+					}),
+				);
+			}
+
+			const counts = await copy.copyAll();
+
+			expect(counts).toMatchObject({ agents: 105, skills: 105, failed: 0 });
+			const last = created[created.length - 1];
+			expect(await skillRefs.refsForDraft(last, {})).toEqual([{ type: 'skill', id: 'skill_104' }]);
+		});
+
+		it('does not copy on a worker', async () => {
+			const settings = Container.get(InstanceSettings);
+			const { instanceType } = settings;
+			Object.assign(settings, { instanceType: 'worker' });
+			try {
+				await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+
+				await copy.runOnStartup();
+
+				expect(await skills.findByIds(['tone'])).toEqual([]);
+			} finally {
+				Object.assign(settings, { instanceType });
+			}
+		});
+
+		it('names at most 20 agents in the warning, and counts all of them', async () => {
+			for (let index = 0; index < 22; index++) {
+				await legacyAgent([{ type: 'skill', id: `s${index}` }], {
+					[`s${index}`]: body(`S${index}`),
+				});
+			}
+			await copy.copyAll();
+			await setSkillsHubFlag(false);
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+
+			await copy.runOnStartup();
+
+			const [, meta] = warn.mock.calls.find(([message]) =>
+				String(message).includes('The skills hub is off'),
+			)!;
+			expect(meta).toMatchObject({ agents: 22 });
+			expect((meta as { agentIds: string[] }).agentIds).toHaveLength(20);
+		});
+	});
+
+	// Two mains copy at once only on Postgres; SQLite runs one write transaction at a time.
+	describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('two mains at once on Postgres', () => {
+		it('copies each agent once when two copies run side by side', async () => {
+			const refs = [{ type: 'skill', id: 'tone' }];
+			const agent = await legacyAgent(refs, { tone: body('Tone', 'Draft.') });
+			const versionId = await legacyVersion(agent, refs, { tone: body('Tone', 'Published.') });
+
+			const results = await Promise.all([copy.copyAll(), copy.copyAll()]);
+
+			expect(results.reduce((sum, counts) => sum + counts.failed, 0)).toBe(0);
+			expect(await skills.find()).toHaveLength(1);
+			expect(await versionTexts(agent.id, 'tone')).toEqual(['Published.', 'Draft.']);
+			expect(await skills.findPinnedSkillIds(versionId)).toEqual(['tone']);
+			expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
 		});
 	});
 });
