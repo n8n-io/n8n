@@ -16,6 +16,7 @@ import type { IDataObject } from '../src';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
 import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-evaluation';
+import { EXTENSION_METHODS } from '../src/expressions/native-evaluation/grammar';
 import { Workflow } from '../src/workflow';
 
 // Three pre-existing, flag-independent quickjs bridge behaviours are kept out
@@ -150,7 +151,7 @@ const { expr } = fc.letrec<{ expr: string }>((tie) => ({
 			.tuple(
 				fc.oneof({ weight: 3, arbitrary: path }, tie('expr')),
 				hop,
-				fc.constantFrom(...CALLABLE_METHODS),
+				fc.constantFrom(...CALLABLE_METHODS, ...EXTENSION_METHODS),
 				fc.array(fc.oneof(literal, path), { maxLength: 2 }),
 			)
 			.map(([recv, h, method, args]) => `(${recv})${h}${method}(${args.join(', ')})`),

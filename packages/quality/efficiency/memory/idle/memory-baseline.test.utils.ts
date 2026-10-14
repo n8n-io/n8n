@@ -1,13 +1,16 @@
-import { test, expect } from '../../fixtures/base';
-import { attachMetric, getStableHeap } from '../../utils/performance-helper';
+import { test, expect } from 'n8n-playwright/containers';
+import { getStableHeap } from 'n8n-playwright/memory';
+import { attachMetric } from 'n8n-playwright/metrics';
 
 export function runMemoryBaseline({ name, owner }: { name: string; owner: string }) {
 	test.describe(
 		`Module Memory Impact · ${name}`,
 		{ annotation: [{ type: 'owner', description: owner }] },
 		() => {
-			test(`Idle baseline · ${name}`, async ({ n8nContainer, services }, testInfo) => {
-				const obs = services.observability;
+			test(`Idle baseline · ${name}`, async ({ n8nContainer, dbSetup }, testInfo) => {
+				// Keep the seeded instance state used by the original baseline.
+				void dbSetup;
+				const obs = n8nContainer.services.observability;
 				const result = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 
 				await attachMetric(testInfo, `${name}-heap-used-baseline`, result.heapUsedMB, 'MB');

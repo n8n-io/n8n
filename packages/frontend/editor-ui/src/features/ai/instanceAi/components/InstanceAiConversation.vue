@@ -22,7 +22,6 @@ import type {
 } from '@n8n/api-types';
 import type { SuggestionSelectionPayload } from './InstanceAiInput.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
@@ -125,21 +124,16 @@ const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined
 	'openWorkflowPreview',
 	undefined,
 );
-const { showCreditWarning, quotaLocked, isOutOfCredits } = storeToRefs(store);
-const appSettingsStore = useSettingsStore();
+const { isLowCredits, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
+const creditBanner = useCreditWarningBanner(isLowCredits);
 const outOfCreditsMessage = computed(() => {
 	if (!isOutOfCredits.value) return undefined;
-	return i18n.baseText(
-		appSettingsStore.moduleSettings?.['instance-ai']?.activationCapped
-			? 'instanceAi.error.outOfCredits.trialTitle'
-			: 'instanceAi.error.outOfCredits.title',
-	);
+	return i18n.baseText('instanceAi.error.outOfCredits.title');
 });
 
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
@@ -1017,7 +1011,6 @@ defineExpose({
 								v-if="isOutOfCredits || creditBanner.visible.value"
 								:credits-remaining="store.creditsRemaining"
 								:credits-quota="store.creditsQuota"
-								:amounts-hidden="quotaLocked"
 								:message="outOfCreditsMessage"
 								:dismissible="!isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
