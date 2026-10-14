@@ -218,7 +218,7 @@ describe('ChatHubController', () => {
 		});
 
 		beforeEach(() => {
-			chatService.ensureConversation.mockResolvedValue(mock());
+			chatService.ensureConversation.mockResolvedValue(undefined);
 		});
 
 		afterEach(async () => {
