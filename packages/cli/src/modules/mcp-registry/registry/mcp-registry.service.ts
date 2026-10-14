@@ -16,7 +16,6 @@ import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
 import { McpRegistryCapabilities } from './mcp-registry-capabilities';
-import { llamaindexMockServer } from './mock-servers';
 import {
 	listMcpRegistryServers,
 	searchMcpRegistryServers,
@@ -189,12 +188,7 @@ export class McpRegistryService {
 			n8nConnectError = error;
 		}
 
-		// TODO: Delete this LlamaIndex preview when the registry serves LlamaIndex.
-		const updatedServers = [
-			...registryUpdates.filter(({ slug }) => slug !== llamaindexMockServer.slug),
-			...n8nConnectUpdates,
-			llamaindexMockServer,
-		];
+		const updatedServers = [...registryUpdates, ...n8nConnectUpdates];
 		// The loader drops n8n Connect rows while Gateway credits are disabled, so a
 		// license change needs a rebuild even when no row changed.
 		const aiGatewayStateChanged =
