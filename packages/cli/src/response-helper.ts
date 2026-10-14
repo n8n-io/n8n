@@ -8,6 +8,7 @@ import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
 import { ResponseError } from './errors/response-errors/abstract/response.error';
+import { applySandboxCSP } from './webhooks/webhook-response-headers';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -95,6 +96,8 @@ export function sendErrorResponse(res: Response, error: Error) {
 			if (isFormTrigger || isLegacyFormTrigger) {
 				const isTestWebhook = basePath.includes('test');
 				res.status(404);
+				// The setting of the route decides: a webhook path can look like a form path.
+				applySandboxCSP(res, 'form');
 				return res.render('form-trigger-404', { isTestWebhook });
 			}
 		}
@@ -102,6 +105,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
 			//codes other than 200  breaks redirection to form-waiting page from form trigger
 			//render form page instead of json
+			applySandboxCSP(res, 'form');
 			return res.render('form-trigger-409', {
 				message: error.message,
 			});
@@ -132,6 +136,8 @@ export function sendErrorResponse(res: Response, error: Error) {
 		response.stacktrace = error.stack;
 	}
 
+	// res.json() does not override a Content-Type set earlier; force JSON here.
+	res.setHeader('Content-Type', 'application/json');
 	res.status(httpStatusCode).json(response);
 }
 

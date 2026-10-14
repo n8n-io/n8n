@@ -2,10 +2,11 @@ import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import simpleGit, { type SimpleGit } from 'simple-git';
+import simpleGit, { GitError, type SimpleGit } from 'simple-git';
 
 import { Git } from '../Git.node';
 import { ALLOWED_CONFIG_KEYS } from '../descriptions';
@@ -38,6 +39,7 @@ const mockGit = {
 
 jest.mock('simple-git', () => ({
 	__esModule: true,
+	GitError: jest.requireActual<{ GitError: typeof GitError }>('simple-git').GitError,
 	default: jest.fn(() => mockGit),
 }));
 
@@ -647,6 +649,35 @@ describe('Git Node', () => {
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
 			expect(mockGit.push).toHaveBeenCalled();
+		});
+
+		it('should not include git command arguments in the error when push fails', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ branch: '' })
+				.mockReturnValueOnce('gitPassword');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				username: 'user',
+				password: 'secret-token',
+			});
+			mockGit.listConfig.mockResolvedValueOnce({
+				files: ['.git/config'],
+				values: { '.git/config': { 'remote.origin.url': 'https://github.com/test/repo.git' } },
+			} as any);
+			mockGit.push.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['push', 'https://user:secret-token@github.com/test/repo.git'] } as any,
+					'fatal: unable to access repository',
+				),
+			);
+
+			const error = await gitNode.execute.call(mockExecuteFunctions).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect(error).not.toBeInstanceOf(GitError);
+			expect((error as Error).message).toBe('fatal: unable to access repository');
+			expect(JSON.stringify(error)).not.toContain('secret-token');
 		});
 
 		it('should not push to a blocked config-derived target repository path', async () => {

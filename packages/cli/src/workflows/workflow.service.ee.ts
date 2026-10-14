@@ -18,6 +18,7 @@ import {
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
@@ -39,9 +40,16 @@ import { EnterpriseCredentialsService } from '@/credentials/credentials.service.
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+
+/**
+ * Database workflows use their own project permissions at runtime.
+ * Parameter workflows contain JSON we can inspect before saving.
+ */
+const INSPECTABLE_SUBWORKFLOW_SOURCES = new Set(['database', 'parameter']);
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -151,6 +159,7 @@ export class EnterpriseWorkflowService {
 	validateCredentialPermissionsToUser(
 		workflow: IWorkflowBase,
 		allowedCredentials: CredentialsEntity[],
+		user: User,
 	) {
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -165,6 +174,17 @@ export class EnterpriseWorkflowService {
 				}
 			});
 		});
+
+		if (this.canUseEveryCredential(user)) return;
+		const blockedNode = workflow.nodes.find(
+			(node) => this.getNodeCredentialRefs(node).hasUninspectableSource,
+		);
+		if (blockedNode) throw new UninspectableSubworkflowSourceError(blockedNode);
+	}
+
+	/** Matches the run-time credential check, which skips users with this scope. */
+	canUseEveryCredential(user: User) {
+		return hasGlobalScope(user, 'credential:list');
 	}
 
 	async preventTampering<T extends IWorkflowBase>(workflow: T, workflowId: string, user: User) {
@@ -180,7 +200,12 @@ export class EnterpriseWorkflowService {
 		);
 
 		try {
-			return this.validateWorkflowCredentialUsage(workflow, previousVersion, allCredentials);
+			return this.validateWorkflowCredentialUsage(
+				workflow,
+				previousVersion,
+				allCredentials,
+				this.canUseEveryCredential(user),
+			);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
 				throw new BadRequestError(error.message);
@@ -195,6 +220,7 @@ export class EnterpriseWorkflowService {
 		newWorkflowVersion: T,
 		previousWorkflowVersion: IWorkflowBase,
 		credentialsUserHasAccessTo: Array<{ id: string }>,
+		allowUninspectableSource = false,
 	) {
 		/**
 		 * We only need to check nodes that use credentials the current user cannot access,
@@ -206,7 +232,11 @@ export class EnterpriseWorkflowService {
 		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
 
 		const nodesWithCredentialsUserDoesNotHaveAccessTo = new Set(
-			this.getNodesWithInaccessibleCreds(newWorkflowVersion, allowedCredentialIds),
+			this.getNodesWithInaccessibleCreds(
+				newWorkflowVersion,
+				allowedCredentialIds,
+				allowUninspectableSource,
+			),
 		);
 
 		// If there are no nodes with credentials the user does not have access to we can skip the rest
@@ -242,6 +272,9 @@ export class EnterpriseWorkflowService {
 					nodeId: node.id,
 					nodeCredentials: node.credentials,
 				});
+				if (!allowUninspectableSource && this.getNodeCredentialRefs(node).hasUninspectableSource) {
+					throw new UninspectableSubworkflowSourceError(node);
+				}
 				throw new NodeOperationError(
 					node,
 					`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
@@ -268,14 +301,24 @@ export class EnterpriseWorkflowService {
 		return newWorkflowVersion;
 	}
 
-	/** Get all nodes in a workflow where the node credential is not accessible to the user. */
-	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: string[]) {
+	/**
+	 * Get all nodes in a workflow where the node credential is not accessible to the user,
+	 * or where a sub-workflow is loaded only at run time and cannot be inspected.
+	 */
+	getNodesWithInaccessibleCreds(
+		workflow: IWorkflowBase,
+		userCredIds: string[],
+		allowUninspectableSource = false,
+	) {
 		if (!workflow.nodes) {
 			return [];
 		}
 		return workflow.nodes.filter((node) => {
-			const usedCredentialIds = this.getCredentialIdsUsedByNode(node);
-			return usedCredentialIds.some((credId) => !userCredIds.includes(credId));
+			const { ids, hasUninspectableSource } = this.getNodeCredentialRefs(node);
+			return (
+				(hasUninspectableSource && !allowUninspectableSource) ||
+				ids.some((credId) => !userCredIds.includes(credId))
+			);
 		});
 	}
 
@@ -285,6 +328,8 @@ export class EnterpriseWorkflowService {
 	 * Sub-workflow, Workflow Tool, Workflow Retriever) embeds a whole workflow —
 	 * including its nodes' credentials — inside its `workflowJson` string
 	 * parameter, so those references are parsed out and returned as well.
+	 * `hasUninspectableSource` marks a sub-workflow that is loaded only at run
+	 * time (URL, local file, expression), so it has no references to inspect.
 	 *
 	 * An inline sub-workflow may itself contain inline sub-workflows, so the walk
 	 * is iterative over an explicit stack: every referenced credential is
@@ -293,8 +338,12 @@ export class EnterpriseWorkflowService {
 	 * the request size (each level embeds its child as literal escaped JSON) and
 	 * cannot cycle, so the stack cannot grow unbounded.
 	 */
-	private getCredentialIdsUsedByNode(node: INode): string[] {
-		const credentialIds: string[] = [];
+	private getNodeCredentialRefs(node: INode): {
+		ids: string[];
+		hasUninspectableSource: boolean;
+	} {
+		const ids: string[] = [];
+		let hasUninspectableSource = false;
 		const stack: INode[] = [node];
 
 		while (stack.length > 0) {
@@ -303,16 +352,26 @@ export class EnterpriseWorkflowService {
 			if (current.credentials) {
 				for (const nodeCred of Object.values(current.credentials)) {
 					const id = nodeCred.id?.toString();
-					if (id) credentialIds.push(id);
+					if (id) ids.push(id);
 				}
 			}
 
 			if (isNodeWithWorkflowSelector(current)) {
+				hasUninspectableSource ||= this.hasUninspectableSubworkflowSource(current);
 				stack.push(...this.getInlineWorkflowNodes(current.parameters?.workflowJson));
 			}
 		}
 
-		return credentialIds;
+		return { ids, hasUninspectableSource };
+	}
+
+	/**
+	 * A missing source defaults to Database. Expressions are not resolved until runtime.
+	 */
+	private hasUninspectableSubworkflowSource(node: INode): boolean {
+		const source = node.parameters?.source;
+		if (source === undefined) return false;
+		return !(typeof source === 'string' && INSPECTABLE_SUBWORKFLOW_SOURCES.has(source));
 	}
 
 	/**

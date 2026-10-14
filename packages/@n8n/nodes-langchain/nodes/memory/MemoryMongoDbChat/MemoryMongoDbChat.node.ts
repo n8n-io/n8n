@@ -1,6 +1,7 @@
 import { MongoDBChatMessageHistory } from '@langchain/mongodb';
 import { BufferWindowMemory } from '@langchain/classic/memory';
 import { MongoClient } from 'mongodb';
+import { sanitizeMongoUriInMessage } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
 import type {
 	ISupplyDataFunctions,
 	INodeType,
@@ -95,18 +96,18 @@ export class MemoryMongoDbChat implements INodeType {
 			itemIndex,
 			'n8n_chat_histories',
 		) as string;
-		const databaseName = this.getNodeParameter('databaseName', itemIndex, '') as string;
+		const databaseName = (this.getNodeParameter('databaseName', itemIndex, '') as string)?.trim();
 		const sessionId = getSessionId(this, itemIndex);
 
 		let connectionString: string;
 		let dbName: string;
 
 		if (credentials.configurationType === 'connectionString') {
-			connectionString = credentials.connectionString;
-			dbName = databaseName || credentials.database;
+			connectionString = credentials.connectionString.trim();
+			dbName = databaseName || credentials.database.trim();
 		} else {
 			// Build connection string from individual fields
-			const host = credentials.host;
+			const host = credentials.host.trim();
 			const port = credentials.port;
 			const user = credentials.user ? encodeURIComponent(credentials.user) : '';
 			const password = credentials.password ? encodeURIComponent(credentials.password) : '';
@@ -118,7 +119,7 @@ export class MemoryMongoDbChat implements INodeType {
 				connectionString += '&ssl=true';
 			}
 
-			dbName = databaseName || credentials.database;
+			dbName = databaseName || credentials.database.trim();
 		}
 
 		if (!dbName) {
@@ -158,7 +159,10 @@ export class MemoryMongoDbChat implements INodeType {
 				response: logWrapper(memory, this),
 			};
 		} catch (error) {
-			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
+			throw new NodeOperationError(
+				this.getNode(),
+				`MongoDB connection error: ${sanitizeMongoUriInMessage(error, connectionString)}`,
+			);
 		}
 	}
 }

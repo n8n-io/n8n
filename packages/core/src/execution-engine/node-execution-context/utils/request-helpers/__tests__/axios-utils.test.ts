@@ -448,4 +448,31 @@ describe('setAxiosAgents', () => {
 			undefined,
 		);
 	});
+
+	it.each(['socketPath', 'path'])('should throw when agentOptions names a %s', (key) => {
+		const config: AxiosRequestConfig = { url: 'https://example.com' };
+
+		expect(() => setAxiosAgents(config, { [key]: '/var/run/docker.sock' } as never)).toThrow(
+			`\`agentOptions.${key}\` is not supported`,
+		);
+		expect(createHttpProxyAgent).not.toHaveBeenCalled();
+		expect(config.httpAgent).toBeUndefined();
+	});
+
+	it.each(['socketPath', 'path'])(
+		'should throw on a %s even when agents are already set',
+		(key) => {
+			const config: AxiosRequestConfig = { url: 'https://example.com', httpAgent: {} };
+
+			expect(() => setAxiosAgents(config, { [key]: '/var/run/docker.sock' } as never)).toThrow(
+				`\`agentOptions.${key}\` is not supported`,
+			);
+		},
+	);
+
+	it.each(['socketPath', 'path'])('should accept an empty %s', (key) => {
+		const config: AxiosRequestConfig = { url: 'https://example.com' };
+
+		expect(() => setAxiosAgents(config, { [key]: '' } as never)).not.toThrow();
+	});
 });

@@ -9,9 +9,12 @@ import type express from 'express';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -43,6 +46,31 @@ export = {
 			await replaceInvalidCredentials(workflow, project.id);
 
 			addNodeIds(workflow);
+
+			// Same credential check as the REST create endpoint. Users who can use every
+			// credential skip it, so that workflows copied from another instance still save.
+			const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+			if (
+				Container.get(License).isSharingEnabled() &&
+				!enterpriseWorkflowService.canUseEveryCredential(req.user)
+			) {
+				const allowedCredentials = await Container.get(CredentialsService).getMany(req.user, {
+					includeGlobal: true,
+				});
+				try {
+					enterpriseWorkflowService.validateCredentialPermissionsToUser(
+						workflow,
+						allowedCredentials,
+						req.user,
+					);
+				} catch (error) {
+					const message =
+						error instanceof UninspectableSubworkflowSourceError
+							? error.message
+							: 'The workflow you are trying to save contains credentials that are not shared with you';
+					return res.status(400).json({ message });
+				}
+			}
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 

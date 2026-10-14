@@ -242,4 +242,37 @@ describe('ChatTrigger Node', () => {
 			});
 		});
 	});
+
+	describe('webhook method: hosted chat page', () => {
+		it('removes the route sandbox from the public chat page', async () => {
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getNodeWebhookUrl.mockReturnValue('http://localhost:5678/webhook/abc123/chat');
+			mockContext.getMode.mockReturnValue('trigger');
+			mockContext.getInstanceId.mockReturnValue('instance-id');
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'authentication') return 'none';
+					if (paramName === 'initialMessages') return '';
+					return defaultValue;
+				},
+			);
+			mockResponse.status.mockReturnValue(mockResponse);
+			mockResponse.send.mockReturnValue(mockResponse);
+
+			await chatTrigger.webhook(mockContext);
+
+			expect(mockResponse.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
+			expect(mockResponse.setHeader).not.toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				expect.anything(),
+			);
+			expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('createChat'));
+		});
+	});
 });

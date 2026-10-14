@@ -2,8 +2,8 @@ import type { Project } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { INode } from 'n8n-workflow';
-import { displayParameter, isExpression, UserError } from 'n8n-workflow';
+import type { INode, INodeParameters } from 'n8n-workflow';
+import { displayParameter, getNodeParameters, isExpression, UserError } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -149,7 +149,7 @@ export class CredentialsPermissionChecker {
 
 	private mapCredIdsToNodes(nodes: INode[]) {
 		return nodes.reduce<{ [credentialId: string]: INode[] }>((map, node) => {
-			if (node.disabled || !node.credentials) return map;
+			if (node.disabled === true || !node.credentials) return map;
 
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 
@@ -174,18 +174,40 @@ export class CredentialsPermissionChecker {
 	private getActiveCredentialTypes(node: INode): Set<string> | null {
 		try {
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const { description } = nodeType;
+
+			// Saved nodes drop parameters that hold their default value, but the Workflow
+			// constructor restores those defaults before a node reads its credentials.
+			// Resolve the same defaults here so the credential display options evaluate
+			// what execution evaluates. Resolved values win, and raw values fill in only
+			// the parameters the node type does not declare.
+			const resolved =
+				getNodeParameters(
+					description.properties ?? [],
+					node.parameters,
+					true,
+					true,
+					node,
+					description,
+				) ?? {};
+			const declaredNames = new Set((description.properties ?? []).map((p) => p.name));
+			const parameters: INodeParameters = { ...resolved };
+			for (const name of Object.keys(node.parameters)) {
+				if (!declaredNames.has(name)) parameters[name] = node.parameters[name];
+			}
+
 			const activeTypes = new Set<string>();
 
 			// Check credentials defined in the node type description with display options
-			for (const credDef of nodeType.description.credentials ?? []) {
-				if (displayParameter(node.parameters, credDef, node, nodeType.description)) {
+			for (const credDef of description.credentials ?? []) {
+				if (displayParameter(parameters, credDef, node, description)) {
 					activeTypes.add(credDef.name);
 				}
 			}
 
 			// For nodes using predefined credential type (e.g., HTTP Request node),
 			// the active credential is specified by the nodeCredentialType parameter
-			const { nodeCredentialType } = node.parameters;
+			const { nodeCredentialType } = parameters;
 			if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
 				// An expression only resolves to its real type at execution time, so the
 				// static filter can't know which credential it activates. Check all
@@ -197,7 +219,7 @@ export class CredentialsPermissionChecker {
 			// For nodes using generic credential types (e.g., HTTP Request with
 			// authentication=genericCredentialType), the active credential type is
 			// specified by the genericAuthType parameter
-			const { genericAuthType } = node.parameters;
+			const { genericAuthType } = parameters;
 			if (typeof genericAuthType === 'string' && genericAuthType) {
 				if (isExpression(genericAuthType)) return null;
 				activeTypes.add(genericAuthType);

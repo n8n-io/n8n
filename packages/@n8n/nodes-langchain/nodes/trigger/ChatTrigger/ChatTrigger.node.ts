@@ -709,6 +709,10 @@ export class ChatTrigger extends Node {
 					}
 				}
 
+				// The webhook route sandboxes every response. This page keeps its origin,
+				// because the widget keeps the session in `localStorage`.
+				res.removeHeader('Content-Security-Policy');
+
 				const page = createPage({
 					i18n: {
 						en: i18nConfig,

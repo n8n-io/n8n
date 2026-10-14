@@ -4,7 +4,12 @@ import type { AddressInfo } from 'net';
 import nock from 'nock';
 import { promisify } from 'util';
 
-import { installGlobalProxyAgent, uninstallGlobalProxyAgent } from '../http-proxy';
+import {
+	createHttpProxyAgent,
+	createHttpsProxyAgent,
+	installGlobalProxyAgent,
+	uninstallGlobalProxyAgent,
+} from '../http-proxy';
 
 interface TestResponse {
 	message: string;
@@ -251,4 +256,27 @@ describe('HTTP Proxy Tests', () => {
 		expect(proxyServer.capturedRequests).toHaveLength(0);
 		expect(scope?.isDone()).toBe(true);
 	}
+});
+
+describe('agent factories', () => {
+	it.each(['socketPath', 'path'])('refuses %s', (key) => {
+		const options = { [key]: '/var/run/docker.sock' } as never;
+
+		expect(() => createHttpProxyAgent(null, 'http://example.com', options)).toThrow(
+			`\`${key}\` is not supported`,
+		);
+		expect(() => createHttpProxyAgent('http://proxy:8080', 'http://example.com', options)).toThrow(
+			`\`${key}\` is not supported`,
+		);
+		expect(() => createHttpsProxyAgent(null, 'https://example.com', options)).toThrow(
+			`\`${key}\` is not supported`,
+		);
+		expect(() =>
+			createHttpsProxyAgent('http://proxy:8080', 'https://example.com', options),
+		).toThrow(`\`${key}\` is not supported`);
+	});
+
+	it.each(['socketPath', 'path'])('creates an agent when %s is empty', (key) => {
+		expect(createHttpProxyAgent(null, 'http://example.com', { [key]: '' } as never)).toBeDefined();
+	});
 });

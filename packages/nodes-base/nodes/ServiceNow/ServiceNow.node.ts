@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, toPathSegment } from 'n8n-workflow';
 
 import { attachmentFields, attachmentOperations } from './AttachmentDescription';
 import { businessServiceFields, businessServiceOperations } from './BusinessServiceDescription';
@@ -263,10 +263,17 @@ export class ServiceNow implements INodeType {
 
 					for (const column of response) {
 						if (column.user) {
+							let userId: string;
+							try {
+								userId = toPathSegment(column.user.value);
+							} catch {
+								// One unusable member id must not break the whole list
+								continue;
+							}
 							const responseData = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								`/now/table/sys_user/${column.user.value}`,
+								`/now/table/sys_user/${userId}`,
 								{},
 								{},
 							);
@@ -509,7 +516,7 @@ export class ServiceNow implements INodeType {
 					if (operation === 'get') {
 						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
 						const download = this.getNodeParameter('download', i);
-						const endpoint = `/now/attachment/${attachmentsSysId}`;
+						const endpoint = `/now/attachment/${toPathSegment(attachmentsSysId)}`;
 
 						const response = await serviceNowApiRequest.call(this, 'GET', endpoint, {});
 						const fileMetadata = response.result;
@@ -577,7 +584,7 @@ export class ServiceNow implements INodeType {
 									binary: {
 										[outputField]: await serviceNowDownloadAttachment.call(
 											this,
-											`/now/attachment/${data.sys_id}`,
+											`/now/attachment/${toPathSegment(data.sys_id)}`,
 											data.file_name as string,
 											data.content_type as string,
 										),
@@ -624,7 +631,11 @@ export class ServiceNow implements INodeType {
 						responseData = response.result;
 					} else if (operation === 'delete') {
 						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
-						await serviceNowApiRequest.call(this, 'DELETE', `/now/attachment/${attachmentsSysId}`);
+						await serviceNowApiRequest.call(
+							this,
+							'DELETE',
+							`/now/attachment/${toPathSegment(attachmentsSysId)}`,
+						);
 						responseData = { success: true };
 					}
 				} else if (resource === 'businessService') {
@@ -768,7 +779,7 @@ export class ServiceNow implements INodeType {
 						responseData = await serviceNowApiRequest.call(
 							this,
 							'DELETE',
-							`/now/table/incident/${id}`,
+							`/now/table/incident/${toPathSegment(id)}`,
 						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -782,7 +793,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'GET',
-							`/now/table/incident/${id}`,
+							`/now/table/incident/${toPathSegment(id)}`,
 							{},
 							qs,
 						);
@@ -822,7 +833,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'PATCH',
-							`/now/table/incident/${id}`,
+							`/now/table/incident/${toPathSegment(id)}`,
 							body,
 						);
 						responseData = response.result;
@@ -859,7 +870,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
-							`/now/table/${tableName}`,
+							`/now/table/${toPathSegment(tableName)}`,
 							body,
 						);
 						responseData = response.result;
@@ -869,7 +880,7 @@ export class ServiceNow implements INodeType {
 						responseData = await serviceNowApiRequest.call(
 							this,
 							'DELETE',
-							`/now/table/${tableName}/${id}`,
+							`/now/table/${toPathSegment(tableName)}/${toPathSegment(id)}`,
 						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -884,7 +895,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'GET',
-							`/now/table/${tableName}/${id}`,
+							`/now/table/${toPathSegment(tableName)}/${toPathSegment(id)}`,
 							{},
 							qs,
 						);
@@ -904,7 +915,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								`/now/table/${tableName}`,
+								`/now/table/${toPathSegment(tableName)}`,
 								{},
 								qs,
 							);
@@ -913,7 +924,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								`/now/table/${tableName}`,
+								`/now/table/${toPathSegment(tableName)}`,
 								{},
 								qs,
 							);
@@ -944,7 +955,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'PATCH',
-							`/now/table/${tableName}/${id}`,
+							`/now/table/${toPathSegment(tableName)}/${toPathSegment(id)}`,
 							body,
 						);
 						responseData = response.result;
@@ -971,7 +982,7 @@ export class ServiceNow implements INodeType {
 						responseData = await serviceNowApiRequest.call(
 							this,
 							'DELETE',
-							`/now/table/sys_user/${id}`,
+							`/now/table/sys_user/${toPathSegment(id)}`,
 						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -987,7 +998,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								`/now/table/sys_user/${id}`,
+								`/now/table/sys_user/${toPathSegment(id)}`,
 								{},
 								qs,
 							);
@@ -1040,7 +1051,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'PATCH',
-							`/now/table/sys_user/${id}`,
+							`/now/table/sys_user/${toPathSegment(id)}`,
 							body,
 						);
 						responseData = response.result;

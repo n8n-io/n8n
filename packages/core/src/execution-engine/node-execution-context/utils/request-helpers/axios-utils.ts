@@ -5,7 +5,12 @@ import axios from 'axios';
 import crypto from 'crypto';
 import FormData from 'form-data';
 import type { AgentOptions } from 'https';
-import { ApplicationError, isDomainAllowed, type IHttpRequestOptions } from 'n8n-workflow';
+import {
+	ApplicationError,
+	isDomainAllowed,
+	UserError,
+	type IHttpRequestOptions,
+} from 'n8n-workflow';
 
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 
@@ -243,12 +248,28 @@ export function buildTargetUrl(url?: string, baseURL?: string): string | undefin
 	}
 }
 
+const SOCKET_PATH_KEYS = ['socketPath', 'path'] as const;
+
+/** Throws when `agentOptions` names a socket path, which replaces the request's host and port as the connection target. */
+export function throwIfSocketPath(agentOptions?: AgentOptions): void {
+	if (!agentOptions) return;
+	for (const key of SOCKET_PATH_KEYS) {
+		if (key in agentOptions && (agentOptions as Record<string, unknown>)[key]) {
+			throw new UserError(
+				`\`agentOptions.${key}\` is not supported. Remove it from \`agentOptions\`.`,
+			);
+		}
+	}
+}
+
 /** Sets `httpAgent` and `httpsAgent` on an axios config, respecting proxy and SSRF settings. */
 export function setAxiosAgents(
 	config: AxiosRequestConfig,
 	agentOptions?: AgentOptions,
 	proxyConfig?: IHttpRequestOptions['proxy'] | string,
 ): void {
+	throwIfSocketPath(agentOptions);
+
 	if (config.httpAgent || config.httpsAgent) return;
 
 	const customProxyUrl = getUrlFromProxyConfig(proxyConfig);

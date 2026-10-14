@@ -10,6 +10,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -342,6 +343,95 @@ describe('EnterpriseWorkflowService', () => {
 				FIRST_CREDENTIAL_ID,
 			]);
 			expect(nodesWithInaccessibleCreds).toHaveLength(0);
+		});
+	});
+
+	describe('sub-workflow source', () => {
+		const subworkflowNode = (parameters: INode['parameters'], typeVersion = 1.1): INode => ({
+			id: 'b4a1c2d3-0000-4000-8000-000000000001',
+			name: 'Sub',
+			type: 'n8n-nodes-base.executeWorkflow',
+			typeVersion,
+			position: [0, 0],
+			parameters,
+		});
+
+		const urlNode = () =>
+			subworkflowNode({ source: 'url', workflowUrl: 'https://example.com/workflow.json' });
+
+		const workflowWithNodes = (nodes: INode[]) => {
+			const workflow = new WorkflowEntity();
+			workflow.nodes = nodes;
+			return workflow;
+		};
+
+		test.each([
+			['url', { source: 'url', workflowUrl: 'https://example.com/workflow.json' }],
+			['localFile', { source: 'localFile', workflowPath: '/data/workflow.json' }],
+			['an expression', { source: '={{ "url" }}' }],
+			['a non-string value', { source: 1 }],
+		])('Should flag a node whose source is %s', (_, parameters) => {
+			const workflow = workflowWithNodes([subworkflowNode(parameters as INode['parameters'])]);
+			expect(service.getNodesWithInaccessibleCreds(workflow, [])).toHaveLength(1);
+		});
+
+		test.each([
+			['missing', {}],
+			['database', { source: 'database', workflowId: '1' }],
+			['parameter', { source: 'parameter', workflowJson: '{"nodes":[],"connections":{}}' }],
+		])('Should not flag a node whose source is %s', (_, parameters) => {
+			const workflow = workflowWithNodes([subworkflowNode(parameters as INode['parameters'])]);
+			expect(service.getNodesWithInaccessibleCreds(workflow, [])).toHaveLength(0);
+		});
+
+		test('Should flag a url source nested in inline workflow JSON', () => {
+			const workflowJson = JSON.stringify({ nodes: [urlNode()], connections: {} });
+			const workflow = workflowWithNodes([subworkflowNode({ source: 'parameter', workflowJson })]);
+			expect(service.getNodesWithInaccessibleCreds(workflow, [])).toHaveLength(1);
+		});
+
+		test('Should not flag a url source when the user may use every credential', () => {
+			const workflow = workflowWithNodes([urlNode()]);
+			expect(service.getNodesWithInaccessibleCreds(workflow, [], true)).toHaveLength(0);
+		});
+
+		test('Should reject a new url source node with a specific error', () => {
+			expect(() => {
+				service.validateWorkflowCredentialUsage(
+					workflowWithNodes([urlNode()]),
+					workflowWithNodes([]),
+					[],
+				);
+			}).toThrow(UninspectableSubworkflowSourceError);
+		});
+
+		test('Should restore a stored url source node that the user changed', () => {
+			const changedNode = urlNode();
+			changedNode.parameters.workflowUrl = 'https://example.org/other.json';
+			const newWorkflowVersion = workflowWithNodes([changedNode]);
+
+			service.validateWorkflowCredentialUsage(
+				newWorkflowVersion,
+				workflowWithNodes([urlNode()]),
+				[],
+			);
+
+			expect(newWorkflowVersion.nodes[0].parameters.workflowUrl).toBe(
+				'https://example.com/workflow.json',
+			);
+		});
+
+		test('Should keep a new url source node when the user may use every credential', () => {
+			const newWorkflowVersion = workflowWithNodes([urlNode()]);
+			expect(() => {
+				service.validateWorkflowCredentialUsage(
+					newWorkflowVersion,
+					workflowWithNodes([]),
+					[],
+					true,
+				);
+			}).not.toThrow();
+			expect(newWorkflowVersion.nodes).toHaveLength(1);
 		});
 	});
 });

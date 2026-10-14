@@ -21,7 +21,7 @@ describe('List query middleware', () => {
 		jest.restoreAllMocks();
 
 		mockReq = { baseUrl: '/rest/workflows' } as ListQuery.Request;
-		mockRes = { status: () => ({ json: jest.fn() }) } as unknown as Response;
+		mockRes = { status: () => ({ json: jest.fn() }), setHeader: jest.fn() } as unknown as Response;
 		args = [mockReq, mockRes, nextFn];
 
 		sendErrorResponse = jest.spyOn(ResponseHelper, 'sendErrorResponse');

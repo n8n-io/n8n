@@ -1,8 +1,17 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { IBinaryData, IExecuteSingleFunctions } from 'n8n-workflow';
+import type { IBinaryData, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
-import { downloadFilePostReceive, escapeFilterValue } from '../../helpers/utils';
+import {
+	downloadFilePostReceive,
+	escapeFilterValue,
+	itemColumnsPreSend,
+} from '../../helpers/utils';
+import { microsoftSharePointApiRequest } from '../../transport';
+
+jest.mock('../../transport', () => ({
+	microsoftSharePointApiRequest: jest.fn(),
+}));
 
 describe('Microsoft SharePoint Node', () => {
 	let executeSingleFunctions: MockProxy<IExecuteSingleFunctions>;
@@ -58,6 +67,76 @@ describe('Microsoft SharePoint Node', () => {
 		});
 		it('should not escape double quotes', () => {
 			expect(escapeFilterValue('hello " there ""')).toEqual('hello " there ""');
+		});
+	});
+
+	describe('itemColumnsPreSend', () => {
+		const apiRequest = microsoftSharePointApiRequest as jest.Mock;
+
+		it('should keep a quote in a matching value inside the OData literal', async () => {
+			const params: Record<string, unknown> = {
+				columns: {
+					mappingMode: 'defineBelow',
+					matchingColumns: ['Title'],
+					value: { Title: "O'Brien" },
+					schema: [],
+				},
+				operation: 'update',
+				site: 'site1',
+				list: 'list1',
+			};
+			executeSingleFunctions.getNodeParameter.mockImplementation(
+				(name: string) => params[name] as never,
+			);
+			apiRequest.mockResolvedValueOnce({ value: [{ id: 'item1' }] });
+			const requestOptions: IHttpRequestOptions = {
+				method: 'PATCH',
+				url: '/sites/site1/lists/list1/items',
+			};
+
+			await itemColumnsPreSend.call(executeSingleFunctions, requestOptions);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/sites/site1/lists/list1/items',
+				{},
+				{ $filter: "fields/Title eq 'O''Brien'" },
+				{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
+			);
+		});
+
+		// The operations set `multiKeyMatch: false`, so the UI never sends a second
+		// matching column. Call the hook directly to cover the join.
+		it('should join two matching column clauses with a space', async () => {
+			const params: Record<string, unknown> = {
+				columns: {
+					mappingMode: 'defineBelow',
+					matchingColumns: ['Title', 'Status'],
+					value: { Title: 'A', Status: 'B' },
+					schema: [],
+				},
+				operation: 'update',
+				site: 'site1',
+				list: 'list1',
+			};
+			executeSingleFunctions.getNodeParameter.mockImplementation(
+				(name: string) => params[name] as never,
+			);
+			apiRequest.mockResolvedValueOnce({ value: [{ id: 'item1' }] });
+			const requestOptions: IHttpRequestOptions = {
+				method: 'PATCH',
+				url: '/sites/site1/lists/list1/items',
+			};
+
+			await itemColumnsPreSend.call(executeSingleFunctions, requestOptions);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/sites/site1/lists/list1/items',
+				{},
+				{ $filter: "fields/Title eq 'A' and fields/Status eq 'B'" },
+				{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
+			);
 		});
 	});
 });

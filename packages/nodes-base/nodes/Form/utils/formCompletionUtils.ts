@@ -48,7 +48,8 @@ export const renderFormCompletion = async (
 ): Promise<IWebhookResponseData> => {
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 	const completionMessage = context.getNodeParameter('completionMessage', '') as string;
-	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
+	const redirectUrl =
+		validateSafeRedirectUrl(context.getNodeParameter('redirectUrl', '') as string) ?? undefined;
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
 		customCss?: string;
@@ -72,8 +73,15 @@ export const renderFormCompletion = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
-	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
+	// Without a valid URL the page shows the completion card, so it keeps the sandbox.
+	const redirects = respondWith === 'redirect' && redirectUrl !== undefined;
+
+	if (!redirects && !isFormHtmlSandboxingDisabled()) {
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	} else {
+		// The form route sandboxes every response. Remove it here: the redirect does not
+		// work under the sandbox (n8n-io/n8n#20303).
+		res.removeHeader('Content-Security-Policy');
 	}
 
 	res.render('form-trigger-completion', {
@@ -84,7 +92,7 @@ export const renderFormCompletion = async (
 		responseText,
 		responseBinary: encodeURIComponent(JSON.stringify(binary)),
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
-		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
+		redirectUrl,
 	});
 
 	return { noWebhookResponse: true };

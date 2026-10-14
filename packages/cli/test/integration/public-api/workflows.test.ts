@@ -26,7 +26,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 
-import { saveCredential } from '../shared/db/credentials';
+import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
@@ -1284,6 +1284,102 @@ describe('POST /workflows', () => {
 		const found = response.body.nodes.find((node: INode) => STARTING_NODES.includes(node.type));
 
 		expect(found).toBeUndefined();
+	});
+
+	describe('credential access', () => {
+		const credentialPayload = (name: string) => ({
+			name,
+			type: 'httpHeaderAuth',
+			data: { name: 'X-Header', value: 'value' },
+		});
+
+		const httpNode = (name: string, credentialId: string): INode => ({
+			id: uuid(),
+			name,
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [0, 0],
+			parameters: {
+				url: 'https://example.com',
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			},
+			credentials: { httpHeaderAuth: { id: credentialId, name } },
+		});
+
+		const workflowPayload = (nodes: INode[]) => ({
+			name: 'testing',
+			nodes,
+			connections: {},
+			settings: {},
+		});
+
+		beforeEach(() => {
+			license.enable('feat:sharing');
+		});
+
+		test('should reject a credential that the member cannot use', async () => {
+			const ownerCredential = await saveCredential(credentialPayload('Owner'), {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send(workflowPayload([httpNode('HTTP', ownerCredential.id)]));
+
+			expect(response.statusCode).toBe(400);
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+		});
+
+		test('should accept credentials shared with the member and global credentials', async () => {
+			const sharedCredential = await saveCredential(credentialPayload('Shared'), {
+				user: owner,
+				role: 'credential:owner',
+			});
+			await shareCredentialWithUsers(sharedCredential, [member]);
+			const globalCredential = await saveCredential(
+				{ ...credentialPayload('Global'), isGlobal: true },
+				{ user: owner, role: 'credential:owner' },
+			);
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send(
+					workflowPayload([
+						httpNode('Shared', sharedCredential.id),
+						httpNode('Global', globalCredential.id),
+					]),
+				);
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should allow the owner to use a credential that does not exist on this instance', async () => {
+			const response = await authOwnerAgent
+				.post('/workflows')
+				.send(workflowPayload([httpNode('HTTP', 'id-from-another-instance')]));
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should reject a sub-workflow that the member loads from a URL', async () => {
+			const response = await authMemberAgent.post('/workflows').send(
+				workflowPayload([
+					{
+						id: uuid(),
+						name: 'Sub',
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1.1,
+						position: [0, 0],
+						parameters: { source: 'url', workflowUrl: 'https://example.com/workflow.json' },
+					},
+				]),
+			);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toMatch(/resolved only when the workflow runs/);
+		});
 	});
 });
 
