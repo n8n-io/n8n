@@ -18,6 +18,9 @@ const SKILL_ID_MAX_LENGTH = 36;
 
 const BATCH_SIZE = 100;
 
+/** How many agent ids the flag-off warning names. It counts all of them. */
+const WARN_AGENT_IDS = 20;
+
 type CopyCounts = {
 	agents: number;
 	skills: number;
@@ -118,11 +121,26 @@ export class SkillsHubStartupCopy {
 
 	/**
 	 * With the flag off, agents read their inline skills again. Skills that were added or
-	 * changed in the hub while it was on are not there, so name the agents that have them.
+	 * changed in the hub while it was on are not there, so name the agents whose hub draft
+	 * runs other content than their inline skills.
 	 */
 	private async warnAboutHubOnlySkills(): Promise<void> {
-		const { agentIds, count } = await this.skillRepository.findAgentsWithDraftRefs(20);
+		const changed: string[] = [];
+		const withRefs = await this.skillRepository.findAgentIdsWithDraftRefs();
+		for (let start = 0; start < withRefs.length; start += BATCH_SIZE) {
+			const page = withRefs.slice(start, start + BATCH_SIZE);
+			const hubHashes = await this.skillRepository.findDraftContentHashes(page);
+			for (const agentId of page) {
+				const agent = await this.agentRepository.findForSkillCopy(agentId);
+				const inline = agent
+					? inlineSkills(agent).map(({ body }) => skillContentHash(toSkillContent(body)))
+					: [];
+				if (!sameHashes(inline, hubHashes.get(agentId) ?? [])) changed.push(agentId);
+			}
+		}
+		const count = changed.length;
 		if (count === 0) return;
+		const agentIds = changed.slice(0, WARN_AGENT_IDS);
 		this.logger.warn(
 			'The skills hub is off, so agents run their inline skills. Skills that were added or changed in the hub while it was on are not available to these agents until it is on again.',
 			{ agents: count, agentIds },
@@ -294,6 +312,13 @@ export class SkillsHubStartupCopy {
 		}
 		return `skill_${generateNanoId()}`;
 	}
+}
+
+/** Whether two lists hold the same hashes, in any order. */
+function sameHashes(left: string[], right: string[]): boolean {
+	if (left.length !== right.length) return false;
+	const sortedRight = [...right].sort();
+	return [...left].sort().every((hash, index) => hash === sortedRight[index]);
 }
 
 /** Keeps one version of each skill for each content: the first one seen, which is the oldest. */
