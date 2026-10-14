@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { configure, fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -436,13 +437,22 @@ describe('AgentSkillModal from Settings', () => {
 		});
 		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
 
-		expect(getByTestId('agent-skill-scope')).toBeInTheDocument();
+		// Pick the option that is not the initial one, so the test fails if the choice is lost.
+		await userEvent.click(getByTestId('agent-skill-scope-select'));
+		const option = await waitFor(() => {
+			const match = [...document.querySelectorAll('.el-select-dropdown__item')].find((item) =>
+				item.textContent?.includes('Personal project'),
+			);
+			if (!match) throw new Error('Expected the Personal project option');
+			return match;
+		});
+		await userEvent.click(option);
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 		expect(onConfirm).toHaveBeenCalledWith({
 			id: undefined,
 			skill: { name: 'Research', description: 'Use it', instructions: 'Body' },
-			scope: 'project:team-1',
+			scope: 'project:personal-1',
 		});
 		// Settings has no agent, so the builder's import event is not sent.
 		expect(trackImportedSkill).not.toHaveBeenCalled();
