@@ -12,8 +12,7 @@ export class AgentsModule implements ModuleInterface {
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
 		// Read the skills hub flag once, before anything reads or writes agent skills. With
-		// the flag on, the leader copies inline agent skills into the hub before agents run.
-		// The import also registers the copy for a later leader takeover.
+		// the flag on, each main copies inline agent skills into the hub before agents run.
 		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
 		await Container.get(SkillsHubRollout).init();
 		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');

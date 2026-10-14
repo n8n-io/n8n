@@ -184,6 +184,22 @@ describe('SkillsHubStartupCopy', () => {
 		});
 	});
 
+	it('gives an inline ref id longer than 36 characters a new id', async () => {
+		const longId = `skill_${'x'.repeat(40)}`;
+		const agent = await legacyAgent([{ type: 'skill', id: longId }], {
+			[longId]: body('Long', 'Long text.'),
+		});
+
+		await copy.copyAll();
+
+		const [ref] = await skillRefs.refsForDraft(agent, {});
+		expect(ref.id).not.toBe(longId);
+		expect(ref.id.length).toBeLessThanOrEqual(36);
+		expect(instructionsOf((await skillRefs.readDraft(agent, {})).skills)).toEqual({
+			[ref.id]: 'Long text.',
+		});
+	});
+
 	it('does not attach a skill again after it was detached', async () => {
 		const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
 		await copy.copyAll();
@@ -207,6 +223,14 @@ describe('SkillsHubStartupCopy', () => {
 		expect(await skills.findPinnedSkillIds(versionId)).toEqual(['tone']);
 	});
 
+	it('copies on a main at startup while the flag is on', async () => {
+		const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+
+		await copy.runOnStartup();
+
+		expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
+	});
+
 	it('copies nothing while the flag is off', async () => {
 		await setSkillsHubFlag(false);
 		await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
@@ -216,8 +240,14 @@ describe('SkillsHubStartupCopy', () => {
 		expect(await skills.findByIds(['tone'])).toEqual([]);
 	});
 
-	it('names the agents with skills in the hub when the flag is off', async () => {
-		const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+	it('names the agents with skills in the hub when the flag is off, and counts each once', async () => {
+		const agent = await legacyAgent(
+			[
+				{ type: 'skill', id: 'tone' },
+				{ type: 'skill', id: 'pricing' },
+			],
+			{ tone: body('Tone'), pricing: body('Pricing') },
+		);
 		await copy.copyAll();
 		await setSkillsHubFlag(false);
 		const logger = Container.get(Logger);

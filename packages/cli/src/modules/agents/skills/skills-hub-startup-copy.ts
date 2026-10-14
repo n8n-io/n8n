@@ -1,7 +1,6 @@
 import type { AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
-import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { InstanceSettings } from 'n8n-core';
@@ -42,7 +41,11 @@ type AgentCopyState = {
  * inline skill becomes an agent skill of its agent. The legacy columns stay as they are,
  * so turning the flag off gives agents their inline skills back.
  *
- * It runs on the leader at startup and on leader takeover, and can run again safely:
+ * Every main runs it at startup, before it serves agents. It does not wait for the
+ * leader: a main promoted during startup could miss both the startup check and the
+ * takeover event. Running it on several mains at once is safe, and so is running it again:
+ * - Each agent is copied in one transaction that holds the agent row, so a second main
+ *   waits and then finds the hub rows.
  * - A published version is copied only while it pins nothing. Its bodies become versions
  *   and it pins them.
  * - A draft is copied only while the agent has no hub rows at all. Its refs become
@@ -63,25 +66,20 @@ export class SkillsHubStartupCopy {
 
 	/** Called when the agents module starts, after the rollout flag is read. */
 	async runOnStartup(): Promise<void> {
-		if (!this.instanceSettings.isLeader) return;
+		if (this.instanceSettings.instanceType !== 'main') return;
 		if (this.rollout.isEnabled) await this.copyAll();
-		else await this.warnAboutHubOnlySkills();
-	}
-
-	/** A one-shot catch-up: a new leader copies what the previous one did not reach. */
-	@OnLeaderTakeover()
-	async runOnLeaderTakeover(): Promise<void> {
-		if (!this.rollout.isEnabled) return;
-		await this.copyAll();
+		// One warning per instance is enough: only the leader logs it.
+		else if (this.instanceSettings.isLeader) await this.warnAboutHubOnlySkills();
 	}
 
 	async copyAll(): Promise<CopyCounts> {
 		const counts: CopyCounts = { agents: 0, skills: 0, versions: 0, pins: 0, failed: 0 };
-		for (let skip = 0; ; skip += BATCH_SIZE) {
-			const agents = await this.agentRepository.findPageWithInlineSkills(skip, BATCH_SIZE);
+		let after: Pick<Agent, 'createdAt' | 'id'> | null = null;
+		for (;;) {
+			const agents = await this.agentRepository.findPageWithInlineSkills(after, BATCH_SIZE);
 			for (const agent of agents) {
 				try {
-					if (await this.copyAgent(agent, counts)) counts.agents++;
+					if (await this.copyAgentWithRetry(agent, counts)) counts.agents++;
 				} catch (error) {
 					// One broken agent must not stop the others. Its copy rolls back, so the
 					// next start tries it again.
@@ -93,6 +91,7 @@ export class SkillsHubStartupCopy {
 				}
 			}
 			if (agents.length < BATCH_SIZE) break;
+			after = agents[agents.length - 1];
 		}
 		this.logger.info('Copied inline agent skills into the skills hub', counts);
 		return counts;
@@ -111,12 +110,30 @@ export class SkillsHubStartupCopy {
 		);
 	}
 
+	/**
+	 * Two mains can pick the same free inline id for two different agents at the same
+	 * time, so one of them fails on the primary key. A second try picks another id.
+	 */
+	private async copyAgentWithRetry(
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
+		counts: CopyCounts,
+	): Promise<boolean> {
+		try {
+			return await this.copyAgent(agent, counts);
+		} catch {
+			return await this.copyAgent(agent, counts);
+		}
+	}
+
 	/** Copies one agent in one transaction. Returns whether it wrote anything. */
 	private async copyAgent(
 		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
 		counts: CopyCounts,
 	): Promise<boolean> {
 		return await this.txRunner.run({}, async (ctx) => {
+			// A draft write to this agent waits until the copy commits. The hub-row check
+			// below runs under the lock, so the copy never replaces refs written meanwhile.
+			await this.agentRepository.lockForSkillCopy(agent.id, ctx);
 			const versions = await this.skillRepository.findUnpinnedVersions(agent.id, ctx);
 			const copyDraft = !(await this.skillRepository.hasHubState(agent.id, ctx));
 			const hasInline = (source: Pick<AgentHistory, 'schema' | 'skills'>) =>
