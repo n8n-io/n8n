@@ -15,7 +15,6 @@ import type {
 import { useUIStore } from '@/app/stores/ui.store';
 import { getUsers } from '@n8n/rest-api-client/api/users';
 import {
-	N8nAvatar,
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
@@ -68,11 +67,12 @@ const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
 
-// The page needs only `breakingChanges:list`. A migration, a state change or
-// an owner choice needs `breakingChanges:migrate`.
-const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
-// A notification is an email, so the instance needs SMTP.
-const canNotify = computed(() => canMigrate.value && settingsStore.isSmtpSetup);
+// The server lists only the workflows the user can edit, and editing a workflow
+// allows triaging and migrating it. So every row is editable. A notification
+// emails other users, so it needs `breakingChanges:migrate` and SMTP.
+const canNotify = computed(
+	() => rbacStore.hasScope('breakingChanges:migrate') && settingsStore.isSmtpSetup,
+);
 
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
@@ -212,8 +212,7 @@ function ownerLabel(workflow: AffectedWorkflow): string {
 	);
 }
 
-// Migrate needs the same scope as a state change.
-const showMigrate = computed(() => state.value.migratable && canMigrate.value);
+const showMigrate = computed(() => state.value.migratable);
 
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	const headers: Array<TableHeader<AffectedWorkflow>> = [
@@ -809,7 +808,7 @@ const sortedWorkflows = computed(() => {
 		</header>
 
 		<div
-			v-if="!isLoading && canMigrate && unusedOpenWorkflows.length > 0"
+			v-if="!isLoading && unusedOpenWorkflows.length > 0"
 			:class="$style.unusedCallout"
 			data-test-id="migration-rule-unused-callout"
 		>
@@ -932,7 +931,7 @@ const sortedWorkflows = computed(() => {
 			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
 			v-model:selection="selectedWorkflowIds"
-			:show-select="canMigrate"
+			show-select
 			:item-selectable="isSelectable"
 			:items-per-page="sortedWorkflows.length + 1"
 			:items="sortedWorkflows"
@@ -1007,7 +1006,6 @@ const sortedWorkflows = computed(() => {
 			</template>
 			<template #[`item.owner`]="{ item }">
 				<N8nUserSelect
-					v-if="canMigrate"
 					size="small"
 					:users="ownerOptionsFor(item)"
 					hide-email-in-label
@@ -1023,20 +1021,11 @@ const sortedWorkflows = computed(() => {
 					@focus="onOwnerPickerFocus(item)"
 					@update:model-value="(userId: string) => onOwnerChange(item, userId)"
 				/>
-				<div v-else :class="$style.ownerLabel">
-					<N8nAvatar
-						size="xsmall"
-						:first-name="item.owner?.firstName"
-						:last-name="item.owner?.lastName"
-					/>
-					<span :class="$style.truncate">{{ ownerLabel(item) }}</span>
-				</div>
 			</template>
 			<template #[`item.status`]="{ item }">
 				<FindingStateSelect
 					:model-value="item.status"
 					:disabled="
-						!canMigrate ||
 						savingWorkflowIds.has(item.id) ||
 						notifyingWorkflowIds.has(item.id) ||
 						migratedWorkflowIds.has(item.id)
@@ -1188,13 +1177,6 @@ const sortedWorkflows = computed(() => {
 
 .nodeNames {
 	font-family: var(--font-family--monospace);
-}
-
-.ownerLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
 }
 
 .actions {

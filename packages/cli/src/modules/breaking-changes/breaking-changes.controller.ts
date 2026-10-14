@@ -71,6 +71,19 @@ export class BreakingChangesController {
 		return { kind: 'workflows', workflowIds: [...new Set(workflowIds)] };
 	}
 
+	/** The given workflows that the user can edit. Editing a workflow allows triaging its findings. */
+	private async editableWorkflowIds(user: User, workflowIds: string[]): Promise<string[]> {
+		const scope = await this.scopeFor(user);
+		if (scope.kind === 'instance') return workflowIds;
+		const editable = new Set(scope.workflowIds);
+		return workflowIds.filter((workflowId) => editable.has(workflowId));
+	}
+
+	private async assertCanEdit(user: User, workflowId: string): Promise<void> {
+		const [editable] = await this.editableWorkflowIds(user, [workflowId]);
+		if (!editable) throw new ForbiddenError('You do not have permission to update this workflow');
+	}
+
 	/**
 	 * The report overview, read from the finding table. A first read, or a
 	 * changed rule set, fills the table before the read.
@@ -145,16 +158,21 @@ export class BreakingChangesController {
 		return await this.queryService.getRuleFindings(version, ruleId, scope);
 	}
 
-	/** Sets the status a user picks for the findings of one rule on many workflows. */
+	/**
+	 * Sets the status a user picks for the findings of one rule on many workflows.
+	 * Only the workflows that the user can edit change.
+	 */
 	@Patch('/report/:ruleId/workflows')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async updateFindingStatuses(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('ruleId') ruleId: string,
 		@Body body: UpdateMigrationFindingStatusesRequestDto,
 	): Promise<void> {
-		await this.triageService.setStatuses(ruleId, body.workflowIds, body.status);
+		const workflowIds = await this.editableWorkflowIds(req.user, body.workflowIds);
+		if (workflowIds.length === 0) return;
+		await this.triageService.setStatuses(ruleId, workflowIds, body.status);
 	}
 
 	/**
@@ -175,48 +193,52 @@ export class BreakingChangesController {
 
 	/** Sets the status a user picks for the finding of one rule on one workflow. */
 	@Patch('/report/:ruleId/workflows/:workflowId')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async updateFindingStatus(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('ruleId') ruleId: string,
 		@Param('workflowId') workflowId: string,
 		@Body body: UpdateMigrationFindingStatusRequestDto,
 	): Promise<void> {
+		await this.assertCanEdit(req.user, workflowId);
 		await this.triageService.setStatus(ruleId, workflowId, body.status);
 	}
 
 	/** Makes the given user the owner of the workflow's findings. */
 	@Put('/workflows/:workflowId/owner')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async assignOwner(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 		@Body body: AssignMigrationOwnerDto,
 	): Promise<MigrationWorkflowOwnerResponse> {
+		await this.assertCanEdit(req.user, workflowId);
 		const owner = await this.ownerAssignmentService.assign(workflowId, body.userId, req.user);
 		return { owner };
 	}
 
 	/** Drops the assigned owner. The response carries the heuristic's suggestion, if any. */
 	@Delete('/workflows/:workflowId/owner')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async unassignOwner(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	): Promise<MigrationWorkflowOwnerResponse> {
+		await this.assertCanEdit(req.user, workflowId);
 		const owner = await this.ownerAssignmentService.unassign(workflowId);
 		return { owner };
 	}
 
 	/**
 	 * Apply the rule's automated migration to a single workflow, saving the
-	 * rewritten workflow as a new version.
+	 * rewritten workflow as a new version. The service checks that the user can
+	 * edit the workflow.
 	 */
 	@Post('/report/:ruleId/workflows/:workflowId/migrate')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async migrateWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,

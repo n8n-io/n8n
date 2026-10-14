@@ -123,6 +123,19 @@ describe('BreakingChangesController', () => {
 			expect(ownerAssignmentService.unassign).toHaveBeenCalledWith('wf-1');
 			expect(result).toEqual({ owner: null });
 		});
+
+		it('rejects a member on a workflow they cannot edit', async () => {
+			req.user = member;
+
+			await expect(
+				controller.assignOwner(req, res, 'wf-3', { userId: 'alice' }),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			await expect(controller.unassignOwner(req, res, 'wf-3')).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+			expect(ownerAssignmentService.assign).not.toHaveBeenCalled();
+			expect(ownerAssignmentService.unassign).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('GET /report', () => {
@@ -355,15 +368,30 @@ describe('BreakingChangesController', () => {
 			expect(syncService.syncIfStale).not.toHaveBeenCalled();
 		});
 
-		it('requires the global breakingChanges:migrate scope', () => {
-			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-				BreakingChangesController as Controller,
-			);
+		it('changes only the workflows that a member can edit', async () => {
+			req.user = member;
 
-			expect(metadata.routes.get('updateFindingStatuses')?.accessScope).toEqual({
-				scope: 'breakingChanges:migrate',
-				globalOnly: true,
+			await controller.updateFindingStatuses(req, res, 'removed-nodes-v3', {
+				workflowIds: ['wf-1', 'wf-3'],
+				status: 'wont_fix',
 			});
+
+			expect(triageService.setStatuses).toHaveBeenCalledWith(
+				'removed-nodes-v3',
+				['wf-1'],
+				'wont_fix',
+			);
+		});
+
+		it('changes nothing when a member can edit none of the workflows', async () => {
+			req.user = member;
+
+			await controller.updateFindingStatuses(req, res, 'removed-nodes-v3', {
+				workflowIds: ['wf-3'],
+				status: 'wont_fix',
+			});
+
+			expect(triageService.setStatuses).not.toHaveBeenCalled();
 		});
 	});
 
@@ -417,15 +445,42 @@ describe('BreakingChangesController', () => {
 			).rejects.toBeInstanceOf(NotFoundError);
 		});
 
-		it('requires the global breakingChanges:migrate scope', () => {
-			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-				BreakingChangesController as Controller,
-			);
+		it('lets a member change a workflow they can edit', async () => {
+			req.user = member;
 
-			expect(metadata.routes.get('updateFindingStatus')?.accessScope).toEqual({
-				scope: 'breakingChanges:migrate',
-				globalOnly: true,
+			await controller.updateFindingStatus(req, res, 'removed-nodes-v3', 'wf-2', {
+				status: 'wont_fix',
 			});
+
+			expect(triageService.setStatus).toHaveBeenCalledWith('removed-nodes-v3', 'wf-2', 'wont_fix');
+		});
+
+		it('rejects a member on a workflow they cannot edit', async () => {
+			req.user = member;
+
+			await expect(
+				controller.updateFindingStatus(req, res, 'removed-nodes-v3', 'wf-3', { status: 'open' }),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			expect(triageService.setStatus).not.toHaveBeenCalled();
+		});
+	});
+
+	// Editing a workflow allows triaging its findings, so these routes check workflow
+	// access in the handler. A notification emails other users and stays with admins.
+	it.each([
+		'updateFindingStatuses',
+		'updateFindingStatus',
+		'assignOwner',
+		'unassignOwner',
+		'migrateWorkflow',
+	])('%s requires only the global breakingChanges:list scope', (route) => {
+		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+			BreakingChangesController as Controller,
+		);
+
+		expect(metadata.routes.get(route)?.accessScope).toEqual({
+			scope: 'breakingChanges:list',
+			globalOnly: true,
 		});
 	});
 });
