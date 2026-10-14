@@ -52,6 +52,7 @@ function missingTableHint(schema: string, table: string): string {
 	return [
 		'The Lakebase Data API cannot create tables. Run this in the Databricks SQL editor, replace <your-role> with the Postgres role of the OAuth2 identity (user email or service principal application ID), then retry.',
 		`CREATE TABLE ${qualified} (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);`,
+		`CREATE INDEX ON ${qualified} (session_id, id);`,
 		`GRANT SELECT, INSERT, DELETE ON ${qualified} TO "<your-role>";`,
 		`GRANT USAGE ON SEQUENCE ${sequence} TO "<your-role>";`,
 	].join('\n');

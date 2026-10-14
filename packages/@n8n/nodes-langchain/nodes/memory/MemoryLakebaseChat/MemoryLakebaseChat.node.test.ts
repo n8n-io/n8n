@@ -1,5 +1,7 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { getActiveCredentialType } from 'n8n-nodes-base/dist/nodes/Databricks/actions/helpers';
 import { resolveLakebaseTableUrl } from 'n8n-nodes-base/dist/nodes/Databricks/actions/lakebase/helpers';
+import { LAKEBASE_MAX_PAGES } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { lakebaseApiRequest } from 'n8n-nodes-base/dist/nodes/Databricks/transport';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { INode, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
@@ -76,6 +78,7 @@ const request = lakebaseApiRequest as unknown as Mock;
 function createContext(params: Record<string, unknown> = {}): ISupplyDataFunctions {
 	return {
 		getNode: () => node,
+		getInputData: () => [],
 		getNodeParameter: vi.fn((name: string) => params[name]),
 	} as unknown as ISupplyDataFunctions;
 }
@@ -122,6 +125,9 @@ describe('MemoryLakebaseChat', () => {
 
 		it('should pin the authentication to OAuth2 through a hidden parameter', () => {
 			expect(byName('authentication')).toMatchObject({ type: 'hidden', default: 'oAuth2' });
+			// The nodes-base helper reads the parameter by name, so the default must be the value it compares against
+			const context = createContext({ authentication: byName('authentication')?.default });
+			expect(getActiveCredentialType(context)).toBe('databricksOAuth2Api');
 		});
 	});
 
@@ -213,6 +219,18 @@ describe('MemoryLakebaseChat', () => {
 			expect(messages.map((m) => m.content)).toEqual(['a']);
 		});
 
+		it('should stop at the page cap when the API keeps returning rows', async () => {
+			request.mockResolvedValue({
+				body: [{ message: { type: 'human', content: 'x', additional_kwargs: {} } }],
+				headers: {},
+			});
+
+			const messages = await createStore().getMessages();
+
+			expect(request).toHaveBeenCalledTimes(LAKEBASE_MAX_PAGES);
+			expect(messages).toHaveLength(LAKEBASE_MAX_PAGES);
+		});
+
 		it('should delete the session rows', async () => {
 			request.mockResolvedValueOnce(undefined);
 
@@ -300,6 +318,7 @@ describe('MemoryLakebaseChat', () => {
 			expect(description).toContain(
 				'CREATE TABLE "analytics"."chat_log" (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);',
 			);
+			expect(description).toContain('CREATE INDEX ON "analytics"."chat_log" (session_id, id);');
 			expect(description).toContain('GRANT SELECT, INSERT, DELETE ON "analytics"."chat_log"');
 			expect(description).toContain('GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq"');
 		});
