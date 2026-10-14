@@ -777,7 +777,7 @@ export class AgentWorkflowExecutionService {
 		const prepared = fromAgentDocument(config);
 		agent.schema = prepared.config;
 		agent.integrations = [];
-		return { runSource: { agent, skillRefs: prepared.skillRefs }, instrumentation };
+		return { runSource: { ...runSource, agent, skillRefs: prepared.skillRefs }, instrumentation };
 	}
 
 	private async streamCompiledWorkflowAgent(

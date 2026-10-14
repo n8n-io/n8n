@@ -81,7 +81,11 @@ export class SkillsApiService {
 	/** Saves the changes as the next version. Unchanged content creates nothing. */
 	async update(user: User, skillId: string, payload: SaveSkillDto): Promise<SkillSaveResponse> {
 		await this.requireAccess(user, skillId, 'update');
-		const saved = await this.skillService.save(skillId, { ...payload }, user.id);
+		const { followingAgentIds: _following, ...saved } = await this.skillService.save(
+			skillId,
+			{ ...payload },
+			user.id,
+		);
 		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 	}
 
@@ -101,6 +105,11 @@ export class SkillsApiService {
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		return {
 			...item,
+			// Name, description and number from the same row as the content, so a save that
+			// lands between the two reads cannot mix two versions.
+			name: latest.version.name,
+			description: latest.version.description,
+			latestVersion: latest.version.version,
 			skill: content,
 			skillHash: getAgentSkillHash(content),
 			usedBy: await this.skillRepository.findUsage(skill.id, agentProjectIds ?? 'all'),

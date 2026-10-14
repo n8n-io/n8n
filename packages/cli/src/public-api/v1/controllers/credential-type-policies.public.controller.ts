@@ -337,11 +337,12 @@ export class CredentialTypePoliciesPublicController {
 	@GlobalScope('credentialTypePolicy:manage')
 	@ApiSummary("Beta: Replace a scope's attached policy documents")
 	@ApiDescription(
-		"**Beta** — breaking changes may still occur without major version bump.\n\nReplaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.",
+		"**Beta** — breaking changes may still occur without major version bump.\n\nReplaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. `version` must match the current scope version. A stale version returns 409 without changes. A successful write bumps the scope's version.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyAttachmentsPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async replaceCredentialTypePolicyAttachments(
 		req: AuthenticatedRequest,
@@ -353,6 +354,7 @@ export class CredentialTypePoliciesPublicController {
 			CREDENTIAL_TYPES_KIND,
 			scopeId,
 			dto.attachments,
+			dto.version,
 			req.user.id,
 		);
 

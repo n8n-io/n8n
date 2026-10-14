@@ -1,6 +1,13 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
-import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	chunkIds,
+	escapeLike,
+	LIKE_ESCAPE_CLAUSE,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
@@ -555,6 +562,21 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
+	 * Finds every agent with a channel of the given type in its `integrations`
+	 * JSON column. The `LIKE` is a portable pre-filter; it can match another
+	 * field, so the exact check still runs in memory.
+	 */
+	async findWithIntegrationType(type: string): Promise<Array<Pick<Agent, 'id' | 'integrations'>>> {
+		const agents = await this.createQueryBuilder('agent')
+			.select(['agent.id', 'agent.integrations'])
+			.where(`CAST(agent.integrations AS TEXT) LIKE :pattern ${LIKE_ESCAPE_CLAUSE}`, {
+				pattern: `%${escapeLike(JSON.stringify(type))}%`,
+			})
+			.getMany();
+		return agents.filter((agent) => (agent.integrations ?? []).some((i) => i.type === type));
+	}
+
+	/**
 	 * Finds agents within a project whose `integrations` JSON column contains an
 	 * entry matching the given `type` + `credentialId`, excluding `excludeAgentId`.
 	 *
@@ -676,11 +698,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 		ids: string[],
 		ctx: OperationContext = {},
 	): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
-		if (ids.length === 0) return [];
-		return await this.managerFor(ctx).find(Agent, {
-			where: { id: In(ids) },
-			select: ['id', 'projectId'],
-		});
+		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
+		// In batches: a skill can have more followers than SQLite allows bound parameters.
+		for (const chunk of chunkIds([...new Set(ids)])) {
+			agents.push(
+				...(await this.managerFor(ctx).find(Agent, {
+					where: { id: In(chunk) },
+					select: ['id', 'projectId'],
+				})),
+			);
+		}
+		return agents;
 	}
 
 	/**
@@ -689,6 +717,20 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * write does not check `revision`: call it only in the same transaction as a
 	 * won `saveDraftFenced`.
 	 */
+	async updateDraftSkills(
+		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		// Write `updatedAt` too, with the value of the fenced save: without it, TypeORM
+		// sets `CURRENT_TIMESTAMP`, which drops the milliseconds on SQLite.
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, skills: agent.skills, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.execute();
+	}
+
 	async updateDraftSchema(
 		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
 		ctx: OperationContext,

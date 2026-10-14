@@ -8,6 +8,7 @@ import type {
 	ChatIntegrationDescriptor,
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
+	TeamsFileAccessCheck,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -22,10 +23,21 @@ import type { AgentCredentialOption } from '../../components/AgentCredentialSele
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
-import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
+import {
+	availabilityFrom,
+	readsSharedConversations as readsShared,
+	TEAMS_PACKAGE_FILENAME,
+	type TeamsAvailability,
+} from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
+import { fileAccessJustApproved } from './fileAccessConsent';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
-import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import {
+	checkTeamsCredential,
+	checkTeamsFileAccess,
+	fetchTeamsAppPackage,
+	getTeamsSetupState,
+} from './api';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -400,6 +412,60 @@ async function refreshForCredential() {
 
 watch(credentialId, refreshForCredential, { immediate: true });
 
+const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | 'checking' | null>(null);
+const readsSharedConversations = computed(() => readsShared(availability.value));
+
+// Microsoft can take a minute or two to apply an approval just given.
+const FILE_ACCESS_RECHECK_MS = 10_000;
+const FILE_ACCESS_RECHECKS = 18;
+let fileAccessRecheck: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => clearTimeout(fileAccessRecheck));
+
+/**
+ * Only in the settings: that is where people return after sending the approval
+ * link to an administrator. A failed check leaves the request on show.
+ */
+async function loadFileAccess() {
+	clearTimeout(fileAccessRecheck);
+	fileAccessStatus.value = null;
+	const id = credentialId.value;
+	// Consumed only by a check that runs: the saved settings can arrive after the first call.
+	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
+	fileAccessStatus.value = 'checking';
+	const justApproved = fileAccessJustApproved.value;
+	fileAccessJustApproved.value = false;
+	if (justApproved) {
+		fileAccessRecheck = setTimeout(() => {
+			void checkFileAccess(id, FILE_ACCESS_RECHECKS);
+		}, FILE_ACCESS_RECHECK_MS);
+	} else {
+		await checkFileAccess(id, FILE_ACCESS_RECHECKS);
+	}
+}
+
+async function checkFileAccess(id: string, rechecksLeft: number) {
+	try {
+		const { status } = await checkTeamsFileAccess(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			id,
+		);
+		if (credentialId.value !== id) return;
+		fileAccessStatus.value = status;
+		if (status === 'notApproved' && rechecksLeft > 0) {
+			fileAccessRecheck = setTimeout(() => {
+				void checkFileAccess(id, rechecksLeft - 1);
+			}, FILE_ACCESS_RECHECK_MS);
+		}
+	} catch {
+		// Unchecked reads the same as not approved.
+		if (credentialId.value === id) fileAccessStatus.value = null;
+	}
+}
+
+watch([credentialId, readsSharedConversations], loadFileAccess, { immediate: true });
+
 // Saving the picked credential keeps its ID, so the watch above does not see the edit.
 listenForCredentialChanges({
 	store: useCredentialsStore(),
@@ -708,6 +774,8 @@ defineExpose({
 						<AgentChannelTeamsAvailability
 							:model-value="availability"
 							start-collapsed
+							:app-id="setupState?.botId"
+							:file-access-consent-url="setupState?.fileAccessConsentUrl"
 							@update:model-value="editAvailability"
 						/>
 					</div>
@@ -808,6 +876,10 @@ defineExpose({
 				<AgentChannelTeamsAvailability
 					:model-value="availability"
 					start-collapsed
+					:app-id="setupState?.botId"
+					:file-access-consent-url="setupState?.fileAccessConsentUrl"
+					:file-access-status="fileAccessStatus"
+					open-consent-in-place
 					@update:model-value="editAvailability"
 				/>
 				<N8nText

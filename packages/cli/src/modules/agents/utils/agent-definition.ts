@@ -1,13 +1,15 @@
-import type { AgentJsonConfig, AgentTaskConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentSkill, AgentTaskConfig } from '@n8n/api-types';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from '../json-config/agent-document';
 
 /** Published chat settings stay in schema. Credential integrations stay on the agent. */
-export interface AgentDefinition extends Pick<Agent, 'tools' | 'skills'> {
+export interface AgentDefinition extends Pick<Agent, 'tools'> {
 	/** The JSON document, with the skill refs. */
 	schema: AgentJsonConfig | null;
+	/** Skill bodies from the skills hub, keyed by skill id. */
+	skills: Record<string, AgentSkill>;
 	tasks: ReadonlyMap<string, AgentTaskConfig>;
 }
 
@@ -19,15 +21,16 @@ export interface PendingSkillRefs {
 	skillRefs: AgentSkillRefs;
 }
 
-/** Keep configuration and inline bodies from the same draft or version. */
+/** Keep configuration, inline bodies and skill bodies from the same draft or version. */
 export function getAgentDefinitionContent(
-	source: Pick<AgentHistory, 'schema' | 'tools' | 'skills'>,
+	source: Pick<AgentHistory, 'schema' | 'tools'>,
 	skillRefs: AgentSkillRefs,
+	skills: Record<string, AgentSkill>,
 ) {
 	return {
 		schema: source.schema ? toAgentDocument(source.schema, skillRefs) : null,
 		tools: source.tools ?? {},
-		skills: source.skills ?? {},
+		skills,
 	};
 }
 

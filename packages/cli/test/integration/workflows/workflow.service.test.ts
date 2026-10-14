@@ -29,6 +29,8 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
@@ -1457,5 +1459,229 @@ describe('publishAsSystem()', () => {
 		).toBe(versionRowsBefore);
 		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
+	});
+});
+
+describe('delete() and the workflowsFromAList caller policy', () => {
+	test('denies a caller whose allowlist entry no longer refers to a live workflow', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: { callerPolicy: 'workflowsFromAList', callerIds: allowlistedCaller.id },
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, allowlistedCaller.id);
+		await workflowService.delete(owner, allowlistedCaller.id);
+
+		const reusedIdWorkflow = await createWorkflow({ id: allowlistedCaller.id }, member);
+
+		const storedSubworkflow = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await expect(
+			Container.get(SubworkflowPolicyChecker).check(
+				{ id: storedSubworkflow.id, settings: storedSubworkflow.settings },
+				reusedIdWorkflow.id,
+			),
+		).rejects.toThrowError(SubworkflowPolicyDenialError);
+	});
+
+	test('keeps the allowlist entry while the caller is only archived', async () => {
+		const owner = await createOwner();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const callerIds = `keepMe,\n${allowlistedCaller.id}`;
+		const subworkflow = await createWorkflow(
+			{ settings: { callerPolicy: 'workflowsFromAList', callerIds } },
+			owner,
+		);
+
+		await workflowService.archive(owner, allowlistedCaller.id);
+
+		const afterArchive = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(afterArchive.settings).toEqual({ callerPolicy: 'workflowsFromAList', callerIds });
+
+		await workflowService.delete(owner, allowlistedCaller.id);
+
+		const afterDelete = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(afterDelete.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'keepMe',
+		});
+	});
+
+	test('allows a live allowlisted caller owned by another project', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const allowlistedCaller = await createWorkflow({}, member);
+		const subworkflow = await createWorkflow(
+			{
+				settings: { callerPolicy: 'workflowsFromAList', callerIds: allowlistedCaller.id },
+			},
+			owner,
+		);
+
+		const storedSubworkflow = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await expect(
+			Container.get(SubworkflowPolicyChecker).check(
+				{ id: storedSubworkflow.id, settings: storedSubworkflow.settings },
+				allowlistedCaller.id,
+			),
+		).resolves.toBeUndefined();
+	});
+
+	test('keeps the other settings of an allowlist it rewrites', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id},another-caller`,
+					executionOrder: 'v1',
+					timezone: 'Europe/Berlin',
+				},
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'another-caller',
+			executionOrder: 'v1',
+			timezone: 'Europe/Berlin',
+		});
+	});
+
+	test('leaves an allowlist alone when the deleted id only appears inside another entry', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id}-suffix, ${caller.id}-other`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+		expect(after.updatedAt).toEqual(before.updatedAt);
+	});
+
+	test('takes several deleted ids out of one allowlist', async () => {
+		const owner = await createOwner();
+
+		const first = await createWorkflow({}, owner);
+		const second = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${first.id},keepMe,${second.id}`,
+				},
+			},
+			owner,
+		);
+
+		await workflowRepository.removeFromCallerAllowlists([first.id, second.id], {});
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({ callerPolicy: 'workflowsFromAList', callerIds: 'keepMe' });
+	});
+
+	test('leaves every allowlist untouched when the deleted workflow is on none of them', async () => {
+		const owner = await createOwner();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${allowlistedCaller.id},another-caller`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		const unrelatedWorkflow = await createWorkflow({}, owner);
+		await workflowService.archive(owner, unrelatedWorkflow.id);
+		await workflowService.delete(owner, unrelatedWorkflow.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+		expect(after.updatedAt).toEqual(before.updatedAt);
+	});
+
+	// A character the `json` column keeps but the binary JSON form cannot hold.
+	const NO_BINARY_JSON_FORM = String.fromCharCode(0);
+
+	test('deletes a workflow while an allowlist elsewhere holds a value json alone can carry', async () => {
+		const owner = await createOwner();
+
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `another-caller${NO_BINARY_JSON_FORM}`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		const unrelatedWorkflow = await createWorkflow({}, owner);
+		await workflowService.archive(owner, unrelatedWorkflow.id);
+		await workflowService.delete(owner, unrelatedWorkflow.id);
+
+		await expect(workflowRepository.findOneBy({ id: unrelatedWorkflow.id })).resolves.toBeNull();
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+	});
+
+	test('rewrites an allowlist that holds a value json alone can carry', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id},another-caller`,
+					errorWorkflow: `error-workflow${NO_BINARY_JSON_FORM}`,
+				},
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'another-caller',
+			errorWorkflow: `error-workflow${NO_BINARY_JSON_FORM}`,
+		});
 	});
 });

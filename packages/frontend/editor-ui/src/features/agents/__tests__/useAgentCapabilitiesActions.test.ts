@@ -151,7 +151,6 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 type SkillModalData = {
 	skillId?: string;
 	existingSkillNames?: string[];
-	availableTools?: Array<{ name: string; label: string; icon?: string }>;
 	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
 	onRemove?: (skillId: string) => void;
 };
@@ -418,70 +417,20 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		expect(createAgentSkill).not.toHaveBeenCalled();
 	});
 
-	it('filters allowedTools to configured tool names before persisting', () => {
-		const { uiStore, actions, createSkill } = setupLocal();
+	it('drops allowedTools before persisting and offers no tool list', () => {
+		const { uiStore, actions, createSkill } = setupLocal({
+			tools: [{ type: 'node', name: 'darwin' } as AgentJsonToolConfig],
+		});
 
 		actions.onOpenAddSkillModal();
 		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData).not.toHaveProperty('availableTools');
 		modalData.onConfirm({
-			skill: { ...triage, name: 'Second Skill', allowedTools: ['not_a_configured_tool'] },
+			skill: { ...triage, name: 'Second Skill', allowedTools: ['darwin'] },
 		});
 
 		expect(createSkill).toHaveBeenCalledWith(
 			expect.not.objectContaining({ allowedTools: expect.anything() }),
-		);
-	});
-
-	it('includes MCP server names in skill availableTools', () => {
-		const { uiStore, actions } = setupLocal({
-			tools: [{ type: 'node', name: 'darwin' } as AgentJsonToolConfig],
-			mcpServers: [
-				{
-					name: 'Notion mcp',
-					url: 'https://mcp.notion.example',
-					transport: 'streamableHttp',
-					authentication: 'none',
-					toolPermissions: {
-						categories: { read: 'always_allow', write: 'require_approval' },
-					},
-				},
-			],
-		});
-
-		actions.onOpenAddSkillModal();
-		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-
-		expect(modalData.availableTools).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ name: 'darwin', icon: 'globe' }),
-				expect.objectContaining({ name: 'Notion mcp', icon: 'mcp' }),
-			]),
-		);
-	});
-
-	it('keeps MCP server names in allowedTools on persist', () => {
-		const { uiStore, actions, createSkill } = setupLocal({
-			mcpServers: [
-				{
-					name: 'Notion mcp',
-					url: 'https://mcp.notion.example',
-					transport: 'streamableHttp',
-					authentication: 'none',
-					toolPermissions: {
-						categories: { read: 'always_allow', write: 'require_approval' },
-					},
-				},
-			],
-		});
-
-		actions.onOpenAddSkillModal();
-		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
-		modalData.onConfirm({
-			skill: { ...triage, name: 'Second Skill', allowedTools: ['Notion mcp'] },
-		});
-
-		expect(createSkill).toHaveBeenCalledWith(
-			expect.objectContaining({ allowedTools: ['Notion mcp'] }),
 		);
 	});
 
