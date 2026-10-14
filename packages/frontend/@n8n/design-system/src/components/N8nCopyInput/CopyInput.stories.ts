@@ -1,4 +1,5 @@
 import type { StoryFn } from '@storybook/vue3-vite';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 import N8nCopyInput from './CopyInput.vue';
 import N8nButton from '../N8nButton';
@@ -102,14 +103,62 @@ WithoutCopyButton.args = {
 	allowCopy: false,
 };
 
+const INITIAL_TOKEN = 'n8n_mcp_9f1c2d3e4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d';
+const ROTATED_TOKENS = [
+	'n8n_mcp_c7e1a94b0d3f6e28a5c1b7d4f0e9a3c6b2d8e15f',
+	'n8n_mcp_1b6d4a90e2c7f5a8d3b1e6c4a9f0d2b7e5c8a31c',
+	'n8n_mcp_8f0c2e6a1d4b9e7c3a5f0d8b2e6c1a4d7b9e0f3a',
+];
+// Long enough to see the loading skeleton. Matches `--duration--slow`.
+const ROTATE_DELAY_MS = 1000;
+
+function truncateToken(value: string) {
+	return `${value.slice(0, 20)}...${value.slice(-10)}`;
+}
+
 export const WithActions: StoryFn = (args) => ({
-	setup: () => ({ args }),
+	setup: () => {
+		const token = ref(INITIAL_TOKEN);
+		const rotating = ref(false);
+		const displayValue = computed(() => truncateToken(token.value));
+		const isLoading = computed(() => rotating.value || Boolean(args.loading));
+		let nextToken = 0;
+		let rotateTimer: ReturnType<typeof setTimeout> | undefined;
+
+		onBeforeUnmount(() => clearTimeout(rotateTimer));
+
+		function rotate() {
+			if (isLoading.value || args.disabled) return;
+
+			rotating.value = true;
+			clearTimeout(rotateTimer);
+			rotateTimer = setTimeout(() => {
+				token.value = ROTATED_TOKENS[nextToken % ROTATED_TOKENS.length];
+				nextToken += 1;
+				rotating.value = false;
+			}, ROTATE_DELAY_MS);
+		}
+
+		return { args, token, displayValue, isLoading, rotate };
+	},
 	components: { N8nCopyInput, N8nButton, N8nIcon },
 	template: `
 		<div style="max-width: 420px;">
-			<n8n-copy-input v-bind="args">
+			<n8n-copy-input
+				v-bind="args"
+				:value="token"
+				:display-value="displayValue"
+				:loading="isLoading"
+			>
 				<template #actions>
-					<n8n-button variant="ghost" icon-only :size="args.size" aria-label="Rotate token">
+					<n8n-button
+						variant="ghost"
+						icon-only
+						:size="args.size"
+						:disabled="isLoading || args.disabled"
+						aria-label="Rotate token"
+						@click="rotate"
+					>
 						<template #icon>
 							<n8n-icon icon="refresh-cw" size="medium" />
 						</template>
@@ -121,10 +170,17 @@ export const WithActions: StoryFn = (args) => ({
 });
 WithActions.args = {
 	label: 'Access token',
-	value: 'n8n_mcp_9f1c2d3e4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d',
-	displayValue: 'n8n_mcp_9f1c2d3e4a5b...5f6a7b8c9d',
 	size: 'large',
 	copyLabel: 'Copy token',
+};
+WithActions.parameters = {
+	docs: {
+		description: {
+			story:
+				'Extra controls go in the `actions` slot, before the copy button. Rotate token stands in ' +
+				'for a key rotation: the field shows its loading skeleton, then the value is replaced.',
+		},
+	},
 };
 
 export const WithLabelAndHint: StoryFn = (args) => ({
