@@ -1,3 +1,11 @@
+## [2.44.1](https://github.com/n8n-io/n8n/compare/n8n@2.44.0...n8n@2.44.1) (2026-10-14)
+
+
+### Features
+
+* Show Gemini models by name and list prioritized models first in model pickers ([#41015](https://github.com/n8n-io/n8n/issues/41015)) ([321b020](https://github.com/n8n-io/n8n/commit/321b0203b73e3351c766cbece6a8f79c800d453f))
+
+
 # [2.44.0](https://github.com/n8n-io/n8n/compare/n8n@2.43.0...n8n@2.44.0) (2026-10-13)
 
 
