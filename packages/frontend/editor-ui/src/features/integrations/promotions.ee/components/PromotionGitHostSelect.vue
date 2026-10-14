@@ -59,9 +59,10 @@ const visibleOptions = computed(() => {
 
 function select(value: string) {
 	const option = visibleOptions.value.find((item) => item.value === value);
+	cancel();
+	onSearch('');
 	emit('update:modelValue', value);
 	if (option?.repository) {
-		cancel();
 		selectedRepository.value = option.repository;
 		emit('selected', option.repository);
 	}
@@ -106,7 +107,14 @@ function onInput(event: Event) {
 			{{ i18n.baseText('settings.promotions.discovery.searchHint', { interpolate: { search } }) }}
 		</N8nText>
 		<N8nText
-			v-if="!loading && !error && !unavailable && options.length === 0 && !nextCursor"
+			v-if="
+				!loading &&
+				!error &&
+				!unavailable &&
+				options.length === 0 &&
+				!nextCursor &&
+				(!modelValue || search)
+			"
 			size="small"
 			color="text-light"
 			role="status"

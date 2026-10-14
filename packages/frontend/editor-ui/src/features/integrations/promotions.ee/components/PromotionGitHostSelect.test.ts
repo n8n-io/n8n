@@ -71,7 +71,7 @@ it('ignores an old provider response while the current provider is still loading
 	expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
 });
 
-it('shows a saved URL outside the browse page without searching for it', async () => {
+it('keeps a saved selection outside discovery results and clears empty-search feedback on reselection', async () => {
 	api.fetchPromotionRepositories.mockResolvedValue({ data: [otherRepository], nextCursor: 'next' });
 	const { emitted } = renderSelect({ props: { modelValue: repository.remoteUrl } });
 	await flushPromises();
@@ -84,6 +84,14 @@ it('shows a saved URL outside the browse page without searching for it', async (
 	expect(emitted('selected')).toBeUndefined();
 	expect(emitted('update:modelValue')).toBeUndefined();
 	expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+	api.fetchPromotionRepositories.mockResolvedValue({ data: [], nextCursor: null });
+	await userEvent.type(screen.getByRole('combobox'), 'team');
+	await screen.findByText(/No repositories found/, { selector: '[role="status"]' });
+	await userEvent.click(screen.getByRole('option', { name: repository.remoteUrl }));
+	await waitFor(() => expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(3));
+	expect(screen.getByRole('combobox')).toHaveValue(repository.remoteUrl);
+	expect(screen.queryByText('Results for “team”')).not.toBeInTheDocument();
+	expect(screen.queryByText(/No repositories found/)).not.toBeInTheDocument();
 });
 
 describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind) => {
@@ -154,6 +162,7 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 			[kind === 'repository' ? otherRepository.remoteUrl : 'team/other'],
 		]);
 		expect(emitted('selected')).toEqual(kind === 'repository' ? [[otherRepository]] : undefined);
+		expect(screen.queryByText('Results for “team”')).not.toBeInTheDocument();
 	});
 });
 
