@@ -37,7 +37,6 @@ const emit = defineEmits<{
 }>();
 
 const tableOptions = defineModel<TableOptions>('tableOptions', { default: () => ({}) });
-const selection = defineModel<string[]>('selection', { default: () => [] });
 
 const i18n = useI18n();
 
@@ -81,11 +80,7 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else emit('delete', skill);
 }
 
-function onRowClick(event: MouseEvent, payload: { item: SkillListItem }) {
-	// The selection checkbox lets its click reach the row, which would open the skill
-	// in the middle of a multi-select.
-	const cell = event.target instanceof Element ? event.target.closest('td') : null;
-	if (cell?.querySelector('[role="checkbox"], input[type="checkbox"]')) return;
+function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
 	emit('open', payload.item);
 }
 
@@ -137,15 +132,12 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 		<N8nDataTableServer
 			v-model:page="tableOptions.page"
 			v-model:items-per-page="tableOptions.itemsPerPage"
-			v-model:selection="selection"
 			:headers="headers"
 			:items="props.skills"
 			:items-length="props.itemsLength"
 			:loading="props.loading"
 			:page-sizes="PREFERENCES_PAGE_SIZES"
 			:row-props="{ class: $style.row }"
-			show-select
-			:item-selectable="canDeleteNow"
 			@update:options="emit('update:options', $event)"
 			@click:row="onRowClick"
 		>
