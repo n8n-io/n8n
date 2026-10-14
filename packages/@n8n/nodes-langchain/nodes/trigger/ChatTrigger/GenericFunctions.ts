@@ -113,6 +113,11 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 							await context.establishTriggerIdentity(chatToken, resourceUrl, validation.user.id);
 							return validation.user;
 						}
+						throw new ChatTriggerAuthorizationError(
+							401,
+							'Invalid authentication token',
+							validation.challenge,
+						);
 					}
 					throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
 				}
@@ -185,7 +190,10 @@ export async function establishChatSessionIdentity(
 					token: result.token,
 					expiresAt: expiryFrom(result.expiresIn),
 				});
-				setChatRefreshToken(res, req, resourceUrl, result.refreshToken);
+				// An issuer that grants no refresh token leaves the page to restart the flow on expiry.
+				if (result.refreshToken) {
+					setChatRefreshToken(res, req, resourceUrl, result.refreshToken);
+				}
 				const redirectPath = req.originalUrl.split('?')[0];
 				res.writeHead(302, { Location: redirectPath });
 				res.end();
