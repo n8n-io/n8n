@@ -16,6 +16,7 @@ import type {
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import {
@@ -1286,6 +1287,67 @@ describe('updateParentExecutionWithChildResults', () => {
 		expect(waitingTask.usedDynamicCredentials).toBe(true);
 		expect(waitingTask.attemptedDynamicCredentials).toBe(true);
 		expect(persisted.data.executionData?.runtimeData?.executedByUserId).toBe('resolved-user');
+	});
+
+	describe('credentials the sub-workflows reference', () => {
+		afterEach(() => {
+			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+		});
+
+		it('stamps them on the waiting task and the resume stash, joining sibling children', async () => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+			const parent = waitingParent();
+			parent.data.resultData = {
+				runData: {
+					'Execute Sub-workflow': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							executionStatus: 'waiting',
+							source: [],
+						} as ITaskData,
+					],
+				},
+			} as unknown as IExecutionResponse['data']['resultData'];
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parent);
+			const permissionChecker = mockInstance(CredentialsPermissionChecker);
+			permissionChecker.getCredentialIdsForNodes
+				.mockReturnValueOnce(['first-cred'])
+				.mockReturnValueOnce(['second-cred']);
+			const childWorkflow = mock<IWorkflowBase>({ nodes: [] });
+			const child = () => childRun('success', 'Done', { data: { main: [[{ json: { out: 1 } }]] } });
+
+			await updateParentExecutionWithChildResults(PARENT_ID, child(), undefined, childWorkflow);
+			await updateParentExecutionWithChildResults(PARENT_ID, child(), undefined, childWorkflow);
+
+			const waitingTask = parent.data.resultData.runData['Execute Sub-workflow'][0];
+			expect(waitingTask.usedCredentialIds).toEqual(['first-cred', 'second-cred']);
+			const entry = parent.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toEqual([
+				'first-cred',
+				'second-cred',
+			]);
+		});
+
+		it('reports nothing with credential sharing off', async () => {
+			const parent = waitingParent();
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parent);
+			const permissionChecker = mockInstance(CredentialsPermissionChecker);
+
+			await updateParentExecutionWithChildResults(
+				PARENT_ID,
+				childRun('success', 'Done', { data: { main: [[{ json: { out: 1 } }]] } }),
+				undefined,
+				mock<IWorkflowBase>({ nodes: [] }),
+			);
+
+			expect(permissionChecker.getCredentialIdsForNodes).not.toHaveBeenCalled();
+			const entry = parent.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toBeUndefined();
+		});
 	});
 
 	// In "run once for each item" mode multiple children update the same waiting
