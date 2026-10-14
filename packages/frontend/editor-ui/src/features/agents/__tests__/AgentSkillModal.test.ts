@@ -53,7 +53,10 @@ function renderModal({
 	skillId?: string;
 	existingSkillNames?: string[];
 	/** Opens the modal as Settings > Context > Skills does: no agent, plus these fields. */
-	settings?: Pick<AgentSkillModalData, 'readOnly' | 'scopeOptions' | 'initialScope'>;
+	settings?: Pick<
+		AgentSkillModalData,
+		'readOnly' | 'scopeOptions' | 'initialScope' | 'scopeLockedReason'
+	>;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -420,8 +423,8 @@ describe('AgentSkillModal from Settings', () => {
 			onConfirm,
 			settings: {
 				scopeOptions: [
-					{ value: 'project:personal-1', label: 'Personal project' },
-					{ value: 'project:team-1', label: 'Marketing' },
+					{ value: 'project:personal-1', label: 'Personal project', icon: 'user' },
+					{ value: 'project:team-1', label: 'Marketing', icon: 'layers' },
 				],
 				initialScope: 'project:team-1',
 			},
@@ -445,12 +448,23 @@ describe('AgentSkillModal from Settings', () => {
 		expect(trackImportedSkill).not.toHaveBeenCalled();
 	});
 
-	it('does not offer a scope when an existing skill is edited', () => {
-		const { queryByTestId } = renderModal({
+	it('shows the scope of a saved skill without letting the user change it', () => {
+		const { getByTestId } = renderModal({
 			skillId: 's1',
 			skill: SAVED_SKILL,
-			settings: { scopeOptions: [{ value: 'instance', label: 'Global' }] },
+			settings: {
+				scopeOptions: [{ value: 'agent', label: 'FirstClassDarwin only', icon: 'bot' }],
+				initialScope: 'agent',
+				scopeLockedReason: 'You cannot change it.',
+			},
 		});
+
+		expect(getByTestId('agent-skill-scope')).toBeInTheDocument();
+		expect(getByTestId('agent-skill-scope-select').querySelector('input')).toBeDisabled();
+	});
+
+	it('keeps the scope field out of the agent builder', () => {
+		const { queryByTestId } = renderModal({ skillId: 's1', skill: SAVED_SKILL });
 
 		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
 	});

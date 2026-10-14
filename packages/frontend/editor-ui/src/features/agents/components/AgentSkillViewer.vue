@@ -263,6 +263,9 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				props.errors.references
 			}}</N8nText>
 
+			<!-- Fields that belong to the surface that opened the skill, such as its scope. -->
+			<slot name="skillFileHeader" />
+
 			<div :class="$style.field">
 				<N8nFormInput
 					:model-value="description"

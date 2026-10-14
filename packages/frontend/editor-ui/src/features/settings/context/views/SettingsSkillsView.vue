@@ -35,6 +35,7 @@ import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
+import { useSkillScopeDisplay } from '../skills.utils';
 
 const INSTANCE_SCOPE = 'instance';
 const PROJECT_SCOPE_PREFIX = 'project:';
@@ -51,6 +52,7 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
 const { showError, showMessage } = useToast();
+const { scopeDisplay } = useSkillScopeDisplay();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -107,6 +109,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 		options.push({
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
+			icon: 'globe',
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -114,6 +117,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 		options.push({
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
+			icon: 'user',
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -121,6 +125,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 		options.push({
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
+			icon: 'layers',
 		});
 	}
 	return options;
@@ -207,10 +212,15 @@ async function onCreate(skill: AgentSkill, scopeValue: string) {
 async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
+		const current = scopeDisplay(detail);
 		openModal({
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
+			// The API has no scope change, so the field only shows where the skill lives.
+			scopeOptions: [{ value: detail.scope, ...current }],
+			initialScope: detail.scope,
+			scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.locked'),
 			existingSkillNames: [],
 			onConfirm: async ({ skill }) => await onSave(detail.id, skill, detail.skillHash),
 		});

@@ -4,7 +4,16 @@ import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
+	N8nTooltip,
+} from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useUIStore } from '@/app/stores/ui.store';
@@ -18,7 +27,7 @@ import AgentModal from './modals/AgentModal.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
-export type AgentSkillModalScopeOption = { value: string; label: string };
+export type AgentSkillModalScopeOption = { value: string; label: string; icon: IconName };
 
 export type AgentSkillModalData = {
 	/** Set when opened from an agent. Absent when opened from Settings > Context > Skills. */
@@ -32,11 +41,13 @@ export type AgentSkillModalData = {
 	 */
 	existingSkillNames?: string[];
 	/**
-	 * Lets the user choose where a new skill can be used. The chosen value comes back in
-	 * `onConfirm`. Absent when the scope is fixed: in the agent builder, and on edit.
+	 * Shows where the skill can be added. On create the user picks one and the value comes
+	 * back in `onConfirm`. Absent in the agent builder, where the agent fixes the scope.
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
+	/** Locks the scope field and explains why in a tooltip: a saved skill keeps its scope. */
+	scopeLockedReason?: string;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
 	onConfirm: (payload: { id?: string; skill: AgentSkill; scope?: string }) => void;
@@ -81,7 +92,13 @@ const step = ref<'upload' | 'manual' | 'edit'>(
 );
 const isImporting = ref(false);
 const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
-const showScope = computed(() => !!props.data.scopeOptions?.length && !props.data.skillId);
+const showScope = computed(() => !!props.data.scopeOptions?.length);
+const canChangeScope = computed(
+	() => showScope.value && !props.data.scopeLockedReason && !props.data.readOnly,
+);
+const selectedScopeIcon = computed(
+	() => props.data.scopeOptions?.find((option) => option.value === scope.value)?.icon,
+);
 const readOnly = computed(() => props.data.readOnly === true);
 
 const isEditing = computed(() => !!props.data.skillId);
@@ -241,7 +258,7 @@ function onSave() {
 	props.data.onConfirm({
 		id: props.data.skillId,
 		skill: payload,
-		...(showScope.value ? { scope: scope.value } : {}),
+		...(canChangeScope.value ? { scope: scope.value } : {}),
 	});
 	closeModal();
 }
@@ -314,7 +331,48 @@ function onRemove() {
 					@select:path="selectedPath = $event"
 					@update:skill="onSkillUpdate"
 					@update:valid="onValidUpdate"
-				/>
+				>
+					<template v-if="showScope" #skillFileHeader>
+						<N8nInputLabel
+							:label="i18n.baseText('settings.context.skills.modal.scope.label')"
+							:tooltip-text="i18n.baseText('settings.context.skills.modal.scope.tooltip')"
+							size="small"
+							data-testid="agent-skill-scope"
+						>
+							<N8nTooltip
+								:disabled="!props.data.scopeLockedReason"
+								:content="props.data.scopeLockedReason"
+								placement="top"
+							>
+								<!-- A disabled select drops pointer events, so the tooltip needs its own target. -->
+								<div>
+									<N8nSelect
+										v-model="scope"
+										size="large"
+										:disabled="!canChangeScope"
+										:teleported="false"
+										data-testid="agent-skill-scope-select"
+									>
+										<template v-if="selectedScopeIcon" #prefix>
+											<N8nIcon :icon="selectedScopeIcon" />
+										</template>
+										<N8nOption
+											v-for="option in props.data.scopeOptions"
+											:key="option.value"
+											:value="option.value"
+											:label="option.label"
+										>
+											<span :class="$style.scopeOption">
+												<N8nIcon :icon="option.icon" />
+												<span>{{ option.label }}</span>
+											</span>
+										</N8nOption>
+									</N8nSelect>
+								</div>
+							</N8nTooltip>
+						</N8nInputLabel>
+					</template>
+				</AgentSkillViewer>
 			</template>
 		</div>
 
@@ -323,26 +381,6 @@ function onRemove() {
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.skills.remove') }}
 			</N8nButton>
-		</template>
-		<template v-else-if="showScope" #footerLeft>
-			<div :class="$style.scope" data-testid="agent-skill-scope">
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.context.skills.modal.scope.label') }}
-				</N8nText>
-				<N8nSelect
-					v-model="scope"
-					size="small"
-					:teleported="false"
-					data-testid="agent-skill-scope-select"
-				>
-					<N8nOption
-						v-for="option in props.data.scopeOptions"
-						:key="option.value"
-						:value="option.value"
-						:label="option.label"
-					/>
-				</N8nSelect>
-			</div>
 		</template>
 		<template #footerActions>
 			<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
@@ -367,7 +405,7 @@ function onRemove() {
 	margin: var(--spacing--md) var(--spacing--lg) 0;
 }
 
-.scope {
+.scopeOption {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
