@@ -323,5 +323,54 @@ describe('MemoryLakebaseChat', () => {
 				expect(description).toContain('GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq"');
 			},
 		);
+
+		it('should explain a table without grants with the GRANT statements only', async () => {
+			(resolveLakebaseTableUrl as unknown as Mock).mockResolvedValue(TABLE_URL);
+			request.mockRejectedValueOnce(
+				apiError(403, { code: '42501', message: 'permission denied for table chat_log' }),
+			);
+			const context = createContext({
+				lakebaseSchema: 'analytics',
+				lakebaseTable: 'chat_log',
+				contextWindowLength: 5,
+			});
+
+			await new MemoryLakebaseChat().supplyData.call(context, 0);
+			const { chatHistory } = bufferWindowMemoryConstructor.mock.calls[0][0] as {
+				chatHistory: LakebaseChatMessageHistory;
+			};
+
+			const error = await chatHistory.getMessages().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			const { message, description } = error as NodeOperationError;
+			expect(message).toBe('The OAuth2 identity cannot use table analytics.chat_log');
+			expect(description).not.toContain('CREATE TABLE');
+			expect(description).toContain(
+				'GRANT SELECT, INSERT, DELETE ON "analytics"."chat_log" TO "<your-role>";',
+			);
+			expect(description).toContain('GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq"');
+		});
+
+		it('should pass a set-role 42501 error through for the shared hint', async () => {
+			(resolveLakebaseTableUrl as unknown as Mock).mockResolvedValue(TABLE_URL);
+			const apiFailure = apiError(403, {
+				code: '42501',
+				message: 'permission denied to set role "owner@example.com"',
+			});
+			request.mockRejectedValueOnce(apiFailure);
+			const context = createContext({
+				lakebaseSchema: 'analytics',
+				lakebaseTable: 'chat_log',
+				contextWindowLength: 5,
+			});
+
+			await new MemoryLakebaseChat().supplyData.call(context, 0);
+			const { chatHistory } = bufferWindowMemoryConstructor.mock.calls[0][0] as {
+				chatHistory: LakebaseChatMessageHistory;
+			};
+
+			await expect(chatHistory.getMessages()).rejects.toBe(apiFailure);
+		});
 	});
 });

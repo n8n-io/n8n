@@ -46,15 +46,32 @@ type StoredRow = { message: StoredMessage['data'] & { type: string } };
 
 type LakebaseTarget = { tableUrl: string; schema: string; table: string; sessionId: string };
 
-function missingTableHint(schema: string, table: string): string {
+const ROLE_PLACEHOLDER =
+	'replace <your-role> with the Postgres role of the OAuth2 identity (user email or service principal application ID), then retry.';
+
+function grantStatements(schema: string, table: string): string[] {
 	const qualified = `${escapeSqlIdentifier(schema)}.${escapeSqlIdentifier(table)}`;
 	const sequence = `${escapeSqlIdentifier(schema)}.${escapeSqlIdentifier(`${table}_id_seq`)}`;
 	return [
-		'The Lakebase Data API cannot create tables. Run this in the Databricks SQL editor, replace <your-role> with the Postgres role of the OAuth2 identity (user email or service principal application ID), then retry.',
-		`CREATE TABLE ${qualified} (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);`,
-		`CREATE INDEX ON ${qualified} (session_id, id);`,
 		`GRANT SELECT, INSERT, DELETE ON ${qualified} TO "<your-role>";`,
 		`GRANT USAGE ON SEQUENCE ${sequence} TO "<your-role>";`,
+	];
+}
+
+function missingTableHint(schema: string, table: string): string {
+	const qualified = `${escapeSqlIdentifier(schema)}.${escapeSqlIdentifier(table)}`;
+	return [
+		`The Lakebase Data API cannot create tables. Run this in the Databricks SQL editor, ${ROLE_PLACEHOLDER}`,
+		`CREATE TABLE ${qualified} (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);`,
+		`CREATE INDEX ON ${qualified} (session_id, id);`,
+		...grantStatements(schema, table),
+	].join('\n');
+}
+
+function missingGrantHint(schema: string, table: string): string {
+	return [
+		`The table exists but the OAuth2 identity has no rights on it. Run this in the Databricks SQL editor as the table owner, ${ROLE_PLACEHOLDER}`,
+		...grantStatements(schema, table),
 	].join('\n');
 }
 
@@ -78,16 +95,26 @@ export class LakebaseChatMessageHistory extends BaseListChatMessageHistory {
 		} catch (error) {
 			// The transport already retried PGRST205 once, so here it means the table is missing.
 			// 42P01 is the Postgres code when the Data API schema cache still lists a dropped table
-			const code =
-				error instanceof NodeApiError && isRecord(error.context.data)
-					? error.context.data.code
-					: undefined;
-			if (code === 'PGRST205' || code === '42P01') {
-				const { schema, table } = this.target;
+			const data =
+				error instanceof NodeApiError && isRecord(error.context.data) ? error.context.data : {};
+			const { schema, table } = this.target;
+			if (data.code === 'PGRST205' || data.code === '42P01') {
 				throw new NodeOperationError(
 					this.context.getNode(),
 					`Table ${schema}.${table} does not exist`,
 					{ description: missingTableHint(schema, table) },
+				);
+			}
+			// 42501 also covers "permission denied to set role", which the shared transport hint explains
+			if (
+				data.code === '42501' &&
+				typeof data.message === 'string' &&
+				/permission denied for (table|sequence)/.test(data.message)
+			) {
+				throw new NodeOperationError(
+					this.context.getNode(),
+					`The OAuth2 identity cannot use table ${schema}.${table}`,
+					{ description: missingGrantHint(schema, table) },
 				);
 			}
 			throw error;
