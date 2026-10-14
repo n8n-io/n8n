@@ -62,7 +62,12 @@ const ipv6Schema = z.string().ip({ version: 'v6' });
 
 const isValidHostname = (value: string) => {
 	const hostname = value.replace(/\.$/, '');
-	if (hostname.length > 253 || !/[a-z]/i.test(hostname)) return false;
+	if (hostname.length > 253) return false;
+
+	// Digits and dots alone are an IP address, so a value that does not parse as
+	// one is a typo, not a hostname: `127.1` is a shorthand the OS expands and
+	// the destination clients do not.
+	if (/^[\d.]+$/.test(hostname) && !ipv4Schema.safeParse(hostname).success) return false;
 
 	return hostname
 		.split('.')
@@ -91,7 +96,9 @@ const destinationUrlSchema = z
 		}
 	}, 'Invalid URL');
 
-const syslogHostSchema = z.string().min(1).refine(isValidHost, 'Invalid host');
+const HOST_MESSAGE = 'Enter a host name or IP address, without brackets or a scheme';
+
+const syslogHostSchema = z.string().min(1, HOST_MESSAGE).refine(isValidHost, HOST_MESSAGE);
 
 // Circuit Breaker Options Schema
 export const circuitBreakerSchema = z
