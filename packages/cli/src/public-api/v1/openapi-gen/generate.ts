@@ -232,6 +232,20 @@ export function assembleSpec(
 	envelope: OpenApiDocument,
 	generated: OpenApiDocument,
 ): OpenApiDocument {
+	// Ensure the envelope itself does not declare any paths.
+	const envelopePaths = Object.keys(envelope.paths ?? {});
+	if (envelopePaths.length > 0) {
+		throw new UnexpectedError(
+			`openapi.yml still declares paths (${envelopePaths.join(', ')}). Paths come from the generated spec.`,
+		);
+	}
+
+	// Ensure the generated root has at least one path.
+	const generatedPaths = generated.paths ?? {};
+	if (Object.keys(generatedPaths).length === 0) {
+		throw new UnexpectedError('The bundled generated spec has no paths.');
+	}
+
 	const components: Record<string, Record<string, unknown>> = { ...generated.components };
 
 	for (const [section, items] of Object.entries(envelope.components ?? {})) {
@@ -247,5 +261,5 @@ export function assembleSpec(
 		components[section] = { ...target, ...items };
 	}
 
-	return { ...envelope, paths: generated.paths ?? {}, components };
+	return { ...envelope, paths: generatedPaths, components };
 }

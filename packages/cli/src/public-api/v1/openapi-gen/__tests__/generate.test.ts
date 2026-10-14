@@ -97,7 +97,7 @@ describe('assembleSpec', () => {
 		};
 
 		const assembled = assembleSpec(envelope, {
-			paths: {},
+			paths: { '/tags': { get: { operationId: 'getTags' } } },
 			components: { schemas: { Tag: { type: 'object' } } },
 		});
 
@@ -119,12 +119,29 @@ describe('assembleSpec', () => {
 			components: { schemas: { Tag: { type: 'string' } } },
 		};
 		const generated: OpenApiDocument = {
-			paths: {},
+			paths: { '/tags': { get: { operationId: 'getTags' } } },
 			components: { schemas: { Tag: { type: 'object' } } },
 		};
 
 		expect(() => assembleSpec(envelope, generated)).toThrow(UnexpectedError);
 		expect(() => assembleSpec(envelope, generated)).toThrow(/components\.schemas\.Tag/);
+	});
+
+	it('throws when the envelope declares paths', () => {
+		const envelope: OpenApiDocument = { paths: { '/tags': { get: {} } } };
+		const generated: OpenApiDocument = {
+			paths: { '/tags': { get: { operationId: 'getTags' } } },
+		};
+
+		expect(() => assembleSpec(envelope, generated)).toThrow(UnexpectedError);
+		expect(() => assembleSpec(envelope, generated)).toThrow(/still declares paths \(\/tags\)/);
+	});
+
+	it('throws when the generated spec has no paths', () => {
+		const envelope: OpenApiDocument = { paths: {} };
+
+		expect(() => assembleSpec(envelope, { paths: {} })).toThrow(UnexpectedError);
+		expect(() => assembleSpec(envelope, { paths: {} })).toThrow(/has no paths/);
 	});
 });
 
