@@ -1,4 +1,4 @@
-ARG NODE_VERSION=26.11.1
+ARG NODE_VERSION=26.10.0
 ARG PNPM_VERSION=12.4.2
 ARG PYTHON_VERSION=3.13
 
@@ -7,7 +7,7 @@ ARG PYTHON_VERSION=3.13
 # is the Debian base of the n8n image, so the contract (shell, no package
 # manager, libaio, no vendor libraries) is defined once. Repin it with the n8n
 # Debian image.
-ARG RUNTIME_IMAGE=n8nio/base:26.11.1-debian@sha256:5df50a4662de2ccd60431968a53afbfcb4bf3b2d227b5c2d3324794bd3222a35
+ARG RUNTIME_IMAGE=n8nio/base:26.10.0-debian@sha256:3ca570daabb339874068a9d114c4fbe605c4ef2e2a89a5875a1a5f25f1f6571a
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
