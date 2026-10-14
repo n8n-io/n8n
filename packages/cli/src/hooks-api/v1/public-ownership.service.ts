@@ -1,5 +1,7 @@
+import { OwnerSetupRequestDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BadRequestError, UserError } from '@n8n/errors';
 import type {
 	OwnerSetupInputV1,
 	OwnerSetupOptionsV1,
@@ -43,8 +45,22 @@ export class PublicOwnershipService implements OwnershipApiV1 {
 			);
 		}
 
-		const user = await this.ownershipService.setupOwner(owner, { overwriteExisting });
+		const parsed = OwnerSetupRequestDto.safeParse(owner);
+		if (!parsed.success) {
+			throw new UserError(parsed.error.issues[0]?.message ?? 'Invalid owner');
+		}
 
-		return toUserV1(user);
+		try {
+			const user = await this.ownershipService.setupOwner(parsed.data, { overwriteExisting });
+			return toUserV1(user);
+		} catch (error) {
+			if (error instanceof BadRequestError && error.message === 'Instance owner already setup') {
+				throw new HooksApiError<OwnershipErrorCodeV1>(
+					'owner_already_set_up',
+					'Instance owner already set up',
+				);
+			}
+			throw error;
+		}
 	}
 }

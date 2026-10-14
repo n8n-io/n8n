@@ -18,6 +18,8 @@ export class WebhookServer extends AbstractServer {
 			const { createE2EDiagnosticsRouter } = await import('@/services/e2e-diagnostics.router.js');
 			this.app.use(`/${this.restEndpoint}/e2e`, createE2EDiagnosticsRouter());
 		}
+
+		await this.mountExtensionRoutes();
 	}
 
 	/** The chat widget opens its WebSocket against the same origin that served the chat webhook */
