@@ -289,6 +289,7 @@ export class InstanceAiController {
 				.checkThreadOwnership(userId, threadId)
 				.then((currentOwnership) => {
 					if (closed) return false;
+
 					ownershipVerified = currentOwnership === 'owned';
 					if (!ownershipVerified) {
 						pendingEvents.length = 0;
@@ -296,9 +297,11 @@ export class InstanceAiController {
 						res.end();
 						return false;
 					}
+
 					// Drain before live delivery can observe the verified owner.
 					for (const stored of pendingEvents) this.writeSseEvent(res, stored);
 					pendingEvents.length = 0;
+
 					return true;
 				})
 				.catch(() => {
@@ -307,6 +310,7 @@ export class InstanceAiController {
 					res.end();
 					return false;
 				});
+
 			return await ownershipCheck;
 		};
 
@@ -321,6 +325,7 @@ export class InstanceAiController {
 
 		const deliver = (stored: StoredEvent) => {
 			if (closed) return;
+
 			if (ownershipVerified) {
 				this.writeSseEvent(res, stored);
 				return;

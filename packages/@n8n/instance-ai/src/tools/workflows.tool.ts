@@ -2320,6 +2320,7 @@ export function createWorkflowsTool(
 			if (options.allowedActions && !options.allowedActions.includes(workflowInput.action)) {
 				throw new Error('Workflow action is not available');
 			}
+
 			switch (workflowInput.action) {
 				case 'list':
 					return await handleList(context, workflowInput);
@@ -2329,6 +2330,7 @@ export function createWorkflowsTool(
 					return await handleGet(context, workflowInput);
 				case 'get-as-code': {
 					const result = await handleGetAsCode(context, workflowInput);
+
 					return options.sourceGuidance ? { ...result, note: options.sourceGuidance } : result;
 				}
 				case 'delete':

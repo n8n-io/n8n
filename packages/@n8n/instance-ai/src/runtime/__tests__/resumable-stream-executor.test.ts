@@ -139,6 +139,7 @@ describe('executeResumableStream', () => {
 		{ finishReason: 'error', status: 'errored' },
 	])('preserves SDK terminal details for $finishReason', async ({ finishReason, status }) => {
 		const structuredOutput = { summary: 'Finished checking the candidate.' };
+
 		const result = await executeResumableStream({
 			agent: {},
 			stream: normalizeStreamSource({
@@ -180,15 +181,18 @@ describe('executeResumableStream', () => {
 			const controller = new AbortController();
 			const streamError = new Error('Connection closed');
 			const eventBus = createEventBus();
+
 			async function* failingStream() {
 				await Promise.resolve();
 				if (aborted) controller.abort();
+
 				yield {
 					type: 'finish',
 					finishReason: 'error',
 					model: 'test-model',
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				};
+
 				throw streamError;
 			}
 
@@ -243,6 +247,7 @@ describe('executeResumableStream', () => {
 			};
 			if (source === 'publish') eventBus.publish.mockImplementationOnce(fail);
 			if (source === 'cleanup') closed.mockImplementationOnce(fail);
+
 			async function* stream() {
 				try {
 					yield textChunk('Working...');
@@ -271,6 +276,7 @@ describe('executeResumableStream', () => {
 					control: { mode: 'manual' },
 				}),
 			).rejects.toBe(failure);
+
 			expect(closed).toHaveBeenCalledTimes(1);
 			expect(eventBus.publish).toHaveBeenCalledTimes(source === 'activity' ? 0 : 1);
 		},

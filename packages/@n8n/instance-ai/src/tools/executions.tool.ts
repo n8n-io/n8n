@@ -580,6 +580,7 @@ export function createExecutionsTool(
 	options: ExecutionsToolOptions = {},
 ) {
 	const inputSchema = restrictToolActions(actions, options.allowedActions);
+
 	return new Tool('executions')
 		.description(
 			options.description ??
@@ -603,6 +604,7 @@ export function createExecutionsTool(
 			if (options.allowedActions && !options.allowedActions.includes(input.action)) {
 				throw new Error('Execution action is not available');
 			}
+
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);

@@ -125,9 +125,11 @@ async function handleWebSearch(
 					reason: check.blocked ? 'Action blocked by admin.' : 'Interactive approval is required.',
 				};
 			}
+
 			if (check.blocked) {
 				return { query: input.query, results: [] };
 			}
+
 			return await ctx.suspend(check.suspendPayload!);
 		}
 	}
@@ -207,6 +209,7 @@ async function handleFetchUrl(
 					reason: check.blocked ? 'Action blocked by admin.' : 'Interactive approval is required.',
 				};
 			}
+
 			if (check.blocked) {
 				return {
 					url: input.url,
@@ -217,6 +220,7 @@ async function handleFetchUrl(
 					contentLength: 0,
 				};
 			}
+
 			return await ctx.suspend(check.suspendPayload!);
 		}
 	}
@@ -274,6 +278,7 @@ export function createResearchTool(
 				options.interactive === false
 					? { abortSignal: ctx.abortSignal, resumeData: undefined }
 					: ctx;
+
 			switch (input.action) {
 				case 'web-search':
 					return await handleWebSearch(context, input, toolContext);

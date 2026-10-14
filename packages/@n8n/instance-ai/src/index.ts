@@ -850,6 +850,7 @@ export type {
 export const createSelfHealingAgent: typeof SelfHealingAgentMod.createSelfHealingAgent =
 	lazyFunction(() => loadSelfHealingAgent().createSelfHealingAgent);
 export type { CreateSelfHealingAgentOptions } from './agent/self-healing-agent';
+
 export const getSelfHealingResourceId: typeof SelfHealingMod.getSelfHealingResourceId =
 	lazyFunction(() => loadSelfHealing().getSelfHealingResourceId);
 export const isSelfHealingResourceId: typeof SelfHealingMod.isSelfHealingResourceId = lazyFunction(
@@ -862,6 +863,7 @@ export type {
 	SelfHealingCandidateInput,
 	SelfHealingCandidateVerifier,
 } from './self-healing';
+
 export const readWorkspaceFile: typeof WorkspaceFilesMod.readWorkspaceFile = lazyFunction(
 	() => loadWorkspaceFiles().readWorkspaceFile,
 );
@@ -869,20 +871,25 @@ export const writeWorkspaceFile: typeof WorkspaceFilesMod.writeWorkspaceFile = l
 	() => loadWorkspaceFiles().writeWorkspaceFile,
 );
 export type { WorkspaceFileTarget, WorkspaceFileOptions } from './workspace/workspace-files';
+
 export declare const SELF_HEALING_PROFILE_VERSION: typeof SelfHealingMod.SELF_HEALING_PROFILE_VERSION;
 defineLazyExport(
 	'SELF_HEALING_PROFILE_VERSION',
 	() => loadSelfHealing().SELF_HEALING_PROFILE_VERSION,
 );
+
 export declare const SELF_HEALING_RESOURCE_PREFIX: typeof SelfHealingMod.SELF_HEALING_RESOURCE_PREFIX;
 defineLazyExport(
 	'SELF_HEALING_RESOURCE_PREFIX',
 	() => loadSelfHealing().SELF_HEALING_RESOURCE_PREFIX,
 );
+
 export declare const selfHealingOutputSchema: typeof SelfHealingMod.selfHealingOutputSchema;
 defineLazyExport('selfHealingOutputSchema', () => loadSelfHealing().selfHealingOutputSchema);
+
 export declare const selfHealingIdentitySchema: typeof SelfHealingMod.selfHealingIdentitySchema;
 defineLazyExport('selfHealingIdentitySchema', () => loadSelfHealing().selfHealingIdentitySchema);
+
 export declare const selfHealingThreadMetadataSchema: typeof SelfHealingMod.selfHealingThreadMetadataSchema;
 defineLazyExport(
 	'selfHealingThreadMetadataSchema',

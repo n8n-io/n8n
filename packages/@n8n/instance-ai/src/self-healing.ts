@@ -20,6 +20,7 @@ export const selfHealingOutputSchema = z
 				message: 'A ready fix requires a candidate file.',
 			});
 		}
+
 		if (output.outcome === 'could_not_fix' && output.candidateFilePath !== undefined) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
@@ -65,6 +66,7 @@ export const selfHealingCandidateInputSchema = z
 	.strict();
 
 export type SelfHealingCandidateInput = z.infer<typeof selfHealingCandidateInputSchema>;
+
 export type SelfHealingCandidateVerifier = (
 	input: SelfHealingCandidateInput,
 	abortSignal?: AbortSignal,

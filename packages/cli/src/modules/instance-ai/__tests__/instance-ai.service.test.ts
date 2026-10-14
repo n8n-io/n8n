@@ -1616,6 +1616,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 
 		const run = service.startSelfHealingRun(input, verifier);
 		const options = service.selfHealingAgent.execute.mock.calls[0][2];
+
 		expect(service.runState.activeRunCountForUser(fakeUser.id)).toBe(1);
 		expect(service.inFlightExecutions.size).toBe(1);
 		expect(options.sandbox).toBe(service.sandboxService);
@@ -1682,16 +1683,20 @@ describe('InstanceAiService — self-healing launcher', () => {
 				options.signal.addEventListener('abort', () => resolve(), { once: true }),
 			);
 			await cleanup.promise;
+
 			return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
 		});
+
 		const run = service.startSelfHealingRun(input, verifier);
 		const { activeRuns } = service.runState.shutdown();
 		for (const active of activeRuns) active.abortController.abort('service_shutdown');
+
 		let drained = false;
 		const drain = service.drainInFlightExecutions(1000).then(() => {
 			drained = true;
 		});
 		await Promise.resolve();
+
 		expect(drained).toBe(false);
 
 		cleanup.resolve(undefined);
@@ -1705,6 +1710,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
 			const result = { ...completedRun(options), finishReason: 'length' as const };
 			options.onFinish(result, 'model-1');
+
 			return result;
 		});
 
@@ -1734,8 +1740,10 @@ describe('InstanceAiService — self-healing launcher', () => {
 				await settle.promise;
 				const result = { ...completedRun(options), status };
 				options.onFinish(result, 'model-1');
+
 				return result;
 			});
+
 			const run = service.startSelfHealingRun(input, verifier);
 			service.tracing.finalizeRunTracing.mockImplementation(async () => {
 				settle.resolve(undefined);
@@ -1787,8 +1795,10 @@ describe('InstanceAiService — self-healing launcher', () => {
 				reason: options.getAbortReason(),
 			};
 			options.onFinish(result, 'model-1');
+
 			return result;
 		});
+
 		const run = service.startSelfHealingRun(input, verifier);
 		const options = service.selfHealingAgent.execute.mock.calls[0][2];
 		service.runState.getActiveRun(options.threadId)?.abortController.abort();

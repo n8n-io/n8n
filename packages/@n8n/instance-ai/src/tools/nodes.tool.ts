@@ -690,6 +690,7 @@ export function createNodesTool(
 				if (options.allowedActions && !options.allowedActions.includes(input.action)) {
 					throw new Error('Node action is not available');
 				}
+
 				switch (input.action) {
 					case 'type-definition':
 						return await handleTypeDefinition(context, input, ctx.loadSkill);
@@ -712,6 +713,7 @@ export function createNodesTool(
 			if (options.allowedActions && !options.allowedActions.includes(input.action)) {
 				throw new Error('Node action is not available');
 			}
+
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
