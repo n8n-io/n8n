@@ -24,7 +24,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
+import type {
+	ToolConnectionItem,
+	WorkflowConnectionItem,
+} from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
 
 import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
@@ -862,7 +865,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			return getItems().find((item) => item.id === `workflow:${WORKFLOW.id}`)!;
 		}
 
-		it('surfaces incompatible workflows as disabled items with a reason', async () => {
+		it('hides incompatible workflows instead of listing them as disabled items', async () => {
 			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
 				WORKFLOW,
 				{
@@ -885,33 +888,16 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			await flushPromises();
 
 			const items = getItems();
-			const compatible = items.find((i) => i.id === 'workflow:wf-1');
-			const formDisabled = items.find((i) => i.id === 'workflow-disabled:wf-form');
-			const noTriggerDisabled = items.find((i) => i.id === 'workflow-disabled:wf-no-trigger');
-
-			// Compatible workflow remains selectable.
-			expect(compatible?.disabled).toBeFalsy();
-
-			// Incompatible workflows are visible but disabled, with a reason.
-			expect(formDisabled).toBeTruthy();
-			expect(formDisabled?.disabled).toBe(true);
-			expect(formDisabled?.disabledReason).toContain("aren't supported as agent tools");
-
-			expect(noTriggerDisabled).toBeTruthy();
-			expect(noTriggerDisabled?.disabled).toBe(true);
-			expect(noTriggerDisabled?.disabledReason).toContain(
-				"Needs a 'When Executed by Another Workflow' trigger",
+			// Only the compatible workflow is listed; incompatible ones are
+			// filtered out rather than shown as disabled rows (AGENT-1001).
+			expect(items.filter((i) => i.kind === 'workflow').map((i) => i.id)).toEqual([
+				'workflow:wf-1',
+			]);
+			// The compatible row carries no "Not published" warning.
+			const workflowItem = items.find(
+				(i): i is WorkflowConnectionItem => i.kind === 'workflow' && i.id === 'workflow:wf-1',
 			);
-
-			// Disabled items appear after compatible ones within the category.
-			const workflowItems = items.filter((i) => i.kind === 'workflow');
-			const compatibleIdx = workflowItems.findIndex((i) => i.id === 'workflow:wf-1');
-			const formIdx = workflowItems.findIndex((i) => i.id === 'workflow-disabled:wf-form');
-			const noTriggerIdx = workflowItems.findIndex(
-				(i) => i.id === 'workflow-disabled:wf-no-trigger',
-			);
-			expect(compatibleIdx).toBeLessThan(formIdx);
-			expect(compatibleIdx).toBeLessThan(noTriggerIdx);
+			expect(workflowItem?.warning).toBeUndefined();
 		});
 
 		it('creates a compatible workflow and attaches it after configuration is saved', async () => {
