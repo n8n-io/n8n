@@ -28,6 +28,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		agentId: null,
 		agentName: null,
 		source: 'ui',
+		createdBy: null,
 		latestVersion: 1,
 		usedByAgents: 0,
 		canEdit: true,
@@ -78,6 +79,29 @@ describe('SkillsTable', () => {
 		const { getByTestId } = render([row]);
 
 		expect(getByTestId('skill-scope-badge')).toHaveTextContent(label);
+	});
+
+	it.each([
+		[
+			'the name for a skill made in Settings',
+			skill({
+				createdBy: { id: 'u1', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
+			}),
+			'Ada Lovelace',
+		],
+		[
+			'the name and the surface for a skill made in the agent builder',
+			skill({
+				source: 'agent',
+				createdBy: { id: 'u1', email: 'ada@example.com', firstName: null, lastName: null },
+			}),
+			'ada@example.com (Agent builder)',
+		],
+		['the surface when the creator is gone', skill({ createdBy: null }), 'Settings'],
+	])('shows %s in Created by', (_, row, label) => {
+		const { getByTestId } = render([row]);
+
+		expect(getByTestId('skill-created-by')).toHaveTextContent(label);
 	});
 
 	it('shows a dash for a skill that no agent uses', () => {

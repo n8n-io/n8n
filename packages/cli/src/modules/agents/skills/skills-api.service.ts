@@ -7,9 +7,10 @@ import type {
 	SkillSaveResponse,
 	SaveSkillDto,
 	SkillScope,
+	SkillUserDto,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
-import { TransactionRunner, type User } from '@n8n/db';
+import { TransactionRunner, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -39,6 +40,7 @@ export class SkillsApiService {
 		private readonly skillRepository: SkillRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly txRunner: TransactionRunner,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -217,10 +219,11 @@ export class SkillsApiService {
 		);
 		const projectOf = (skill: Skill) =>
 			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
-		const [latest, usage, projects, canEdit, canDelete] = await Promise.all([
+		const [latest, usage, projects, creators, canEdit, canDelete] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillRepository.countUsingAgents(ids),
 			this.skillRepository.findProjectNames(skills.flatMap((skill) => projectOf(skill) ?? [])),
+			this.findCreators(skills),
 			this.skillService.accessCheck(user, 'update'),
 			this.skillService.accessCheck(user, 'delete'),
 		]);
@@ -239,6 +242,7 @@ export class SkillsApiService {
 				agentId: skill.agentId,
 				agentName: skill.agentId ? (agents.get(skill.agentId)?.name ?? null) : null,
 				source: skill.source,
+				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
 				canEdit: canEdit(skill, projectId),
@@ -248,5 +252,23 @@ export class SkillsApiService {
 			});
 		}
 		return items;
+	}
+
+	/** The creators of a page of skills, in one query. */
+	private async findCreators(skills: Skill[]): Promise<Map<string, SkillUserDto>> {
+		const ids = [...new Set(skills.flatMap((skill) => skill.createdById ?? []))];
+		if (ids.length === 0) return new Map();
+		const users = await this.userRepository.findManyByIds(ids);
+		return new Map(
+			users.map((creator) => [
+				creator.id,
+				{
+					id: creator.id,
+					email: creator.email ?? null,
+					firstName: creator.firstName ?? null,
+					lastName: creator.lastName ?? null,
+				},
+			]),
+		);
 	}
 }
