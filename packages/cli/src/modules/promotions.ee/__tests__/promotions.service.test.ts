@@ -1237,6 +1237,7 @@ describe('PromotionsService', () => {
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
+					credentialConflictPolicy: 'keep-existing',
 					folderConflictPolicy: 'overwrite',
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',

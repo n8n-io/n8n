@@ -7,7 +7,8 @@ import { defineComponent, ref } from 'vue';
 
 import AgentChannelTeamsEditView from './AgentChannelTeamsEditView.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
-import { fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import { checkTeamsFileAccess, fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import { fileAccessJustApproved } from './fileAccessConsent';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -26,6 +27,7 @@ vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
+	checkTeamsFileAccess: vi.fn(),
 	getTeamsSetupState: vi.fn(),
 	fetchTeamsAppPackage: vi.fn(),
 }));
@@ -126,10 +128,123 @@ describe('AgentChannelTeamsEditView', () => {
 			deployToAzureUrl: null,
 			credentialClaimedBy: null,
 			provisionedByN8n: true,
+			fileAccessConsentUrl: null,
 			defaultDisplayName: 'Support Bot',
 			defaultDescription: 'Chat with Support Bot, an agent powered by n8n.',
 		});
 		vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
+		vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'notApproved' });
+	});
+
+	describe('file access', () => {
+		it('confirms the approval instead of asking for it again', async () => {
+			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
+
+			const { findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+			expect(queryByTestId('teams-file-access')).toBeNull();
+			expect(checkTeamsFileAccess).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
+		});
+
+		it('keeps asking while the approval is missing', async () => {
+			const { findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-file-access')).toBeVisible();
+			expect(queryByTestId('teams-file-access-approved')).toBeNull();
+		});
+
+		it('shows neither request nor approval while checking', async () => {
+			vi.mocked(checkTeamsFileAccess).mockReturnValue(new Promise(() => {}));
+
+			const { findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-file-access-checking')).toBeVisible();
+			expect(queryByTestId('teams-file-access')).toBeNull();
+			expect(queryByTestId('teams-file-access-approved')).toBeNull();
+		});
+
+		it('checks again until a fresh approval reaches Microsoft', async () => {
+			vi.useFakeTimers();
+			vi.mocked(checkTeamsFileAccess)
+				.mockResolvedValueOnce({ status: 'notApproved' })
+				.mockResolvedValueOnce({ status: 'approved' });
+
+			const { findByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			await vi.advanceTimersByTimeAsync(10_000);
+
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+			expect(checkTeamsFileAccess).toHaveBeenCalledTimes(2);
+			vi.useRealTimers();
+		});
+
+		it('waits before the first check after Microsoft returns from an approval', async () => {
+			vi.useFakeTimers();
+			fileAccessJustApproved.value = true;
+			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
+
+			const { findByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			await vi.advanceTimersByTimeAsync(9_000);
+			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
+			expect(await findByTestId('teams-file-access-checking')).toBeVisible();
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+			expect(fileAccessJustApproved.value).toBe(false);
+			vi.useRealTimers();
+		});
+
+		it('still waits after an approval when the saved settings arrive late', async () => {
+			vi.useFakeTimers();
+			fileAccessJustApproved.value = true;
+			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
+
+			const { rerender } = renderView({
+				props: { ...viewProps, savedSettings: undefined },
+				pinia: createTestingPinia(),
+			});
+			await rerender({ ...viewProps, savedSettings: { teamChannels: true } });
+			await vi.advanceTimersByTimeAsync(9_000);
+			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(checkTeamsFileAccess).toHaveBeenCalledTimes(1);
+			vi.useRealTimers();
+		});
+
+		it('falls back to the request when the check fails', async () => {
+			vi.mocked(checkTeamsFileAccess).mockRejectedValue(new Error('offline'));
+
+			const { findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-file-access')).toBeVisible();
+			expect(queryByTestId('teams-file-access-checking')).toBeNull();
+		});
+
+		it('checks nothing while the agent reads only direct messages', async () => {
+			renderView({ props: viewProps, pinia: createTestingPinia() });
+			await flushPromises();
+
+			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
+		});
 	});
 
 	it('passes the save label and the save hooks through to the modal', async () => {
@@ -273,6 +388,7 @@ describe('AgentChannelTeamsEditView', () => {
 				deployToAzureUrl: null,
 				credentialClaimedBy: null,
 				provisionedByN8n: false,
+				fileAccessConsentUrl: null,
 				defaultDisplayName: 'Support Bot',
 				defaultDescription: 'An agent built with n8n.',
 			});
@@ -303,6 +419,7 @@ describe('AgentChannelTeamsEditView', () => {
 			deployToAzureUrl: null,
 			credentialClaimedBy: null,
 			provisionedByN8n: false,
+			fileAccessConsentUrl: null,
 			defaultDisplayName: 'Support Bot',
 			defaultDescription: 'An agent built with n8n.',
 		});

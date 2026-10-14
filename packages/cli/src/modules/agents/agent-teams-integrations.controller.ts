@@ -8,6 +8,7 @@ import type {
 	CreateTeamsManagerCredentialResponse,
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
+	TeamsFileAccessCheck,
 	TeamsManagedSetupState,
 	TeamsAzureSubscription,
 	TeamsCatalogState,
@@ -293,6 +294,20 @@ export class AgentTeamsIntegrationsController {
 		@Param('credentialId') credentialId: string,
 	): Promise<TeamsCredentialCheck> {
 		return await this.credentialCheckService.check(req.user, req.params.projectId, credentialId);
+	}
+
+	@Get('/:agentId/integrations/teams/file-access/:credentialId')
+	@ProjectScope('agent:update')
+	async checkFileAccess(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('credentialId') credentialId: string,
+	): Promise<TeamsFileAccessCheck> {
+		return await this.credentialCheckService.checkFileAccess(
+			req.user,
+			req.params.projectId,
+			credentialId,
+		);
 	}
 
 	@Get('/:agentId/integrations/teams/setup')
