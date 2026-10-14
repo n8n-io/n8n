@@ -20,6 +20,7 @@ type AppRequest = AuthenticatedRequest<{ projectId: string; appId: string }>;
 export class AppsController {
 	constructor(private readonly appsService: AppsService) {}
 
+	// TODO: remove direct endpoint for app creation once it's implemented via AIA
 	@Post('/')
 	@ProjectScope('app:create')
 	async create(req: AppRequest, _res: Response, @Body dto: CreateAppDto) {

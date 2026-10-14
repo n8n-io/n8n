@@ -71,15 +71,11 @@ export class AppsService {
 
 	async deleteApp(projectId: string, appId: string) {
 		this.assertValidAppId(appId);
+		// TODO: need to clean up resources related to app versions here, once it's added
 		const result = await this.appRepository.delete({ id: appId, projectId });
 		if (!result.affected) {
 			throw new NotFoundError('App not found');
 		}
-	}
-
-	// ProjectService checks both projects and permissions before this call.
-	async transferApps(sourceProjectId: string, targetProjectId: string) {
-		await this.appRepository.update({ projectId: sourceProjectId }, { projectId: targetProjectId });
 	}
 
 	private assertValidAppId(appId: string) {
