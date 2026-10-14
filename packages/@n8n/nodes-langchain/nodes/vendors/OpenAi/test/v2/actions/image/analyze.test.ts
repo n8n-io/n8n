@@ -975,5 +975,16 @@ describe('Image Analyze Operation', () => {
 
 			expect(accumulateTokenUsageMock).not.toHaveBeenCalled();
 		});
+
+		it('should not report token usage when a proxy returns usage without the counts', async () => {
+			apiRequestSpy.mockResolvedValue({
+				...baseResponse,
+				usage: { total_tokens: 1216 },
+			} as unknown as ChatResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -313,5 +313,20 @@ describe('Image Generate Operation', () => {
 				},
 			]);
 		});
+
+		it('should not report token usage when a proxy returns usage without the counts', async () => {
+			apiRequestSpy.mockResolvedValue({ ...b64Response, usage: { total_tokens: 1610 } });
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).not.toHaveBeenCalled();
+			expect(result).toEqual([
+				{
+					json: expect.objectContaining({ data: undefined }),
+					binary: { data: mockBinaryData },
+					pairedItem: { item: 0 },
+				},
+			]);
+		});
 	});
 });

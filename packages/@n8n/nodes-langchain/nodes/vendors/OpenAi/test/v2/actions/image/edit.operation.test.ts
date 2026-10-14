@@ -817,5 +817,23 @@ describe('Image Edit Operation', () => {
 				},
 			]);
 		});
+
+		it('should not report token usage when a proxy returns usage without the counts', async () => {
+			apiRequestSpy.mockResolvedValue({
+				data: [{ b64_json: 'base64encodedimagedata' }],
+				usage: { total_tokens: 4510 },
+			});
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).not.toHaveBeenCalled();
+			expect(result).toEqual([
+				{
+					json: expect.objectContaining({ data: undefined }),
+					binary: { data: mockEditedBinaryData },
+					pairedItem: { item: 0 },
+				},
+			]);
+		});
 	});
 });

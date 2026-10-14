@@ -4,10 +4,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
+import { accumulateImageTokenUsage } from '../../../helpers/token-usage';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
 import { getBinaryDataFile } from '../../../helpers/binary-data';
@@ -196,9 +197,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body,
 	})) as ChatResponse;
 
-	if (response.usage) {
-		accumulateTokenUsage(this, response.usage.input_tokens, response.usage.output_tokens);
-	}
+	accumulateImageTokenUsage(this, response.usage);
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 

@@ -4,9 +4,10 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ImageResponse } from '../../../helpers/interfaces';
+import { accumulateImageTokenUsage } from '../../../helpers/token-usage';
 import { apiRequest } from '../../../transport';
 import { imageGenerateOptions, imageGenerateOptionsRLC, modelRLC } from '../descriptions';
 
@@ -119,9 +120,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	})) as ImageResponse;
 	const { data, usage } = response;
 
-	if (usage) {
-		accumulateTokenUsage(this, usage.input_tokens, usage.output_tokens);
-	}
+	accumulateImageTokenUsage(this, usage);
 
 	if (response_format === 'url') {
 		return ((data as IDataObject[]) || []).map((entry) => ({
