@@ -6,9 +6,6 @@ description: Create a variable in your instance.
 x-required-scope: variable:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

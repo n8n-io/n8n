@@ -26,6 +26,7 @@ import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -59,6 +60,9 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import { storedRunSource } from './test-utils/stored-agent-config';
+
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -138,6 +142,7 @@ function makeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<CredentialsService>(),
 	);
 }
 
@@ -223,6 +228,44 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		expect(buildMcpClientForServerMock.mock.calls[0][0]).toMatchObject({ name: 'github' });
 		expect(buildMcpClientForServerMock.mock.calls[1][0]).toMatchObject({ name: 'fs' });
 	});
+
+	it.each([
+		['inline', true],
+		['top-level', false],
+		['sub-agent', false],
+	] as const)(
+		'marks MCP tool permissions as non-interrupting only for %s runtimes: %s',
+		async (runtimeProfile, nonInterrupting) => {
+			const { service, credentialProvider } = setup();
+
+			await service.reconstructFromResolvedSource({
+				config: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help',
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://api.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+					],
+				},
+				memoryOwnerAgentId: 'agent-1',
+				projectId: 'project-1',
+				credentialProvider,
+				toolDescriptors: {},
+				toolCodeByName: {},
+				skills: {},
+				runtimeProfile,
+				runType: 'production',
+			});
+
+			const deps = buildMcpClientForServerMock.mock.calls[0][1] as { nonInterrupting?: boolean };
+			expect(deps.nonInterrupting).toBe(nonInterrupting);
+		},
+	);
 
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();
@@ -682,8 +725,26 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
+		getCachedCatalog.mockResolvedValue({
+			'google-vertex': {
+				models: {
+					'gemini-3-flash-preview': { sdk: '@ai-sdk/google-vertex' },
+				},
+			},
+		});
 		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.list.mockResolvedValue([
+			{ id: 'vertex-cred', name: 'Vertex', type: 'googleVertexAiApi' },
+		]);
 		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
+			if (credentialId === 'vertex-cred') {
+				return {
+					email: 'agent@example.test',
+					privateKey: 'private-key',
+					region: 'europe-west1',
+					project: 'child-project',
+				};
+			}
 			if (credentialId === 'low-cred') {
 				return { apiKey: 'low-key', url: 'https://low.example/v1' };
 			}
@@ -697,6 +758,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			subAgents: {
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
+					medium: {
+						model: 'google-vertex/gemini-3-flash-preview',
+						credential: 'vertex-cred',
+					},
 					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
 				},
 			},
@@ -713,6 +778,14 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				id: 'openai/gpt-4o-mini',
 				apiKey: 'low-key',
 				baseURL: 'https://low.example/v1',
+			},
+			medium: {
+				id: 'google-vertex/gemini-3-flash-preview',
+				sdk: '@ai-sdk/google-vertex',
+				project: 'child-project',
+				location: 'europe-west1',
+				clientEmail: 'agent@example.test',
+				privateKey: 'private-key',
 			},
 			high: {
 				id: 'anthropic/claude-sonnet-4-5',

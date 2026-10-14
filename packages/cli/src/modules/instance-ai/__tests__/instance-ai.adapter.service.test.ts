@@ -114,11 +114,18 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
  * from whatever the test was actually about.
  */
 function globalConfigStub(
-	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
+	overrides: {
+		allowSendingParameterValues?: boolean;
+		queueMode?: boolean;
+		maxExecutionTimeout?: number;
+	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
-		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
+		executions: {
+			mode: overrides.queueMode ? 'queue' : 'regular',
+			maxTimeout: overrides.maxExecutionTimeout ?? 3600,
+		},
 		// Node usage is gated on the dependency index being wired too, which these tests do not
 		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
 		instanceAi: { nodeUsageEnabled: false },
@@ -1963,7 +1970,7 @@ describe('executeNodeService adapter', () => {
 		mockedUserHasScopes.mockReset();
 	});
 
-	it('runs the node in the bound project after asserting execute scope there', async () => {
+	it('runs the node in the bound project after asserting create and execute scopes there', async () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 		const executeNodeService = {
 			run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
@@ -1973,16 +1980,19 @@ describe('executeNodeService adapter', () => {
 		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
 		await context.executeNodeService?.execute(executeRequest);
 
-		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['workflow:execute'], false, {
-			projectId: 'team-project-1',
-		});
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(
+			mockUser,
+			['workflow:create', 'workflow:execute'],
+			false,
+			{ projectId: 'team-project-1' },
+		);
 		expect(executeNodeService.run).toHaveBeenCalledWith(
 			mockUser,
 			expect.objectContaining({ projectId: 'team-project-1' }),
 		);
 	});
 
-	it('does not run when the user lacks execute scope in the bound project', async () => {
+	it('does not run when the user lacks the required scopes in the bound project', async () => {
 		mockedUserHasScopes.mockResolvedValue(false);
 		const executeNodeService = { run: vi.fn() };
 		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
@@ -2645,6 +2655,8 @@ function createWorkflowAdapterForTests(overrides?: {
 	allowSendingParameterValues?: boolean;
 	// The effective value for the run, passed to `createContext`. Overrides the env value.
 	runAllowSendingParameterValues?: boolean;
+	// Mirrors `EXECUTIONS_TIMEOUT_MAX`, in seconds.
+	maxExecutionTimeout?: number;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2667,6 +2679,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(savedWorkflow),
 		update: vi.fn().mockResolvedValue(undefined),
+		findOne: vi.fn().mockResolvedValue(savedWorkflow),
 		createContent: vi.fn().mockResolvedValue(savedWorkflow),
 		runInTransaction: vi.fn(
 			async (
@@ -2735,6 +2748,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		globalConfigStub({
 			allowSendingParameterValues: overrides?.allowSendingParameterValues ?? true,
+			maxExecutionTimeout: overrides?.maxExecutionTimeout,
 		}),
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
@@ -4128,6 +4142,104 @@ describe('createWorkflowAdapter', () => {
 			expect.anything(),
 			expect.anything(),
 		);
+	});
+
+	describe('execution timeout', () => {
+		const withTimeout = (executionTimeout: number) =>
+			({ ...minimalWorkflowJSON, settings: { executionTimeout } }) as unknown as WorkflowJSON;
+
+		it('rejects a create when executionTimeout is above the configured maximum', async () => {
+			const { adapter, mockWorkflowRepository, mockWorkflowService } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+
+			await expect(adapter.createFromWorkflowJSON(withTimeout(3000))).rejects.toThrow(
+				"executionTimeout (3000s) exceeds this instance's maximum of 2400s. Set executionTimeout to 2400 or less.",
+			);
+			expect(mockWorkflowRepository.createContent).not.toHaveBeenCalled();
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
+		it.each([2400, 300, -1])('accepts a create with executionTimeout %s', async (timeout) => {
+			const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+				maxExecutionTimeout: 2400,
+			});
+
+			await adapter.createFromWorkflowJSON(withTimeout(timeout));
+
+			expect(mockWorkflowService.update).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					settings: expect.objectContaining({ executionTimeout: timeout }),
+				}),
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('accepts any executionTimeout when no maximum is configured', async () => {
+			const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+				maxExecutionTimeout: -1,
+			});
+
+			await adapter.createFromWorkflowJSON(withTimeout(99999));
+
+			expect(mockWorkflowService.update).toHaveBeenCalled();
+		});
+
+		it('rejects an update that sets executionTimeout above the configured maximum', async () => {
+			const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+				maxExecutionTimeout: 2400,
+			});
+
+			await expect(
+				adapter.updateFromWorkflowJSON('wf-existing', withTimeout(3000)),
+			).rejects.toThrow("exceeds this instance's maximum of 2400s");
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
+		it('accepts an update that keeps a stored executionTimeout above the maximum', async () => {
+			// The maximum can be lowered after a workflow was saved. An unchanged
+			// value must not make the workflow impossible to save.
+			const { adapter, mockWorkflowRepository, mockWorkflowService, savedWorkflow } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+			mockWorkflowRepository.findOne.mockResolvedValue({
+				...savedWorkflow,
+				settings: { executionTimeout: 3000 },
+			});
+
+			await adapter.updateFromWorkflowJSON('wf-existing', withTimeout(3000));
+
+			expect(mockWorkflowService.update).toHaveBeenCalled();
+		});
+
+		it('reads the stored workflow once when both executionTimeout and redactionPolicy need it', async () => {
+			const { adapter, mockWorkflowRepository, mockSharedWorkflowRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+			mockWorkflowRepository.findOne.mockResolvedValue({
+				...savedWorkflow,
+				settings: { executionTimeout: 3000, redactionPolicy: 'none' },
+			});
+			Object.assign(mockSharedWorkflowRepository, {
+				getWorkflowOwningProject: vi.fn().mockResolvedValue({ id: 'team-project-id' }),
+			});
+
+			await adapter.updateFromWorkflowJSON('wf-existing', {
+				...minimalWorkflowJSON,
+				settings: { executionTimeout: 3000, redactionPolicy: 'none' },
+			} as unknown as WorkflowJSON);
+
+			expect(mockWorkflowRepository.findOne).toHaveBeenCalledTimes(1);
+		});
+
+		it('accepts an update with executionTimeout within the maximum without reading the stored workflow', async () => {
+			const { adapter, mockWorkflowRepository, mockWorkflowService } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+
+			await adapter.updateFromWorkflowJSON('wf-existing', withTimeout(1200));
+
+			expect(mockWorkflowRepository.findOne).not.toHaveBeenCalled();
+			expect(mockWorkflowService.update).toHaveBeenCalled();
+		});
 	});
 
 	it('does not inject executionOrder on update, leaving the stored value to the merge', async () => {
@@ -7721,24 +7833,24 @@ describe('createContext — builder delegate wiring', () => {
 
 	it.each([
 		{
-			name: 'omits new Agent builds when Agents are disabled',
+			name: 'omits Agent builds when Settings > Agents is off',
 			moduleActive: true,
-			resumeAgentBuild: false,
+			agentsEnabled: false,
 			expected: false,
 		},
 		{
-			name: 'keeps admitted Agent builds when Agents are disabled',
+			name: 'wires Agent builds when the module is active and Settings > Agents is on',
 			moduleActive: true,
-			resumeAgentBuild: true,
+			agentsEnabled: true,
 			expected: true,
 		},
 		{
-			name: 'omits admitted Agent builds when the module is inactive',
+			name: 'omits Agent builds when the module is inactive',
 			moduleActive: false,
-			resumeAgentBuild: true,
+			agentsEnabled: true,
 			expected: false,
 		},
-	])('$name', async ({ moduleActive, resumeAgentBuild, expected }) => {
+	])('$name', async ({ moduleActive, agentsEnabled, expected }) => {
 		const { createOrchestrationTools } = await import(
 			'../../../../../@n8n/instance-ai/dist/tools/index.js'
 		);
@@ -7747,13 +7859,12 @@ describe('createContext — builder delegate wiring', () => {
 		mockBuilderModuleActive(delegate);
 		const moduleRegistry = Container.get(ModuleRegistry);
 		vi.mocked(moduleRegistry.isActive).mockReturnValue(moduleActive);
-		moduleRegistry.settings.set('agents', { enabled: false });
+		moduleRegistry.settings.set('agents', { enabled: agentsEnabled });
 
 		const context = service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
 			agentId: 'agent-42',
-			resumeAgentBuild,
 		});
 		const orchestrationContext = mock<OrchestrationContext>();
 		orchestrationContext.domainContext = context;
@@ -8148,6 +8259,41 @@ describe('createCredentialAdapter', () => {
 
 			await expect(credentialService.test('cred-1')).rejects.toBe(refusal);
 			expect(test).not.toHaveBeenCalled();
+		});
+
+		it('writes the stand-in URL into the credential field an eval target names', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({ apiKey: 'secret' });
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { service, mockUser } = adapterWith(decryptForUse, test);
+			const { credentialService } = service.createContext(mockUser, {
+				getCredentialTestTarget: () => ({
+					credentialType: 'slackApi',
+					baseUrl: 'http://stand-in.test:4100',
+					urlField: 'url',
+				}),
+			});
+
+			await credentialService.test('cred-1');
+
+			expect(test).toHaveBeenCalledWith(
+				mockUser.id,
+				expect.objectContaining({
+					data: { apiKey: 'secret', url: 'http://stand-in.test:4100' },
+				}),
+			);
+		});
+
+		it('tests the stored data unchanged when the thread has no target', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({ apiKey: 'secret' });
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { credentialService, mockUser } = adapterWith(decryptForUse, test);
+
+			await credentialService.test('cred-1');
+
+			expect(test).toHaveBeenCalledWith(
+				mockUser.id,
+				expect.objectContaining({ data: { apiKey: 'secret' } }),
+			);
 		});
 	});
 

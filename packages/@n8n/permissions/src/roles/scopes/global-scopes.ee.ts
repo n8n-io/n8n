@@ -109,6 +109,16 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'projectAiPreference:update',
 	'projectAiPreference:delete',
 	'projectAiPreference:list',
+	'skill:create',
+	'skill:read',
+	'skill:update',
+	'skill:delete',
+	'skill:list',
+	'projectSkill:create',
+	'projectSkill:read',
+	'projectSkill:update',
+	'projectSkill:delete',
+	'projectSkill:list',
 	'workflow:create',
 	'workflow:read',
 	'workflow:export',
@@ -192,6 +202,11 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'roleMappingRule:delete',
 	'roleMappingRule:list',
 	'otel:manage',
+	'trustedSource:create',
+	'trustedSource:read',
+	'trustedSource:update',
+	'trustedSource:delete',
+	'trustedSource:list',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -227,6 +242,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'credentialResolver:list',
 	'instanceAi:message',
 	'instanceAi:gateway',
+	'trustedSource:list',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [

@@ -95,6 +95,57 @@ describe('OAuth2CredentialController', () => {
 			);
 		});
 
+		/**
+		 * Approving an app for a whole organisation reuses the same reply URL, and
+		 * answers with no code at all. It is a success, not a missing parameter.
+		 */
+		it('should render the success page when an administrator approved the app', async () => {
+			const consentReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			consentReq.query = {
+				admin_consent: 'True',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(consentReq, res);
+
+			// Its own page: `oauth-callback` would report an unrelated open sign-in
+			// as connected.
+			expect(res.render).toHaveBeenCalledWith('admin-consent-callback');
+			expect(oauthService.renderCallbackError).not.toHaveBeenCalled();
+		});
+
+		it('should render the error page when an administrator refused the app', async () => {
+			const consentReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			consentReq.query = {
+				admin_consent: 'True',
+				error: 'consent_required',
+				error_description: 'AADSTS65004: The resource owner denied the request.',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(consentReq, res);
+
+			// The description arrives in the URL, so anyone can set it. It is logged,
+			// never rendered.
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The administrator did not approve the requested permissions.',
+			);
+		});
+
+		it('should render the error page when the refusal carries no error parameter', async () => {
+			const consentReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			consentReq.query = {
+				admin_consent: 'False',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(consentReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The administrator did not approve the requested permissions.',
+			);
+			expect(res.render).not.toHaveBeenCalled();
+		});
+
 		it('should exchange the code for a valid token, and save it to DB for static credential', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetToken = vi.fn().mockResolvedValue({

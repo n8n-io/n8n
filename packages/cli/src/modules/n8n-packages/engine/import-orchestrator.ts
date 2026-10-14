@@ -4,11 +4,16 @@ import { Service } from '@n8n/di';
 import { NodeTypes } from '@/node-types';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
+import {
+	credentialConflicts,
+	forbiddenCredentialUpdates,
+} from '../entities/credential/credential-conflict-policy';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
+	CredentialImportPlan,
 	CredentialResolution,
 	CredentialResolutionFailure,
 } from '../entities/credential/credential.types';
@@ -119,7 +124,7 @@ export interface ImportContentResult {
 export interface ImportPlan {
 	input: ImportOrchestrationInput;
 	folderContext: FolderImportContext;
-	credentialPlan: CredentialResolution;
+	credentialPlan: CredentialImportPlan;
 	workflowPlan: WorkflowImportPlan;
 	folderPlan: FolderImportPlan;
 	dataTablePlan: DataTableImportPlan;
@@ -175,7 +180,12 @@ export class ImportOrchestrator {
 			plans.map((plan) => plan.dataTablePlan),
 		);
 
-		for (const { input, variablePlan } of plans) {
+		for (const { input, variablePlan, credentialPlan } of plans) {
+			await this.credentialImporter.assertCanCreate(
+				input.context,
+				input.credentialRequest,
+				credentialPlan,
+			);
 			if (variablePlan.creations.length > 0) {
 				await this.variableImporter.assertCanCreate(
 					input.context,
@@ -216,6 +226,21 @@ export class ImportOrchestrator {
 						}),
 					),
 			);
+		}
+
+		// Across scopes: one destination credential can be reached from several projects.
+		if (plans.length > 0) {
+			const credentialPlans = plans.map((plan) => plan.credentialPlan);
+			for (const forbidden of forbiddenCredentialUpdates(credentialPlans)) {
+				issues.push({ type: 'credential-update-forbidden', ...forbidden });
+			}
+			const conflicts = credentialConflicts(
+				plans[0].input.credentialRequest.conflictPolicy,
+				credentialPlans,
+			);
+			for (const conflict of conflicts) {
+				issues.push({ type: 'credential-conflict', ...conflict });
+			}
 		}
 
 		const quotaFailure = await this.variableImporter.quotaFailure(
@@ -385,7 +410,14 @@ export class ImportOrchestrator {
 		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
-			new Set(credentialResult.stubbed),
+			new Set([
+				...credentialResult.stubbed,
+				...credentialResult.seeded.filter(
+					(id) =>
+						!credentialRequest.requirements?.find((requirement) => requirement.id === id)
+							?.packageDataIsComplete,
+				),
+			]),
 		)) {
 			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
 		}
@@ -563,7 +595,10 @@ function toDataTableBlockingIssue(
 		const writtenIds = new Set(
 			failure.missingScope === 'dataTable:create'
 				? plan.creations.map(({ id }) => id)
-				: plan.updates.map(({ table }) => table.id),
+				: [
+						...plan.updates.map(({ table }) => table.id),
+						...plan.columnAlignments.map(({ id }) => id),
+					],
 		);
 		requirements = requirements.filter(({ id }) => writtenIds.has(id));
 	}

@@ -2,19 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceType } from '@n8n/constants';
-import type {
-	SystemTask,
-	SystemTaskClass,
-	SystemTaskPlacement,
-	SystemTaskSchedule,
-} from '@n8n/decorators';
+import type { SystemTask, SystemTaskClass, SystemTaskTarget } from '@n8n/decorators';
 import {
 	OnLeaderStepdown,
 	OnLeaderTakeover,
 	OnShutdown,
 	SystemTaskMetadata,
-	resolveSystemTaskSchedule,
-	validateSystemTask,
+	resolveSystemTask,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, Tracing } from 'n8n-core';
@@ -24,12 +18,10 @@ import { strict } from 'node:assert';
 import { DurableScheduler } from '../durable-scheduler';
 import { emitSystemTaskMetric } from './emit-system-task-metric';
 import { SystemTaskHandler } from './system-task-handler';
-import { SystemTaskJobRegistrar } from './system-task-job-registrar';
+import { SystemTaskJobRegistrar, type DurableSystemTask } from './system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
 import { InMemorySystemTaskRunner } from './in-memory-system-task-runner';
 import { systemTaskType } from './system-task-type';
-
-type ClusterPlacement = Extract<SystemTaskPlacement, { scope: 'cluster' }>;
 
 /**
  * Routes each registered system task to the durable scheduler, to the timers
@@ -41,7 +33,7 @@ export class SystemTaskRunner {
 	/** Includes the dropped tasks, so a name stays unique across instance kinds. */
 	private readonly registeredNames = new Set<string>();
 
-	private readonly durableTasks: SystemTask[] = [];
+	private readonly durableTasks: DurableSystemTask[] = [];
 
 	private readonly logger: Logger;
 
@@ -121,8 +113,8 @@ export class SystemTaskRunner {
 				this.startLeaderTimers();
 			}
 
-			for (const task of this.durableTasks) {
-				await this.jobRegistrar.provision(task);
+			for (const durableTask of this.durableTasks) {
+				await this.jobRegistrar.provision(durableTask);
 			}
 			await this.jobRegistrar.removeStale();
 		}
@@ -161,44 +153,48 @@ export class SystemTaskRunner {
 			});
 		}
 		this.registeredNames.add(task.name);
-		validateSystemTask(task);
+		const { schedule, runOptions } = resolveSystemTask(task);
 
-		const { placement } = task;
-		if (!runsOn(placement, this.instanceSettings.instanceType)) {
+		const { target } = task;
+		if (!runsOnInstanceType(target, this.instanceSettings.instanceType)) {
 			this.logger.debug('System task does not run on this kind of instance', {
 				name: task.name,
-				placement,
+				target,
 			});
 			return;
 		}
 
-		const schedule = resolveSystemTaskSchedule(task);
-
-		if (placement.scope === 'instance') {
+		if (target.scope === 'instance') {
 			this.logger.debug('System task will run on a per-instance timer', {
 				name: task.name,
 				schedule,
 			});
 			this.instanceTaskRunner.add(task, schedule);
-		} else if (this.runsDurably(placement)) {
-			this.handOverToDurableScheduler(task, schedule);
+		} else if (runOptions !== undefined && this.schedulerEnabled()) {
+			this.handOverToDurableScheduler({ task, schedule, runOptions });
 		} else {
 			this.logger.debug('System task will run on an in-memory timer', {
 				name: task.name,
 				schedule,
 			});
+			// The leader timer is deprecated for task authors, but it still runs their tasks.
+			// oxlint-disable-next-line typescript/no-deprecated
+			const { leaderTimer } = target;
 			this.leaderTaskRunner.add(task, schedule, {
-				runOnStart: placement.runOnTakeover,
+				runOnStart: leaderTimer?.runOnTakeover,
+				retryDelaySeconds: leaderTimer?.retryDelaySeconds,
 				// Another main can run this task durably. Skip while its job is stored.
-				shouldSkipRun: placement.durable
-					? async () => await this.isProvisionedElsewhere(task)
-					: undefined,
+				shouldSkipRun:
+					runOptions !== undefined
+						? async () => await this.isProvisionedElsewhere(task)
+						: undefined,
 			});
 		}
 	}
 
-	private handOverToDurableScheduler(task: SystemTask, schedule: SystemTaskSchedule): void {
-		this.durableTasks.push(task);
+	private handOverToDurableScheduler(durableTask: DurableSystemTask): void {
+		const { task, schedule } = durableTask;
+		this.durableTasks.push(durableTask);
 		this.systemTaskOwner.declareDurable(task.name);
 		this.durableScheduler.registerTaskHandler(
 			systemTaskType(task.name),
@@ -233,12 +229,8 @@ export class SystemTaskRunner {
 		return provisioned;
 	}
 
-	private runsDurably(placement: ClusterPlacement): boolean {
-		return (
-			placement.durable &&
-			this.globalConfig.scheduler.enabledForSystemTasks &&
-			this.durableScheduler.isActive()
-		);
+	private schedulerEnabled(): boolean {
+		return this.globalConfig.scheduler.enabledForSystemTasks && this.durableScheduler.isActive();
 	}
 
 	private reportFailure(message: string, task: Pick<SystemTask, 'name'>, error: unknown): void {
@@ -251,8 +243,8 @@ export class SystemTaskRunner {
 	}
 }
 
-function runsOn(placement: SystemTaskPlacement, instanceType: InstanceType): boolean {
-	return placement.scope === 'cluster'
+function runsOnInstanceType(target: SystemTaskTarget, instanceType: InstanceType): boolean {
+	return target.scope === 'cluster'
 		? instanceType === 'main'
-		: placement.instanceTypes.includes(instanceType);
+		: target.instanceTypes.includes(instanceType);
 }

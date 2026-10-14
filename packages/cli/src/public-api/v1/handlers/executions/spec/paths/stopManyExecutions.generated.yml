@@ -6,9 +6,6 @@ description: Stop multiple executions from your instance based on filter criteri
 x-required-scope: execution:stop
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

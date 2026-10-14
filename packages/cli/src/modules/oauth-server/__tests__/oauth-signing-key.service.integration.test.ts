@@ -7,7 +7,7 @@ import { createLocalJWKSet, jwtVerify } from 'jose';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { generateKeyPairSync } from 'node:crypto';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import {
 	OAUTH_SIGNING_ALGORITHM,

@@ -6,9 +6,6 @@ description: Fetches changes from the connected Git branch into the instance.
 x-required-scope: sourceControl:pull
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:
@@ -155,6 +152,10 @@ responses:
                           type: string
                         matchedRuleId:
                           type: string
+                        projectId:
+                          type: string
+                        optInAvailable:
+                          type: boolean
                       required:
                         - kind
                         - checkId
@@ -312,6 +313,10 @@ responses:
                           type: string
                         matchedRuleId:
                           type: string
+                        projectId:
+                          type: string
+                        optInAvailable:
+                          type: boolean
                       required:
                         - kind
                         - checkId

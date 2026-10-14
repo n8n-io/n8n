@@ -9,6 +9,8 @@ import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail'
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { randomBytes } from 'node:crypto';
 
+import { isToolErrorResult } from '@utils/tool-error-result';
+
 import type { MlflowSpan, MlflowSpanType, CollectedTrace, TokenUsage } from './types';
 import { MLFLOW_ATTRIBUTE, MLFLOW_MESSAGE_FORMAT, MLFLOW_SPAN_TYPE } from './types';
 
@@ -505,6 +507,9 @@ export class MlflowSpanCollector extends BaseCallbackHandler {
 
 	handleToolEnd(output: unknown, runId: string): void {
 		this.endSpan(runId, output);
+		// Tool nodes return errors to the model as a string so it can recover.
+		// LangChain then fires handleToolEnd, not handleToolError.
+		if (typeof output === 'string' && isToolErrorResult(output)) this.failSpan(runId, output);
 	}
 
 	handleToolError(error: Error, runId: string): void {

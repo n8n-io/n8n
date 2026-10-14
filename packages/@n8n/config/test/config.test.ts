@@ -183,6 +183,7 @@ describe('GlobalConfig', () => {
 					'email-change-requested': '',
 					'email-change-completed': '',
 					'agent-budget-alert': '',
+					'migration-findings': '',
 				},
 			},
 		},
@@ -389,8 +390,6 @@ describe('GlobalConfig', () => {
 			promptVersion: '',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
-			activationCapped: false,
-			activationLockMessageThreshold: 1,
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
@@ -436,6 +435,7 @@ describe('GlobalConfig', () => {
 				enabled: false,
 				name: '',
 			},
+			suspendExecutionsOnShutdown: false,
 		},
 		taskRunners: {
 			mode: 'internal',
@@ -486,7 +486,7 @@ describe('GlobalConfig', () => {
 			interval: 3,
 		},
 		scheduler: {
-			enabled: false,
+			enabled: true,
 			materializationWindowSeconds: 60,
 			materializationIntervalSeconds: 10,
 			materializationTimeoutSeconds: 60,
@@ -504,10 +504,9 @@ describe('GlobalConfig', () => {
 			jitterRatio: 0.1,
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
-			triggerNodeMode: 'legacy',
+			triggerNodeMode: 'new',
 			enabledForPollTriggers: false,
 			pollTimeoutSeconds: 45,
-			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
 			taskTimeoutSeconds: 300,
 			misfireGraceSeconds: 60,
@@ -680,8 +679,6 @@ describe('GlobalConfig', () => {
 			optimizingTimeWindowHours: 2,
 			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
-			trimOnStartUp: false,
-			skipOnStartUp: false,
 		},
 		expressionEngine: {
 			engine: 'vm',
@@ -743,6 +740,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
 			channelReconcileIntervalSeconds: 60,
+			whatsAppAllowTemporaryToken: false,
 		},
 	} satisfies GlobalConfigShape;
 

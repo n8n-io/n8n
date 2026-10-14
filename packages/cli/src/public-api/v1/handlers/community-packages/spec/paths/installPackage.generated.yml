@@ -6,9 +6,6 @@ description: Install a community package by npm name and optional version.
 x-required-scope: communityPackage:install
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

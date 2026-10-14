@@ -6,9 +6,6 @@ description: Creates a custom role. Set `roleType` to `global` for an instance-w
 x-required-scope: role:manage,role:manageProject
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

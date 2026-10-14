@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { UserManagementMailer } from '@/user-management/email';
 
-import type { JwtService } from '../jwt.service';
+import type { JwtService } from '@n8n/backend-services';
 import { PublicApiKeyService } from '../public-api-key.service';
 
 vi.mock('@n8n/permissions', async () => ({

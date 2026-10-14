@@ -44,5 +44,6 @@ export type Agent = {
 	skills: Record<string, AgentSkill>;
 	configHash?: string | null;
 	skillHashes?: Record<string, string>;
+	outdatedSkillIds?: string[];
 	activeVersion: AgentVersion | null;
 };

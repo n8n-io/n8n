@@ -946,7 +946,7 @@ export type RelayEventMap = {
 	'expression-mapping-roles-resolved': {
 		userId: string;
 		userEmail: string;
-		provider: 'oidc' | 'saml' | 'ldap';
+		provider: 'oidc' | 'saml' | 'ldap' | 'oauth2';
 		instanceRole: {
 			role: string;
 			previousRole: string;
@@ -1011,6 +1011,24 @@ export type RelayEventMap = {
 		issuer: string;
 		subject: string;
 		role: string;
+	};
+
+	'trusted-source-created': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
+	};
+
+	'trusted-source-updated': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
+	};
+
+	'trusted-source-deleted': {
+		user: UserLike;
+		sourceId: string;
+		issuer: string;
 	};
 
 	// #endregion

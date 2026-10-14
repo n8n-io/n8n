@@ -171,6 +171,7 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
+import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -204,12 +205,17 @@ import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
+import {
+	assertExecutionTimeoutWithinMax,
+	exceedsMaxExecutionTimeout,
+} from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
+import { isAgentsAccessEnabled } from './agents-access';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
 import {
@@ -481,11 +487,13 @@ export class InstanceAiAdapterService {
 			 *  read on every `list()`: the harness appends credentials it creates
 			 *  mid-run, after this context is built. */
 			getCredentialIdAllowlist?: () => string[] | undefined;
-			resumeAgentBuild?: boolean;
 			/** Eval-only: resolve a credential's connection test as successful without
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
+			/** Eval-only: the provider stand-in for a credential type's connection test.
+			 *  A getter for the same reason as the bypass predicate. */
+			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
@@ -526,8 +534,8 @@ export class InstanceAiAdapterService {
 			threadId,
 			projectId,
 			getCredentialIdAllowlist,
-			resumeAgentBuild = false,
 			shouldBypassCredentialTest,
+			getCredentialTestTarget,
 			agentId,
 			configEvalsEnabled,
 			setupPanelVariant,
@@ -547,12 +555,13 @@ export class InstanceAiAdapterService {
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
-		const builderDelegateAdapter = this.getBuilderDelegateAdapter(resumeAgentBuild);
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,
 			getCredentialIdAllowlist,
 			shouldBypassCredentialTest,
+			getCredentialTestTarget,
 		);
 		return {
 			userId: user.id,
@@ -664,15 +673,8 @@ export class InstanceAiAdapterService {
 	 * (and the build-agent sub-agent tool it powers) is simply absent from the
 	 * context.
 	 */
-	private getBuilderDelegateAdapter(
-		resumeAgentBuild: boolean,
-	): InstanceAiBuilderDelegateAdapterService | null {
-		const moduleRegistry = Container.get(ModuleRegistry);
-		if (
-			!moduleRegistry.isActive('agents') ||
-			(!resumeAgentBuild && moduleRegistry.settings.get('agents')?.enabled === false)
-		)
-			return null;
+	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
+		if (!isAgentsAccessEnabled()) return null;
 		try {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch (error) {
@@ -884,7 +886,9 @@ export class InstanceAiAdapterService {
 		return {
 			execute: async (request) => {
 				this.assertInstanceNotReadOnly('executions');
-				const projectId = await resolveProjectId(['workflow:execute']);
+				// The caller supplies the node type and parameters, so a standalone run
+				// authors a workflow. See ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.
+				const projectId = await resolveProjectId(['workflow:create', 'workflow:execute']);
 				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
@@ -1070,6 +1074,7 @@ export class InstanceAiAdapterService {
 			workflowDependencyQueryService,
 		} = this;
 		const logger = this.logger;
+		const maxExecutionTimeout = this.globalConfig.executions.maxTimeout;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
 		// the method's presence, so nothing downstream has to know a rollout flag exists.
@@ -1686,6 +1691,7 @@ export class InstanceAiAdapterService {
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
 				} as IWorkflowSettings;
+				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
@@ -1821,12 +1827,26 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				assertParameterValuesAvailable();
 				await assertNotLockedByEditor(workflowId);
+				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				// Loaded on first use only. The checks below share one query.
+				let storedWorkflow: Promise<WorkflowEntity | null> | undefined;
+				const getStoredWorkflow = async () =>
+					await (storedWorkflow ??= workflowRepository.findOne({ where: { id: workflowId } }));
+
+				// Only a changed value is checked, so a workflow saved before the
+				// maximum was lowered stays saveable.
+				if (exceedsMaxExecutionTimeout(settings.executionTimeout, maxExecutionTimeout)) {
+					const existingWorkflow = await getStoredWorkflow();
+					if (existingWorkflow?.settings?.executionTimeout !== settings.executionTimeout) {
+						assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
+					}
+				}
+
 				// Strip redactionPolicy if the user lacks the required directional scope —
 				// mirrors the check in WorkflowService.update().
-				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
 					const [existingWorkflow, ownerProject] = await Promise.all([
-						workflowRepository.findOne({ where: { id: workflowId } }),
+						getStoredWorkflow(),
 						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
 					]);
 
@@ -2736,6 +2756,7 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
+		getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined,
 	): InstanceAiCredentialService {
 		const {
 			credentialsService,
@@ -2845,15 +2866,18 @@ export class InstanceAiAdapterService {
 					return { success: true, message: 'Connection tested successfully' };
 				}
 
+				const data = await credentialsService.decryptForUse(
+					credential,
+					{ kind: 'user', user },
+					boundProjectId,
+				);
+				// Eval-only: aim the test at the thread's stand-in.
+				const target = getCredentialTestTarget?.(credential.type);
 				const credentialsToTest: ICredentialsDecrypted = {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: await credentialsService.decryptForUse(
-						credential,
-						{ kind: 'user', user },
-						boundProjectId,
-					),
+					data: target ? { ...data, [target.urlField]: target.baseUrl } : data,
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);

@@ -1,19 +1,37 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
+import type { GenieApiResponse } from '../helpers';
+import {
+	databricksApiRequest,
+	getActiveCredentialType,
+	getHost,
+	withGenieDeepLink,
+} from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
 	const host = await getHost(this, credentialType);
 	const spaceId = this.getNodeParameter('spaceId', i) as string;
 
-	const response = await databricksApiRequest(this, credentialType, {
+	const response: GenieApiResponse = await databricksApiRequest(this, credentialType, {
 		method: 'POST',
 		url: `${host}/api/2.0/genie/spaces/${spaceId}/start-conversation`,
 		body: { content: this.getNodeParameter('initialMessage', i) as string },
 		headers: { 'Content-Type': 'application/json' },
 		json: true,
+		returnFullResponse: true,
 	});
+	const conversationId = response.body.conversation_id;
 
-	return [{ json: response, pairedItem: { item: i } }];
+	return [
+		{
+			json: withGenieDeepLink(
+				response,
+				host,
+				spaceId,
+				typeof conversationId === 'string' ? conversationId : undefined,
+			),
+			pairedItem: { item: i },
+		},
+	];
 }

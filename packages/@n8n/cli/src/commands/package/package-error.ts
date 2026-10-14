@@ -41,6 +41,21 @@ type BlockingIssue =
 			usedBy: RequirementConsumer[];
 			violations: Array<{ message: string }>;
 	  }
+	| {
+			type: 'credential-conflict';
+			kind: 'differs' | 'divergent';
+			targetId: string;
+			sourceIds: string[];
+			name: string;
+			usedBy: RequirementConsumer[];
+	  }
+	| {
+			type: 'credential-update-forbidden';
+			targetId: string;
+			sourceIds: string[];
+			name: string;
+			usedBy: RequirementConsumer[];
+	  }
 	| { type: 'variable-unresolved'; name: string; usedBy: RequirementConsumer[] }
 	| { type: 'variable-conflict'; name: string; projectId?: string; usedBy: RequirementConsumer[] }
 	| {
@@ -84,6 +99,7 @@ type DataTableSchemaChange = { destructive?: boolean } & (
 	| { kind: 'add-column'; column: string }
 	| { kind: 'remove-column'; column: string }
 	| { kind: 'change-column-type'; column: string; from: string; to: string }
+	| { kind: 'rename-column'; from: string; to: string }
 	| { kind: 'reorder-columns' }
 	| { kind: 'rename-table'; from: string; to: string }
 );
@@ -96,6 +112,8 @@ function describeSchemaChange(change: DataTableSchemaChange): string {
 			return `remove column ${change.column}`;
 		case 'change-column-type':
 			return `change column ${change.column} from ${change.from} to ${change.to}`;
+		case 'rename-column':
+			return `rename column ${change.from} to ${change.to}`;
 		case 'reorder-columns':
 			return 'reorder columns';
 		case 'rename-table':
@@ -151,6 +169,19 @@ function formatIssue(issue: unknown): string {
 			: '';
 		return `credential "${it.name ?? it.sourceId}" (${it.sourceId}, ${it.credentialType}) refused by policy: ${reasons}, used by ${usedBy}`;
 	}
+	if (it.type === 'credential-conflict') {
+		const usedBy = formatConsumers(it.usedBy);
+		const sources = Array.isArray(it.sourceIds) ? it.sourceIds.join(', ') : '';
+		if (it.kind === 'divergent') {
+			return `credential "${it.name}" (${it.targetId}) receives different values from package credentials ${sources}, used by ${usedBy}`;
+		}
+		return `credential "${it.name}" (${it.targetId}) differs from package credential ${sources}, used by ${usedBy}`;
+	}
+	if (it.type === 'credential-update-forbidden') {
+		const usedBy = formatConsumers(it.usedBy);
+		const sources = Array.isArray(it.sourceIds) ? it.sourceIds.join(', ') : '';
+		return `credential "${it.name}" (${it.targetId}) matches package credential ${sources}, but you lack permission to update it. Use keep-existing or ask its owner. Used by ${usedBy}`;
+	}
 	if (it.type === 'variable-unresolved') {
 		const usedBy = formatConsumers(it.usedBy);
 		return `variable "${it.name}" unresolved, used by ${usedBy}`;
@@ -190,7 +221,7 @@ function formatIssue(issue: unknown): string {
 				it.extraColumns?.length ? `extra columns: ${it.extraColumns.join(', ')}` : '',
 			].filter(Boolean);
 			const changes = it.overwriteChanges?.length
-				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map((change) => (change.destructive ? `${describeSchemaChange(change)} (data lost)` : describeSchemaChange(change))).join(', ')}`
+				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map((change) => (change.destructive ? `${describeSchemaChange(change)} (values removed)` : describeSchemaChange(change))).join(', ')}`
 				: '';
 			return `data table "${it.name}" (${it.sourceId}) does not match the package schema (${reasons.join('; ')}), used by ${usedBy}${changes}`;
 		}

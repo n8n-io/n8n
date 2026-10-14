@@ -21,9 +21,6 @@ parameters:
     description: 'The direction of the promotion: apply or promote.'
     name: direction
     in: path
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.

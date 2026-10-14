@@ -1,7 +1,9 @@
+import { isEnvFeatureEnabled } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
+	AuthenticationPipeline,
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
@@ -10,6 +12,7 @@ import {
 	type AuthorizationServerMetadata,
 	type Jwk,
 } from '@n8n/inbound-auth';
+import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 // Discovery of the local source must fail, not succeed with made-up documents.
@@ -26,7 +29,8 @@ class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
 /**
  * Owns the `trusted_source` and `trusted_source_identity` tables and binds the inbound-auth
  * contracts. Main, webhook and worker instances load it, because workers and webhook processes
- * resolve the same entities and contracts as main.
+ * resolve the same entities and contracts as main. Only main instances seed the system trusted
+ * source.
  */
 @BackendModule({ name: 'inbound-auth-core', instanceTypes: ['main', 'webhook', 'worker'] })
 export class InboundAuthCoreModule implements ModuleInterface {
@@ -46,6 +50,17 @@ export class InboundAuthCoreModule implements ModuleInterface {
 			Container.set(TrustedSourceGate, Container.get(TrustedSourceDbGate));
 		}
 
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			const { SystemTrustedSourceSeeder } = await import('./system-trusted-source.seeder.js');
+			await Container.get(SystemTrustedSourceSeeder).seed();
+
+			// Ships dark. Set `N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED=true` on a main instance to register
+			// the `/trusted-sources` management routes; the license gates only create and update.
+			if (isEnvFeatureEnabled('N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED')) {
+				await import('./trusted-source.controller.js');
+			}
+		}
+
 		const { OAuth2AuthenticationService } = await import('./authentication.service.js');
 		Container.set(AuthenticationService, Container.get(OAuth2AuthenticationService));
 
@@ -55,6 +70,9 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		if (!Container.has(IdentityService)) {
 			Container.set(IdentityService, Container.get(TrustedSourceIdentityService));
 		}
+
+		const { InboundAuthPipeline } = await import('./authentication-pipeline.js');
+		Container.set(AuthenticationPipeline, Container.get(InboundAuthPipeline));
 	}
 
 	// Ungated: the runner skips a cluster-scoped task on webhook and worker instances itself.

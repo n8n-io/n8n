@@ -6,9 +6,6 @@ description: Manually trigger an LDAP synchronization. The response returns the 
 x-required-scope: ldap:sync
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

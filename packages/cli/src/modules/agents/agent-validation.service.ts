@@ -13,6 +13,7 @@ import {
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
+	type AgentConfigValidationWarning,
 	type AgentIntegrationConfig,
 	type AgentTaskConfig,
 	type AgentJsonConfig,
@@ -50,6 +51,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
+import { findNameClashGroups } from './skills/skill-names';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -206,10 +208,11 @@ export class AgentValidationService {
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
+		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
 		return await this.validateDefinition(
 			agent.id,
 			projectId,
-			{ ...getAgentDefinitionContent(agent, skillRefs), tasks },
+			{ ...getAgentDefinitionContent(agent, skillRefs, skills), tasks },
 			agent.integrations ?? [],
 			credentialProvider,
 			scope,
@@ -272,7 +275,27 @@ export class AgentValidationService {
 		}
 
 		const issues = await this.collectIssues({ ...ctx, config: ctx.config }, scope);
-		return { status: issues.length === 0 ? 'valid' : 'invalid', issues };
+		const warnings = this.collectSkillNameWarnings(ctx.config, ctx.skills);
+		return {
+			status: issues.length === 0 ? 'valid' : 'invalid',
+			issues,
+			...(warnings.length > 0 ? { warnings } : {}),
+		};
+	}
+
+	/** Skill names that are hard to tell apart confuse the model, but do not block a run. */
+	private collectSkillNameWarnings(
+		config: AgentJsonConfig,
+		skills: Record<string, AgentSkill>,
+	): AgentConfigValidationWarning[] {
+		const names = (config.skills ?? []).flatMap((ref) =>
+			Object.hasOwn(skills, ref.id) ? [skills[ref.id].name] : [],
+		);
+		return findNameClashGroups(names).map((group) => ({
+			code: 'similar_skill_names',
+			capability: { kind: 'skill' },
+			names: group,
+		}));
 	}
 
 	private missingConfigIssues(): AgentConfigValidationIssue[] {
@@ -301,6 +324,7 @@ export class AgentValidationService {
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
+		await this.collectVertexModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
@@ -420,6 +444,48 @@ export class AgentValidationService {
 		}
 
 		await this.collectAzureDeploymentIssues(config, credentialId, credentialProvider, issues);
+	}
+
+	private async collectVertexModelIssues(
+		config: AgentJsonConfig,
+		findCredential: FindCredential,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		type ModelSlot = Pick<AgentJsonConfig, 'model' | 'credential'>;
+		const slots: Array<[string, ModelSlot | undefined]> = [
+			...Object.entries(config.subAgents?.modelsByDifficulty ?? {}).map(
+				([difficulty, model]): [string, ModelSlot] => [
+					`subAgents.modelsByDifficulty.${difficulty}.`,
+					model,
+				],
+			),
+		];
+		if (config.memory?.enabled) {
+			const observational = config.memory.observationalMemory;
+			if (observational?.enabled !== false) {
+				slots.push(
+					['memory.observationalMemory.observerModel.', observational?.observerModel],
+					['memory.observationalMemory.reflectorModel.', observational?.reflectorModel],
+				);
+			}
+			const episodic = config.memory.episodicMemory;
+			if (episodic?.enabled) {
+				slots.push(['memory.episodicMemory.reflectorModel.', episodic.reflectorModel]);
+			}
+		}
+		for (const [path, model] of slots) {
+			if (!model || getProviderPrefix(model.model) !== 'google-vertex') continue;
+			if (!model.credential?.trim()) {
+				issues.push(agentIssue('missing_credential', `${path}credential`));
+				continue;
+			}
+			const credential = await this.findCredentialSafe(findCredential, model.credential.trim());
+			if (!credential) {
+				issues.push(agentIssue('invalid_credential', `${path}credential`));
+			} else if (!this.credentialSupportsModel(credential.type, model.model)) {
+				issues.push(agentIssue('incompatible_credential', `${path}credential`));
+			}
+		}
 	}
 
 	private collectSubAgentRefIssues(
