@@ -130,7 +130,8 @@ const publish = async () =>
 		// a failed save would leave the catalogue ahead of n8n, which is worse
 		// than leaving it behind.
 		if (props.unsavedChanges && !(await props.persistChannel?.())) return;
-		await props.runtime.publishApp(publishing);
+		// False when the sign-in or agent changed under it, so the catalogue was not read back.
+		if (!(await props.runtime.publishApp(publishing))) return;
 		const submitted = catalogState.value?.status === 'submitted';
 		toast.showMessage({
 			type: 'success',
@@ -165,7 +166,6 @@ const downloadPackage = async () =>
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
-			message: i18n.baseText('agents.channels.teams.managed.install.downloaded'),
 		});
 	});
 

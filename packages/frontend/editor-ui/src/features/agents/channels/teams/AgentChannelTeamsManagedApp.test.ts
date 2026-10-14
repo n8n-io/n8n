@@ -52,7 +52,7 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 		provisionApp: vi.fn(),
 		loadSubscriptions: vi.fn(),
 		provisionBot: vi.fn(),
-		publishApp: vi.fn(),
+		publishApp: vi.fn().mockResolvedValue(true),
 		refreshCatalogState: vi.fn(),
 		checkInstalled: vi.fn().mockResolvedValue(false),
 		...overrides,
@@ -287,6 +287,30 @@ describe('AgentChannelTeamsManagedApp', () => {
 		const { getByTestId } = render({ runtime });
 
 		await waitFor(() => expect(getByTestId('teams-settings-download')).toBeVisible());
+	});
+
+	it('says nothing when the publish was overtaken by a change of sign-in', async () => {
+		const runtime = buildRuntime({
+			catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
+			publishApp: vi.fn().mockResolvedValue(false),
+		});
+
+		const { getByTestId } = render({ runtime });
+		await fireEvent.click(getByTestId('teams-settings-publish'));
+
+		await waitFor(() => expect(runtime.publishApp).toHaveBeenCalled());
+		expect(showMessage).not.toHaveBeenCalled();
+	});
+
+	it('confirms a download in a toast', async () => {
+		const { getByTestId } = render();
+		await fireEvent.click(getByTestId('teams-settings-download'));
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'agents.channels.teams.setup.install.downloaded' }),
+			),
+		);
 	});
 
 	it('confirms a publish in a toast', async () => {

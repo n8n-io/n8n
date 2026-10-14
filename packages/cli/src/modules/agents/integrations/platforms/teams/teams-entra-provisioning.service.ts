@@ -516,6 +516,9 @@ export class TeamsEntraProvisioningService {
 			delete existingData.publishedTeamsAppId;
 			delete existingData.publishedTeamsAppState;
 			delete existingData.publishedTeamsAppAt;
+			// The bot signs for the app it was made with, so it does not move either.
+			delete existingData.azureBotName;
+			delete existingData.azureSubscriptionId;
 		}
 
 		const data = {

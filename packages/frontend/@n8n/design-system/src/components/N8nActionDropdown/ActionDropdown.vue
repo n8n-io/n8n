@@ -141,18 +141,13 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 				</span>
 			</template>
 			<template #item-label="slotProps">
-				<span
-					:class="[
-						slotProps.ui.class,
-						$style.label,
-						{ [$style.withDescription]: slotProps.item.data?.description },
-					]"
-				>
+				<span :class="[slotProps.ui.class, $style.label]">
 					<slot name="menuItem" v-bind="slotProps.item.data as ActionDropdownItem<T>">
-						{{ slotProps.item.data?.label ?? slotProps.item.label }}
-						<span v-if="slotProps.item.data?.description" :class="$style.description">
-							{{ slotProps.item.data.description }}
+						<span v-if="slotProps.item.data?.description" :class="$style.withDescription">
+							{{ slotProps.item.data.label }}
+							<span :class="$style.description">{{ slotProps.item.data.description }}</span>
 						</span>
+						<template v-else>{{ slotProps.item.data?.label ?? slotProps.item.label }}</template>
 					</slot>
 				</span>
 			</template>
