@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
@@ -20,6 +21,7 @@ const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
 });
 mockInstance(LoadNodesAndCredentials);
+mockInstance(CommunityNodeTypesService);
 
 const testServer = setupTestServer({
 	endpointGroups: ['community-packages'],
@@ -237,6 +239,8 @@ describe('PATCH /community-packages', () => {
 	});
 
 	test('should reject if package is not installed', async () => {
+		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+
 		const {
 			body: { message },
 		} = await authAgent.patch('/community-packages').send({ name: mockPackageName() }).expect(400);

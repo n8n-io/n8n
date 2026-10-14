@@ -102,10 +102,11 @@ export class CommunityNodeTypesService {
 		return { ...nodeType, isInstalled: isInstalled(nodeType.name) };
 	}
 
-	findVetted(packageName: string) {
-		const vettedTypes = Array.from(this.communityNodeTypes.keys());
-		const nodeName = vettedTypes.find((t) => t.includes(packageName));
-		if (!nodeName) return;
-		return this.communityNodeTypes.get(nodeName);
+	async findVetted(packageName: string) {
+		if (this.updateRequired()) {
+			await this.fetchNodeTypes();
+		}
+		const vettedTypes = Array.from(this.communityNodeTypes.values());
+		return vettedTypes.find((nodeType) => nodeType.packageName === packageName);
 	}
 }

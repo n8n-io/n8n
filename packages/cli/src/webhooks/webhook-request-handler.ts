@@ -20,7 +20,12 @@ import {
 } from '@/webhooks/webhook-response';
 import { WebhookService } from '@/webhooks/webhook.service';
 // eslint-disable-next-line import-x/order
-import { applySandboxCSP, WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+import {
+	applySandboxCSP,
+	setRouteSandboxSetting,
+	WebhookResponseHeaders,
+	type WebhookSandboxSetting,
+} from '@/webhooks/webhook-response-headers';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
@@ -30,7 +35,10 @@ import type {
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 class WebhookRequestHandler {
-	constructor(private readonly webhookManager: IWebhookManager) {}
+	constructor(
+		private readonly webhookManager: IWebhookManager,
+		private readonly sandboxSetting: WebhookSandboxSetting = 'webhook',
+	) {}
 
 	/**
 	 * Handles an incoming webhook request. Handles CORS and delegates the
@@ -38,6 +46,12 @@ class WebhookRequestHandler {
 	 */
 	async handleRequest(req: WebhookRequest | WebhookOptionsRequest, res: express.Response) {
 		const method = req.method;
+
+		// Set the sandbox before any writer runs, so that every response of the route has it,
+		// for all status codes and content types. Only an n8n page that must keep its origin
+		// replaces or removes it. Later writers follow the same setting through `res.locals`.
+		setRouteSandboxSetting(res, this.sandboxSetting);
+		applySandboxCSP(res);
 
 		if (method !== 'OPTIONS' && !WEBHOOK_METHODS.includes(method)) {
 			return ResponseHelper.sendErrorResponse(
@@ -232,8 +246,17 @@ class WebhookRequestHandler {
 	}
 }
 
-export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
-	const handler = new WebhookRequestHandler(webhookManager);
+/**
+ * Creates an Express request handler for the given webhook manager.
+ *
+ * `sandboxSetting` selects the operator setting for the sandbox CSP: the form setting for
+ * form routes, the webhook setting for all other routes.
+ */
+export function createWebhookHandlerFor(
+	webhookManager: IWebhookManager,
+	sandboxSetting: WebhookSandboxSetting = 'webhook',
+) {
+	const handler = new WebhookRequestHandler(webhookManager, sandboxSetting);
 
 	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
 		const { params } = req;

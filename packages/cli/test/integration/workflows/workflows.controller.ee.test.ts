@@ -28,6 +28,7 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { UserManagementMailer } from '@/user-management/email';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -2160,6 +2161,157 @@ describe('POST /workflows/:workflowId/run', () => {
 		expect(response.status).toBe(403);
 		expect(response.body).toMatchObject({
 			message: 'User is missing a scope required to perform this action',
+		});
+	});
+});
+
+describe('sub-workflow loaded from a URL or file', () => {
+	const SOURCE_MESSAGE = /resolved only when the workflow runs/;
+	const WORKFLOW_URL = 'https://example.com/workflow.json';
+
+	const subworkflowNode = (parameters: INode['parameters'], typeVersion = 1.1): INode => ({
+		id: 'b4a1c2d3-0000-4000-8000-000000000002',
+		name: 'Sub',
+		type: 'n8n-nodes-base.executeWorkflow',
+		typeVersion,
+		position: [0, 0],
+		parameters,
+	});
+
+	const urlNode = (typeVersion = 1.1) =>
+		subworkflowNode({ source: 'url', workflowUrl: WORKFLOW_URL }, typeVersion);
+
+	const createWorkflowRequest = (nodes: INode[]) => ({
+		name: 'test',
+		active: false,
+		connections: {},
+		nodes,
+	});
+
+	const createSharedWorkflow = async (nodes: INode[]) => {
+		const workflow = await createWorkflowWithHistory({ nodes }, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+		return workflow;
+	};
+
+	describe('PATCH /workflows/:workflowId', () => {
+		test.each([1, 1.1, 1.3])(
+			'should reject a member adding a URL source node with version %s',
+			async (typeVersion) => {
+				const workflow = await createSharedWorkflow([]);
+
+				const response = await authMemberAgent
+					.patch(`/workflows/${workflow.id}`)
+					.send({ versionId: workflow.versionId, nodes: [urlNode(typeVersion)] });
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toMatch(SOURCE_MESSAGE);
+			},
+		);
+
+		test('should allow the owner to add a URL source node', async () => {
+			const workflow = await createSharedWorkflow([]);
+
+			const response = await authOwnerAgent
+				.patch(`/workflows/${workflow.id}`)
+				.send({ versionId: workflow.versionId, nodes: [urlNode()] });
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should allow a member to rename a stored URL source node', async () => {
+			const workflow = await createSharedWorkflow([urlNode()]);
+
+			const response = await authMemberAgent
+				.patch(`/workflows/${workflow.id}`)
+				.send({ versionId: workflow.versionId, nodes: [{ ...urlNode(), name: 'Renamed' }] });
+
+			expect(response.statusCode).toBe(200);
+			const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(stored.nodes[0].name).toBe('Renamed');
+			expect(stored.nodes[0].parameters.workflowUrl).toBe(WORKFLOW_URL);
+		});
+
+		test('should keep the stored URL when a member changes it', async () => {
+			const workflow = await createSharedWorkflow([urlNode()]);
+			const changedNode = urlNode();
+			changedNode.parameters.workflowUrl = 'https://example.org/other.json';
+
+			const response = await authMemberAgent
+				.patch(`/workflows/${workflow.id}`)
+				.send({ versionId: workflow.versionId, nodes: [changedNode] });
+
+			expect(response.statusCode).toBe(200);
+			const stored = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(stored.nodes[0].parameters.workflowUrl).toBe(WORKFLOW_URL);
+		});
+	});
+
+	describe('POST /workflows/:workflowId/run', () => {
+		// A manual run on a worker carries no user, so the stored node is what keeps the edit out.
+		test('should run the stored URL when a member changes it', async () => {
+			const workflow = await createSharedWorkflow([urlNode()]);
+			const executeManually = jest
+				.spyOn(Container.get(WorkflowExecutionService), 'executeManually')
+				.mockResolvedValue({ executionId: '1' });
+			const changedNode = urlNode();
+			changedNode.parameters.workflowUrl = 'https://example.org/other.json';
+
+			const response = await authMemberAgent
+				.post(`/workflows/${workflow.id}/run`)
+				.send({ workflowData: { ...workflow, nodes: [changedNode] } });
+			const [payload] = executeManually.mock.calls[0];
+			executeManually.mockRestore();
+
+			expect(response.statusCode).toBe(200);
+			expect(payload.workflowData.nodes[0].parameters.workflowUrl).toBe(WORKFLOW_URL);
+		});
+	});
+
+	describe('POST /workflows', () => {
+		test.each([
+			['url', { source: 'url', workflowUrl: WORKFLOW_URL }],
+			['localFile', { source: 'localFile', workflowPath: '/data/workflow.json' }],
+		])('should reject a member creating a workflow with a %s source', async (_, parameters) => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send(createWorkflowRequest([subworkflowNode(parameters)]));
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toMatch(SOURCE_MESSAGE);
+		});
+
+		test.each([
+			['database', { source: 'database', workflowId: '1' }],
+			['parameter', { source: 'parameter', workflowJson: '{"nodes":[],"connections":{}}' }],
+		])('should allow a member to create a workflow with a %s source', async (_, parameters) => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send(createWorkflowRequest([subworkflowNode(parameters)]));
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test.each([
+			['owner', () => authOwnerAgent],
+			['admin', () => testServer.authAgentFor(admin)],
+		])('should allow the %s to create a workflow with a URL source', async (_, agent) => {
+			const response = await agent()
+				.post('/workflows')
+				.send(createWorkflowRequest([urlNode()]));
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should still reject a credential without an id', async () => {
+			const node = {
+				...subworkflowNode({}),
+				credentials: { httpHeaderAuth: { id: null, name: 'Name only' } },
+			};
+
+			const response = await authMemberAgent.post('/workflows').send(createWorkflowRequest([node]));
+
+			expect(response.statusCode).toBe(400);
 		});
 	});
 });

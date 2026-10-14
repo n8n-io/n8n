@@ -10,8 +10,10 @@ jest.mock('../../v2/GenericFunctions', () => {
 });
 
 import * as GenericFunctions from '../../v2/GenericFunctions';
+import { execute as executeUpload } from '../../v2/actions/asset/upload.operation';
 import { execute as executeGet } from '../../v2/actions/row/get.operation';
 import { execute as executeSearch } from '../../v2/actions/row/search.operation';
+import type { ICtx } from '../../v2/actions/Interfaces';
 
 const mockedApiRequest = GenericFunctions.seaTableApiRequest as jest.Mock;
 const mockedGetCollaborators = GenericFunctions.getBaseCollaborators as jest.Mock;
@@ -134,6 +136,57 @@ describe('SeaTable > v2 > row operations', () => {
 			await executeGet.call(ctx, 0);
 
 			expect(getCapturedSql()).toBe("SELECT * FROM `My``Table` WHERE _id = 'abc-123'");
+		});
+	});
+
+	describe('upload operation', () => {
+		it('should build the asset path from the base returned with the access token', async () => {
+			const httpRequest = jest.fn();
+			const ctx = {
+				...buildMockContext({
+					uploadColumn: 'file:::file',
+					tableName: 'Table1',
+					rowId: 'row-1',
+					options: { append: false },
+				}),
+				helpers: {
+					httpRequest,
+					getBinaryDataBuffer: jest.fn().mockResolvedValue(Buffer.from('data')),
+					assertBinaryData: jest
+						.fn()
+						.mockReturnValue({ fileName: 'a.txt', mimeType: 'text/plain' }),
+					returnJsonArray: jest.fn((data: IDataObject[]) => data),
+				},
+			} as unknown as IExecuteFunctions;
+			mockedApiRequest.mockImplementation(
+				async (apiCtx: ICtx, _method: string, endpoint: string) => {
+					if (endpoint === '/api/v2.1/dtable/app-upload-link/') {
+						apiCtx.credentials = {
+							environment: 'selfHosted',
+							domain: 'https://seatable.example.com/',
+							token: 'api-token-value',
+						} as ICtx['credentials'];
+						apiCtx.base = {
+							workspace_id: 7,
+							dtable_uuid: 'uuid',
+							access_token: 'base-token',
+							dtable_name: 'Base',
+						};
+						return {
+							parent_path: '/asset/uuid',
+							file_relative_path: 'files',
+							upload_link: 'https://seatable.example.com/seafhttp/upload-api/abc',
+						};
+					}
+					if (endpoint.startsWith('/seafhttp/upload-api/')) return [{ name: 'a.txt' }];
+					return { success: true };
+				},
+			);
+
+			const result = (await executeUpload.call(ctx, 0)) as unknown as IDataObject[];
+
+			expect(httpRequest).not.toHaveBeenCalled();
+			expect(result[0].url).toBe('https://seatable.example.com/workspace/7/asset/uuid/files/a.txt');
 		});
 	});
 });

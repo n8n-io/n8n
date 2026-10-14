@@ -389,6 +389,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 			if (!isFormHtmlSandboxingDisabled()) {
 				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			} else {
+				// The waiting-webhook route sets the webhook sandbox before this page renders.
+				res.removeHeader('Content-Security-Policy');
 			}
 			res.render('form-trigger', data);
 
@@ -443,6 +446,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 			if (!isFormHtmlSandboxingDisabled()) {
 				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			} else {
+				// The waiting-webhook route sets the webhook sandbox before this page renders.
+				res.removeHeader('Content-Security-Policy');
 			}
 			res.render('form-trigger', data);
 

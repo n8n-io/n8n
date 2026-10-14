@@ -216,8 +216,10 @@ export abstract class AbstractServer {
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
 			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
+			// Form routes follow the form sandbox setting, all other routes the webhook one.
+			const liveFormsRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks), 'form');
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
+			this.app.all(`/${this.endpointForm}/*path`, liveFormsRequestHandler);
 
 			// Register a handler for live webhooks
 			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
@@ -225,7 +227,7 @@ export abstract class AbstractServer {
 			// Register a handler for waiting forms
 			this.app.all(
 				`/${this.endpointFormWaiting}/:path{/:suffix}`,
-				createWebhookHandlerFor(Container.get(WaitingForms)),
+				createWebhookHandlerFor(Container.get(WaitingForms), 'form'),
 			);
 
 			// Register a handler for waiting webhooks
@@ -240,9 +242,10 @@ export abstract class AbstractServer {
 
 		if (this.testWebhooksEnabled) {
 			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
+			const testFormsRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks), 'form');
 
 			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(`/${this.endpointFormTest}/*path`, testFormsRequestHandler);
 			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
 
 			// Register a handler for test MCP servers

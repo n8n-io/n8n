@@ -96,6 +96,28 @@ describe('CredentialsPermissionChecker', () => {
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 	});
 
+	it('should skip the credentials of a disabled node', async () => {
+		const disabledNode: INode = { ...node, disabled: true };
+
+		await expect(permissionChecker.check(workflowId, [disabledNode])).resolves.not.toThrow();
+
+		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
+	});
+
+	it.each([1, 'true', {}])(
+		'should check the credentials of a node whose disabled flag is %p',
+		async (disabled) => {
+			const flaggedNode = { ...node, disabled } as unknown as INode;
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
+			credentialsRepository.find.mockResolvedValueOnce([]);
+
+			await expect(permissionChecker.check(workflowId, [flaggedNode])).rejects.toThrow(
+				'Node "Test Node" does not have access to the credential',
+			);
+		},
+	);
+
 	it('should not throw an error if all credentials are accessible', async () => {
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([
@@ -340,6 +362,104 @@ describe('CredentialsPermissionChecker', () => {
 			);
 		});
 
+		describe('with a default-valued authentication parameter', () => {
+			const passwordCredentialId = 'password-cred';
+			const tokenCredentialId = 'token-cred';
+			const description = {
+				credentials: [
+					{
+						name: 'passwordApi',
+						required: true,
+						displayOptions: { show: { authentication: ['password'] } },
+					},
+					{
+						name: 'tokenApi',
+						required: true,
+						displayOptions: { show: { authentication: ['token'] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'Password', value: 'password' },
+							{ name: 'Token', value: 'token' },
+						],
+						default: 'password',
+					},
+				],
+			};
+
+			const makeNode = (parameters: INode['parameters']): INode => ({
+				id: 'node-6',
+				name: 'Service',
+				type: 'n8n-nodes-base.service',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters,
+				credentials: {
+					passwordApi: { id: passwordCredentialId, name: 'Password' },
+					tokenApi: { id: tokenCredentialId, name: 'Token' },
+				},
+			});
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
+				credentialsRepository.find.mockResolvedValue([]);
+			});
+
+			it('should check the credential selected by the default value', async () => {
+				// Saved nodes omit parameters left at their default value
+				const node = makeNode({ resource: 'entry' });
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "Service" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[passwordCredentialId],
+				);
+			});
+
+			it('should use the stored value when it is not the default', async () => {
+				const node = makeNode({ authentication: 'token' });
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "Service" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[tokenCredentialId],
+				);
+			});
+
+			it('should let the run through when the project can use the credential', async () => {
+				const node = makeNode({ resource: 'entry' });
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					passwordCredentialId,
+				]);
+
+				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
+			});
+
+			it('should not change the node parameters', async () => {
+				const node = makeNode({ resource: 'entry' });
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					passwordCredentialId,
+				]);
+
+				await permissionChecker.check(workflowId, [node]);
+
+				expect(node.parameters).toEqual({ resource: 'entry' });
+			});
+		});
+
 		it('should fall back to checking all credentials if node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');
@@ -396,6 +516,22 @@ describe('CredentialsPermissionChecker', () => {
 				['credential:read'],
 			);
 		});
+
+		it.each([1, 'true', {}])(
+			'should check the credentials of a node whose disabled flag is %p',
+			async (disabled) => {
+				const flaggedNode = { ...node, disabled } as unknown as INode;
+				userRepository.findOne.mockResolvedValueOnce({
+					id: userId,
+					role: GLOBAL_MEMBER_ROLE,
+				} as User);
+				credentialsFinderService.findCredentialsForUser.mockResolvedValueOnce([]);
+
+				await expect(permissionChecker.checkForUser(userId, [flaggedNode])).rejects.toThrow(
+					'Node "Test Node" uses a credential you do not have access to',
+				);
+			},
+		);
 
 		it('should not throw when the user has access to the credential', async () => {
 			userRepository.findOne.mockResolvedValueOnce(

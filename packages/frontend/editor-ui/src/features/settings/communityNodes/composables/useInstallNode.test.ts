@@ -151,11 +151,7 @@ describe('useInstallNode', () => {
 			});
 
 			expect(result.success).toBe(true);
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
-				'test-package',
-				true,
-				'1.0.0',
-			);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package', '1.0.0');
 			expect(nodeTypesStore.getNodeTypes).toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(true);
 			expect(showMessage).toHaveBeenCalledWith({
@@ -288,11 +284,7 @@ describe('useInstallNode', () => {
 			});
 
 			expect(result.success).toBe(true);
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
-				'test-package',
-				true,
-				undefined,
-			);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package', undefined);
 		});
 
 		it('should handle getNpmVersion errors', async () => {
@@ -380,11 +372,7 @@ describe('useInstallNode', () => {
 			});
 
 			expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('test-node');
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
-				'test-package',
-				true,
-				'2.0.0',
-			);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package', '2.0.0');
 		});
 	});
 

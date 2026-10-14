@@ -107,3 +107,4 @@ export {
 	DeleteOAuthClientResponseDto,
 } from './oauth/oauth-client.dto';
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+export { CommunityPackageRequestDto } from './community-packages/community-package-request.dto';

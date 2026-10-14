@@ -2,7 +2,7 @@ import http from 'http';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import https from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, UserError } from 'n8n-workflow';
 import proxyFromEnv from 'proxy-from-env';
 
 type ProxyRequestParameters = Parameters<HttpProxyAgent<string>['addRequest']>;
@@ -92,11 +92,23 @@ class HttpsProxyManager extends https.Agent {
 	}
 }
 
+const SOCKET_PATH_KEYS = ['socketPath', 'path'] as const;
+
+function throwIfSocketPath(options?: http.AgentOptions): void {
+	if (!options) return;
+	for (const key of SOCKET_PATH_KEYS) {
+		if (key in options && (options as Record<string, unknown>)[key]) {
+			throw new UserError(`\`${key}\` is not supported. Remove it from the agent options.`);
+		}
+	}
+}
+
 export function createHttpProxyAgent(
 	customProxyUrl: string | null = null,
 	targetUrl: string,
 	options?: http.AgentOptions,
 ): http.Agent {
+	throwIfSocketPath(options);
 	const proxyUrl = customProxyUrl ?? proxyFromEnv.getProxyForUrl(targetUrl);
 
 	if (proxyUrl) {
@@ -111,6 +123,7 @@ export function createHttpsProxyAgent(
 	targetUrl: string,
 	options?: https.AgentOptions,
 ): https.Agent {
+	throwIfSocketPath(options);
 	const proxyUrl = customProxyUrl ?? proxyFromEnv.getProxyForUrl(targetUrl);
 
 	if (proxyUrl) {

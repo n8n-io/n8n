@@ -13,7 +13,10 @@ import { metadataFilterField } from '@utils/sharedFields';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
-import { validateAndResolveMongoCredentials } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
+import {
+	sanitizeMongoUriInMessage,
+	validateAndResolveMongoCredentials,
+} from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
 
 /**
  * Constants for the name of the credentials and Node parameters.
@@ -185,14 +188,21 @@ export async function getMongoClient(
 
 		mongoConfig.connectionString = connectionString;
 		mongoConfig.nodeVersion = version;
-		mongoConfig.client = new MongoClient(connectionString, {
-			appName: 'devrel.integration.n8n_vector_integ',
-			driverInfo: {
-				name: 'n8n_vector',
-				version: version.toString(),
-			},
-		});
-		await mongoConfig.client.connect();
+		try {
+			mongoConfig.client = new MongoClient(connectionString, {
+				appName: 'devrel.integration.n8n_vector_integ',
+				driverInfo: {
+					name: 'n8n_vector',
+					version: version.toString(),
+				},
+			});
+			await mongoConfig.client.connect();
+		} catch (error) {
+			throw new NodeOperationError(
+				node,
+				`MongoDB connection error: ${sanitizeMongoUriInMessage(error, connectionString)}`,
+			);
+		}
 	}
 	return mongoConfig.client;
 }

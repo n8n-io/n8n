@@ -56,4 +56,23 @@ test.describe('Webhook Origin Isolation', () => {
 			expect(headers['content-security-policy']).toBe(expectedCSP);
 		});
 	}
+
+	test('Webhook error responses should include the sandbox header', async ({ api }) => {
+		const webhookResponse = await api.request.get(
+			'/webhook/webhook-last-node-binary-error-text-html',
+		);
+		expect(webhookResponse.status()).toBe(500);
+
+		const headers = webhookResponse.headers();
+		expect(headers['content-security-policy']).toBe(expectedCSP);
+		expect(headers['content-type']).toContain('application/json');
+	});
+
+	test('Responses for unknown webhooks should include the sandbox header', async ({ api }) => {
+		const webhookResponse = await api.request.get('/webhook/webhook-path-does-not-exist');
+		expect(webhookResponse.status()).toBe(404);
+
+		const headers = webhookResponse.headers();
+		expect(headers['content-security-policy']).toBe(expectedCSP);
+	});
 });

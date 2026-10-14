@@ -135,3 +135,38 @@ export async function quickbaseApiRequestAllItems(
 
 	return returnData;
 }
+
+/**
+ * Replaces `$1`, `$2`, … in a Quick Base query with the matching parameter.
+ * The query language documents no way to escape a quote or a brace inside a
+ * value, so a parameter that contains one is rejected.
+ */
+export function applyWhereParameters(
+	this: IExecuteFunctions,
+	where: string,
+	parameters: IDataObject[],
+	itemIndex: number,
+) {
+	if (!where || parameters.length === 0) return where;
+
+	return where.replace(/\$(\d+)/g, (_match, index: string) => {
+		const position = Number(index) - 1;
+		if (position < 0 || position >= parameters.length) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`'Where' references parameter $${index}, but only ${parameters.length} parameter(s) were provided`,
+				{ itemIndex },
+			);
+		}
+
+		const value = String(parameters[position].value);
+		const found = ["'", '"', '{', '}'].find((delimiter) => value.includes(delimiter));
+		if (found !== undefined) {
+			throw new NodeOperationError(this.getNode(), `'Where Parameters' cannot contain ${found}`, {
+				itemIndex,
+				description: `Quick Base has no way to quote ${found} inside a value. Remove it from 'Where Parameters'.`,
+			});
+		}
+		return value;
+	});
+}

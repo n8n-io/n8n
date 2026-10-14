@@ -246,6 +246,7 @@ describe('WorkflowsController', () => {
 				expect(enterpriseWorkflowService.validateCredentialPermissionsToUser).toHaveBeenCalledWith(
 					expect.any(WorkflowEntity),
 					[mockGlobalCredential, mockPersonalCredential],
+					mockUser,
 				);
 			});
 

@@ -60,7 +60,6 @@ export function useInstallNode() {
 			if (props.type === 'verified') {
 				await communityNodesStore.installPackage(
 					props.packageName,
-					true,
 					await getNpmVersion(props.nodeType),
 				);
 			} else {

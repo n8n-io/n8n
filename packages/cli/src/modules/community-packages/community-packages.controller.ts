@@ -1,4 +1,6 @@
-import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+import { CommunityPackageRequestDto } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Body, Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
 
 import {
 	RESPONSE_ERROR_MESSAGES,
@@ -9,9 +11,11 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import { Push } from '@/push';
-import { NodeRequest } from '@/requests';
+import type { NodeRequest } from '@/requests';
 
+import { selectVettedVersion } from './community-node-types-utils';
 import { CommunityNodeTypesService } from './community-node-types.service';
+import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
@@ -41,29 +45,54 @@ export class CommunityPackagesController {
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
+		private readonly communityPackagesConfig: CommunityPackagesConfig,
 	) {}
+
+	/**
+	 * Resolves the version and checksum to install. The checksum is what lets a package through
+	 * `checkInstallPermissions`, so only the instance config and the vetted list decide it, never
+	 * the caller. When unverified packages are allowed, a vetted version still gets its checksum
+	 * so that its integrity is checked.
+	 */
+	private async resolveVetted(
+		name: string,
+		requestedVersion: string | undefined,
+	): Promise<{ version: string | undefined; checksum: string | undefined }> {
+		const vettedPackage = await this.communityNodeTypesService.findVetted(name);
+
+		if (this.communityPackagesConfig.unverifiedEnabled) {
+			const checksum =
+				vettedPackage && requestedVersion
+					? selectVettedVersion(vettedPackage, requestedVersion).checksum
+					: undefined;
+			return { version: requestedVersion, checksum };
+		}
+
+		if (!vettedPackage) {
+			throw new BadRequestError(`Package ${name} is not vetted for installation`);
+		}
+
+		const { version, checksum } = selectVettedVersion(vettedPackage, requestedVersion);
+		if (!checksum) {
+			throw new BadRequestError(
+				`Version ${version} of ${name} is not verified by n8n. Latest verified version is ${vettedPackage.npmVersion}`,
+			);
+		}
+
+		return { version, checksum };
+	}
 
 	@Post('/')
 	@GlobalScope('communityPackage:install')
-	async installPackage(req: NodeRequest.Post) {
-		const { name, verify, version } = req.body;
+	async installPackage(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: CommunityPackageRequestDto,
+	) {
+		const { name } = body;
 
-		if (!name) {
-			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
-		}
-
-		if (version && !valid(version)) {
-			throw new BadRequestError(`Invalid version: ${version}`);
-		}
-
-		let checksum: string | undefined = undefined;
-
-		// Get the checksum for the package if flagged to verify
-		if (verify) {
-			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
-			if (!checksum) {
-				throw new BadRequestError(`Package ${name} is not vetted for installation`);
-			}
+		if (body.version && !valid(body.version)) {
+			throw new BadRequestError(`Invalid version: ${body.version}`);
 		}
 
 		let parsed: CommunityPackages.ParsedPackageName;
@@ -75,6 +104,12 @@ export class CommunityPackagesController {
 				error instanceof Error ? error.message : 'Failed to parse package name',
 			);
 		}
+
+		// The vetted list is keyed by bare package name; `name` may carry a `@version` suffix.
+		const { version: packageVersion, checksum } = await this.resolveVetted(
+			parsed.packageName,
+			body.version ?? parsed.version,
+		);
 
 		if (parsed.packageName === STARTER_TEMPLATE_NAME) {
 			throw new BadRequestError(
@@ -103,7 +138,6 @@ export class CommunityPackagesController {
 			throw new BadRequestError(`Package "${name}" is banned so it cannot be installed`);
 		}
 
-		const packageVersion = version ?? parsed.version;
 		let installedPackage: InstalledPackages;
 		try {
 			installedPackage = await this.communityPackagesService.installPackage(
@@ -252,19 +286,35 @@ export class CommunityPackagesController {
 
 	@Patch('/')
 	@GlobalScope('communityPackage:update')
-	async updatePackage(req: NodeRequest.Update) {
-		const { name, version, checksum } = req.body;
+	async updatePackage(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: CommunityPackageRequestDto,
+	) {
+		const { name } = body;
 
-		if (!name) {
-			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
+		if (body.version && !valid(body.version)) {
+			throw new BadRequestError(`Invalid version: ${body.version}`);
 		}
 
-		if (version && !valid(version)) {
-			throw new BadRequestError(`Invalid version: ${version}`);
+		let parsed: CommunityPackages.ParsedPackageName;
+
+		try {
+			parsed = this.communityPackagesService.parseNpmPackageName(name);
+		} catch (error) {
+			throw new BadRequestError(
+				error instanceof Error ? error.message : 'Failed to parse package name',
+			);
 		}
+
+		const { packageName } = parsed;
+		const { version, checksum } = await this.resolveVetted(
+			packageName,
+			body.version ?? parsed.version,
+		);
 
 		const previouslyInstalledPackage =
-			await this.communityPackagesService.findInstalledPackage(name);
+			await this.communityPackagesService.findInstalledPackage(packageName);
 
 		if (!previouslyInstalledPackage) {
 			throw new BadRequestError(PACKAGE_NOT_INSTALLED);
@@ -272,7 +322,7 @@ export class CommunityPackagesController {
 
 		try {
 			const newInstalledPackage = await this.communityPackagesService.updatePackage(
-				this.communityPackagesService.parseNpmPackageName(name).packageName,
+				packageName,
 				previouslyInstalledPackage,
 				version,
 				checksum,
@@ -301,7 +351,7 @@ export class CommunityPackagesController {
 
 			this.eventService.emit('community-package-updated', {
 				user: req.user,
-				packageName: name,
+				packageName,
 				packageVersionCurrent: previouslyInstalledPackage.installedVersion,
 				packageVersionNew: newInstalledPackage.installedVersion,
 				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
