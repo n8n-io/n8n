@@ -40,9 +40,17 @@ type PromotionBindingsError =
 	| { kind: 'continue'; cause: unknown };
 
 type DestructiveChange = Extract<PromotionBindingConflict, { code: 'destructive-change' }>;
+type ProjectDeletion = Extract<PromotionBindingConflict, { code: 'project-deletion' }>;
 
 const isDestructiveChange = (conflict: PromotionBindingConflict): conflict is DestructiveChange =>
 	conflict.code === 'destructive-change';
+const isProjectDeletion = (conflict: PromotionBindingConflict): conflict is ProjectDeletion =>
+	conflict.code === 'project-deletion';
+// Continue can't confirm these, so they block the apply.
+const isHardConflict = (
+	conflict: PromotionBindingConflict,
+): conflict is Exclude<PromotionBindingConflict, DestructiveChange | ProjectDeletion> =>
+	!isDestructiveChange(conflict) && !isProjectDeletion(conflict);
 
 type BindingGroup = {
 	project: PromotionBindingConsumer['project'];
@@ -122,13 +130,17 @@ export function usePromotionBindings() {
 	const destructiveChanges = computed(
 		() => preflight.value?.conflicts.filter(isDestructiveChange) ?? [],
 	);
-	const hardConflicts = computed(
-		() => preflight.value?.conflicts.filter((conflict) => !isDestructiveChange(conflict)) ?? [],
+	const projectDeletions = computed(
+		() => preflight.value?.conflicts.filter(isProjectDeletion) ?? [],
 	);
+	const needsConfirmation = computed(
+		() => destructiveChanges.value.length > 0 || projectDeletions.value.length > 0,
+	);
+	const hardConflicts = computed(() => preflight.value?.conflicts.filter(isHardConflict) ?? []);
 	const mode = computed<'blocked' | 'review' | 'bindings'>(() => {
 		if (hardConflicts.value.length || preflight.value?.accessRequirements.length) return 'blocked';
 		// A session that started with bindings keeps its table after the last one is created.
-		if (destructiveChanges.value.length && knownBindings.value.size === 0) return 'review';
+		if (needsConfirmation.value && knownBindings.value.size === 0) return 'review';
 		return 'bindings';
 	});
 	const unresolvedCount = computed(
@@ -220,7 +232,7 @@ export function usePromotionBindings() {
 		isSubmitting.value = true;
 		error.value = null;
 		try {
-			const confirmDestructiveChanges = destructiveChanges.value.length > 0 || undefined;
+			const confirmDestructiveChanges = needsConfirmation.value || undefined;
 			const result =
 				continueTarget.kind === 'selection'
 					? await continueApplyProjectSelection(
@@ -254,6 +266,8 @@ export function usePromotionBindings() {
 		preflight,
 		groups,
 		destructiveChanges,
+		projectDeletions,
+		needsConfirmation,
 		hardConflicts,
 		mode,
 		unresolvedCount,

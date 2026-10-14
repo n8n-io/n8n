@@ -131,22 +131,6 @@ export class N8nPackageParser {
 		return projects;
 	}
 
-	/** Bundled credential files, keyed by manifest target. */
-	async getCredentials(
-		reader: PackageReader,
-		sourceIds: ReadonlySet<string>,
-	): Promise<Map<string, SerializedCredential>> {
-		const manifest = await this.getManifest(reader);
-		const credentials = new Map<string, SerializedCredential>();
-
-		for (const entry of manifest.credentials ?? []) {
-			if (!sourceIds.has(entry.id)) continue;
-			credentials.set(entry.target, await this.readCredential(reader, entry));
-		}
-
-		return credentials;
-	}
-
 	/** Bundled variable files, keyed by manifest target. */
 	async getVariables(reader: PackageReader): Promise<Map<string, SerializedVariable>> {
 		const manifest = await this.getManifest(reader);
@@ -157,6 +141,33 @@ export class N8nPackageParser {
 		}
 
 		return variables;
+	}
+
+	/**
+	 * Bundled credential files, keyed by credential id. A credential requirement
+	 * without a file is valid: the exporting user could not read the credential.
+	 */
+	async getCredentials(
+		reader: PackageReader,
+		sourceIds?: ReadonlySet<string>,
+	): Promise<Map<string, SerializedCredential>> {
+		const manifest = await this.getManifest(reader);
+		const credentials = new Map<string, SerializedCredential>();
+		const requiredTypes = new Map(
+			(manifest.requirements?.credentials ?? []).map(({ id, type }) => [id, type]),
+		);
+
+		// The manifest target already points into the owner project folder or the
+		// top-level `credentials/` folder, so the import scope does not matter here.
+		for (const entry of manifest.credentials ?? []) {
+			if (sourceIds && !sourceIds.has(entry.id)) continue;
+			credentials.set(
+				entry.id,
+				await this.readCredential(reader, entry, requiredTypes.get(entry.id)),
+			);
+		}
+
+		return credentials;
 	}
 
 	private async readAgent(reader: PackageReader, entry: ManifestEntry): Promise<PreparedAgent> {
@@ -407,34 +418,6 @@ export class N8nPackageParser {
 		};
 	}
 
-	private async readCredential(
-		reader: PackageReader,
-		entry: ManifestEntry,
-	): Promise<SerializedCredential> {
-		const path = `${entry.target}/credential.json`;
-		const wire = await this.readJson(reader, path, 'credential');
-
-		let credential: SerializedCredential;
-		try {
-			credential = serializedCredentialSchema.parse(wire);
-		} catch (cause) {
-			if (cause instanceof ZodError) {
-				throw new UserError(`Package credential file at ${path} failed schema validation.`, {
-					cause,
-				});
-			}
-			throw cause;
-		}
-
-		if (credential.id !== entry.id) {
-			throw new UserError(
-				`Package credential at ${path} declares id "${credential.id}" but the manifest lists it as "${entry.id}".`,
-			);
-		}
-
-		return credential;
-	}
-
 	private async readVariable(
 		reader: PackageReader,
 		entry: ManifestEntry,
@@ -461,6 +444,51 @@ export class N8nPackageParser {
 		}
 
 		return variable;
+	}
+
+	private async readCredential(
+		reader: PackageReader,
+		entry: ManifestEntry,
+		requiredType: string | undefined,
+	): Promise<SerializedCredential> {
+		const path = entityFilePath('credentials', entry.target);
+		const wire = await this.readJson(reader, path, 'credential');
+
+		let credential: SerializedCredential;
+		try {
+			credential = serializedCredentialSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package credential file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		// Requirements and bindings key off the manifest id, so a file with another
+		// identity would apply its data to the wrong credential.
+		if (credential.id !== entry.id) {
+			throw new UserError(
+				`Package credential at ${path} declares id "${credential.id}" but the manifest lists it as "${entry.id}".`,
+			);
+		}
+
+		if (credential.name !== entry.name) {
+			throw new UserError(
+				`Package credential at ${path} declares name "${credential.name}" but the manifest lists it as "${entry.name}".`,
+			);
+		}
+
+		// Matching binds a destination credential of the requirement type, so data of
+		// another type would merge into a credential with a different schema.
+		if (requiredType !== undefined && credential.type !== requiredType) {
+			throw new UserError(
+				`Package credential at ${path} declares type "${credential.type}" but the requirement lists it as "${requiredType}".`,
+			);
+		}
+
+		return credential;
 	}
 
 	private async readJson<T = unknown>(
