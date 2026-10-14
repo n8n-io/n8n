@@ -352,7 +352,10 @@ describe('get-execution MCP tool', () => {
 				expect(Object.keys(data.resultData.runData)).toEqual(['Node1']);
 			});
 
-			test('excludes HTTP node context data when nodeNames selects another node', async () => {
+			test.each([
+				{ scenario: 'when nodeNames selects another node', nodeNames: ['Summary'] },
+				{ scenario: 'without a nodeNames filter', nodeNames: undefined },
+			])('excludes HTTP node context data $scenario', async ({ nodeNames }) => {
 				const tool = createGetExecutionTool(
 					user,
 					executionRepository,
@@ -414,6 +417,7 @@ describe('get-execution MCP tool', () => {
 					data: mockExecutionData,
 				};
 
+				const originalExecutionData = structuredClone(mockExecutionData);
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
 				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
 
@@ -422,7 +426,7 @@ describe('get-execution MCP tool', () => {
 						workflowId: 'workflow-1',
 						executionId: 'execution-1',
 						includeData: true,
-						nodeNames: ['Summary'],
+						nodeNames,
 						truncateData: undefined,
 					},
 					{} as never,
@@ -431,19 +435,27 @@ describe('get-execution MCP tool', () => {
 				expect(result.structuredContent).toMatchObject({
 					execution: { id: 'execution-1', mode: 'manual', status: 'success' },
 					data: {
-						resultData: { runData: { Summary: mockExecutionData.resultData.runData.Summary } },
+						resultData: {
+							runData: nodeNames
+								? { Summary: originalExecutionData.resultData.runData.Summary }
+								: originalExecutionData.resultData.runData,
+						},
 					},
 				});
 				expect(result.structuredContent).not.toHaveProperty('error');
-				expect(result.structuredContent).not.toHaveProperty('data.resultData.runData.HTTP Request');
-				expect
-					.soft(result.structuredContent)
-					.not.toHaveProperty('data.executionData.contextData.node:HTTP Request');
-				expect
-					.soft(result.content)
-					.toEqual([
+				expect.soft(result.structuredContent).not.toHaveProperty('data.executionData');
+				expect(result.content).toEqual([
+					{ type: 'text', text: JSON.stringify(result.structuredContent) },
+				]);
+				expect.soft(mockExecution.data).toEqual(originalExecutionData);
+				if (nodeNames) {
+					expect(result.structuredContent).not.toHaveProperty(
+						'data.resultData.runData.HTTP Request',
+					);
+					expect(result.content).toEqual([
 						{ type: 'text', text: expect.not.stringContaining('unrequested-http-response') },
 					]);
+				}
 			});
 
 			test('truncates data items per node output', async () => {
