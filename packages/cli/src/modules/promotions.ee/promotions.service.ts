@@ -29,6 +29,7 @@ import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config'
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
+	CredentialConflictPolicy,
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
 	ExportDependencyPolicy,
@@ -93,6 +94,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
+	credentialConflictPolicy: CredentialConflictPolicy.KeepExisting,
 	folderConflictPolicy: FolderConflictPolicy.Overwrite,
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',

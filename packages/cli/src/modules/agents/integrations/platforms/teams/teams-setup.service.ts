@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UrlService } from '@n8n/backend-services';
 
+import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
 import { TeamsManifestService } from './teams-manifest.service';
 import type { Agent } from '../../../entities/agent.entity';
@@ -55,6 +56,8 @@ export class TeamsSetupService {
 			credentialId ? this.credentialClaimedBy(agent.id, credentialId) : null,
 		]);
 
+		const provisionedByN8n = identity?.provisionedForAgentId === agent.id;
+
 		return {
 			messagingEndpointUrl: this.messagingEndpointUrl(scope),
 			botId: identity?.clientId ?? null,
@@ -66,7 +69,8 @@ export class TeamsSetupService {
 					? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
 					: null,
 			credentialClaimedBy: claimedBy,
-			provisionedByN8n: identity?.provisionedForAgentId === agent.id,
+			provisionedByN8n,
+			fileAccessConsentUrl: provisionedByN8n ? this.fileAccessConsentUrl(scope, identity) : null,
 			...this.defaultIdentity(agent.name),
 		};
 	}
@@ -270,6 +274,13 @@ export class TeamsSetupService {
 		const tenantId = stringProperty(data, 'tenantId');
 		const provisionedForAgentId = stringProperty(data, 'provisionedForAgentId');
 		return clientId && tenantId ? { clientId, tenantId, provisionedForAgentId } : null;
+	}
+
+	private fileAccessConsentUrl(scope: AgentScope, identity: BotIdentity | null): string | null {
+		const redirectUri = adminConsentRedirectUri(this.urlService.getInstanceBaseUrl(), scope);
+		return identity && redirectUri
+			? adminConsentUrl(identity.tenantId, identity.clientId, redirectUri)
+			: null;
 	}
 
 	private messagingEndpointUrl(scope: AgentScope): string {

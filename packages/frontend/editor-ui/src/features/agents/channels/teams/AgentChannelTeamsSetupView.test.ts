@@ -25,6 +25,7 @@ vi.mock('./api', () => ({
 		deployToAzureUrl: null,
 		credentialClaimedBy: null,
 		provisionedByN8n: true,
+		fileAccessConsentUrl: null,
 		defaultDisplayName: 'Agent',
 		defaultDescription: 'An agent',
 	}),

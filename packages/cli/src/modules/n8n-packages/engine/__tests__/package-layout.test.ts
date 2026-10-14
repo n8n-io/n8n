@@ -68,18 +68,15 @@ describe('package-layout', () => {
 			type: 'githubApi',
 			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
-		const bundled = (target: string, data?: SerializedCredential['data']) =>
+		const bundled = (data?: SerializedCredential['data']) =>
 			new Map<string, SerializedCredential>([
-				[target, { id: 'cred-1', name: 'GitHub', type: 'githubApi', ...(data ? { data } : {}) }],
+				['cred-1', { id: 'cred-1', name: 'GitHub', type: 'githubApi', ...(data ? { data } : {}) }],
 			]);
 
-		it('attaches bundled data by id regardless of which project dir carries the file', () => {
+		it('attaches bundled data by id', () => {
 			const placed = placeCredentialData({
 				requirements: [requirement],
-				manifestCredentials: [entry('cred-1', 'projects/x/credentials/github')],
-				bundledCredentials: bundled('projects/x/credentials/github', {
-					token: '={{ $secrets.gh }}',
-				}),
+				bundledCredentials: bundled({ token: '={{ $secrets.gh }}' }),
 			});
 
 			expect(placed).toEqual([{ ...requirement, packageData: { token: '={{ $secrets.gh }}' } }]);
@@ -88,13 +85,11 @@ describe('package-layout', () => {
 		it('leaves the requirement bare when the bundle carries no data or no file', () => {
 			const noData = placeCredentialData({
 				requirements: [requirement],
-				manifestCredentials: [entry('cred-1', 'credentials/github')],
-				bundledCredentials: bundled('credentials/github'),
+				bundledCredentials: bundled(),
 			});
 			const noFile = placeCredentialData({
 				requirements: [requirement],
-				manifestCredentials: [],
-				bundledCredentials: bundled('credentials/github', { token: '={{ $secrets.gh }}' }),
+				bundledCredentials: new Map(),
 			});
 
 			expect(noData).toEqual([requirement]);

@@ -96,6 +96,10 @@ describe('TeamsManifestService', () => {
 			expect(service.buildManifest(options()).bots[0].botId).toBe(BOT_ID);
 		});
 
+		it('lets users attach files in direct messages', () => {
+			expect(service.buildManifest(options()).bots[0].supportsFiles).toBe(true);
+		});
+
 		it('scopes the bot to direct messages when nothing else is turned on', () => {
 			expect(service.buildManifest(options()).bots[0].scopes).toEqual(['personal']);
 		});
@@ -125,28 +129,21 @@ describe('TeamsManifestService', () => {
 			});
 
 			it.each([
-				[
-					'channel messages',
-					{ teamChannels: true, readAllChannelMessages: true },
-					'ChannelMessage.Read.Group',
-				],
-				[
-					'group messages',
-					{ groupChats: true, readAllGroupMessages: true },
-					'ChatMessage.Read.Chat',
-				],
-			])('asks to read all %s', (_label, availability, permission) => {
-				const manifest = service.buildManifest(options({ settings: availability }));
+				['channel messages', { teamChannels: true }, 'ChannelMessage.Read.Group'],
+				['group messages', { groupChats: true }, 'ChatMessage.Read.Chat'],
+			])(
+				'asks to read %s whenever the surface is on, to reach their files',
+				(_label, availability, permission) => {
+					const manifest = service.buildManifest(options({ settings: availability }));
 
-				expect(manifest.authorization?.permissions.resourceSpecific).toEqual([
-					{ name: permission, type: 'Application' },
-				]);
-			});
+					expect(manifest.authorization?.permissions.resourceSpecific).toEqual([
+						{ name: permission, type: 'Application' },
+					]);
+				},
+			);
 
 			it('pairs a read permission with webApplicationInfo, which Teams requires', () => {
-				const manifest = service.buildManifest(
-					options({ settings: { teamChannels: true, readAllChannelMessages: true } }),
-				);
+				const manifest = service.buildManifest(options({ settings: { teamChannels: true } }));
 
 				// `resource` does nothing for a resource-specific grant, but Microsoft
 				// answers with an error when it is absent.
