@@ -4,6 +4,7 @@ import {
 	TagListPublicDto,
 	TagPublicDto,
 } from '@n8n/api-types';
+import { isUniqueConstraintError } from '@n8n/db';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -18,7 +19,7 @@ import {
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
-import { BadRequestError, ConflictError } from '@n8n/errors';
+import { ConflictError } from '@n8n/errors';
 import type { Response } from 'express';
 
 import {
@@ -91,9 +92,8 @@ export class AnnotationTagsPublicController {
 		try {
 			return toTagPublicDto(await this.annotationTagService.save(newTag));
 		} catch (error) {
-			// An invalid name is a client error. Any other failure is the unique name constraint.
-			if (error instanceof BadRequestError) throw error;
-			throw new ConflictError('Tag already exists');
+			if (isUniqueConstraintError(error)) throw new ConflictError('Tag already exists');
+			throw error;
 		}
 	}
 }
