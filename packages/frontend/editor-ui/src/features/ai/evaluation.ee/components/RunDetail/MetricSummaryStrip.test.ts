@@ -41,6 +41,20 @@ describe('MetricSummaryStrip', () => {
 		expect(deltaText(container)).toContain('+20%');
 	});
 
+	it('does not render a delta when a scaled value is outside its valid range', () => {
+		const { container, getByText } = renderComponent({
+			props: {
+				currentMetrics: { Score: 1.5 },
+				previousMetrics: { Score: 0.5 },
+				metricScales: { Score: 'unit' },
+				previousMetricScales: { Score: 'unit' },
+			},
+		});
+
+		expect(getByText('–')).toBeVisible();
+		expect(deltaText(container)).toBe('');
+	});
+
 	it('renders custom metrics and their deltas as raw numbers across the value boundary', () => {
 		const { container, getByText } = renderComponent({
 			props: {

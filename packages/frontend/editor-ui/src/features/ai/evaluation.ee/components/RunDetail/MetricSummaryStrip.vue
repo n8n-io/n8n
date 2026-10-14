@@ -50,9 +50,7 @@ function metricDelta(
 		scale: previousScale,
 	});
 	if (currentIsUnscaled !== previousIsUnscaled) return { value: undefined };
-	if (currentIsUnscaled || currentScale === previousScale) {
-		return { value: current - previous, scale: currentScale };
-	}
+	if (currentIsUnscaled) return { value: current - previous };
 
 	const currentScore = normalizeMetricScore(name, current, currentScale);
 	const previousScore = normalizeMetricScore(name, previous, previousScale);
