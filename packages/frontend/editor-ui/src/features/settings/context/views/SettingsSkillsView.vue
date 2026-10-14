@@ -209,20 +209,46 @@ async function onCreate(skill: AgentSkill, scopeValue: string) {
 	}
 }
 
+/** The value of the scope picker for a saved skill. An agent skill has no picker value of its own. */
+function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string {
+	if (skill.scope === 'project' && skill.projectId)
+		return `${PROJECT_SCOPE_PREFIX}${skill.projectId}`;
+	return skill.scope;
+}
+
 async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
-		const current = scopeDisplay(detail);
+		const currentValue = scopeValueOf(detail);
+		// The current scope is listed even when the user could not create a skill there,
+		// such as an agent skill, which is only made from inside its agent.
+		const options = scopeOptions.value.some((option) => option.value === currentValue)
+			? scopeOptions.value
+			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+		// The backend refuses to move a skill while an agent uses it.
+		const inUse = detail.usedByAgents > 0;
 		openModal({
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
-			// The API has no scope change, so the field only shows where the skill lives.
-			scopeOptions: [{ value: detail.scope, ...current }],
-			initialScope: detail.scope,
-			scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.locked'),
+			scopeOptions: options,
+			initialScope: currentValue,
+			...(inUse
+				? {
+						scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.inUse', {
+							interpolate: { count: detail.usedByAgents },
+							adjustToNumber: detail.usedByAgents,
+						}),
+					}
+				: {}),
 			existingSkillNames: [],
-			onConfirm: async ({ skill }) => await onSave(detail.id, skill, detail.skillHash),
+			onConfirm: async ({ skill, scope }) =>
+				await onSave(
+					detail.id,
+					skill,
+					detail.skillHash,
+					scope !== currentValue ? scope : undefined,
+				),
 		});
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
@@ -230,7 +256,8 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 }
 
 /** Saves the next version. There are no drafts: what the modal shows is what gets saved. */
-async function onSave(id: string, skill: AgentSkill, baseSkillHash: string) {
+/** `newScope` is set when the user picked another scope: the save also moves the skill. */
+async function onSave(id: string, skill: AgentSkill, baseSkillHash: string, newScope?: string) {
 	try {
 		const saved = await skillsStore.saveSkill(id, {
 			name: skill.name,
@@ -239,16 +266,16 @@ async function onSave(id: string, skill: AgentSkill, baseSkillHash: string) {
 			// An empty list clears the references, where an absent one would keep them.
 			references: skill.references ?? [],
 			baseSkillHash,
+			...(newScope ? parseScope(newScope) : {}),
 		});
+		const changed = saved.created || newScope !== undefined;
 		showMessage({
 			title: i18n.baseText(
-				saved.created
-					? 'settings.context.skills.save.success'
-					: 'settings.context.skills.save.noChanges',
+				changed ? 'settings.context.skills.save.success' : 'settings.context.skills.save.noChanges',
 			),
-			type: saved.created ? 'success' : 'info',
+			type: changed ? 'success' : 'info',
 		});
-		if (saved.created) await load();
+		if (changed) await load();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.error.save'));
 	}

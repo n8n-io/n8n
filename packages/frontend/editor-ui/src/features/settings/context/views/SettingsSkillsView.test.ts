@@ -248,11 +248,11 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().readOnly).toBe(true);
 		});
 
-		it('shows the scope of the skill, locked', async () => {
+		it('locks the scope while agents use the skill', async () => {
 			skillsStore.skills = [skill({ scope: 'agent', agentName: 'FirstClassDarwin' })];
 			skillsStore.count = 1;
 			skillsStore.fetchSkill.mockResolvedValue(
-				detail({ scope: 'agent', agentId: 'a1', agentName: 'FirstClassDarwin' }),
+				detail({ scope: 'agent', agentId: 'a1', agentName: 'FirstClassDarwin', usedByAgents: 1 }),
 			);
 			const { getByText } = renderView();
 			await new Promise(process.nextTick);
@@ -260,10 +260,45 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(getByText('research-search'));
 			await new Promise(process.nextTick);
 
-			expect(lastModalData().scopeOptions).toEqual([
-				{ value: 'agent', label: 'FirstClassDarwin only', icon: 'bot' },
-			]);
-			expect(lastModalData().scopeLockedReason).toBeTruthy();
+			// The agent scope is listed first because it is not a choice in Settings.
+			expect(lastModalData().scopeOptions?.[0]).toEqual({
+				value: 'agent',
+				label: 'FirstClassDarwin only',
+				icon: 'bot',
+			});
+			expect(lastModalData().initialScope).toBe('agent');
+			expect(lastModalData().scopeLockedReason).toBe(
+				'Used by 1 agent. Remove the skill from it to change where it is available.',
+			);
+		});
+
+		it('moves an unused skill to the scope the user picks', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail({ scope: 'instance', usedByAgents: 0 }));
+			skillsStore.saveSkill.mockResolvedValue({
+				id: 's1',
+				versionId: 'v1',
+				version: 1,
+				created: false,
+				skill: detail().skill,
+				skillHash: 'hash-1',
+			});
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByText('research-search'));
+			await new Promise(process.nextTick);
+
+			expect(lastModalData().scopeLockedReason).toBeUndefined();
+			lastModalData().onConfirm({ id: 's1', skill: detail().skill, scope: 'project:personal-1' });
+			await new Promise(process.nextTick);
+
+			expect(skillsStore.saveSkill).toHaveBeenCalledWith(
+				's1',
+				expect.objectContaining({ scope: 'project', projectId: 'personal-1' }),
+			);
+			// A move is a change even when the content stays the same.
+			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Skill saved', type: 'success' });
 		});
 
 		it('says "Nothing to save" when the content matches the latest version', async () => {

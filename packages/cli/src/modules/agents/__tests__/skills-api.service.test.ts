@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
 import type { ProjectScopeService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import type { OperationContext, TransactionRunner, User } from '@n8n/db';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
@@ -71,11 +71,14 @@ describe('SkillsApiService', () => {
 	const repository = mock<SkillRepository>();
 	const skillService = mock<SkillService>();
 	const projectScopeService = mock<ProjectScopeService>();
-	const service = new SkillsApiService(skillService, repository, projectScopeService);
+	const txRunner = mock<TransactionRunner>();
+	const service = new SkillsApiService(skillService, repository, projectScopeService, txRunner);
+	const TX_CTX = { trx: {} } as OperationContext;
 	let visible: Skill[];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 		vi.mocked(hasGlobalScope).mockReturnValue(false);
@@ -451,6 +454,56 @@ describe('SkillsApiService', () => {
 			await expect(
 				service.update(user, 'skill_a', update({ instructions: 'New.' })),
 			).rejects.toThrow(NotFoundError);
+		});
+
+		it('moves the skill and saves it in one transaction, then refreshes after the commit', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			repository.findProjectNames.mockResolvedValue(new Map([['project-1', 'Team']]));
+			skillService.save.mockResolvedValue(saved);
+
+			await service.update(
+				user,
+				'skill_a',
+				update({ scope: 'project', projectId: 'project-1', baseSkillHash: 'base' }),
+			);
+
+			expect(skillService.changeTarget).toHaveBeenCalledWith(
+				'skill_a',
+				{ projectId: 'project-1', agentId: null },
+				undefined,
+				TX_CTX,
+			);
+			expect(skillService.save).toHaveBeenCalledWith(
+				'skill_a',
+				{ baseSkillHash: 'base' },
+				user.id,
+				TX_CTX,
+			);
+			expect(skillService.refreshFollowingAgents).toHaveBeenCalledWith(['agent-1']);
+		});
+
+		it('does not move a skill that is already in the requested scope', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+			skillService.save.mockResolvedValue(saved);
+
+			await service.update(user, 'skill_a', update({ scope: 'instance', baseSkillHash: 'base' }));
+
+			expect(skillService.changeTarget).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses a move to a place where the user may not create skills', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.update(
+					user,
+					'skill_a',
+					update({ scope: 'project', projectId: 'project-1', baseSkillHash: 'base' }),
+				),
+			).rejects.toThrow(ForbiddenError);
+			expect(skillService.changeTarget).not.toHaveBeenCalled();
+			expect(skillService.save).not.toHaveBeenCalled();
 		});
 	});
 

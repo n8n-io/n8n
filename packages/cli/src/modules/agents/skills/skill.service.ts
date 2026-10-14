@@ -416,13 +416,14 @@ export class SkillService {
 
 	/**
 	 * Moves a skill to a project, one agent or the instance. Refused while an agent other
-	 * than `keepAgentId` uses it. The edit lock makes a concurrent attach wait, so the check
-	 * and the move see the same agents.
+	 * than `keepAgentId` uses it, or while any agent uses it when there is no `keepAgentId`.
+	 * The edit lock makes a concurrent attach wait, so the check and the move see the same
+	 * agents.
 	 */
 	async changeTarget(
 		skillId: string,
 		target: SkillTarget,
-		keepAgentId: string,
+		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
@@ -432,7 +433,9 @@ export class SkillService {
 			);
 			if (others.length > 0) {
 				throw new ConflictError(
-					'Other agents use this skill. Detach it from those agents first, then change where it can be added.',
+					keepAgentId
+						? 'Other agents use this skill. Detach it from those agents first, then change where it can be added.'
+						: 'Agents use this skill. Detach it from every agent first, then change where it can be added.',
 				);
 			}
 			await this.skillRepository.updateTarget(skillId, target, txCtx);

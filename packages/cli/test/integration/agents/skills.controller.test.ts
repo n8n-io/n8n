@@ -388,6 +388,94 @@ describe('SkillsController', () => {
 		});
 	});
 
+	describe('change scope', () => {
+		it('moves an unused skill and saves its content in the same request', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			const saved = await owner
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', scope: 'instance', baseSkillHash: skillHash })
+				.expect(200);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(saved.body.data).toMatchObject({ version: 2, created: true });
+			expect(read.body.data).toMatchObject({ scope: 'instance', projectId: null });
+		});
+
+		it('moves a skill without a content change', async () => {
+			const other = await createTeamProject('Other team');
+			const { id, skillHash } = await create(owner, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			const saved = await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'project', projectId: other.id, baseSkillHash: skillHash })
+				.expect(200);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(saved.body.data).toMatchObject({ version: 1, created: false });
+			expect(read.body.data).toMatchObject({ scope: 'project', projectId: other.id });
+		});
+
+		it('needs the create permission where the skill goes', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			await editor
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(403);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(read.body.data).toMatchObject({ scope: 'project', projectId: project.id });
+		});
+
+		it('answers 409 while an agent uses the skill and saves nothing', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			await attachToNewAgent(id, 'Support bot', project.id);
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', scope: 'instance', baseSkillHash: skillHash })
+				.expect(409);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(read.body.data).toMatchObject({ scope: 'project', latestVersion: 1 });
+		});
+
+		it('needs a project id to move a skill to a project', async () => {
+			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'project', baseSkillHash: skillHash })
+				.expect(400);
+		});
+
+		it('does not move a skill to one agent', async () => {
+			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'agent', baseSkillHash: skillHash })
+				.expect(400);
+		});
+	});
+
 	describe('delete', () => {
 		it('deletes an unused skill', async () => {
 			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });

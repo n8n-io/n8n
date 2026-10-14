@@ -9,7 +9,7 @@ import type {
 	SkillScope,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -38,6 +38,7 @@ export class SkillsApiService {
 		private readonly skillService: SkillService,
 		private readonly skillRepository: SkillRepository,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -80,12 +81,29 @@ export class SkillsApiService {
 
 	/** Saves the changes as the next version. Unchanged content creates nothing. */
 	async update(user: User, skillId: string, payload: SaveSkillDto): Promise<SkillSaveResponse> {
-		await this.requireAccess(user, skillId, 'update');
-		const { followingAgentIds: _following, ...saved } = await this.skillService.save(
-			skillId,
-			{ ...payload },
-			user.id,
-		);
+		const skill = await this.requireAccess(user, skillId, 'update');
+		const { scope, projectId, ...update } = payload;
+		const target = scope ? await this.targetForCreate(user, { scope, projectId }) : undefined;
+		const moves =
+			target !== undefined &&
+			(target.projectId !== skill.projectId || target.agentId !== skill.agentId);
+
+		if (!moves) {
+			const { followingAgentIds: _following, ...saved } = await this.skillService.save(
+				skillId,
+				update,
+				user.id,
+			);
+			return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
+		}
+
+		// One transaction, so a refused save does not leave the skill moved.
+		const { followingAgentIds, ...saved } = await this.txRunner.run({}, async (ctx) => {
+			await this.skillService.changeTarget(skillId, target, undefined, ctx);
+			return await this.skillService.save(skillId, update, user.id, ctx);
+		});
+		// `save` leaves the refresh to the caller when it joins a transaction.
+		await this.skillService.refreshFollowingAgents(followingAgentIds);
 		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 	}
 
@@ -146,7 +164,11 @@ export class SkillsApiService {
 		return { agentId, projectId: agent.projectId };
 	}
 
-	private async targetForCreate(user: User, payload: CreateSkillDto): Promise<SkillTarget> {
+	/** Where a create or a move puts the skill. The user needs the create permission there. */
+	private async targetForCreate(
+		user: User,
+		payload: Pick<CreateSkillDto, 'scope' | 'projectId' | 'agentId'>,
+	): Promise<SkillTarget> {
 		switch (payload.scope) {
 			case 'instance':
 				if (payload.projectId || payload.agentId) {

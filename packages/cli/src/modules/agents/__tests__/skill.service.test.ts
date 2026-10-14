@@ -511,6 +511,27 @@ describe('SkillService', () => {
 			).rejects.toThrow('Other agents use this skill.');
 			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
+
+		it('refuses to move a skill that any agent uses when no agent is kept', async () => {
+			skills.findUsingAgentIds.mockResolvedValue(['agent-1']);
+
+			await expect(
+				service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined),
+			).rejects.toThrow('Agents use this skill.');
+			expect(skills.updateTarget).not.toHaveBeenCalled();
+		});
+
+		it('moves an unused skill when no agent is kept', async () => {
+			skills.findUsingAgentIds.mockResolvedValue([]);
+
+			await service.changeTarget('skill_a', { projectId: 'p1', agentId: null }, undefined);
+
+			expect(skills.updateTarget).toHaveBeenCalledWith(
+				'skill_a',
+				{ projectId: 'p1', agentId: null },
+				TX_CTX,
+			);
+		});
 	});
 
 	describe('publish', () => {

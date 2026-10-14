@@ -126,4 +126,11 @@ export class SaveSkillDto extends Z.class({
 	instructions: agentSkillShape.instructions.optional(),
 	references: agentSkillShape.references.optional(),
 	baseSkillHash: z.string().min(1),
+	/**
+	 * Moves the skill to the instance or to a project. Refused with 409 while an agent
+	 * uses it. An agent skill is made from inside its agent, so `agent` is not a choice.
+	 */
+	scope: z.enum(['project', 'instance']).optional(),
+	/** Required when `scope` is `project`, absent otherwise. */
+	projectId: z.string().max(36).optional(),
 }) {}
