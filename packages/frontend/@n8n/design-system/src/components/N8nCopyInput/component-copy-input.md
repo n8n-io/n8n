@@ -1,12 +1,8 @@
 # Component specification
 
-A readonly input with an attached copy button, rendered as one continuous bordered field. Shows a value the user needs to take somewhere else — an API key, a webhook or redirect URL, a public key — and copies the complete value on click or Cmd/Ctrl+C, even when the visible text is truncated.
+A readonly input with an attached copy button, composed from `N8nInput` and `N8nButton` and rendered as one continuous bordered field. Shows a value the user needs to take somewhere else — an API key, a webhook or redirect URL, a public key — and copies the complete value on click or Cmd/Ctrl+C, even when the visible text is truncated.
 
 - **Component Name:** N8nCopyInput
-- **Figma Component:** N/A (composed from Input and Button)
-- **Element+ Component:** N/A
-- **Reka UI Component:** N/A
-- **Nuxt UI Component:** N/A
 
 ## Why?
 
