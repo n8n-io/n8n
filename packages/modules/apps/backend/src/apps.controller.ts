@@ -29,8 +29,8 @@ export class AppsController {
 
 	@Get('/')
 	@ProjectScope('app:list')
-	async list(req: AppRequest, _res: Response, @Query query: ListAppsQueryDto) {
-		return await this.appsService.listApps(req.params.projectId, query);
+	async list(req: AppRequest, res: Response, @Query query: ListAppsQueryDto) {
+		res.json(await this.appsService.listApps(req.params.projectId, query));
 	}
 
 	@Get('/:appId')

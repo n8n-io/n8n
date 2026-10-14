@@ -11,7 +11,7 @@ export class AppsListController {
 
 	@Get('/')
 	// The service checks app:list per project because this route has no project ID.
-	async list(req: AuthenticatedRequest, _res: Response, @Query query: ListAppsQueryDto) {
-		return await this.appsService.listAppsForUser(req.user, query);
+	async list(req: AuthenticatedRequest, res: Response, @Query query: ListAppsQueryDto) {
+		res.json(await this.appsService.listAppsForUser(req.user, query));
 	}
 }
