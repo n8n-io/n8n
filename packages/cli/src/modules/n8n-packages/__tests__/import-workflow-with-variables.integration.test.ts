@@ -122,7 +122,7 @@ describe('variable error consumers', () => {
 				matchingMode: 'id-only',
 				missingMode: 'must-preexist',
 				conflictPolicy: 'keep-existing',
-				updateScope: { projectIds: new Set([project.id]), includeGlobal: true },
+				updateScope: { projectIds: new Set([project.id]) },
 			},
 			dataTableRequest: {
 				requirements: [],

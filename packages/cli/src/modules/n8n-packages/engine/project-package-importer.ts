@@ -125,10 +125,7 @@ export class ProjectPackageImporter {
 			? await this.packageParser.getCredentials(reader)
 			: undefined;
 		// Projects match by id, so a package project id is also its destination project id.
-		const updateScope = credentialUpdateScope(
-			selectedProjects.map(({ id }) => id),
-			selection ? 'selection' : 'full',
-		);
+		const updateScope = credentialUpdateScope(selectedProjects.map(({ id }) => id));
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(

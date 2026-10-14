@@ -23,21 +23,17 @@ export function resolveCredentialConflictPolicy(
 }
 
 /**
- * A credential owned by any destination project of the import can change. A global credential
- * can change only in a full import: a selection import acts on its selection only. Its owner does
- * not count, because a global credential is usually in a personal project, and a package never
- * contains personal projects.
+ * A credential owned by any destination project of the import can change. Any other credential,
+ * also a global one, is only bound: a project import must not change a credential that its
+ * projects do not own.
  */
-export function credentialUpdateScope(
-	destinationProjectIds: string[],
-	importKind: 'full' | 'selection',
-): CredentialUpdateScope {
-	return { projectIds: new Set(destinationProjectIds), includeGlobal: importKind === 'full' };
+export function credentialUpdateScope(destinationProjectIds: string[]): CredentialUpdateScope {
+	return { projectIds: new Set(destinationProjectIds) };
 }
 
 export type UpdatableCredential = Pick<
 	CredentialsEntity,
-	'isManaged' | 'isResolvable' | 'usageScope' | 'isGlobal' | 'shared'
+	'isManaged' | 'isResolvable' | 'usageScope' | 'shared'
 >;
 
 /**
@@ -57,9 +53,7 @@ export function isUpdateCandidate(
 	const ownerProjectId = credential.shared?.find(
 		(sharing) => sharing.role === 'credential:owner',
 	)?.projectId;
-	if (ownerProjectId !== undefined && scope.projectIds.has(ownerProjectId)) return true;
-
-	return scope.includeGlobal && credential.isGlobal;
+	return ownerProjectId !== undefined && scope.projectIds.has(ownerProjectId);
 }
 
 /** Package credentials never carry arrays that can apply, see `credential-export-policy.ts`. */

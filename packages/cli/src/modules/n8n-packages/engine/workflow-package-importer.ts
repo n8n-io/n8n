@@ -96,7 +96,7 @@ export class WorkflowPackageImporter {
 			)
 				? await this.packageParser.getCredentials(reader)
 				: undefined,
-			updateScope: credentialUpdateScope([context.projectId], 'full'),
+			updateScope: credentialUpdateScope([context.projectId]),
 		};
 
 		const dataTableRequirements = identifyRequirements(

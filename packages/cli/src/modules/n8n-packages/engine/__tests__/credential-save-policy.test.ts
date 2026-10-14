@@ -50,7 +50,7 @@ const request = (
 	matchingMode: 'id-only',
 	missingMode,
 	conflictPolicy: 'keep-existing',
-	updateScope: { projectIds: new Set(), includeGlobal: false },
+	updateScope: { projectIds: new Set() },
 });
 
 const resolution = (...failures: CredentialResolutionFailure[]): CredentialResolution => ({

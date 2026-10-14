@@ -146,7 +146,7 @@ const scope = (input: {
 			missingMode: 'create-stub',
 			credentialBindings: undefined,
 			conflictPolicy: 'overwrite',
-			updateScope: { projectIds: new Set([context.projectId]), includeGlobal: true },
+			updateScope: { projectIds: new Set([context.projectId]) },
 		},
 		dataTableRequest: mock<DataTableImportRequest>({
 			requirements: dt.requirements === 0 ? undefined : new Array(dt.requirements),

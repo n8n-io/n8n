@@ -25,7 +25,10 @@ const owned = (projectId: string): SharedCredentials[] => [
 	{ role: 'credential:user', projectId: 'project-shared' } as SharedCredentials,
 ];
 
-const credential = (overrides: Partial<UpdatableCredential> = {}): UpdatableCredential => ({
+// `isGlobal` is not read, so a test can show that it does not change the scope.
+type StoredCredential = UpdatableCredential & { isGlobal: boolean };
+
+const credential = (overrides: Partial<StoredCredential> = {}): StoredCredential => ({
 	isManaged: false,
 	isResolvable: false,
 	isGlobal: false,
@@ -34,14 +37,7 @@ const credential = (overrides: Partial<UpdatableCredential> = {}): UpdatableCred
 	...overrides,
 });
 
-const fullImport: CredentialUpdateScope = {
-	projectIds: new Set(['project-a', 'project-b']),
-	includeGlobal: true,
-};
-const selectionImport: CredentialUpdateScope = {
-	projectIds: new Set(['project-a']),
-	includeGlobal: false,
-};
+const scope: CredentialUpdateScope = { projectIds: new Set(['project-a', 'project-b']) };
 
 const candidate = (
 	overrides: Partial<CredentialUpdateCandidate> = {},
@@ -63,30 +59,19 @@ describe('resolveCredentialConflictPolicy', () => {
 });
 
 describe('credentialUpdateScope', () => {
-	it('includes every destination project and global credentials in a full import', () => {
-		expect(credentialUpdateScope(['project-a', 'project-b'], 'full')).toEqual(fullImport);
-	});
-
-	it('includes the selected project only, without global credentials, in a selection import', () => {
-		const scope = credentialUpdateScope(['project-a'], 'selection');
-
-		expect(scope).toEqual(selectionImport);
-		expect(
-			isUpdateCandidate(credential({ isGlobal: true, shared: owned('project-b') }), scope),
-		).toBe(false);
+	it('includes every destination project', () => {
+		expect(credentialUpdateScope(['project-a', 'project-b'])).toEqual(scope);
 	});
 });
 
 describe('isUpdateCandidate', () => {
 	it('accepts a credential owned by a project of the import', () => {
-		expect(isUpdateCandidate(credential(), fullImport)).toBe(true);
-		expect(isUpdateCandidate(credential(), selectionImport)).toBe(true);
+		expect(isUpdateCandidate(credential(), scope)).toBe(true);
+		expect(isUpdateCandidate(credential({ shared: owned('project-b') }), scope)).toBe(true);
 	});
 
 	it('rejects a credential owned by a project outside the import', () => {
-		expect(isUpdateCandidate(credential({ shared: owned('project-other') }), fullImport)).toBe(
-			false,
-		);
+		expect(isUpdateCandidate(credential({ shared: owned('project-other') }), scope)).toBe(false);
 	});
 
 	it('does not count a project the credential is only shared with', () => {
@@ -94,29 +79,26 @@ describe('isUpdateCandidate', () => {
 			shared: [{ role: 'credential:user', projectId: 'project-a' } as SharedCredentials],
 		});
 
-		expect(isUpdateCandidate(sharedOnly, fullImport)).toBe(false);
+		expect(isUpdateCandidate(sharedOnly, scope)).toBe(false);
 	});
 
-	it('accepts a global credential owned outside the import in a full import only', () => {
-		const global = credential({ isGlobal: true, shared: owned('project-other') });
-
-		expect(isUpdateCandidate(global, fullImport)).toBe(true);
-		expect(isUpdateCandidate(global, selectionImport)).toBe(false);
-	});
-
-	it('accepts a global credential owned by a personal project in a full import', () => {
+	it('rejects a global credential owned outside the import', () => {
 		const global = credential({ isGlobal: true, shared: owned('personal-project-of-someone') });
 
-		expect(isUpdateCandidate(global, fullImport)).toBe(true);
+		expect(isUpdateCandidate(global, scope)).toBe(false);
 	});
 
-	it.each<[string, Partial<UpdatableCredential>]>([
+	it('accepts a global credential owned by a project of the import', () => {
+		expect(isUpdateCandidate(credential({ isGlobal: true }), scope)).toBe(true);
+	});
+
+	it.each<[string, Partial<StoredCredential>]>([
 		['managed', { isManaged: true }],
 		['resolvable', { isResolvable: true }],
 		['instance-scoped', { usageScope: 'instance', shared: [] }],
 		['managed and global', { isManaged: true, isGlobal: true }],
 	])('rejects a %s credential', (_label, overrides) => {
-		expect(isUpdateCandidate(credential(overrides), fullImport)).toBe(false);
+		expect(isUpdateCandidate(credential(overrides), scope)).toBe(false);
 	});
 });
 

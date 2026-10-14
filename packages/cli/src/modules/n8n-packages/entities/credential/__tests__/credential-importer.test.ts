@@ -52,10 +52,7 @@ describe('CredentialImporter', () => {
 		credentialBindings: options.credentialBindings,
 		conflictPolicy: options.conflictPolicy ?? 'keep-existing',
 		packageCredentials: options.packageCredentials,
-		updateScope: options.updateScope ?? {
-			projectIds: new Set([targetProject.id]),
-			includeGlobal: true,
-		},
+		updateScope: options.updateScope ?? { projectIds: new Set([targetProject.id]) },
 	});
 
 	const packageCredential = (

@@ -111,8 +111,6 @@ export type CredentialUpdateForbidden = Omit<CredentialConflict, 'kind'>;
 export interface CredentialUpdateScope {
 	/** Destination projects of the import. A credential owned by one of them is in scope. */
 	projectIds: ReadonlySet<string>;
-	/** A global credential is in scope whoever owns it. True for full imports only. */
-	includeGlobal: boolean;
 }
 
 export interface CredentialApplyResult {

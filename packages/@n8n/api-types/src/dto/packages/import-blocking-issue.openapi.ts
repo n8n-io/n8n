@@ -100,8 +100,7 @@ export const credentialConflictIssueOpenApi: ZodOpenAPIMetadata = {
 	description:
 		'A matched credential that the credential conflict policy does not let the import ' +
 		'change. Only a credential that the import can update is checked: a credential owned by ' +
-		'a project of the import, or a global credential in a full import. Values are never ' +
-		'reported.',
+		'a project of the import. Values are never reported.',
 };
 
 export const credentialUpdateForbiddenFieldDocs = {

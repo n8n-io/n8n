@@ -23,6 +23,7 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from '@test-integration/db/credentials';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
@@ -270,10 +271,52 @@ describe('credentialConflictPolicy', () => {
 		expect(result.bindings.credentials).toEqual({ [credential.id]: credential.id });
 	});
 
-	it('fail blocks a global credential owned by a personal project in a full import', async () => {
+	it('fail only binds a global credential owned outside the import', async () => {
 		const credential = await saveCredential(
 			githubCredentialPayload({ name: 'Global GitHub', isGlobal: true }),
 			{ user: owner, role: 'credential:owner' },
+		);
+
+		const result = await importPackage({
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'fail',
+			packageBuffer: await workflowPackage(credential, { name: 'Renamed' }),
+		});
+
+		expect(result.bindings.credentials).toEqual({ [credential.id]: credential.id });
+	});
+
+	it('overwrite only binds a global credential that a project admin cannot update', async () => {
+		const member = await createMember();
+		await linkUserToProject(member, project, 'project:admin');
+		const credential = await saveCredential(
+			githubCredentialPayload({ name: 'Global GitHub', isGlobal: true }),
+			{ user: owner, role: 'credential:owner' },
+		);
+
+		const result = await importPackage({
+			user: member,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite',
+			packageBuffer: await workflowPackage(credential, {
+				name: 'Renamed',
+				data: { accessToken: EXPRESSION },
+			}),
+		});
+
+		expect(result.bindings.credentials).toEqual({ [credential.id]: credential.id });
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.name).toBe('Global GitHub');
+		expect(stored.data).toBe(credential.data);
+	});
+
+	it('fail blocks a global credential owned by the import project', async () => {
+		const credential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'Global GitHub', isGlobal: true }),
+			{ project },
 		);
 
 		const issues = await blockingIssuesOf(
@@ -295,17 +338,31 @@ describe('credentialConflictPolicy', () => {
 		await expectNothingWritten(credential);
 	});
 
-	describe('global credential that the importing user cannot update', () => {
+	describe('credential in scope that the importing user cannot update', () => {
 		let member: User;
 		let credential: CredentialsEntity;
 
 		beforeEach(async () => {
 			member = await createMember();
-			await linkUserToProject(member, project, 'project:admin');
-			credential = await saveCredential(
-				githubCredentialPayload({ name: 'Global GitHub', isGlobal: true }),
-				{ user: owner, role: 'credential:owner' },
+			// Project editors and admins always hold `credential:update`: only a custom role lacks it.
+			const role = await createCustomRoleWithScopeSlugs(
+				[
+					'project:read',
+					'project:list',
+					'workflow:create',
+					'workflow:read',
+					'workflow:update',
+					'workflow:import',
+					'workflow:list',
+					'credential:read',
+					'credential:list',
+				],
+				{ roleType: 'project' },
 			);
+			await linkUserToProject(member, project, role.slug);
+			credential = await saveOwnedCredential(githubCredentialPayload({ name: 'GitHub' }), {
+				project,
+			});
 		});
 
 		it('fail blocks it and writes nothing', async () => {
@@ -327,7 +384,7 @@ describe('credentialConflictPolicy', () => {
 					type: 'credential-update-forbidden',
 					targetId: credential.id,
 					sourceIds: [credential.id],
-					name: 'Global GitHub',
+					name: 'GitHub',
 					usedBy: [{ kind: 'workflow', id: 'wf-source' }],
 				},
 			]);
@@ -340,7 +397,7 @@ describe('credentialConflictPolicy', () => {
 					user: member,
 					projectId: project.id,
 					credentialConflictPolicy: 'overwrite',
-					packageBuffer: await workflowPackage(credential, { name: 'Global GitHub' }),
+					packageBuffer: await workflowPackage(credential, { name: 'GitHub' }),
 				}),
 				UnprocessableRequestError,
 			);
