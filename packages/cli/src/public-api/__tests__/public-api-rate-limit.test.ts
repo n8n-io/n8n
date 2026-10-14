@@ -122,7 +122,6 @@ describe('Public API rate limiting', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		// mirrors ApiKeyAuthStrategy, which sets `apiKeyId` only for an API-key request
 		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 			req.user = authenticatedUser;
 			const apiKeyId = req.headers[API_KEY_HEADER];

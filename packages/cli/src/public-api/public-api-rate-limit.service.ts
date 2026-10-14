@@ -8,23 +8,17 @@ import { rateLimit } from 'express-rate-limit';
 
 const getApiKeyId = (req: Request) => (req as AuthenticatedRequest).tokenGrant?.apiKeyId;
 
-/** The most requests one API key can send in one time window. */
 type RequestLimit = { maxRequests: number; windowSeconds: number };
 
 type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLimit };
 
 const READ_METHODS: ReadonlySet<Method> = new Set(['get', 'head']);
 
-/** `@RateLimitAccess` wins. Without it, `GET` and `HEAD` are reads and all other methods are writes. */
 const resolveAccess = (
 	method: Method,
 	accessFromDecorator?: RateLimitAccessName,
 ): RateLimitAccessName => accessFromDecorator ?? (READ_METHODS.has(method) ? 'read' : 'write');
 
-/**
- * Limits Public API requests for each API key, in two layers: one limit for each endpoint, and
- * one limit across all endpoints. Reads and writes have separate limits in both layers.
- */
 @Service()
 export class PublicApiRateLimitService {
 	private readonly allEndpointsLimiterCache = new Map<
@@ -55,7 +49,6 @@ export class PublicApiRateLimitService {
 		return createRateLimiter(this.getLimitsFromConfig(access).perEndpoint);
 	}
 
-	/** All routes with the same access share one limiter, so it is created once and cached. */
 	private getAllEndpointsLimiter(access: RateLimitAccessName) {
 		if (!this.allEndpointsLimiterCache.has(access)) {
 			this.allEndpointsLimiterCache.set(
@@ -94,7 +87,6 @@ export class PublicApiRateLimitService {
 	}
 }
 
-/** A limit of 0 turns off that layer. */
 function createRateLimiter({
 	maxRequests,
 	windowSeconds,
