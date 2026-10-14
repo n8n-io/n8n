@@ -19,6 +19,7 @@ import {
 	buildChatModelProviderHint,
 	isChatModelProviderCredentialType,
 } from './nodes/preferred-chat-model';
+import { describeReplacedActions, getReplacedActions } from './replaced-tool-actions';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
 import {
 	GENERIC_AUTH_CREDENTIAL_TYPES,
@@ -1204,12 +1205,28 @@ async function handleTest(context: InstanceAiContext, input: Extract<Input, { ac
 
 export function createCredentialsTool(
 	context: InstanceAiContext,
-	options: CredentialsToolOptions = {},
+	toolOptions: CredentialsToolOptions = {},
 ) {
+	const replaced = getReplacedActions(context, CREDENTIALS_TOOL_ID);
+	const options: CredentialsToolOptions =
+		replaced.size === 0
+			? toolOptions
+			: {
+					...toolOptions,
+					allowedActions: getCredentialActions(toolOptions).filter(
+						(action) => !replaced.has(action),
+					),
+				};
 	const inputSchema = buildInputSchema(options, context);
+	const description = [
+		getToolDescription(options, context.credentialDescriptionsEnabled === true),
+		describeReplacedActions(context, CREDENTIALS_TOOL_ID),
+	]
+		.filter(Boolean)
+		.join(' ');
 
 	return new Tool(CREDENTIALS_TOOL_ID)
-		.description(getToolDescription(options, context.credentialDescriptionsEnabled === true))
+		.description(description)
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(credentialsResumeSchema)

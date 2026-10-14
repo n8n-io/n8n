@@ -43,6 +43,7 @@ import {
 	type FindUninstalledNodeTypes,
 } from './uninstalled-node-warnings';
 import type { McpPostSaveMetricsService } from '../../mcp-post-save-metrics.service';
+import { isMcpAvailabilityEnforced } from '../../mcp-workflow-access';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
@@ -427,7 +428,11 @@ export const createCreateWorkflowFromCodeTool = (
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
 				nodeGroups: workflowJson.nodeGroups ?? [],
-				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
+				settings: {
+					...workflowJson.settings,
+					executionOrder: 'v1',
+					...(isMcpAvailabilityEnforced() ? { availableInMCP: true } : {}),
+				},
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
 			});

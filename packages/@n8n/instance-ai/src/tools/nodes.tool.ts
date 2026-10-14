@@ -26,7 +26,11 @@ import type { InstanceAiContext, NodeDescription } from '../types';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
+import { buildActionInputSchema, describeReplacedActions } from './replaced-tool-actions';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 import { buildCredentialMap } from './workflows/resolve-credentials';
+
+const NODES_TOOL_ID = DOMAIN_TOOL_IDS.NODES;
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -205,19 +209,17 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const fullInputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		searchAction,
-		describeAction,
-		typeDefinitionAction,
-		suggestedAction,
-		exploreResourcesAction,
-		executeAction,
-	]),
-);
+const fullActions = [
+	listAction,
+	searchAction,
+	describeAction,
+	typeDefinitionAction,
+	suggestedAction,
+	exploreResourcesAction,
+	executeAction,
+] as const;
 
-type FullInput = z.infer<typeof fullInputSchema>;
+type FullInput = z.infer<(typeof fullActions)[number]>;
 
 interface SearchEngineCache {
 	nodeTypes?: SearchableNodeType[];
@@ -691,11 +693,14 @@ export function createNodesTool(
 			.build();
 	}
 
-	return new Tool('nodes')
+	const replacedNote = describeReplacedActions(context, NODES_TOOL_ID);
+
+	return new Tool(NODES_TOOL_ID)
 		.description(
-			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
+			(replacedNote ? `${replacedNote} ` : '') +
+				'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, `explore-resources` for live credential-backed lists, and `execute` to run one node standalone (requires user approval, real side effects).',
 		)
-		.input(fullInputSchema)
+		.input(buildActionInputSchema(context, NODES_TOOL_ID, fullActions))
 		.suspend(suspendSchema)
 		.resume(instanceAiApprovalResumeSchema)
 		.handler(async (input: FullInput, ctx) => {

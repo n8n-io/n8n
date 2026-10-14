@@ -41,6 +41,7 @@ function makeContext(workflow: WorkflowJSON, files: Map<string, string>): Instan
 	const context = mock<InstanceAiContext>();
 	context.threadId = undefined;
 	context.threadMemory = undefined;
+	context.replacedToolActions = undefined;
 	context.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 	// get-as-code writes the source into the bound workspace file; back it with a map.
 	context.workspace = {

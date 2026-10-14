@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import type { Logger } from '../logger';
 import type { InstanceAiTraceContext } from '../types';
 import {
+	N8N_MCP_BUILDING_VARIANT,
 	PROMPT_FRAGMENT_SKILLS,
 	resolvePromptProfile,
 	type PromptProfile,
@@ -48,17 +49,26 @@ export async function loadInstanceAiRuntimeSkillSourceForBuildMode(
 	return (await loadInstanceAiPromptSkills(resolvePromptProfile({ mode }).profile)).source;
 }
 
-export async function loadInstanceAiPromptSkills(profile: PromptProfile) {
-	let pending = cachedProfiles.get(profile.version);
+/**
+ * With `n8nMcpBuilding`, the MCP building variant replaces the profile variants,
+ * because those variants build on the native pipeline that the MCP variant turns off.
+ */
+export async function loadInstanceAiPromptSkills(
+	profile: PromptProfile,
+	options: { n8nMcpBuilding?: boolean } = {},
+) {
+	const variants = options.n8nMcpBuilding ? [N8N_MCP_BUILDING_VARIANT] : profile.variants;
+	const cacheKey = options.n8nMcpBuilding ? `${profile.version}+n8n-mcp` : profile.version;
+	let pending = cachedProfiles.get(cacheKey);
 	if (!pending) {
 		pending = composeSkillVariants(
 			loadInstanceAiRuntimeSkillSource(),
-			profile.variants,
+			variants,
 			PROMPT_FRAGMENT_SKILLS,
 		);
-		cachedProfiles.set(profile.version, pending);
+		cachedProfiles.set(cacheKey, pending);
 	}
-	return await pending;
+	return { ...(await pending), variantIds: variants.map((variant) => variant.id) };
 }
 
 export function hasRuntimeSkills(

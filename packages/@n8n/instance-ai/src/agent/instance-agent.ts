@@ -31,11 +31,12 @@ import {
 	setTraceModelId,
 	setTracePromptVersion,
 } from '../tracing/langsmith-tracing';
-import type {
-	CreateInstanceAgentOptions,
-	InstanceAiContext,
-	InstanceAiToolRegistry,
-	ModelConfig,
+import {
+	N8N_MCP_TOOL_CATEGORY,
+	type CreateInstanceAgentOptions,
+	type InstanceAiContext,
+	type InstanceAiToolRegistry,
+	type ModelConfig,
 } from '../types';
 import { withModalSession } from '../utils/modal-session';
 
@@ -60,7 +61,7 @@ function resolveModalSessionModelId(
 
 function splitDeferredTools(
 	tools: InstanceAiToolRegistry,
-	options: { isCheckpointFollowUp?: boolean } = {},
+	options: { isCheckpointFollowUp?: boolean; alwaysLoadedToolNames?: ReadonlySet<string> } = {},
 ) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
@@ -68,6 +69,7 @@ function splitDeferredTools(
 	for (const [name, tool] of tools) {
 		if (
 			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
+			options.alwaysLoadedToolNames?.has(name) ||
 			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOL_NAMES.has(name))
 		) {
 			coreTools.set(name, tool);
@@ -194,6 +196,11 @@ export async function createInstanceAgent(
 		}) ?? allOrchestratorTools;
 	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools, {
 		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
+		alwaysLoadedToolNames: new Set(
+			(context.localMcpServer?.getToolsByCategory(N8N_MCP_TOOL_CATEGORY) ?? []).map(
+				(tool) => tool.name,
+			),
+		),
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =

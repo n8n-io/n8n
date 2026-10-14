@@ -233,6 +233,34 @@ describe('credentials tool', () => {
 		});
 	});
 
+	describe('replaced actions', () => {
+		const replacedToolActions = [
+			{ toolName: 'credentials', action: 'list', replacementToolName: 'list_credentials' },
+		];
+
+		it('hides a replaced action and names its replacement', () => {
+			const tool = createCredentialsTool(createMockContext({ replacedToolActions }));
+			const schema = getInputSchema(tool);
+
+			expect(schema.safeParse({ action: 'list' }).success).toBe(false);
+			expect(schema.safeParse({ action: 'get', credentialId: 'cred-1' }).success).toBe(true);
+			expect(getDescription(tool)).toContain('call the `list_credentials` tool instead');
+		});
+
+		it('ignores replacements for other tools', () => {
+			const tool = createCredentialsTool(
+				createMockContext({
+					replacedToolActions: [
+						{ toolName: 'data-tables', action: 'list', replacementToolName: 'search_data_tables' },
+					],
+				}),
+			);
+
+			expect(getInputSchema(tool).safeParse({ action: 'list' }).success).toBe(true);
+			expect(getDescription(tool)).not.toContain('search_data_tables');
+		});
+	});
+
 	// ── list ────────────────────────────────────────────────────────────────
 
 	describe('list action', () => {

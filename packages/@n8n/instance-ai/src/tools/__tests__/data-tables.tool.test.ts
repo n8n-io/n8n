@@ -52,6 +52,21 @@ function noSuspendCtx() {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('data-tables tool', () => {
+	it('hides a replaced action and names its replacement', () => {
+		const tool = createDataTablesTool(
+			createMockContext({
+				replacedToolActions: [
+					{ toolName: 'data-tables', action: 'list', replacementToolName: 'search_data_tables' },
+				],
+			}),
+		);
+		const schema = tool.inputSchema as z.ZodTypeAny;
+
+		expect(schema.safeParse({ action: 'list' }).success).toBe(false);
+		expect(schema.safeParse({ action: 'schema', dataTableId: 'dt-1' }).success).toBe(true);
+		expect(tool.description).toContain('call the `search_data_tables` tool instead');
+	});
+
 	it.each([true, false])(
 		'resumes a saved row deletion without display names when approved=%s',
 		async (approved) => {

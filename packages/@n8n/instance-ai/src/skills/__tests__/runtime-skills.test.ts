@@ -136,6 +136,7 @@ describe('Instance AI runtime skills', () => {
 			'instance-awareness',
 			'intent-recognition',
 			'n8n-docs-assistant',
+			'n8n-mcp-building',
 			'planned-task-runtime',
 			'planning',
 			'progressive-building',

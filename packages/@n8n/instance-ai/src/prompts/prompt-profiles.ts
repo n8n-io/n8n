@@ -5,7 +5,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { SkillVariant } from './skill-variants';
 import { CONCISE_COMMUNICATION_STYLE_SECTION } from '../agent/communication-style.prompt';
 import { createSystemPromptRenderer, getSystemPrompt } from '../agent/system-prompt';
-import { ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 
 export interface PromptProfile {
 	version: string;
@@ -29,6 +29,23 @@ const progressiveBuilding: SkillVariant = {
 	],
 	disabledSkills: ['planning'],
 	disabledTools: [ORCHESTRATION_TOOL_IDS.CREATE_TASKS],
+};
+
+/**
+ * Replaces the profile variants when the n8n MCP tools build workflows. The native
+ * build pipeline and planned tasks are off, so the skills that need them are off too.
+ */
+export const N8N_MCP_BUILDING_VARIANT: SkillVariant = {
+	id: 'n8n-mcp-building@1',
+	changes: [{ skillId: 'workflow-builder', appendFrom: 'n8n-mcp-building', useDescription: true }],
+	disabledSkills: ['planning', 'planned-task-runtime'],
+	disabledTools: [
+		DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+		ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+		ORCHESTRATION_TOOL_IDS.REPORT_VERIFICATION_VERDICT,
+		ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS,
+		ORCHESTRATION_TOOL_IDS.CREATE_TASKS,
+	],
 };
 
 /** Published versions are immutable. Add a new entry to change a profile. */
@@ -55,9 +72,10 @@ export const INSTANCE_AI_PROMPT_PROFILES: readonly PromptProfile[] = [
 
 export const PROMPT_FRAGMENT_SKILLS = [
 	...new Set(
-		INSTANCE_AI_PROMPT_PROFILES.flatMap((profile) =>
-			profile.variants.flatMap((variant) => variant.changes.map((change) => change.appendFrom)),
-		),
+		[
+			...INSTANCE_AI_PROMPT_PROFILES.flatMap((profile) => profile.variants),
+			N8N_MCP_BUILDING_VARIANT,
+		].flatMap((variant) => variant.changes.map((change) => change.appendFrom)),
 	),
 ];
 

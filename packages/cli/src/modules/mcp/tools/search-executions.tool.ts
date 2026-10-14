@@ -9,6 +9,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
+import { isMcpAvailabilityEnforced } from '../mcp-workflow-access';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
 import { getMcpWorkflow } from './workflow-validation.utils';
@@ -136,7 +137,9 @@ export const createSearchExecutionsTool = (
 				...(startedAfter ? { startedAfter } : {}),
 				...(startedBefore ? { startedBefore } : {}),
 				isArchived: false,
-				workflowBooleanSettings: [{ key: 'availableInMCP', value: true }],
+				...(isMcpAvailabilityEnforced()
+					? { workflowBooleanSettings: [{ key: 'availableInMCP', value: true }] }
+					: {}),
 			};
 
 			const { results, count, estimated, nextCursor } =

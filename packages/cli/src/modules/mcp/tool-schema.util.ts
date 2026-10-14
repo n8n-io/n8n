@@ -16,13 +16,7 @@ export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 	z.objectOutputType<Shape, z.ZodTypeAny>
 > {
 	const schema = z.object(shape);
-	// `$refStrategy: 'none'` inlines schema instances that are reused across the
-	// shape. The default strategy dedupes a reused instance into a `$ref` to an
-	// arbitrary `#/properties/...` path, which common client-side validators
-	// (e.g. Zod v4's `fromJSONSchema`) refuse to resolve — they only follow refs
-	// into `$defs`/`definitions`. Inlining also matches Zod v4's `toJSONSchema`
-	// default (`reused: 'inline'`), the migration target for this bridge.
-	const jsonSchema = zodToDraft202012(schema, { $refStrategy: 'none' });
+	const jsonSchema = zodObjectToJsonSchema(schema);
 
 	return {
 		'~standard': {
@@ -45,4 +39,19 @@ export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 			},
 		},
 	};
+}
+
+/** The JSON Schema that tools/list advertises for a raw shape. */
+export function shapeToJsonSchema(shape: z.ZodRawShape): Record<string, unknown> {
+	return zodObjectToJsonSchema(z.object(shape));
+}
+
+function zodObjectToJsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
+	// `$refStrategy: 'none'` inlines schema instances that are reused across the
+	// shape. The default strategy dedupes a reused instance into a `$ref` to an
+	// arbitrary `#/properties/...` path, which common client-side validators
+	// (e.g. Zod v4's `fromJSONSchema`) refuse to resolve — they only follow refs
+	// into `$defs`/`definitions`. Inlining also matches Zod v4's `toJSONSchema`
+	// default (`reused: 'inline'`), the migration target for this bridge.
+	return zodToDraft202012(schema, { $refStrategy: 'none' });
 }

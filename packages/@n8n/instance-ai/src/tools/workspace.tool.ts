@@ -10,8 +10,11 @@ import {
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { buildActionInputSchema, describeReplacedActions } from './replaced-tool-actions';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
+
+const WORKSPACE_TOOL_ID = DOMAIN_TOOL_IDS.WORKSPACE;
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -107,30 +110,30 @@ const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Input union ─────────────────────────────────────────────────────────────
 
+const baseActions = [
+	listProjectsAction,
+	listTagsAction,
+	tagWorkflowAction,
+	cleanupTestExecutionsAction,
+] as const;
+
+const folderActions = [
+	listFoldersAction,
+	createFolderAction,
+	deleteFolderAction,
+	moveWorkflowToFolderAction,
+] as const;
+
+type WorkspaceActionSchema = (typeof baseActions)[number] | (typeof folderActions)[number];
+
 function buildInputSchema(context: InstanceAiContext) {
-	const baseActions = [
-		listProjectsAction,
-		listTagsAction,
-		tagWorkflowAction,
-		cleanupTestExecutionsAction,
-	] as const;
-
-	if (context.workspaceService?.listFolders) {
-		return sanitizeInputSchema(
-			z.discriminatedUnion('action', [
-				...baseActions,
-				listFoldersAction,
-				createFolderAction,
-				deleteFolderAction,
-				moveWorkflowToFolderAction,
-			]),
-		);
-	}
-
-	return sanitizeInputSchema(z.discriminatedUnion('action', [...baseActions]));
+	return buildActionInputSchema<WorkspaceActionSchema>(context, WORKSPACE_TOOL_ID, [
+		...baseActions,
+		...(context.workspaceService?.listFolders ? folderActions : []),
+	]);
 }
 
-type Input = z.infer<ReturnType<typeof buildInputSchema>>;
+type Input = z.infer<WorkspaceActionSchema>;
 
 // ── Suspend/resume helpers ──────────────────────────────────────────────────
 
@@ -380,9 +383,15 @@ export function createWorkspaceTool(context: InstanceAiContext) {
 	}
 
 	const inputSchema = buildInputSchema(context);
+	const description = [
+		'Manage workspace resources — projects, tags, folders, and execution cleanup.',
+		describeReplacedActions(context, WORKSPACE_TOOL_ID),
+	]
+		.filter(Boolean)
+		.join(' ');
 
-	return new Tool('workspace')
-		.description('Manage workspace resources — projects, tags, folders, and execution cleanup.')
+	return new Tool(WORKSPACE_TOOL_ID)
+		.description(description)
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(resumeSchema)

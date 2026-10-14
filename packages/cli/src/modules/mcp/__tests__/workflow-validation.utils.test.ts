@@ -6,6 +6,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';
+import { runAsInProcessMcpCall } from '../mcp-workflow-access';
 import { getMcpWorkflow, getSdkReferenceHint } from '../tools/workflow-validation.utils';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
@@ -225,6 +226,34 @@ describe('getMcpWorkflow', () => {
 			await expect(
 				getMcpWorkflow('wf / 1', user, ['workflow:read'], workflowFinderService),
 			).rejects.toThrow('https://n8n.example.com/n8n/workflow/wf%20%2F%201?settings=true');
+		});
+
+		test('skips the availability check for in-process calls', async () => {
+			const workflow = createWorkflow({ settings: { availableInMCP: false } });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+
+			await expect(
+				runAsInProcessMcpCall(
+					async () => await getMcpWorkflow('wf-1', user, ['workflow:read'], workflowFinderService),
+				),
+			).resolves.toBe(workflow);
+			await expect(
+				getMcpWorkflow('wf-1', user, ['workflow:read'], workflowFinderService),
+			).rejects.toThrow('not available in MCP');
+		});
+
+		test('keeps the permission check for in-process calls', async () => {
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(null),
+			});
+
+			await expect(
+				runAsInProcessMcpCall(
+					async () => await getMcpWorkflow('wf-1', user, ['workflow:read'], workflowFinderService),
+				),
+			).rejects.toMatchObject({ reason: 'no_permission' });
 		});
 	});
 

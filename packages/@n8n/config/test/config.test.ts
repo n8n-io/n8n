@@ -365,6 +365,7 @@ describe('GlobalConfig', () => {
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
 			mcpServers: '',
+			n8nMcpToolsEnabled: false,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,

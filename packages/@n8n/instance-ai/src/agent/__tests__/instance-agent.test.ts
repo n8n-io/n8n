@@ -330,6 +330,38 @@ describe('createInstanceAgent', () => {
 		});
 	});
 
+	it('keeps n8n MCP tools always loaded and defers other local MCP tools', async () => {
+		createToolsFromLocalMcpServer.mockReturnValue(
+			new Map([
+				['list_credentials', mockBuiltTool('list_credentials')],
+				['create_workflow_from_code', mockBuiltTool('create_workflow_from_code')],
+				['browser_navigate', mockBuiltTool('browser_navigate')],
+			]),
+		);
+		const localMcpServer = {
+			getToolsByCategory: vi.fn((category: string) =>
+				category === 'n8n-mcp'
+					? [{ name: 'list_credentials' }, { name: 'create_workflow_from_code' }]
+					: [],
+			),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: { runLabel: 'n8n-mcp-run', localMcpServer },
+			orchestrationContext: { runId: 'n8n-mcp-run' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(getAttachedTools().list_credentials).toMatchObject({ name: 'list_credentials' });
+		expect(getAttachedTools().create_workflow_from_code).toMatchObject({
+			name: 'create_workflow_from_code',
+		});
+		expect(getDeferredTools().create_workflow_from_code).toBeUndefined();
+		expect(getDeferredTools().browser_navigate).toMatchObject({ name: 'browser_navigate' });
+	});
+
 	it('attaches the orchestration workspace when provided', async () => {
 		const memoryConfig = {} as never;
 		const fakeWorkspace = { id: 'thread-runtime-workspace' } as never;

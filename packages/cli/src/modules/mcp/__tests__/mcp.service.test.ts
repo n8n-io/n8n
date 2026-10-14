@@ -19,11 +19,13 @@ import {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
+import { createWorkflow } from './mock.utils';
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -641,6 +643,64 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
 				aiPreferencesEnabled: false,
 			});
+		});
+	});
+
+	describe('getInProcessTools', () => {
+		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+		const clientInfo = { name: 'n8n-instance-ai' };
+
+		const findTool = async (name: string) => {
+			const tools = await mcpService.getInProcessTools(user, mcpFeatureFlags(), clientInfo);
+			const tool = tools.find((candidate) => candidate.name === name);
+			if (!tool) throw new Error(`Tool ${name} not found`);
+			return tool;
+		};
+
+		it('advertises the same JSON schema as tools/list', async () => {
+			const tool = await findTool('search_workflows');
+
+			expect(tool.inputJsonSchema).toMatchObject({
+				type: 'object',
+				properties: expect.objectContaining({
+					query: expect.objectContaining({ type: 'string' }),
+				}),
+			});
+		});
+
+		it('rejects arguments that fail the input schema without running the handler', async () => {
+			const tool = await findTool('search_workflows');
+
+			const result = await tool.call({ query: 123 });
+
+			expect(result).toMatchObject({ isError: true });
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits the tool-call event with the in-process client name', async () => {
+			const tool = await findTool('search_workflows');
+
+			await tool.call({ query: 'invoices' }).catch(() => {});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ toolName: 'search_workflows', clientName: 'n8n-instance-ai' }),
+			);
+		});
+
+		it('skips the availableInMCP check for in-process calls', async () => {
+			const workflow = createWorkflow({ settings: { availableInMCP: false } });
+			vi.mocked(Container.get(WorkflowFinderService).findWorkflowForUser).mockResolvedValue(
+				workflow,
+			);
+			vi.mocked(Container.get(RoleService).addScopes).mockImplementation(() => {
+				throw new Error('reached the step after the workflow access check');
+			});
+			const tool = await findTool('get_workflow_details');
+
+			await expect(tool.call({ workflowId: workflow.id })).rejects.toThrow(
+				'reached the step after the workflow access check',
+			);
 		});
 	});
 
@@ -1369,6 +1429,17 @@ describe('McpService', () => {
 
 			beforeEach(() => {
 				(registerWorkflowPreviewApp as Mock).mockClear();
+			});
+
+			it('keeps MCP Apps off for in-process tools', async () => {
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+				const tools = await buildService().getInProcessTools(user, appsEnabled, {
+					name: 'n8n-instance-ai',
+				});
+
+				expect(tools.map((tool) => tool.name)).toContain('create_workflow_from_code');
+				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
 			});
 
 			it('registers the preview app and marks the create tool with the app resource when MCP Apps is enabled', async () => {

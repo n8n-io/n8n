@@ -17,6 +17,8 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { describeReplacedActions, getReplacedActions } from './replaced-tool-actions';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { FolderResolutionFailure, InstanceAiContext, SetupItemsEmitter } from '../types';
@@ -443,6 +445,8 @@ export interface WorkflowsToolOptions {
 }
 
 type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
+
+const WORKFLOWS_TOOL_ID = DOMAIN_TOOL_IDS.WORKFLOWS;
 
 const WORKFLOW_ACTION_ORDER = [
 	'list',
@@ -2310,7 +2314,19 @@ export function createWorkflowsTool(
 	context: InstanceAiContext,
 	optionsInput: WorkflowsToolOptionsInput = {},
 ) {
-	const options = normalizeOptions(optionsInput);
+	const requestedOptions = normalizeOptions(optionsInput);
+	const replaced = getReplacedActions(context, WORKFLOWS_TOOL_ID);
+	const options: WorkflowsToolOptions =
+		replaced.size === 0
+			? requestedOptions
+			: {
+					...requestedOptions,
+					allowedActions: getWorkflowActions(
+						getSupportedWorkflowActionSchemas(context),
+						requestedOptions,
+					).filter((action) => !replaced.has(action)),
+				};
+	const replacedNote = describeReplacedActions(context, WORKFLOWS_TOOL_ID);
 	// Closure state for the setup action's suspend/resume cycle
 	const setupState: { currentRequestId: string | null; preTestSnapshot: WorkflowJSON | null } = {
 		currentRequestId: null,
@@ -2319,8 +2335,8 @@ export function createWorkflowsTool(
 
 	const inputSchema = buildInputSchema(context, options);
 
-	return new Tool('workflows')
-		.description(getToolDescription(context, options))
+	return new Tool(WORKFLOWS_TOOL_ID)
+		.description([getToolDescription(context, options), replacedNote].filter(Boolean).join(' '))
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(workflowsResumeSchema)

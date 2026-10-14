@@ -1570,6 +1570,16 @@ export type InstanceAiChangedArtifact = Pick<
 	'type' | 'id' | 'name' | 'projectId'
 >;
 
+/** Local MCP tool category of the in-process n8n MCP tools. The orchestrator always loads them. */
+export const N8N_MCP_TOOL_CATEGORY = 'n8n-mcp';
+
+export interface ReplacedToolAction {
+	/** Native domain tool ID, e.g. `credentials`. */
+	toolName: string;
+	action: string;
+	replacementToolName: string;
+}
+
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */
 	credentialDescriptionsEnabled?: boolean;
@@ -1649,6 +1659,11 @@ export interface InstanceAiContext {
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
+	/**
+	 * Native tool actions that a `localMcpServer` tool replaces. The orchestrator hides each
+	 * action and keeps its replacement loaded, so the move costs no extra tool search.
+	 */
+	replacedToolActions?: readonly ReplacedToolAction[];
 	/** Per-channel Computer Use state — drives system prompt guidance. */
 	computerUseState?: ComputerUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */

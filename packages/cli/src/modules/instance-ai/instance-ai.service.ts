@@ -187,6 +187,7 @@ import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-s
 import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { N8nMcpLocalServer } from './n8n-mcp/n8n-mcp-local-server';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
@@ -2574,6 +2575,27 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Built for each run, because the tool set follows the user's role and flags. */
+	private async createN8nMcpServer(user: User): Promise<N8nMcpLocalServer | undefined> {
+		if (!this.instanceAiConfig.n8nMcpToolsEnabled) return undefined;
+		if (!Container.get(ModuleRegistry).isActive('mcp')) return undefined;
+
+		try {
+			const { McpService } = await import('@/modules/mcp/mcp.service.js');
+			const mcpService = Container.get(McpService);
+			const featureFlags = await mcpService.resolveFeatureFlags(user);
+			const tools = await mcpService.getInProcessTools(user, featureFlags, {
+				name: 'n8n-instance-ai',
+			});
+			return new N8nMcpLocalServer(tools, this.logger);
+		} catch (error) {
+			this.logger.warn('Failed to load n8n MCP tools for n8n Assistant', {
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
+	}
+
 	areMcpConnectionsAvailable(): boolean {
 		return (
 			Container.get(ModuleRegistry).isActive('mcp-registry') &&
@@ -2703,9 +2725,13 @@ export class InstanceAiService {
 		const browserMcpServer = browserUseEnabledGlobally
 			? this.browserSessionService.findMcpServer(user.id)
 			: undefined;
-		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
+		const n8nMcpServer = await this.createN8nMcpServer(user);
+		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer, n8nMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
+		}
+		if (n8nMcpServer) {
+			context.replacedToolActions = n8nMcpServer.getReplacedToolActions();
 		}
 
 		context.permissions = this.settingsService.getPermissions();
@@ -2799,6 +2825,12 @@ export class InstanceAiService {
 			permissionMode: context.permissions?.fetchUrl,
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
+		n8nMcpServer?.setApprovalGate({
+			permissions: context.permissions,
+			sessionApprovedToolKeys: sessionGrants,
+			grantSessionToolApproval,
+			onArtifactChanged: context.onArtifactChanged,
+		});
 
 		// The client reports which + menu entries it renders, because only it can see
 		// its own rollout and the device. The admin switches are still applied here,
@@ -2837,13 +2869,18 @@ export class InstanceAiService {
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
 		});
-		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
+		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile, {
+			n8nMcpBuilding: n8nMcpServer?.canBuildWorkflows() ?? false,
+		});
 		const selectedRuntimeSkills = selectedSkills.source;
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
 				: selectedRuntimeSkills;
-		const promptMetadata = describePromptProfile(selectedPrompt, allRuntimeSkills);
+		const promptMetadata = {
+			...describePromptProfile(selectedPrompt, allRuntimeSkills),
+			skillVariants: selectedSkills.variantIds,
+		};
 		this.runState.setPromptConfiguration(threadId, promptMetadata);
 		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;

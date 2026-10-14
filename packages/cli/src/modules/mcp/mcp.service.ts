@@ -21,7 +21,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
 import { ManualExecutionCancelledError, type FeatureFlags, type IRun } from 'n8n-workflow';
-import type z from 'zod';
+import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -65,7 +65,9 @@ import {
 	arePreferenceToolsEnabled,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
+import { runAsInProcessMcpCall } from './mcp-workflow-access';
 import type {
+	InProcessMcpTool,
 	McpAppsTelemetryVariant,
 	McpAuthContext,
 	McpClientInfo,
@@ -74,7 +76,7 @@ import type {
 	ToolDefinition,
 	ToolHandlerResult,
 } from './mcp.types';
-import { shapeToStandardSchema } from './tool-schema.util';
+import { shapeToJsonSchema, shapeToStandardSchema } from './tool-schema.util';
 import { createCreateFolderTool } from './tools/create-folder.tool';
 import {
 	createAddDataTableColumnTool,
@@ -360,42 +362,6 @@ export class McpService {
 		auth?: McpAuthContext,
 	) {
 		return (tool: ToolDefinition<z.ZodRawShape, ToolHandlerResult>) => {
-			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
-			// through a generic callable and narrow the result back to a tool result.
-			const invoke = tool.handler as (...handlerArgs: unknown[]) => Promise<ToolHandlerResult>;
-
-			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
-				const workflowId = getWorkflowId(handlerArgs[0]);
-
-				try {
-					const result = await invoke(...handlerArgs);
-					const { status, errorMessage } = getToolCallOutcome(result);
-					this.eventService.emit('mcp-tool-called', {
-						user,
-						toolName: tool.name,
-						workflowId:
-							workflowId ??
-							(isInputRequired(result) ? undefined : getWorkflowId(result?.structuredContent)),
-						status,
-						errorMessage,
-						...auth?.caller,
-						clientName: clientInfo?.name,
-					});
-					return result;
-				} catch (error) {
-					this.eventService.emit('mcp-tool-called', {
-						user,
-						toolName: tool.name,
-						workflowId,
-						status: 'error',
-						errorMessage: error instanceof Error ? error.message : String(error),
-						...auth?.caller,
-						clientName: clientInfo?.name,
-					});
-					throw error;
-				}
-			};
-
 			const { inputSchema, outputSchema, ...config } = tool.config;
 			return server.registerTool(
 				tool.name,
@@ -404,8 +370,52 @@ export class McpService {
 					...(inputSchema ? { inputSchema: shapeToStandardSchema(inputSchema) } : {}),
 					...(outputSchema ? { outputSchema: shapeToStandardSchema(outputSchema) } : {}),
 				},
-				instrumentedHandler,
+				this.instrumentHandler(tool, user, clientInfo, auth),
 			);
+		};
+	}
+
+	/** Wraps a tool handler so each invocation emits an `mcp-tool-called` event. */
+	private instrumentHandler(
+		tool: ToolDefinition<z.ZodRawShape, ToolHandlerResult>,
+		user: User,
+		clientInfo?: McpClientInfo,
+		auth?: McpAuthContext,
+	) {
+		// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
+		// through a generic callable and narrow the result back to a tool result.
+		const invoke = tool.handler as (...handlerArgs: unknown[]) => Promise<ToolHandlerResult>;
+
+		return async (...handlerArgs: unknown[]) => {
+			const workflowId = getWorkflowId(handlerArgs[0]);
+
+			try {
+				const result = await invoke(...handlerArgs);
+				const { status, errorMessage } = getToolCallOutcome(result);
+				this.eventService.emit('mcp-tool-called', {
+					user,
+					toolName: tool.name,
+					workflowId:
+						workflowId ??
+						(isInputRequired(result) ? undefined : getWorkflowId(result?.structuredContent)),
+					status,
+					errorMessage,
+					...auth?.caller,
+					clientName: clientInfo?.name,
+				});
+				return result;
+			} catch (error) {
+				this.eventService.emit('mcp-tool-called', {
+					user,
+					toolName: tool.name,
+					workflowId,
+					status: 'error',
+					errorMessage: error instanceof Error ? error.message : String(error),
+					...auth?.caller,
+					clientName: clientInfo?.name,
+				});
+				throw error;
+			}
 		};
 	}
 
@@ -489,8 +499,86 @@ export class McpService {
 			},
 		);
 
-		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth);
-		const registerResource = this.createResourceRegistrar(server);
+		await this.registerTools({
+			server,
+			user,
+			featureFlags,
+			registerTool: this.createToolRegistrar(server, user, clientInfo, auth),
+			registerResource: this.createResourceRegistrar(server),
+			allowedToolNames,
+			clientInfo,
+		});
+
+		return server;
+	}
+
+	/**
+	 * Returns the tools the MCP server exposes to this user, for a caller in the
+	 * same process. The caller gets every tool an API key would get. MCP Apps
+	 * stay off, because no client UI can render them.
+	 */
+	async getInProcessTools(
+		user: User,
+		featureFlags: McpFeatureFlags,
+		clientInfo: McpClientInfo,
+	): Promise<InProcessMcpTool[]> {
+		const tools: InProcessMcpTool[] = [];
+
+		const registerTool: RegisterToolFn = (tool) => {
+			const shape = tool.config.inputSchema ?? {};
+			const inputSchema = z.object(shape);
+			const handler = this.instrumentHandler(tool, user, clientInfo);
+			tools.push({
+				name: tool.name,
+				description: tool.config.description,
+				annotations: tool.config.annotations,
+				inputJsonSchema: shapeToJsonSchema(shape),
+				call: async (args) => {
+					const parsed = inputSchema.safeParse(args);
+					if (!parsed.success) {
+						return {
+							content: [{ type: 'text', text: `Invalid arguments: ${parsed.error.message}` }],
+							isError: true,
+						};
+					}
+					return await runAsInProcessMcpCall(async () => await handler(parsed.data));
+				},
+			});
+		};
+
+		await this.registerTools({
+			user,
+			featureFlags: { ...featureFlags, mcpApps: { enabled: false, variant: 'control' } },
+			registerTool,
+			registerResource: () => {},
+			allowedToolNames: undefined,
+			clientInfo,
+		});
+
+		return tools;
+	}
+
+	private async registerTools({
+		server,
+		user,
+		featureFlags,
+		registerTool,
+		registerResource,
+		allowedToolNames,
+		clientInfo,
+	}: {
+		/** Required only when MCP Apps are on, to register the app resources. */
+		server?: McpServer;
+		user: User;
+		featureFlags: McpFeatureFlags;
+		registerTool: RegisterToolFn;
+		registerResource: RegisterResourceFn;
+		allowedToolNames: Set<string> | undefined;
+		clientInfo?: McpClientInfo;
+	}) {
+		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
+		const agentsEnabled = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
+		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
@@ -820,8 +908,6 @@ export class McpService {
 				allowedToolNames,
 			);
 		}
-
-		return server;
 	}
 
 	/**
@@ -887,7 +973,7 @@ export class McpService {
 	}
 
 	private async registerBuilderTools(
-		server: McpServer,
+		server: McpServer | undefined,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
 		featureFlags: McpFeatureFlags,
@@ -965,7 +1051,7 @@ export class McpService {
 		// registrar as every other tool (schema bridging + instrumentation);
 		// only its _meta marks it as backed by the preview app resource.
 		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
-		if (featureFlags.mcpApps.enabled && createToolAllowed) {
+		if (server && featureFlags.mcpApps.enabled && createToolAllowed) {
 			const appTelemetry = this.buildMcpAppTelemetryConfig();
 			registerWorkflowPreviewApp(server, {
 				instanceOrigin: appTelemetry.instanceOrigin,

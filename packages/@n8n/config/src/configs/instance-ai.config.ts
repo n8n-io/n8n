@@ -46,6 +46,13 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
 
+	/**
+	 * Experimental. Whether n8n Assistant can also use the tools of this instance's MCP server. Tools
+	 * that change data ask for approval, according to the n8n Assistant permission settings.
+	 */
+	@Env('N8N_INSTANCE_AI_N8N_MCP_TOOLS_ENABLED')
+	n8nMcpToolsEnabled: boolean = true;
+
 	/** Token threshold for Observer to trigger compression of message history. */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;

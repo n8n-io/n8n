@@ -2,9 +2,11 @@ import { createSkillLoadTool, filterRuntimeSkillSource } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import { getSystemPrompt } from '../../agent/system-prompt';
+import { PROMPT_FRAGMENT_SKILLS, resolvePromptProfile } from '../../prompts/prompt-profiles';
 import type { Logger } from '../../logger';
 import { buildRuntimeSkillWorkspaceBundle } from '../materialize-runtime-skills';
 import {
+	loadInstanceAiPromptSkills,
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
 } from '../runtime-skills';
@@ -24,7 +26,11 @@ describe('progressive workflow skill variants', () => {
 			const original = await source.loadSkill(entry.id);
 			const selected = await progressive.loadSkill(entry.id);
 			const selectedEntry = progressive.registry.skills.find(({ id }) => id === entry.id);
-			if (entry.id === 'planning' || entry.id === 'progressive-building') {
+			if (
+				entry.id === 'planning' ||
+				entry.id === 'progressive-building' ||
+				entry.id === 'n8n-mcp-building'
+			) {
 				expect(original).not.toBeNull();
 				expect(selected).toBeNull();
 				expect(selectedEntry).toBeUndefined();
@@ -45,7 +51,7 @@ describe('progressive workflow skill variants', () => {
 		expect(source.registry).toEqual(originalRegistry);
 		const control = await loadInstanceAiRuntimeSkillSourceForBuildMode('default');
 		expect(control.registry).toEqual(
-			filterRuntimeSkillSource(source, ['progressive-building']).registry,
+			filterRuntimeSkillSource(source, PROMPT_FRAGMENT_SKILLS).registry,
 		);
 		await expect(loadInstanceAiRuntimeSkillSourceForBuildMode(undefined)).resolves.toBe(control);
 	});
@@ -98,6 +104,27 @@ describe('progressive workflow skill variants', () => {
 		).resolves.toMatchObject({ success: false });
 		await expect(progressive.loadSkill('progressive-building')).resolves.toBeNull();
 		expect(progressiveBundle.files.has(`${root}/skills/progressive-building/SKILL.md`)).toBe(false);
+	});
+
+	it('replaces the profile variants with the n8n MCP building variant', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const policy = await source.loadSkill('n8n-mcp-building');
+		if (!policy) throw new Error('Expected the n8n MCP building policy');
+		const progressive = resolvePromptProfile({ mode: 'progressive' }).profile;
+
+		const selected = await loadInstanceAiPromptSkills(progressive, { n8nMcpBuilding: true });
+
+		expect(selected.variantIds).toEqual(['n8n-mcp-building@1']);
+		expect(selected.disabledTools).toEqual(
+			expect.arrayContaining(['build-workflow', 'verify-built-workflow', 'create-tasks']),
+		);
+		const builder = await selected.source.loadSkill('workflow-builder');
+		expect(builder?.instructions).toContain(policy.instructions);
+		expect(builder?.instructions).not.toContain('# Progressive building');
+		expect(builder?.description).toBe(policy.description);
+		await expect(selected.source.loadSkill('planning')).resolves.toBeNull();
+		await expect(selected.source.loadSkill('planned-task-runtime')).resolves.toBeNull();
+		await expect(selected.source.loadSkill('n8n-mcp-building')).resolves.toBeNull();
 	});
 
 	it('keeps the progressive policy out of the general system prompt', () => {

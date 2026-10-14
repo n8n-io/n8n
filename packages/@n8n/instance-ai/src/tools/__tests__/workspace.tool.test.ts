@@ -235,6 +235,37 @@ describe('workspace tool', () => {
 		});
 	});
 
+	describe('replaced actions', () => {
+		it('hides replaced actions, keeps the rest, and names the replacements', () => {
+			const context = createMockContext({
+				replacedToolActions: [
+					{
+						toolName: 'workspace',
+						action: 'list-projects',
+						replacementToolName: 'search_projects',
+					},
+					{ toolName: 'workspace', action: 'list-folders', replacementToolName: 'search_folders' },
+				],
+			});
+			context.workspaceService!.listFolders = vi.fn();
+			context.workspaceService!.createFolder = vi.fn();
+			context.workspaceService!.deleteFolder = vi.fn();
+			context.workspaceService!.moveWorkflowToFolder = vi.fn();
+
+			const tool = createWorkspaceTool(context);
+			const schema = tool.inputSchema as { safeParse: (input: unknown) => { success: boolean } };
+
+			expect(schema.safeParse({ action: 'list-projects' }).success).toBe(false);
+			expect(schema.safeParse({ action: 'list-folders', projectId: 'p1' }).success).toBe(false);
+			expect(schema.safeParse({ action: 'list-tags' }).success).toBe(true);
+			expect(
+				schema.safeParse({ action: 'create-folder', name: 'Reports', projectId: 'p1' }).success,
+			).toBe(true);
+			expect(tool.description).toContain('call the `search_projects` tool instead');
+			expect(tool.description).toContain('call the `search_folders` tool instead');
+		});
+	});
+
 	describe('create-folder', () => {
 		function contextWithFolderActions(
 			overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {

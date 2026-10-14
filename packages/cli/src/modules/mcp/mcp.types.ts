@@ -60,6 +60,19 @@ export type RegisterToolFn = <
 	tool: ToolDefinition<InputArgs, Result>,
 ) => void;
 
+/**
+ * A tool the MCP server exposes, for a caller in the same process. `call`
+ * validates the arguments against the tool's input schema and runs the
+ * instrumented handler, as a tools/call request would.
+ */
+export type InProcessMcpTool = {
+	name: string;
+	description?: string;
+	annotations?: ToolDefinition['config']['annotations'];
+	inputJsonSchema: Record<string, unknown>;
+	call: (args: Record<string, unknown>) => Promise<ToolHandlerResult>;
+};
+
 /** Read result for a static MCP resource (a single text document). */
 type ResourceReadResult = {
 	contents: Array<{

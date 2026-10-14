@@ -6,6 +6,7 @@ import type { Scope } from '@n8n/permissions';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowAccessError } from '../mcp.errors';
+import { isMcpAvailabilityEnforced } from '../mcp-workflow-access';
 import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
@@ -75,7 +76,7 @@ export function validateMcpWorkflow<
 		);
 	}
 
-	if (!workflow.settings?.availableInMCP) {
+	if (isMcpAvailabilityEnforced() && !workflow.settings?.availableInMCP) {
 		throw new WorkflowAccessError(
 			`Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings: ${getWorkflowSettingsUrl(workflow.id)}`,
 			'not_available_in_mcp',

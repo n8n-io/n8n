@@ -14,10 +14,13 @@ import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
+import { buildActionInputSchema, describeReplacedActions } from './replaced-tool-actions';
+import { DOMAIN_TOOL_IDS } from './tool-ids';
+
+const EXECUTIONS_TOOL_ID = DOMAIN_TOOL_IDS.EXECUTIONS;
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -223,20 +226,18 @@ const stopAction = z.object({
 	executionId: z.string().describe('Execution ID'),
 });
 
-const inputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		getAction,
-		runAction,
-		runStepAction,
-		debugAction,
-		getNodeOutputAction,
-		getResolvedNodeParametersAction,
-		stopAction,
-	]),
-);
+const allActions = [
+	listAction,
+	getAction,
+	runAction,
+	runStepAction,
+	debugAction,
+	getNodeOutputAction,
+	getResolvedNodeParametersAction,
+	stopAction,
+] as const;
 
-type Input = z.infer<typeof inputSchema>;
+type Input = z.infer<(typeof allActions)[number]>;
 
 // ── Suspend / resume schemas (used by `run`) ───────────────────────────────
 
@@ -573,9 +574,13 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 export function createExecutionsTool(context: InstanceAiContext) {
-	return new Tool('executions')
+	const inputSchema = buildActionInputSchema(context, EXECUTIONS_TOOL_ID, allActions);
+	const replacedNote = describeReplacedActions(context, EXECUTIONS_TOOL_ID);
+
+	return new Tool(EXECUTIONS_TOOL_ID)
 		.description(
-			'Manage workflow executions — list, inspect, run, run one node, debug, ' +
+			(replacedNote ? `${replacedNote} ` : '') +
+				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
 				'get node output, get resolved node parameters for a past run, and stop. ' +
 				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
 				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
