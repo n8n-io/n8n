@@ -671,17 +671,44 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return changed;
 	}
 
-	/** One page of agents with their inline skill columns, oldest first, for the startup skill copy. */
+	/**
+	 * One page of agents with their inline skill columns, oldest first, for the startup
+	 * skill copy. Pages by the last row seen, so an agent deleted meanwhile cannot shift
+	 * later agents past the next page.
+	 */
 	async findPageWithInlineSkills(
-		skip: number,
+		after: Pick<Agent, 'createdAt' | 'id'> | null,
 		take: number,
 		ctx: OperationContext = {},
-	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>>> {
-		return await this.managerFor(ctx).find(Agent, {
-			select: ['id', 'projectId', 'schema', 'skills'],
-			order: { createdAt: 'ASC', id: 'ASC' },
-			skip,
-			take,
+	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'createdAt'>>> {
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(Agent, 'agent')
+			.select(['agent.id', 'agent.projectId', 'agent.schema', 'agent.skills', 'agent.createdAt'])
+			.orderBy('agent.createdAt', 'ASC')
+			.addOrderBy('agent.id', 'ASC')
+			.limit(take);
+		if (after) {
+			query.where(
+				'(agent.createdAt > :createdAt OR (agent.createdAt = :createdAt AND agent.id > :id))',
+				{
+					createdAt: after.createdAt,
+					id: after.id,
+				},
+			);
+		}
+		return await query.getMany();
+	}
+
+	/**
+	 * Holds the agent row until the transaction ends, so a draft write to the agent waits
+	 * for the startup skill copy of it. SQLite allows one write transaction at a time.
+	 */
+	async lockForSkillCopy(agentId: string, ctx: OperationContext): Promise<void> {
+		if (this.manager.connection.options.type !== 'postgres') return;
+		await this.managerFor(ctx).find(Agent, {
+			select: ['id'],
+			where: { id: agentId },
+			lock: { mode: 'pessimistic_write' },
 		});
 	}
 

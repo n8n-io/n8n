@@ -537,12 +537,17 @@ export class SkillRepository extends BaseRepository<Skill> {
 		limit: number,
 		ctx: OperationContext = {},
 	): Promise<{ agentIds: string[]; count: number }> {
-		const query = this.managerFor(ctx)
+		const manager = this.managerFor(ctx);
+		// The primary key is (agentId, skillId), so count agents, not rows.
+		const total = await manager
+			.createQueryBuilder(AgentSkillDependency, 'dep')
+			.select('COUNT(DISTINCT dep.agentId)', 'count')
+			.getRawOne<{ count: number | string }>();
+		const count = Number(total?.count ?? 0);
+		const rows = await manager
 			.createQueryBuilder(AgentSkillDependency, 'dep')
 			.select('dep.agentId', 'agentId')
-			.distinct(true);
-		const count = await query.clone().getCount();
-		const rows = await query
+			.distinct(true)
 			.orderBy('dep.agentId', 'ASC')
 			.limit(limit)
 			.getRawMany<{ agentId: string }>();
