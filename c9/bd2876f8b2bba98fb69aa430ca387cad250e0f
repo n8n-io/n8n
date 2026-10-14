@@ -1,0 +1,58 @@
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_1e70957d1bf574::t_a18524e36b9409 796
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_1e70957d1bf574::t_3866845147ddaa 469-488
+  s_1e70957d1bf574::t_ab73890c2f4d36 489-490
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_1e70957d1bf574::t_a18524e36b9409 18,57
+  s_1e70957d1bf574::t_4fc721287fb639 22,33,187-193,196
+packages/@n8n/instance-ai/src/tools/__tests__/agent-context.tool.test.ts
+  s_1e70957d1bf574::t_d3b6820b276c7b 41,44
+packages/@n8n/instance-ai/src/types.ts
+  s_1e70957d1bf574::t_c70bcaf33da311 49,1508-1512
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_1e70957d1bf574::t_d4b2fa01b3465c 62,1116,1119,1126,1228-1234
+  s_1e70957d1bf574::t_0603f0c5d3b7f9 1091
+  s_1e70957d1bf574::t_cdb1939f6d07f3 101,1081-1089
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_1e70957d1bf574::t_a9f37004f23433 730-733,736-739
+  s_1e70957d1bf574::t_d2219f6657678c 685-688,690-700,708-711,713-723
+  s_1e70957d1bf574::t_6282d819fea1b2 729,734-735,740
+  s_1e70957d1bf574::t_58df817660b151 672-684,689,701-707,712,724-728,741-742
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_1e70957d1bf574::t_a18524e36b9409 333
+  s_1e70957d1bf574::t_3d8736cbf7bb67 342-343,347
+  s_1e70957d1bf574::t_d273d218cbd5a7 150-153
+packages/@n8n/instance-ai/src/tools/agent-context.tool.ts
+  s_1e70957d1bf574::t_4528af762f15d6 63-69,72,82
+  s_1e70957d1bf574::t_a18524e36b9409 62
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_1e70957d1bf574::t_0603f0c5d3b7f9 201-211,217,238
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_1e70957d1bf574::t_3ff0f89239acde 2220
+  s_1e70957d1bf574::t_1b508485966d17 2200-2206,2213,2232-2235
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_1e70957d1bf574::t_1b73f423de1ad2 140-142
+  s_1e70957d1bf574::t_2c5d4fdf25f4cd 2,23-24,30-31,41-42,90-139,143-160
+  s_1e70957d1bf574::t_497c8f11713005 161
+packages/cli/src/modules/agents/agent-context-readers.ts
+  s_1e70957d1bf574::t_d4872b4c66cf58 1-2,5-22,29-32,34-43
+  s_1e70957d1bf574::t_d64621bce34109 3-4
+  s_1e70957d1bf574::t_ad11322e4dccba 23-28,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c9bd2876f8b2bba98fb69aa430ca387cad250e0f",
+  "prompts": {},
+  "sessions": {
+    "s_1e70957d1bf574": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb7-709c-7422-b951-1aa57d997a3e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

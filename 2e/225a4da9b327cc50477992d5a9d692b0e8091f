@@ -1,0 +1,33 @@
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_74dc43a5ee571f::t_4d69f5c23dbdc9 479,483-486,489-497,500-501
+  s_74dc43a5ee571f::t_ad453217494c7b 827
+  s_74dc43a5ee571f::t_9d8a79ca36bce2 870,913,1011
+  s_74dc43a5ee571f::t_affd2c180a8e51 499
+  s_74dc43a5ee571f::t_77e09a0b2184fe 1010
+  s_74dc43a5ee571f::t_4b0d021ca0642d 826
+  s_74dc43a5ee571f::t_c9fa200cc39dcb 912
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_74dc43a5ee571f::t_5f335ad9aedfde 1586-1594
+  s_74dc43a5ee571f::t_2adabc27126711 1361-1383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2e225a4da9b327cc50477992d5a9d692b0e8091f",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_74dc43a5ee571f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "005fc3ff-735a-4494-a3a8-82f316ec18a2",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

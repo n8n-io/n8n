@@ -1,0 +1,41 @@
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  s_c345592441274b::t_129318997c2346 402
+  s_c345592441274b::t_6e69c53509234c 417
+  s_c345592441274b::t_db9ed1da0833fa 374
+  s_c345592441274b::t_25908bd311ed8c 391-401,403-408
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_c345592441274b::t_a3dc6df32b48f1 90
+  s_c345592441274b::t_42ca8ba414a9a0 49
+  s_c345592441274b::t_a4b0de80a9e80b 71
+  s_c345592441274b::t_60b61bcf2193cd 70
+  s_c345592441274b::t_723cde3ce27455 68-69,72-76
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_c345592441274b::t_179139053372cc 992
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_c345592441274b::t_9ac2c42a9dd6eb 218,230-234
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.types.test.ts
+  s_c345592441274b::t_3f5a1ebef90533 61,69
+  s_c345592441274b::t_5b13ec23fda883 32-33,35-37,39
+  s_c345592441274b::t_93cb740fb10d22 1-31,34,38,40-60,62-68,70-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f45bc7bcaf6ef877e120b922c0981714645eca0f",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c345592441274b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44d4b7e1-ff47-45f4-90e1-e74bbf6568a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

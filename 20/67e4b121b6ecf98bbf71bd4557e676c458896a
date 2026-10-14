@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_db74c72b258827::t_ca12224fa9f988 369-438
+packages/cli/src/modules/instance-ai/assistant-agent.provider.ts
+  ai_agent 54-60
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_db74c72b258827::t_dddf9c4a07514e 93-98,536,699,721,744,765,784,799,860,911,972,1004,1069
+  s_db74c72b258827::t_ca12224fa9f988 90,374-391,463-473
+  s_db74c72b258827::t_c33ce558780cc4 70-72
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_db74c72b258827::t_ca12224fa9f988 82-85
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_db74c72b258827::t_e66e87851e4f7b 37,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2067e4b121b6ecf98bbf71bd4557e676c458896a",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

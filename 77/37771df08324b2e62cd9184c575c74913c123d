@@ -1,0 +1,97 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.test.ts
+  s_f3d2ec4529fb2a::t_974639745fab7c 264-266
+  s_f3d2ec4529fb2a::t_452de7bd793b83 20-22
+  s_f3d2ec4529fb2a::t_c4c8b3d49f0ba6 23-26
+  s_f3d2ec4529fb2a::t_0e2a6e4055adab 50
+  s_f3d2ec4529fb2a::t_3dd695da24a113 1
+  s_f3d2ec4529fb2a::t_e0995688290cd9 253-256,260,271-272
+  s_f3d2ec4529fb2a::t_7a2416199991f6 249-252,257-259,261-263,267-270
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_f3d2ec4529fb2a::t_9cd6c0453a8595 235-249
+  s_f3d2ec4529fb2a::t_f68d775e187227 8
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadsView.test.ts
+  s_f3d2ec4529fb2a::t_e5e27dce63945d 25
+  s_f3d2ec4529fb2a::t_01209cf5c94f12 77
+  s_f3d2ec4529fb2a::t_15e7a501c52a1e 78
+  s_f3d2ec4529fb2a::t_e188b8ae61fe37 232-237,242-247,257
+  s_f3d2ec4529fb2a::t_9adab89a194ae4 203,227-231,238-241,248-256,258-264
+  s_f3d2ec4529fb2a::t_dc411384daa032 26,28-30
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_f3d2ec4529fb2a::t_552e8aefca8e9e 492,494-495
+  s_f3d2ec4529fb2a::t_e9f359e6feb08e 458,471,485,488-491,493,496,498
+  s_f3d2ec4529fb2a::t_ef4a893518d929 3
+  s_f3d2ec4529fb2a::t_ad16bba8b99284 486-487,497
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/mergeRecentChats.ts
+  s_f3d2ec4529fb2a::t_974639745fab7c 32-34
+  s_f3d2ec4529fb2a::t_108d9d09191311 28-31,35-36
+  s_f3d2ec4529fb2a::t_0650fb3c35b6da 2
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatThreadHistory.vue
+  s_f3d2ec4529fb2a::t_72e1e871bc3822 15
+  s_f3d2ec4529fb2a::t_6c4b682ec5cc65 51-53,60-62
+  s_f3d2ec4529fb2a::t_bc1126a720c6f3 28,39,55-59,63
+  s_f3d2ec4529fb2a::t_40f99e799f4a34 54
+  s_f3d2ec4529fb2a::t_0a2af59ce00ad1 144
+  s_f3d2ec4529fb2a::t_36dfea435a4131 38
+  s_f3d2ec4529fb2a::t_8fb8c3a22e79d0 5,16
+  s_f3d2ec4529fb2a::t_1beaf7a0a4c391 104
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.ts
+  s_f3d2ec4529fb2a::t_8a00192aba94c6 60,63
+  s_f3d2ec4529fb2a::t_86b00e8e20dd99 123
+  s_f3d2ec4529fb2a::t_e205a249be7e82 1,6
+  s_f3d2ec4529fb2a::t_6024f9cd63eab5 26,28-33
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/n8nChatThreads.store.ts
+  s_f3d2ec4529fb2a::t_efff27fc1be4ac 5-6
+  s_f3d2ec4529fb2a::t_0cff903fb1ed13 9-13
+  s_f3d2ec4529fb2a::t_6747b78855d15e 22
+  s_f3d2ec4529fb2a::t_aaf5d64db78e4d 80-81,84,86-90,92-96,100-102,111
+  s_f3d2ec4529fb2a::t_a5bf508ce40b14 28-32,36-38
+  s_f3d2ec4529fb2a::t_7f6c7b00e91c11 82-83,85,91,97-99,108
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_f3d2ec4529fb2a::t_0529f34d4cdc0c 226
+  s_f3d2ec4529fb2a::t_71a9b06f1e07e0 227-239
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/n8nChatThreads.store.test.ts
+  s_f3d2ec4529fb2a::t_d549608220347c 196-217
+  s_f3d2ec4529fb2a::t_f1263d07a26a9c 170,181,191,218-220,223,225-232,242
+  s_f3d2ec4529fb2a::t_44fb7d49275346 161-162,164-169,171-180,182-190,192-195,221-222,224,233-241,243-248
+  s_f3d2ec4529fb2a::t_0cff903fb1ed13 163
+  s_f3d2ec4529fb2a::t_e6eb5fee1bad3c 9-10,16-19,23
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_f3d2ec4529fb2a::t_bab57fadd91a80 336,338,344-345,347,350
+  s_f3d2ec4529fb2a::t_3c7570d5b23534 342-343
+  s_f3d2ec4529fb2a::t_834abd386152a0 339-341
+  s_f3d2ec4529fb2a::t_ea12ee7c9a1f2b 127
+  s_f3d2ec4529fb2a::t_9074aa8c694e83 126
+  s_f3d2ec4529fb2a::t_14a3e2877d6f13 21
+  s_f3d2ec4529fb2a::t_20a9716bcbc476 183
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatThreadHistory.test.ts
+  s_f3d2ec4529fb2a::t_cab1a96e8e6e09 205-210
+  s_f3d2ec4529fb2a::t_d15a44e24a34ea 198-199,203,211,215,220-221,235,237,239-240,244,252
+  s_f3d2ec4529fb2a::t_eb0feba2cdcfbf 3,8-9,22-28
+  s_f3d2ec4529fb2a::t_90be47ea10ba94 48-50
+  s_f3d2ec4529fb2a::t_2fba973dadf577 202,204,212-214,217-219,236,238,241-243
+  s_f3d2ec4529fb2a::t_1bd3c91772d1a7 200-201,216,222-234,245-251
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadsView.vue
+  s_f3d2ec4529fb2a::t_df482139b39158 16,25
+  s_f3d2ec4529fb2a::t_498c46a5a053a6 108,111
+  s_f3d2ec4529fb2a::t_6c7583b1b2364b 109-110
+  s_f3d2ec4529fb2a::t_3f2a222c540b09 22,35
+  s_f3d2ec4529fb2a::t_2b8599999b593c 63
+  s_f3d2ec4529fb2a::t_449ef4eecbb977 194-195,197-198,200-208
+  s_f3d2ec4529fb2a::t_311ea1a589b375 196,199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7737771df08324b2e62cd9184c575c74913c123d",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

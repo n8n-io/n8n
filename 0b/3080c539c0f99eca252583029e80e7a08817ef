@@ -1,0 +1,174 @@
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_9fa10492ef2960::t_cdeb4db05b9f1f 524-526,533-543
+  s_9fa10492ef2960::t_1e4f7e2aeaae05 841-845
+  s_9fa10492ef2960::t_963f150673f2f9 10
+  s_9fa10492ef2960::t_12c2fa860832c5 26-27
+  s_9fa10492ef2960::t_7ba1b5dbbf9240 532
+  s_9fa10492ef2960::t_928a6b8eb990ac 805
+packages/@n8n/api-types/src/agents/index.ts
+  s_9fa10492ef2960::t_3b76620e46369f 4
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  s_9fa10492ef2960::t_1f41449ae0df9f 1,5,7,9-10,13,15-21,23-26,35,37-38,40-42,46-47,49-51
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_9fa10492ef2960::t_5e77771ab1c328 184
+  s_9fa10492ef2960::t_50576b74155d30 367-378,380-401
+packages/nodes-base/nodes/MessageAnAgent/v2/MessageAnAgentV2.node.ts
+  s_9fa10492ef2960::t_727398ded955e7 21-41,49-63
+packages/workflow/src/interfaces.ts
+  s_9fa10492ef2960::t_b92b35a10be06d 2192-2193,2200
+  s_9fa10492ef2960::t_c9a052b5a40efc 2090-2110
+  s_9fa10492ef2960::t_b6ffe93c9345d4 2138
+  s_9fa10492ef2960::t_2dafcf24991cdd 3444
+  s_9fa10492ef2960::t_e82e3a3d0c2380 2115-2117
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_9fa10492ef2960::t_01de47e85a13dc 192-197
+  s_9fa10492ef2960::t_1e8c2e5dd2c3b7 198-200
+  s_9fa10492ef2960::t_dd06a0af1142b8 19
+  s_9fa10492ef2960::t_5f25ae5f3c6a59 228
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useReferencedAgentSummary.ts
+  s_9fa10492ef2960::t_b0809c163c9566 1-7,9-32,38-163
+  s_9fa10492ef2960::t_867e33a44a6d34 8
+  s_9fa10492ef2960::t_01bf53b80a1011 33-37
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useInlineAgentConfig.ts
+  s_9fa10492ef2960::t_09ca847a99b503 21-45
+  s_9fa10492ef2960::t_ff73bf9e1a4c42 1-14,16-20,46-69,72-89,95-133
+  s_9fa10492ef2960::t_6d3d144fbfbf46 70
+  s_9fa10492ef2960::t_8866ed32ac67e1 91-94
+  s_9fa10492ef2960::t_19dac47e97fd19 15
+  s_9fa10492ef2960::t_9c2a5f7c4e6cf5 71,90
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_9fa10492ef2960::t_2e8bfb588a32dc 219-220,225,234,236,239-255,263,271
+  s_9fa10492ef2960::t_77ad3ac08759f9 4
+  s_9fa10492ef2960::t_cb39d2f30ab155 160-161
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_9fa10492ef2960::t_1e1e852623f6c2 76-79,84-86,92-94,96,101
+  s_9fa10492ef2960::t_337ea75ccfb803 198
+  s_9fa10492ef2960::t_6af90111bb637a 21
+  s_9fa10492ef2960::t_187d83a0d69e14 50-59
+  s_9fa10492ef2960::t_a1fc0c7a063f73 161-162
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_9fa10492ef2960::t_331cd73dd8c2e8 1343
+  s_9fa10492ef2960::t_d5e75a3da7f52d 1307-1314,1413-1420,1462-1469,1494-1501
+  s_9fa10492ef2960::t_f0a75e00f7bb0f 1380
+  ai_agent 1266,1291,1321,1356,1394,1427,1476,1508,1542
+  s_9fa10492ef2960::t_7167b7bf95bec2 1249-1265,1267-1290,1292-1299
+  s_9fa10492ef2960::t_081e37aad149d0 1444,1535
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_9fa10492ef2960::t_c627c86ae532be 358-361
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_9fa10492ef2960::t_31dc3bab797638 193-240,242-252,254-270
+  s_9fa10492ef2960::t_063e93a4335b7d 241,253
+  s_9fa10492ef2960::t_8cf356e3a29ca7 90
+  s_9fa10492ef2960::t_094219721517a9 322,324
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvInlineControls.vue
+  s_9fa10492ef2960::t_04595ae0ace293 79
+  s_9fa10492ef2960::t_e0246cf6612f29 61-70
+  s_9fa10492ef2960::t_c64e5de3760aa8 44-46,50
+  s_9fa10492ef2960::t_daa3a8e2e0f97d 13-17
+  s_9fa10492ef2960::t_832418800a9ff2 3-10,34-43,47-49,55-59,72-78,80-104
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsViewV2.vue
+  s_9fa10492ef2960::t_cf5e70b0498cc3 76-80
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_9fa10492ef2960::t_53bdd8d3b525d6 303-305
+  s_9fa10492ef2960::t_8792a0fec327fb 330
+packages/cli/src/modules/agents/utils/node-tool-validation.ts
+  s_9fa10492ef2960::t_5866be25c37c06 1-62
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_9fa10492ef2960::t_c0c2b69d6e4dfe 227-234
+  s_9fa10492ef2960::t_e83a4a547577bd 213-216,218-221,235-262,274,294
+  s_9fa10492ef2960::t_129f23f83aee2c 3,9
+  s_9fa10492ef2960::t_cb0bbe815368c8 222-226
+  h_7555c3ee6524cf 307
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvInlineControls.test.ts
+  s_9fa10492ef2960::t_d5e75a3da7f52d 88
+  s_9fa10492ef2960::t_ed9cde75889979 5,8,12,16-21,38,51,59-66,75-82,85,89-90,92,101-104,106-107,109-110,113-115,122,125-128,130-132,134-136,139-141,143-144,146-147,150-151,153-154
+  s_9fa10492ef2960::t_466aec8e27f42c 117-120
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvReferencedSummary.test.ts
+  s_9fa10492ef2960::t_e3d1f1730e9b93 109-110
+  s_9fa10492ef2960::t_d5e75a3da7f52d 89
+  s_9fa10492ef2960::t_f6c71cfaef59ae 1-88,90-108,111-135
+packages/cli/src/interfaces.ts
+  s_9fa10492ef2960::t_853bf1f6052e26 238-239
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9fa10492ef2960::t_4b420d2c59f5b4 565-598,627,636-645,647,649-663
+  s_9fa10492ef2960::t_e633ad19003d5b 9-16,25
+  s_9fa10492ef2960::t_8b3184a5dd3a44 971
+  s_9fa10492ef2960::t_f8445abffe39cc 706-713
+  s_9fa10492ef2960::t_18d73f7da2d660 814-816
+  s_9fa10492ef2960::t_0734dfb1d53251 891-895
+  h_7555c3ee6524cf 924
+  s_9fa10492ef2960::t_430528d77da65e 672-676,678-680,682-683,685-693,714-717,744-751,753-763,807-813,817-861,863,865-890,896-899,903-911,929-930,933-938,940-970,972-983,985-1025
+  s_9fa10492ef2960::t_9a35039c9e0ef3 912-923,925,928,931-932,939
+  s_9fa10492ef2960::t_834f69bf370152 694-695
+  s_9fa10492ef2960::t_e8d109f0cea6bb 900-902
+  s_9fa10492ef2960::t_2bf6bff8834ae7 50
+  s_9fa10492ef2960::t_97bf5649978130 33-36,41
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_9fa10492ef2960::t_2571a34790fffe 609-611
+  s_9fa10492ef2960::t_4655501d9c028b 522
+  s_9fa10492ef2960::t_721454f74be51c 78-83
+packages/frontend/editor-ui/src/features/agents/utils/inlineAgent.ts
+  s_9fa10492ef2960::t_48f46cddda50a2 30-32,34,37,39
+  s_9fa10492ef2960::t_38037531f2338b 1-29,33,35-36,38,40-74
+packages/cli/src/workflow-execute-additional-data.ts
+  h_7555c3ee6524cf 383-384
+  s_9fa10492ef2960::t_3f5b425c75a955 396
+  s_9fa10492ef2960::t_868b2c6a6d53e0 385,393,408
+  s_9fa10492ef2960::t_567748b5eae5bc 17
+  s_9fa10492ef2960::t_75d16d4c512dda 345-346,349
+  s_9fa10492ef2960::t_e199fea3eff549 386-392,394-395,397-401,405
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_9fa10492ef2960::t_d5e75a3da7f52d 22
+  s_9fa10492ef2960::t_666761353f87d2 268-269
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_9fa10492ef2960::t_2d2af2b1affd78 80,89
+  s_9fa10492ef2960::t_aee875a98f08fd 11
+  s_9fa10492ef2960::t_97f025bc767c0c 26
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9fa10492ef2960::t_78c86ca90f3b2c 5473-5474
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_9fa10492ef2960::t_b8c487a8c15eaf 676-720,733-745,756-766,772-778,780-826
+  s_9fa10492ef2960::t_d9b2b35653da03 512-514
+  s_9fa10492ef2960::t_b844289be69c6b 511
+  s_9fa10492ef2960::t_102af4b1b053f7 487
+  s_9fa10492ef2960::t_5b51a694514e59 747-755
+  s_9fa10492ef2960::t_c14631f621d0d5 721-732
+  s_9fa10492ef2960::t_ef31a2e5ae5d40 767-771,779
+packages/@n8n/api-types/src/agents/inline-agent-config.schema.ts
+  s_9fa10492ef2960::t_d3cd736d4cfebc 22-25,34
+  s_9fa10492ef2960::t_64d46f14ca375c 1-3,5-21,26-33,35-62
+  s_9fa10492ef2960::t_d042d5011f7a12 4
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_9fa10492ef2960::t_d5e75a3da7f52d 75,265
+  s_9fa10492ef2960::t_a705a99282740f 6,12,15-16,26,83-86,90-96,152,155-172,174-177,179-183,185-204,206-208,210-212,214,217-220,222,224-225,227-229,231-235,237-238,240-241,243-249,251,253-255,257-260,263-264,266-275,277-283,285-288,290-293,295,301-304,306-329,331-348,350-357,359-363,365-368,370-372
+  s_9fa10492ef2960::t_f9d8a3903b681f 349
+  s_9fa10492ef2960::t_cc07692fb5b0a5 296-300
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedSummary.vue
+  s_9fa10492ef2960::t_e283404dd5c80b 3-5,7-8,10-11,15-24,29-30,33,36-102,105-113,116,125-126,153-167,170-180,186,198,201-215
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_9fa10492ef2960::t_20ef20af63a885 113-117
+  s_9fa10492ef2960::t_934d08fb38ef75 18
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.test.ts
+  s_9fa10492ef2960::t_04fa854eb7cee5 238-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0b3080c539c0f99eca252583029e80e7a08817ef",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9fa10492ef2960": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c366ff8-c020-4541-a1e3-899d51d5e3ae",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

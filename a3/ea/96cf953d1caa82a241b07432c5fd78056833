@@ -1,0 +1,138 @@
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_f3d2ec4529fb2a::t_04fe25a725e33f 23
+  s_f3d2ec4529fb2a::t_9b9d03573d45c4 26,30-36
+  s_f3d2ec4529fb2a::t_92bc0c4d1d116f 109
+  s_f3d2ec4529fb2a::t_dcf0734bf9fb1b 137,140
+  s_f3d2ec4529fb2a::t_6fbba298173e87 147
+  s_f3d2ec4529fb2a::t_bfc2bb8f812c45 155-160
+  s_f3d2ec4529fb2a::t_01612ba2d83e2f 180
+  s_f3d2ec4529fb2a::t_0762018f618d13 217
+  s_f3d2ec4529fb2a::t_27c0fee4523563 243
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_f3d2ec4529fb2a::t_4c34692201b743 229
+  s_f3d2ec4529fb2a::t_9c8cd2fb0284ae 278
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_f3d2ec4529fb2a::t_de2c8aa20bd156 14
+  s_f3d2ec4529fb2a::t_76cb3e1d019691 59-60
+  ai_agent 62-63,499-501
+  s_f3d2ec4529fb2a::t_265272fb8f34df 83
+  s_f3d2ec4529fb2a::t_fb428c5687d016 134-135
+  s_f3d2ec4529fb2a::t_b16d4314f04ea0 158-161,174
+  s_f3d2ec4529fb2a::t_11b47bbc4eecdb 438
+  s_f3d2ec4529fb2a::t_e8801726e1d6a1 495
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  ai_agent 61,397-450,604-649,651-666,719,723-724,751-762,764-767,2104-2107,2111-2115,3024-3087
+  s_f3d2ec4529fb2a::t_8741d3974ea0bd 650
+  s_f3d2ec4529fb2a::t_9e44deb5c4d6e3 667-718,720-722,725-726
+  s_f3d2ec4529fb2a::t_7c7201fcaf0c68 728-750
+  s_f3d2ec4529fb2a::t_c63d20f568a597 763
+  s_f3d2ec4529fb2a::t_f0393244816a40 924
+  s_f3d2ec4529fb2a::t_83fe6af2c7b974 2101
+  s_f3d2ec4529fb2a::t_23bb1d32a578b3 2191-2208,2227-2243
+  s_f3d2ec4529fb2a::t_613312bbe50a46 2209-2226
+  s_f3d2ec4529fb2a::t_a01a328f3848a3 2276
+  s_f3d2ec4529fb2a::t_fd1d6a954f5af8 3090-3113
+  s_f3d2ec4529fb2a::t_d3ed0369222066 3987-4001,4010-4037
+  s_f3d2ec4529fb2a::t_20f151b4536128 4002-4009
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_f3d2ec4529fb2a::t_aa0003f6bea09e 25
+  s_f3d2ec4529fb2a::t_f852db6bb10535 31-32,34
+  s_f3d2ec4529fb2a::t_6bec05f84a7552 184-185
+  s_f3d2ec4529fb2a::t_f1506d1722c032 248-249
+  s_f3d2ec4529fb2a::t_3fa1cb171331ed 278,280,282-283,291-292,295-301
+  s_f3d2ec4529fb2a::t_4dc66bdc668b38 284,288-289
+  s_f3d2ec4529fb2a::t_0d7a2ce4452e1a 293-294
+  s_792f146ebe5832::t_73bbe052925de1 302-303
+  s_f3d2ec4529fb2a::t_dc204560e0b6ad 407,412-413,416-417,422,424-426,428
+  s_f3d2ec4529fb2a::t_b7b938be7d87c3 481-482,484
+  s_52b80392cdf08c::t_fdfb2422820ad9 489,533-534,593-595,604-605,945-946,949-953,962-966,1090,1479-1484,1486-1487,1489,1502-1503,1640-1641
+  s_f3d2ec4529fb2a::t_8f73b15b382759 535
+  s_f3d2ec4529fb2a::t_5bc5cc27315e6e 566,571
+  s_f3d2ec4529fb2a::t_bad6e852615efb 583-586,596-599,601-603
+  s_f3d2ec4529fb2a::t_b7b75288d367f3 587
+  s_f3d2ec4529fb2a::t_b1f581b71d2a9f 600
+  s_f3d2ec4529fb2a::t_45edd08ad21df3 631-635,637-639,641,643-644
+  s_f3d2ec4529fb2a::t_ae387cdf6f6d0a 636
+  s_f3d2ec4529fb2a::t_fb1867c6968125 758-761,763-765,773-776,783-784,794,812-813,815
+  s_f3d2ec4529fb2a::t_00ce02cd993788 762
+  s_f3d2ec4529fb2a::t_e0d01f611be9fa 956-957,959-961,974-976,978-980
+  s_f3d2ec4529fb2a::t_133fd0aebbc628 958
+  s_f3d2ec4529fb2a::t_5a0daa1272d8e9 977
+  s_f3d2ec4529fb2a::t_1aed4483ed4cb9 1089
+  s_f3d2ec4529fb2a::t_e43480c3755599 1214,1216,1256
+  s_f3d2ec4529fb2a::t_68e38bad730d8b 1288
+  s_f3d2ec4529fb2a::t_a20cf72b482d6c 1303-1304
+  s_f3d2ec4529fb2a::t_e84ab870a02f39 1398-1406,1409-1411,1414,1421-1424,1428,1430-1437,1440-1441,1444-1448,1451-1452,1457,1472,1478,1485,1490-1491,1493-1501,1504,1519-1521,1527
+  s_f3d2ec4529fb2a::t_f8bb28765aa5a3 1407-1408
+  s_f3d2ec4529fb2a::t_183b0fb30d1c29 1412-1413,1415-1417,1426
+  s_f3d2ec4529fb2a::t_a70e236ac0a1e0 1442-1443,1449-1450,1473
+  s_f3d2ec4529fb2a::t_78d614824cc9d5 1453-1456,1458-1465,1467-1471,1474,1477,1488
+  s_f3d2ec4529fb2a::t_ef86e036e230f9 1542,1565
+  s_f3d2ec4529fb2a::t_cb56b416d1a0cb 1584
+  s_f3d2ec4529fb2a::t_18600df10d4250 1639
+  s_f3d2ec4529fb2a::t_83aa7dd6b49345 1680
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_52b80392cdf08c::t_fdfb2422820ad9 1579-1581
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_f3d2ec4529fb2a::t_9ae003e7697626 109,117-120
+  s_f3d2ec4529fb2a::t_3f05023db33113 419,429
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_f3d2ec4529fb2a::t_4b50aae65df856 9-17
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_f3d2ec4529fb2a::t_940e91aff351ba 27
+  s_f3d2ec4529fb2a::t_5f296b9e1a5419 165,168
+  s_f3d2ec4529fb2a::t_8b159b64a42616 186-212
+  s_f3d2ec4529fb2a::t_7eed14800ef9ba 355
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_52b80392cdf08c::t_fdfb2422820ad9 207-208
+  s_f3d2ec4529fb2a::t_18e67a5b067dd7 286
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_52b80392cdf08c::t_fdfb2422820ad9 196-198,1290-1377,1379-1402,1404-1410,1414-1432
+  s_f3d2ec4529fb2a::t_c67d998e00df9f 1232,1236-1239
+  s_f3d2ec4529fb2a::t_4cd7a652d09499 1378
+  s_f3d2ec4529fb2a::t_ce48bbc4887a72 1403,1411-1412
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_f3d2ec4529fb2a::t_9fb8527247c8f5 216
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_52b80392cdf08c::t_fdfb2422820ad9 14,321,714-766,768-774,905-910
+  s_f3d2ec4529fb2a::t_0e88fd0c1f6ca2 322
+  s_f3d2ec4529fb2a::t_62b4135a599d77 443
+  s_f3d2ec4529fb2a::t_05acfa3c12d910 485
+  s_f3d2ec4529fb2a::t_3c7d6b637691b6 528
+  s_f3d2ec4529fb2a::t_ae2194515d1185 767
+  s_f3d2ec4529fb2a::t_7c7d0ecb5a53c7 987
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_f3d2ec4529fb2a::t_d04cd0d3ea808a 148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a3ea96cf953d1caa82a241b07432c5fd78056833",
+  "prompts": {},
+  "sessions": {
+    "s_52b80392cdf08c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "858cfbfd-da06-4f0e-8ca0-a300841bcfc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_792f146ebe5832": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6bce7cd2-ea86-468d-b7da-ecd3c9bbeb92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

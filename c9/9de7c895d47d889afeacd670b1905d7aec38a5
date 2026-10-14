@@ -1,0 +1,48 @@
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_fbd0a016de9b21 1-75
+  s_2e1fa95fc44f8f::t_08b903e1848fe0 76-78
+packages/nodes-base/nodes/Emelia/__tests__/Emelia.workflow.test.ts
+  s_2e1fa95fc44f8f::t_78a4d386db71a2 1-22
+  s_2e1fa95fc44f8f::t_5868caf5189bdc 23-24
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_7edfa3256df9a4 1-83,86
+  s_2e1fa95fc44f8f::t_d4560acf269ed5 84-85
+packages/nodes-base/nodes/Egoi/__tests__/Egoi.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b8331f9e034759 1-42
+packages/nodes-base/nodes/Emelia/__tests__/EmeliaTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_2fa194cfbaeaf0 1-57
+packages/nodes-base/nodes/Eventbrite/__tests__/EventbriteTrigger.node.test.ts
+  s_5e0de13e5e682e::t_363dd666d0c18c 4-11,121-228
+packages/nodes-base/nodes/Egoi/__tests__/requests.workflow.json
+  s_2e1fa95fc44f8f::t_fe2747604b6266 1-270
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/requests.workflow.json
+  s_2e1fa95fc44f8f::t_355dd00bf3a274 1-622
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/requests.workflow.json
+  s_2e1fa95fc44f8f::t_32e9e1ce97468a 1-510
+packages/nodes-base/nodes/Emelia/__tests__/requests.workflow.json
+  s_2e1fa95fc44f8f::t_5ae22d3783ebf5 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c99de7c895d47d889afeacd670b1905d7aec38a5",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5e0de13e5e682e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa768470753f420c9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

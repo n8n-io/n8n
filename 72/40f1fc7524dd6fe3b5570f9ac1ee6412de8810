@@ -1,0 +1,21 @@
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_3977282fcb4fb5::t_5898e5841dc82a 112-186
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_3977282fcb4fb5::t_b057a119a9edb8 155-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7240f1fc7524dd6fe3b5570f9ac1ee6412de8810",
+  "prompts": {},
+  "sessions": {
+    "s_3977282fcb4fb5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b249567b-caff-42db-8140-3149eef9bf4e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

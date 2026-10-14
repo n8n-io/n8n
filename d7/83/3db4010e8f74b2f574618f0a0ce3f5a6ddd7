@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_dff57e7b253b23::t_42067784dd4aa2 540
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useTabDragReorder.test.ts
+  s_dff57e7b253b23::t_d3afb8d615fef3 1,40-58,72,74-76,82,87,116,122-152,180,227
+  ai_agent 77-79
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useTabDragReorder.ts
+  s_dff57e7b253b23::t_c39b16e7c43b63 6,12,33-35,49-50,55,87-104,112,115-120,128-131,137-143,150-153,194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7833db4010e8f74b2f574618f0a0ce3f5a6ddd7",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

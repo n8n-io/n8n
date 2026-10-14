@@ -1,0 +1,23 @@
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_731323a2ef0b23::t_541feb5ce2b440 698-714,719-757
+  s_731323a2ef0b23::t_fca783b4ac2027 715-718
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_731323a2ef0b23::t_afba6c1fc8b509 578-579,589
+  s_731323a2ef0b23::t_d89f8831fd0df8 582-588,590-595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b90b22d37caa7d32ae644f7e878e6679b22656c5",
+  "prompts": {},
+  "sessions": {
+    "s_731323a2ef0b23": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5b37835e-9be3-4590-ae7c-a72dde7e2938",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_8cd1a0d19700c3::t_51b624adc4ede2 722
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_8cd1a0d19700c3::t_5a8e86d648ab57 489
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8cd1a0d19700c3::t_9fbe6f9d474870 4836
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryVersionUnpublishModal.vue
+  s_8cd1a0d19700c3::t_fb4523c690fe9f 51-61,66-68,78
+  s_8cd1a0d19700c3::t_3ddd485c82542a 2-4,6,8-9,11,14,21-27,31,38,40-41,44-50,62-65,69-77,79-84,106,119-137,139-155,193-211
+  s_8cd1a0d19700c3::t_20681fe5b26c76 138
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.vue
+  s_8cd1a0d19700c3::t_c358f3a0fcea93 393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "996ee44ea69db29005ba45704577db1dc00616d6",
+  "prompts": {},
+  "sessions": {
+    "s_8cd1a0d19700c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa4d6b3b-305d-40d9-a0aa-5c144e99d387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

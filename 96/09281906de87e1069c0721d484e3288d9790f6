@@ -1,0 +1,22 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_467ede6818687a::t_145e9345250642 101
+  s_467ede6818687a::t_796f3a150624e1 82-90
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpTrigger.node.test.ts
+  s_467ede6818687a::t_630f71cc522165 90-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9609281906de87e1069c0721d484e3288d9790f6",
+  "prompts": {},
+  "sessions": {
+    "s_467ede6818687a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ee96959-2d33-4d77-9268-45e16a4f8ac8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

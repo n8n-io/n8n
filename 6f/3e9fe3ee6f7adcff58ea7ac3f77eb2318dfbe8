@@ -1,0 +1,40 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_c77c9c67421351::t_7683079b4ca73c 415-425,427-428
+  s_c77c9c67421351::t_bf7f63d307634b 426
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_c77c9c67421351::t_159184c75e8740 462
+  s_c77c9c67421351::t_f5ec9ca9634721 564
+  s_c77c9c67421351::t_541c651c450163 577
+  s_c77c9c67421351::t_9504f7cba5c49b 582,591
+  s_c77c9c67421351::t_73c2568a0acf92 468-474,480-486,492-498,504-513,519-528,534-543
+  s_c77c9c67421351::t_8e82e96b9e85e7 456
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_c77c9c67421351::t_d195f9a7df4089 757-759
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_c77c9c67421351::t_05c4ce74f7f60b 193-197
+packages/cli/src/workflow-helpers.ts
+  s_c77c9c67421351::t_3d0baa0c81e07d 146-150,156
+  s_c77c9c67421351::t_c27f46a32634b6 205-211,220
+  s_c77c9c67421351::t_9fc1ebac6cc5d0 261
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_c77c9c67421351::t_3f931063ac9537 334-337,355
+  s_c77c9c67421351::t_1673d74c722cf3 329,338-341,343-348,352,359-371
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_c77c9c67421351::t_167bc7c4bf0929 125-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f3e9fe3ee6f7adcff58ea7ac3f77eb2318dfbe8",
+  "prompts": {},
+  "sessions": {
+    "s_c77c9c67421351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd7b1752-695a-4039-902a-08408f1d312e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

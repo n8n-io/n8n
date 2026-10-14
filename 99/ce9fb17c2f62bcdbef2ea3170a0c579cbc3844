@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ndv/panel/components/RedactedDataState.test.ts
+  s_dc7c0d4a7b88b3::t_d8399b000ba008 89-104
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_dc7c0d4a7b88b3::t_d76aa6f657e9d8 1380-1385
+  s_dc7c0d4a7b88b3::t_024c2f4408e300 1486-1491
+packages/frontend/editor-ui/src/features/execution/executions/components/RevealDataWarning.test.ts
+  s_dc7c0d4a7b88b3::t_14b3e447a21096 18-23,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "99ce9fb17c2f62bcdbef2ea3170a0c579cbc3844",
+  "prompts": {},
+  "sessions": {
+    "s_dc7c0d4a7b88b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8ccc0f3-72b7-4859-8496-01a2155c835f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

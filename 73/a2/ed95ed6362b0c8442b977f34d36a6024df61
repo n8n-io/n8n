@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_13d2093edecceb::t_fe110f8a9fe5aa 58,63-74
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_13d2093edecceb::t_fe110f8a9fe5aa 341
+  s_13d2093edecceb::t_041241cdfd1cce 366
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_13d2093edecceb::t_fe110f8a9fe5aa 91,114-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "73a2ed95ed6362b0c8442b977f34d36a6024df61",
+  "prompts": {},
+  "sessions": {
+    "s_13d2093edecceb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ca37-ecdf-7873-bb4a-4b31a09f7aab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

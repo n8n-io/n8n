@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/integrations/platforms/slack-bridge-behavior.ts
+  s_1fe9e065afa63e::t_7ab8f994173bea 125-128
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_1fe9e065afa63e::t_66d06b58896c99 307-311,313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e363eb90cce7894ea49146f1b921bef72c83821b",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1fe9e065afa63e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad170aba-a651-473f-a272-b5c49387454f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

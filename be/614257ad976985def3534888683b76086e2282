@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/__tests__/agent-knowledge-mirror.service.test.ts
+  s_c62ec47c6846f4::t_f451590cdeda07 209-221
+packages/@n8n/agents/src/workspace/tool-result-storage.ts
+  s_c62ec47c6846f4::t_d8e3e1ff3ec74d 20,77-84,86-90,92-98,100-108,110
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_c62ec47c6846f4::t_4312cb34480f54 363,373-377,421,430-437,463,470,478
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c62ec47c6846f4::t_2eb157b14b66df 388,392-397,401-404
+  s_c62ec47c6846f4::t_f3ec3919866e58 389-391,398-400
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_c62ec47c6846f4::t_87c66db8eada6c 24-25,49-72,84-93
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_c62ec47c6846f4::t_8c8ad28c01cbb0 83,85
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_c62ec47c6846f4::t_a35262169b96a7 94-95,117-121
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_c62ec47c6846f4::t_db33f059fa4cd0 79,81-85,88-89,91-95
+  s_c62ec47c6846f4::t_092b71ef752913 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "be614257ad976985def3534888683b76086e2282",
+  "prompts": {},
+  "sessions": {
+    "s_c62ec47c6846f4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "974dbdb1-21b0-43ca-8c7c-f7de2b5387ae",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_c8a607d5f9da0e::t_1f4d0df6e67aab 69
+  s_c8a607d5f9da0e::t_b9237e126e2d34 13
+  s_c8a607d5f9da0e::t_f6ef3fa16a80d6 100-133
+  s_c8a607d5f9da0e::t_3859c66813d491 162-182,193
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_c8a607d5f9da0e::t_8fe0ee73811519 122-125
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_c8a607d5f9da0e::t_b983be24ed6ba7 5
+  s_c8a607d5f9da0e::t_0fd04b4e95fe45 185-197
+  s_c8a607d5f9da0e::t_e7dc1b7f5f7f61 29
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_c8a607d5f9da0e::t_f7515283e09db5 11-14
+  s_c8a607d5f9da0e::t_48006b8fd315a8 64
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_c8a607d5f9da0e::t_4016a77d07692a 14-17
+  s_c8a607d5f9da0e::t_b559cec53d2d02 64,69-80
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_c8a607d5f9da0e::t_c6edb017dda5ef 12,18-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29753b110682715260064a07545c92f887b581d2",
+  "prompts": {},
+  "sessions": {
+    "s_c8a607d5f9da0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c297e62-ce10-4935-b40b-a092bee917aa",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

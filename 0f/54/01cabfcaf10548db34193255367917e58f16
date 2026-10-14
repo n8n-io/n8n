@@ -1,0 +1,58 @@
+packages/cli/test/integration/instance-ai/instance-ai-thread-tabs.integration.test.ts
+  s_5264afa1ac40a3::t_965a16064f8994 7,34,45,116-145
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_5264afa1ac40a3::t_1cbb01ff448fad 39-45
+packages/cli/src/modules/instance-ai/repositories/instance-ai-thread-tabs.repository.ts
+  s_5264afa1ac40a3::t_845b3e2eed595e 2,4,9-11,28-54
+packages/cli/src/modules/instance-ai/instance-ai-thread-tabs.service.ts
+  s_5264afa1ac40a3::t_be16ee391613ef 1-8,15-24,26,38-39,41-72,83-97,99-104
+  s_5264afa1ac40a3::t_5fa64ab913e567 40
+  s_5264afa1ac40a3::t_f4f116a221e492 12,25,27-37,98
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_5264afa1ac40a3::t_0a7dc5ffd66c5f 20-22,27-28,56-62,123-129
+packages/cli/src/modules/instance-ai/__tests__/artifact-tab-change.test.ts
+  s_5264afa1ac40a3::t_766f45c75cbc2a 1-11,15-24,30-51,57-68,74-81
+  s_5264afa1ac40a3::t_358b005105a9d9 12-14,25-29,52-56,69-73
+packages/cli/src/modules/instance-ai/artifact-tab-change.ts
+  s_5264afa1ac40a3::t_2d37c81388cceb 8-15
+  s_5264afa1ac40a3::t_23ac9a9af9ca4d 1-7,16-106
+packages/cli/src/modules/instance-ai/instance-ai-artifact-tabs-tracker.service.ts
+  s_5264afa1ac40a3::t_693035385f8a47 1-116
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-artifact-tabs-tracker.service.test.ts
+  s_5264afa1ac40a3::t_a08473272ffb1d 36,47
+  s_5264afa1ac40a3::t_358b005105a9d9 68-71,86-89
+  s_5264afa1ac40a3::t_7901abbdddcb6d 1-35,37-46,48-67,72-85,90-150
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_5264afa1ac40a3::t_813ea7915c90e2 1429-1453,1455-1456
+  s_5264afa1ac40a3::t_fd565356dfbf7e 1454
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-thread-tabs.service.test.ts
+  s_5264afa1ac40a3::t_306db35b929b76 5,62-64,70-79,85-161
+  s_5264afa1ac40a3::t_358b005105a9d9 1,65-69,80-84
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_5264afa1ac40a3::t_ba24ea3c91ca4a 1702-1705
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_5264afa1ac40a3::t_0792021a9186bb 251-261
+packages/cli/src/modules/instance-ai/repositories/instance-ai-thread.repository.ts
+  s_5264afa1ac40a3::t_add3f3601b0003 49-54
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useOpenArtifactTabs.ts
+  s_5264afa1ac40a3::t_0792021a9186bb 236-237,251-264,300
+  s_5264afa1ac40a3::t_ba24ea3c91ca4a 73,75-76,88
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useOpenArtifactTabs.test.ts
+  s_5264afa1ac40a3::t_7a7561e8dbec6e 357-410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f5401cabfcaf10548db34193255367917e58f16",
+  "prompts": {},
+  "sessions": {
+    "s_5264afa1ac40a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a963c577-93b7-467e-af84-07eed76a4ef2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

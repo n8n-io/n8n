@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/log-streaming/log-streaming-public.dto.ts
+  s_b605b692be0ba9::t_61045f4e16beab 170-171,178-190,193,197-200,202-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "101a266160237590bc7a2653326cd2ca83b74dce",
+  "prompts": {},
+  "sessions": {
+    "s_b605b692be0ba9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73fef18a-e96c-41e0-9b79-5671c3ecbbed",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/cli/src/scheduling/scheduled-job-owner-registry.ts
+  ai_agent 1-79
+packages/cli/src/scheduling/__tests__/scheduled-job-owner-registry.test.ts
+  ai_agent 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9022585d17fb2542fead0ce3ab89f6ecd3697afb",
+  "prompts": {}
+}

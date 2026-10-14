@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3a7ac9263997db::t_517fbea2826265 5915
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27442f9e2584e55f732221d3e41d222c1cfc1aca",
+  "prompts": {},
+  "sessions": {
+    "s_3a7ac9263997db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d07e89da-f145-46b7-afeb-052230f4ee69",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

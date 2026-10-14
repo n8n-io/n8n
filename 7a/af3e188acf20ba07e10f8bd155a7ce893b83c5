@@ -1,0 +1,34 @@
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/ChatTrigger.node.test.ts
+  s_71557f57f2f73f::t_36a41080fed3fc 1233,1252
+  s_71557f57f2f73f::t_8c1bf631be7e9b 1284-1302
+  s_71557f57f2f73f::t_479b734f266715 1204-1210,1222
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/frame-token.test.ts
+  s_71557f57f2f73f::t_36a41080fed3fc 12-14,48,56
+  s_71557f57f2f73f::t_87a421537b032b 37-46
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/frame-token.ts
+  s_71557f57f2f73f::t_bbcf1f46fb3ac4 37-45,50-51
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_71557f57f2f73f::t_e6cdd38445149b 1135,1160
+  s_71557f57f2f73f::t_64d90878a8638f 1010-1013,1015-1016,1020
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7aaf3e188acf20ba07e10f8bd155a7ce893b83c5",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_71557f57f2f73f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4da6cab-0532-4889-81ff-a18c7b2865cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

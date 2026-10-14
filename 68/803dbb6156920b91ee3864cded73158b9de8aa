@@ -1,0 +1,20 @@
+packages/@n8n/engine/docs/adr/README.md
+  s_691719f04965a8::t_c17c3437349fd1 1-149
+  s_691719f04965a8::t_e5b2a90e27463e 150-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "68803dbb6156920b91ee3864cded73158b9de8aa",
+  "prompts": {},
+  "sessions": {
+    "s_691719f04965a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abcde464-1c00-4bc6-9f2b-1b8ad5c76471",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

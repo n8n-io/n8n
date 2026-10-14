@@ -1,0 +1,33 @@
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_a56cf91e0efae3 180-200,203
+  s_101038ccbc858a::t_2a548d157bb282 279-288,302
+  s_101038ccbc858a::t_85d7336ebdccdb 246
+packages/@n8n/api-types/src/dto/data-table/data-table-public.openapi.ts
+  s_101038ccbc858a::t_1b037ab6b5c43e 158-159
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_101038ccbc858a::t_585a8ef5232fc8 1443-1473
+  s_101038ccbc858a::t_4535d70e33a8e4 1705-1753
+  s_101038ccbc858a::t_675ec896b134a8 1589-1596,1598-1607
+  s_101038ccbc858a::t_aa0c0d95839a2d 1277-1307
+  s_101038ccbc858a::t_64ccaf1d877974 1597
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/updateDataTableRows.generated.yml
+  s_101038ccbc858a::t_01bd0c63491e55 86
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/upsertDataTableRow.generated.yml
+  s_101038ccbc858a::t_8c3162a34739c3 86,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "56b813a1c8912f33a35937aab860fccb092ddb80",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

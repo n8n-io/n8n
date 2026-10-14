@@ -1,0 +1,16 @@
+pnpm-workspace.yaml
+  h_7555c3ee6524cf 53
+pnpm-lock.yaml
+  ai_agent 127-128,975,3166,8538-8539,25869
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f01f0de7afe9c6b933acf4f4df31ec25567c1a04",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

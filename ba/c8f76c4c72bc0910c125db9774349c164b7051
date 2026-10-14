@@ -1,0 +1,38 @@
+scripts/instance-seeding/seedHistory.mjs
+  s_d6594e4cfdf1a3::t_ee7a71d4d54d61 201-207,209-210,217,219-220
+  s_d6594e4cfdf1a3::t_5cf738d734c4f0 31-33
+  s_d6594e4cfdf1a3::t_64a90e6f6fddfc 306
+  s_d6594e4cfdf1a3::t_925e0b3aaa74e2 23-25,28
+scripts/instance-seeding/checkPreferenceProfile.mjs
+  s_d6594e4cfdf1a3::t_7d264b6695d91e 13
+  s_d6594e4cfdf1a3::t_0c50dacd00e613 41-55,59-62
+scripts/instance-seeding/inspectActivity.test.mjs
+  s_d6594e4cfdf1a3::t_0ea36be5322bb2 37-54,82-90,98-105
+  s_d6594e4cfdf1a3::t_a26512a676f99c 1-2,4-36,55-58,79-81,91-97,106-140,143-149,152-156,160-169,171-176,178-182,185-193
+  s_d6594e4cfdf1a3::t_e73c121a03293e 3,59-78,141-142,150-151,157-159,170,177,183-184
+scripts/instance-seeding/inspectActivity.mjs
+  s_d6594e4cfdf1a3::t_07cf4e926eba88 198
+  s_d6594e4cfdf1a3::t_982636abe48d91 239-249
+  s_d6594e4cfdf1a3::t_8fb2c9ddf3cabd 26-27,29-38,40-54
+  s_d6594e4cfdf1a3::t_fb1cd343e190df 12,16
+  s_d6594e4cfdf1a3::t_b225beed8cfa2b 18,21
+  s_d6594e4cfdf1a3::t_3e4aa3180bc404 57-66
+package.json
+  s_d6594e4cfdf1a3::t_0ea36be5322bb2 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bac8f76c4c72bc0910c125db9774349c164b7051",
+  "prompts": {},
+  "sessions": {
+    "s_d6594e4cfdf1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4df11345-03b4-4c0a-b65a-4a0bf36e6cfa",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

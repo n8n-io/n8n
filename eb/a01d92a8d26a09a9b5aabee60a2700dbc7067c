@@ -1,0 +1,21 @@
+packages/cli/src/executions/pre-execution-checks/workflow-pre-execute.ts
+  s_74dc43a5ee571f::t_87b02c4b3d70a9 74,78-82,89
+packages/cli/src/executions/pre-execution-checks/__tests__/workflow-pre-execute.test.ts
+  s_74dc43a5ee571f::t_c55e2b86d235e2 156-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "eba01d92a8d26a09a9b5aabee60a2700dbc7067c",
+  "prompts": {},
+  "sessions": {
+    "s_74dc43a5ee571f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "005fc3ff-735a-4494-a3a8-82f316ec18a2",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

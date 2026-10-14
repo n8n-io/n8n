@@ -1,0 +1,35 @@
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_3f4c240f5a4957::t_e9839abd64266e 389-395
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_3f4c240f5a4957::t_83100478f82cdf 225,453
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts
+  s_3f4c240f5a4957::t_f7869fdb7c1ec9 26
+  s_3f4c240f5a4957::t_a6b07683edab6a 38
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_3f4c240f5a4957::t_9ac7e229544d8b 820-822
+  s_3f4c240f5a4957::t_f6159750e4df5e 848
+packages/@n8n/db/src/migrations/common/1784000000049-AddHostRunIdToInstanceAiCheckpoints.ts
+  s_3f4c240f5a4957::t_e6dfff718b1436 1-24
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_3f4c240f5a4957::t_83100478f82cdf 217,435
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-checkpoint-store.test.ts
+  s_3f4c240f5a4957::t_0295eb4cbfa4b8 71
+packages/cli/src/modules/instance-ai/entities/instance-ai-checkpoint.entity.ts
+  s_3f4c240f5a4957::t_12b6575e24da35 16-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "74534951eed8bbd4731fa5c7fe980d1eb5ebfe11",
+  "prompts": {},
+  "sessions": {
+    "s_3f4c240f5a4957": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0ee24e3b-53fe-4691-8e67-e34f81479930",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

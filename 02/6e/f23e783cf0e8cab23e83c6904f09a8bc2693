@@ -1,0 +1,21 @@
+packages/cli/src/modules/insights/__tests__/insights-compaction.task.test.ts
+  s_c52ff7c5219d3a::t_4890f3e9c76fec 19
+packages/cli/src/modules/insights/insights-compaction.task.ts
+  s_c52ff7c5219d3a::t_4890f3e9c76fec 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "026ef23e783cf0e8cab23e83c6904f09a8bc2693",
+  "prompts": {},
+  "sessions": {
+    "s_c52ff7c5219d3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3d60734-b6b1-4de4-bd03-6d1f7eb96b13",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

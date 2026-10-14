@@ -1,0 +1,34 @@
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_eed349f600d367::t_2a233574d79dc6 162-164,176-182
+  s_eed349f600d367::t_b5dacaa7a99a59 1-9
+  s_eed349f600d367::t_e9358cb2d929b2 10-161,165-175,183-257
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_eed349f600d367::t_f0993aa2a3e973 43
+packages/@n8n/module-cli/vitest.config.mjs
+  s_eed349f600d367::t_eaaa563222d986 1
+packages/@n8n/module-cli/src/frontend.mjs
+  s_eed349f600d367::t_eb244d675f7d82 8,10-18
+  s_eed349f600d367::t_46972465d46031 47,50,60,74,80,96,101,114,119,134
+  s_eed349f600d367::t_fd29c5f314ecf0 9
+packages/@n8n/module-cli/package.json
+  s_eed349f600d367::t_cff2660aaf3cb7 24
+  s_eed349f600d367::t_eaaa563222d986 12-13,21-23
+pnpm-lock.yaml
+  s_eed349f600d367::t_b0fb3b9785a7df 3053-3059
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5a2b1783a20a2900cecb21b6933e9346b37216af",
+  "prompts": {},
+  "sessions": {
+    "s_eed349f600d367": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94825324-10c8-4944-a953-2990cd376305",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

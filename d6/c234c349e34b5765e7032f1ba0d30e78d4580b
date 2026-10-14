@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_2ed659fa6b1ae7::t_5eb4eef103ed65 4-8,18-20,24-27,33-36,38-43,49-50
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_2ed659fa6b1ae7::t_9ff3616fe14e7b 192,194-195
+packages/@n8n/instance-ai/skills/probe-user/SKILL.md
+  s_2ed659fa6b1ae7::t_5eb4eef103ed65 42,51-53,56-58,64-70,74
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_2ed659fa6b1ae7::t_9ff3616fe14e7b 206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d6c234c349e34b5765e7032f1ba0d30e78d4580b",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

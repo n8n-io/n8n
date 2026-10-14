@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/package.json
+  s_a5d60c12831a5e::t_68730915b9aac7 40-41,132-133,177
+packages/frontend/editor-ui/src/experiments/workflowGenerativeUi/README.md
+  s_a5d60c12831a5e::t_b7da293d26dca4 1-8
+packages/frontend/editor-ui/vite.config.mts
+  s_a5d60c12831a5e::t_7cfcad9625883d 238-246
+pnpm-workspace.yaml
+  s_a5d60c12831a5e::t_68730915b9aac7 54-55
+pnpm-lock.yaml
+  ai_agent 123-128,5861-5866,9320-9330,15240,15284,20415,26812-26821
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "439af4d83da5e371fdac7ff2c86545c7f356896a",
+  "prompts": {},
+  "sessions": {
+    "s_a5d60c12831a5e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f6887fea-98c8-4cff-8baa-0a268de7100a",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

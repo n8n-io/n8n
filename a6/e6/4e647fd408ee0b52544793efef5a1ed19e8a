@@ -1,0 +1,30 @@
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_f4f3f37a98d31a::t_84cd5223842f04 310-321
+  s_f4f3f37a98d31a::t_3ae8460f65c59d 142-167
+  s_f4f3f37a98d31a::t_36dd97b72f63bd 73-80
+  s_f4f3f37a98d31a::t_8cb3e5d7f88782 20
+  s_f4f3f37a98d31a::t_ee13311545104e 378-379
+  s_f4f3f37a98d31a::t_72cdf8ace586a3 410,414-473
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_f4f3f37a98d31a::t_92a651727bf9e6 144-211
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_f4f3f37a98d31a::t_71d0712abd19c3 796-802
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_f4f3f37a98d31a::t_99fe876f514599 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a6e64e647fd408ee0b52544793efef5a1ed19e8a",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

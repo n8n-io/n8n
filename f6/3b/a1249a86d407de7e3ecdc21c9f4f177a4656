@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/plans/agent-plan.validation.ts
+  s_14bbae78eb49a2::t_325e7ed5cd3ffe 69-137,143-180
+packages/cli/src/modules/agents/__tests__/agent-plan.service.test.ts
+  s_14bbae78eb49a2::t_25d3508af76d2d 1-202
+packages/cli/test/integration/agent-plan.service.test.ts
+  s_14bbae78eb49a2::t_25d3508af76d2d 1-272
+packages/cli/src/modules/agents/plans/__tests__/agent-plan.validation.test.ts
+  s_14bbae78eb49a2::t_25d3508af76d2d 17-25,27-40,42-46,51-53,67-68,97-98,108-114,117-118,128-138,151-169,201-203,211-221,226-231,241-249,263-265,272-278,285-287,295-300,302-310,317,319-325,330-347,350-352,355-360,366-368,380-383,387-398,403-414,420-437,448-456,468-475,484-491,499-514,522-524,531-533,537-539
+  s_14bbae78eb49a2::t_e694d74acd8cdb 177-182
+  s_14bbae78eb49a2::t_325e7ed5cd3ffe 1-16,26,41,47-50,54-66,69-96,99-107,115-116,119-127,139-149,170-176,183-200,204-210,222-225,232-240,250-262,266-271,279-284,288-294,301,311-316,326-329,361-365,369-379,384-386,399-402,415-419,438-447,457-467,476-483,492-498,515-521,525-530,534-536,540-541
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f63ba1249a86d407de7e3ecdc21c9f4f177a4656",
+  "prompts": {},
+  "sessions": {
+    "s_14bbae78eb49a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c2f9-97aa-73d1-bf6a-7b613bf7132f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

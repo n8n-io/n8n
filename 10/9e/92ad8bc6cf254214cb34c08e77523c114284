@@ -1,0 +1,52 @@
+packages/cli/test/integration/database/repositories/poller-state.repository.test.ts
+  s_5fa111a231c8b4::t_0a1f62690b3015 263-273,275-283,287,289,304,314,344,355,367,383,397,412
+  s_5fa111a231c8b4::t_0ba702871a4618 248,252-254,258,260,400,415
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_5fa111a231c8b4::t_d4651b1522716f 128,429,443,473,487,505,520,534,548,581,586
+  s_5fa111a231c8b4::t_61724ccff994ba 424-425,442,472,486,504,519,533,547
+  s_5fa111a231c8b4::t_6d90f562ac2035 3
+packages/cli/test/integration/scheduling/poll-trigger-job-registrar.test.ts
+  s_5fa111a231c8b4::t_46bcd66e4e84b6 83,102,113,123
+  s_5fa111a231c8b4::t_a411d708c318db 103
+packages/@n8n/db/src/repositories/poller-state.repository.ts
+  s_5fa111a231c8b4::t_067ca9e6fbd744 158
+  s_dc87823d08b41d::t_69797ab67c74e8 24-27,159,163,165,170-174
+packages/cli/src/workflows/triggers/poll-backoff.service.ts
+  s_5fa111a231c8b4::t_e831691013dd43 40
+  s_5fa111a231c8b4::t_a679ba96070c83 50
+  s_5fa111a231c8b4::t_6492f425d54866 3,44,48
+packages/cli/src/workflows/triggers/__tests__/poll-backoff.service.test.ts
+  s_5fa111a231c8b4::t_94dd174eb66ac1 3
+  s_5fa111a231c8b4::t_1fe30666872153 60,64,66,69-75,78,82,85,90,93
+packages/cli/src/controllers/e2e.controller.ts
+  s_5fa111a231c8b4::t_bfef557c3419a1 477
+  s_dc87823d08b41d::t_4562afd46c76c3 280,282-284
+packages/@n8n/db/src/repositories/index.ts
+  s_5fa111a231c8b4::t_10422b4d594b3a 62
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_5fa111a231c8b4::t_c7064b934f1c60 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "109e92ad8bc6cf254214cb34c08e77523c114284",
+  "prompts": {},
+  "sessions": {
+    "s_5fa111a231c8b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62a020c7-78d9-4f3c-99a9-db13d0a06806",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_dc87823d08b41d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0592af20-83de-44d2-9bf3-f7f8fe6b6c92",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

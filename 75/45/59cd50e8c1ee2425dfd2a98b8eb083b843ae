@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/MicrosoftSharePoint.node.ts
+  s_da2d1da87fffe8::t_a568b28b9660f4 64
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 30-43,47-48,51-63,65-68
+packages/nodes-base/nodes/Microsoft/SharePoint/test/item/get.sp.test.ts
+  s_da2d1da87fffe8::t_5a79b304b854f9 12
+  s_da2d1da87fffe8::t_8745e021f2bd4a 16
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 1-11,13-15,17-31
+packages/nodes-base/nodes/Microsoft/SharePoint/test/item/get.sp.workflow.json
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 1-77
+packages/nodes-base/nodes/Microsoft/SharePoint/test/transport/index.test.ts
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 1-142
+packages/nodes-base/nodes/Microsoft/SharePoint/methods/listSearch.ts
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 10,19,31,48-50,75,87,102-104,130,142,158-160,184,196,211-213,236-237,248,258-267
+packages/nodes-base/nodes/Microsoft/SharePoint/methods/resourceMapping.ts
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 9,42,50-52
+packages/nodes-base/nodes/Microsoft/SharePoint/test/credentials.ts
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 1-4,6-13
+packages/nodes-base/nodes/Microsoft/SharePoint/transport/index.ts
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 10-28,37,39-52,56,63
+packages/nodes-base/nodes/Microsoft/SharePoint/helpers/utils.ts
+  s_da2d1da87fffe8::t_a24c4f78c61e3d 13,130,145-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "754559cd50e8c1ee2425dfd2a98b8eb083b843ae",
+  "prompts": {},
+  "sessions": {
+    "s_da2d1da87fffe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "997a7fa4-dc4f-4886-a2a5-e3bb74376008",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

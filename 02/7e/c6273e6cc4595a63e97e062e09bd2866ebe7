@@ -1,0 +1,32 @@
+packages/cli/src/services/active-workflows.service.ts
+  s_eaf07a577bcc8d::t_daf78cf5ae2ca8 2,10,22-23,27,35,43-44,61-68,71-84
+  s_eaf07a577bcc8d::t_ab68737ef4413c 85
+packages/cli/src/services/__tests__/active-workflows.service.test.ts
+  s_3a89fdd8f0be8a::t_68a0aac65a1e0f 1-2,4,11,21-22,29-30,43,85,93-94,107-216
+packages/cli/test/integration/active-workflows.api.test.ts
+  s_3a89fdd8f0be8a::t_c4928b1adf32a0 9-12,28,103-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "027ec6273e6cc4595a63e97e062e09bd2866ebe7",
+  "prompts": {},
+  "sessions": {
+    "s_3a89fdd8f0be8a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9da675899ce0e780",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
+    "s_eaf07a577bcc8d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53afa069-bfb3-439b-93d4-161825d80123",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

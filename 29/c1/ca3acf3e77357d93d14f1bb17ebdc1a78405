@@ -1,0 +1,100 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_620991e2709f71::t_aa937416f43f7c 57-58
+packages/frontend/editor-ui/src/features/agents/components/AgentSetupTasks/AgentSetupTasks.vue
+  s_8825d8de826854::t_ec25f2f73ea8bf 232,234-242,244-247,249-252,254-261
+  s_3ab1ac486f3ae4::t_5ee98ae87e7c25 450
+  s_8825d8de826854::t_6eebd2a17174b7 233,243,248,253
+  s_3ab1ac486f3ae4::t_b688f808476bf9 458
+  s_3ab1ac486f3ae4::t_71d206ec738fbe 444,449,455
+  s_f67bbe5906441c::t_e4d88e62360b32 172-173,177-178,204-211,214,216-217,220-229,354,443,445,452-454,466
+  s_f67bbe5906441c::t_9281442e4177e5 230
+  s_bf8822ca5aff2b::t_dc1db58042c7fb 2,67-68
+  s_bf8822ca5aff2b::t_26faf62729fa0d 36-37
+  s_3ab1ac486f3ae4::t_6b31059fbe1625 446-447
+  s_f67bbe5906441c::t_bb460ee98ed182 89,219,281-293
+  s_f67bbe5906441c::t_b327ccbf617f70 180-185,198-200,212-213,215
+  s_8825d8de826854::t_3cd18b31f6c04d 168-171,186-187,192,310
+  s_3ab1ac486f3ae4::t_62dfb9e69ce2c6 70,457,461-465
+  s_f67bbe5906441c::t_2f330f5e3fa488 4,11,20,23-35,50,71,83,86,231,262-280,294-309,319
+  s_8825d8de826854::t_3984b3d7c4fe36 175-176,179,451,456
+  s_f67bbe5906441c::t_19f110cf84941a 48-49
+  s_f67bbe5906441c::t_c9eaf4e71a490d 51
+  s_bf8822ca5aff2b::t_67f01fd682201e 66
+  s_f67bbe5906441c::t_a2a5bf576290e4 218
+  s_8825d8de826854::t_bd131f4a9d9d8a 311
+  s_f67bbe5906441c::t_02a8130d9e470f 318
+  s_f67bbe5906441c::t_7eab54439a881a 320-322
+  s_f67bbe5906441c::t_439942b642e968 353
+  s_f67bbe5906441c::t_94481033137482 355-356
+  s_3ab1ac486f3ae4::t_77edce8175c3a7 448
+  s_3ab1ac486f3ae4::t_03f9ea8865415b 459-460
+  s_f67bbe5906441c::t_fdd480d3b9d511 467
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3d9d6a3180ee14::t_2b818ad91aafbe 689-690
+  s_c5c1251811c0e1::t_f0de9f382978eb 682,702,2707
+  s_f67bbe5906441c::t_7dc5f356628f62 2714-2719
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29c1ca3acf3e77357d93d14f1bb17ebdc1a78405",
+  "prompts": {},
+  "sessions": {
+    "s_3ab1ac486f3ae4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f1d4-cb22-74f9-ac8a-693a146aef2c",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_3d9d6a3180ee14": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f1e9-2136-74f9-ac8a-6941fab880da",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_620991e2709f71": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f1e2-0b1c-74f9-ac8a-693d5823954d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_8825d8de826854": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f154-42eb-74f9-ac8a-69353c6aa3d7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_bf8822ca5aff2b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f1c9-771f-74f9-ac8a-6939c7ae807a",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c5c1251811c0e1": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f1e5-9c2b-74f9-ac8a-693fe2116c93",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_f67bbe5906441c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f164-e67b-74f9-ac8a-69365378d9ae",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_fd6e130ca898c8::t_434efdae2761e7 326,361,365-366,368-369,371
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_fd6e130ca898c8::t_15d4960843f0d5 14,16,85,93,98,102-126,128-131,133-135,137-148,155,158-164
+packages/@n8n/instance-ai/evaluations/routing/route-rules.ts
+  s_fd6e130ca898c8::t_066c9e19b02b08 16-17,19-23,44-46,48-51,56,58,60,62,64,66-67,69-71,73,75,78-80
+  s_fd6e130ca898c8::t_5deb838b2efd13 81
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_fd6e130ca898c8::t_434efdae2761e7 126-131
+packages/@n8n/instance-ai/evaluations/routing/cases.ts
+  s_fd6e130ca898c8::t_434efdae2761e7 10-11,16,30,99-100,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c074c67f6603214c50b4a5e2be9874342583500",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

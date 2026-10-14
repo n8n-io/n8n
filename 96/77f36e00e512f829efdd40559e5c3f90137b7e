@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_6ed9d39c972411::t_af1618d2584886 1870,1878-1879,1888-1890,1892-1893
+  s_6ed9d39c972411::t_dda539fb0bfd11 2106-2133
+  s_6ed9d39c972411::t_a6e7ca3ceaebc1 1404-1408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9677f36e00e512f829efdd40559e5c3f90137b7e",
+  "prompts": {},
+  "sessions": {
+    "s_6ed9d39c972411": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "842fd55d-175d-4852-9a85-7d8aa263ae47",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/@n8n/config/test/config.test.ts
+  s_bb7d9b26b8514f::t_7271c53f6f8e33 475
+packages/@n8n/config/src/configs/evaluation.config.ts
+  s_bb7d9b26b8514f::t_7271c53f6f8e33 54-67
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_bb7d9b26b8514f::t_7271c53f6f8e33 1,50-52
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_bb7d9b26b8514f::t_590e4336a0c652 381,392-393
+  s_bb7d9b26b8514f::t_7271c53f6f8e33 1,72-73,82,117-128,251-253,257-265,267,270,272-276,281-283,288-289,297-299,313-327,333,338-339,341,343-353,363-380,382-391
+  s_bb7d9b26b8514f::t_7ed5cc15dbf58a 271
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  ai_agent 548
+  s_bb7d9b26b8514f::t_944c4f8c315139 538,569-571
+  s_bb7d9b26b8514f::t_7271c53f6f8e33 1,96,120,124-125,154,193-203,446-537,539-547,549-568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f94d92274bd33c3c77b78fa4db10e119f72aa999",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bb7d9b26b8514f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3977fda-eb0a-42ec-87df-ad23a317d352",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

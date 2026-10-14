@@ -1,0 +1,69 @@
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_b1ae3677d6bc36::t_331d66c4c4992b 144
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_a4b3eb10d1208e 448,453-464
+  s_b1ae3677d6bc36::t_d2836cf44dcb18 449-452
+  s_b1ae3677d6bc36::t_d84947fe3822e8 3
+  s_b1ae3677d6bc36::t_e6869f6ad36b73 408,410-412,424,428
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_b1ae3677d6bc36::t_adb222b10c8bbc 221
+  s_b1ae3677d6bc36::t_677dfe806a3bc1 193,205
+  s_b1ae3677d6bc36::t_413a797f88fecd 194-198
+  s_b1ae3677d6bc36::t_3509d91a1bddfb 8
+  s_b1ae3677d6bc36::t_2acfd783c9fae1 217
+  s_b1ae3677d6bc36::t_f98aca1a7f844d 189-192
+  s_b1ae3677d6bc36::t_f6c31a2ca3d397 201
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_b1ae3677d6bc36::t_bfc2188420dca1 180-185
+  s_b1ae3677d6bc36::t_0441c51b7c691c 195-197
+packages/@n8n/db/src/entities/workflow-publication-outbox.ts
+  s_b1ae3677d6bc36::t_92a2ba468a7361 5-12
+packages/@n8n/db/src/entities/index.ts
+  s_b1ae3677d6bc36::t_1e62b990f4c4c7 54
+  s_b1ae3677d6bc36::t_7947edfbe5ee4b 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "aafd6064a1dd7bf26079fa4a85deec81c5035fe3",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

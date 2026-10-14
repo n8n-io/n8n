@@ -1,0 +1,32 @@
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  s_6c1618e13946e4::t_08889e7dad6903 231
+  s_6c1618e13946e4::t_f99c986a10dd84 110-113
+  s_6c1618e13946e4::t_876409f2fab3ac 860-865,868-874
+  s_6c1618e13946e4::t_fa2b0e6b7669cc 51-57
+  s_6c1618e13946e4::t_7ab8e009e72255 114-116
+  s_6c1618e13946e4::t_d43423cddec57d 307-308
+  s_6c1618e13946e4::t_355204085d6298 280-283
+  s_6c1618e13946e4::t_65684b67f81caf 791-795,800-806,809
+  s_6c1618e13946e4::t_2a4f4a4f4b8094 821,823-827,834-835,840-852
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_6c1618e13946e4::t_f99c986a10dd84 1600-1605
+  s_6c1618e13946e4::t_8a2268b1b7681a 1662-1663,1665-1668
+  s_6c1618e13946e4::t_efa684ceb364fc 1563-1599,1606-1614
+  s_6c1618e13946e4::t_b03018460ab430 1723,1725,1728,1730-1733,1737,1740-1741,1754-1756,1758-1783
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e881cf34f784c2f6be8142e818e7ece5c1ed2cad",
+  "prompts": {},
+  "sessions": {
+    "s_6c1618e13946e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a91e760e-c4f7-4af1-bd2e-8c7013861e49",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,94 @@
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_b370a35485f958::t_82665462f23402 233
+  s_b370a35485f958::t_b1e108f7329e2c 9
+  s_b370a35485f958::t_5dc55efe9425de 187
+packages/cli/src/modules/instance-ai/eval/provider-shapes.ts
+  s_b370a35485f958::t_5e55a640776760 23
+  s_b370a35485f958::t_b90b1b9bc28a09 111,138,143,145,158,177,182,184,198,228,232,254,257-258,263,271,287,328,393,399,411,414,416,424,442-443,448,456,462
+packages/@n8n/agents/src/workspace/tools/read-tool-result.ts
+  s_b370a35485f958::t_8e41cbab35e61e 180,200,333,362,385
+  s_b370a35485f958::t_129772498ee1d0 1
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_b370a35485f958::t_a1ff6e41a2854f 703
+  s_b370a35485f958::t_bdad51a52eb8d9 1
+packages/@n8n/instance-ai/evaluations/harness/normalize-workflow.ts
+  s_b370a35485f958::t_8c93f6eaba3058 89,103
+  s_b370a35485f958::t_9953a518167471 16
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_b370a35485f958::t_ca65f694b92c62 1
+  s_b370a35485f958::t_a675cee875b7f4 126
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/parameter-update.utils.ts
+  s_b370a35485f958::t_cfa17be1b3a640 1
+  s_b370a35485f958::t_a1d72478a05b4c 37,39
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSkillImport.ts
+  s_b370a35485f958::t_51d7fd8a8e8f34 8
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_b370a35485f958::t_3533771327891b 9
+  s_b370a35485f958::t_1fc2055c8ae08d 977-980
+packages/@n8n/instance-ai/src/utils/eval-agents.ts
+  s_b370a35485f958::t_6854d97fca6ba3 4
+  s_b370a35485f958::t_272ea3aaf9740d 60
+  s_b370a35485f958::t_85db0e7ac34e93 109
+packages/@n8n/instance-ai/evaluations/run/langsmith-driver.ts
+  s_b370a35485f958::t_5d7a0f50e77562 24
+  s_b370a35485f958::t_1aca76ad62d063 10
+  s_b370a35485f958::t_fa7d1cb8b2ad7a 390-391
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_b370a35485f958::t_f8a01ab1472997 1
+  s_b370a35485f958::t_c2785f5699baf8 453,583,620
+packages/@n8n/ai-utilities/src/utils/text-editor.ts
+  s_b370a35485f958::t_4b22f17923361a 1-2
+  s_b370a35485f958::t_d0e3acba546932 192
+packages/@n8n/ai-utilities/src/utils/redact-secrets.ts
+  s_b370a35485f958::t_1d7e8fa5fd2323 1
+  s_b370a35485f958::t_9b25cea9c76559 38,63
+packages/cli/src/modules/instance-ai/eval/openai-responses-envelope.ts
+  s_b370a35485f958::t_37a4005e93378c 238,246,265,311,317,336,391,406
+  s_b370a35485f958::t_2782cc52011c58 1
+packages/cli/src/modules/instance-ai/eval/mock-utils.ts
+  s_b370a35485f958::t_5123ae77c5cec6 2
+  s_b370a35485f958::t_4b8a134da18559 34
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_b370a35485f958::t_3f28bc015ff837 71
+  s_b370a35485f958::t_db92a7fc892545 1
+packages/@n8n/instance-ai/evaluations/run/reshape.ts
+  s_b370a35485f958::t_0bd73e49a6834d 15
+  s_b370a35485f958::t_b1ba6240d54e0d 108,119,124,129,136,141,156
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_b370a35485f958::t_6086ce3cc0b30d 27
+  s_b370a35485f958::t_f96124e910a091 2
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_b370a35485f958::t_2883999cc4f8c4 293
+  s_b370a35485f958::t_71acb4799dedb1 1
+packages/@n8n/instance-ai/evaluations/harness/scenario-execution.ts
+  s_b370a35485f958::t_5bc4b5c729f1ef 435,461,468
+packages/cli/src/modules/instance-ai/browser/browser-local-mcp-server.ts
+  s_b370a35485f958::t_4bf9282f866782 1
+  s_b370a35485f958::t_b0b5138688986f 54
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/workflow-code-match.ts
+  s_b370a35485f958::t_5e99fa184c7ff4 5
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_b370a35485f958::t_219b55af6d3ab3 2,8
+packages/cli/src/modules/instance-ai/eval/agent-scenario-seed.ts
+  s_b370a35485f958::t_fe629972a49174 1
+  s_b370a35485f958::t_45905ee966b39b 94-96
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_b370a35485f958::t_1148edd3a0e6d2 135
+  s_b370a35485f958::t_8c27c4be902339 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "78abe8bd1dc65bee9954fc17c4e3aa00fec9d4fc",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

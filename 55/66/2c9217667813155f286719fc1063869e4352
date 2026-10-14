@@ -1,0 +1,128 @@
+packages/@n8n/api-types/src/dto/workflow-reviews/update-workflow-review-required.dto.ts
+  s_61899bd475045b::t_e9dcf960b5fdf0 2-3
+  s_61899bd475045b::t_96503a7abfec74 1,4-7
+packages/workflow/src/interfaces.ts
+  s_61899bd475045b::t_fb108261e169f5 3583
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_61899bd475045b::t_0eb81e8cd7f6f3 4980-4982
+packages/cli/src/workflows/workflow-history/workflow-history-authors.util.ts
+  s_85abb6607116d0::t_48aa5f6e5bad70 1-30
+packages/@n8n/api-types/src/dto/index.ts
+  s_61899bd475045b::t_27f337bdb4d24d 250
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue
+  s_85abb6607116d0::t_87b025557dd351 38
+  s_85abb6607116d0::t_7fa92e86c09af1 4,37,65
+  s_b76c71a3ee2da1::t_8a84d6592cfe91 3
+  s_61899bd475045b::t_9ce190b85c65c2 1-2,5-14,17-26,28-36,39-40,47-64,66-78,80-123,125-137
+  h_760178ed151f13 124
+  s_85abb6607116d0::t_0c1b216651511a 41-46
+  s_85abb6607116d0::t_04ff217b69dc50 79
+  s_85abb6607116d0::t_73c1c3fd05bfac 16
+  s_b76c71a3ee2da1::t_9fb30b7dbe17b2 15
+  s_85abb6607116d0::t_6bf81ad5dc87d9 27
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewsEnabled.ts
+  s_85abb6607116d0::t_221d15aada2cec 20-28
+  s_85abb6607116d0::t_16e754a8c183af 1-19
+packages/frontend/@n8n/rest-api-client/src/api/workflows.ts
+  s_85abb6607116d0::t_322983a7394670 11
+  s_85abb6607116d0::t_d5110ce0ce322d 66-68,78-80
+  s_b76c71a3ee2da1::t_00cb9ff6e2d588 9
+  s_b76c71a3ee2da1::t_ae71b6c798bfe6 61-65,69-77,81-84
+  s_85abb6607116d0::t_3c77b0efa411f7 10
+packages/@n8n/api-types/src/index.ts
+  s_85abb6607116d0::t_100501a26b4499 231-235
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_61899bd475045b::t_d3dc03aaed60d8 180-182
+packages/cli/src/services/workflow-review-settings.service.ts
+  s_b76c71a3ee2da1::t_b265ed559ae43b 46
+  s_85abb6607116d0::t_ea083bfc559f2f 80-81
+  s_b76c71a3ee2da1::t_c4b758e0d198b9 122-132
+  s_85abb6607116d0::t_f03ffc26be1fc8 93
+  s_b76c71a3ee2da1::t_7338a24d13dff9 181,183
+  s_85abb6607116d0::t_3583e2c9762cae 30
+  s_b76c71a3ee2da1::t_c41dc5bfe34b37 10
+  s_b76c71a3ee2da1::t_ea07a4e68cc031 199,210-213,217-218,220
+  s_b76c71a3ee2da1::t_a70143551b8939 103
+  s_b76c71a3ee2da1::t_732e34496bf7fd 78
+  s_85abb6607116d0::t_6a81688bee1f5f 57-60
+  s_85abb6607116d0::t_6fc8459aba0cdb 14
+  s_85abb6607116d0::t_d0a8c22d26d677 15
+  s_61899bd475045b::t_7a6f943a0254f1 1-6,8-9,11-13,16-29,31-45,47-55,61-67,69-77,79,82-92,94-102,104-121,133-180,182,184-198,200-202,221-223,225-227,233-235
+  s_85abb6607116d0::t_08693c46c0d672 203-209
+  s_85abb6607116d0::t_4500146578a342 224,228-232
+  s_85abb6607116d0::t_1df3b2c664e1f5 214-216,219
+  s_85abb6607116d0::t_37865ffdaafe62 56,68
+  s_b76c71a3ee2da1::t_e47ed909773873 7
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_85abb6607116d0::t_218e8df2bdd65b 1041
+  s_85abb6607116d0::t_19d0e9002fe961 914-921,923,925,927,929-934,938-947,949-968,970-972,976-987,989-991,995-1006,1008-1010,1014-1025,1027-1040,1042-1043
+  s_85abb6607116d0::t_788344bb6ce999 6
+  s_85abb6607116d0::t_a363a22daf793b 935-937
+  s_85abb6607116d0::t_a35795ed43b0b3 69-73
+  s_85abb6607116d0::t_2f94bb23264daf 924,926,928
+  s_85abb6607116d0::t_f368d8fd468f99 969,973-975,988,992-994,1007,1011-1013,1026
+packages/cli/test/integration/workflows/workflows.controller.review-required.test.ts
+  s_85abb6607116d0::t_f8a5269ba6ca34 66-77
+  s_85abb6607116d0::t_663f5413cdd16c 1-65,78-275
+packages/cli/src/workflows/workflows.controller.ts
+  s_85abb6607116d0::t_1971cdd138b745 11
+  s_85abb6607116d0::t_e797a8f5510dab 69
+  s_85abb6607116d0::t_14f5c62d901630 98
+  s_85abb6607116d0::t_44a80419761ac2 701-727
+  s_85abb6607116d0::t_4fb634d7665639 13
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_85abb6607116d0::t_d307b65cb713ab 22-25
+  s_85abb6607116d0::t_30ac491086ac76 195-200
+packages/cli/src/constants/workflow-reviews.ts
+  s_85abb6607116d0::t_f93acf33808774 12-20
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_61899bd475045b::t_651db0c7c10fbe 699,701
+  s_61899bd475045b::t_627fc16b5ed30c 54
+  s_85abb6607116d0::t_71266bd55aba41 87-88
+  s_85abb6607116d0::t_2404073670be11 700
+  s_85abb6607116d0::t_c8876bbb159eb0 53
+  h_760178ed151f13 684-686,799-802
+packages/@n8n/api-types/src/schemas/workflow-review-required-status.schema.ts
+  s_85abb6607116d0::t_36d688749bedc3 1-8
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  s_85abb6607116d0::t_49f169fa0fae44 45
+  s_85abb6607116d0::t_ffa4957a5b962c 18
+  s_85abb6607116d0::t_27f1d643785bd3 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "55662c9217667813155f286719fc1063869e4352",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_61899bd475045b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bb55a7a2-1166-4654-b043-ebd4c2125ca6",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_85abb6607116d0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3c83d1ee-a310-4bc4-b39f-cd3aac6dfc89",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_b76c71a3ee2da1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e0fd9bd8-129e-42c7-a4dd-a9ae555973db",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

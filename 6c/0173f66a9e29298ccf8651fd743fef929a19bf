@@ -1,0 +1,55 @@
+packages/cli/src/oauth/oauth.service.ts
+  s_aa40f315c412bf::t_5852c5d63e92b7 29
+  s_aa40f315c412bf::t_677d71a4d4a467 692
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/create-oauth2-client.test.ts
+  s_aa40f315c412bf::t_08d2f2d3c33605 1
+  s_aa40f315c412bf::t_f8898a3d9e1a43 5
+  s_aa40f315c412bf::t_4a851275823c39 14,16-17
+  s_aa40f315c412bf::t_6c7c10e49d7f56 15
+  s_aa40f315c412bf::t_4f4ccd25c30d25 160-214
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_aa40f315c412bf::t_265f8aa2c38169 153-155,209-211
+  s_aa40f315c412bf::t_199990e1e2d393 150,206
+packages/@n8n/client-oauth2/src/credential-options.ts
+  s_aa40f315c412bf::t_8cc155dfb60e74 1-40
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_aa40f315c412bf::t_c82ced4df0c077 16
+  s_aa40f315c412bf::t_449c2fff0e4233 188-191
+  s_aa40f315c412bf::t_7e7e3622a86884 53
+packages/@n8n/client-oauth2/test/credential-options.test.ts
+  s_aa40f315c412bf::t_78e723bc6b2ddf 1-34
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_aa40f315c412bf::t_298079ae143019 5052,5055,5059,5064,5074,5081,5085-5086
+  s_aa40f315c412bf::t_048aa900d637f2 43-46
+  s_aa40f315c412bf::t_c73e8810e467a7 5053
+packages/nodes-base/credentials/test/MicrosoftOAuth2Api.credentials.test.ts
+  s_aa40f315c412bf::t_9d3bf3967fbdfd 63,69-78
+packages/@n8n/client-oauth2/src/index.ts
+  s_aa40f315c412bf::t_fc0bd5a5037740 6
+packages/@n8n/client-oauth2/src/client-assertion.ts
+  s_aa40f315c412bf::t_98e9b72a4c61d5 27
+  s_aa40f315c412bf::t_3a8562399c6467 2-6,8
+  s_aa40f315c412bf::t_a01dee7e59d69f 56-60,62-65
+  s_aa40f315c412bf::t_ef40ddf823170d 61
+  s_aa40f315c412bf::t_f9c590aec5fbae 22-26,28-31
+packages/nodes-base/credentials/OAuth2Api.credentials.ts
+  s_aa40f315c412bf::t_b297e10259c608 116-129
+packages/@n8n/client-oauth2/test/client-assertion.test.ts
+  s_aa40f315c412bf::t_cdd0859fc1c367 46,54,57,65-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6c0173f66a9e29298ccf8651fd743fef929a19bf",
+  "prompts": {},
+  "sessions": {
+    "s_aa40f315c412bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d1db2c7-ef71-408d-a28c-9f53a28738b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

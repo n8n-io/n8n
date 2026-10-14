@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/Sql/MicrosoftSql.node.ts
+  s_bef64c16cb8405::t_2947e981981d20 310-312
+  s_bef64c16cb8405::t_e1a3bb5df40020 18,24
+  s_bef64c16cb8405::t_cf8ed6033ae3e6 344-347,350-356
+packages/nodes-base/nodes/Microsoft/Sql/GenericFunctions.ts
+  s_bef64c16cb8405::t_95754b2f81c6b1 288
+packages/nodes-base/nodes/Microsoft/Sql/test/MicrosoftSql.node.test.ts
+  s_bef64c16cb8405::t_634a688af2d061 215-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d5a5ee5a00a6316af94cbe33ba4667f5a77b489",
+  "prompts": {},
+  "sessions": {
+    "s_bef64c16cb8405": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cb8dc37-f44c-4585-a8f1-ed3cd9dbf43c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/core/src/execution-engine/__tests__/declarative-webhook.test.ts
+  h_434a0dd003c3fd 259-313
+packages/core/src/execution-engine/declarative-webhook.ts
+  h_434a0dd003c3fd 81-85,87,149-151
+packages/nodes-base/nodes/Github/GithubTrigger.node.ts
+  h_434a0dd003c3fd 25-194,247-290
+packages/nodes-base/nodes/Github/__tests__/node/GithubTrigger.node.test.ts
+  h_434a0dd003c3fd 1-14,17-22,58-88,91-94,120,136,156,187,214,234,251,271,289,306,318,329,339,357,371,382,395,410,419,423,437-438,450,465-470,472-477,479-486,488,490-500,502-504,506-512,515-517,519-522,524-587,590-609,611-612,614,616-620,623-628,630-631,633-634,637-642,644-645,647
+packages/workflow/src/interfaces.ts
+  h_434a0dd003c3fd 2840-2841,2851-2858,2963-2968
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5371661b625a9dd11ff820d8c36f91fd0cb23f81",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

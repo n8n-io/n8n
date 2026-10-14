@@ -1,0 +1,125 @@
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_da18386a9930c0::t_0e40f034ed2ac3 10
+  s_da18386a9930c0::t_2071b53e783105 133-138
+packages/workflow/src/run-execution-data-factory.ts
+  s_da18386a9930c0::t_e973765e926720 12,48,97
+packages/cli/src/scaling/constants.ts
+  s_da18386a9930c0::t_19cb0dedae6620 42
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_da18386a9930c0::t_bc4ea55ebcff19 1042-1043,1054-1056,1062-1063
+  s_da18386a9930c0::t_e47d16a1943f2c 1017,1108
+packages/workflow/src/interfaces.ts
+  s_da18386a9930c0::t_0e6b321125bc4c 3294-3296,3308-3309
+  s_da18386a9930c0::t_e973765e926720 3293,3297-3304,3306,3312-3313
+  s_da18386a9930c0::t_fab498cac47270 3305,3307,3310-3311
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_da18386a9930c0::t_0114962920df09 4,14,29-33,41,54-55,61-68,72,75-86,90-91,95,102-113,136,139,153-166,169,171,176,190,200,218-219,221,223,225,228,232,240-247,249,251,259-272,281,284,286
+  s_da18386a9930c0::t_755613199fb382 1,6-10,15-17,19-28,34-39,73-74,92-94,96-101,167-168,170,172-175,177-185,189,191-192,194-199,201-205,290-292
+  s_da18386a9930c0::t_3b57608a93856f 2,187,193
+  s_da18386a9930c0::t_aac04ea19d7f32 5,11-12,18,43-50,57-59,69-71,114-135,137-138,140-152
+  s_da18386a9930c0::t_28425273d63e72 3,13,40,42,51-53,56,60,87-89,186,188,206-217,220,222,224,226-227,229-231,233-239,248,250,252-258,273-280,282-283,285,287-289
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_da18386a9930c0::t_0e6b321125bc4c 282-284
+  s_da18386a9930c0::t_55fe26787efd5e 281,285-303,305-307
+  s_da18386a9930c0::t_71d59c71a1fd3a 304
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.test.ts
+  s_da18386a9930c0::t_ad07d71a6cd161 199-208,210,212-214,219-228,255,260-262
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_da18386a9930c0::t_e973765e926720 14,59-60
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_da18386a9930c0::t_8080c246acec1a 1,12,32,79-80,83-85,87-88,90-91,102-105,110-111,114-127
+  s_da18386a9930c0::t_981a2dca7e3645 158,361
+  s_da18386a9930c0::t_75533699372b6a 833,855
+  s_da18386a9930c0::t_2e2e75642d1f47 603,605,608-614,618,621,629,638,650,653,657-658,660-662,669-670,673,677,685-688,698,703-704
+  s_da18386a9930c0::t_d1548f996e523a 630,681,702,705-715,819,856-859,862-864
+  s_da18386a9930c0::t_7c2130e875b696 78,86,625-626,639-641
+  s_da18386a9930c0::t_5cc602523949bc 600-602,604,606-607,615-617
+  s_da18386a9930c0::t_9b6849d9d8a91a 22,147-149,160,385
+  s_da18386a9930c0::t_71d59c71a1fd3a 659,663-668,838-854,860-861
+  s_da18386a9930c0::t_fc0b9b5c1b5f2b 92,95-101,106-109
+  s_da18386a9930c0::t_18a1d88ede4627 365,535,538-539,543,546,553
+  s_da18386a9930c0::t_9f0525af2b6dcf 837
+  s_da18386a9930c0::t_fab498cac47270 150
+  s_da18386a9930c0::t_b559ecb5d32bf3 93-94,151,157,159,599,619-620,645-646,654-656,701,816-818,834-836
+  s_da18386a9930c0::t_71272cc2d307ac 152,831-832
+  s_da18386a9930c0::t_2f62ac66ba0b61 596-598,622-624,627-628,631-637,642-644,647-649,651-652,671-672,674-676,678-680,682-684,689-697,699-700,716-717
+  s_da18386a9930c0::t_84096f453ec598 81-82,89,112-113
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_da18386a9930c0::t_d21b5a4bbbc12e 553-554
+  s_da18386a9930c0::t_0e289eaa6401c4 594-606,612-664
+  s_da18386a9930c0::t_8112b83bb92190 430
+  s_da18386a9930c0::t_2c08fe674f3db2 481,498,500,504-507,509-512,521-523,525-526
+  s_da18386a9930c0::t_7b97238a476b77 367-371,373-374,401,403-408,410-411,413-429,431-447,452-454,456-457,459-480,482-496,499,501-503,524,527-530,532-537,539-552,555-567,569-583,585-593
+  s_da18386a9930c0::t_10e363e3c015bc 372,375-377,383-400,402,409,412,455,458,531,538,568,584
+  s_da18386a9930c0::t_62a1be7ecb11be 379-382,448-451,513-520,607-611
+  s_da18386a9930c0::t_57e918f65776e4 378,497,508
+  s_da18386a9930c0::t_c3fbc786d73e61 4,11,19-26
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_da18386a9930c0::t_0e6b321125bc4c 358-359,402
+  s_da18386a9930c0::t_b4a3419ee74b63 201-202,242,357,360-361,383,401,403,565,569-570,586
+  s_da18386a9930c0::t_c41cad521579a5 395-400,404,559-564,566,583-585
+packages/@n8n/api-types/src/agents/types.ts
+  s_da18386a9930c0::t_d4af335372c3bd 23,27-28
+  s_da18386a9930c0::t_0e6b321125bc4c 24-26
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_da18386a9930c0::t_b4a3419ee74b63 172-174
+packages/cli/src/modules/agents/agents.module.ts
+  s_da18386a9930c0::t_0e40f034ed2ac3 16-19
+packages/frontend/editor-ui/src/features/agents/composables/useAgentExecutionUpdates.ts
+  s_da18386a9930c0::t_0c55d4e2e6c87c 14-18
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_da18386a9930c0::t_0f932166bb1dfc 23-38,2288-2289,2295-2323,2325-2329,2331-2336,2338-2342,2344-2346,2348-2352,2354-2357,2359-2369,2385-2386,2389-2390,2392-2393
+  s_da18386a9930c0::t_02e8d6daa22601 3-4,2291-2294,2324,2330,2337,2343,2347,2353,2358,2370-2384,2387-2388,2391
+  s_da18386a9930c0::t_57e918f65776e4 2290
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_da18386a9930c0::t_b2a4d96cd1c483 105
+  s_da18386a9930c0::t_19cb0dedae6620 63
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_da18386a9930c0::t_18dbcf4350c4cb 524,531,533-538,540
+  s_da18386a9930c0::t_2b02661f61e1e2 532,539,543
+  s_da18386a9930c0::t_55fe26787efd5e 530,541-542
+  s_da18386a9930c0::t_0e6b321125bc4c 528-529
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_da18386a9930c0::t_68c1c4af5aafac 308,310-321,323-329,331-342,344-345,347-348
+  s_da18386a9930c0::t_e47d16a1943f2c 309,322,330,343,346
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_da18386a9930c0::t_ad07d71a6cd161 724
+  s_da18386a9930c0::t_7eef376cbb4425 589-590,594,609,616-618,627,631
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_da18386a9930c0::t_80538d3b4f2b11 1,8,15-16,21-25,33-34,84-85,97-102,104-110,138,140-141,163,170-172
+  s_da18386a9930c0::t_0c55d4e2e6c87c 17
+  s_da18386a9930c0::t_000dcba3ac6223 14,28,103,156
+  s_da18386a9930c0::t_7c2130e875b696 129
+  s_da18386a9930c0::t_46be4f9c75c59b 3,11,26,29,89-96,111-124,128,132-137,139,142-143,145-146,148-151,153-154,165-168
+  s_da18386a9930c0::t_0afb4ac17b0686 164
+  s_da18386a9930c0::t_3b57608a93856f 2
+  s_da18386a9930c0::t_0e40f034ed2ac3 6,9-10,13,30-32,40,43,47-49,51-71,73-74,76
+  s_da18386a9930c0::t_e8f6d3ba072d8d 5,7,12,27,35-39,42,72,75,77-83,87-88,144,147,152,157-162,169
+  s_da18386a9930c0::t_562a3215865605 4,18-20,41,44-46,50,86,125-127,130-131,155
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_da18386a9930c0::t_71d59c71a1fd3a 233-234,238
+  s_da18386a9930c0::t_55fe26787efd5e 223,228
+  s_da18386a9930c0::t_0e6b321125bc4c 224-226
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_da18386a9930c0::t_0e6b321125bc4c 165-166
+  s_da18386a9930c0::t_5de3bbbfd4c3ef 182
+  s_da18386a9930c0::t_7aedf184dcda7f 120-121,151,178-179
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_da18386a9930c0::t_19cb0dedae6620 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a438c76142f088cc5c72f3817dbc19b7855f3d83",
+  "prompts": {},
+  "sessions": {
+    "s_da18386a9930c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "036af95a-e433-49fd-afd4-648c48e9f64b",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

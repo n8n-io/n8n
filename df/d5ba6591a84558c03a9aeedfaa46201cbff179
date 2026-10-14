@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/agentSessions.store.spec.ts
+  s_3aaa503f47ada7::t_e6d2d7232b7734 101,103-109
+packages/frontend/editor-ui/src/features/agents/agentSessions.store.ts
+  s_3aaa503f47ada7::t_e41c73afafa0ee 65,197-201
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_3aaa503f47ada7::t_e41c73afafa0ee 63
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_3aaa503f47ada7::t_e6d2d7232b7734 8,78,94-98,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dfd5ba6591a84558c03a9aeedfaa46201cbff179",
+  "prompts": {},
+  "sessions": {
+    "s_3aaa503f47ada7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b33a-46e6-7610-aa08-a734250d28b4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

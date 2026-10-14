@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/attachable-workflows.service.ts
+  s_eb4be0f4d8aeec::t_cd2896bacdc1ef 23
+  s_eb4be0f4d8aeec::t_f6e054d11c530e 25
+  s_eb4be0f4d8aeec::t_c2971f69ecb328 24
+  s_eb4be0f4d8aeec::t_e8a7b226669cba 70
+packages/cli/src/modules/agents/__tests__/attachable-workflows.service.test.ts
+  s_eb4be0f4d8aeec::t_271ef3f3449705 118-158
+  s_eb4be0f4d8aeec::t_096ad21cb3ae5b 117
+  s_eb4be0f4d8aeec::t_9a1b9a3cf7b941 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c0ee26a28b011652a017a322d75c9cb18ada2535",
+  "prompts": {},
+  "sessions": {
+    "s_eb4be0f4d8aeec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3bd5-0754-7771-92c3-142e309e5436",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

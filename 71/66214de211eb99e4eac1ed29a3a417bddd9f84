@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_a8c43c1823a871::t_6dbeacebf49313 411-412,416,419-423
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7166214de211eb99e4eac1ed29a3a417bddd9f84",
+  "prompts": {},
+  "sessions": {
+    "s_a8c43c1823a871": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de499986-b9a0-48fc-8b17-a93110cba7ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

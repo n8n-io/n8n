@@ -1,0 +1,25 @@
+packages/cli/test/integration/database/repositories/execution.repository.test.ts
+  s_9779041469fd1a::t_28f2bc71ea1072 325
+packages/@n8n/db/src/entities/execution-entity.ts
+  ai_agent 97
+packages/@n8n/db/src/entities/types-db.ts
+  ai_agent 69
+packages/@n8n/db/src/repositories/execution.repository.ts
+  ai_agent 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "60dff120b875c5ae529e4919f9a69337c33557ae",
+  "prompts": {},
+  "sessions": {
+    "s_9779041469fd1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63716222-3eb8-406e-8fa4-7fcaf70370ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

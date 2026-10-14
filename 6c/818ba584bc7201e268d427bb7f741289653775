@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_7c3ef9211001a1::t_088b0073e73650 320,326-329
+  s_7c3ef9211001a1::t_bcdb4a353b7d97 142-144
+  s_7c3ef9211001a1::t_9f08201a604bac 160-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6c818ba584bc7201e268d427bb7f741289653775",
+  "prompts": {},
+  "sessions": {
+    "s_7c3ef9211001a1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "32fbcf13-2821-4919-a86f-c6e0a1232891",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

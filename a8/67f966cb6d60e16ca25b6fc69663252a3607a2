@@ -1,0 +1,64 @@
+packages/cli/src/public-api/v1/openapi-gen/__tests__/untyped-nullable.test.ts
+  s_98cef00a091648::t_3d4594f6c913fd 1-69
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_98cef00a091648::t_fb923e728abd2c 193-196
+  s_98cef00a091648::t_2e077c94e9f8b0 23-24
+packages/cli/src/public-api/public-api-validator-formats.ts
+  s_98cef00a091648::t_62fcb299e8d944 9
+  s_98cef00a091648::t_3cbc9c78bd721b 1,8,10-34
+  s_98cef00a091648::t_8fcb4dc08ba5ae 2-7
+  s_98cef00a091648::t_4c0ad50aefbb8a 35
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_98cef00a091648::t_8de09aede8c9fe 18
+  s_98cef00a091648::t_5a54cf0382b21e 93-96
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generate.test.ts
+  s_98cef00a091648::t_7108e06d5b5ee4 188-213,215-217
+  s_98cef00a091648::t_1c45d6b940319b 214
+packages/cli/src/public-api/v1/openapi-gen/untyped-nullable.ts
+  s_98cef00a091648::t_1f55ecb3e2b149 1-3,6,10-11,19,21-25,28
+  s_98cef00a091648::t_081165cc3bb69e 4-5,7-9,12-18,20,26-27,29-32
+packages/cli/src/public-api/index.ts
+  s_98cef00a091648::t_04c6ea359c49ed 293
+  s_98cef00a091648::t_1bb6c1df76010d 14
+packages/cli/src/public-api/v1/openapi-gen/__tests__/bundled-spec-validator.test.ts
+  s_98cef00a091648::t_2107fcafbf7a02 17-18
+  s_98cef00a091648::t_2c0253e7cc3f97 7
+  s_98cef00a091648::t_c4b54cacc46907 108-125
+  s_98cef00a091648::t_be238d68330d78 10
+  s_98cef00a091648::t_f3fba2e5971919 75
+  s_98cef00a091648::t_073df8511c8cf6 5
+  s_98cef00a091648::t_ce62f0690dd2b0 146-155,158-170
+  s_98cef00a091648::t_6545efd9efb467 94-99
+  s_98cef00a091648::t_c2f1bb371562a6 14-15
+  s_98cef00a091648::t_ed91d7c71ac6fc 1-4,6,8-9,11-13,16,19-74,76-93,100-107,126-145,156-157,171
+packages/cli/src/public-api/v1/handlers/audit/spec/paths/generateAudit.generated.yml
+  s_98cef00a091648::t_405a86d2895798 134,249,367,485,600,626
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/createCredential.generated.yml
+  s_98cef00a091648::t_8f475c2def8e0f 38
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentialType.generated.yml
+  s_98cef00a091648::t_af41bba764b584 33,50
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/updateCredential.generated.yml
+  s_98cef00a091648::t_ba8a0c6e5ff876 40
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_98cef00a091648::t_29b2aa1588a1b5 101,104,287-288,295
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_98cef00a091648::t_55f970a836c303 118,121,304-305,312
+packages/cli/src/public-api/v1/shared/spec/schemas/auditVersion.generated.yml
+  s_98cef00a091648::t_4375b43357ee6b 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a867f966cb6d60e16ca25b6fc69663252a3607a2",
+  "prompts": {},
+  "sessions": {
+    "s_98cef00a091648": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "434a4e02-9901-43d4-86cd-6ac7855e0588",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

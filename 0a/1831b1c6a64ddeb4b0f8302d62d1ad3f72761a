@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_85185a50bbdc9a::t_6dd023ff43f961 565-568,570,572-573,575,606-608,635,645,655-656,744,755,769
+pnpm-lock.yaml
+  ai_agent 744,1159,2415,2466,3107,3110,5456,17365,28689-28693,29337,29359,29364,29379,29390,29401,29421,29424,29426,29430,29436,29438,29442,29448,29459,33836,33842,33844-33845,33847,33851,33853,33856,33892,33894,33896,33898,33946,33948-33949,33957-33958,33962,33964-33967,33969-33971,33973-33974,33995,34006,34015,34018-34020,34026,34029-34031,37575,37589,37614,44918,44920,44922,44924
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_85185a50bbdc9a::t_514fdbda6b5255 255,293
+packages/core/src/execution-engine/workflow-execute.ts
+  s_85185a50bbdc9a::t_ed78f12df671ba 1930-1932
+packages/cli/src/chat/chat-service.ts
+  s_85185a50bbdc9a::t_067f1ee6390a22 288
+pnpm-workspace.yaml
+  s_85185a50bbdc9a::t_bfbfdbd9afdbd0 349-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a1831b1c6a64ddeb4b0f8302d62d1ad3f72761a",
+  "prompts": {},
+  "sessions": {
+    "s_85185a50bbdc9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcf84099-366c-4ae8-b636-b1f0355e2eb0",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

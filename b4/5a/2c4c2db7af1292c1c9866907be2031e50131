@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_56bde62e56d3b1::t_1a8063f6b56406 1-74
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_56bde62e56d3b1::t_5c240e13f6e899 78
+  s_56bde62e56d3b1::t_0e9cb2487df35a 46-48,50-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b45a2c4c2db7af1292c1c9866907be2031e50131",
+  "prompts": {},
+  "sessions": {
+    "s_56bde62e56d3b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47f70e36-dfda-42d7-823e-0114e1b2de01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

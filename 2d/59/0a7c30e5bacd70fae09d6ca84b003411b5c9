@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadsView.test.ts
+  s_28c3fa86b926f6::t_606e9b3e9525be 124
+  s_28c3fa86b926f6::t_fbc28426f7e0ca 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d590a7c30e5bacd70fae09d6ca84b003411b5c9",
+  "prompts": {},
+  "sessions": {
+    "s_28c3fa86b926f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09c0b458-3e18-4ff0-a972-72a5d7dc7da2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

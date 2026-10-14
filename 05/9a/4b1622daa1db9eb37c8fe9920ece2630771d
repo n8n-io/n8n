@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/__tests__/integration/tool-call-upsert.test.ts
+  s_6c8e99f341f276::t_3341e1ee819b12 142,144-146
+  s_6c8e99f341f276::t_c14d735b164f13 210-212
+  s_6c8e99f341f276::t_242bfec431624b 11-15
+  s_6c8e99f341f276::t_7780bd14cc29f0 214-220
+  s_6c8e99f341f276::t_f0d7ec26d3a006 78-79,88-89,92-93,95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "059a4b1622daa1db9eb37c8fe9920ece2630771d",
+  "prompts": {},
+  "sessions": {
+    "s_6c8e99f341f276": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2a8ec98-cd4f-4793-8922-567af4131425",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

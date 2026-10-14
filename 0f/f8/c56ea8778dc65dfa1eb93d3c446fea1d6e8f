@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_93bfa2eb2d7de3::t_afa7196b7a6698 191
+  s_93bfa2eb2d7de3::t_0f98e43dec9c0c 149-150
+packages/frontend/@n8n/stores/src/constants.ts
+  s_93bfa2eb2d7de3::t_fc1e82cf1c6a46 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ff8c56ea8778dc65dfa1eb93d3c446fea1d6e8f",
+  "prompts": {},
+  "sessions": {
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nMenuItem/MenuItem.vue
+  s_e980f852ea73c9::t_874d21d7f683a9 188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e2d10e31afb650c63adf52fd977098f58ad7826",
+  "prompts": {},
+  "sessions": {
+    "s_e980f852ea73c9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d3c8-b9e9-73d3-9e99-dffd8378eb3f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentFilesPanel.vue
+  s_71c17f3c93a1f6::t_c05ab0c03c8af0 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14d9f65719438c066375f68188fb7a4f8c4ae7aa",
+  "prompts": {},
+  "sessions": {
+    "s_71c17f3c93a1f6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c96f-fa3e-777a-a49a-ab9ecb608f67",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_e0c5b7c35e6b9d::t_39079a1abfad9b 808,823
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_e0c5b7c35e6b9d::t_e7bb7b079b9f15 364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "12cc1cb118c76848d96bae9b43fe7488235669d3",
+  "prompts": {},
+  "sessions": {
+    "s_e0c5b7c35e6b9d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7fa24b23-4337-474d-90f9-982cbceb8329",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

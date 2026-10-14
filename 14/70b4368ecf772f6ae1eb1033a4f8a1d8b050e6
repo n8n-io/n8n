@@ -1,0 +1,21 @@
+packages/testing/playwright/tests/e2e/api/wait-webhook-deadline.spec.ts
+  s_7d582b41f4f5d6::t_2a0395d6c66879 1-35
+packages/testing/playwright/workflows/wait-webhook-deadline.json
+  s_7d582b41f4f5d6::t_5e746da19942d0 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1470b4368ecf772f6ae1eb1033a4f8a1d8b050e6",
+  "prompts": {},
+  "sessions": {
+    "s_7d582b41f4f5d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63bff858-2ef6-4f03-8a08-35f7ca19bbb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/io/__tests__/manifest-entry.test.ts
+  s_4c18656e778e6e::t_64b4321dcd8dec 1-21
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_4c18656e778e6e::t_c863bf7e001420 84-92
+  s_4c18656e778e6e::t_572c90e12a8b14 3
+  s_4c18656e778e6e::t_5ca46fab3e19bb 40-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "188e6514ea37b8d74c77b787762a7bd5355808df",
+  "prompts": {},
+  "sessions": {
+    "s_4c18656e778e6e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8903f280-582a-4faa-85a8-dec07e3136f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_e16ce4dc4a8567 62,70,81,118,127,142,155,164,192,212
+  ai_agent 206-208
+packages/@n8n/config/src/configs/engine.config.ts
+  s_71c6da2ee47cd3::t_818bccb7a75502 67-75
+packages/cli/src/modules/engine-v2/create-response-channel.ts
+  s_71c6da2ee47cd3::t_818bccb7a75502 1-51
+packages/@n8n/engine/src/response-channel/redis-transport.ts
+  s_71c6da2ee47cd3::t_818bccb7a75502 1-67
+packages/@n8n/engine/src/index.ts
+  s_71c6da2ee47cd3::t_818bccb7a75502 43,49-50
+packages/@n8n/engine/src/response-channel/__tests__/execution-response-channel.test.ts
+  s_71c6da2ee47cd3::t_6ee9902525b76c 7-8,44-90
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_71c6da2ee47cd3::t_818bccb7a75502 41,45
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_71c6da2ee47cd3::t_f8ebea4a9991dc 48,55-61
+  s_71c6da2ee47cd3::t_eaa493299e37c4 151
+packages/@n8n/engine/src/response-channel/index.ts
+  s_71c6da2ee47cd3::t_818bccb7a75502 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "edda3926cee6481f082c38ada1eeb283682a6803",
+  "prompts": {},
+  "sessions": {
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

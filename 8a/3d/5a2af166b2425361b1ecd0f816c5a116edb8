@@ -1,0 +1,39 @@
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_dbfe205c4f1b14::t_8ffc496cc2176d 177,179,185
+packages/cli/src/services/__tests__/canvas-only-personal-space-role.service.test.ts
+  s_dbfe205c4f1b14::t_706455bd905cf6 10
+  s_dbfe205c4f1b14::t_75f1a48d407d84 115,139,155,174,191,200,207-209,215,221
+  s_dbfe205c4f1b14::t_02160ec4d4b1e6 94-113
+packages/cli/test/integration/public-api/roles-canvas-only.test.ts
+  s_dbfe205c4f1b14::t_a583b0167e46d5 10-16
+  s_dbfe205c4f1b14::t_3881661b5a6f62 150-191
+packages/cli/src/services/canvas-only-personal-space-role.service.ts
+  s_dbfe205c4f1b14::t_cbb083f210b2e0 59-61
+  s_dbfe205c4f1b14::t_eaa0a69257216e 17,22,28-31
+  h_c63dce324dfc7b 62
+  s_dbfe205c4f1b14::t_0a5e3fc22e0234 9,11
+  s_dbfe205c4f1b14::t_5debcd33e7ba29 52,54-56,58,63-66
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  h_c63dce324dfc7b 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8a3d5a2af166b2425361b1ecd0f816c5a116edb8",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dbfe205c4f1b14": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00fa7ffe-5ce1-4a4d-ad7a-1a5f200998f1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

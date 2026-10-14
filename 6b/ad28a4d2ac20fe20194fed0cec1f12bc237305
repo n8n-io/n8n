@@ -1,0 +1,29 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-export.service.test.ts
+  s_c9e3c3ddf5dce2::t_ed99bffab0cae9 403-475
+packages/@n8n/db/src/repositories/shared-credentials.repository.ts
+  s_c9e3c3ddf5dce2::t_ed99bffab0cae9 19
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_c9e3c3ddf5dce2::t_ed99bffab0cae9 140
+packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts
+  s_c9e3c3ddf5dce2::t_ed99bffab0cae9 3,517-572,577-593,601,603
+packages/@n8n/db/src/repositories/__tests__/shared-credentials.repository.test.ts
+  s_c9e3c3ddf5dce2::t_ed99bffab0cae9 39
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_c9e3c3ddf5dce2::t_ed99bffab0cae9 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6bad28a4d2ac20fe20194fed0cec1f12bc237305",
+  "prompts": {},
+  "sessions": {
+    "s_c9e3c3ddf5dce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "241991fc-83af-4eb5-8a54-50f4dcf41955",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

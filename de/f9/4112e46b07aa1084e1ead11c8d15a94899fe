@@ -1,0 +1,148 @@
+packages/@n8n/api-types/src/index.ts
+  s_37bbe9972e244b::t_d85c76724d0069 699-727
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_37bbe9972e244b::t_413c34c9afdb70 32,145-146
+  s_37bbe9972e244b::t_926d23ec4d617a 124-129
+packages/@n8n/instance-ai/src/tools/get-learning.tool.ts
+  s_37bbe9972e244b::t_3b179b5024c0e7 1-15,36-41,44,46,49
+  s_37bbe9972e244b::t_21967ec31e4a2b 16-25,31-35,42-43,45,47-48
+  s_37bbe9972e244b::t_f8b2d71647381f 26-30
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiLearnings.store.ts
+  s_37bbe9972e244b::t_be98e834cf694a 1-26,28-35,40-94
+  ai_agent 27,36-39
+docs/generated/sqlite-schema/instance_ai_learning_runs.md
+  ai_agent 1-122
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.learnings.api.ts
+  s_37bbe9972e244b::t_e708ca6410e6b2 1-22,24-35,37-64
+  ai_agent 23,36
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiLearningsView.vue
+  s_37bbe9972e244b::t_60f832a96ba9c2 59
+  s_37bbe9972e244b::t_e2490a01ba3f8d 29,70,117,205-206,208-217,222
+  s_37bbe9972e244b::t_83b96a09fb0e5a 201-204
+  s_37bbe9972e244b::t_cce02d7282c591 528
+  s_37bbe9972e244b::t_81cde2e80ab4a5 603
+  s_37bbe9972e244b::t_58bff4490df4be 1-3,5-20,22-28,30-58,60-69,71-116,118-167,174-200,207,219-221,223-319,324,341-397,399-429,431-462,465-466,468-474,484,486-505,518-527,529-565,567-570,575-602,604-612,621-622,624-626,646-647
+  s_37bbe9972e244b::t_473e55854f2eca 327-333,337-339
+  s_37bbe9972e244b::t_c00bcd98bed94a 467
+  s_37bbe9972e244b::t_bb651cfa05b1c6 4
+  s_37bbe9972e244b::t_10f2f2f7c1a498 320-323
+  s_37bbe9972e244b::t_d4fd9aff96c868 506-517
+  s_37bbe9972e244b::t_c73ed0da4b25e4 398
+  s_37bbe9972e244b::t_532f9d17b18c4e 168-173,430
+  s_37bbe9972e244b::t_54d56c5865af56 485
+  s_37bbe9972e244b::t_292019615c659c 21
+  s_37bbe9972e244b::t_9267b47658ab0b 463-464,475-483
+  s_37bbe9972e244b::t_915f9c242469bb 566,571-574
+  s_37bbe9972e244b::t_ae32d8a5f42570 325-326,334-336,340
+  s_37bbe9972e244b::t_4a88406895c200 613-620,623,627-645
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_37bbe9972e244b::t_e45bda7b2257dc 70-75,378-382,833-840,1383
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_37bbe9972e244b::t_aa901cee16bcb8 189
+  s_37bbe9972e244b::t_437063400e1d80 9,23-24,129-135,181-182,184-188,190-192
+  s_37bbe9972e244b::t_7c6c5e5a8e997d 121,183
+  s_37bbe9972e244b::t_08a8d971b8602c 176
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  ai_agent 67
+  s_37bbe9972e244b::t_3e0472e61e0b1f 35-36,45,62-66,68-72
+scripts/seed-workflow-insights.mjs
+  s_37bbe9972e244b::t_0c2f31dc7d97df 145-147,159
+  s_37bbe9972e244b::t_291024d60b6d04 1-144,148-158,160-166
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_37bbe9972e244b::t_908ba981f8a8b7 4-10,37-50,76-78
+packages/cli/src/modules/instance-ai/database/entities/instance-ai-learning-run.entity.ts
+  ai_agent 1-46
+packages/@n8n/db/src/migrations/common/1787649847206-CreateInstanceAiLearningTables.ts
+  s_37bbe9972e244b::t_6f86338b82e0ee 3-5,7-56,58-60,62-85,88-90
+  s_37bbe9972e244b::t_9e6a739198a4b9 1-2,6,86-87,91-92
+  s_37bbe9972e244b::t_d58d511c0a68fd 61
+packages/cli/src/modules/instance-ai/instance-ai-learning.controller.ts
+  s_37bbe9972e244b::t_094145f1e4c8c1 1-17,19-29,31-33,37-84
+  s_37bbe9972e244b::t_1c86ac09d4988e 18
+  s_37bbe9972e244b::t_bbf849a63f6eb2 30,34-36
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_37bbe9972e244b::t_b8255f79700db4 63-71
+scripts/workflow-insights.mjs
+  s_37bbe9972e244b::t_3bce9410bdcee2 661
+  s_37bbe9972e244b::t_8d0af820f12691 361
+  s_37bbe9972e244b::t_432b21e9cb2dca 25
+  s_37bbe9972e244b::t_981daa11f8c1ba 363-371,376
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_37bbe9972e244b::t_1cbcb45db08819 294-301
+packages/cli/src/modules/instance-ai/database/entities/instance-ai-learning.entity.ts
+  ai_agent 1-67
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_37bbe9972e244b::t_ed74100452b6c4 6491,6507-6515,6667
+  s_37bbe9972e244b::t_ba9cd734ea6069 166,3960-3968
+docs/generated/sqlite-schema/README.md
+  ai_agent 76-77,247-251,994-1023
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,66-67,223-253
+packages/cli/src/modules/instance-ai/database/repositories/instance-ai-learning-run.repository.ts
+  ai_agent 1-15
+packages/cli/src/modules/instance-ai/entities/index.ts
+  s_37bbe9972e244b::t_c6d42e60a2f4d4 13-14
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_37bbe9972e244b::t_2d3e0f7aac085b 94-96,123-129,163-167
+packages/cli/src/modules/instance-ai/database/repositories/instance-ai-learning.repository.ts
+  ai_agent 1-59
+packages/cli/src/modules/instance-ai/instance-ai-learning-serializer.service.ts
+  s_37bbe9972e244b::t_4d57ddf3295449 1-9,13-17,20-73
+  s_37bbe9972e244b::t_f464167b1dda3f 10-12
+  s_37bbe9972e244b::t_9bb44f95328097 18-19
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_37bbe9972e244b::t_1be8d69cc2a736 294,363-366,402-405,407,409
+  s_37bbe9972e244b::t_6293d842ac87d9 67-68,169,406,408,410-423
+packages/@n8n/api-types/src/schemas/instance-ai-learning.schema.ts
+  ai_agent 13,16,144,150,158
+  s_37bbe9972e244b::t_8597b95c235743 1-12,14-15,17-143,145-149,151-157
+packages/@n8n/instance-ai/src/index.ts
+  s_37bbe9972e244b::t_738808358cc4c5 617-619
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,55-56,171-201
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_37bbe9972e244b::t_f411963109da79 19
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_37bbe9972e244b::t_c0f9eb903fcdf9 5385-5399,5407-5419
+  s_37bbe9972e244b::t_2bb02818c53932 5405
+  s_37bbe9972e244b::t_54773c1ce63810 7436
+  s_37bbe9972e244b::t_6be1aee2d4ab43 5400-5404
+  s_37bbe9972e244b::t_5593c08655318f 5406
+docs/generated/sqlite-schema/instance_ai_learnings.md
+  ai_agent 1-130
+packages/@n8n/instance-ai/src/types.ts
+  s_37bbe9972e244b::t_634e3827165257 1068-1091,1126-1127
+packages/cli/src/modules/instance-ai/instance-ai-learning.service.ts
+  s_37bbe9972e244b::t_8a9f8ba42061d8 1-7,10-15,20-27,30-35,40-86,93-167,169-175,178-215,226-290
+  s_37bbe9972e244b::t_5de644f50ef21a 8,28-29,36-37,39,90-92,216-225
+  s_37bbe9972e244b::t_1d40f85fe2a10e 16-19,38
+  s_37bbe9972e244b::t_33eee8dded6994 9,87-89,168,176-177
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_37bbe9972e244b::t_e27ece39bb47be 6
+packages/cli/src/modules/instance-ai/repositories/index.ts
+  s_37bbe9972e244b::t_b5b3f9e482b242 13-14
+packages/cli/src/modules/instance-ai/instance-ai-learning-ai.service.ts
+  ai_agent 166
+  s_37bbe9972e244b::t_d33218c74bd42b 1-165,167-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "def94112e46b07aa1084e1ead11c8d15a94899fe",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_37bbe9972e244b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d1f81c7-b863-4c29-8fcb-f43711fdefbe",
+        "model": "auto-smart"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

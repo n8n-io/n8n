@@ -1,0 +1,28 @@
+packages/@n8n/agents/src/runtime/memory/scoped-memory-task-runner.ts
+  s_8df1f1b34b9d13::t_16d93c33585356 144,168-173,183-187,189,197-200,219,225
+packages/@n8n/agents/src/runtime/__tests__/scoped-memory-task-runner.test.ts
+  s_8df1f1b34b9d13::t_e6d7f9f82e0bd5 296-299,308-309,311
+  s_8df1f1b34b9d13::t_22280d478512fc 292-295,300-307,310,312-418
+  s_8df1f1b34b9d13::t_40aa6f5c14de2a 16-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d26a8243b5ad49779c9ac4436b70e8cf2b3d936c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8df1f1b34b9d13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c0ae6241-b92b-4d09-952e-b606baf77ef3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

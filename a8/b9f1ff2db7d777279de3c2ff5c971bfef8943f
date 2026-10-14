@@ -1,0 +1,26 @@
+packages/cli/test/integration/public-api/workflow-route-order.test.ts
+  s_5d8e1da214783a::t_efc4bdc1da5ff8 173-177,179,184-185,228
+  s_5d8e1da214783a::t_a33df297aaafe8 105,107-108,111-117
+  s_5d8e1da214783a::t_10820860f99f71 9-10,19-20,37-44,51-56,58-61,66-69,72-99,101-102,109-110,120-123,144,146-147,188-189,191,208-215
+  s_5d8e1da214783a::t_393dff0b4dc897 1-2,4-8,11-18,23-36,45-50,100,103-104,118-119,145,148-149,186-187,190,192-193,206-207,229-230
+  s_5d8e1da214783a::t_29bfdd0adb25e0 3,124-127,129-143,150-172,178,180-183,194-205,216-227
+  s_5d8e1da214783a::t_9720b57a8c30d4 21-22,57,62-65,70-71,106,128
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_5d8e1da214783a::t_a0374949a9dac5 837-841
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8b9f1ff2db7d777279de3c2ff5c971bfef8943f",
+  "prompts": {},
+  "sessions": {
+    "s_5d8e1da214783a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa07b59-cb7b-40e2-925d-e57994dabb42",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

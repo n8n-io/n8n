@@ -1,0 +1,90 @@
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_fc1a41fd88eb5b::t_7c1d47924047e6 29
+  s_fc1a41fd88eb5b::t_11639e0cac3668 186
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_da18386a9930c0::t_cb53ea118c1c2d 463-499
+  s_fc1a41fd88eb5b::t_cd1b2130c33896 437-462
+  s_fc1a41fd88eb5b::t_f727c06076ba17 12,951-962
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fc1a41fd88eb5b::t_23a1fa0d91528b 219-222,242
+  s_fc1a41fd88eb5b::t_e9b971a16f56cb 7,199-201,203,212-218,223,250-252,275,331,425,432
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_fc1a41fd88eb5b::t_ffa16c43882bae 116-117
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_fc1a41fd88eb5b::t_48fee98d4d21ef 1-5,98-105
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_fc1a41fd88eb5b::t_58da945b132738 45
+  s_fc1a41fd88eb5b::t_87c01d1da3026b 50,55,58-62,66-67,87-101,250-260,395,484-501,503-510
+  s_fc1a41fd88eb5b::t_b424f0319aaa1e 51-54,56-57,63-65,502
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_fc1a41fd88eb5b::t_7c1d47924047e6 13
+  s_fc1a41fd88eb5b::t_11639e0cac3668 100
+packages/@n8n/api-types/src/agents/workflow-wait.ts
+  s_fc1a41fd88eb5b::t_10fd854c948df3 1-24
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_fc1a41fd88eb5b::t_fe398941485c76 1,104-121,260,448-451,474-478
+  s_da18386a9930c0::t_bf09b390957fa1 480-481
+  s_da18386a9930c0::t_33fbddfbb98df2 479
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_fc1a41fd88eb5b::t_40b606fc84b647 3,11-12,57-64
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/n8nChatInteraction.ts
+  s_fc1a41fd88eb5b::t_42b141f50fd40a 1-5,80-96
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_fc1a41fd88eb5b::t_7c1d47924047e6 13
+  s_fc1a41fd88eb5b::t_11639e0cac3668 123
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_fc1a41fd88eb5b::t_062c10e8734837 248
+  s_fc1a41fd88eb5b::t_38cffed7edef7f 249-250,257-289,291-296,303-304,306-307
+  s_fc1a41fd88eb5b::t_4338aeb59da5f3 251-256,290,297-302,305
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_fc1a41fd88eb5b::t_c6b42dd74a6853 12-16
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_fc1a41fd88eb5b::t_5a83a247723fd2 4,13,133-134,161-172
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_fc1a41fd88eb5b::t_b0a4468fcb8f04 1866-1943
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_fc1a41fd88eb5b::t_6d8bba3ce0b3bb 5,103-150
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_fc1a41fd88eb5b::t_45077bc56eff2a 3,124-152
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_fc1a41fd88eb5b::t_ffa16c43882bae 53-54
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_fc1a41fd88eb5b::t_d4d319b6e2d0df 175-208
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_fc1a41fd88eb5b::t_0b3342e99065f4 326
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_fc1a41fd88eb5b::t_25f5e5d3fdeb9a 5-7,92,127-128,856
+  s_fc1a41fd88eb5b::t_a36a22b97b4c71 701-721,723-725,884-891
+packages/@n8n/api-types/src/agents/index.ts
+  s_fc1a41fd88eb5b::t_ba87a07ff40e15 22
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_fc1a41fd88eb5b::t_8e860ae2e4f29b 605-657
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fc1a41fd88eb5b::t_7da9bf707534d5 4,430-500
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fc1a41fd88eb5b::t_7ebf2695cc1df5 1524,7476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "61f4001ddc97642290586bf660caa239478f7882",
+  "prompts": {},
+  "sessions": {
+    "s_da18386a9930c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "036af95a-e433-49fd-afd4-648c48e9f64b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_fc1a41fd88eb5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbadcb29-0d8e-46b0-95a2-3ecb4d90ae2c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

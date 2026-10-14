@@ -1,0 +1,19 @@
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_77655ca8fe3a59::t_7e2d2a16750a15 72-73,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b395ed609972db1e18df9fcc5f2e4eb03721efee",
+  "prompts": {},
+  "sessions": {
+    "s_77655ca8fe3a59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2c5a11b-62c7-4839-ab99-8421196be4d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

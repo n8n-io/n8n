@@ -1,0 +1,22 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_21887a1def6760 743-744
+  s_5ddf40544fde37::t_26d5ab72fd78f4 735-739
+  s_5ddf40544fde37::t_52db992313da15 690
+  s_5ddf40544fde37::t_4472f4d62c6b1d 715-716
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f5aed96ea7ac91116d3a551a2e362b43edfbb57",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

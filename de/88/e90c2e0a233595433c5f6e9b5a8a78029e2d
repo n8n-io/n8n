@@ -1,0 +1,359 @@
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom/template/nodes/ExampleChatModel/ExampleChatModel.node.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 5
+packages/@n8n/node-cli/src/template/templates/programmatic/example/template/nodes/Example/Example.node.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 5
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 11-12,19-21,35-40,48-71,73-75,88-94,102-114
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-preference-card-request.dto.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 3-6,18-23,27-29
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 9,64
+packages/frontend/editor-ui/src/features/ai/instanceAi/preferenceCard.utils.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-6,19-25,44,73-86,89,91-94,97-101
+packages/workflow/src/graph/graph-utils.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 196-222,233-234,242,255-259,272-276,282-290
+packages/@n8n/instance-ai/evaluations/utils/confirmation-payload.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 57-64
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1609-1611,1625-1627,1635-1642
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/GithubIssues.node.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 5
+packages/cli/src/services/ai-preference.service.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 7,118-128,245-257,260-265,267,270-271,276,337-343,411-422,474-481
+packages/cli/src/modules/mcp/__tests__/update-user-preference.tool.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 17-20,45-47,49,81,122,126-263,280
+packages/@n8n/api-types/src/instance-registry-types.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 11,36
+packages/cli/src/services/frontend.service.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 301-303
+packages/@n8n/telemetry/src/events/context.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 17,22-47,72-76,117-119,136-153,164-166,181-194,198,204,216,230
+packages/@n8n/scan-community-package/package.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 22
+packages/@n8n/config/src/configs/workflows.config.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 73-80
+packages/@n8n/config/src/configs/engine.config.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 12-15,18-25
+packages/@n8n/config/src/index.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 85
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-openai-compatible/template/nodes/ExampleChatModel/ExampleChatModel.node.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 5
+packages/@n8n/config/test/config.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 252-253
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 30,36,61,100-103,127,202-211,213-267
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 45,92
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1,76,136-138
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 411-425,714
+packages/@n8n/instance-ai/src/types.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1082-1086,1111-1115
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 39,80,218-222,226
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 4,254-262
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.clients.catalog.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 43-49
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 26
+packages/frontend/editor-ui/src/features/workflows/canvas/nodeGroups.utils.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 11-26
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 130-132,268,273,277-283,375
+packages/@n8n/instance-ai/evaluations/README.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 201-204
+packages/frontend/editor-ui/src/features/settings/context/context.store.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 209-338
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 35,217-225,249,268,273-280,293-297
+.github/workflows/build-ci-toolchain-image.yml
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-100
+packages/@n8n/node-cli/src/template/templates/declarative/custom/template/nodes/Example/Example.node.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 5
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 24,204-210,335-346,440-444
+packages/@n8n/api-types/src/index.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 850-852
+packages/cli/src/modules/mcp/tools/user-preference-tool.utils.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 8,78
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 181-182
+packages/@n8n/instance-ai/evaluations/utils/load-eval-cases.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 14-20,50,52-66,69-71
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 4,6,51-83
+packages/@n8n/instance-ai/evaluations/data/workflows/index.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-5,13,15
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/preferenceCard.utils.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 14-20,31,36-51,59,64-70,73,76-83,85-92,97-109,111
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 9,11,84-108
+packages/frontend/editor-ui/src/features/ai/instanceAi/preferenceScope.utils.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-45
+.github/test-metrics/e2e-impact-map.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 1
+packages/@n8n/instance-ai/evaluations/cli/langtracer-push.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 19,45-48,183-195,197-198
+packages/cli/src/posthog/index.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 9-10,211-213,221,283-288
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 744-746,748,752-754
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 42,131
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 850-856
+packages/frontend/editor-ui/src/features/ai/mcpAccess/composables/useOAuthClientRevoke.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-90
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 1147-1148,1184-1187,1195,1206,1855-1861
+.github/workflows/ci-pull-requests.yml
+  s_962d43ccec2776::t_4b177e2a61cd8d 161-162
+packages/cli/src/modules/mcp/tools/save-user-preference.tool.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 5,90,93-98,202-204,218-223,238-241,244,251,265-274,278-282,284-285,287-302,312,363-368,375,386-398
+packages/cli/src/modules/mcp/__tests__/undo-user-preference.tool.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 93-108
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 2,6,28,30-31,33,157,180-186,189,196-197,203-210,217-229,232-234,275,283-288,410-420,467-481
+packages/@n8n/instance-ai/evaluations/__tests__/load-eval-cases.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-55
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 175-181
+packages/cli/src/services/__tests__/ai-preference.service.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 497,506-516,527-576,582-586,630-634,648,818-878
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-node-categories.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-72
+packages/@n8n/instance-ai/evaluations/__tests__/user-proxy.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 872-924,1689-1725
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpConnectedClientRow.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-86
+packages/frontend/editor-ui/src/features/settings/context/context.utils.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 8,17,203-229
+packages/workflow/src/node-grouping-validation.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 137-148,162,226-237,333,380-383,402,488,605-606,608-614,625-628
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/PreferenceCard.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 13-14,17-18,20-21,23,25,36,43-93,129-147,192,195,226,230-232
+packages/core/src/execution-engine/node-execution-context/__tests__/node-execution-context.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 598-610
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1194-1296
+packages/cli/src/workflow-helpers.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 26,170,177,179
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/PreferenceCard.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 8,11-16,52-61,82-100,104,129-166,168-176,235,238-240,244-348,473-515,518,527-530,534-714,831-833,840-843,855-858,869-872,978-1070
+packages/nodes-base/nodes/Xero/test/Xero.node.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 2-8,85-124
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/PreferenceEditModal.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 3,17,19,23-30,34,46-50,59-63,65-156,166-167,169,180-183,195-198,201-202,223-224,302,304,307,310-313,316-319,373-374
+packages/cli/src/modules/mcp/__tests__/get-user-preferences.tool.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 3,342-385
+packages/frontend/editor-ui/src/features/settings/context/context.store.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 64-135,143-145,147-149,153-155,160,171-174,183,186-188
+packages/frontend/editor-ui/src/app/composables/useDebugInfo.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 5,8-11
+packages/@n8n/config/test/engine.config.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 61-77
+packages/cli/test/integration/instance-ai-preference-card.api.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-7,26-27,35-36,60-74,161-167,181-187,199-205,217-223,238-244,256-262,275-276,283-414
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 4,1179-1180,1186-1187,1917-1922
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 56,58,136,446,468-471,510,648-685,687-708,1354,2111,2252,2558,2728,2909,3012
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 87,109-116,265-266,2906-2933
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 2-4,16,23-34,54,61,492-502,896-905
+packages/cli/src/commands/engine.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-106
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/memory-custom/template/nodes/ExampleChatMemory/ExampleChatMemory.node.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 5
+packages/cli/src/commands/__tests__/engine.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-199
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 2,40,53-54,67-74,300-305,308,335,341-377,411-416,420,423,490-492
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 275-278
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 223-227,244-276
+pnpm-workspace.yaml
+  s_962d43ccec2776::t_4b177e2a61cd8d 372
+packages/@n8n/api-types/src/constants/canvas-feature-flags.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-5
+packages/cli/src/modules/mcp/tools/update-user-preference.tool.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1,18,31-34,39-52,87,91-94,97-147,150-159,170-171,194-222,230,237-243
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPClientsView.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 11,18,21,33,49,69-72,150-153,216-278
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.constants.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 42-44
+packages/cli/src/modules/mcp/__tests__/save-user-preference.tool.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 4,56-58,62,70,325-398,472-473,475
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-28
+packages/cli/src/workflows/node-group-rules-flag-gate.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-27
+packages/@n8n/instance-ai/src/tools/__tests__/save-user-preference.tool.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 69,87-91,115
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 169
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-preference-card.service.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 20-21,24-25,42-69,79-81,83-85,88-102,106-107,118-119,126-138,140,142-144,146-219,221-227,233-284,288,291,295-301
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 40
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/valid-node-categories.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-27
+packages/cli/test/integration/instance-ai/instance-ai-checkpoint-pruning.integration.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-201
+.github/WORKFLOWS.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 687-704
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 3,6,19-23,40-46,50-51,69,96,99-106,139-146,148-221,239-248,272-282,286-334,341-357
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1,4,7-16,49,84,102,107-125
+pnpm-lock.yaml
+  ai_agent 947,3500-3501,3542-3543,3567,3834,3843,3854-3855,11011-11012,11274-11289,29487,29490-29497,29960,29962-29963,29966-29972,30062
+packages/cli/src/webhooks/__tests__/engine-v2-webhooks.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 2-4,16,19-56
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 8,259-276
+packages/frontend/editor-ui/src/features/workflows/components/WorkflowSettings/WorkflowSettings.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 239-262
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 91
+packages/cli/src/workflows/workflow.service.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 34,134,523-527,535
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 3545-3546,3603-3604,4758,6201,7376-7379
+packages/workflow/test/graph/graph-utils.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 333-391
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 3,50,53-55,57-72,117,129-130,134-136
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-node-categories.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-79
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/nodes/ExampleChatModel/ExampleChatModel.node.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 5
+packages/@n8n/instance-ai/src/tools/save-user-preference.tool.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 31-37,74,90,100
+packages/@n8n/scan-community-package/scanner/scanner.test.mjs
+  s_962d43ccec2776::t_4b177e2a61cd8d 267-283
+packages/frontend/@n8n/frontend-test-utils/src/defaults.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 140-141
+packages/cli/src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 160-165
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 61-65,100-102
+packages/@n8n/nodes-langchain/package.json
+  s_962d43ccec2776::t_4b177e2a61cd8d 262,276
+packages/cli/src/commands/base-command.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 94-100,179-219
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 361-362,413-452
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 14,30,78-79
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.clients.catalog.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 150-154
+packages/frontend/editor-ui/src/features/settings/context/context.utils.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 9,116-136
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 19,22-29,34-39,43,84,155-156,195,201,208,214-233,272,278,292,294,305-306,311,319-438,604
+packages/@n8n/instance-ai/evaluations/data/agents/index.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 9-13,18,20
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMistralCloud/test/LmChatMistralCloud.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-39
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 16
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 68-69,358-385
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 437-457
+packages/cli/test/integration/ai-preference.api.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 167,610,620,626,665,727-729,736-761
+packages/@n8n/node-cli/src/configs/eslint.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 36,38-39
+packages/core/src/instance-settings/__tests__/instance-settings.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 211-221
+packages/frontend/editor-ui/src/app/composables/useInvalidNodeGroupCleanup.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-4,9,12,27,53-54
+packages/frontend/editor-ui/src/app/composables/useNodeGroupRules.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-87
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpConnectedClientRow.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-149
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 25,90-147
+packages/frontend/editor-ui/src/features/workflows/canvas/nodeGroups.utils.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 4,78-110
+packages/frontend/editor-ui/src/app/composables/useInvalidNodeGroupCleanup.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 3,5,8,27-32,57-79,84-117
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientOwnerCell.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 2,4-5,7,11-18,22-23,26-27,29-41,44-71
+packages/@n8n/node-cli/src/configs/eslint.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 78-94
+.github/ci-toolchain/Dockerfile
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-32
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/tools.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 376-395,402,410-435
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 64,114
+packages/cli/src/workflows/__tests__/node-group-rules-flag-gate.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-79
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.preferenceCard.api.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 38,42,46-50,56
+packages/core/src/instance-settings/instance-settings.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 101
+packages/frontend/editor-ui/src/app/composables/useNodeGroupRules.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-30
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 211-346,494-500
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 17-18,24,224,458-471,1947
+packages/nodes-base/nodes/Xero/GenericFunctions.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 16,24,57,60-61
+packages/workflow/test/node-grouping-validation.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 13,87-88,93,98-99,103-160,224-237,239-272,274-439,442-562,1185-1205
+packages/cli/src/modules/mcp/tools/get-user-preferences.tool.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 2,133-134,140-141,145-152
+packages/cli/src/modules/instance-ai/instance-ai-preference-card.service.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 7,14,21-23,46-48,50,56-72,79-86,88-96,99-101,103-111,116-123,128,131-149,161-163
+packages/cli/src/modules/mcp/tools/undo-user-preference.tool.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 101,110-114
+packages/@n8n/constants/src/instance.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 4
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 543-544,547-549,551-554
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 7614-7615,7631-7638,7780
+packages/cli/src/services/ai-preference.md
+  s_962d43ccec2776::t_4b177e2a61cd8d 47-53,80,91-97,111-113,203-207
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 4,8-10,16,22-28,61-112,179-180,271-354
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPClientsView.vue
+  s_962d43ccec2776::t_4b177e2a61cd8d 3,19-20,25,29,32-33,49-54,70-80,107-111,135,148-150
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.store.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 47-59,62,70
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 5,102-127
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.test.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 18,269-306,324-347,448-501,576
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  ai_agent 7,32-49,121-124,144,195-196,211-219,230-235,238
+packages/cli/src/services/ai-preference-write.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 54-58
+packages/cli/src/workflows/__tests__/node-group-rules.test-data.ts
+  s_962d43ccec2776::t_4b177e2a61cd8d 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "de88e90c2e0a233595433c5f6e9b5a8a78029e2d",
+  "prompts": {},
+  "sessions": {
+    "s_962d43ccec2776": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f22c3-b9f5-4cc1-9822-ed824c2ef59d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

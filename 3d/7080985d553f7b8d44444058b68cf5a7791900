@@ -1,0 +1,40 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_9c009ba3fc1037::t_93cb9d82647d24 820-825,828,830-841,863-871,873-883,885,918,922-924,926-927,930
+  s_9c009ba3fc1037::t_aa7cd3d19c3af5 27
+  s_9e2531788eb72a::t_56a217604072e6 827,829
+  s_9e2531788eb72a::t_bd0b72dd047892 872,884,886-917,919-921,925,928-929,931-934
+packages/cli/src/middlewares/list-query/dtos/workflow.filter.dto.ts
+  s_9c009ba3fc1037::t_759ab53bca2c0d 55-73
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useWorkflowResourcesLocator.ts
+  s_9c009ba3fc1037::t_8d55b9f0f58797 75-77
+  s_9c009ba3fc1037::t_1c9439ad44ee08 3
+  s_9e2531788eb72a::t_964e0685e977ec 78-88,94
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_9e2531788eb72a::t_d261596824e5b4 13-24
+  s_9e2531788eb72a::t_e3d8f1f7497f3f 110
+  s_9e2531788eb72a::t_c6637138ae0e8e 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "3d7080985d553f7b8d44444058b68cf5a7791900",
+  "prompts": {},
+  "sessions": {
+    "s_9c009ba3fc1037": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "116c2331-09ce-4619-bbdb-b42f54d94341",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_9e2531788eb72a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a2add70e-0b22-4a8f-8dad-675c96eed09a",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

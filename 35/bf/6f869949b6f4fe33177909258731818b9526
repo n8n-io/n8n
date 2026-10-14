@@ -1,0 +1,16 @@
+packages/cli/src/modules/inbound-auth-core/oauth2-bearer.driver.ts
+  h_435b1d7d3e52c0 123-124
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  h_435b1d7d3e52c0 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35bf6f869949b6f4fe33177909258731818b9526",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

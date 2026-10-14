@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/deleteWorksheet.operation.ts
+  s_9afe0d6d8e9afc::t_b2c13ea8e3ffc2 1-65
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.harness.test.ts
+  s_9afe0d6d8e9afc::t_52ec4a0abced1d 1-48
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/constants.ts
+  s_9afe0d6d8e9afc::t_10b9e2cf5810a6 13-20
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/clear.workflow.json
+  s_9afe0d6d8e9afc::t_fa257e0f60c2e0 1-63
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/clear-with-range.workflow.json
+  s_9afe0d6d8e9afc::t_7837517dd65df1 1-65
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/clear.harness.test.ts
+  s_9afe0d6d8e9afc::t_deefcc62646fad 1-72
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.sp.workflow.json
+  s_9afe0d6d8e9afc::t_643716af904b3f 1-72
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/clear.operation.ts
+  s_9afe0d6d8e9afc::t_1d3e0870d6d43d 1-136
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.sp.test.ts
+  s_9afe0d6d8e9afc::t_2a5d3cb1359d2d 1-30
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_9afe0d6d8e9afc::t_6bd019f216688b 9-10
+  s_9afe0d6d8e9afc::t_d97e2bec65425d 135-142
+  s_9afe0d6d8e9afc::t_831e8d636ea7ed 98-109,120-121
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/deleteWorksheet.test.ts
+  s_9afe0d6d8e9afc::t_324d109e8a54e1 1-95
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/deleteWorksheet.workflow.json
+  s_9afe0d6d8e9afc::t_41dc1708375c86 1-62
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/clear.test.ts
+  s_9afe0d6d8e9afc::t_9cb72d2c62df69 1-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "37010623923150304ed043d4157b941e2df7443f",
+  "prompts": {},
+  "sessions": {
+    "s_9afe0d6d8e9afc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae33d808-62f8-42b2-a194-4fa3c2cd5e31",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

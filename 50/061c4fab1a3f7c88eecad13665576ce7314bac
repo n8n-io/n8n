@@ -1,0 +1,42 @@
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_0a422ed6c72d23::t_55c6d9a7178593 76
+packages/cli/src/modules/usage-monitoring/usage-monitoring.config.ts
+  s_0a422ed6c72d23::t_6f484e76877b04 1-12
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_0a422ed6c72d23::t_90dcc8c5679a86 38
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_0a422ed6c72d23::t_aaa99d9aedbf50 77,114
+packages/cli/src/modules/usage-monitoring/usage-monitoring.module.ts
+  s_0a422ed6c72d23::t_b44f385d4a170c 1-17
+packages/cli/src/modules/usage-monitoring/usage-monitoring.service.ts
+  s_0a422ed6c72d23::t_ae3dc45187adc0 72-75,77-79
+  s_0a422ed6c72d23::t_f8841f1c5346fc 2,22
+  s_0a422ed6c72d23::t_59d373dd3026b4 4
+  s_0a422ed6c72d23::t_acc330a13cbcbb 1,3,5-21,23-43,45-71,76,80-85
+  h_c63dce324dfc7b 44
+packages/cli/src/modules/usage-monitoring/__tests__/usage-monitoring.service.test.ts
+  s_0a422ed6c72d23::t_0d5e756b6877b7 1-153
+packages/@n8n/config/src/configs/logging.config.ts
+  s_0a422ed6c72d23::t_e868578c820e69 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "50061c4fab1a3f7c88eecad13665576ce7314bac",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0a422ed6c72d23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9bbef20-8a72-4ca2-b99b-cca4a8f714aa",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

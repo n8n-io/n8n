@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/__tests__/modal-key-ratchet.spec.ts
+  s_f6945ec489dbea::t_243ff418d11569 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bc92f8377b9e6b624810862a44d7b9785649313c",
+  "prompts": {},
+  "sessions": {
+    "s_f6945ec489dbea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7866479a-d77a-4173-8879-141c6af75006",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

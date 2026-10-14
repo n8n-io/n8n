@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_c5954c3047b5ed::t_9a90c27a9a1787 26-32,38,118-125,151-186
+  s_c5954c3047b5ed::t_b0d9ec12cc13d1 187-188
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c5954c3047b5ed::t_9a90c27a9a1787 59,755,893-898,902-903,906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "547b42611bc38ca02a4b1f756c6b5857d5f28649",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

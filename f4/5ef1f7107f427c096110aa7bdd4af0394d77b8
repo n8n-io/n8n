@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/evaluations/README.md
+  s_fd6e130ca898c8::t_aea05041d8c0e3 597-599
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f45ef1f7107f427c096110aa7bdd4af0394d77b8",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

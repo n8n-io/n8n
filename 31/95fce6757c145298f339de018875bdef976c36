@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/__tests__/trace-writer.test.ts
+  s_6632fc4b04733b::t_93bced033d0018 1-2,167-186
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/trace-writer.ts
+  s_6632fc4b04733b::t_90d0ed8905ed73 2-3,21,60,66,138,230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3195fce6757c145298f339de018875bdef976c36",
+  "prompts": {},
+  "sessions": {
+    "s_6632fc4b04733b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74c37032-2669-485c-96f2-b3d6bdef0061",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

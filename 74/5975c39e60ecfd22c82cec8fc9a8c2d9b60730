@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableActions.test.ts
+  s_f1493348814b55::t_45b220ea1078bd 16-17,28,50,55-59,103,111,310-353
+  s_f1493348814b55::t_aaebf06f357027 354-355
+packages/frontend/editor-ui/src/features/core/dataTable/constants.ts
+  s_f1493348814b55::t_b6236e109b8b47 29
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f1493348814b55::t_b6236e109b8b47 5230-5231
+packages/frontend/editor-ui/src/features/core/dataTable/utils/formWorkflow.ts
+  s_f1493348814b55::t_05fe4b69c21522 1-7,9-11,13-14,16-87
+  s_f1493348814b55::t_ecff3ca39eb3c3 8,15
+  s_f1493348814b55::t_f3e27c4075a557 12
+packages/frontend/editor-ui/src/features/core/dataTable/utils/formWorkflow.test.ts
+  s_f1493348814b55::t_f3e27c4075a557 2,26-27,35,69-72
+  s_f1493348814b55::t_56a7a60f234544 1,3-25,28-34,36-68,73-94
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableActions.vue
+  s_f1493348814b55::t_78189c2b1954b8 51-52
+  s_f1493348814b55::t_f3e27c4075a557 5
+  s_f1493348814b55::t_45ab09a08891d1 75-79
+  s_f1493348814b55::t_daf9eb77448e6e 123-125
+  s_f1493348814b55::t_c084d3f5c8482b 170-182
+  s_f1493348814b55::t_8107b8e373c5fd 17,23-24
+  s_f1493348814b55::t_5126c5a178ab3b 74
+  s_f1493348814b55::t_feae1aa1914910 122
+  s_f1493348814b55::t_a53533bf4ca0fd 169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "745975c39e60ecfd22c82cec8fc9a8c2d9b60730",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f1493348814b55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edbe7b88-9d86-49cd-8059-e410f7b92e45",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

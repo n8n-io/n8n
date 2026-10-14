@@ -1,0 +1,19 @@
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_5a633e86d7d3ee::t_30e453373f2714 157,165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6e1725aa663270272f29ecf6d183cc3ea19a80ef",
+  "prompts": {},
+  "sessions": {
+    "s_5a633e86d7d3ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7ba7c40-5793-4ccd-bbbd-0c4bf3875a9e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

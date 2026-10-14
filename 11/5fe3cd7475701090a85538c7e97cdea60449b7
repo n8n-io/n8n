@@ -1,0 +1,35 @@
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_d8ed300529e078::t_8bea4c5031f156 136
+  s_d8ed300529e078::t_aed930aa8c6099 124
+  s_d8ed300529e078::t_848154b77234d5 120-121
+  s_d8ed300529e078::t_0d40130c071e14 130
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_d8ed300529e078::t_05e697c483666f 64,66-69,75
+  s_d8ed300529e078::t_0c33be77664688 153,156
+  s_d8ed300529e078::t_8970bc8019e515 7
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.history.yml
+  s_d8ed300529e078::t_493aeb987c1963 1-2,4
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  s_d8ed300529e078::t_7f81600a86e76b 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "115fe3cd7475701090a85538c7e97cdea60449b7",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

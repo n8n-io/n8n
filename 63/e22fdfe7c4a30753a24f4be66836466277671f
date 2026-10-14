@@ -1,0 +1,79 @@
+packages/frontend/editor-ui/src/features/execution/executions/executions.store.test.ts
+  s_aa1fa843ac22ac::t_202d7ce29c29f3 244
+  s_aa1fa843ac22ac::t_6524226268995b 211
+packages/cli/src/executions/execution-cursor.ts
+  s_aa1fa843ac22ac::t_5ca0a04ba2bdc0 13-15,19-20,26,39-40,43,45
+  s_aa1fa843ac22ac::t_f78a10ded6fe46 1
+  s_aa1fa843ac22ac::t_f33764ba672106 32-35
+  s_aa1fa843ac22ac::t_7ec248428a3758 42
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_aa1fa843ac22ac::t_b2c233d35f0771 167-168
+  s_aa1fa843ac22ac::t_a48a4e799efb04 173
+packages/cli/src/executions/__tests__/parse-range-query.middleware.test.ts
+  s_aa1fa843ac22ac::t_b2aea425c13c8b 223
+  s_aa1fa843ac22ac::t_4f3a28312bd571 205
+  s_aa1fa843ac22ac::t_a48a4e799efb04 218,222,236
+packages/cli/src/executions/parse-range-query.middleware.ts
+  s_aa1fa843ac22ac::t_18693d96ccb2aa 65
+  s_aa1fa843ac22ac::t_b29b2fdb99501c 55
+  s_aa1fa843ac22ac::t_f827213f3f5b19 10
+packages/cli/src/executions/__tests__/execution-cursor.test.ts
+  s_aa1fa843ac22ac::t_bbbb0f9d7fa0ac 1,16-23,25-27,30,33-34
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_aa1fa843ac22ac::t_a48a4e799efb04 158
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_aa1fa843ac22ac::t_a48a4e799efb04 109,115,124,130,136,142,199
+  s_aa1fa843ac22ac::t_6ce6045211bf52 102
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_aa1fa843ac22ac::t_e68ddf33570361 121
+  s_aa1fa843ac22ac::t_c99cce47428880 129
+  s_aa1fa843ac22ac::t_e7d28fb9b98d11 5
+packages/@n8n/api-types/src/dto/executions/compare-execution-list-items.ts
+  s_aa1fa843ac22ac::t_21d5c3b4f6b3cd 1,6-11,13-16
+packages/@n8n/api-types/src/dto/executions/__tests__/compare-execution-list-items.test.ts
+  s_aa1fa843ac22ac::t_009bc789949d10 3,6-8,11-13,15-17,19-21,23-25,27-28,32,37
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_aa1fa843ac22ac::t_7c53580e336035 1005,1123
+  s_aa1fa843ac22ac::t_9110fade00e4bf 838,844
+  s_aa1fa843ac22ac::t_5e0810207d748c 1124-1131
+  s_aa1fa843ac22ac::t_e5235364759ec3 1002-1004,1006-1010
+  s_aa1fa843ac22ac::t_c3602659134221 840
+  s_aa1fa843ac22ac::t_b4ab1daa16414d 839,841-843
+  s_aa1fa843ac22ac::t_b8ad3e60016626 996,1000
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  ai_agent 1003
+  s_aa1fa843ac22ac::t_4f395dc69795d0 990-991,998,1024
+  s_aa1fa843ac22ac::t_5a5475a9a13d9d 29
+  s_aa1fa843ac22ac::t_58942ff7c5a58d 1016-1017,1042-1043
+  s_aa1fa843ac22ac::t_a48a4e799efb04 1034
+packages/cli/test/integration/execution.repository.test.ts
+  s_aa1fa843ac22ac::t_0f0a33ec3d6bda 76,87,92,96,100
+  s_aa1fa843ac22ac::t_7578f9cadaccb8 74-75,79,83,93-95,97-99,101-102
+  s_aa1fa843ac22ac::t_c2106b2140d8c9 103-116,127-128,130-131,133-134
+  s_aa1fa843ac22ac::t_c140e1471cc424 118,123
+packages/cli/src/executions/execution.service.ts
+  s_aa1fa843ac22ac::t_6280a9df596e7c 119
+  s_aa1fa843ac22ac::t_8a523214f38718 1
+  s_aa1fa843ac22ac::t_836fe2da23ffab 547
+  s_aa1fa843ac22ac::t_306d876077ecea 69
+  s_aa1fa843ac22ac::t_cbdc91b9de3c21 123
+packages/@n8n/db/src/entities/types-db.ts
+  s_aa1fa843ac22ac::t_1ff27fb92be68e 249
+  s_aa1fa843ac22ac::t_f6eeccd1f0595d 248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63e22fdfe7c4a30753a24f4be66836466277671f",
+  "prompts": {},
+  "sessions": {
+    "s_aa1fa843ac22ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "834d5d8f-14ba-470d-852b-feab376c3308",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

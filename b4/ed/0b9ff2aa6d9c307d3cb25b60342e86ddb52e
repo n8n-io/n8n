@@ -1,0 +1,23 @@
+packages/cli/package.json
+  s_5f0b8b63fb02ca::t_a04c61be348e60 117
+pnpm-lock.yaml
+  s_5f0b8b63fb02ca::t_ecbc720b78f309 608-610,4763-4765
+pnpm-workspace.yaml
+  s_5f0b8b63fb02ca::t_75b758170cb889 286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4ed0b9ff2aa6d9c307d3cb25b60342e86ddb52e",
+  "prompts": {},
+  "sessions": {
+    "s_5f0b8b63fb02ca": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a540-b6f2-7653-aeb8-9213c2e9e6df",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

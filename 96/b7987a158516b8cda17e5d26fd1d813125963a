@@ -1,0 +1,93 @@
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_5cff78ced0afbf::t_901101924be5bd 42-51,280-291
+  s_5cff78ced0afbf::t_c4f21165edc3e7 292
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_5cff78ced0afbf::t_d9102919bd5ad0 749,777,814,842
+  s_5cff78ced0afbf::t_29a3500463207a 751-758,781-785,816-820,845-852
+packages/cli/src/modules/agents/integrations/platforms/discord-operations.ts
+  s_5cff78ced0afbf::t_cb29aa6b7a3cd3 1,29-32,44-51,54-55,57,91-92,94-102,104-106,109-112,114,128,133,138-141,143,154,195,205,230,239-247,249-251,253-254,256,268,276-278,280-282,285-286,288
+  s_4a8dfbf1748cbb::t_1bd95478f7a80a 52
+  s_5cff78ced0afbf::t_935e068b44b0d9 63,135-136,142,145,147,149,179-191
+  s_1933fc7918e771::t_248af3f08ca430 252
+  s_1933fc7918e771::t_73988f7fd7c3a8 283
+  s_1933fc7918e771::t_643a72351dd913 107
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_5cff78ced0afbf::t_6221bbb6bd38a2 1150,1153,1163,1169-1175,1178-1179,1183,1186-1190,1192
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_5cff78ced0afbf::t_2fae7e6dac497b 4,753,766,820-825,836-867,869,871-872
+  s_5cff78ced0afbf::t_3f2d40c180af3f 826-834
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_5cff78ced0afbf::t_90285434bfdc33 587-589,594,596,599-603
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_5cff78ced0afbf::t_f2b9f82a1ed88e 3,182-183,188,192-194,279,318,453
+  s_5cff78ced0afbf::t_bb7b15429193e6 24-25,147,149-168
+  s_5cff78ced0afbf::t_82be26135750df 127
+  s_5cff78ced0afbf::t_7597007dbb4962 148
+  s_5cff78ced0afbf::t_87154b362fb22f 169
+packages/cli/src/modules/agents/integrations/__tests__/discord-operations.test.ts
+  s_1933fc7918e771::t_e8087ab4c14bf0 3,5-8
+  s_5cff78ced0afbf::t_8ca4613c9d0806 64-72,74-77,79-80,82,210-215
+  s_4a8dfbf1748cbb::t_aca609d4c3716f 239-240,242-243,255,268,279-280
+  s_5cff78ced0afbf::t_c9113fafb7d3e9 1-2,18-53,63,86,88,91-97,102,110,119,123,134,140,148,161,172,177-186,190-194,196-199,202-209,217-237
+  s_4a8dfbf1748cbb::t_caeb9d890aa91a 241,244-254,256-267,269-273,275,278
+  s_4a8dfbf1748cbb::t_a95a51f645fa57 4
+  s_1933fc7918e771::t_5d58a1c86c71dc 216,238,281-326
+packages/cli/src/modules/agents/integrations/platforms/typing-indicator.ts
+  s_5cff78ced0afbf::t_ec9699e9495c64 24
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_5cff78ced0afbf::t_ff0013412faf8e 9,107,219-223,485-486
+packages/cli/src/modules/agents/integrations/__tests__/discord-gateway-lifecycle.test.ts
+  s_5cff78ced0afbf::t_6ab7c6e1f9fe4e 2,107
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_5cff78ced0afbf::t_34ae4040ca3b5b 106,108-129,136-137,139
+  s_5cff78ced0afbf::t_48cb29f268b189 130-135
+  s_5cff78ced0afbf::t_05eb29eb58d2c5 2,33-57,92,98-99,104
+  s_9ef0bd50f8bf35::t_28c081190f76e6 105,107
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_5cff78ced0afbf::t_777cb1a1507a73 234-240,243,245,247-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "96b7987a158516b8cda17e5d26fd1d813125963a",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1933fc7918e771": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d2b69209-35a1-4541-9031-74d68e8135ea",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_4a8dfbf1748cbb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b5644f9-d2eb-4820-b696-6f55c0f0b685",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5cff78ced0afbf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "371811f4-d448-4155-b88e-2991c0c201de",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9ef0bd50f8bf35": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6278fd05-b9cf-4f16-a48f-5377fed8ac9a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_e5eb138ee1927f::t_6354a8208e8a52 254-256
+  s_e5eb138ee1927f::t_cd5c87227fb104 328
+  s_e5eb138ee1927f::t_4108aa4da209c6 257-292,298
+packages/@n8n/api-types/src/index.ts
+  s_e5eb138ee1927f::t_0ede5784b1c038 369,371
+  s_e5eb138ee1927f::t_7b1277cd8e61bb 306,308-309
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_e5eb138ee1927f::t_3b4e11d20fec85 583-608
+  s_e5eb138ee1927f::t_a4532ffae09aba 8-11
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_e5eb138ee1927f::t_fa4c2430e008e8 22
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_e5eb138ee1927f::t_4be1359bfe4974 629-720
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_e5eb138ee1927f::t_54199768e52187 6
+  s_e5eb138ee1927f::t_8a75896616a398 1619-1678
+  s_e5eb138ee1927f::t_ba69689fc7fd5b 10,16
+packages/@n8n/instance-ai/evaluations/__tests__/redact.test.ts
+  s_e5eb138ee1927f::t_48e09913b4096f 176-207
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_e5eb138ee1927f::t_176bef31b428ff 51-121
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_e5eb138ee1927f::t_3b1f28922a613e 31,41-93,95-136
+  s_e5eb138ee1927f::t_1089ad38c5a131 94,455-456
+  s_e5eb138ee1927f::t_66223761532b35 8
+  s_e5eb138ee1927f::t_aaf939a5589e09 208
+  s_e5eb138ee1927f::t_b9826b7ba3e845 334
+  s_e5eb138ee1927f::t_fb7a8ff733edc6 5-7,9-10
+  s_e5eb138ee1927f::t_124dd93143dfc1 451-454,457-468,471-476,486
+  s_e5eb138ee1927f::t_cf9af0d7244edf 137
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_e5eb138ee1927f::t_e2dc62c45d9cb2 628
+  s_e5eb138ee1927f::t_11085ec9a1a644 748-760,762
+  s_e5eb138ee1927f::t_f2dc0ba178c2bc 14-18,23
+  s_e5eb138ee1927f::t_69aecdf50c2af1 114-128
+packages/@n8n/instance-ai/evaluations/harness/redact.ts
+  s_e5eb138ee1927f::t_cd0b079f5e88f6 30-56,71-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "a33bb2d8c46085da302632bdbb5b09a083dcf248",
+  "prompts": {},
+  "sessions": {
+    "s_e5eb138ee1927f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87369f71-7cd7-4171-b908-682eacaab3f4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

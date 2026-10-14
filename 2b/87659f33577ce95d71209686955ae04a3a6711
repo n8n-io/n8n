@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-06-11-message-an-agent-workflow-context-design.md
+  s_bb17b049fc2e2d::t_4185af5aa7ca06 1-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b87659f33577ce95d71209686955ae04a3a6711",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  ai_agent 393,396
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  ai_agent 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1edf061c5c9205fab16a6fe6ff0c8921e5d0f12d",
+  "prompts": {}
+}

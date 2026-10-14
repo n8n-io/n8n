@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/skills/data-table-manager/SKILL.md
+  ai_agent 4-10,20-23
+pnpm-lock.yaml
+  ai_agent 2235-2237,4975-4983,5015-5017,5036-5041
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  ai_agent 5-6
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.list.service.test.ts
+  ai_agent 8,55-56,77-154
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  ai_agent 4-10,26-30,406-409
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  ai_agent 6-9
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  ai_agent 5,28,110,221,261-386,392-399,401-404,409,442-443,457,577,585-586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "169fef87ef59fee3b77343bfe1306f7b7d2c0640",
+  "prompts": {}
+}

@@ -1,0 +1,30 @@
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_c4380fad56171a::t_9e527585cbe0ed 248,270-271,281-282,295-296
+  s_c4380fad56171a::t_55cf13f3db1cf4 371-373,392,399-404,425-426,452-454,464,603-605,617,625-627,645-650,675-677
+  s_c4380fad56171a::t_3bec91d807d0ed 607,622,629-630,642,664-665,672,679-680
+  s_c4380fad56171a::t_b4ba8a5834e7e7 837-839,843,845
+  h_5d40c27a8fdfd1 1,34
+  s_c4380fad56171a::t_f1a12827834dfd 370,376,381-382,398,406,415-417,424,428-430,434,443-444,451,457,469,472,480,482,516,520,528,534
+  s_c4380fad56171a::t_8b38441a89b854 26-33,35-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "a71c833af36b1bd87e98d72e7a102e9093ce488c",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_c4380fad56171a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cded8a6-fdd9-4474-92c8-611d255c86bf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

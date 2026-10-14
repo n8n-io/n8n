@@ -1,0 +1,26 @@
+packages/cli/test/integration/task-runners/js-task-runner-execution.integration.test.ts
+  s_092fdbc9577c81::t_d15efe888d0910 348-369,376,400-426
+packages/@n8n/task-runner/src/js-task-runner/prototype-hardening.ts
+  s_092fdbc9577c81::t_04b9f2ea3c24be 38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "518ee1ce297ac2fb569c7786033bc987c0c2b908",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_092fdbc9577c81": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b55ee692-d29a-4da0-9c1c-f1908e43598c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

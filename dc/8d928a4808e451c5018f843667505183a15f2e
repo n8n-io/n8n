@@ -1,0 +1,56 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialSharing.ts
+  s_6e5e6dade5599e::t_74a145d5548f85 1-15
+packages/frontend/@n8n/frontend-test-utils/src/defaults.ts
+  s_6e5e6dade5599e::t_893b7b68efd259 207
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_6e5e6dade5599e::t_85db75f8ae644b 24-30
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialSharing.test.ts
+  s_6e5e6dade5599e::t_b370e756c95cb7 1-25
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_6e5e6dade5599e::t_6eaab6d7d44298 1834-1835
+  s_6e5e6dade5599e::t_b8b5a41b8951d9 1836-1840
+  s_6e5e6dade5599e::t_cf42fd0ec56660 1529-1564,1566-1567
+  s_6e5e6dade5599e::t_8d54554b4964ff 1110
+  s_6e5e6dade5599e::t_bd9a129aaa1f6e 262
+  s_6e5e6dade5599e::t_ffb07d68b354d2 1071-1072,1074-1101,1104-1107,1118-1121,1124-1125,1128,1131-1132,1134,1137-1139
+  s_6e5e6dade5599e::t_8a21393887afb8 48
+  s_6e5e6dade5599e::t_6fb33862bfa020 1122
+  s_6e5e6dade5599e::t_50e98ff72e807e 1511-1528
+  s_6e5e6dade5599e::t_377d264cf2ba6b 59,261
+  s_6e5e6dade5599e::t_715ba8ac975f3c 1061-1070,1073,1102-1103,1108-1109,1111-1117,1123,1126-1127,1129-1130,1133,1135-1136,1140-1144
+packages/cli/src/services/frontend.service.ts
+  s_6e5e6dade5599e::t_c44cd046f168a3 20
+  s_6e5e6dade5599e::t_54c5b447c03380 303
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_6e5e6dade5599e::t_f3eccc1a477576 671-686
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_6e5e6dade5599e::t_554ef7d4814aaf 182-186
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_6e5e6dade5599e::t_53e124788a775d 156
+  s_6e5e6dade5599e::t_09c83ace4cc516 157,3352-3353,3360-3377,3401-3402,3408-3409,3411-3413,3415-3445,3447-3450,3454-3455,3468-3469,3473,3479,3485,3487,3492-3504,3512,3522-3523
+  s_6e5e6dade5599e::t_3d16da26b73920 3357,3446,3451
+  s_6e5e6dade5599e::t_545e3e9359dba4 3350-3351,3354-3356,3358-3359,3378-3400,3403-3407,3410,3414,3452-3453,3456-3467,3470-3472,3474-3478,3480-3484,3486,3488-3491,3505-3511,3513-3521,3524-3525
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6e5e6dade5599e::t_8a21393887afb8 2293-2296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dc8d928a4808e451c5018f843667505183a15f2e",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

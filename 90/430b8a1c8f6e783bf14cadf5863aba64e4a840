@@ -1,0 +1,19 @@
+packages/nodes-base/scripts/check-released-scopes.mjs
+  s_03475c9885928f::t_b565aec8b2f5ec 5-7,9-12,14-16,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "90430b8a1c8f6e783bf14cadf5863aba64e4a840",
+  "prompts": {},
+  "sessions": {
+    "s_03475c9885928f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c7c0af4-139d-4555-b10a-95481cbb7021",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

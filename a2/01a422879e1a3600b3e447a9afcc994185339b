@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_a5b11613a54281::t_8b9e5cb002305e 222-225
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_a5b11613a54281::t_1a936494aa14d1 37
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_a5b11613a54281::t_1a936494aa14d1 91-94
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_a5b11613a54281::t_4cedc8b3183fde 337-347,354-365,372,374,376-378,389,459,492,500,517,525,536,540,550,569,580,589,600,612-625
+  s_a5b11613a54281::t_83cef43abe7ce6 348-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a201a422879e1a3600b3e447a9afcc994185339b",
+  "prompts": {},
+  "sessions": {
+    "s_a5b11613a54281": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86a81412-17ea-4a20-a796-52294b5f3043",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

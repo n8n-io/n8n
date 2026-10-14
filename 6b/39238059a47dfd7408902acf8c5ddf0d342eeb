@@ -1,0 +1,32 @@
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_f8377aee0fed32::t_613d292f6175a6 286,294,379,391-394,396-411,415-416
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_f8377aee0fed32::t_72ee048bad4c8e 287,348-350
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_f8377aee0fed32::t_178bd285f9db22 408-411
+  s_8ded69ddf6e78e::t_2fd915066f1ee4 389-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b39238059a47dfd7408902acf8c5ddf0d342eeb",
+  "prompts": {},
+  "sessions": {
+    "s_8ded69ddf6e78e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ce92-2fc5-78e2-b0dd-771d599cfcad",
+        "model": "~openai/gpt-astra-latest"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_f8377aee0fed32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b7cbbad-f279-40e3-9da7-f987659ec750",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

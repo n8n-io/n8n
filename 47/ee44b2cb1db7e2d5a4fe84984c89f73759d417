@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  h_9b272a633435fb 19-23,65-72,126-132,135-141,147
+  s_9a99c57ae64e69::t_f6c1e9b38716da 133-134,142-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47ee44b2cb1db7e2d5a4fe84984c89f73759d417",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9a99c57ae64e69": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bf5a350f-15e1-409e-89a9-27ef3a5504b8",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

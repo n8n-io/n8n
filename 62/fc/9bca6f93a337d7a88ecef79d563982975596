@@ -1,0 +1,21 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_e774d5c3523bbd::t_5922bc7c6c1001 119-145,1629-1637,1639-1640,1655
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository.ts
+  s_e774d5c3523bbd::t_94f4903b481a53 26-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "62fc9bca6f93a337d7a88ecef79d563982975596",
+  "prompts": {},
+  "sessions": {
+    "s_e774d5c3523bbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34bf5677-7afc-4bdc-abfa-6f002b6ef7a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

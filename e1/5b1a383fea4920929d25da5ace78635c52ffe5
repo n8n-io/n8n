@@ -1,0 +1,34 @@
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_9dde2d3ceb6629::t_6e1201e6018b6a 12-21,53-55
+  s_9dde2d3ceb6629::t_ab5db37439bde6 1-4,8,11,56-57
+packages/@n8n/nodes-langchain/credentials/GoogleVertexAiApi.credentials.ts
+  s_9dde2d3ceb6629::t_079d1496a00cb0 1,14
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_9dde2d3ceb6629::t_06d8e05f100a34 2-5,27
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_9dde2d3ceb6629::t_d65fd81b7d33b0 2-5,124
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_9dde2d3ceb6629::t_c9c1987e8fbd02 20
+packages/nodes-base/credentials/GoogleApi.credentials.ts
+  s_9dde2d3ceb6629::t_b711858ec037c4 11,24
+packages/nodes-base/credentials/common/google/descriptions.ts
+  s_9dde2d3ceb6629::t_0bea92df23c61c 50-55
+packages/nodes-base/credentials/common/google/index.ts
+  s_9dde2d3ceb6629::t_c6059e9848ec4c 5,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e15b1a383fea4920929d25da5ace78635c52ffe5",
+  "prompts": {},
+  "sessions": {
+    "s_9dde2d3ceb6629": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ac2-6b8c-78c0-8c5b-f0f0c2840b03",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

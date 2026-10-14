@@ -1,0 +1,24 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_af512eb7b46141::t_37f9637d64bb5a 1816-1826,1833,1845
+packages/cli/test/migration/1790590278292-add-agent-execution-messages.test.ts
+  s_af512eb7b46141::t_437592e6a8787e 169,182-186
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_af512eb7b46141::t_b054b9c39d0fd2 179-180
+  s_af512eb7b46141::t_4fbdc1011214bd 6,160-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "291902e87ef9396a124f479ca1a7cbfaa779f4dd",
+  "prompts": {},
+  "sessions": {
+    "s_af512eb7b46141": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e88e-bb31-7051-b944-98f8227e2e34",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpTrigger.node.test.ts
+  s_424fbf26fb0cf8::t_618406e6fdff2c 381-390,392-393,396-397,399-493
+  s_424fbf26fb0cf8::t_c19b0f3fe85c6c 395,398
+  s_424fbf26fb0cf8::t_4b991331b90737 1
+  s_424fbf26fb0cf8::t_6b0180adfe113b 91-93
+  s_424fbf26fb0cf8::t_1b9d8581c1764d 391,394
+packages/cli/src/webhooks/webhook-helpers.ts
+  h_435b1d7d3e52c0 81,532-538
+packages/cli/src/modules/mcp/mcp.module.ts
+  s_424fbf26fb0cf8::t_a0edb6f82a9da5 23
+  s_424fbf26fb0cf8::t_efd1958ad8abcb 22,24-30
+  s_424fbf26fb0cf8::t_013cc7a1429541 5-7
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_424fbf26fb0cf8::t_210a9c65fc0eb9 152-153,155-159,162-173
+  s_424fbf26fb0cf8::t_f73a4bfa1aa3cb 94
+  s_424fbf26fb0cf8::t_94c3d1f050a1a9 1,3
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/auth.ts
+  s_424fbf26fb0cf8::t_8e62a487750eb7 1-42
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/auth.test.ts
+  s_424fbf26fb0cf8::t_0ca996070ece1d 7
+  s_424fbf26fb0cf8::t_fced78d6e50e3a 1-6,8-18,20-21,23-87
+  s_424fbf26fb0cf8::t_373c79bf251000 19,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "1cdb8033b03cfd28915e0d121d93d69ebe39368a",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_424fbf26fb0cf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d23f9f8-86d1-4de3-892f-d62ca9e15991",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

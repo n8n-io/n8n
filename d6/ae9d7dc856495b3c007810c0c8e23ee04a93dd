@@ -1,0 +1,30 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_6e77fe4cc014e6::t_9905dc1a475e30 1261
+  s_6e77fe4cc014e6::t_7591fa58e53cba 1156-1217,1219-1221,1223,1225-1251,1254-1260,1262-1304
+  s_6e77fe4cc014e6::t_d444af6afd5410 1252-1253
+  s_6e77fe4cc014e6::t_daa8843b299743 7
+  s_6e77fe4cc014e6::t_0fd76678f23ec0 1218,1222,1224
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_6e77fe4cc014e6::t_c6d29081472b1c 501-506
+  s_6e77fe4cc014e6::t_1d80082a4191e6 628-631
+  s_6e77fe4cc014e6::t_6b0432d0224f60 289-292
+  s_6e77fe4cc014e6::t_3b1c263f56a22d 63-69
+  s_6e77fe4cc014e6::t_e8037c7fe76a76 12
+  s_6e77fe4cc014e6::t_3e0f370a76adc7 316-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "d6ae9d7dc856495b3c007810c0c8e23ee04a93dd",
+  "prompts": {},
+  "sessions": {
+    "s_6e77fe4cc014e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdd6190c-9d17-4b6c-91b0-fd41ff41ac4f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}

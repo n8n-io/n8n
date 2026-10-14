@@ -1,0 +1,96 @@
+packages/cli/src/modules/agents/integrations/platforms/telegram-bridge-behavior.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 26-32
+packages/cli/src/modules/agents/agent-queued-preview-stream.service.ts
+  s_c5954c3047b5ed::t_cde671ba091194 19-20,26,119,128-134
+  s_c5954c3047b5ed::t_e2bb743d4b423e 21-25,27-30,61,63-67,89-94,96-97,101-102,106
+  s_c5954c3047b5ed::t_933a2003239079 10,31,38-47,74-83,85,95,103-105
+  s_c5954c3047b5ed::t_143ce330345645 5
+  s_c5954c3047b5ed::t_fdc0f0f03b1169 50,55,62
+  s_c5954c3047b5ed::t_e5a2d9d4fe2953 57-58,126
+  s_c5954c3047b5ed::t_87ea1a3e4c9ab2 1-4,6-9,11-18,32-37,48-49,51-54,56,59-60,68-73,84,86-88,98-100,107-118,120-125,127,135-137
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 63,113
+packages/testing/playwright/tests/infrastructure/agents/message-queue.spec.ts
+  s_c5954c3047b5ed::t_22ec44fbd6905e 196-204,209-214
+  s_c5954c3047b5ed::t_4703103aeebcc9 3,129,132,147-148,152
+  s_c5954c3047b5ed::t_0a7281779497b4 1-2,4-13,19-24,29-32,35-42,53-55,61,67,76,88-91,101-105,115-118,182,223
+  s_c5954c3047b5ed::t_c8727edc605700 14-18,25-28,33-34,43-52,56-60,62-66,68-75,77-87,92-100,106-114,119-128,130-131,133-146,149-151,153-181,183-193,195,205-208,215-221,224-242,246-259
+  s_c5954c3047b5ed::t_d2048dacbe74aa 194,222
+  s_c5954c3047b5ed::t_cde671ba091194 243-245
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 258-265
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 1093
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 215,231
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 4,32-33
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 265,290
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 15-22,70-82,94-95,100-101,502,534,685-687,695,699-738,740-763
+packages/cli/src/modules/agents/agents.module.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 120-123
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 2,7-9,11,35-89,110,113-117,120-124,133,335,464,498,544,597,691,753,819,853,881,935,1000,1031,1062,1090,1116,1143,1179,1241,1250-1253,1265-1268,1279,1311,1342,1388,1451,1510,1618,1713,1994,2035,2141,2176,2214,2254,2305,2355,2404,2461,2520,2579,2617,2664,2708,2740,2803,2850,2914,2966,3004,3025,3045,3084,3105,3125,3158-3159,3161-3163,3166,3171-3174,3176-3184,3186-3198,3200-3202,3222-3223,3235,3300,3346,3378,3414,3461,3504,3582,3627,3671
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 29
+packages/cli/src/modules/agents/__tests__/agent-queued-preview-stream.service.test.ts
+  s_c5954c3047b5ed::t_d98ca69dc90d94 3,20-21
+  s_c5954c3047b5ed::t_d20eba6f232a50 42-46,48,71-73,76-78,121-124
+  s_c5954c3047b5ed::t_cde671ba091194 52-53,66,80-82,86-117
+  s_c5954c3047b5ed::t_5cc16b208b27db 1,4,6-8,10-18,24-29,49-51,54-55,57-65,67-70,74-75,79,83-85,118-120,125-137,139-140,164-167
+  s_c5954c3047b5ed::t_db95ef6980d1f5 56,138
+  s_c5954c3047b5ed::t_933a2003239079 2,5,9,19,22-23,30-41,47,141-163
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_c5954c3047b5ed::t_d20eba6f232a50 101-107,110-114,232-237
+  s_c5954c3047b5ed::t_919938a5cdf1a1 1,3,87,97
+  s_c5954c3047b5ed::t_fdc0f0f03b1169 99
+  s_c5954c3047b5ed::t_e2bb743d4b423e 46-48,76-80,85-86,88,94-96,98,109,115,121-126,129-137,139-142,148-156,163-167,171-175,180-191,194-197,199-205,209-219,221-222,225-226,239-243
+  s_c5954c3047b5ed::t_2b0c1c717a64a9 2,4-45,49-75,81-84,89-93,100,108,116-120,127-128,138,143-147,157-162,168-170,176-179,192-193,198,206-208,220,223-224,227-231,238,244-247
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 38,183
+packages/cli/src/scaling/constants.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 48
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 3,14-18
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 4,21-23,92,200,236-242,244,253-255,279-291
+  s_c5954c3047b5ed::t_564740f370d44d 292
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 27-28,62-63,156-159,196-209,211-217,219-220,234-235
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 19-23,139,146,167,209-211,300-301,322-323,675,716,742,755-756,762-763,766,768-828,830-831,834,840,844,851-874,987
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 361
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 30,35,98,120,132,143-144,409
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_c5954c3047b5ed::t_9ed06063a37fd1 1-20,22-43,50-53,62-72,95-103,108-109,115-117,121,135-137,141-142,168-172,176-188,195,204-205
+  s_c5954c3047b5ed::t_5cc16b208b27db 21
+  s_c5954c3047b5ed::t_d20eba6f232a50 44-49,54-61,73-94,104-107,110-114,118-120,122-134,138-140,143-167,173-175,189-194,196-203
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 232,255
+packages/testing/playwright/services/agent-api-helper.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 1-6,46,67-68,72-73,78-94,97-100,107,114
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 13,109,128-129,498
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 4,7,42-49,72-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7fb71d7a8c3ecb2f8b31768ac50f706cbc01e0aa",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_8ff9a9e76fd7a8::t_9e9a7f1329fbbe 660,662
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_8ff9a9e76fd7a8::t_9e9a7f1329fbbe 107-122
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_8ff9a9e76fd7a8::t_7cf0a1e9c2c778 4,6,90-142,144-145
+  s_8ff9a9e76fd7a8::t_82b8032c48b99b 143
+  s_8ff9a9e76fd7a8::t_04632131aa8dbd 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4e0633efb15601e0cf69131df570d9016396f0c",
+  "prompts": {},
+  "sessions": {
+    "s_8ff9a9e76fd7a8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d773-5b1e-7071-8fdf-f73d12e42146",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

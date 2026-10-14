@@ -1,0 +1,14 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  h_44f8d1c0f2f8c4 5327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "324b9787b54f32b3b66acef735a3d1b7614dc03d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

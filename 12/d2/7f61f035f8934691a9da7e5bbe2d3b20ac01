@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_33ad330c9066ad::t_0a128040346e02 4-11,85-89,91-103,105-108
+  s_33ad330c9066ad::t_39c4eb0d0e41bf 104
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_33ad330c9066ad::t_0a128040346e02 409-454
+  s_33ad330c9066ad::t_39c4eb0d0e41bf 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "12d27f61f035f8934691a9da7e5bbe2d3b20ac01",
+  "prompts": {},
+  "sessions": {
+    "s_33ad330c9066ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0af06-5894-7f91-9263-589952b7910c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

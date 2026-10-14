@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_d3f6ecf4ef182f::t_c6bdecaa76807e 83-84
+  s_d3f6ecf4ef182f::t_66c7db5c66188c 7-19,26-29,58,85,91-93
+  s_d3f6ecf4ef182f::t_51bb71f63ec141 94-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "f2b67268849b53b16164d93e40df08e1981b8180",
+  "prompts": {},
+  "sessions": {
+    "s_d3f6ecf4ef182f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce569422-462a-4802-bdc8-32dd5735c34f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  h_8fb27e0cdf6d1e 126,131-132
+  s_6ffd3b0356842d::t_5b2512f4ea16d6 118-123,125,127-129,138-139,141,143-169
+  s_6ffd3b0356842d::t_fc214bfebe86bc 84-92
+  s_6ffd3b0356842d::t_2397cb5945cb79 130,133-134
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_6ffd3b0356842d::t_1ef277675789e9 44-47,49
+  s_6ffd3b0356842d::t_cadbe31a21c2e9 198-202,206-222
+  s_6ffd3b0356842d::t_b307097c83d94f 84-85,87,90,94
+  s_6ffd3b0356842d::t_4d767d9d21630d 203-205
+  s_6ffd3b0356842d::t_e07bc388c510f1 78
+  s_6ffd3b0356842d::t_2018557abc2d43 61
+  s_6ffd3b0356842d::t_60cab770d6fc36 41-43,54-55,58-60,62-63,74-75
+  s_6ffd3b0356842d::t_d8e39b833bb345 144-150
+  s_6ffd3b0356842d::t_64ab037b2f5660 130-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bae968082259111d0ee6a6dd432013ba054a0aa3",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_6ffd3b0356842d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5adbf26c-5ed1-404e-904e-978ff0ec6bbc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

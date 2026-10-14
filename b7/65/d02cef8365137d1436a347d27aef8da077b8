@@ -1,0 +1,359 @@
+packages/frontend/editor-ui/src/app/components/BottomMenu.vue
+  s_39fa3237f72766::t_75061cbb4af097 14
+packages/frontend/editor-ui/src/app/components/FreeAiCreditsCallout.test.ts
+  s_39fa3237f72766::t_143fc5c3d96059 6,32
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_39fa3237f72766::t_a471fe54fbf6bf 35
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_39fa3237f72766::t_afa2543b97233d 31
+packages/frontend/editor-ui/src/app/components/MainSidebar.test.ts
+  s_39fa3237f72766::t_dc48b6ff27a628 10
+packages/frontend/editor-ui/src/app/components/MainSidebarUserArea.vue
+  s_39fa3237f72766::t_37b5c57fef752b 3
+packages/frontend/editor-ui/src/app/components/WhatsNewModal.test.ts
+  s_39fa3237f72766::t_2c91ba93273835 9
+packages/frontend/editor-ui/src/app/components/WhatsNewModal.vue
+  s_39fa3237f72766::t_8c875e880fb9d9 11
+packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+  s_39fa3237f72766::t_38c0a7f052dfe1 20
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_39fa3237f72766::t_7dddcd9e0d1bc7 15
+packages/frontend/editor-ui/src/app/components/WorkflowProductionChecklist.test.ts
+  s_39fa3237f72766::t_efb31b7b67333b 35
+packages/frontend/editor-ui/src/app/components/WorkflowProductionChecklist.vue
+  s_39fa3237f72766::t_fdca64aff451c0 28
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.test.ts
+  s_39fa3237f72766::t_1a2c5e4bb4018b 5
+packages/frontend/editor-ui/src/app/composables/useBasePageRedirectionHelper.test.ts
+  s_39fa3237f72766::t_305c069013639f 6
+packages/frontend/editor-ui/src/app/composables/useBasePageRedirectionHelper.ts
+  s_39fa3237f72766::t_dbf83fa00f723f 1
+packages/frontend/editor-ui/src/app/composables/useCalloutHelpers.test.ts
+  s_39fa3237f72766::t_1adb17b07faba1 29
+packages/frontend/editor-ui/src/app/composables/useCalloutHelpers.ts
+  s_39fa3237f72766::t_552671260afd29 5
+packages/frontend/editor-ui/src/app/composables/useFreeAiCredits.test.ts
+  s_39fa3237f72766::t_b3491dee9199df 43
+packages/frontend/editor-ui/src/app/composables/useFreeAiCredits.ts
+  s_39fa3237f72766::t_9e2bc67bee7b97 7
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_39fa3237f72766::t_e154ecc31372c1 21
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_39fa3237f72766::t_c773eeaae35626 14
+packages/frontend/editor-ui/src/app/composables/useTelemetryInitializer.ts
+  s_39fa3237f72766::t_6db978b7bb3e85 4
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_39fa3237f72766::t_606e66834ee263 10,32
+packages/frontend/editor-ui/src/app/init.ts
+  s_39fa3237f72766::t_4ab23877ad8787 26
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_39fa3237f72766::t_4a85688725a162 11
+packages/frontend/editor-ui/src/app/stores/posthog.store.test.ts
+  s_39fa3237f72766::t_bfc8bc94a4fc59 3
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_39fa3237f72766::t_c295bc40a632df 5
+packages/frontend/editor-ui/src/app/stores/webhooks.store.ts
+  s_39fa3237f72766::t_14b9e2d0fd5cf4 11
+packages/frontend/editor-ui/src/app/stores/workflows.store.ts
+  s_39fa3237f72766::t_973c3c0f466500 31
+packages/frontend/editor-ui/src/app/utils/rbac/checks/hasRole.test.ts
+  s_39fa3237f72766::t_5462d94a107847 1,5
+packages/frontend/editor-ui/src/app/utils/rbac/checks/hasRole.ts
+  s_39fa3237f72766::t_2cc721a8ebd468 1
+packages/frontend/editor-ui/src/app/utils/rbac/checks/isAuthenticated.test.ts
+  s_39fa3237f72766::t_e1260d06f8cc03 1,5
+packages/frontend/editor-ui/src/app/utils/rbac/checks/isAuthenticated.ts
+  s_39fa3237f72766::t_aced81a57d4f30 1
+packages/frontend/editor-ui/src/app/utils/rbac/checks/isDefaultUser.test.ts
+  s_39fa3237f72766::t_d43e9ee91c2c0a 1,4
+packages/frontend/editor-ui/src/app/utils/rbac/checks/isDefaultUser.ts
+  s_39fa3237f72766::t_a06733e58f80f2 1
+packages/frontend/editor-ui/src/app/utils/rbac/checks/isGuest.test.ts
+  s_39fa3237f72766::t_2cc608a647ac3e 1,4
+packages/frontend/editor-ui/src/app/utils/rbac/checks/isGuest.ts
+  s_39fa3237f72766::t_75c6de6245d6fe 1
+packages/frontend/editor-ui/src/app/utils/rbac/checks/isInstanceOwner.test.ts
+  s_39fa3237f72766::t_c814b8916a64df 1,4
+packages/frontend/editor-ui/src/app/utils/rbac/checks/isInstanceOwner.ts
+  s_39fa3237f72766::t_8baaa8b8f1d34f 1
+packages/frontend/editor-ui/src/app/utils/rbac/middleware/authenticated.test.ts
+  s_39fa3237f72766::t_8f1ecf690685bb 2,7
+packages/frontend/editor-ui/src/app/utils/rbac/middleware/defaultUser.test.ts
+  s_39fa3237f72766::t_a8299a7e88632a 1,6
+packages/frontend/editor-ui/src/app/utils/rbac/middleware/guest.test.ts
+  s_39fa3237f72766::t_0c0d7b72eb8c37 1,6
+packages/frontend/editor-ui/src/app/utils/rbac/middleware/role.test.ts
+  s_39fa3237f72766::t_ed84294c3457fb 2,8
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_39fa3237f72766::t_404b7d12a5aa12 102
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_39fa3237f72766::t_68be68aa004760 15
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_39fa3237f72766::t_b63b08ac420576 76
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/components/AppInstallModal.vue
+  s_39fa3237f72766::t_999aa0920be369 6
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/components/AppSelectionPage.vue
+  s_39fa3237f72766::t_5766ce50a05489 11
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility.test.ts
+  s_39fa3237f72766::t_b61ac6b26c0a42 23
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility.ts
+  s_39fa3237f72766::t_2b782506a5e2d3 3
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_39fa3237f72766::t_2f60027d670302 42
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_39fa3237f72766::t_e32f2c7fa5775b 100
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_39fa3237f72766::t_fbfeccc2a08901 14
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPermissions.test.ts
+  s_39fa3237f72766::t_899b766831c6a0 6
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_39fa3237f72766::t_dfecf492dc7b3c 17
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_39fa3237f72766::t_5b56b6a371acc1 15
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_39fa3237f72766::t_8fdc025d499b44 21
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_39fa3237f72766::t_583b930374046c 17
+packages/frontend/editor-ui/src/features/agents/components/settings/AgentBuilderModelSection.vue
+  s_39fa3237f72766::t_3fa3ad0d8367e5 6
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPermissions.ts
+  s_39fa3237f72766::t_52db5e9819d83a 4
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.store.ts
+  s_39fa3237f72766::t_83b4cafba577f9 17
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/AskAssistantBuild.test.ts
+  s_39fa3237f72766::t_0f3065e5942143 162
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/AskAssistantBuild.vue
+  s_39fa3237f72766::t_97df32eef954b1 3
+packages/frontend/editor-ui/src/features/ai/assistant/components/Chat/AskAssistantChat.vue
+  s_39fa3237f72766::t_06dad303cd7087 4
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatPersonalAgentsView.vue
+  s_39fa3237f72766::t_85f1e10b6fea87 13
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.test.ts
+  s_39fa3237f72766::t_b8ec8765b85c62 21
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.vue
+  s_39fa3237f72766::t_a9af07f05ae8cf 24
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatWorkflowAgentsView.vue
+  s_39fa3237f72766::t_34119b2487d547 9
+packages/frontend/editor-ui/src/features/ai/chatHub/components/AgentEditorModal.vue
+  s_39fa3237f72766::t_5054928497f8ad 6
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatPrompt.test.ts
+  s_39fa3237f72766::t_791e5d28367f5c 8
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolsManagerModal.vue
+  s_39fa3237f72766::t_50fba7cae5d3a1 33
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPClientsView.vue
+  s_39fa3237f72766::t_8c933ce9df9e27 20
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_39fa3237f72766::t_5cbc5fb829e9f0 19
+packages/frontend/editor-ui/src/features/collaboration/collaboration/collaboration.store.test.ts
+  s_39fa3237f72766::t_ca20973bb668e5 43
+packages/frontend/editor-ui/src/features/collaboration/collaboration/collaboration.store.ts
+  s_39fa3237f72766::t_61aa4febfcafe8 19
+packages/frontend/editor-ui/src/features/collaboration/collaboration/components/CollaborationPane.vue
+  s_39fa3237f72766::t_594e3a11e724f1 5
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_39fa3237f72766::t_3038d029ca6007 17
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_39fa3237f72766::t_4cc9c6bf29b4de 31
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectMembersRoleCell.test.ts
+  s_39fa3237f72766::t_024ee148641072 12
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_39fa3237f72766::t_1487e417173866 9
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_39fa3237f72766::t_93af850a93297d 5
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_39fa3237f72766::t_59254e7088d227 19
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_39fa3237f72766::t_2d6fbd337dfeda 19
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_39fa3237f72766::t_1e4bc5bd1abdf8 7
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectVariables.test.ts
+  s_39fa3237f72766::t_8d04b8720ae6eb 3
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectVariables.vue
+  s_39fa3237f72766::t_5b1e6acaf12e8c 9
+packages/frontend/editor-ui/src/features/core/auth/components/ChangePasswordModal.vue
+  s_39fa3237f72766::t_2961bebc1534eb 6
+packages/frontend/editor-ui/src/features/core/auth/components/MfaSetupModal.vue
+  s_39fa3237f72766::t_12eb5b75187176 10
+packages/frontend/editor-ui/src/features/core/auth/views/ChangePasswordView.vue
+  s_39fa3237f72766::t_7f2e136f10a4d4 11
+packages/frontend/editor-ui/src/features/core/auth/views/ForgotMyPasswordView.test.ts
+  s_39fa3237f72766::t_8dcd725460589e 7
+packages/frontend/editor-ui/src/features/core/auth/views/ForgotMyPasswordView.vue
+  s_39fa3237f72766::t_e8c2ea147ca934 7
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.test.ts
+  s_39fa3237f72766::t_ee8cbbe4f47003 6
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_39fa3237f72766::t_721c1a0612f9bc 17
+packages/frontend/editor-ui/src/features/core/auth/views/SetupView.test.ts
+  s_39fa3237f72766::t_c28e9ba9da5e81 8
+packages/frontend/editor-ui/src/features/core/auth/views/SetupView.vue
+  s_39fa3237f72766::t_91095c08fea735 10
+packages/frontend/editor-ui/src/features/core/auth/views/SigninView.test.ts
+  s_39fa3237f72766::t_9cea8d994bd5b1 7
+packages/frontend/editor-ui/src/features/core/auth/views/SigninView.vue
+  s_39fa3237f72766::t_3e13ceed079b62 12
+packages/frontend/editor-ui/src/features/core/auth/views/SignoutView.test.ts
+  s_39fa3237f72766::t_d19112413bcb7f 7
+packages/frontend/editor-ui/src/features/core/auth/views/SignoutView.vue
+  s_39fa3237f72766::t_1cbbe2e2372159 3
+packages/frontend/editor-ui/src/features/core/auth/views/SignupView.test.ts
+  s_39fa3237f72766::t_4445d5611b3ff8 9
+packages/frontend/editor-ui/src/features/core/auth/views/SignupView.vue
+  s_39fa3237f72766::t_2bf3ed2eca32b5 9
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_39fa3237f72766::t_8440ace62e2351 30
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  s_39fa3237f72766::t_e3f2dad318a4e8 5
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.vue
+  s_39fa3237f72766::t_56fd8215421efa 12
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_39fa3237f72766::t_5a5ac8cc37c608 43
+packages/frontend/editor-ui/src/features/credentials/quickConnect/composables/useQuickConnect.test.ts
+  s_39fa3237f72766::t_cd8805d1dc6c25 99
+packages/frontend/editor-ui/src/features/credentials/quickConnect/composables/useQuickConnect.ts
+  s_39fa3237f72766::t_718b67e2bf0d0a 17
+packages/frontend/editor-ui/src/features/execution/insights/insights.store.test.ts
+  s_39fa3237f72766::t_75d27c50f933a5 6
+packages/frontend/editor-ui/src/features/execution/insights/insights.store.ts
+  s_39fa3237f72766::t_25f95f453670c5 7
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  s_39fa3237f72766::t_11eaaa72dcb7d4 12
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_39fa3237f72766::t_3af1b37532d368 50
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsInvalidNodeWarning.test.ts
+  s_39fa3237f72766::t_671ab253fa5a47 12
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsInvalidNodeWarning.vue
+  s_39fa3237f72766::t_9f41617ef17bba 11
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsView.test.ts
+  s_39fa3237f72766::t_4becfb9e176a36 7
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.test.ts
+  s_39fa3237f72766::t_b2e7c0245a8061 7
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.vue
+  s_39fa3237f72766::t_89f0e5cba704bf 3
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.test.ts
+  s_39fa3237f72766::t_620ee80fb835ce 13
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue
+  s_39fa3237f72766::t_52635219342fc5 9
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_39fa3237f72766::t_44b46c51775587 16
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_39fa3237f72766::t_40c602d38cb478 11
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/ContactAdministratorToInstall.vue
+  s_39fa3237f72766::t_04daea2514af3d 2
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.test.ts
+  s_39fa3237f72766::t_b2b4e6768ff79b 77
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue
+  s_39fa3237f72766::t_0f4b2c77550a4b 4
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.test.ts
+  s_39fa3237f72766::t_92b61a9954b1b5 47
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue
+  s_39fa3237f72766::t_add3313c9b14d1 4
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeInstallHint.vue
+  s_39fa3237f72766::t_c701256201c25c 2
+packages/frontend/editor-ui/src/features/settings/communityNodes/composables/useInstallNode.test.ts
+  s_39fa3237f72766::t_4b2b83f95a7a09 5
+packages/frontend/editor-ui/src/features/settings/communityNodes/composables/useInstallNode.ts
+  s_39fa3237f72766::t_71fdcce62c171f 4
+packages/frontend/editor-ui/src/features/settings/communityNodes/composables/useInstalledCommunityPackage.test.ts
+  s_39fa3237f72766::t_956b96006aa270 9
+packages/frontend/editor-ui/src/features/settings/communityNodes/composables/useInstalledCommunityPackage.ts
+  s_39fa3237f72766::t_44f5d44238674e 2
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.vue
+  s_39fa3237f72766::t_dffbae63e0cd38 22
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_39fa3237f72766::t_72b19c62a82504 9
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  s_39fa3237f72766::t_421480ac695f74 22
+packages/frontend/editor-ui/src/features/settings/sso/views/SamlOnboarding.test.ts
+  s_39fa3237f72766::t_f21169bf0a8adc 9
+packages/frontend/editor-ui/src/features/settings/sso/views/SamlOnboarding.vue
+  s_39fa3237f72766::t_67fde9eca1bce5 9
+packages/frontend/editor-ui/src/features/settings/usage/components/CommunityPlusEnrollmentModal.test.ts
+  s_39fa3237f72766::t_5fd432499802b5 10
+packages/frontend/editor-ui/src/features/settings/usage/components/CommunityPlusEnrollmentModal.vue
+  s_39fa3237f72766::t_4423709b0c815d 12
+packages/frontend/editor-ui/src/features/settings/usage/views/SettingsUsageAndPlan.test.ts
+  s_39fa3237f72766::t_9b1ef5f1789d89 9
+packages/frontend/editor-ui/src/features/settings/usage/views/SettingsUsageAndPlan.vue
+  s_39fa3237f72766::t_de881de55c57d3 13
+packages/frontend/editor-ui/src/features/settings/users/components/DeleteUserModal.test.ts
+  s_39fa3237f72766::t_1e92d8f6f425fd 11
+packages/frontend/editor-ui/src/features/settings/users/components/DeleteUserModal.vue
+  s_39fa3237f72766::t_22805bb0c9566e 6
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.test.ts
+  s_39fa3237f72766::t_ed0ca88884012f 10
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_39fa3237f72766::t_c51185cc7cc13d 10
+packages/frontend/editor-ui/src/features/settings/users/components/PersonalizationModal.vue
+  s_39fa3237f72766::t_1e9a99567d9808 90
+packages/frontend/editor-ui/src/features/settings/users/invite-link.utils.test.ts
+  s_39fa3237f72766::t_2ddb51136751a9 3
+packages/frontend/editor-ui/src/features/settings/users/invite-link.utils.ts
+  s_39fa3237f72766::t_32a820df44b345 2
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.test.ts
+  s_39fa3237f72766::t_57b7163629c67a 14
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_39fa3237f72766::t_ff48c9d897292b 21
+packages/frontend/editor-ui/src/features/shared/banners/banners.store.test.ts
+  s_39fa3237f72766::t_e3fcc896e44fff 5
+packages/frontend/editor-ui/src/features/shared/banners/banners.store.ts
+  s_39fa3237f72766::t_089296b09e75d2 12
+packages/frontend/editor-ui/src/features/shared/banners/components/BannersStack.test.ts
+  s_39fa3237f72766::t_85800f94d81bbc 14
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/EmailConfirmationBanner.vue
+  s_39fa3237f72766::t_e0a1a930d2705f 5
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/V1Banner.test.ts
+  s_39fa3237f72766::t_7ba8e42aaa064a 4
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/ActionsMode.vue
+  s_39fa3237f72766::t_b4486cce7494e3 18
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_39fa3237f72766::t_addb2825368a8d 40
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.test.ts
+  s_39fa3237f72766::t_39f8ae07d1b152 6
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.test.ts
+  s_39fa3237f72766::t_30e2c2d61334b6 5
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_39fa3237f72766::t_310e04fb22698c 17
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.test.ts
+  s_39fa3237f72766::t_09ee073081c825 7
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences.test.ts
+  s_39fa3237f72766::t_1926778a4987e4 8
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences.ts
+  s_39fa3237f72766::t_4736a8922b8155 8
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.test.ts
+  s_39fa3237f72766::t_78be0ac3cee71e 4
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewRequired.store.ts
+  s_39fa3237f72766::t_03b5f4986c4af9 5
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_39fa3237f72766::t_362079942430cc 20
+packages/frontend/editor-ui/src/features/workflows/readyToRun/stores/readyToRun.store.test.ts
+  s_39fa3237f72766::t_e98dc8c1ec91f7 100
+packages/frontend/editor-ui/src/features/workflows/readyToRun/stores/readyToRun.store.ts
+  s_39fa3237f72766::t_edd804834a9aa8 1
+packages/frontend/editor-ui/src/features/workflows/templates/templates.store.ts
+  s_39fa3237f72766::t_08ab712af11fe0 22
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesSearchView.vue
+  s_39fa3237f72766::t_2c22d0b49248cb 12
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryListItem.vue
+  s_39fa3237f72766::t_6b1ea323618c98 18
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.vue
+  s_39fa3237f72766::t_4e1071d5eb375a 45
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistoryDiff.vue
+  s_39fa3237f72766::t_7a79c1b50f480e 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "b765d02cef8365137d1436a347d27aef8da077b8",
+  "prompts": {},
+  "sessions": {
+    "s_39fa3237f72766": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e39cf20c-9d49-410e-b944-e67649c74c60",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

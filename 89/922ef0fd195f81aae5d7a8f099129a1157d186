@@ -1,0 +1,38 @@
+packages/@n8n/db/src/index.ts
+  h_435b1d7d3e52c0 18-19
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  h_435b1d7d3e52c0 27-37
+packages/@n8n/db/src/utils/__tests__/is-entity-not-found-error.test.ts
+  h_435b1d7d3e52c0 1-23
+packages/@n8n/db/src/utils/__tests__/is-foreign-key-constraint-error.test.ts
+  h_435b1d7d3e52c0 1-71
+packages/@n8n/db/src/utils/is-entity-not-found-error.ts
+  h_435b1d7d3e52c0 1-8
+packages/@n8n/db/src/utils/is-foreign-key-constraint-error.ts
+  h_435b1d7d3e52c0 1-13
+packages/@n8n/db/src/utils/is-query-failed-error-of-kind.ts
+  h_435b1d7d3e52c0 1-34
+packages/@n8n/db/src/utils/is-unique-constraint-error.ts
+  h_435b1d7d3e52c0 1,7-12
+packages/cli/src/credentials-helper.ts
+  h_435b1d7d3e52c0 4-8,349
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  h_435b1d7d3e52c0 867,874-876,878,883-886,896,1104,1108-1114,1121-1135
+packages/cli/src/executions/execution.service.ts
+  h_435b1d7d3e52c0 17,813,838-841
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-provider.repository.ts
+  h_435b1d7d3e52c0 1-6,8
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  h_435b1d7d3e52c0 484-565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89922ef0fd195f81aae5d7a8f099129a1157d186",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_a95a5287727af3::t_bdeb115f401696 53-55,67-71,82,94-98,109,157-161,179-183,223-227,238-245,256-260,271,279-327,335,359,365-369,383-387
+  s_a95a5287727af3::t_bd991962c3d093 118,120,131-137
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_a95a5287727af3::t_bb16ea807dd4c9 13-16,51-55,64,74,78,80,88,96,100-131,136,190-194
+  s_a95a5287727af3::t_8fa68525c42694 195-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3e90ce6504d9176fc739f83641a31c16c0dd566f",
+  "prompts": {},
+  "sessions": {
+    "s_a95a5287727af3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd734-47be-7c62-a3cf-903358e64654",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/commons.test.ts
+  s_d6b74d0f1575e4::t_54bdcabc687ca0 221
+  s_d6b74d0f1575e4::t_fafc72aef1b656 343
+  s_d6b74d0f1575e4::t_84b17800c9a1c2 310
+  s_d6b74d0f1575e4::t_f680d9dec0c7fa 377
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_d6b74d0f1575e4::t_70ff882c6efa77 188-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f1f5952e4e4bcce77d61ec014fa37b473cc60a99",
+  "prompts": {},
+  "sessions": {
+    "s_d6b74d0f1575e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e35372e-e8a6-4dc4-8e75-e3a9dd5fcf27",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

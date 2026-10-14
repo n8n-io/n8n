@@ -1,0 +1,28 @@
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_85f0dfb71252ba::t_c661285f90e34e 129-132,134
+packages/cli/src/services/ownership.service.ts
+  s_85f0dfb71252ba::t_c661285f90e34e 238
+packages/@n8n/db/src/repositories/__tests__/user.repository.test.ts
+  s_85f0dfb71252ba::t_c661285f90e34e 17,21
+packages/cli/src/services/__tests__/ownership.service.test.ts
+  s_85f0dfb71252ba::t_c661285f90e34e 302,316,343,370,394
+packages/cli/src/eventbus/message-event-bus/__tests__/message-event-bus.test.ts
+  s_85f0dfb71252ba::t_389be4d3826b33 3,13,22-23,38-42,52-53,59,61,79,131-168
+  s_85f0dfb71252ba::t_fdc1299157e78a 169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20939c7043d8c06e208fe0e123f9e17396475428",
+  "prompts": {},
+  "sessions": {
+    "s_85f0dfb71252ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68eb8a8a-a2af-4d46-a86f-d8f01c0cdeda",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

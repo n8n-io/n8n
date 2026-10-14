@@ -1,0 +1,35 @@
+packages/cli/src/modules/instance-ai/__tests__/message-parser.test.ts
+  s_e8b96ca75e92a4::t_51f469510b4178 680-866
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_e8b96ca75e92a4::t_d76f16511bc794 505-507,509
+  s_e8b96ca75e92a4::t_89deb578182292 314-319,322
+  s_e8b96ca75e92a4::t_657b7e5197cf8a 609-611,614-619
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelState.test.ts
+  s_e8b96ca75e92a4::t_d5f8485a44441b 6
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.test.ts
+  s_e8b96ca75e92a4::t_5bbc00e1ae4f3a 129,140-143,155-212,214
+  s_e8b96ca75e92a4::t_b4a5008a6e1658 29-36
+  s_e8b96ca75e92a4::t_d5f8485a44441b 315-317
+  s_e8b96ca75e92a4::t_1d342d3300a31c 213,215
+packages/frontend/editor-ui/src/features/setupPanel/composables/useWorkflowSetupItems.ts
+  s_e8b96ca75e92a4::t_a01e0f41d5986c 1
+  s_e8b96ca75e92a4::t_9d5ef5d397866b 8-11
+  s_e8b96ca75e92a4::t_bb9ace5a32bcf7 63-70,72-76,78-84,87-93,99-112,118-119
+  s_e8b96ca75e92a4::t_4c330dac3e70b9 157-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "20b7eccd078f4e78f9da0693adf780fd701e6902",
+  "prompts": {},
+  "sessions": {
+    "s_e8b96ca75e92a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdaa0091-0080-478a-91a2-a2ed36ea9d01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+docs/generated/sqlite-schema/README.md
+  s_16323f976c7783::t_93aa36a67c0f54 13,335
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_16323f976c7783::t_93aa36a67c0f54 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f0a204dd3ae8a8cd9c75d5fc48067d8116b6c6fa",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_16323f976c7783": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3ba1c9d-62c3-4db4-be71-8ed941f5d77c",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

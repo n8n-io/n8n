@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  h_44f8d1c0f2f8c4 30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "a259113d4d4bd3917ee9eec36d8191d94429bf89",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

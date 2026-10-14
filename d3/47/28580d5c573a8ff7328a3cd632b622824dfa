@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_3f7c203a92c7cd::t_5e4fe71f8bec6e 95,184,199,213,228,234,255,259,263
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_3f7c203a92c7cd::t_4786861c057211 543,595,634,659,664,666
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-workflow-loader.service.test.ts
+  s_3f7c203a92c7cd::t_9b30b4411acea4 1,20,22,24,28-32,34,41-42,48-52,54
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-loader.service.ts
+  s_3f7c203a92c7cd::t_20cc8261e3cd0f 11,13,17,21,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d34728580d5c573a8ff7328a3cd632b622824dfa",
+  "prompts": {},
+  "sessions": {
+    "s_3f7c203a92c7cd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2e06657-b349-4871-86f4-fefad9ee30ed",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

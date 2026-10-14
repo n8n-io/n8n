@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-descriptions.ts
+  s_f7c2833ce88101::t_289f48f029563c 31-38,50,72-77,82-83,88
+packages/@n8n/instance-ai/src/tools/web-research/sanitize-web-content.test.ts
+  s_f7c2833ce88101::t_ee727c80e85773 1-51
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-descriptions.test.ts
+  s_f7c2833ce88101::t_7faaa58364d438 98-136
+packages/@n8n/instance-ai/src/tools/web-research/sanitize-web-content.ts
+  s_f7c2833ce88101::t_289f48f029563c 11-18,20-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e826e8c145e95b25c9c5c6960dfa23e9a2c9979b",
+  "prompts": {},
+  "sessions": {
+    "s_f7c2833ce88101": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "16ffbeaa-edd2-458f-90fb-28b08e8b9b37",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

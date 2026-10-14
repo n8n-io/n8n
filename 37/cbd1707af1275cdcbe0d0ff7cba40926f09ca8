@@ -1,0 +1,66 @@
+packages/@n8n/api-types/src/push/execution.ts
+  s_b5ea67f95e0bc8::t_ff62d1d8c45a21 55-59,69-70,73-82
+  s_b5ea67f95e0bc8::t_d8061d6446f82b 156
+  s_b5ea67f95e0bc8::t_0c22312e222573 10-11
+  s_b5ea67f95e0bc8::t_dfc17304b9de86 71-72
+  s_b5ea67f95e0bc8::t_7ed982d183e083 36-40
+  s_65ef45bd984286::t_29c240a569a692 83-85
+packages/cli/src/collaboration/collaboration.service.ts
+  s_b5ea67f95e0bc8::t_cd6221ec900413 10
+  s_b5ea67f95e0bc8::t_eea3a8fa0fa1de 79-82
+packages/cli/src/executions/execution-push-resume.service.ts
+  s_b5ea67f95e0bc8::t_812e3f6518a70d 1-118
+packages/@n8n/api-types/src/push/resume.ts
+  s_b5ea67f95e0bc8::t_5e125def40a403 1-31
+packages/cli/src/collaboration/collaboration.message.ts
+  s_b5ea67f95e0bc8::t_81d016fcd56600 68-87
+packages/cli/src/push/terminal-event-meta.ts
+  s_b5ea67f95e0bc8::t_9ab2956057292a 1-21
+packages/@n8n/api-types/src/push/meta.ts
+  s_b5ea67f95e0bc8::t_4c0ffd07ecb01f 1-16
+packages/@n8n/api-types/src/index.ts
+  s_b5ea67f95e0bc8::t_b0136254f3ed9f 116-118
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_b5ea67f95e0bc8::t_2d36bea7ae417d 956-959,972-975
+packages/cli/src/push/terminal-delivery.md
+  s_b5ea67f95e0bc8::t_62ea8fcae6cdea 1-132
+packages/cli/src/executions/__tests__/execution-push-resume.service.test.ts
+  s_b5ea67f95e0bc8::t_c87bcb8cfa2d01 1-86,91-228
+  s_b5ea67f95e0bc8::t_715d682491dbbe 87-90
+packages/cli/src/collaboration/__tests__/collaboration.message.test.ts
+  s_b5ea67f95e0bc8::t_f4d01010ca7705 1-26
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_b5ea67f95e0bc8::t_9964604993930b 611-626
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_b5ea67f95e0bc8::t_6c91c9e9ac8d59 32
+  s_b5ea67f95e0bc8::t_9ae41b510fcc59 460-467,470-474
+packages/cli/src/server.ts
+  s_b5ea67f95e0bc8::t_c5ada4200b8c83 222
+  s_b5ea67f95e0bc8::t_40da9295c03962 223-228
+packages/cli/src/push/abstract.push.ts
+  s_b5ea67f95e0bc8::t_32d481d7b1d213 79,82-83,87-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "37cbd1707af1275cdcbe0d0ff7cba40926f09ca8",
+  "prompts": {},
+  "sessions": {
+    "s_65ef45bd984286": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6bf14eab-a3f1-4625-a3fc-3465f0697e9a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_b5ea67f95e0bc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "603d7ab7-f1a2-453b-8ac4-f91c4365d8c7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

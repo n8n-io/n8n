@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_89ffeedfd03265::t_b90b873d5b8434 3,21-47,58,60-66,71-83,93-94,110-111,115
+  s_89ffeedfd03265::t_41210ced83cfa6 84-91
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_89ffeedfd03265::t_41210ced83cfa6 2-9
+  s_89ffeedfd03265::t_cd2780039c1e08 631-650,654-658,660-678
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_89ffeedfd03265::t_a4d3edc38c7f7d 97
+  s_89ffeedfd03265::t_75c31820e9934c 589,615
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_89ffeedfd03265::t_75c31820e9934c 70,76,87,119,132-133
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/DomainAccessApproval.vue
+  s_89ffeedfd03265::t_cd2780039c1e08 2,105-112
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.vue
+  s_89ffeedfd03265::t_41210ced83cfa6 108-152
+  s_89ffeedfd03265::t_95fcc6c27c6650 2-5,24-45,48-49,61,64-68,70,84,90-107,153,155,159-191,199-201,210,219-223,261-262,271
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/index.ts
+  s_89ffeedfd03265::t_95fcc6c27c6650 1-2
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.test.ts
+  s_89ffeedfd03265::t_41210ced83cfa6 14-16,49-51,58-60,68-70
+  s_89ffeedfd03265::t_75c31820e9934c 1-13,17-48,52-57,61-67,71-74
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.stories.ts
+  s_89ffeedfd03265::t_41210ced83cfa6 44-45
+  s_89ffeedfd03265::t_723351d73d7073 1-43,46-47
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_89ffeedfd03265::t_95fcc6c27c6650 52
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_89ffeedfd03265::t_723351d73d7073 181-186,189
+  s_89ffeedfd03265::t_3d85ac4c35165f 187-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9c068b5dcf5b3c49fb4eb9a4bad99965dc66c44a",
+  "prompts": {},
+  "sessions": {
+    "s_89ffeedfd03265": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4e6-37cc-73b3-8f7b-279d3f0c3020",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

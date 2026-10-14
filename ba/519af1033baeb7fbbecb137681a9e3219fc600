@@ -1,0 +1,23 @@
+packages/@n8n/node-engine-compatibility/package.json
+  s_5a4ba5c9d37bf2::t_ac989abeffd445 38
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  s_5a4ba5c9d37bf2::t_ac989abeffd445 26,349-350
+pnpm-lock.yaml
+  ai_agent 3193-3195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ba519af1033baeb7fbbecb137681a9e3219fc600",
+  "prompts": {},
+  "sessions": {
+    "s_5a4ba5c9d37bf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b06045b8-e870-4b97-834e-4725c3d5c362",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

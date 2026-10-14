@@ -1,0 +1,57 @@
+packages/cli/src/workflows/triggers/__tests__/webhook-trigger-registrar.test.ts
+  s_2cf8046121b60b::t_2b69fa7e4dd949 4,16-17,30,54,99,145,191
+  s_2cf8046121b60b::t_0b7f051fa8f65b 21
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_2cf8046121b60b::t_11256ceb170dd2 158-213
+  s_2cf8046121b60b::t_31341b50e5805f 268-296
+  s_2cf8046121b60b::t_8860155187afe2 8
+  s_2cf8046121b60b::t_baea7926f4051d 228-259
+  s_2cf8046121b60b::t_4c93f4c21c846e 67
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_2cf8046121b60b::t_b43e8a9bc59a11 49
+  s_2cf8046121b60b::t_999db026b54aa8 159-160
+  s_2cf8046121b60b::t_15d1b7a8083558 6-7
+  s_2cf8046121b60b::t_1aa8400893cdf4 122-126,129-146
+  s_2cf8046121b60b::t_7ff3abd2d315c1 127-128
+  s_2cf8046121b60b::t_65ede8288eac97 154-158,161-168
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_2cf8046121b60b::t_cd13bed4a00aff 13
+  s_2cf8046121b60b::t_8a8d03bb7f0df5 67-72,74-129
+  s_2cf8046121b60b::t_9184bc17f8136d 73
+  s_2cf8046121b60b::t_32776eb7423099 142
+  s_2cf8046121b60b::t_3cefbf26c93e96 51
+  s_2cf8046121b60b::t_8054c999126560 136,138-141,143-157
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_2cf8046121b60b::t_0a86edd551bb05 39
+  s_2cf8046121b60b::t_0b7f051fa8f65b 61
+  s_2cf8046121b60b::t_1b40b1f9ef4ca8 20
+  s_2cf8046121b60b::t_60f3f73119bdb4 5
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_2cf8046121b60b::t_ea261063597fdc 159-203
+  s_2cf8046121b60b::t_5768ce0a6a8e35 128-144
+  s_2cf8046121b60b::t_2f9dfd96aac014 40
+  s_2cf8046121b60b::t_df1fe402ad4eb3 6
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_2cf8046121b60b::t_aaebb8c2fee551 5,31-32,57,74,105,203,265,314,376,417,468,527,576
+  s_2cf8046121b60b::t_0b7f051fa8f65b 36
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_2cf8046121b60b::t_463944e0f4d09e 4,13-14,26,82
+  ai_agent 44-49,95-100
+  s_2cf8046121b60b::t_0b7f051fa8f65b 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c320c144bbf16f0efb570dc62e233f11febcf1c",
+  "prompts": {},
+  "sessions": {
+    "s_2cf8046121b60b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49d8ffde-f929-43dd-8b07-d1ef5c56c739",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCreateCaseFromExecution.ts
+  s_1ad479b703b9e9::t_639dfa18e8d871 20,37-42
+  s_1ad479b703b9e9::t_60d92b03da4c8d 64-68
+  s_1ad479b703b9e9::t_c0cb798c84aa96 4
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.ts
+  s_1ad479b703b9e9::t_62fcdab4359826 430-433
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCreateCaseFromExecution.test.ts
+  s_1ad479b703b9e9::t_82233883d90198 51
+  s_1ad479b703b9e9::t_a9b82c85055fef 65-69
+  s_1ad479b703b9e9::t_d505dcb1b4d939 112-115
+  s_1ad479b703b9e9::t_6c79e47151f022 10,23-24
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.test.ts
+  s_1ad479b703b9e9::t_1c2094f46737f1 680-710
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "abb340052cd28d48609e04cc08a3902ed4f63496",
+  "prompts": {},
+  "sessions": {
+    "s_1ad479b703b9e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "531442b7-0583-436f-9a77-9dd90b67f68a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

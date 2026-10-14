@@ -1,0 +1,29 @@
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_f35b1a3f589cd6::t_39dc0fd02b53b4 171-175,179-184,186-190,199-206,220-225,231-233,240-242
+  s_f35b1a3f589cd6::t_9c35aafd334ed3 234-239
+  s_f35b1a3f589cd6::t_54823621f205d0 20,23-28
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_f35b1a3f589cd6::t_d4fcb47f2c3b6b 1931-1932,1934-1976
+  s_f35b1a3f589cd6::t_1d616ca47b7b64 6
+  s_f35b1a3f589cd6::t_d39cfc02ced06e 7
+  s_f35b1a3f589cd6::t_0568a8e1ebc153 1933
+  s_f35b1a3f589cd6::t_79b7bdb5c09a47 8-10
+  s_f35b1a3f589cd6::t_2f4ae490fdd62c 1977-1979
+  s_f35b1a3f589cd6::t_a62acadfbf0850 11-16,40,42,1980-1985
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fcb989e118aa0da73c3fde7271042e5e18542d8c",
+  "prompts": {},
+  "sessions": {
+    "s_f35b1a3f589cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24a8ce02-1532-4182-83b3-469d7fafd1ff",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

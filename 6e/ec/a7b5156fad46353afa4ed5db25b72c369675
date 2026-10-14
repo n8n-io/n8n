@@ -1,0 +1,86 @@
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_5f8041bd512d7e::t_d76fd645247f60 679-684,1076
+  s_5f8041bd512d7e::t_b7af76bc1cecd6 145-148
+  s_5f8041bd512d7e::t_c133394c371758 365-366,375,396-402,404-405,408-409
+  s_5f8041bd512d7e::t_866d52e861c5b3 938
+  s_5f8041bd512d7e::t_ca39750d3828c4 48
+  s_5f8041bd512d7e::t_0921f403e144a8 60-63
+  s_5f8041bd512d7e::t_d4a02f2a28177e 172-176,463,490,711,834,887-891,921
+  s_5f8041bd512d7e::t_ddefc3e8519194 799-805
+  s_5f8041bd512d7e::t_4832ef48471c7f 203-204,663,765-767,798,806
+  s_5f8041bd512d7e::t_1e80dbabd74852 811
+  s_5f8041bd512d7e::t_964cbd259dfb9d 136
+  s_5f8041bd512d7e::t_8cb1a170986cc1 102-110,112,114,117
+  s_5f8041bd512d7e::t_a6c649df164102 43,248,354,407,464,477-481,517,744-747
+  s_5f8041bd512d7e::t_4c1d3482700752 1,23,36-37,53-54,269,764
+  s_5f8041bd512d7e::t_61185b807bff56 212-216,418,435-443,446,449-452,510-516,518,540-547,740-743,750-753,773,779,781-786,790,793-797,807,809,813,817,831,835,1004-1005,1007-1009,1038-1044,1053-1054,1057-1058
+  s_5f8041bd512d7e::t_1e500741799c10 6,78-101,206,349,353,355,364,367-374,376-395,403,406
+  s_5f8041bd512d7e::t_1bd1ad14d94127 47,49-52
+  s_5f8041bd512d7e::t_be9d1cea99d5af 491,638
+  s_5f8041bd512d7e::t_da5290c36f7e52 2-3,5,8-18,20-22,24-35,38-42,44-46,55,65-77,111,113,115-116,118-135,137-144,149-154,162-163,165,168-171,178-181,189-194,201-202,205,207-211,217-247,249-268,270-348,350-352,356-363,410-417,419-434,444-445,447-448,453-462,465-476,482-489,492-509,519-539,548-637,639-662,664-678,685-710,712-739,748-749,754-763,768-772,774-778,780,787-789,791-792,808,810,812,814-816,818-830,832-833,836-886,892-908,920,922-930,934-937,950-963,965-1003,1006,1010-1037,1045-1052,1055-1056,1059-1075,1077-1095
+  s_5f8041bd512d7e::t_31753b651d0aae 4,7,19,56-59,64,155-161,164,166-167,177,182-188,195-200,909-919,931-933,939-949,964
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_5f8041bd512d7e::t_d41f749e351cb8 65-67
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_5f8041bd512d7e::t_2063561bb7104e 59,61-66,91
+packages/cli/src/modules/agents/utils/agent-config-hash.ts
+  s_5f8041bd512d7e::t_d41f749e351cb8 1-19
+packages/@n8n/api-types/src/agents/agent-task.schema.ts
+  s_5f8041bd512d7e::t_2063561bb7104e 16-20
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_5f8041bd512d7e::t_f23d0188467f14 10,105,110-114
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_5f8041bd512d7e::t_d04c6f4346087e 70-71,75,82-83
+  s_5f8041bd512d7e::t_2297057868984a 73
+  s_5f8041bd512d7e::t_abbb19ef6b8d2c 26
+  s_5f8041bd512d7e::t_0e088f5c705950 74
+  h_df158766ffbd97 79
+  s_5f8041bd512d7e::t_d4a02f2a28177e 76-77,81
+  s_5f8041bd512d7e::t_a9cf586181a4e5 36-41,72,78,80
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  s_5f8041bd512d7e::t_2063561bb7104e 16-20,121-122
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_5f8041bd512d7e::t_d04c6f4346087e 3,12,241,245,432,434
+  s_5f8041bd512d7e::t_abbb19ef6b8d2c 248-252
+  s_5f8041bd512d7e::t_169bdcec36b50c 433
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_5f8041bd512d7e::t_2297057868984a 16-20,34
+  s_5f8041bd512d7e::t_f050b868e46fa0 47
+  s_5f8041bd512d7e::t_a6c649df164102 48
+  s_5f8041bd512d7e::t_ca39750d3828c4 10,104-106
+  s_5f8041bd512d7e::t_1bd1ad14d94127 1-3,5-8,107-112
+  s_5f8041bd512d7e::t_61185b807bff56 76-78
+  s_5f8041bd512d7e::t_a9cf586181a4e5 15,21-33
+  s_5f8041bd512d7e::t_87fee2f20a6d81 46,50,52-59
+  s_5f8041bd512d7e::t_1e500741799c10 37,40-45,49,51
+  s_5f8041bd512d7e::t_b281ea41150af9 4,9,11-14,35-36,38-39,60-75,79-103,113
+packages/cli/src/modules/mcp/tools/workflow-builder/search-workflow-nodes.tool.ts
+  s_5f8041bd512d7e::t_2433efa3cc83ca 59-66,76,91
+  s_5f8041bd512d7e::t_8a0fbb84aeb412 30-32
+  s_5f8041bd512d7e::t_169bdcec36b50c 102
+  s_5f8041bd512d7e::t_fb7d27edeea173 80,95,99-101,103-105
+  s_5f8041bd512d7e::t_abbb19ef6b8d2c 107-109
+  s_5f8041bd512d7e::t_d04c6f4346087e 27-29
+  s_5f8041bd512d7e::t_d9a55af90074a6 54-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6eeca7b5156fad46353afa4ed5db25b72c369675",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5f8041bd512d7e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f608f-faad-73c2-9dd7-a5ec03a8855e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

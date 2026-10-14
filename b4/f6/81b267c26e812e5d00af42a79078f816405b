@@ -1,0 +1,23 @@
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_2df9f2e3d287d4::t_f9f72c7891eef2 1990
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_2df9f2e3d287d4::t_fc1363376ac51d 38
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_2df9f2e3d287d4::t_fc1363376ac51d 109,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4f681b267c26e812e5d00af42a79078f816405b",
+  "prompts": {},
+  "sessions": {
+    "s_2df9f2e3d287d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1437bab9-1b9d-4a5d-a976-845f6de7d77e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

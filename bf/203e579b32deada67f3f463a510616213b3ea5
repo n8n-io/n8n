@@ -1,0 +1,26 @@
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_ccc394558416c0::t_cb9ec50f6f2c8c 48-51
+  s_ccc394558416c0::t_7d4e2111473d9e 418,421-442,444-447,451-479,484-495,497-502,504-505
+  s_ccc394558416c0::t_85e1ebca1ff892 229-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf203e579b32deada67f3f463a510616213b3ea5",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ccc394558416c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "055e5747-60e2-4187-9b54-9fd479e35bca",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

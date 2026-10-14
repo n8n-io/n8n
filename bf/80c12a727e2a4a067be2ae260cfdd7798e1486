@@ -1,0 +1,33 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirements.extractor.ts
+  s_3969ea2ea64fa2::t_ae4e1d620d5870 24-27
+  s_3969ea2ea64fa2::t_675796f312c611 5
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-reference.test.ts
+  s_3969ea2ea64fa2::t_d546dd24c4d0ee 1-52
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/static-sub-workflow-id.test.ts
+  s_3969ea2ea64fa2::t_97f654f55980fd 3
+  s_3969ea2ea64fa2::t_f9452472c6171b 153-167
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-reference.ts
+  s_3969ea2ea64fa2::t_003b53714935d4 1-43
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-id.ts
+  s_3969ea2ea64fa2::t_b5e19d381829e7 1-6
+  s_3969ea2ea64fa2::t_967c4be5c47875 30-43
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_3969ea2ea64fa2::t_a446059f95d6f6 245
+  s_3969ea2ea64fa2::t_c2e6f0fe0ee704 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf80c12a727e2a4a067be2ae260cfdd7798e1486",
+  "prompts": {},
+  "sessions": {
+    "s_3969ea2ea64fa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4880f48c-229a-4f13-a1b3-a8fc31beb14b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

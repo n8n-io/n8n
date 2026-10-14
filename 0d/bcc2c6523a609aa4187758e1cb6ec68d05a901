@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-registry/__tests__/instance-registry.module.test.ts
+  s_59d503d6c27f33::t_03660d7bc98437 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0dbcc2c6523a609aa4187758e1cb6ec68d05a901",
+  "prompts": {},
+  "sessions": {
+    "s_59d503d6c27f33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82021133-747e-4bd4-911e-e343b1634a82",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_3f4c240f5a4957::t_66b30f4252d644 73
+docs/generated/postgres-schema/README.md
+  s_3f4c240f5a4957::t_66b30f4252d644 65,822
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_3f4c240f5a4957::t_66b30f4252d644 9,49
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_3f4c240f5a4957::t_66b30f4252d644 73
+docs/generated/sqlite-schema/README.md
+  s_b75353843041f1::t_8dd399e1e32f28 65,809
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_b75353843041f1::t_8ecc17808eedd6 9,20,57
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_b75353843041f1::t_993ff0b16413b0 78
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_b75353843041f1::t_d17c1da1783215 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "cf65be1ea804a05b2493dd232ba541c9e4220b20",
+  "prompts": {},
+  "sessions": {
+    "s_3f4c240f5a4957": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0ee24e3b-53fe-4691-8e67-e34f81479930",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_b75353843041f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd7024c5-2228-48df-be88-825fe78fa77b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

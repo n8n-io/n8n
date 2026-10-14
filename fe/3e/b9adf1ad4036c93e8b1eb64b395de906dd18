@@ -1,0 +1,55 @@
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_c109c2029b6fe8::t_00911fa4fb9802 33-34
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.type.ts
+  s_c109c2029b6fe8::t_70a40cdfd79915 3-17,19
+packages/frontend/editor-ui/src/features/agents/components/AgentFilesPanel.vue
+  s_c109c2029b6fe8::t_3bc49bbb292064 12,167
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_c109c2029b6fe8::t_8b4a62c9b85d96 2,91
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_c109c2029b6fe8::t_da54be76a63202 2,187
+packages/frontend/editor-ui/src/features/ai/instanceAi/onboarding/InstanceAiOnboardingWizard.test.ts
+  s_fb480889858900::t_e543e22d52c23c 452-454
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceScopeBadge.vue
+  s_c109c2029b6fe8::t_f5819366b98877 58
+  s_c109c2029b6fe8::t_eb24b1dc116ff7 59
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_fb480889858900::t_5ef8130564bf7f 128,142,178
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue
+  s_c109c2029b6fe8::t_99264322fff196 616
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_c109c2029b6fe8::t_03a42b5b76fdc5 76,103
+  s_fb480889858900::t_b68429a1ff7d68 158-163
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_c109c2029b6fe8::t_bca078004a053d 34,143
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.stories.ts
+  s_c109c2029b6fe8::t_41d539bedaec24 3,32
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/TableStatusCell.vue
+  s_c109c2029b6fe8::t_e4ffefb4f54844 6,42
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/UngroupedRunRow.vue
+  s_c109c2029b6fe8::t_b2db4a7b67bd55 2,9-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe3eb9adf1ad4036c93e8b1eb64b395de906dd18",
+  "prompts": {},
+  "sessions": {
+    "s_c109c2029b6fe8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c8fa-eaef-745f-aa7e-b41d08694f27",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fb480889858900": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c908-d472-72e8-a201-5124b631e146",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

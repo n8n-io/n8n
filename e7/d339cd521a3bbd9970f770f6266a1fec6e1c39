@@ -1,0 +1,13 @@
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/createGitConnection.generated.yml
+  ai_agent 26
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/updateGitConnection.generated.yml
+  ai_agent 32
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/connectGitConnection.generated.yml
+  ai_agent 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e7d339cd521a3bbd9970f770f6266a1fec6e1c39",
+  "prompts": {}
+}

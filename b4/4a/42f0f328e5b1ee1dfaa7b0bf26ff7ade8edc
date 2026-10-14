@@ -1,0 +1,63 @@
+packages/@n8n/utils/src/redaction/redact-text.test.ts
+  s_2063b158e1d22e::t_c00f05a5b65ec8 1-39
+packages/@n8n/utils/src/redaction/pii-patterns.ts
+  s_2063b158e1d22e::t_e9b70338765839 1-161,164-229,231-267
+  s_2063b158e1d22e::t_eb84c28b6636e0 162-163,230
+packages/frontend/editor-ui/src/features/ai/assistant/components/Chat/AskAssistantChat.vue
+  s_2063b158e1d22e::t_78985c78c77d63 3
+  s_2063b158e1d22e::t_550ea30a1597f4 61
+packages/@n8n/telemetry/src/index.ts
+  s_2063b158e1d22e::t_87e5dfad194c52 11
+  s_2063b158e1d22e::t_ec239e4f58c0bd 12
+packages/frontend/editor-ui/src/features/ai/assistant/builder.store.ts
+  s_2063b158e1d22e::t_550ea30a1597f4 765-767,769-771,794-795,798
+  s_2063b158e1d22e::t_78985c78c77d63 2
+packages/@n8n/agents/src/sdk/guardrails/redactor.ts
+  s_2063b158e1d22e::t_dff1856080d6c5 1-10,13-14,16-22,42,54,60,67
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  ai_agent 116
+packages/@n8n/telemetry/src/redaction.ts
+  s_2063b158e1d22e::t_eb84c28b6636e0 1
+  s_2063b158e1d22e::t_87e5dfad194c52 2-3,7-12,29-32,65,70-72,90,94,111,116,132-135,137-140
+  ai_agent 118-122
+  s_2063b158e1d22e::t_ec239e4f58c0bd 73-81,83-84,87
+packages/@n8n/agents/src/types/sdk/guardrail.ts
+  s_2063b158e1d22e::t_dff1856080d6c5 3-4
+packages/@n8n/telemetry/package.json
+  s_2063b158e1d22e::t_87e5dfad194c52 26
+packages/@n8n/agents/src/sdk/guardrails/patterns.ts
+  s_2063b158e1d22e::t_eb84c28b6636e0 33-35
+  s_2063b158e1d22e::t_dff1856080d6c5 1-8,13-18,31-32,36,43,45-48,55
+packages/@n8n/telemetry/src/__tests__/redaction.test.ts
+  s_2063b158e1d22e::t_eb84c28b6636e0 52-53
+  s_2063b158e1d22e::t_02861d3411f178 40-41,45-51,54-55
+  ai_agent 42-44
+  s_2063b158e1d22e::t_d9b0e379c3205e 1
+pnpm-lock.yaml
+  ai_agent 3798-3800
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_2063b158e1d22e::t_d9b0e379c3205e 24
+packages/frontend/editor-ui/src/features/ai/assistant/assistant.store.ts
+  s_2063b158e1d22e::t_550ea30a1597f4 698
+  s_2063b158e1d22e::t_78985c78c77d63 2
+packages/@n8n/utils/src/redaction/redact-text.ts
+  s_2063b158e1d22e::t_f8b90c25db96bf 1-218
+packages/frontend/editor-ui/src/features/ai/assistant/builder.store.test.ts
+  s_2063b158e1d22e::t_295d0f494c7fd8 1976-1994
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b44a42f0f328e5b1ee1dfaa7b0bf26ff7ade8edc",
+  "prompts": {},
+  "sessions": {
+    "s_2063b158e1d22e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9928491d-e144-48d5-a650-b29f141559bf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

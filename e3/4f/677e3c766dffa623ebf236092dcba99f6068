@@ -1,0 +1,45 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_235986cec46e94::t_c7acea529cb256 1357-1390
+  s_235986cec46e94::t_a941746949102e 21
+  s_235986cec46e94::t_0e7b1ec76cdbba 1258-1275
+  s_235986cec46e94::t_78b51fda5a75a8 1330-1344,1346,1349-1356,1391-1444
+  s_235986cec46e94::t_f4c066fb13c1bd 1345,1347-1348
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_235986cec46e94::t_4e53daae0c4932 251-256
+  s_235986cec46e94::t_6d9b419da90ed2 633,635-636
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_235986cec46e94::t_0d3858203dd19b 201,203-204
+  s_235986cec46e94::t_ae68e3144fc4d2 79-80,87
+  s_235986cec46e94::t_29a23d57117506 202
+  s_235986cec46e94::t_e6569e28ef6753 173-180
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_235986cec46e94::t_6695e07470ce7a 163-166
+  s_235986cec46e94::t_72b53908c7c3d3 29
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_235986cec46e94::t_a24d1cf99321de 102,105-106,113-114,118-119
+  s_235986cec46e94::t_8e1eb1ce114613 103-104
+  s_235986cec46e94::t_461ed412af66ab 107-108,110-112,115,117
+  s_235986cec46e94::t_df44204708b847 109,116
+  s_235986cec46e94::t_90e27cbac84a65 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e34f677e3c766dffa623ebf236092dcba99f6068",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_235986cec46e94": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "87042923-02ce-4e97-8379-068b9e16f4ca",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

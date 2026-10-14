@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.test.ts
+  s_8987b8017e49de::t_5d9328fc40e247 3,42-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "671417ec4e1d04b3a67581b814b73c39d53c61a3",
+  "prompts": {},
+  "sessions": {
+    "s_8987b8017e49de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce582f0f-6915-4be7-93ac-a2ac38c09dc8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/spec/instance-ai-personalized-prompt-suggestions.md
+  s_b2770a9c4c7dcd::t_68db64e65e36d3 272-273
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/metadata.test.ts
+  s_b2770a9c4c7dcd::t_e035a0f8b7e685 8,49-77,89-106
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/prompts.ts
+  s_b2770a9c4c7dcd::t_c116a0de356eb1 3-639,641-892,894-1148
+  s_b2770a9c4c7dcd::t_4b2f27a769d516 640,893
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "dacf06f3538a452787953342f140b4fbe04bef36",
+  "prompts": {},
+  "sessions": {
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

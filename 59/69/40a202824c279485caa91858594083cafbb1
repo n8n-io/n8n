@@ -1,0 +1,56 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.test.ts
+  s_d8b5e951456b7b::t_2fd0d80a529fbd 330-334
+packages/frontend/editor-ui/src/features/workflow-reviews/formatUserDisplayName.ts
+  s_d8b5e951456b7b::t_e323fd5aca7b54 10-14
+packages/frontend/editor-ui/src/features/workflow-reviews/components/activity-entries/WorkflowReviewActivityComment.vue
+  s_d8b5e951456b7b::t_b35949968af41d 8,17-20
+  s_d8b5e951456b7b::t_9ec3b6f4513def 42
+  s_d8b5e951456b7b::t_1e3894529a8f3b 100
+  s_d8b5e951456b7b::t_3f65be22530500 75-77,79-80
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.vue
+  s_d8b5e951456b7b::t_0a152a91962c99 202,211-220
+  s_d8b5e951456b7b::t_0f2158d79cf9a2 92
+  s_d8b5e951456b7b::t_50e305a7f18604 227-228,231-233
+  s_d8b5e951456b7b::t_78e415fbeb40a6 160-161
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDecisionPopover.vue
+  s_d8b5e951456b7b::t_74c0ede3f794f1 96
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewActivity.store.ts
+  s_d8b5e951456b7b::t_f1198653a98fcd 145,147-148
+packages/frontend/editor-ui/src/features/workflow-reviews/components/_activity-card.scss
+  s_d8b5e951456b7b::t_1c7e320a32884b 1-19
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewActivityFeed.vue
+  s_d8b5e951456b7b::t_55ab99ceb68854 188-194,197
+  s_d8b5e951456b7b::t_fabf7965254509 215-216
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_d8b5e951456b7b::t_a3e548cf3380f4 131
+  s_d8b5e951456b7b::t_d49fa652afe8be 103
+  s_d8b5e951456b7b::t_194092d7bd3c34 87
+  s_d8b5e951456b7b::t_94642b833a4312 161
+  s_d8b5e951456b7b::t_7b228a3c97a082 51-58
+packages/frontend/editor-ui/src/features/workflow-reviews/components/activity-entries/WorkflowReviewActivitySystemEntry.vue
+  s_d8b5e951456b7b::t_e708af0dbf5459 102,107-109,115
+  s_d8b5e951456b7b::t_a63b9b797f75f4 126
+  s_d8b5e951456b7b::t_357f9e4fbda595 176,178
+  s_d8b5e951456b7b::t_c75f642bd7d823 9
+  s_d8b5e951456b7b::t_27d65aef1cc63d 185,187
+  s_d8b5e951456b7b::t_a8faf83eaedaa3 35-41,43-48,56,64,71,78,86,92-95
+  s_d8b5e951456b7b::t_5cd78b0345dd5b 156-157,164-166
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewActivity.store.test.ts
+  s_d8b5e951456b7b::t_ab7b458bb6bcba 389
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "596940a202824c279485caa91858594083cafbb1",
+  "prompts": {},
+  "sessions": {
+    "s_d8b5e951456b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d598e382-1f10-4e94-a256-40ec7275df71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.vue
+  h_f8b427917eda26 178,194,208,222,238,259,287-295
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasControlButtons.vue
+  h_f8b427917eda26 62,68,81,94,112,131,148,161,182-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86126e5b13b76bd186fb35507fde9c82adc563c6",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

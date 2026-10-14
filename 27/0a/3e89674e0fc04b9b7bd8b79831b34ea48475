@@ -1,0 +1,48 @@
+packages/nodes-base/nodes/Confluence/actions/page/index.ts
+  s_a31ddd2add9044::t_02d2fd8445688b 7
+  s_a31ddd2add9044::t_70015f729ccc57 51-55
+  s_a31ddd2add9044::t_b555d75a954622 81
+packages/nodes-base/nodes/Confluence/actions/page/getComments.operation.ts
+  s_6aca66c153ceff::t_464f51cd0e7aae 3-108
+packages/nodes-base/nodes/Confluence/test/actions/page/getComments.operation.test.ts
+  s_6aca66c153ceff::t_a8600ddfcd1c2c 206-208
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_a31ddd2add9044::t_4535eb814f3780 20,35
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_a31ddd2add9044::t_ba3e87e71d9324 52-54
+packages/nodes-base/nodes/Confluence/actions/page/get.operation.ts
+  s_6aca66c153ceff::t_5c462127a63ec7 8
+  s_a31ddd2add9044::t_5eb588aa59ccc9 100
+  s_6aca66c153ceff::t_1f729847527865 124
+packages/nodes-base/nodes/Confluence/test/actions/page/get.operation.test.ts
+  s_a31ddd2add9044::t_c7dfa9a6ad8f45 476-487
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_6aca66c153ceff::t_d63d8a90e962e5 397-398
+  s_6aca66c153ceff::t_f6402849ea77c6 350-358
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_a31ddd2add9044::t_0383b6b5bacb86 139-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "270a3e89674e0fc04b9b7bd8b79831b34ea48475",
+  "prompts": {},
+  "sessions": {
+    "s_6aca66c153ceff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0790c0d5-6fdb-47a1-8d5c-1f2c1e3322a3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_a31ddd2add9044": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81eaaa20-f74f-4c99-aead-797acf4ee72b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

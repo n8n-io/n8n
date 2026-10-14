@@ -1,0 +1,43 @@
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  ai_agent 141
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_3ea8dc5f5b0c85::t_818aaa9b07e2d0 1704-1760,2262
+docs/generated/postgres-schema/README.md
+  ai_agent 27,621
+docs/generated/sqlite-schema/agents_messages.md
+  ai_agent 86
+docs/generated/sqlite-schema/agent_execution.md
+  ai_agent 109
+docs/generated/postgres-schema/public.agents_messages.md
+  ai_agent 81
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  ai_agent 192,255-281,331
+docs/generated/sqlite-schema/README.md
+  ai_agent 27,607
+docs/generated/postgres-schema/public.agent_execution.md
+  ai_agent 105
+docs/generated/sqlite-schema/agent_message_queue.md
+  ai_agent 9,23,47,65
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_3ea8dc5f5b0c85::t_3cade84ca815f7 701
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 141
+docs/generated/postgres-schema/public.agent_message_queue.md
+  ai_agent 12,31,43,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1085998ef9e17856a1f8c16ff97611aa34e742a7",
+  "prompts": {},
+  "sessions": {
+    "s_3ea8dc5f5b0c85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9f52ac9-504a-4a4a-b221-e1ca1ab87e6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/@n8n/design-system/package.json
+  s_1090e03a7cfcc6::t_3b65863dd5ab6c 17-20
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_1090e03a7cfcc6::t_89baff37f5b2bf 167-171
+packages/frontend/@n8n/design-system/src/icons/lucide/index.ts
+  s_1090e03a7cfcc6::t_7cecfbf5dc3ab0 7-13
+packages/frontend/@n8n/storybook/.storybook/preview.ts
+  s_1090e03a7cfcc6::t_2f8591389232d7 1-2,4-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ced0a776f893e2976b6b9c7d48a09bb8837f8c39",
+  "prompts": {},
+  "sessions": {
+    "s_1090e03a7cfcc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "767e6344-a64c-4298-a23c-6c8c7e161b4d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

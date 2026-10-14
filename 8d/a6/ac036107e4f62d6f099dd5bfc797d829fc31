@@ -1,0 +1,33 @@
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_61458dbfde6896::t_8b3721157634a3 43,62,192,209-210
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_61458dbfde6896::t_8b3721157634a3 19,30,54,141-150,152,169-170
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_61458dbfde6896::t_794ec7f1c505df 119-120
+  s_61458dbfde6896::t_8b3721157634a3 16,104-118
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_61458dbfde6896::t_8b3721157634a3 11,349-354,359-363,372-373,381
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_61458dbfde6896::t_8b3721157634a3 9,24-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8da6ac036107e4f62d6f099dd5bfc797d829fc31",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_61458dbfde6896": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9473163-3665-4abb-b2f4-ca7d6d92e119",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

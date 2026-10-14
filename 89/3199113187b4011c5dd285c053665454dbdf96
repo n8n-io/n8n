@@ -1,0 +1,14 @@
+packages/cli/src/security-audit/risk-reporters/credentials-risk-reporter.ts
+  h_32d8cd6a0d6aad 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "893199113187b4011c5dd285c053665454dbdf96",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

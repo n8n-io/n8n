@@ -1,0 +1,66 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_5fcb6cdfb74a9c::t_d0ab063b7ee98d 116-117
+  s_5fcb6cdfb74a9c::t_d6db68a0e8d518 23-24
+packages/cli/src/services/free-ai-credits.service.ts
+  s_5fcb6cdfb74a9c::t_28f24ace2e4dd6 1-58
+packages/cli/src/controllers/__tests__/ai.controller.test.ts
+  s_5fcb6cdfb74a9c::t_9d65bf9b21a254 17,24,30
+  s_5fcb6cdfb74a9c::t_72c26729ab3366 198-199,201-217
+  s_5fcb6cdfb74a9c::t_4ac10009b78824 200
+packages/cli/src/services/__tests__/free-ai-credits.service.test.ts
+  s_5fcb6cdfb74a9c::t_d050b236012e26 32
+  s_5fcb6cdfb74a9c::t_16400dbb301908 37,44,51,60,66,74
+  s_5fcb6cdfb74a9c::t_7c23740a01f6a6 1,7-9
+  s_5fcb6cdfb74a9c::t_e906a616e4e81c 2-6,10-31,33-36,38-43,45-50,52-59,61-65,67-73,75-78,80-100
+  s_5fcb6cdfb74a9c::t_bf97509e7850c5 79
+  s_5fcb6cdfb74a9c::t_45bc1eeaeac482 101-102
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_5fcb6cdfb74a9c::t_5bf689063b224f 22-23,26-32
+  s_5fcb6cdfb74a9c::t_ff18f1b6856aee 43,110,152,371
+  s_5fcb6cdfb74a9c::t_8f1b7dceb0b8d0 89,169-172,200-202,204-205,215,221-222,237,241,254,263,276,281,289,301,402,426,445
+  s_5fcb6cdfb74a9c::t_e5f73d0538dd6f 90,113,131-135,153-168,173-175,181-186,198-199,203,206-209,214,223,229-234,240,246,249,253,255,267-268,282,293-294,312-313,446
+  s_5fcb6cdfb74a9c::t_fd59f11ef1161e 4-5,21,24-25
+  s_5fcb6cdfb74a9c::t_bf3f2d164cea61 33-35,44-47,66-70,88,91-92,109,111-112,150-151,210-213,216-220,224-228,235-236,238-239,242-245,247-248,250-252,256-262,264-266,269-275,277-280,283-288,290-292,295-300,302-311,314-315,322-326,345-349,370,372-374,398-401,422-425,444,447-448,469-473,495-499
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_5fcb6cdfb74a9c::t_ef57790fec5c07 304-309
+packages/cli/src/controllers/ai.controller.ts
+  s_5fcb6cdfb74a9c::t_1ec22ce721eefa 1,21,31,40
+  s_5fcb6cdfb74a9c::t_f426b4868af1c2 221
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_5fcb6cdfb74a9c::t_4f81e785b40364 125-128
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_5fcb6cdfb74a9c::t_3defad2fa673a9 16
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_5fcb6cdfb74a9c::t_c66b206b7632a4 207-208
+  s_5fcb6cdfb74a9c::t_bf70ab08bee8c0 40-41
+  s_5fcb6cdfb74a9c::t_7292c6fb687d5d 579-593
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  s_5fcb6cdfb74a9c::t_becfd9109864b4 68-82
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_5fcb6cdfb74a9c::t_408a0a25462a0d 7-11,21-26,30,35-53
+  s_5fcb6cdfb74a9c::t_bc735c7541e490 186-190,215-236
+  s_5fcb6cdfb74a9c::t_947060525e1f49 135-140
+  s_5fcb6cdfb74a9c::t_54a28267823d8a 54
+  s_5fcb6cdfb74a9c::t_0ae048ef5504df 237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "64bbfb6e538ddf22d05c02c6a59d7b8991959ec0",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5fcb6cdfb74a9c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9e0f01af-8f8d-4835-ac05-28143e0a8100",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

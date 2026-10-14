@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-controller.ts
+  s_beccd81837c3d1::t_013b68da66fd82 409-417,429
+  s_beccd81837c3d1::t_ad551547d6fe08 481-495
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/workflow-loop-controller.test.ts
+  s_beccd81837c3d1::t_c535149df02391 711-738
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "33e775a6219612512c5c15c724ff8bd103120f8b",
+  "prompts": {},
+  "sessions": {
+    "s_beccd81837c3d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb8a85a0-e2ff-48f8-804f-78767835e5b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

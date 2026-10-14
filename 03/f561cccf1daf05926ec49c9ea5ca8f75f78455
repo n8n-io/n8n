@@ -1,0 +1,98 @@
+packages/@n8n/db/src/repositories/role.repository.ts
+  s_bf11149c12c496::t_ab7b247b8a7c27 7,9-10
+  s_bf11149c12c496::t_d33e7257565e83 237,246
+  s_bf11149c12c496::t_949ebc23f8925d 275-287
+  s_bf11149c12c496::t_f4f6ce823cbb8a 5,8
+  s_bf11149c12c496::t_ad7868c33223c3 6
+  s_bf11149c12c496::t_16bf734899d3a9 288-289
+packages/cli/src/controllers/role.controller.ts
+  s_bf11149c12c496::t_b38455f9d9812c 157
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_bf11149c12c496::t_c8933f867c3af3 1239-1257
+packages/cli/src/services/__tests__/role.service.addScopes.test.ts
+  s_bf11149c12c496::t_f686f7d7aece11 3,22,32
+packages/@n8n/telemetry/src/events/roles.ts
+  s_bf11149c12c496::t_79ba11d37d70b2 1-20
+packages/cli/src/services/__tests__/role.service.assignments.test.ts
+  s_bf11149c12c496::t_f686f7d7aece11 3,22,32
+packages/cli/src/services/role.service.ts
+  s_bf11149c12c496::t_f1432e6ae997f7 294
+  s_bf11149c12c496::t_8859bd768161fe 362
+  s_bf11149c12c496::t_ad191d9b664402 8
+  s_bf11149c12c496::t_d3ee99c643a40c 254-264,267-268,272-274,303,305,317-318,320,322-323,325-327,344,355-359
+  s_bf11149c12c496::t_7e5b75b90dd8e3 304,306-308,312
+  s_bf11149c12c496::t_70fc2d03d5f1d2 250,253,265-266,275-276,286-287,289-290,292-293,296-299,301-302,309,311,313,315-316,335-336
+  s_bf11149c12c496::t_db57b410796739 394-398
+  s_bf11149c12c496::t_1fcdfc14cc7812 67
+  s_bf11149c12c496::t_4838d7fe09b72f 319,321,324,328-334
+  s_bf11149c12c496::t_b1e0dddf1930a2 41
+  s_bf11149c12c496::t_6dd814f84f61a8 38,282,288,291,295,300,310,314
+  s_bf11149c12c496::t_3f9b99720ad403 216-219,222-223,239,241,243
+  s_bf11149c12c496::t_29087abc6d97f0 54-56
+  s_bf11149c12c496::t_cca5152d098450 251-252,269-271,277-281,283-285
+packages/@n8n/permissions/src/constants.ee.ts
+  s_bf11149c12c496::t_6dd814f84f61a8 144,147
+  s_bf11149c12c496::t_3f7d432b49377b 143,145-146,148
+packages/cli/test/integration/public-api/roles-canvas-only.test.ts
+  s_bf11149c12c496::t_6dd814f84f61a8 5,79
+  s_bf11149c12c496::t_8c07cc198e1b2e 146
+  s_bf11149c12c496::t_9df27462b26db5 50
+  s_bf11149c12c496::t_c8709686d0018c 1-4,6-49,51-78,80-145,147-202
+packages/cli/src/services/__tests__/role.service.rolesWithScope.test.ts
+  s_bf11149c12c496::t_f686f7d7aece11 3,21,31
+packages/cli/src/services/__tests__/role.service.customRoles.test.ts
+  s_bf11149c12c496::t_f686f7d7aece11 4,26,36
+  s_bf11149c12c496::t_cc4a91e0e5dd08 257,264,271,278,281,284-285,287-288,291-299
+  s_bf11149c12c496::t_8b32c5eaecd192 176,193-194,197-198,226,243,245,286
+  s_bf11149c12c496::t_6dd814f84f61a8 167
+  s_bf11149c12c496::t_73729d74749ba1 12
+  s_bf11149c12c496::t_c54ccb2fa8d148 187,195-196,214-215
+  s_bf11149c12c496::t_dff5826f283f85 223,229,232,234-237,246-250
+  s_bf11149c12c496::t_40e271ea37617b 228
+  s_bf11149c12c496::t_770272f4d4fa90 135,168-175,177-186,188-192,199-213,216-222,224-225,227,230-231,233,238-242,244,251-256,258-263,265-270,272-277,279-280,282-283,289-290
+  s_bf11149c12c496::t_958b0cac46b43a 136-166
+  s_bf11149c12c496::t_25a16ca793b60f 8
+packages/cli/src/services/__tests__/auth.roles.service.test.ts
+  s_bf11149c12c496::t_e4315ed0dfebaf 48-50
+  s_bf11149c12c496::t_6dd814f84f61a8 16,917,919,973
+  s_bf11149c12c496::t_986e895c3bd44a 915-916,918,920-972,974-986
+  s_bf11149c12c496::t_a22e47c25658c4 3
+packages/cli/src/events/maps/relay.event-map.ts
+  s_bf11149c12c496::t_4628b96dc6949b 1220-1226
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_bf11149c12c496::t_7838e04077aa6b 21
+  s_bf11149c12c496::t_3d67a3d6eb17c8 9
+packages/@n8n/db/src/services/auth.roles.service.ts
+  s_bf11149c12c496::t_6dd814f84f61a8 15,214
+  s_bf11149c12c496::t_b4918c8db98ccf 205,259
+  s_bf11149c12c496::t_2946010ff9ebab 226
+  s_bf11149c12c496::t_92f77ea537f0f3 199,201-204,206-213,215-225,227-228
+  s_bf11149c12c496::t_408088ef0d6827 200
+  s_bf11149c12c496::t_b3c8730d993ded 2
+  s_bf11149c12c496::t_3781c377c67a6a 30
+  s_bf11149c12c496::t_f1e3f50b12b3c9 260-263
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_bf11149c12c496::t_cb34cdd78621d3 181
+  s_bf11149c12c496::t_ef198d7ed880af 159
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_bf11149c12c496::t_6fa67e072db466 291
+  s_bf11149c12c496::t_afe7d3914f1a9b 2435-2446
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  s_bf11149c12c496::t_71fa6ae639eb0e 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "03f561cccf1daf05926ec49c9ea5ca8f75f78455",
+  "prompts": {},
+  "sessions": {
+    "s_bf11149c12c496": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2b111cf-21f0-4119-9a78-95309420ed84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

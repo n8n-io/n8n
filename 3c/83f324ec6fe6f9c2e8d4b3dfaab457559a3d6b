@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/get.operation.ts
+  s_dd6b1476a89205::t_571282d345cb1c 42-45
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/router.ts
+  s_dd6b1476a89205::t_19e19a7b507ecd 22,29-32
+  s_dd6b1476a89205::t_32acc25ce5e8a7 1
+  s_dd6b1476a89205::t_dd711d3453a40f 42
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/index.ts
+  s_dd6b1476a89205::t_c042e6c92faf99 3,7
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/utils.ts
+  s_dd6b1476a89205::t_31b5493629576f 7-9
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/site/index.ts
+  s_dd6b1476a89205::t_b2c0c7f9502403 62
+  s_dd6b1476a89205::t_34f043eab5cba3 10
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/getAll.operation.ts
+  s_dd6b1476a89205::t_f30fba2e212cb0 26-29
+  s_dd6b1476a89205::t_7f159d8bd2dbcd 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3c83f324ec6fe6f9c2e8d4b3dfaab457559a3d6b",
+  "prompts": {},
+  "sessions": {
+    "s_dd6b1476a89205": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "169c121b-d3d9-4449-aa90-c5e0821e1c16",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

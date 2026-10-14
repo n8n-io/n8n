@@ -1,0 +1,60 @@
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-4,7-18
+  s_fd1da3617c3e1d::t_8904b2b5fa7ad3 5-6
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-21
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_fd1da3617c3e1d::t_0879677b473ed0 91,130
+packages/cli/test/migration/1790342955595-create-trusted-source-tables.test.ts
+  s_fd1da3617c3e1d::t_fc9ce94c554c89 1-74,84-121,134-152,162-242,244-246,253-257,264-267
+  s_fd1da3617c3e1d::t_39e9dcb9a0ddde 75-83,122-133,153-161,247-252,258-263
+  s_fd1da3617c3e1d::t_9838b283d53a36 243
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 81
+packages/@n8n/db/src/migrations/common/1790342955595-CreateTrustedSourceTables.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 3-8,11-48,52-53
+  s_fd1da3617c3e1d::t_398e1ead651dc5 10,51
+  s_fd1da3617c3e1d::t_568d38338478bd 1-2,9,49-50,54-55
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_fd1da3617c3e1d::t_0879677b473ed0 1-26
+packages/cli/src/modules/inbound-auth-core/database/entities/trusted-source-identity.entity.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-45
+packages/cli/src/modules/inbound-auth-core/database/entities/trusted-source.entity.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-40
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 1-21
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_fd1da3617c3e1d::t_bd557b72f517a9 43
+docs/generated/postgres-schema/README.md
+  s_fd1da3617c3e1d::t_c5f8bb71e472e8 128-129,345-346,1561-1584
+docs/generated/postgres-schema/public.trusted_source.md
+  s_fd1da3617c3e1d::t_7454caf3ebfa1c 1-79
+docs/generated/postgres-schema/public.trusted_source_identity.md
+  s_fd1da3617c3e1d::t_b35a8a99cdb072 1-91
+docs/generated/postgres-schema/public.user.md
+  s_fd1da3617c3e1d::t_e7d82d4879014f 11,73,349-358
+docs/generated/sqlite-schema/README.md
+  s_fd1da3617c3e1d::t_b179068cf97cb2 128-129,329-330,1549-1572
+docs/generated/sqlite-schema/trusted_source.md
+  s_fd1da3617c3e1d::t_daf9ccfcea6597 1-81
+docs/generated/sqlite-schema/trusted_source_identity.md
+  s_fd1da3617c3e1d::t_b1b1e6fbf2ff28 1-97
+docs/generated/sqlite-schema/user.md
+  s_fd1da3617c3e1d::t_40220157d6a066 22,79,355-364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7598b118b65d8d6fc4b5b2850ed685d9e872f865",
+  "prompts": {},
+  "sessions": {
+    "s_fd1da3617c3e1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "761dcd9b-c988-4822-b9d3-fb779b27d043",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

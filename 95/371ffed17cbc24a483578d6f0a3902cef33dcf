@@ -1,0 +1,19 @@
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_5614fe25678684::t_56a1a74885a2ef 1051-1053
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "95371ffed17cbc24a483578d6f0a3902cef33dcf",
+  "prompts": {},
+  "sessions": {
+    "s_5614fe25678684": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd0a-cb45-7481-96f9-d72826656d72",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

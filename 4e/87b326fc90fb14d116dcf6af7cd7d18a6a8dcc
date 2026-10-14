@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nStepper/Stepper.vue
+  s_7417cdaf4f04c9::t_c9257ac8af100b 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4e87b326fc90fb14d116dcf6af7cd7d18a6a8dcc",
+  "prompts": {},
+  "sessions": {
+    "s_7417cdaf4f04c9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aef0-049d-7232-8d43-5bda3071bba0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

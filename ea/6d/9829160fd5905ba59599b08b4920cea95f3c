@@ -1,0 +1,30 @@
+packages/@n8n/instance-ai/src/tools/workflows/workflow-json-utils.ts
+  s_5fd94cee1e09c2::t_4655344487718d 98-132
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-json-utils.test.ts
+  s_5fd94cee1e09c2::t_895be6b150224e 34-102
+  s_5fd94cee1e09c2::t_a88fbe2cd93fdc 4
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_5fd94cee1e09c2::t_eae889666dc7e7 525
+  s_5fd94cee1e09c2::t_7d9721b7aca388 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea6d9829160fd5905ba59599b08b4920cea95f3c",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5fd94cee1e09c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4af8093-19c7-4c22-8f6f-87acd25cd6c5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

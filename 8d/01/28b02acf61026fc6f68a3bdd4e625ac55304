@@ -1,0 +1,11 @@
+packages/cli/test/integration/scheduling/scheduler-task-timeout.test.ts
+  ai_agent 1-104
+packages/@n8n/scheduler/README.md
+  ai_agent 414-419
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d0128b02acf61026fc6f68a3bdd4e625ac55304",
+  "prompts": {}
+}

@@ -1,0 +1,67 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_5b586951f97f35::t_6cfc6fdc574a95 955-958
+  s_5b586951f97f35::t_a6ce2ace7ef19b 450-453
+  s_5b586951f97f35::t_2bb90043e6cdf0 580
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_5b586951f97f35::t_7683106624d1be 1009
+  s_5b586951f97f35::t_9c5eb808e85f16 984
+  s_5b586951f97f35::t_ef4ea753fdafba 105
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_5b586951f97f35::t_4d537ad89867da 51-52
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_5b586951f97f35::t_6b61bbdebdbb33 65
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_5b586951f97f35::t_4250921f1a46ca 565-567
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_5b586951f97f35::t_f2bf6e3b4d770e 305-328
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_5b586951f97f35::t_3f8fec6d18e484 302-307
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_5b586951f97f35::t_fe88afab802955 108-114
+  s_5b586951f97f35::t_4d25499af4d276 107,328-335,344,348-362,368
+  s_5b586951f97f35::t_ade405e26ba1bd 15,20-26
+  s_5b586951f97f35::t_e5ec32827829a0 363-367
+  s_5b586951f97f35::t_dd72a5bf4f79e9 27
+  s_5b586951f97f35::t_b5c59b4711d5c0 369
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_5b586951f97f35::t_bf5f9329dbd11e 10-14
+  s_5b586951f97f35::t_8115bed9613a0b 556-656
+  s_5b586951f97f35::t_47d4e14bb0928f 657-661
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_5b586951f97f35::t_7781123a4a4c20 6526-6672
+  s_5b586951f97f35::t_a07666e9a99936 21
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_5b586951f97f35::t_fccd32337a9aaa 1-41,43-48,52-72,75-101,105-124,126-142,146-163,167-188
+  s_5b586951f97f35::t_de068c39864651 42,125
+  s_5b586951f97f35::t_232f82dc932701 49-51,73-74,102-104,143-145,164-166
+packages/@n8n/agents/src/sdk/memory.ts
+  s_5b586951f97f35::t_0b08fed70bec5b 53
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_5b586951f97f35::t_e6085dbe1011ff 10,13,18
+  s_5b586951f97f35::t_6084a1849e8d9f 77-82
+  s_5b586951f97f35::t_bf12f454fa4b5f 346,418-452,465-466
+  s_5b586951f97f35::t_8873baccea70e6 347-417
+packages/cli/src/modules/agents/__tests__/agent-json-config.test.ts
+  s_5b586951f97f35::t_af3d9171eb52cb 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3a083979a39fd34aa571600fd2333897ced2b346",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5b586951f97f35": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ad32431c-0f56-4daf-ada3-eaaac2bebeb5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

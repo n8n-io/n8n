@@ -1,0 +1,21 @@
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_4e6e8a022078ff::t_cd8a38c75071f4 319
+packages/cli/test/migration/1786666615643-add-coalesce-owner-misfire-policy.test.ts
+  s_4e6e8a022078ff::t_718f6ad3ba05aa 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b74e8240af669d1c9a31407ff5b8bf5d445e71d",
+  "prompts": {},
+  "sessions": {
+    "s_4e6e8a022078ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e692390b-74df-4d84-a9f2-5a552dfef418",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

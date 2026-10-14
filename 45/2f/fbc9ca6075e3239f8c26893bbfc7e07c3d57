@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_e4711c58d1e6aa::t_42e2ce25645292 692-699,708-710,715,721,729,755,757,764
+  s_e4711c58d1e6aa::t_ea78ae30c4196e 704-707
+  s_e4711c58d1e6aa::t_3ebec2f43cb3a5 700-703,711-712
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_e4711c58d1e6aa::t_69d6c911986b01 11,18,88,209
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_e4711c58d1e6aa::t_69d6c911986b01 3,21-24,32-35,60-62,104,107-108,124,178
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_e4711c58d1e6aa::t_0c8d1344f41177 299-303
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_e4711c58d1e6aa::t_b6476db2892066 241,260-274
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_e4711c58d1e6aa::t_299c3a46e189e9 1209-1210,1217-1219,1221-1224,1227-1229,1234-1238,1257-1263,1265-1269
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_e4711c58d1e6aa::t_f762d49aa6fc61 620-631,633-644,646-652
+  s_e4711c58d1e6aa::t_6431585f33a4b8 601-612,614-619
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_e4711c58d1e6aa::t_0f5c8ddf367f10 113,115-118,628-630
+  s_e4711c58d1e6aa::t_b6e2f1e1333a89 112,114
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_e4711c58d1e6aa::t_0f5c8ddf367f10 356-360
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_e4711c58d1e6aa::t_b6e2f1e1333a89 847-854
+  s_e4711c58d1e6aa::t_b6476db2892066 8,181,199,792-818,836-846
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryModelSetting.test.ts
+  s_e4711c58d1e6aa::t_b6476db2892066 195,197-202,205-207,209-217,220-225,229-230,235-236,240
+  s_e4711c58d1e6aa::t_674bc8f507d204 203-204
+  s_e4711c58d1e6aa::t_52211d05110cda 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "452ffbc9ca6075e3239f8c26893bbfc7e07c3d57",
+  "prompts": {},
+  "sessions": {
+    "s_e4711c58d1e6aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1158d-df08-7c82-b2ce-f486eedc3174",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

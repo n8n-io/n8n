@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  h_f8b427917eda26 145
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  h_f8b427917eda26 360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65c2db018ace045eef92781807fe0a6b71ec2816",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

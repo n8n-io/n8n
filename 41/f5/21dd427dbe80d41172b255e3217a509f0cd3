@@ -1,0 +1,44 @@
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_bd2c53981ea354::t_4a726493692b03 96-100
+packages/@n8n/db/src/migrations/common/1788527465971-AddWakeColumnsToAgentBackgroundJob.ts
+  s_bd2c53981ea354::t_47f1d0b68bd311 3
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_bd2c53981ea354::t_e0025260e9bde4 121-124
+packages/cli/test/migration/1788527465971-add-wake-columns-to-agent-background-job.test.ts
+  s_bd2c53981ea354::t_47f1d0b68bd311 13
+  s_bd2c53981ea354::t_221e246be04f08 109-145
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_bd2c53981ea354::t_5839d0e4f5e0ea 73-85
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_bd2c53981ea354::t_897e04dccc65c7 549-552
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_bd2c53981ea354::t_91cb5cc090425d 981-986,998-1001
+  s_bd2c53981ea354::t_d9c58e7c99b7f6 978-980,987-997,1002-1008
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_ab136783d4b7cd::t_2d9169d1da351b 94
+  s_bd2c53981ea354::t_aff979c935aa73 92-93,95-98,103,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "41f521dd427dbe80d41172b255e3217a509f0cd3",
+  "prompts": {},
+  "sessions": {
+    "s_ab136783d4b7cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dba9ea80-23c4-4773-97c9-b0c0d10f8293",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bd2c53981ea354": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dae65258-6737-4a15-af4b-bbcfa1bd9afd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/cli/test/integration/environments/source-control.service.test.ts
+  s_6c03a3aeed0aff::t_15e8dc17f3581f 964-965,967-970,972-978
+  s_6c03a3aeed0aff::t_7a2cd4c1d577d7 990
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_6c03a3aeed0aff::t_768e9f15fac353 1349-1352
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_6c03a3aeed0aff::t_0199c9485563da 498-499
+packages/cli/src/modules/source-control.ee/__tests__/source-control-status.service.test.ts
+  s_6c03a3aeed0aff::t_a76d0036f42fce 2510-2511,2535-2536,2539-2543,2547,2572,2575-2580
+  s_6c03a3aeed0aff::t_2ebe820829acee 2666-2667,2670-2676
+  s_6c03a3aeed0aff::t_c491ad08af19f1 2679,2714-2716,2728,2733,2764,2771
+  s_6c03a3aeed0aff::t_6a53a4db51408c 2828
+  s_6c03a3aeed0aff::t_808f10c36d40c3 2869-2870,2873,2878
+  s_6c03a3aeed0aff::t_de1f3e0b434ab8 2618-2619,2622-2628,2631
+  s_6c03a3aeed0aff::t_218cb0a0b9f148 2583
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_6c03a3aeed0aff::t_9964fd4439c59b 766-770,785
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_6c03a3aeed0aff::t_78868ca77a265a 3524
+  s_6c03a3aeed0aff::t_6b894fda2f043f 3561-3563,3585,3587-3596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1dfbcc64d1f5ce9e08bf60f36d9e956390e9f248",
+  "prompts": {},
+  "sessions": {
+    "s_6c03a3aeed0aff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d31eb2e6-e6a3-4d3e-9b31-d4ed736f02c1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

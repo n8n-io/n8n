@@ -1,0 +1,63 @@
+packages/cli/src/databases/repositories/__tests__/credentials.repository.test.ts
+  s_e3e530ae951f9a::t_aa61fc6adbe171 54,94
+packages/cli/test/integration/credentials/credentials-list.benchmark.test.ts
+  s_e3e530ae951f9a::t_fcd00689da6800 489
+  s_e3e530ae951f9a::t_e10e070de1e173 189-190
+  s_e3e530ae951f9a::t_c357d40a36d3b4 110-112,151-153,237-238,369-375
+  s_e3e530ae951f9a::t_d8ebb50a97d463 176-177,179
+  s_e3e530ae951f9a::t_6fbc1650704394 328-335
+  s_e3e530ae951f9a::t_dd3d867c84e5b2 87
+  s_e3e530ae951f9a::t_90e54810d60184 16-17,55,90,245-268
+  s_e3e530ae951f9a::t_112649d4738a1a 1-2,11-15,18-51,53-54,56-86,88-89,91-109,113-150,154-175,178,180-188,191-236,239-244,269-327,336-368,376-383,386-488,490-584
+  s_e3e530ae951f9a::t_877304c86a1069 3-10
+  s_e3e530ae951f9a::t_450c611595d0ed 52
+  s_e3e530ae951f9a::t_396c78e30fdcd4 384-385
+packages/cli/src/credentials/credentials.service.ts
+  s_e3e530ae951f9a::t_c196ad6bb25eda 359-362,365,369-370,378,441-444,447,451-452
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_e3e530ae951f9a::t_7a262f94a93c4f 2490-2494,2496-2497,2500-2501,2503-2504,2506-2509,2513,2520-2521,2523-2530
+packages/@n8n/db/src/repositories/credential-dependency.repository.ts
+  s_e3e530ae951f9a::t_513a37cfee140b 29-40
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  s_e3e530ae951f9a::t_470b97768fe408 3
+  s_e3e530ae951f9a::t_953e7e2d1b77e3 213
+  s_e3e530ae951f9a::t_ba87ec0c6b0e50 282-289,292-299
+  s_e3e530ae951f9a::t_f7a8e2a7be415d 192,198-199,208-209,215-218,222-223,231,236-237,241-242,248-249,257,262-263,267,272-273,277
+packages/@n8n/db/src/repositories/__tests__/credential-dependency.repository.test.ts
+  s_e3e530ae951f9a::t_4e4b6686eae663 160-166,168,178-180
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_e3e530ae951f9a::t_6a32ceca520639 910
+  s_e3e530ae951f9a::t_f5084f35d43b97 911
+  s_e3e530ae951f9a::t_88d1a7a136b411 864-909,912-923
+packages/cli/test/integration/credentials/credentials-list.service.test.ts
+  s_e3e530ae951f9a::t_f5084f35d43b97 380,385,393,402
+  s_e3e530ae951f9a::t_c91519629e062e 195-199,201-210,212-216
+  s_e3e530ae951f9a::t_cbaa6689b9ee99 321-323,436
+  s_e3e530ae951f9a::t_9621546480b056 1-29,32-194,200,211,217-320,324-379,381-384,386-392,394-401,403-427,429-435,437-486
+  s_e3e530ae951f9a::t_1cb0c9744ef542 428
+  s_e3e530ae951f9a::t_6a32ceca520639 30-31
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_e3e530ae951f9a::t_f9db1f13268bf0 446-452
+  s_e3e530ae951f9a::t_dd3ab76f70cc52 476,562
+  s_e3e530ae951f9a::t_58b122d24fd226 3,33-34,211-212,219-220,365,368,370-371,500-508
+  s_e3e530ae951f9a::t_953e7e2d1b77e3 27-29,563-566
+  s_e3e530ae951f9a::t_e3221b02923de2 223-224
+  s_e3e530ae951f9a::t_e817649b57985d 213-218
+  s_e3e530ae951f9a::t_54b8d152a85405 209-210,221-222,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce7f2427108bdb862aaabb72c031884f2e4f2374",
+  "prompts": {},
+  "sessions": {
+    "s_e3e530ae951f9a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4cc81199ffestkkpGa8vTX4sK",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

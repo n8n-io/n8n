@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviewStatus.ts
+  h_760178ed151f13 7
+  s_756f30de40ce04::t_5a7f8f1e619a96 6,8
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_760178ed151f13 5399,5408
+  s_756f30de40ce04::t_41584ef1cf3808 5396,5398,5400
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.vue
+  s_756f30de40ce04::t_ac2605aff89ee3 72-76,82
+  h_760178ed151f13 79
+  s_756f30de40ce04::t_6c2702627c485c 4,24-27
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailMetadata.test.ts
+  s_756f30de40ce04::t_1ff6ab398ae958 120-121,128
+  s_756f30de40ce04::t_9be86d3b5e7eda 99,104-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7d3bc1b54a6fc2eb1dc9d64181b79346d7229b86",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_756f30de40ce04": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5124076b-1e6f-483c-b0cd-314e9eaa9724",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

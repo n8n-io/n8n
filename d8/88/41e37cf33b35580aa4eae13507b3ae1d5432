@@ -1,0 +1,34 @@
+packages/cli/src/modules/instance-ai/instance-ai-event-relay.service.ts
+  s_3381c8e79991a1::t_28a046795dcbf3 1-52
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-event-relay.service.test.ts
+  s_3381c8e79991a1::t_a987e9f6dc346a 1-55
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_3381c8e79991a1::t_db30c2b8f6a428 322-331
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_3381c8e79991a1::t_e2ec576bcf8b52 24-28
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_3381c8e79991a1::t_895c7d72574132 452-467
+  s_3381c8e79991a1::t_52142ffe8bab5f 10,21
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_3381c8e79991a1::t_1afdc2e8873b21 365-408
+  s_3381c8e79991a1::t_31901bc3b00807 22
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-memory.test.ts
+  s_3381c8e79991a1::t_7dec4e3cf667c8 343-346
+  s_3381c8e79991a1::t_4becc3efcfa3b5 341-342,347-393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d88841e37cf33b35580aa4eae13507b3ae1d5432",
+  "prompts": {},
+  "sessions": {
+    "s_3381c8e79991a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55a4ad81-d392-4b4a-915e-f2e8db666223",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

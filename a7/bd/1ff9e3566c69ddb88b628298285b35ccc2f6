@@ -1,0 +1,29 @@
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_13d0f2e1be0144::t_cc9a6051c5066e 40,55
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_13d0f2e1be0144::t_66a5910979e568 119-122,124
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_13d0f2e1be0144::t_cc9a6051c5066e 66-69
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_13d0f2e1be0144::t_cc9a6051c5066e 18,67-70,72,84-85,93-95,106-107,376-379,384-386
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_13d0f2e1be0144::t_cc9a6051c5066e 460
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_13d0f2e1be0144::t_cc9a6051c5066e 894-902,904-905,909-916
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a7bd1ff9e3566c69ddb88b628298285b35ccc2f6",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

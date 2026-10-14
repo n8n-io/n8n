@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/security-policy.test.ts
+  s_47cc0479565c96::t_f705199ab5532b 54,72-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "854b2ed8d58b41a318c40afeee4609072d23fa6e",
+  "prompts": {},
+  "sessions": {
+    "s_47cc0479565c96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85b2421a-c077-46ff-8f81-f054172f0371",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/repositories/agent-task-cancellation.repository.ts
+  s_fbba0b32ee6f59::t_08cfbe51ddfc68 69-80
+  s_fbba0b32ee6f59::t_417d3146c5950c 68,81-82
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_fbba0b32ee6f59::t_417d3146c5950c 93
+packages/cli/test/integration/database/repositories/agent-task-cancellation.repository.test.ts
+  s_fbba0b32ee6f59::t_a042977d1bab0f 97-112
+docs/generated/postgres-schema/public.agent_task_cancellation.md
+  ai_agent 8
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_fbba0b32ee6f59::t_417d3146c5950c 135
+  s_fbba0b32ee6f59::t_a042977d1bab0f 72-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "13ae2677dbb7f4f9dffe79f60039b5c79b7f095c",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

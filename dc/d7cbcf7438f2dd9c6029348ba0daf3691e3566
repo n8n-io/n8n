@@ -1,0 +1,32 @@
+packages/cli/src/services/language-demo.md
+  h_c63dce324dfc7b 26
+packages/frontend/@n8n/i18n/src/locales/es.json
+  s_9e19257b62375a::t_c9d99a9a7c9a91 766-915
+  s_9e19257b62375a::t_be5cb699efc71f 763-765
+  s_9e19257b62375a::t_cdda657d818ab0 916-918
+scripts/translate-catalog-claude.mjs
+  s_9e19257b62375a::t_60dd1a258cd1ea 2,5-9,21,40-63,86,106,109-123,126-128,130,136-150,152-153,156
+  s_9e19257b62375a::t_a27c0e7e003fe1 1,10-20,22-39,64-85,87-105,107-108,124-125,129,131-135,151,154-155
+  s_9e19257b62375a::t_a968cbf5cefa92 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "dcd7cbcf7438f2dd9c6029348ba0daf3691e3566",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9e19257b62375a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a879a00d-86be-4ea8-bdf7-5c765b233fea",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

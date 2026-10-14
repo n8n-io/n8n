@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_c5954c3047b5ed::t_7fa274cc7f4120 232,255
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_c5954c3047b5ed::t_bd413ed19c6782 801,851-875
+  s_c5954c3047b5ed::t_62e0ab7ade2245 876-877
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_c5954c3047b5ed::t_bd413ed19c6782 35,409
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_c5954c3047b5ed::t_d9d7f51b05b4a3 92
+  s_c5954c3047b5ed::t_7fa274cc7f4120 4,21-23,200,236-242,244,253-255,279-291
+  s_c5954c3047b5ed::t_c26727627b9d89 292
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_c5954c3047b5ed::t_7fa274cc7f4120 215,231
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_c5954c3047b5ed::t_7fa274cc7f4120 265,290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "85e208564f45a9c7d4a2696f58aa8554c7581aaa",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_14bbae78eb49a2::t_ac9b79f392f17c 1258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49b7ed9a69d6e4caf9ffb5795dcc40d6973a9a75",
+  "prompts": {},
+  "sessions": {
+    "s_14bbae78eb49a2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c2f9-97aa-73d1-bf6a-7b613bf7132f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

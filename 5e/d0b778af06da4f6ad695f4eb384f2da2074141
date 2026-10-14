@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_f2330d4fd5c040::t_8ffbcde57dc105 59-63,169,172,175-177,186
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_f2330d4fd5c040::t_8ffbcde57dc105 4,11,78-81
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionHistoryDropdown.test.ts
+  s_f2330d4fd5c040::t_8ffbcde57dc105 4,7,39,53,57-59,65-67
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_f2330d4fd5c040::t_8ffbcde57dc105 28-34
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdownTrigger.vue
+  s_f2330d4fd5c040::t_8ffbcde57dc105 1-47
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_f2330d4fd5c040::t_8ffbcde57dc105 9,201-220,222-223,374-375,378,380
+  s_f2330d4fd5c040::t_9ff83a762ea71b 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5ed0b778af06da4f6ad695f4eb384f2da2074141",
+  "prompts": {},
+  "sessions": {
+    "s_f2330d4fd5c040": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fc51-1f8b-71d3-916a-1167e9629480",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

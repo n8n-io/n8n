@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.vue
+  s_794a1be4bba94d::t_8721aa4fbd2027 5,37,413,415,417-419,421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae55f57341bce6aa3aea40703594edce4864f3e7",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewCommentComposer.vue
+  s_ffb7ac8df0495d::t_cf8880ebd57300 54
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.vue
+  s_ffb7ac8df0495d::t_cf8880ebd57300 33-38,113,281,389
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.stories.ts
+  s_ffb7ac8df0495d::t_cf8880ebd57300 21,47,125-129
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.test.ts
+  s_ffb7ac8df0495d::t_cf8880ebd57300 972-1012
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "04063ac9b740289e76cc0cde752f062dba12c9bf",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

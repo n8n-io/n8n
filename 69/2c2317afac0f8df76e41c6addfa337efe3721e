@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/common/1787056876306-CreateGitConnectionTable.ts
+  s_d0ecbd8335692d::t_24ed0bb241571d 3
+packages/cli/test/migration/1787056876306-create-git-connection-table.test.ts
+  s_d0ecbd8335692d::t_8983aed599f72f 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "692c2317afac0f8df76e41c6addfa337efe3721e",
+  "prompts": {},
+  "sessions": {
+    "s_d0ecbd8335692d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f4b4595-f633-4926-ab16-1b2e11245ae5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

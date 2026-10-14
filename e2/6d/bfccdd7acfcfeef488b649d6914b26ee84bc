@@ -1,0 +1,33 @@
+packages/cli/src/credentials/credentials.service.ts
+  s_4826b2a338fcf3::t_e7df521b07f80d 1206,1210-1215,1217-1221,1225
+packages/cli/src/services/__tests__/role.service.rolesWithScope.test.ts
+  s_4826b2a338fcf3::t_e7df521b07f80d 71
+packages/cli/src/services/role-cache.service.ts
+  s_4826b2a338fcf3::t_e7df521b07f80d 4,45,48,75-79
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_4826b2a338fcf3::t_e7df521b07f80d 3,9-11
+packages/@n8n/db/src/repositories/role.repository.ts
+  s_4826b2a338fcf3::t_e7df521b07f80d 2,8-10,13-14
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_4826b2a338fcf3::t_e7df521b07f80d 72,92
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_4826b2a338fcf3::t_e7df521b07f80d 3354-3358,3378,3380,3384
+packages/cli/src/services/role.service.ts
+  s_4826b2a338fcf3::t_e7df521b07f80d 22,459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e26dbfccdd7acfcfeef488b649d6914b26ee84bc",
+  "prompts": {},
+  "sessions": {
+    "s_4826b2a338fcf3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a90b-f9ef-7ef1-b9d6-592d8414d15e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

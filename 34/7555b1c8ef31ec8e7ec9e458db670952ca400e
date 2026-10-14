@@ -1,0 +1,25 @@
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_9d126120fc8390 163-167
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_9d126120fc8390 868-891
+packages/cli/src/public-api/media-types/binary-response.ts
+  s_8631ec10eb1199::t_9d126120fc8390 9-13,22-23,25-28,37,42
+.agents/skills/public-api/SKILL.md
+  s_8631ec10eb1199::t_9d126120fc8390 112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "347555b1c8ef31ec8e7ec9e458db670952ca400e",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

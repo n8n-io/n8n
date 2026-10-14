@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_f2330d4fd5c040::t_878db74e997774 608,610,612,614,628,637,639
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdownTrigger.vue
+  s_f2330d4fd5c040::t_878db74e997774 4
+  s_f2330d4fd5c040::t_0e525d42739b9e 8,10,17,28,30-31,39-40,42-49,53,56
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiViewHeader.test.ts
+  s_f2330d4fd5c040::t_7cf08143f4421b 40-43,45-48
+  s_f2330d4fd5c040::t_878db74e997774 59
+  s_f2330d4fd5c040::t_da34020052794f 2,4,15,50-52,55-58
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.test.ts
+  s_f2330d4fd5c040::t_81a202bd03423f 939,943-947
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.vue
+  s_f2330d4fd5c040::t_26d22c2b8f253a 135-137
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_f2330d4fd5c040::t_1ed5c7ff07805c 116,165-166,170-172,174,180,189-190,269
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionHistoryDropdown.test.ts
+  s_f2330d4fd5c040::t_f93ae9b1ca208f 39,53,57-58
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_f2330d4fd5c040::t_d18ed0322f88ac 30-35
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_f2330d4fd5c040::t_f8feb7fc2c22e6 2,211,273
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_f2330d4fd5c040::t_e19cd9373e5f5a 759-760
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_f2330d4fd5c040::t_c9d82d729fc6bb 16,28,79,85,122-123,130
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_f2330d4fd5c040::t_821e0813033bbd 30,481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8271cf5778f7c0bb7ba2ded7e65d2f7edabadfb7",
+  "prompts": {},
+  "sessions": {
+    "s_f2330d4fd5c040": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fc51-1f8b-71d3-916a-1167e9629480",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

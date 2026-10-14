@@ -1,0 +1,30 @@
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_17cab20ab25728::t_77a5b5c023046b 215
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_17cab20ab25728::t_994a04ff869587 462-469
+  s_17cab20ab25728::t_fae0487a20c8ef 73
+packages/cli/src/modules/mcp/__tests__/get-workflow-versions-diff.tool.test.ts
+  s_17cab20ab25728::t_fcd2b0700681a2 1-45,52-263
+  ai_agent 46-51
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_17cab20ab25728::t_64d579798d07fb 19
+packages/cli/src/modules/mcp/tools/get-workflow-versions-diff.tool.ts
+  s_17cab20ab25728::t_74425843a08489 98-101,105-109
+  s_17cab20ab25728::t_fdef602ce55514 1-97,102-104,110-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c5e35cc35b9bda7c17fb76f907ffaf00134df869",
+  "prompts": {},
+  "sessions": {
+    "s_17cab20ab25728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05c25d64-6848-42d3-9fd0-1cc1dd47f0e9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/execution/executions/executions.store.ts
+  s_03d816ea3ae9c9::t_17f88c3e8fcce0 150-158
+  s_03d816ea3ae9c9::t_b830bb2efb0032 10
+  s_03d816ea3ae9c9::t_f2d8e792d45489 387
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+  s_03d816ea3ae9c9::t_fa1a7cf525bf1d 131-213
+  s_03d816ea3ae9c9::t_be2b59cab4bee2 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "83be390bc4ea219dfa2248061033201bd08b5e90",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_03d816ea3ae9c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2def67b-2d23-40ae-98ac-c1b9b0c045e0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

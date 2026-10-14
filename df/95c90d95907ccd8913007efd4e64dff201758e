@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/versionDescription.ts
+  s_78f30b507db2b8::t_0eb95df19fcc45 25-38,42-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "df95c90d95907ccd8913007efd4e64dff201758e",
+  "prompts": {},
+  "sessions": {
+    "s_78f30b507db2b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9be3181b-0eae-4a2d-90d9-d20b72288f1e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

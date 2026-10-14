@@ -1,0 +1,27 @@
+packages/@n8n/api-types/src/dto/workflow-history/workflow-version-public.dto.ts
+  s_5d8e1da214783a::t_b1c6ee1f877881 10-22
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_5d8e1da214783a::t_b1c6ee1f877881 6,848,855
+packages/@n8n/api-types/src/dto/index.ts
+  s_5d8e1da214783a::t_b1c6ee1f877881 528,530
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml
+  s_5d8e1da214783a::t_434c3a8584508a 30-175
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
+  s_5d8e1da214783a::t_3c8c27f8e260bb 29-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d97579da4e5d824bc34254d058e89049f98eb6d6",
+  "prompts": {},
+  "sessions": {
+    "s_5d8e1da214783a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efa07b59-cb7b-40e2-925d-e57994dabb42",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,585 @@
+packages/testing/containers/test-containers.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 48-50
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/queryIndex.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,58
+packages/core/src/instance-settings/instance-settings.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 72-81,123
+.github/scripts/quality/cubic-config.schema.json
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 8,25,66,71,83,88,162,274,277,280
+.agents/review-rules/security/outbound-requests.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-15
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/NodesAttachmentChips.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-291
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getTable.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,15
+packages/cli/src/modules/oauth-server/oauth-flow.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-4,7,106-111,115-116,136-181,183
+  s_e8b96ca75e92a4::t_237219df17885e 182,184
+packages/nodes-base/credentials/test/DatabricksOAuth2Api.credentials.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,8-12
+  s_e8b96ca75e92a4::t_1eea9d9c0bdbde 13
+packages/nodes-base/nodes/Databricks/actions/files/deleteFile.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,21
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/__tests__/CanvasSelectionToolbar.nodeContext.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-46
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/NodesAttachmentChips.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-491
+packages/cli/src/modules/mcp/tools/publish-workflow.tool.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,48-49
+packages/nodes-base/nodes/Databricks/actions/genie/getQueryResults.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,13
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiMessage.nodesAttachment.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-58
+packages/cli/src/errors/response-errors/workflow-publish-forbidden.error.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-26
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 222-223,322-360,383-506
+  s_e8b96ca75e92a4::t_bc1e2412133b42 507-508
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,14,38,43-76,85,118-148
+  s_e8b96ca75e92a4::t_78b050006f4c33 149
+.gitignore
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 49
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/createIndex.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,28
+packages/nodes-base/nodes/Databricks/Databricks.node.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 25,34
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-agent.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 502-504
+packages/@n8n/api-types/src/dto/index.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 185-188
+packages/nodes-base/nodes/Databricks/actions/genie/getSpace.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,10
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2101,2548,4529,4547,7003,7508-7512
+packages/testing/playwright/tests/e2e/journeys/admin-views-executions-list.spec.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 10-15
+.github/workflows/util-sync-master-to-3x.yml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 72,76-77
+packages/cli/src/modules/encryption-key-manager/encryption-bootstrap.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,7,21-36,41-43
+  s_e8b96ca75e92a4::t_b84369600471d7 44
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useAddNodesToChat.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-55
+.agents/review-rules/security/auth-and-access-control.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,7,11,13-18
+packages/cli/src/modules/instance-ai/message-parser.ts
+  s_e8b96ca75e92a4::t_116b0a49ac7d7c 88
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,7,77,140-142,159-160,167-168,249-251,253,302-304,320-323
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 175,180,219,256,401-403,410,421,429,448,456,461,463,479,484
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 22,263-267
+packages/@n8n/api-types/src/workflow-publish-blocked-details.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-13,15-27,32-44
+  s_e8b96ca75e92a4::t_870575bd77589b 45
+.agents/review-rules/security/code-execution-and-sandboxing.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-5,9-14,16-17
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listVolumes.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,20
+packages/nodes-base/nodes/Databricks/actions/genie/executeMessageQuery.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,13
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 427,446,453,456,477,497-502,520-521,523-525,530-534
+packages/cli/src/modules/instance-ai/__tests__/observability.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,3,52-77
+  s_e8b96ca75e92a4::t_85397b39c88460 78
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 18,84-88,388-393,397-400,431-432
+packages/cli/src/modules/chat-hub/chat-session.repository.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,3,10-12
+packages/frontend/@n8n/design-system/src/styleguide/utils/cssTokenSource.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-38
+packages/cli/src/workflows/workflow.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 20,46,50,79-81,401-402,418,715-722,739-773,779,839-840,912,916-927,945-955
+  s_e8b96ca75e92a4::t_bf7f7504afc969 956
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 53,659-666,745-746,889-892
+  s_e8b96ca75e92a4::t_e235b68e62da3c 893
+packages/nodes-base/credentials/DatabricksOAuth2Api.credentials.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-4,177
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2-9,13-39,67-69
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listTables.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,20
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/buildNodesAttachment.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-163
+packages/nodes-base/credentials/test/DatabricksApi.credentials.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-15
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,229
+.boundaries-baseline.json
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2
+.agents/review-rules/security/credentials-and-secrets.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 7,9-11,13
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 23,211-218
+  s_e8b96ca75e92a4::t_cfe697be8cef3e 219-220
+packages/frontend/editor-ui/src/features/ai/instanceAi/utils/buildNodesAttachment.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-203
+packages/@n8n/api-types/src/index.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 404
+packages/nodes-base/nodes/Databricks/test/helpers.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-114
+packages/cli/src/modules/encryption-key-manager/key-manager.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 84-86,95
+packages/cli/src/modules/instance-ai/__tests__/message-parser.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 95-96,122,148,151,160-163,167,169-171,354,359-361,412-415,420-421,599-604,1015
+  s_e8b96ca75e92a4::t_5e8847a80e1b61 181,205-206,223,258-259,306,311,313-317,319,328-336,340-344,350-351
+  s_e8b96ca75e92a4::t_a034cc28a59830 178-180
+  s_e8b96ca75e92a4::t_9a912775564f36 220-222
+  s_e8b96ca75e92a4::t_149d34acd8f48c 256-257
+  s_e8b96ca75e92a4::t_6ea2eb2dfcd755 307-308
+  s_e8b96ca75e92a4::t_2035e4f8a11903 174,176-177,185,189,192-194,197,199-200,202,208,210-213,216,218-219,227,231-232,235-236,239-250,253,265-268,271,273,275,277,281-283,286,292,296,299-300
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 167-168
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createTable.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,37
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 5,49-72,74,81-84,120-145,210-214,254,329-331,338-339,531,560
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 635,637
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/updateCatalog.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,16
+packages/cli/src/modules/chat-hub/chat-hub-title.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 88,118
+packages/@n8n/api-types/src/dto/workflows/workflow-publish-forbidden-error-public.dto.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-13
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getVolume.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,18
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 12,44,49,61-67,69-78,154-162
+  s_e8b96ca75e92a4::t_827bf32574e0c6 163-164
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteVolume.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,18
+.github/workflows/test-e2e-reusable.yml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 181-183,201-211
+  s_e8b96ca75e92a4::t_cd94811928eaf6 212-213
+packages/@n8n/instance-ai/src/utils/__tests__/model-config-id.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-66
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/listIndexes.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,10
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 34,39,43,949-957,963-964,971-979
+packages/cli/src/modules/instance-ai/observability.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-2,39-48
+  s_e8b96ca75e92a4::t_9e699acc43831f 49
+.agents/review-rules/security/rendering-untrusted-content.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-15
+packages/testing/playwright/vitest.config.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 8-13
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,460,550
+packages/frontend/@n8n/design-system/src/styleguide/shadow.mdx
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,3-5,11,26-29,41-42,45-46,49-50,53-54,56-58,60-62,64
+.github/scripts/github-helpers.test.mjs
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-5,21,94-130
+  s_e8b96ca75e92a4::t_d8410e1138351d 131
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/templates.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 660-811,857-897,923-929
+  s_e8b96ca75e92a4::t_e95c4f092bd9ca 930
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-credential-reuse.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 22,101-130,197-219
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,107,322,343,345,354-355,357,385-392,396-397,400-401,410-415,442,444,446,452-455,461,463,466-477
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteTable.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,15
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/GenericFunctions.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 7,299,302,309-312,329,336,342-348,352,356,359-365,384,389,392,399-402,405,411,419,423-519,529,535-664,687-690,693,707-722,734
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 622-624
+packages/testing/playwright/AGENTS.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 200-230
+packages/cli/src/modules/oauth-server/__tests__/oauth-flow.service.api.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 20,192-207,295-401
+  s_e8b96ca75e92a4::t_f2c0ce5387f49b 402-403
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getCatalog.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,15
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 22,57,70,72,84,88,316,335
+packages/nodes-base/nodes/Databricks/actions/files/listDirectory.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,29
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 49-65,361-363,1099
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 53,61-83,128-129,131-133,225,415-416,430-431,462-463,466-467,571-574,578-592,607,626,671-672,676,684-703,730-742
+  s_e8b96ca75e92a4::t_f8fadabcd4a779 743
+pnpm-workspace.yaml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 364
+packages/@n8n/instance-ai/src/index.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 190-191
+packages/@n8n/instance-ai/src/utils/model-config-id.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-41
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 73,302-305,435
+packages/@n8n/instance-ai/docs/memory.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 29-30
+.github/scripts/github-helpers.mjs
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 251,253-254
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-publish-forbidden-error-public.dto.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-34
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-credential-reuse.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 5,61-62,66
+packages/cli/src/services/oauth2-flow-proxy.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2-6,8-13,17-20,32,37,40-46
+  s_e8b96ca75e92a4::t_ae3133dd56b9be 47
+packages/core/src/instance-settings/__tests__/instance-settings.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 377-386
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/NodeChip.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-191
+packages/nodes-base/nodes/Databricks/actions/files/getFileInfo.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,21
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 152-211
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-113
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createVolume.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4-9,40
+.github/workflows/util-publish-api-schema.yml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 9,13-14
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2,250,253,314,327-328,437,439
+packages/frontend/@n8n/design-system/src/styleguide/colour.mdx
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,6,22-24
+packages/cli/templates/form-trigger-completion.handlebars
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 123
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 12-16,19-20,111,114,173,192-194,303,310-314,318,328,330,334-336,352,356-367,369-370,373-395,599-610
+  s_e8b96ca75e92a4::t_ec9e456770f2b1 611
+packages/nodes-base/nodes/Databricks/test/Databricks.oauth2.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-37
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 261-276
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AttachmentPreview.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2,6,16-17,22-24,82-88,90,121
+packages/nodes-base/nodes/Databricks/actions/genie/getMessage.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,12
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 176,190,261-263,266,278-283,825,895,1432,1488,1852-1854,1863-1864,1870-1871,2285-2286,2652,3690-3692,3694-3695,3701-3707,4255,5627,5960,6630
+.agents/review-rules/README.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 16,62-64
+packages/@n8n/instance-ai/docs/architecture.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 197,225-227
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 39-41
+packages/cli/src/modules/encryption-key-manager/encryption-key-manager.module.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 9-18,20-22
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/shell.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,8,11,13,95-106,109-110,122,124,137,141,156,160,172,176,181-186,188,196-199,201,210-223,238-331
+packages/nodes-base/nodes/Databricks/actions/files/deleteDirectory.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,21
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/getIndex.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,10
+packages/nodes-base/nodes/Databricks/test/files-download.workflow.json
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-63
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 220-258
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-credential-references.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 22,101-130,187-191,194-232
+.github/scripts/sync-master-to-3x.mjs
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 76
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 91-164
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 20
+packages/testing/playwright/fixtures/a11y.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2,39-56,86-87,90-98,109,119-158,167-184,189-192
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1737-1786
+packages/cli/src/errors/http-error-serializers.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 37
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/GenericFunctions.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 10,12,14-28,121-129,134,147,157-161,165,177-179,181,184-190,203-279,299-300,303-304,307,311
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 23
+packages/@n8n/eslint-plugin-community-nodes/src/utils/ast-utils.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 71-137
+packages/nodes-base/nodes/Databricks/actions/modelServing/queryEndpoint.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 5,32-37,91
+packages/nodes-base/nodes/Databricks/constants.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-17
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 994-995,1058-1059
+packages/cli/src/modules/chat-hub/chat-hub.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 477,536,632,692,777,834,915,988,1059,1100,1144,1186
+.agents/review-rules/backend/license-enforcement.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-14
+packages/testing/playwright/reporters/a11y-reporter.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-139
+packages/frontend/@n8n/design-system/src/styleguide/type.mdx
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,3,5,13-15,23-25
+packages/nodes-base/nodes/Databricks/eslint-user-agent-restriction.mjs
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-52
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 274-277,290
+packages/frontend/@n8n/design-system/src/styleguide/components/ShadowExamples.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-53
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 249-254,294
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 12,14,58-59,73-75,96,348-364,590-594
+  s_e8b96ca75e92a4::t_2267fb03a1f820 595-596
+packages/@n8n/db/src/migrations/common/1784000000051-BackfillInstanceAiEventLog.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 41-43
+packages/nodes-base/credentials/test/WordpressOAuth2Api.credentials.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 17-23
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 204,3404,4077,4146
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 132-148
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-4,41,81-96,113-114,120-167
+packages/cli/src/constants.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 90-99
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.refineTitle.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 210,218
+packages/cli/src/scaling/scaling.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 189-190,192-193
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-terminal-outcome.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 103,143,204,207,223-226,232-240,244-257,260-261,264-266,270-273,277,280-283,285,288-291,324,341,355-372,379
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 103-106,226-228,566-570,614-636,960-965,1121-1125,1585-1588,1878,1910,1953
+packages/nodes-base/eslint.config.mjs
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 6,14-19,203
+.devcontainer/codespaces/docker-compose.yml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 30
+packages/nodes-base/nodes/Databricks/actions/files/uploadFile.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,25
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listFunctions.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,20
+packages/cli/src/scaling/job-processor.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 332-339
+packages/nodes-base/credentials/WordpressOAuth2Api.credentials.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 50
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 172-180,188,193-247
+  s_e8b96ca75e92a4::t_7037ff42e4f630 248
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 45
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 295-302,1058-1059
+packages/cli/test/integration/public-api/workflow-update-republish-scope.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-304
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 337,353,355
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useAddNodesToChat.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-110
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 81,129,220,326-329,462,494-496,507,547,731,735-738,742,748-751,754,756,781-782
+packages/testing/containers/services/sandbox.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 22-31,163-203,205-210,215-237,239-264,280-281,350,366-368,370
+cubic.yaml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 107,109-110,119,124,127-129,137
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 264,278
+packages/@n8n/db/src/migrations/common/1788336311704-DropInstanceAiRunSnapshotsTable.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-44
+packages/cli/package.json
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 245
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 5,22-25,29-51
+  s_e8b96ca75e92a4::t_cb0ed4cdb3e27b 52-53
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 292
+packages/cli/src/modules/chat-hub/chat-hub-workflow.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 16,53,97,122,129-131,133-146,148,150-152,154-162,164,166-169,171-196,208,211-213,215-223,225-242,244,246-249,251-264,1260,1271,1286,1303,1320,1323-1332,1334-1351,1355-1381,1390,1447,1453-1480,1731,1869-1884,1886,1888-1891,1893-1913
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 41-55
+docker/get-n8n-compose.yml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 13,27,52
+packages/testing/playwright/composables/journeys/admin-views-executions-list.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 6,103-111,115,120-124
+packages/cli/src/webhooks/__tests__/webhook-request-sanitizer.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 324,331-332,368-396
+  s_e8b96ca75e92a4::t_cc095df588b974 397
+packages/cli/src/modules/chat-hub/chat-hub-agent.repository.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,3,8-10
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 7,15-19,435-480
+  s_e8b96ca75e92a4::t_b72c0c2921e206 481-482
+packages/nodes-base/credentials/DatabricksApi.credentials.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 8-9,39-42,57
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/ChatTrigger.node.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 11,20,576,636,703,715,719-761
+  s_e8b96ca75e92a4::t_b3b6d2ef0b1236 762
+packages/cli/src/utils/__tests__/form-trigger-completion-template.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-46
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-emoji-in-options.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 6,96-97,101
+packages/cli/src/modules/chat-hub/chat-hub-agent.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 229-231,240
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-best-practices.tool.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 19-20,23,25
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 34-43,69,124-137
+  s_e8b96ca75e92a4::t_853002e6179f24 138-139
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-credential-references.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 5,60-61,65
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-emoji-in-options.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 19-39,99-154
+packages/cli/src/modules/instance-ai/tracing/index.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 6
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 27,71,79,90,115,123,493
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteFunction.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,15
+packages/nodes-base/nodes/Databricks/actions/databricksSql/executeQuery.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 6,34-42,44-46,64,109-114
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/pendingDraftAttachment.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-19
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createCatalog.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,19
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/__tests__/useContextMenu.nodeContext.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-205
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 13,106-107,285-293
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.pendingAttachments.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-72
+.github/workflows/test-bench-reusable.yml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2
+packages/nodes-base/nodes/Databricks/actions/genie/startConversation.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,10
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 72-75,196-216
+  s_e8b96ca75e92a4::t_a820cadc75cf8c 217-218
+packages/nodes-base/nodes/Databricks/actions/files/downloadFile.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 5-10,30
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 154-161
+packages/nodes-base/nodes/Databricks/test/unity-catalog-oauth2.workflow.json
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-49
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 65-70
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/shell.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 39-56,61-62,65-77,102-108,113,115-116,135-166,172-204
+packages/workflow/src/interfaces.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 158-177,1556-1563,3790-3793
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 16,97,116-122,143-145
+packages/cli/src/errors/response-errors/workflow-publish-blocked.error.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,5,13
+packages/cli/src/modules/mcp/__tests__/get-workflow-best-practices.tool.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 51-81
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-bootstrap.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 17-20,23-27,61-68,82-104
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 230-285,691-716
+  s_e8b96ca75e92a4::t_13e6aeca946db9 717
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useBuildingArtifactIds.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-39
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useIsNodeContextEnabled.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-13
+.github/workflows/docker-sbom-probe.yml
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2
+packages/@n8n/instance-ai/docs/configuration.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 214
+packages/nodes-base/nodes/Databricks/actions/genie/createMessage.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,11
+packages/cli/templates/form-trigger.handlebars
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 696
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 8,24
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 422,464
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 592,594-597,601
+packages/frontend/@n8n/design-system/src/styleguide/components/PrimitivesColorTable.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 2,5-6,8,22,24,26-31,33-34,36-64,66-67,70-89,94,100,102-106,108,112-114,129-130,156,160-162,166-212,214-230,238-240,244,250,252-253,259-280,284,287-299,302,305-307,310-315,333-348
+packages/frontend/@n8n/design-system/src/styleguide/components/TypeExamples.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-213
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 19,66-67,1346-1351
+.agents/review-rules/security/node-input-safety.md
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 8,10,16,21-22,25,29,31-33
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 12,26,55,105-108,117-120,168-173,251-263
+  s_e8b96ca75e92a4::t_8daa037b4761a2 264-265
+packages/@n8n/api-types/src/__tests__/workflow-publish-blocked-details.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 21-38
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 7-12,27,286-317,348-354
+  s_e8b96ca75e92a4::t_89d3be46192202 6
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 368
+packages/nodes-base/nodes/Databricks/actions/files/createDirectory.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 4,21
+packages/cli/src/modules/encryption-key-manager/__tests__/key-manager.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 163,166,173-176
+packages/testing/playwright/playwright.config.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 146-148,155-157
+packages/testing/playwright/reporters/a11y-reporter.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-159
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 192-195
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 21,40,2356-2441
+  s_e8b96ca75e92a4::t_1c6aa146ae53cd 2442
+packages/frontend/@n8n/design-system/src/styleguide/components/NamedTokensColorTable.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-248
+packages/testing/playwright/fixtures/a11y.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 6,9-11,15,17-19,80-168
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 5,8,12,15,18,220-247,252,499-541
+packages/cli/src/modules/encryption-key-manager/key-rotation-flag.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1-12
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createFunction.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,29
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 114,150-181
+  s_e8b96ca75e92a4::t_88e9be7a259bb1 182-183
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 26,45,318,340,382,384
+packages/cli/src/modules/encryption-key-manager/__tests__/encryption-bootstrap.service.integration.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 15,64-92
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 33,67,73,163-166,471-482
+  s_e8b96ca75e92a4::t_14c9e8340b2fe3 483-484
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 226-228,240,258
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteCatalog.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,15
+packages/frontend/editor-ui/src/features/shared/contextMenu/components/ContextMenu.vue
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 97-103
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listCatalogs.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3,9
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 88-93,119-144,153-165,183,206-344,455-474,500,508
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-workflow.service.test.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 1,10,40,74,85-104,106-109,112-215,1294,1318,1343,1368
+packages/cli/src/webhooks/webhook-request-sanitizer.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 5-6,20-21,23-25,36-37
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getFunction.operation.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 3-8,15
+packages/cli/src/modules/instance-ai/suspended-run-restorer.service.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 174-177,180
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 16,27-28,48-49,62
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/types.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 16-31
+packages/cli/src/modules/chat-hub/chat-message.repository.ts
+  s_e8b96ca75e92a4::t_66dcda5c145f2d 7,9,18,22,24
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_e8b96ca75e92a4::t_de9e65f05f5000 8
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_e8b96ca75e92a4::t_481b3ec026f19d 19
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_e8b96ca75e92a4::t_47eacb7836806d 5,1105-1121
+pnpm-lock.yaml
+  s_e8b96ca75e92a4::t_1616598bb42987 759,4504-4505,20405-20406,34585,34590-34597,34601,34603,34607,34609,34611,34615,34617,34623-34624,34743,34756,34769,38280,41614,46251,46257,46263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6edaa4dfc1ed41bcaa9fc42e0c65c0df88db31dd",
+  "prompts": {},
+  "sessions": {
+    "s_e8b96ca75e92a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdaa0091-0080-478a-91a2-a2ed36ea9d01",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

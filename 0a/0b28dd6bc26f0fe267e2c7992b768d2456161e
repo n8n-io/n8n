@@ -1,0 +1,98 @@
+packages/frontend/editor-ui/src/features/agents/components/agentChatInjectionKeys.ts
+  ai_agent 1-8
+packages/frontend/editor-ui/src/features/agents/__tests__/module.descriptor.test.ts
+  ai_agent 1-8,10-37,40-47,49-98
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageAttachments.test.ts
+  ai_agent 6,16-19,22-26,48-53
+packages/frontend/editor-ui/src/app/router.ts
+  ai_agent 26,311-318
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  ai_agent 7,11,142-143,170-205
+packages/frontend/editor-ui/src/features/agents/composables/useAgentsN8nChatFlag.ts
+  ai_agent 4-7,9,15,17-27
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 4,41,67-68,87-88,107,129,162,171,173-182,306-308,318,432,518,548,778,1005-1009
+  s_e3560b551eac11::t_88f7975da7b113 110,779-781,783-784,810-811,957-963,1426-1427
+  s_9a6001e67297f0::t_7572e5dc4f12a9 799,805-809,823,852
+  s_9a6001e67297f0::t_882cfce96d3c93 800,803-804
+  s_e3560b551eac11::t_be9d0b7fac2c72 1168-1184,1228-1229,1231-1241,1243-1257,1259-1265,1267-1268,1270,1272-1286,1288,1290-1306,1308,1310-1324,1326,1328-1342,1344,1346-1361,1373-1378,1384-1402,1432-1434
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  ai_agent 6,48-79,120-128,131,655,660,671,676,703,708,723,733,738,742-751,781,786,796,801
+  s_9a6001e67297f0::t_96b8656302ae21 129
+  s_9a6001e67297f0::t_30b27a8e2f36f5 130
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  ai_agent 2,8-9,19-20,42-48
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPermissions.ts
+  ai_agent 8,52
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  ai_agent 14-16
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  ai_agent 1-50,52-87,89-100,102,104-126,129-160,162-168,170-275,279-285,290
+  s_e3560b551eac11::t_e49e6472b76e64 51,161,169
+  s_e3560b551eac11::t_be9d0b7fac2c72 88
+  s_e3560b551eac11::t_88f7975da7b113 101
+  s_9a6001e67297f0::t_7b59cb0ffd0c2d 127-128
+  s_9a6001e67297f0::t_359225e70d9d35 276,286
+  s_9a6001e67297f0::t_74f46878a5e248 289,291
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  ai_agent 152
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  ai_agent 352-371
+packages/frontend/editor-ui/src/features/agents/utils/errors.ts
+  ai_agent 1-9
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  ai_agent 219-221,223-224,620,849,902,2659,3548,3673,4480,4694-4831
+packages/frontend/editor-ui/src/features/settings/context/context.utils.ts
+  ai_agent 11,31-35,37
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  ai_agent 19,30,75-80,117-127,162,245,250-255,364,392,489,1477-1482,1601,1764,1807,1822
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8148-8151
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  ai_agent 5-6,11,18,31-32,102-112
+  s_9a6001e67297f0::t_d2d73664cb6abe 33
+  s_9a6001e67297f0::t_93f5439b6bccd1 101
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  ai_agent 65-67,238
+  s_e3560b551eac11::t_88f7975da7b113 318,347-354,361-364,368-369
+  s_e3560b551eac11::t_be9d0b7fac2c72 319,365
+  s_e3560b551eac11::t_ac989fc9b65c37 355-360
+  s_9a6001e67297f0::t_b1d932b91a1e2b 1384-1386,1579-1603,1606-1610
+packages/frontend/editor-ui/src/features/agents/composables/useBackOrFallback.ts
+  ai_agent 1-21
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPermissions.test.ts
+  ai_agent 128-150
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  ai_agent 1-2,4-9,11,13-15,17-93,95-99,102-130,132-133,135-136,138,141-143,155-185,188-192,196-197,199,201-211,214-215,217-219,221-223,250-261,263-272
+  s_e3560b551eac11::t_e49e6472b76e64 3,131,134,137,193-195,200
+  s_e3560b551eac11::t_be9d0b7fac2c72 94,100-101,154,212-213,216,273,282-285
+  s_e3560b551eac11::t_88f7975da7b113 186,262
+  s_9a6001e67297f0::t_9cd237417a2698 187
+  s_e3560b551eac11::t_55307f734bca7e 198,274-281
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  ai_agent 28,308-310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0a0b28dd6bc26f0fe267e2c7992b768d2456161e",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

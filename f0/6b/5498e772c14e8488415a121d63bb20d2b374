@@ -1,0 +1,35 @@
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_b6b8132944ba17::t_8a56ca3672c176 333-346
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_b6b8132944ba17::t_6f55f5a5ae5891 1239-1358
+  s_b6b8132944ba17::t_c1af8b138f3a25 15-21
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_b6b8132944ba17::t_9e4d78d3bc0825 315,317-318,320,322,337,378-379,395,399,402-403,406,408-411,418-421,423,425-427
+  s_b6b8132944ba17::t_c8bbeeb04efe65 313-314,316,319,321,323-336,338-377,380-394,396-398,400-401,404-405,407,412-417,422,424
+packages/cli/src/modules/agents/utils/extract-agent-credential-ids.ts
+  s_b6b8132944ba17::t_24034266b1de79 6-15,22-26,28,35,45,49-52,54
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_b6b8132944ba17::t_d6e8169073673d 41-44,354-362,369-371,373-374,378-385,388-393
+  s_b6b8132944ba17::t_c8bbeeb04efe65 386-387
+  s_b6b8132944ba17::t_e909d3ab96e7d9 21
+  s_b6b8132944ba17::t_96f9e90628739b 353,368,372,377
+  s_b6b8132944ba17::t_9ddb9420014fa6 375-376,394
+packages/cli/test/integration/shared/workflow.ts
+  s_b6b8132944ba17::t_8a56ca3672c176 19,185-199,208,243-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f06b5498e772c14e8488415a121d63bb20d2b374",
+  "prompts": {},
+  "sessions": {
+    "s_b6b8132944ba17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4904e28-9ec0-4c99-ac1d-37c6dead1548",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

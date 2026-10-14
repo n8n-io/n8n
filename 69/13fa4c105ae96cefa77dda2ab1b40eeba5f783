@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/shared/spec/schemas/packageRequirementConsumer.generated.yml
+  s_c71d8d6a27245a::t_66d1d3dfbd4103 7
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_c71d8d6a27245a::t_66d1d3dfbd4103 24,26
+  s_c71d8d6a27245a::t_bdd1f6b3cdc5db 93,98-200
+  s_c71d8d6a27245a::t_739125d9e1b76e 94-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6913fa4c105ae96cefa77dda2ab1b40eeba5f783",
+  "prompts": {},
+  "sessions": {
+    "s_c71d8d6a27245a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a118f9-89a0-7922-9bda-d308ff402c58",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

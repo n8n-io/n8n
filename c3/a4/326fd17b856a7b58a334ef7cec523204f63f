@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6de01f90522ebb::t_7061d1ce9a878e 7333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "c3a4326fd17b856a7b58a334ef7cec523204f63f",
+  "prompts": {},
+  "sessions": {
+    "s_6de01f90522ebb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0796efb0-85de-405b-8aa7-6fdd12d7dfdc",
+        "model": "unknown"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

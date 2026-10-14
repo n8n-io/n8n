@@ -1,0 +1,58 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_98fbbcbbfb4836::t_b005184fed9010 1600
+  s_98fbbcbbfb4836::t_f796f0501f658f 173-180
+  s_98fbbcbbfb4836::t_a7d3cf599c9950 1577-1597,1601,2153-2163,2165-2176,2178-2186
+packages/cli/src/modules/agents/__tests__/agent-turn-queue.service.test.ts
+  s_98fbbcbbfb4836::t_b005184fed9010 164,190,210,224,238,265
+  s_98fbbcbbfb4836::t_fe4e6fabf2b7e4 241-245,247-260,268
+  s_98fbbcbbfb4836::t_dd4d9f9b7ebad2 261-264,266-267,269-273,284,326
+packages/cli/src/modules/agents/agent-turn-queue.service.ts
+  s_98fbbcbbfb4836::t_5b290fe578809f 5,12,173,198,241-246,248,256-263,265,302,390-426
+  s_98fbbcbbfb4836::t_fe4e6fabf2b7e4 22-26,385-389
+  s_98fbbcbbfb4836::t_41e604840b428b 427
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_98fbbcbbfb4836::t_b005184fed9010 48-62,66,393,395,416,420,422,442
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_98fbbcbbfb4836::t_2dc9d6c92cb544 106-109,283-284,699,703-720,723-726
+  s_98fbbcbbfb4836::t_576244f2d4ccba 728-729
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_98fbbcbbfb4836::t_f796f0501f658f 9,12,16,105-132,134-143,145-160,162-163,165,168-169
+  s_98fbbcbbfb4836::t_b005184fed9010 133,144,164,166-167,172-190
+  s_98fbbcbbfb4836::t_1918e676bca469 161
+  s_98fbbcbbfb4836::t_db3207d8320ee6 27
+  s_98fbbcbbfb4836::t_e871c2751cee53 17-20,25-26,28,31,170-171,193,211,266,288,321
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_98fbbcbbfb4836::t_5b290fe578809f 27-28,33,60,97-102,230-231,237,257,285,291,300,304,307-308,323,343-344,349-353
+  s_98fbbcbbfb4836::t_78f53397ee6240 354,369,459,485
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_98fbbcbbfb4836::t_b000c6bd187276 259
+  s_98fbbcbbfb4836::t_0134baca036de0 260-265
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_98fbbcbbfb4836::t_2dc9d6c92cb544 46,56
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_98fbbcbbfb4836::t_1609fd834c7f6f 137,178-179,190,193-194,245
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_98fbbcbbfb4836::t_1609fd834c7f6f 502,911,1009,1018-1027,1058,1065-1069
+packages/cli/test/integration/agents/agent-turn-queue.test.ts
+  s_98fbbcbbfb4836::t_b000c6bd187276 1-36,38-101,103-173,175-196,199-201
+  s_98fbbcbbfb4836::t_fe4e6fabf2b7e4 37,102,174,197-198
+  s_98fbbcbbfb4836::t_a630e917f787f0 202-220
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_98fbbcbbfb4836::t_b005184fed9010 579-580,582-583,595,599-600
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "83ffad628977594d3af561c463811db0081d5230",
+  "prompts": {},
+  "sessions": {
+    "s_98fbbcbbfb4836": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a420-4487-7d20-bbc6-f7cafd0b5a20",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

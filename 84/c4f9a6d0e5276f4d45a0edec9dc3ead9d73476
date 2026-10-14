@@ -1,0 +1,38 @@
+packages/cli/src/executions/execution-list-v2.service.ts
+  h_8fb27e0cdf6d1e 263-265
+  s_8ffb60b90d5223::t_53074959703ad1 195-198
+packages/cli/src/executions/execution-list.service.ts
+  h_8fb27e0cdf6d1e 16,27,30-31,39,42-43
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_8ffb60b90d5223::t_61dea0b801320d 5,14,20,24,29
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_8ffb60b90d5223::t_61440a89a28ae6 127-128
+packages/cli/src/executions/merge-execution-pages.ts
+  s_8ffb60b90d5223::t_dffe14679fd9fe 31-32
+  s_8ffb60b90d5223::t_5939bfd3767029 19-30,33-50
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_8ffb60b90d5223::t_70831177a4b9d2 169-176,184-185
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_8ffb60b90d5223::t_9d96e5b6fd7dcd 198-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "84c4f9a6d0e5276f4d45a0edec9dc3ead9d73476",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_8ffb60b90d5223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03c01f0c-6a29-4038-9e4e-6da02b39e1bf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

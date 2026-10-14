@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_04de9bba1e1713::t_8d62bb1c56aa81 924-930
+  s_04de9bba1e1713::t_847b2ec2df0ec6 948-950
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31d2a635c23e7b931161ebcef2a0f0dfc2b02ed3",
+  "prompts": {},
+  "sessions": {
+    "s_04de9bba1e1713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae81c3-30b7-4a88-a02c-609425de8d74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

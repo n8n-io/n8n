@@ -1,0 +1,19 @@
+packages/@n8n/scan-community-package/scanner/scanner.mjs
+  s_8ee0cc9d7eb2cb::t_ed363e3e6f3223 16-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b22260cc3086ea43ba1099d80a764a58f88da291",
+  "prompts": {},
+  "sessions": {
+    "s_8ee0cc9d7eb2cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d44665bd-e66a-420e-88e2-e3f45c6d538b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/nodes-base/nodes/Databricks/methods/converters.ts
+  s_1f1ec980d9998c::t_0ad67ee4cb68d7 1-47
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_1f1ec980d9998c::t_9806d8f46cf522 4,8
+packages/nodes-base/nodes/Databricks/transport/index.ts
+  s_1f1ec980d9998c::t_321ac282e90806 5-12
+packages/nodes-base/nodes/Databricks/transport/resources/files.ts
+  s_1f1ec980d9998c::t_e052341675737a 4,15,23,35,42,50,62,80
+packages/nodes-base/nodes/Databricks/transport/resources/genie.ts
+  s_1f1ec980d9998c::t_f2c0a822309b13 4,14,22,35,48,62,76
+packages/nodes-base/nodes/Databricks/transport/converters.ts
+  s_ad2e3b40f49ca6::t_43c54f523d0bd2 1-6,14-16,18-20,23,25-26,29-34,39,41-46,49,53-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "148a4f9f23919f733e90f3617362f89d9a0d0f71",
+  "prompts": {},
+  "sessions": {
+    "s_1f1ec980d9998c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ca6cf34-09a9-48ed-b0de-28e10a1d85ba",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_ad2e3b40f49ca6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bef166f6-61fd-4e43-8500-52653b3bb776",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

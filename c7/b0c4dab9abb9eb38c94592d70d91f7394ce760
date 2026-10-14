@@ -1,0 +1,237 @@
+packages/cli/src/modules/agents/tools/knowledge/__tests__/search-knowledge.tool.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 4,11,17,37-38,44,51-55,59-60,67,74,78-79,86,93
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 51-53,178-179,599-603,606-621
+pnpm-lock.yaml
+  ai_agent 460-461,808,1621,2125,2702,2936,3735,3978,4448,4833,6038,6962,19110-19111,25881,35947,37509,38147,39149,42792
+packages/cli/src/modules/agents/agent-workspace.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-59
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 19
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 6,91,105,126-129,131,148,155,162,167,215,271-275,278
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 6-7,18,7792-8017
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 127-160,244,246,261,274,276,282,284,295,297,308,310-313,326,337,352,373,387,402,416,440
+packages/cli/src/modules/agents/__tests__/agent-knowledge-mirror.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,14-18,27-29,48-61,67,72,74,78-81,83-88,92-131,136-137,148,153,200,222-241,253-255,265,322,344-345,348,360,370-374,377,396,412,432,439,446-448
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 16,107,448
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 13,31,188,865-869,1038-1043,1055,1057,1075-1085
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/stream-agent-writes-a-file-and-streams-the-response.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,48-89,403,407-408,411,414,416-417,420,425-426,429,446,464,481,509-550,864,869,872,875,878,881,886-887,890
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 101-102,115,144,334,337
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 57,97,226
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,14,138-139,148-149,163-164,418,440,456
+packages/@n8n/db/src/migrations/common/1786519946974-AddReasonToWorkflowPublicationOutbox.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-37
+packages/@n8n/db/src/entities/index.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 68,150
+packages/@n8n/mcp-browser/src/tools/schemas.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 12-18
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 80-84,88
+packages/@n8n/agents/src/workspace/tools/workspace-tools.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 14,24-32,38
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_d8b5e951456b7b::t_c9f222ac638d08 37-38,53,60,78-83,86,89-94,158,161,333-338
+packages/@n8n/agents/src/workspace/__tests__/scoped-workspace.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 4-5,79,92,98,102,120,129
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 3,72,454-459
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 2-6
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 43,57,136-137,316-320
+.devcontainer/codespaces/devcontainer.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 20-29,33-36,41-45
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 286,294-326,353,403,425,493,705
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 590,698-700,1281
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 71,237-238,240-247,253,258-263,265-271
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 104,392-405,488-543
+docs/generated/postgres-schema/public.workflow_publication_outbox.md
+  s_d8b5e951456b7b::t_c9f222ac638d08 11,20,26,49
+.devcontainer/codespaces/docker-compose.yml
+  s_d8b5e951456b7b::t_c9f222ac638d08 29
+packages/@n8n/agents/src/workspace/scoped-workspace.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 3-20,33,50,160
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 56
+packages/@n8n/db/src/entities/workflow-publication-outbox.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 24-42,61-62
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 115
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  ai_agent 57-61,131-141,145,152,163,523,527-534,600-608,632-634
+packages/@n8n/agents/src/workspace/tool-result-storage.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-68
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_d8b5e951456b7b::t_c9f222ac638d08 9,22,31-32,52
+packages/cli/test/integration/commands/start.cmd.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 143
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 11,16-18,156,160-165,207-334
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 21,131-151
+.devcontainer/codespaces/post-start.mjs
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-36
+package.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 25,216-217
+packages/@n8n/agents/src/sdk/agent.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1107-1109
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 26,28,139-140
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 579,635
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1376
+packages/cli/src/modules/agents/runtime/agent-secure-runtime.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1,164-187,294,296,298,308,316,319,321,325,327-329,331-336,339,343-377,397-402
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-applies-single-and-batch-string-replacements.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,48-89,401,405,408,411,414,416,420-421,424,440,456-459,462,475,501,506,534-575,887,890-891,894,897,899-900,902,906-907,910
+packages/@n8n/mcp-browser/src/tools/tabs.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 66
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 11,15-16,51-53,58,62-67,71,77,85-86,88-89,96,102-103,105-106,119-122,126,130,133-136,152-153,158,162-165,178-179,184
+packages/cli/src/modules/agents/__tests__/agent-workspace.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-81
+pnpm-workspace.yaml
+  s_d8b5e951456b7b::t_c9f222ac638d08 183
+packages/@n8n/instance-ai/src/workspace/__tests__/lazy-runtime-workspace.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 2,9,91
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-write-file-and-workspace-read-file-tools.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,48-89,401,405,408,411,414,416,420-421,424,440,458,462,471-917,921-922,924-925,938,940-948,950-965,968,996-1037,1349,1353,1356,1359,1362,1364,1368-1369,1372
+packages/@n8n/api-types/src/dto/workflow-reviews/update-workflow-review-request-version.dto.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-2,16-17
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-edits-files-with-append-copy-move-delete-and-rmdir-tools.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,48-89,401,405,408,411,414,416,420-421,424,440,458,475,503-544,856,860,863,866,869,871,875-876,879,895,913,930,940,944,962,990-1031,1343,1347,1350,1353,1356,1358,1362-1363,1365,1367,1383,1401,1418,1428,1432,1450,1460,1464,1482,1510-1551,1863,1866-1867,1870,1873,1875-1876,1878,1882-1883,1886,1902,1920,1937,1947,1951,1969,1979,1983,2001,2011,2015,2031,2059-2100,2412,2415-2416,2419,2422,2424-2425,2427,2431-2432,2435,2451,2469,2486,2496,2500,2518,2528,2532,2550,2560,2564,2580,2590,2594,2612,2640-2681,2993,2996-2997,3000,3003,3005-3006,3008,3012-3013,3016
+packages/@n8n/mcp-browser/src/tools/response-envelope.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 30-48,67,149,156,169,174-181
+packages/@n8n/api-types/src/dto/workflow-reviews/__tests__/update-workflow-review-request-version.dto.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 32-49,132-140
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 66,104,108,126-250
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 5-10,25-43,48,54-55,61,66-76,80-85,91,93-94,100,107-108,110,123-147
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-list-files-for-a-pre-existing-directory.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,48-89,401,405,408,411,414,416,420-421,423,425,441,459,476,504-545,857,861,864,867,870,872,876-877,880
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-handles-multi-step-workflow-mkdir-write-list-read.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,48-89,401,405,408,411,414,416,420-421,424,440,462,473,490,495,523-564,876,880,883,886,889,891,895-896,898,900,916,938,949,966,971,981,985,996,1012,1017,1045-1086,1398,1401-1402,1405,1408,1410-1411,1413,1417-1418,1421
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-320
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 6,38,40,98-100,109-111,115,130-131,263-356
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 124,138,148-188,198,214,228,241,255,267,281,288,290,302,313,322,338,352,365,377,381,402,411,423,442,463,467,480,495,499,513,521,530,537,554,573,585,591
+packages/@n8n/instance-ai/evaluations/__tests__/workspace-tool-contract.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1,48
+.devcontainer/codespaces/README.md
+  s_d8b5e951456b7b::t_c9f222ac638d08 44-99,110-127,137-145,149-150
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 4,20,38,42
+packages/@n8n/instance-ai/src/workspace/lazy-runtime-workspace.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 4,64,326
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 288,308-349,393,550,594,634,680,721,759,801,841,984,1013
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 39,192
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 4605
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue
+  s_d8b5e951456b7b::t_c9f222ac638d08 2,9-12,14,22,28-29,57-61,64,67-70,73-78,95-156,161,166,184-189,197-202,207,212,214,220,222-227,236-249,270-278,280-287,289-339,349-352,355-359
+packages/@n8n/mcp-browser/src/tools/helpers.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 27,36,45-46,97-99,120,139,144
+packages/cli/src/workflows/workflow.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 14,1587-1592,1633-1638
+packages/@n8n/mcp-browser/src/tools/interaction.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 10,45,88,130,162,193,224,255,263,309,342
+docs/generated/postgres-schema/README.md
+  s_d8b5e951456b7b::t_c9f222ac638d08 126,1500
+packages/@n8n/agents/src/workspace/tools/read-tool-result.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-404
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 5,16,20,24,45-46,48,50-54
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.constants.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 44
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 371
+packages/@n8n/mcp-browser/src/tools/response-envelope.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-301
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 22,24,52-53,78,94,115,140
+docs/generated/sqlite-schema/README.md
+  s_d8b5e951456b7b::t_c9f222ac638d08 126,1489
+scripts/dev-up.mjs
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-86
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 4,41,99-104,106,137-140,142,144-157,161-162,175,189,194,197,210-211,228-229,239,245-260,263-270,272-330,374,379,383,390,402,414,420,434,443,456,463,468,471,483,495-496,504-533
+packages/@n8n/agents/src/workspace/index.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 2-3,9
+.devcontainer/codespaces/agent-worker.mjs
+  s_d8b5e951456b7b::t_c9f222ac638d08 2-6,8,10-15,18,20-23,25-33,36-39,41-49,53-55,59,63,66,68-74,81-100,102-108,110-115,117-120,122-124,126-128,130,132,135-136,138-142,145,147-148
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 247,251,269,299-305,313,507,513-519,538,548,642,648
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-file-stat-to-get-file-metadata.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,48-89,401,405,408,411,414,416,420-421,424,440,458,474,502-543,855,859,862,865,868,870,874-875,878
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 139-141
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 25,38-39,50-98,101,112,121-122,133,136,140,153,158,166,178,190,202,218,221,233,267,279,288,301,304,334,387-388,437,459,480-481,496,498,510,529
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 439,450,468,495,499-500,516,520
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 124,165,192,226
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 40-41
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_d8b5e951456b7b::t_c9f222ac638d08 206
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 7,14,28-40,169-176
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 11,70,88-89,102,289,354,768,929,950-954
+packages/@n8n/agents/src/index.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 421-426
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 25-28,941-945,1075-1138,2013-2015,2024-2049
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-319
+packages/cli/src/modules/agents/agent-knowledge-mirror.service.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1,46-50,54,118,124,267-285,292,295,308,327,330,359,401,517,524-529
+packages/cli/test/migration/1786519946974-add-reason-to-workflow-publication-outbox.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 1-114
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-execute-command-tool.json
+  s_d8b5e951456b7b::t_c9f222ac638d08 12,48-89,401,405,408,411,414,416,420-421,424,440,458,474,502-543,855,859,862,865,868,870,874-875,878
+packages/cli/src/modules/agents/tools/knowledge/search-knowledge.tool.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 3,242,246,256,269,282
+packages/@n8n/mcp-browser/src/tools/interaction.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 539-602
+packages/cli/src/modules/agents/__tests__/agent-secure-runtime.test.ts
+  s_d8b5e951456b7b::t_c9f222ac638d08 40-74,372-403
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c7b0c4dab9abb9eb38c94592d70d91f7394ce760",
+  "prompts": {},
+  "sessions": {
+    "s_d8b5e951456b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d598e382-1f10-4e94-a256-40ec7275df71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+.github/scripts/grind-changed-tests.mjs
+  s_b2770a9c4c7dcd::t_cecb8965faf123 97,122
+scripts/grind.mjs
+  s_b2770a9c4c7dcd::t_f4b82f9d49f7da 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "16ebb7d00b74c010e7dda6c1a297b198ea9f9f3b",
+  "prompts": {},
+  "sessions": {
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

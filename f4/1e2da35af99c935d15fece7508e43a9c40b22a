@@ -1,0 +1,36 @@
+packages/cli/src/scheduling/system-tasks/system-task-type.ts
+  h_32d8cd6a0d6aad 2-3
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_0d688a3af35f91::t_74c3d589c67eca 138,143-145
+  s_0d688a3af35f91::t_b72db7afb97d4c 165
+  h_32d8cd6a0d6aad 73,78,80-81,86-88,91-92,94,102,160-162,164,211,222
+  s_0d688a3af35f91::t_42a22d908bf6fe 20-30,38-39,43
+  s_0d688a3af35f91::t_99beef9c21e6b5 178-179,185
+  s_0d688a3af35f91::t_d0309927eb6e8d 89-90,93,100,104-105,107,109-111,114
+  s_0d688a3af35f91::t_170ffd6aa1bd82 108,112-113
+  s_0d688a3af35f91::t_4d4d2451094b6e 201-206,212-219
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  h_32d8cd6a0d6aad 21
+  s_0d688a3af35f91::t_834415c104a096 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f41e2da35af99c935d15fece7508e43a9c40b22a",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0d688a3af35f91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a033ce69-8c67-4808-8913-17e747af2262",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

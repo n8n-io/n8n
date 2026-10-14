@@ -1,0 +1,82 @@
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 2,17
+packages/cli/src/services/pruning/execution-pruning-soft-delete.task.ts
+  s_0ab6003236059c::t_75c830c6684c8e 18
+  s_0ab6003236059c::t_2adc49e3623d5a 3,16-17
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_0ab6003236059c::t_cb4ca9a86597de 3,177,202,204-210
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 2,15
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  s_0ab6003236059c::t_2adc49e3623d5a 69-72,77
+  s_0ab6003236059c::t_087686593fe298 8,10-13,17,35-56
+  s_0ab6003236059c::t_75c830c6684c8e 78-86
+  s_0ab6003236059c::t_b07e0758846ee9 2-3,64-68,73-76
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_0ab6003236059c::t_75c830c6684c8e 16-18
+  s_0ab6003236059c::t_790dc0290fcd38 2
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  s_0ab6003236059c::t_75c830c6684c8e 17-19
+  s_0ab6003236059c::t_790dc0290fcd38 2
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_0ab6003236059c::t_4c2a726b2312cd 6,162,172
+  s_0ab6003236059c::t_d3af4a7279d658 168-170
+  s_0ab6003236059c::t_2adc49e3623d5a 158-161,163-167,171,173
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 1
+  s_0ab6003236059c::t_75c830c6684c8e 16-18
+packages/cli/src/license/license-renewal.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 1,15
+packages/@n8n/decorators/src/system-task/index.ts
+  s_0ab6003236059c::t_d3af4a7279d658 3-4
+packages/cli/src/modules/insights/insights-compaction.task.ts
+  s_0ab6003236059c::t_2adc49e3623d5a 2,16-17
+  s_0ab6003236059c::t_75c830c6684c8e 18
+packages/cli/src/scheduling/system-tasks/__tests__/dummy.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 1,8
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  s_0ab6003236059c::t_75c830c6684c8e 20
+  s_0ab6003236059c::t_2adc49e3623d5a 3,18-19
+packages/cli/src/telemetry/telemetry-pulse.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 2,14
+packages/cli/src/services/pruning/activity-pruning.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 5,23
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 2
+  s_0ab6003236059c::t_75c830c6684c8e 15-17
+packages/cli/src/modules/insights/insights-pruning.task.ts
+  s_0ab6003236059c::t_2adc49e3623d5a 2,16-17
+  s_0ab6003236059c::t_75c830c6684c8e 18
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 2
+  s_0ab6003236059c::t_75c830c6684c8e 16-18
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 2
+  s_0ab6003236059c::t_75c830c6684c8e 16-18
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-timer.test.ts
+  s_0ab6003236059c::t_087686593fe298 51-65,315-316
+packages/cli/src/telemetry/telemetry-buffer-flush.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 2,14
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  s_0ab6003236059c::t_790dc0290fcd38 1,17
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_0ab6003236059c::t_a685d0922ccc46 133-145,152-164
+  s_0ab6003236059c::t_cb4ca9a86597de 146,165
+  s_0ab6003236059c::t_cf8dbaaafbdc5c 147-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "25930a625a75fbd7070e1a75221fdca374e8c11e",
+  "prompts": {},
+  "sessions": {
+    "s_0ab6003236059c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46aec706-7499-4033-b205-581c0ad8b74f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

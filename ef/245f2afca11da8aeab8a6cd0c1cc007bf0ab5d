@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.core.ts
+  s_cd9e2842ed6bc7::t_4382640a4f85e8 62
+  s_cd9e2842ed6bc7::t_a3ade044ca2e79 11-16
+  s_51358def49561a::t_838f858a41227b 1-10,17-61,63-114
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.ts
+  s_cd9e2842ed6bc7::t_44d7377ea722cc 1-2,4,7-11,14
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.core.test.ts
+  s_cd9e2842ed6bc7::t_8efc4ae0382ebc 246-274
+  s_cd9e2842ed6bc7::t_fbfcc0f19fdfdc 4
+  s_cd9e2842ed6bc7::t_0fdcca8fcda666 49
+  s_cd9e2842ed6bc7::t_f6b005fc678311 1-3
+  s_cd9e2842ed6bc7::t_33e79788f3dc94 5-7,46-48
+  s_cd9e2842ed6bc7::t_a079691cebc71c 50-52,243-245
+  s_cd9e2842ed6bc7::t_07af00aff985c5 275-277
+  s_cd9e2842ed6bc7::t_5884f606c0e73d 8-45,53-242,278-287
+packages/frontend/editor-ui/src/app/composables/usePageRedirectionHelper.test.ts
+  s_cd9e2842ed6bc7::t_8b641fdee83cd0 1-17,22-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ef245f2afca11da8aeab8a6cd0c1cc007bf0ab5d",
+  "prompts": {},
+  "sessions": {
+    "s_51358def49561a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f9865e7-e8a5-4c02-adaa-db24a5c89eef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_cd9e2842ed6bc7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "763a8903-0cc1-48a2-b0f1-0366fe8a5dd7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

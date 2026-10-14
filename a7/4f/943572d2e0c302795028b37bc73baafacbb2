@@ -1,0 +1,58 @@
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_cc52d4d80ec002::t_320f504ca85c35 411-425
+packages/@n8n/scheduler/src/core/factory.ts
+  s_cc52d4d80ec002::t_97fd13cad7ed35 309-321,349-364
+packages/@n8n/scheduler/src/core/executor/__tests__/lease-heartbeat.test.ts
+  s_cc52d4d80ec002::t_18e5173f224050 2-3,5-36,78-106,108-115,117-132,134-137,139-150,152-161,163-164,166-181,183-193,195-205,207-240
+  s_cc52d4d80ec002::t_97fd13cad7ed35 107,116,133,138,151,162,165,182,206
+  s_cc52d4d80ec002::t_dfd3f246a53316 1,37-39,41-43,45,65-77,194
+  s_cc52d4d80ec002::t_387f1525471293 4,40,44,46-64
+packages/@n8n/scheduler/src/observability/metrics.ts
+  s_cc52d4d80ec002::t_97fd13cad7ed35 1,24-28,57
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_cc52d4d80ec002::t_97fd13cad7ed35 46,149-154,266-268
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_cc52d4d80ec002::t_4d67aab6a7a73b 793-817
+  s_cc52d4d80ec002::t_320f504ca85c35 303-325
+packages/@n8n/scheduler/src/core/executor/lease-heartbeat.ts
+  s_cc52d4d80ec002::t_18e5173f224050 17,81
+  s_cc52d4d80ec002::t_cba9e28a8e9e0c 3,60-63
+  s_cc52d4d80ec002::t_97fd13cad7ed35 6-13,33,76,86
+  s_cc52d4d80ec002::t_dfd3f246a53316 4-5,16,31,39-59,94
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_cc52d4d80ec002::t_97fd13cad7ed35 3,53-55,235,769,773-817,819-828,830-842,844-861,863-887,889-964,966-972,974-1011,1013-1018
+  s_cc52d4d80ec002::t_3a4d6ed5085931 973
+  s_cc52d4d80ec002::t_4fa3437bf2f9d1 770-772,818,829,843,862,888,965,1012
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_cc52d4d80ec002::t_387f1525471293 1780-1811,1829,1846-1871
+  s_cc52d4d80ec002::t_a6d8a3b1cc0317 1824-1828,1830-1840
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_cc52d4d80ec002::t_dfd3f246a53316 6,376
+  s_cc52d4d80ec002::t_18e5173f224050 1,5,7-8,13,20-26,55-60,76,80-81,91-92,262,287,290-292,302-306,363-375,377-383,385-391,396-405
+  s_cc52d4d80ec002::t_74f20c1434e4a7 392-395
+  s_cc52d4d80ec002::t_97fd13cad7ed35 77-78,384
+packages/@n8n/scheduler/src/core/executor/lease-constants.ts
+  s_cc52d4d80ec002::t_d4aecefc5c7536 1-5,7-10,18-21
+  s_cc52d4d80ec002::t_cba9e28a8e9e0c 11-17
+  s_cc52d4d80ec002::t_74f20c1434e4a7 22
+packages/@n8n/scheduler/src/core/errors.ts
+  s_cc52d4d80ec002::t_dfd3f246a53316 63-80
+packages/cli/test/integration/scheduling/scheduler-lease-renewal.test.ts
+  s_cc52d4d80ec002::t_d71617d99d2a77 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a74f943572d2e0c302795028b37bc73baafacbb2",
+  "prompts": {},
+  "sessions": {
+    "s_cc52d4d80ec002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14df1071-d247-4331-af4e-4ce488ddaae0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

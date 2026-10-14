@@ -1,0 +1,22 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_e612e5baf2f2ef::t_cb226abf73431c 447
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_e612e5baf2f2ef::t_f97c237eaccc05 465
+  s_e612e5baf2f2ef::t_b36a0872f876c7 231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ffdd8ed743764bc52896850e887542eefbcf132",
+  "prompts": {},
+  "sessions": {
+    "s_e612e5baf2f2ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48e2ae35-d3ab-428e-86b3-105ed8fcd30a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

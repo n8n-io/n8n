@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.vue
+  s_3a36de5a05244c::t_6b185a02a3bd2f 159,166,175-185,189-201
+  s_3a36de5a05244c::t_8c25661a674aa1 208-209,219-220,223-224,227,230,234-237,240,242-243,245-249,251-253,261,265-266,272-274,283-285,290-386,389-393,397-415
+  s_3a36de5a05244c::t_f425b6f56fa422 60-63
+  s_f03c6f51317048::t_c546a5e5974a79 202-203,250,387
+  s_3a36de5a05244c::t_c317d028d37fae 263
+  s_3a36de5a05244c::t_8b9a4b28b08299 4,13
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/metadata.test.ts
+  s_b2770a9c4c7dcd::t_e035a0f8b7e685 8,49-77,89-106
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/spec/instance-ai-personalized-prompt-suggestions.md
+  s_b2770a9c4c7dcd::t_68db64e65e36d3 272-273
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/prompts.ts
+  s_b2770a9c4c7dcd::t_c116a0de356eb1 3-639,641-892,894-1149
+  s_b2770a9c4c7dcd::t_4b2f27a769d516 640,893
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "81e7115062a4dd79bc70eebb7afb326d03c9ac61",
+  "prompts": {},
+  "sessions": {
+    "s_3a36de5a05244c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0ae55a7-9837-4657-a1d0-2ffda526096c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    },
+    "s_f03c6f51317048": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed9e8-e9a6-7492-bc65-93a6779de578",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

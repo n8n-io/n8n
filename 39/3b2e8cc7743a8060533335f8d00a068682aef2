@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_af721e3366faac::t_a9a5615113df97 1770-1776
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "393b2e8cc7743a8060533335f8d00a068682aef2",
+  "prompts": {},
+  "sessions": {
+    "s_af721e3366faac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bbbde3a5-cbc5-4486-a4b8-414f4b03fb7b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

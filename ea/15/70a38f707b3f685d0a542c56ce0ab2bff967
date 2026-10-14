@@ -1,0 +1,19 @@
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_1aa455648d1f9e::t_388a68c4f5f876 1204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ea1570a38f707b3f685d0a542c56ce0ab2bff967",
+  "prompts": {},
+  "sessions": {
+    "s_1aa455648d1f9e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e0b83bf3-6b75-4a8f-aa7b-be1e39a00bf9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

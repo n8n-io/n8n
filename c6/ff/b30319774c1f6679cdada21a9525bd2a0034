@@ -1,0 +1,19 @@
+packages/@n8n/expression-runtime/package.json
+  s_a63b2c15e880c2::t_df515f84baf2c8 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c6ffb30319774c1f6679cdada21a9525bd2a0034",
+  "prompts": {},
+  "sessions": {
+    "s_a63b2c15e880c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_a63b2c15e880c2",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

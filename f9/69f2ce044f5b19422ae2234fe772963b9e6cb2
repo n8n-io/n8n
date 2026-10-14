@@ -1,0 +1,34 @@
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_b40e563cdbe595::t_7b42274462a315 194-199,202-203
+  s_b40e563cdbe595::t_10d3d00e5b6842 200-201
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_b40e563cdbe595::t_7b42274462a315 54,59,181-182,425-472
+  s_b40e563cdbe595::t_17fa39cfd985dc 473
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_b40e563cdbe595::t_7b42274462a315 81-85,110-113,264-271,274,281-282
+  s_b40e563cdbe595::t_fa55eadaa8776f 114
+  s_b40e563cdbe595::t_818e4669c4a786 117
+  s_b40e563cdbe595::t_23b9bc3c14cf7d 283-284
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_b40e563cdbe595::t_7b42274462a315 420
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b40e563cdbe595::t_7b42274462a315 7729
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_b40e563cdbe595::t_7b42274462a315 85-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f969f2ce044f5b19422ae2234fe772963b9e6cb2",
+  "prompts": {},
+  "sessions": {
+    "s_b40e563cdbe595": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02451-5c7b-7f91-a86e-6d27f183056d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

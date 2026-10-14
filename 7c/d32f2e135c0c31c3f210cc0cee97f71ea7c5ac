@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_6be063ec52937f::t_97d744a3a2345e 114,118-125,132-133
+  s_6be063ec52937f::t_45f5597796fddd 17
+  s_6be063ec52937f::t_9b6665568e61ea 247,249,253,256
+  s_6be063ec52937f::t_6c9441b2ccabfe 245-246,248,250-252,254-255,257-259
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_6be063ec52937f::t_866418b44978a5 308
+  s_6be063ec52937f::t_f38b24c59a0da7 848-852
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7cd32f2e135c0c31c3f210cc0cee97f71ea7c5ac",
+  "prompts": {},
+  "sessions": {
+    "s_6be063ec52937f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d2c786a-b73c-497c-975b-bd543ea0dba0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

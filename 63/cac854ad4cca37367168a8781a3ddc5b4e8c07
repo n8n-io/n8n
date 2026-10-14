@@ -1,0 +1,34 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/advanced-behavior-findings.md
+  s_49774f0fb0b969::t_d5051ee7de5813 1-2,4-7,54-66,69,71,84-86
+  s_49774f0fb0b969::t_5051e707016945 3,8-53,67-68
+  s_49774f0fb0b969::t_bbaeb394112923 70,72-76,78-79,81-83
+packages/@n8n/instance-ai/evaluations/data/workflows/user-impatient.json
+  s_49774f0fb0b969::t_e6c006bc4bbf4a 1-4,6-8,10-11,13-25
+  s_49774f0fb0b969::t_3eda92e1753399 5,9,12
+packages/@n8n/instance-ai/evaluations/data/workflows/user-requests-post-build-change.json
+  s_49774f0fb0b969::t_ebad856242fb57 1-4,6-8,10-13,15-18,22-25
+  s_49774f0fb0b969::t_666cac51100cb6 5,14,19-21
+  s_49774f0fb0b969::t_426d66cfd3fe18 9
+packages/@n8n/instance-ai/evaluations/data/workflows/user-self-corrects.json
+  s_49774f0fb0b969::t_8a92e2d262d43f 1-8,10-20,22-31
+  s_49774f0fb0b969::t_b8638297a768ee 9,21
+packages/@n8n/instance-ai/evaluations/data/workflows/user-gives-wrong-answer.json
+  s_49774f0fb0b969::t_ec13ffb7595687 1-4,6-8,10-20,22-25
+  s_49774f0fb0b969::t_09b0c82b6e736b 5,9,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63cac854ad4cca37367168a8781a3ddc5b4e8c07",
+  "prompts": {},
+  "sessions": {
+    "s_49774f0fb0b969": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "058ef848-ef42-44ad-bc5c-fa740d82f66f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,139 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_1389ed5ff32164::t_3eb692aed59c33 44-45,47-52,77-85,170-178,870-875,1206-1257,1643-1657,1689-1691,1875,1882,1896,1903,1989-2059
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_1389ed5ff32164::t_eb740a5bb52bb7 42-43,107,344-347,359-362
+packages/@n8n/agents/src/index.ts
+  s_3810ccee1c4b6c::t_2750b5890a4d43 269
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_3810ccee1c4b6c::t_edc7611aa9ce1a 2209,2214,2219,2228-2229,5735-5814,5860-5866,5868,5872-5876,5881
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_3810ccee1c4b6c::t_4f6e6c45b9200f 402-404,436,464-474
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_3810ccee1c4b6c::t_58581dd5f6e9bb 339-340
+packages/@n8n/api-types/src/agents/types.ts
+  s_3810ccee1c4b6c::t_c6da21d8ca16c0 356-357
+packages/@n8n/api-types/src/dto/credentials/__tests__/create-credential-public.dto.test.ts
+  s_3810ccee1c4b6c::t_415d3ab065ac2b 1-48
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_3810ccee1c4b6c::t_87ba561a536727 6,42-50
+packages/@n8n/db/src/entities/credential-dependency-entity.ts
+  s_3810ccee1c4b6c::t_cb878e29d5790d 15-17
+packages/@n8n/db/src/entities/index.ts
+  s_3810ccee1c4b6c::t_b69e1123029e6b 22,140
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_3810ccee1c4b6c::t_d291df28803211 6-13,16,25,29-34,60,65-98
+packages/@n8n/db/src/repositories/index.ts
+  s_3810ccee1c4b6c::t_f02d3013be97e3 23-27
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_3810ccee1c4b6c::t_44b4346ddcc3a1 69
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_3810ccee1c4b6c::t_b13ab9a597d7c1 15-22,108,133,3411,3418-3423,3426-3427,3429-3432,3436-3437,3439-3446,3450-3453,3456-3458,3460-3463,3466,3468,3470,3472-3473
+packages/cli/src/credentials/credential-dependency.service.ts
+  s_3810ccee1c4b6c::t_242d87aff3fcff 2-6,13,42
+packages/cli/src/credentials/credentials.service.ts
+  s_3810ccee1c4b6c::t_b5343d0b6d4e4a 5-6,60,235,1206-1239,1826-1831,1848,1868-1883,2009-2013,2015-2017,2047,2073-2075,2081-2086
+packages/cli/src/modules/agents/__tests__/agent-message-mapper.test.ts
+  s_3810ccee1c4b6c::t_08255af7ca3abd 7,10,25,36,39,46,50-70
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_3810ccee1c4b6c::t_0ca0ba3ed8c95b 27-28,128-129,151,163,180,182-189,216-220,223,306-309,315-322,329-331,349,354,732,801,808-812
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_3810ccee1c4b6c::t_481eb57a808aff 20,54-57,117,199,203-273,288,292-297,299,307-313
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_3810ccee1c4b6c::t_222803592ba4f8 7-8,14,47,196,216,285,303,329,372,454,483,490
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_3810ccee1c4b6c::t_4adbfecd2c9e56 43-50,96-98,121-123,206,473-484,492-502,575,581-586,589,654-668,685-686,797,800,817,868-872,950-960
+packages/cli/src/modules/agents/agent-message-mapper.ts
+  s_3810ccee1c4b6c::t_8ee1c1272259b0 1,28-32,37
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_3810ccee1c4b6c::t_3b232d0c9c3309 968
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_3810ccee1c4b6c::t_6b148225c5e283 21,156-192,195,203,215
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_3810ccee1c4b6c::t_7c4d00fa013501 1525,1541-1565,2508,2542,2544-2549,2552,2555,2583,2585-2594,2597,2623-2627,2629,2632,2669,2671-2689,2692,2695,2722,2724-2729,2732,2777,2779-2784,2787
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_3810ccee1c4b6c::t_9de95f9ebb456e 45
+packages/cli/src/modules/agents/integrations/__tests__/helpers/channel-integration-contract.ts
+  s_3810ccee1c4b6c::t_68aebee8387556 5,81,99-105
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_3810ccee1c4b6c::t_059bf1074f8ab6 303-304
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_3810ccee1c4b6c::t_2344f7aea354a8 23-24,193-194,214-215,217-225,256-257
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_3810ccee1c4b6c::t_6275fac53e8a9a 242-243
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_3810ccee1c4b6c::t_172f4d7133b64e 261-262
+packages/cli/src/modules/agents/integrations/__tests__/integration-message-context.service.test.ts
+  s_3810ccee1c4b6c::t_4cefde0b450a5d 1-2,7,40-44,48-94
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_3810ccee1c4b6c::t_dc25390b77565c 5-8,18,81-82,85,87-89,91-108,110,113,117-135,137-146,151,168,182-188,209,216,233-239,250-254,481,492-498,527,550-556,582,612-618,1225,1238-1271,1274,1280,1292-1298,1433,1439,1451-1457,1509,1521,1542-1548
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_3810ccee1c4b6c::t_44a1b50268bff3 23-26,28,48,93-98,246-247,265-266,390-391,398,400-404,416-418,425,669,675,688-689
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_3810ccee1c4b6c::t_52ea238e2f78e0 16-19,21,72,80-83,225-227,229,242
+packages/cli/src/modules/agents/integrations/agent-chat-message-context.ts
+  s_3810ccee1c4b6c::t_b74ade6267f86d 14,30,32-33,35,59
+packages/cli/src/modules/agents/integrations/integration-message-context.service.ts
+  s_3810ccee1c4b6c::t_dbc0155172562f 1-2,11-15,28,37-74
+packages/cli/src/modules/agents/integrations/integration-message-context.ts
+  s_3810ccee1c4b6c::t_54077673d78401 1-119
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_3810ccee1c4b6c::t_ff2562432a6d21 8-12,31,43,117-120,181,188,211,306,308-313,316,319,321-322,333
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_3810ccee1c4b6c::t_4ddf57bbc86019 110
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_3810ccee1c4b6c::t_7ccfe880d5e32c 9,150-152,170,196
+packages/cli/src/modules/community-packages/__tests__/community-packages.rollback.test.ts
+  s_3810ccee1c4b6c::t_06303cc3532bd8 370-383
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_3810ccee1c4b6c::t_16bcc461cf368c 810-822
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_3810ccee1c4b6c::t_59f18c3ebba7f1 51,63,65,85-90,108,121,149,180,697-702,718-723,727-747,749-754,759-764,780-790
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_3810ccee1c4b6c::t_c99280afd04de3 185,204
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/createCredential.generated.yml
+  s_3810ccee1c4b6c::t_e30cff9a4e8383 19-22,74-75
+packages/cli/test/integration/public-api/credentials-concurrency.test.ts
+  s_3810ccee1c4b6c::t_f934002f9b0d22 1-64
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_3810ccee1c4b6c::t_22f12e086271b6 6-12,14,24-25,75-80,230-246,248,250-251,253,255-260,295,299-301,320,324-326,395-400,402-432,434-452,454-601,609
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3810ccee1c4b6c::t_8db2551771b727 7740-7742
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_3810ccee1c4b6c::t_69f74185a3b5a4 889-969
+packages/frontend/editor-ui/src/features/agents/__tests__/relative-time.test.ts
+  s_3810ccee1c4b6c::t_770ddf622b671f 2,53-86
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_3810ccee1c4b6c::t_84ed027061b33a 8,36,153-182,447-453,732-736
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_3810ccee1c4b6c::t_c8497370d38aef 972,1033
+packages/frontend/editor-ui/src/features/agents/utils/relative-time.ts
+  s_3810ccee1c4b6c::t_1a47974634e406 54,68-113
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_3810ccee1c4b6c::t_d2a91f90676f61 323-326,342
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_3810ccee1c4b6c::t_97f7aaf8c9e244 146-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b2fb16a4afe57b2e2aa54f5d7c4ea1a9c03b93dc",
+  "prompts": {},
+  "sessions": {
+    "s_1389ed5ff32164": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0afb5-5cd8-7dd1-ab29-acad02c48f33",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_3810ccee1c4b6c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b43b-3931-7362-9463-fedc5b3a6dd3",
+        "model": "unknown"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

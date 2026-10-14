@@ -1,0 +1,46 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_87385979787c5b::t_f9852155fbbfb6 830-831
+  s_87385979787c5b::t_a53a57e60d14c7 636-694
+packages/@n8n/instance-ai/src/index.ts
+  s_87385979787c5b::t_fa6636511da4b3 565-569
+packages/@n8n/instance-ai/src/tools/evals/eval-config.tool.ts
+  s_87385979787c5b::t_13c99b83c820cc 1-39,43-61,63-65,69-147,152-233,236-271
+  ai_agent 40-42,62,66-68,148-151,234-235
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_87385979787c5b::t_e19a58651ea8e4 4
+  s_87385979787c5b::t_f0d73034e3bc5b 40
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_87385979787c5b::t_65b99914f9c510 234
+  s_87385979787c5b::t_ddf0f59eaec60f 282
+  s_87385979787c5b::t_13972a0a0230ae 1562-1670
+  s_87385979787c5b::t_0896b6a01458d7 38-40
+  s_87385979787c5b::t_4fb5d8dc66c5ea 50,53-54
+  s_87385979787c5b::t_5ccb675f7b1c99 113
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_87385979787c5b::t_e8c88689a572ea 26-28
+  s_87385979787c5b::t_7d041dadfd8388 94,122
+packages/@n8n/instance-ai/src/tools/evals/__tests__/eval-config.tool.test.ts
+  s_87385979787c5b::t_9a757f6f13be56 1-23,27-159,164-248
+  ai_agent 24-26,160-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06a08d6c6950e6c78a5bc01d5b036ec869751fe8",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_87385979787c5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "407e0463-b40c-47d8-b961-b12d198b5186",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

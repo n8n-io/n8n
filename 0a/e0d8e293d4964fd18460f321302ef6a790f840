@@ -1,0 +1,45 @@
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  s_8d717fb7cdc18c::t_d1b156ba6d8c3e 35-36
+packages/@n8n/db/src/repositories/__tests__/agent-eval-result.repository.test.ts
+  s_8d717fb7cdc18c::t_00d1fcc6300577 130-131
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  s_8d717fb7cdc18c::t_00d1fcc6300577 412-413,444
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-scoped-reads.integration.test.ts
+  s_8d717fb7cdc18c::t_00d1fcc6300577 105-107,110,112,127,156-157,169-170
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  s_8d717fb7cdc18c::t_809d9efd6a1a4f 79-80,97,233,257,269,280
+  s_8d717fb7cdc18c::t_00d1fcc6300577 24-25
+packages/@n8n/api-types/src/dto/pagination/pagination.dto.ts
+  s_8d717fb7cdc18c::t_c655c3f1834941 18
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_8d717fb7cdc18c::t_d4ed59aa1f8cd4 216-217,220-221
+  s_8d717fb7cdc18c::t_c8838633445d0e 115-116
+  s_8d717fb7cdc18c::t_b73f9fcc1bf805 151-152,155
+packages/@n8n/db/src/repositories/__tests__/agent-eval-run.repository.test.ts
+  s_8d717fb7cdc18c::t_00d1fcc6300577 199-200,211
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_8d717fb7cdc18c::t_03655d2f6d237f 173-174
+  s_8d717fb7cdc18c::t_4b766782bfe0ff 42-43,45
+packages/@n8n/api-types/src/dto/pagination/__tests__/pagination.dto.test.ts
+  s_8d717fb7cdc18c::t_00d1fcc6300577 157
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_8d717fb7cdc18c::t_53e183e6e3d053 100-102
+packages/@n8n/db/src/repositories/agent-eval-result.repository.ee.ts
+  s_8d717fb7cdc18c::t_20ba2096db3c35 107-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ae0d8e293d4964fd18460f321302ef6a790f840",
+  "prompts": {},
+  "sessions": {
+    "s_8d717fb7cdc18c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b31327a4-b04e-4d2b-b5bc-034852a82ac9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

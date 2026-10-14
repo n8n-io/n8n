@@ -1,0 +1,51 @@
+packages/@n8n/agents/src/sdk/tool.ts
+  s_89ffeedfd03265::t_9953850a39d266 145-147
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_89ffeedfd03265::t_9953850a39d266 177-180
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_89ffeedfd03265::t_d92f93cbcdf30b 727-734,764
+packages/cli/src/modules/agents/agent-tool-approval.service.ts
+  s_89ffeedfd03265::t_dfbb8a313967e1 21-25
+  s_89ffeedfd03265::t_9953850a39d266 9,11,20,26-27,31
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_89ffeedfd03265::t_9953850a39d266 222-224
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_89ffeedfd03265::t_9953850a39d266 187-190
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_89ffeedfd03265::t_d92f93cbcdf30b 1617,1620,1628,1630-1633,1641,1649-1650
+  s_89ffeedfd03265::t_35e3164b4e2598 1651
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_89ffeedfd03265::t_3a2f360614f911 652
+  s_89ffeedfd03265::t_dfbb8a313967e1 630-639
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_89ffeedfd03265::t_3a2f360614f911 245,252-253,257,263-264,268-270
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_89ffeedfd03265::t_9953850a39d266 14-15
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_89ffeedfd03265::t_9953850a39d266 301-304
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_89ffeedfd03265::t_d92f93cbcdf30b 1,5,100-102
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_89ffeedfd03265::t_9953850a39d266 203-216
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_89ffeedfd03265::t_d92f93cbcdf30b 36,46,84-87,90
+packages/cli/src/modules/agents/__tests__/agent-tool-approval.service.test.ts
+  s_89ffeedfd03265::t_3a2f360614f911 11,32-84
+  s_89ffeedfd03265::t_f0cb59ae55584d 85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bdde5865f110286dda4b7d12cba488aa3e6603eb",
+  "prompts": {},
+  "sessions": {
+    "s_89ffeedfd03265": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4e6-37cc-73b3-8f7b-279d3f0c3020",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts
+  s_27dbd88552503d::t_db1586d7ce5585 3,5,12,21
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_27dbd88552503d::t_048a6702d69a25 3,13,32,57,77,79-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95cbbb73a8e2d0f4df88ee03d13b24b959597707",
+  "prompts": {},
+  "sessions": {
+    "s_27dbd88552503d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a10c73-ca35-7222-a690-5806dabb3e22",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

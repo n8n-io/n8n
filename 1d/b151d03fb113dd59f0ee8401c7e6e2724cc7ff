@@ -1,0 +1,19 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_b3cf8c080d509d::t_27f5c89dbade17 368-371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1db151d03fb113dd59f0ee8401c7e6e2724cc7ff",
+  "prompts": {},
+  "sessions": {
+    "s_b3cf8c080d509d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f86c5127-2cf8-408c-aa7b-1c3d6a71f43d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

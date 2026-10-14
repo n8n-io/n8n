@@ -1,0 +1,24 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/test/LmChatAnthropic.test.ts
+  s_77a32fd9603843::t_5318763bf389fe 810-826
+  s_77a32fd9603843::t_ddd8c2a3be90a5 853,857,868-869
+  s_77a32fd9603843::t_d4f073d278db33 827-829
+  s_77a32fd9603843::t_812d846bf8b9cc 832-834,838-849
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_77a32fd9603843::t_53b583b921972a 117-121,523,528-530,533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "26b171b2cb82570f9c3f88744b742471d742ef72",
+  "prompts": {},
+  "sessions": {
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/@n8n/db/src/migrations/common/1790686544127-AddAgentMessageQueueSteeringPairCheck.ts
+  s_e2294b7fe1c299::t_8f2a3c042bff3a 1-2,4-6,9-23,26-27
+  s_e2294b7fe1c299::t_b32631a1fcd856 3,7-8,24-25,28-29
+packages/@n8n/db/src/migrations/sqlite/1790686544127-AddAgentMessageQueueSteeringPairCheck.ts
+  s_e2294b7fe1c299::t_63c47608aa8dc9 1-27
+packages/cli/test/migration/1790686544127-add-agent-message-queue-steering-pair-check.test.ts
+  s_e2294b7fe1c299::t_8abe65bc0ae2dd 1-104,110-131
+  s_e2294b7fe1c299::t_621bd6926575aa 105-109
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_e2294b7fe1c299::t_43007f88298b34 21
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_e2294b7fe1c299::t_ea24709ea6bfee 9,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "362b5caa6cc912be5f354d504aa4652f4c9050a6",
+  "prompts": {},
+  "sessions": {
+    "s_e2294b7fe1c299": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e39bb829-9a08-4e8e-b125-d37acf922002",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

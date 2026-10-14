@@ -1,0 +1,15 @@
+packages/@n8n/instance-ai/src/tools/filesystem/__tests__/create-tools-from-mcp-server.test.ts
+  h_44f8d1c0f2f8c4 110,133,147,149,160,180,200,220,247,265,280,287,300,310,324,491,493-495
+  h_44f8d1c0f2f8c4 148,150,492
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9c3871ffe2dbb96463adf841b94cb9b81b307c5d",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

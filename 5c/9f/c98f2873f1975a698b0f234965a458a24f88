@@ -1,0 +1,54 @@
+packages/@n8n/permissions/src/constants.ee.ts
+  s_2c3bbc99e1befd::t_739886ed6e11e0 115
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_2c3bbc99e1befd::t_d35376cba4919d 96
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_2c3bbc99e1befd::t_6b02c59337d5d6 3,19,108-124,130-134
+  s_2c3bbc99e1befd::t_3426c1ca8a80dc 125-127,130
+  s_2c3bbc99e1befd::t_766eeed54e16e4 128-129
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  s_2c3bbc99e1befd::t_6aea7ac354b0db 45
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
+  s_2c3bbc99e1befd::t_6612e18c19d680 1-41
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_2c3bbc99e1befd::t_7fd58449b11567 11-13
+packages/cli/src/public-api/v1/shared/spec/schemas/roleMappingRulePublicDto.generated.yml
+  s_2c3bbc99e1befd::t_491d5034d11ae6 1-34
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_2c3bbc99e1befd::t_db5747b4b60fa2 355-555
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_2c3bbc99e1befd::t_f6365e924e0132 29-31
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_2c3bbc99e1befd::t_dd32ebfbba2da8 324-326,328-333
+  s_2c3bbc99e1befd::t_eaf4bb74e44065 278-280,283-285,288
+  s_2c3bbc99e1befd::t_f82fe26c8060bf 281-282,286-287
+  s_2c3bbc99e1befd::t_e6e2a6b4cfb96f 327
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.service.ee.test.ts
+  s_2c3bbc99e1befd::t_202d46851a386f 913,915-918
+  s_2c3bbc99e1befd::t_e06c9b4583dbf7 919
+  s_2c3bbc99e1befd::t_2594ef3be41e77 826,833
+  s_2c3bbc99e1befd::t_2f0caaeb2e93c5 834-835,858,860-863,885,887-890
+  s_2c3bbc99e1befd::t_29a7af5292934f 827-832,849-854,859,877-882,886,905-910,914
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.controller.ee.test.ts
+  s_2c3bbc99e1befd::t_3cdf90da255a07 191-193,196
+  s_2c3bbc99e1befd::t_5988dde537fe3e 194-195
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.controller.ee.ts
+  s_2c3bbc99e1befd::t_73f6305e402226 78-80,83
+  s_2c3bbc99e1befd::t_002e53877fbc09 81-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5c9fc98f2873f1975a698b0f234965a458a24f88",
+  "prompts": {},
+  "sessions": {
+    "s_2c3bbc99e1befd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7781d70e-47b1-419d-9f6e-7dfbd87abd5a",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

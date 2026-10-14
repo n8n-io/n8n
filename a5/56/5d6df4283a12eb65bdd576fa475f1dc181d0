@@ -1,0 +1,99 @@
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_66be2eb681ad3c::t_55d2fa872c4067 1,17
+  s_66be2eb681ad3c::t_6fce8f53e09ffa 68,78
+  s_66be2eb681ad3c::t_5e593e3887cedd 117-136
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_66be2eb681ad3c::t_3b1874e8dcafbd 10
+  s_66be2eb681ad3c::t_f393860ebb74dd 21
+  s_66be2eb681ad3c::t_94128720ec6c5d 40-41
+  s_66be2eb681ad3c::t_22d7bf3e6afce0 132,154
+  s_66be2eb681ad3c::t_849e139f7a45ef 173
+  s_66be2eb681ad3c::t_a940b138931309 220-227,239
+  s_66be2eb681ad3c::t_5751ce255880d3 272
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_66be2eb681ad3c::t_07d44424b95d94 5
+  s_66be2eb681ad3c::t_d3d6cc3458ed37 103-106,108-113,115-118
+  s_66be2eb681ad3c::t_40cc9bf7660d7b 145-148
+  s_81f9da72a79c26::t_af6dbeca3bd7d6 156
+  s_66be2eb681ad3c::t_4278fcb2f8986f 171-172
+  s_66be2eb681ad3c::t_e2de7a5c936480 201-205
+  s_66be2eb681ad3c::t_13fcdb420de74e 222-223
+  s_66be2eb681ad3c::t_74fd446372aef7 258-264
+  s_81f9da72a79c26::t_cafeb2b7064977 274
+  s_66be2eb681ad3c::t_606aa7ca980cff 341
+  s_66be2eb681ad3c::t_4997aa020a861c 418-424,433
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_66be2eb681ad3c::t_01c19f97e81dee 15,28
+  s_66be2eb681ad3c::t_de9f65854a31cf 108,115-120,128
+  s_66be2eb681ad3c::t_238cc1d74427c8 149,158
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_66be2eb681ad3c::t_00286b7a8621b3 1-8,10-44,47-50,52-61,63,65-69,71,73-85,87,89-94,96-100,107-108,115-152,157-171,173,175,180-182,184-188,192,196-199,201-203,205-206
+  ai_agent 101-103,105-106,109-111,113-114,153-156,176-179,189-191
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_66be2eb681ad3c::t_b900427c7a8be2 187,196,204
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_66be2eb681ad3c::t_06cd8db5adae52 5,21
+  s_66be2eb681ad3c::t_8906e3687c481f 81-88
+  s_66be2eb681ad3c::t_6cf71c510a94b8 109-110
+  s_66be2eb681ad3c::t_28af87df61d623 141-147
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_66be2eb681ad3c::t_58f419e11bb106 24-26
+  s_66be2eb681ad3c::t_f0c37af9443e20 68,88,99
+  s_66be2eb681ad3c::t_c0dc8940cec512 114
+  s_66be2eb681ad3c::t_849b8abd206973 140
+  s_66be2eb681ad3c::t_637d136c3b5697 157-162,180,193
+  s_66be2eb681ad3c::t_25d35b780c512f 216,220-223,225
+  s_66be2eb681ad3c::t_d47fde420c5e8c 272
+  s_66be2eb681ad3c::t_e18c9e96ffb2e3 284,295
+  ai_agent 315
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_66be2eb681ad3c::t_83327ca0b6b5f9 21-23
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_66be2eb681ad3c::t_093c3184be9b17 22,24-29
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_66be2eb681ad3c::t_085869002c45ad 116
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_66be2eb681ad3c::t_4a07ceeb3d511a 2-4,6-17,21,23-25,28-30,32,34-40,69-91,94-100
+  s_66be2eb681ad3c::t_de5fad5f9455f1 43
+  s_66be2eb681ad3c::t_8815ce3530ece3 68
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_66be2eb681ad3c::t_20c1c1e35ae0bd 12-13
+  s_66be2eb681ad3c::t_82d711850d7a9f 26-31
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_66be2eb681ad3c::t_d5c08e93beeb76 1-3,14-34,36,38,40-52,54,56,58,60-67
+  s_81f9da72a79c26::t_7d562ea02cac6b 4-13
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_66be2eb681ad3c::t_f06fa87fab077a 2-7,10,12-18,20-23,25,27-37,39-44,49-51,53-64,66-67,69-72,74-79,81,83-88,90,97-100,110-112,114-119,121-123,125,127,134-136,138-144,152-153,159-163,165-168,174-177,179-185
+  ai_agent 91-96,108,146-151,154-158
+  s_66be2eb681ad3c::t_2e1bba70adc661 126
+packages/cli/src/services/tag.service.ts
+  s_66be2eb681ad3c::t_26c0b8ccc8ed77 123-130,132-133
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_66be2eb681ad3c::t_de06b679f1904e 1066-1067
+  s_66be2eb681ad3c::t_e5f870edf59b38 1081-1084
+  s_81f9da72a79c26::t_8b0f47df757a35 1097
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a5565d6df4283a12eb65bdd576fa475f1dc181d0",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

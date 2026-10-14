@@ -1,0 +1,11 @@
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  ai_agent 119-121
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  ai_agent 40-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f2f28af86557b18735fe4cf42842f4bdff804076",
+  "prompts": {}
+}

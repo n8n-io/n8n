@@ -1,0 +1,42 @@
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 75-78,137-138
+packages/@n8n/engine/docs/adr/ADR-20260902-steps-declare-waits.md
+  s_13d0f2e1be0144::t_0daf6bf3144762 64-68
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_13d0f2e1be0144::t_18cd50c0763379 66-68
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 58
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 3-4
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 56,72
+  s_13d0f2e1be0144::t_7ab3279adcf456 14,74
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 240,271-272
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 733
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 78,81
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 42
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_13d0f2e1be0144::t_3a749f6a5e3653 1,53
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_13d0f2e1be0144::t_18cd50c0763379 35-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3f17a8ef82d10cd171037871c0737a577f69e555",
+  "prompts": {},
+  "sessions": {
+    "s_13d0f2e1be0144": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46caa7f3-0057-4c97-8c31-ca17c936adc0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

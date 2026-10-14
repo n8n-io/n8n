@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_f3d2ec4529fb2a::t_3c6c2b407ea6ac 349
+  s_f3d2ec4529fb2a::t_e0762619412888 350
+  s_f3d2ec4529fb2a::t_090bf60bb9eb11 461
+  s_f3d2ec4529fb2a::t_e4f2873d008f20 552
+  s_f3d2ec4529fb2a::t_cb6b2c5969751a 579
+  s_f3d2ec4529fb2a::t_b0ed579fd3faac 1257
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_f3d2ec4529fb2a::t_b8fae06752ecd3 58
+  s_f3d2ec4529fb2a::t_e0762619412888 722,727,737,742,752,757
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_f3d2ec4529fb2a::t_9927bc2687276e 1563-1565
+  s_f3d2ec4529fb2a::t_7999dd0c11b9be 250,259
+  s_f3d2ec4529fb2a::t_e0762619412888 1551-1562
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_f3d2ec4529fb2a::t_cee0268db5a5bc 159-160
+  s_f3d2ec4529fb2a::t_e0762619412888 16,113-158
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  s_f3d2ec4529fb2a::t_e0762619412888 112,251-252
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  s_f3d2ec4529fb2a::t_e0762619412888 246
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  s_f3d2ec4529fb2a::t_e0762619412888 18,26,89,144,173
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_f3d2ec4529fb2a::t_4b015dd1725f46 110-111
+  s_f3d2ec4529fb2a::t_e0762619412888 59,62-69,89-109,128-134,276,377
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_f3d2ec4529fb2a::t_85dd8caa90277b 77-78
+  s_f3d2ec4529fb2a::t_e0762619412888 121-122
+  s_f3d2ec4529fb2a::t_d15f31e7e7a971 127-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8cdaaadb8daa550e1694bbd58d1ada6fdfe5751",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

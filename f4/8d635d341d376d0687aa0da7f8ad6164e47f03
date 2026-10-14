@@ -1,0 +1,24 @@
+packages/@n8n/instance-ai/src/agent/baked-skills.prompt.ts
+  s_b554255274c910::t_22f27f0d156d20 1-108
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_b554255274c910::t_b1f9bee09fc8fd 140
+  s_b554255274c910::t_ad14c618c400e9 3
+packages/@n8n/instance-ai/src/skills/runtime-skills.ts
+  s_b554255274c910::t_97bf5d611d778a 4,10-17,20-34,36-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f48d635d341d376d0687aa0da7f8ad6164e47f03",
+  "prompts": {},
+  "sessions": {
+    "s_b554255274c910": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3140306f-6570-4f4b-a3c4-fcb24e80b2f0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

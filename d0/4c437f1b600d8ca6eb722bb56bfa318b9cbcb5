@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_e3560b551eac11::t_9696eaac354634 406-417,419-420
+  s_e3560b551eac11::t_56015807407022 13
+  s_e3560b551eac11::t_b5f30d90d1076e 418
+packages/cli/test/integration/database/repositories/agent-execution-thread-n8n-chat.repository.test.ts
+  s_e3560b551eac11::t_ccfb3dd20eb050 217-278
+packages/cli/src/modules/agents/agents-list.controller.ts
+  s_e3560b551eac11::t_f6f728fd9723a6 70-87
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_e3560b551eac11::t_deab9d5a41fae5 179-208,231
+packages/cli/src/modules/agents/__tests__/agents-list.controller.test.ts
+  s_e3560b551eac11::t_b5f30d90d1076e 153-158
+  s_e3560b551eac11::t_96f7115f3ab19e 149-152,159-175
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_e3560b551eac11::t_407f84da014727 1699-1756
+packages/cli/test/integration/agents/n8n-chat-page.api.test.ts
+  s_e3560b551eac11::t_b5f30d90d1076e 181,189
+  s_e3560b551eac11::t_a0830aac7d86eb 161-180,182-188,190-200
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_e3560b551eac11::t_bd90443ff7d8e4 949-988
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e3560b551eac11::t_987ccb2bd871f5 762-780
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d04c437f1b600d8ca6eb722bb56bfa318b9cbcb5",
+  "prompts": {},
+  "sessions": {
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

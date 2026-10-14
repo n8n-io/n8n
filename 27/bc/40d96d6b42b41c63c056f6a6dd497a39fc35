@@ -1,0 +1,27 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f2915c51dc39ca::t_d149a0f47da540 5680
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/SetupCollectionWizard.vue
+  s_f2915c51dc39ca::t_e4d87d550cbb5d 190
+  s_f2915c51dc39ca::t_cbebd2e49c9fac 447-451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27bc40d96d6b42b41c63c056f6a6dd497a39fc35",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f2915c51dc39ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd01e2e1-3aa7-490e-83f2-bbd9b41bcfc4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

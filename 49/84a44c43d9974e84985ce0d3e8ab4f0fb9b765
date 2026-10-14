@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/MongoDb/GenericFunctions.test.ts
+  s_cb66ff2c900d6f::t_03c3080b0dcf0f 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4984a44c43d9974e84985ce0d3e8ab4f0fb9b765",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_cb66ff2c900d6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1dc24115-230c-47f8-82fb-628294981dbd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

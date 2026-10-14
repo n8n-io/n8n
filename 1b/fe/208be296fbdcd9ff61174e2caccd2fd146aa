@@ -1,0 +1,22 @@
+packages/cli/src/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service.ts
+  s_58acc4bc4a3d27::t_26e056bfce952c 1-4,6-50
+  ai_agent 5
+packages/cli/src/modules/dynamic-credentials.ee/services/index.ts
+  s_58acc4bc4a3d27::t_eb90eb3cceb7e4 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "1bfe208be296fbdcd9ff61174e2caccd2fd146aa",
+  "prompts": {},
+  "sessions": {
+    "s_58acc4bc4a3d27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "912c2f8a-f52c-4260-a0ae-ba1a609aef8c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

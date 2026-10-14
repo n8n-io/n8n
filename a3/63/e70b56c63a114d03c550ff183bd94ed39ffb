@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_5096240cff983a::t_8f3a806fd20e64 25
+  s_5096240cff983a::t_1bee2eacef01a9 150
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_5096240cff983a::t_7fc11322bb1a9e 50-63
+packages/nodes-base/nodes/Webhook/description.ts
+  s_5096240cff983a::t_65650f5c67dcc1 113-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a363e70b56c63a114d03c550ff183bd94ed39ffb",
+  "prompts": {},
+  "sessions": {
+    "s_5096240cff983a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fc2e559-3463-4754-bf27-1cc005771316",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

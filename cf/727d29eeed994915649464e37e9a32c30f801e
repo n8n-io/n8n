@@ -1,0 +1,299 @@
+packages/cli/src/modules/chat-hub/chat-hub-extractor.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 12
+  s_74402fcac1c7e4::t_1f443195ff0f06 13
+packages/nodes-base/nodes/Code/test/PythonTaskRunnerSandbox.test.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 3
+  s_74402fcac1c7e4::t_c33a2200d2aa7a 4
+packages/nodes-base/nodes/MQTT/Mqtt.node.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+packages/@n8n/db/src/connection/db-connection.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 7
+  s_74402fcac1c7e4::t_14f1dad6519a03 8
+packages/cli/src/blob-storage/s3-byte-store.ee.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 3
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/web-fetch.tool.test.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 4
+packages/cli/src/instance-settings-loader/loaders/community-packages.instance-settings-loader.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 5
+packages/cli/src/modules/mcp/tools/get-workflow-version.tool.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+  s_74402fcac1c7e4::t_1a073dab3c7623 3
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 34
+  ai_agent 35
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/ssrf-guard.ts
+  s_74402fcac1c7e4::t_37daa5ba3c2717 13-14
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_74402fcac1c7e4::t_0862202c0b616b 13
+  s_74402fcac1c7e4::t_fd2e95b264989d 12
+packages/@n8n/task-runner/src/task-runner.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+  s_74402fcac1c7e4::t_425bba008f5c27 3
+packages/cli/src/webhooks/webhook-last-node-response-extractor.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 4
+  s_74402fcac1c7e4::t_6946ca2c25328f 5-6
+packages/@n8n/backend-network/src/ssrf/ssrf-protection.service.ts
+  s_74402fcac1c7e4::t_bed538f00dbec4 4-5
+packages/cli/src/modules/external-secrets.ee/secrets-cache.service.ts
+  s_74402fcac1c7e4::t_64aaf91be93ba7 4
+  s_74402fcac1c7e4::t_b36eed5657f3a5 3
+packages/cli/src/modules/mcp/tools/get-execution.tool.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+  s_74402fcac1c7e4::t_b4cb0a3eebb396 5
+packages/workflow/src/result.ts
+  s_74402fcac1c7e4::t_7ae78f503b8412 1-2
+packages/cli/src/modules/mcp-registry/mcp-registry-node-loader.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+packages/cli/src/response-helper.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 7
+  s_74402fcac1c7e4::t_dda2935c64fc9d 8
+packages/cli/src/services/protected-resource.registry.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 3
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 5
+  ai_agent 13
+packages/cli/src/license/license.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 7
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  ai_agent 9
+  s_74402fcac1c7e4::t_b36eed5657f3a5 8
+packages/cli/src/scaling/scaling.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 8-9
+packages/cli/src/webhooks/webhook-request-handler.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+  s_74402fcac1c7e4::t_62963d2526ff5d 5
+packages/nodes-base/nodes/Compression/decompress/BoundedUnzip.ts
+  s_74402fcac1c7e4::t_bb3c8192b0b272 3
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 9
+  s_74402fcac1c7e4::t_780c7b3c9ee04b 10
+packages/@n8n/task-runner/package.json
+  s_74402fcac1c7e4::t_49bc2f43581e8a 43
+packages/@n8n/backend-network/package.json
+  s_74402fcac1c7e4::t_e2e1e5611442d1 65
+packages/cli/src/modules/external-secrets.ee/providers/azure-key-vault/azure-key-vault.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+  s_74402fcac1c7e4::t_1c46fabfefc65e 5
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 5
+  s_74402fcac1c7e4::t_19da15499de51f 6
+packages/@n8n/utils/src/result.ts
+  s_74402fcac1c7e4::t_44be7808fa52f4 1-30
+packages/cli/src/webhooks/webhook-response-headers.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 6
+packages/cli/src/services/import.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 19
+  ai_agent 20
+packages/cli/src/scaling/redis-lock.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 10
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 8
+  s_74402fcac1c7e4::t_976dd2e2a0fc8f 9
+packages/@n8n/utils/src/errors/ensure-error.ts
+  s_74402fcac1c7e4::t_5a958cdb7126dd 1-9
+packages/nodes-base/nodes/Compression/decompress/BoundedUntar.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 1
+  s_74402fcac1c7e4::t_490a5e877d6832 2
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 8
+  s_74402fcac1c7e4::t_76895818453e09 9
+packages/cli/src/active-workflow-manager.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 32
+packages/cli/src/modules/mcp/tools/publish-workflow.tool.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+  s_74402fcac1c7e4::t_edf422c839c5fd 3
+packages/cli/src/workflows/triggers/trigger-activation-retry.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 1
+  s_74402fcac1c7e4::t_b5a8da6c46f800 2
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/n8n-oauth-extractor.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 11
+  s_74402fcac1c7e4::t_f75cd8de360123 12
+packages/cli/src/modules/workflow-index/workflow-index.service.ts
+  ai_agent 8
+  s_74402fcac1c7e4::t_b36eed5657f3a5 7
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 8
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 10
+  s_74402fcac1c7e4::t_9efb51ee273fcb 11
+packages/cli/src/modules/mcp/tools/workflow-builder/restore-workflow-version.tool.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+packages/cli/src/modules/mcp/tools/execution-utils.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+  ai_agent 3
+packages/core/src/observability/tracing/sentry-tracing.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+packages/cli/src/modules/external-secrets.ee/providers/gcp-secrets-manager/gcp-secrets-manager.ts
+  s_74402fcac1c7e4::t_99c1df6dfb061f 5
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+packages/cli/src/executions/execution-data/s3-store.ee.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 5
+  s_74402fcac1c7e4::t_847fc67c949bb6 6
+packages/workflow/package.json
+  s_74402fcac1c7e4::t_82818d916dbb96 72
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 5
+packages/cli/src/task-runners/task-managers/task-requester.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 6
+packages/cli/src/execution-lifecycle/shared/shared-hook-functions.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 5-6
+packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.store.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 2
+  s_74402fcac1c7e4::t_ded36aa23c17e2 3
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+packages/cli/src/chat/chat-service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 7
+  ai_agent 8
+packages/cli/src/workflows/workflow-published-data.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 9
+packages/frontend/editor-ui/src/app/composables/useResolvedExpression.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 9-10
+packages/cli/src/scaling/leader-election-client.ts
+  s_74402fcac1c7e4::t_ff2e472f360d92 5-6
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 12
+packages/cli/src/modules/mcp/tools/execute-workflow.tool.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 3
+packages/cli/src/workflows/workflows.controller.ts
+  s_74402fcac1c7e4::t_b8a4f2b3b708c1 41
+  s_74402fcac1c7e4::t_b36eed5657f3a5 40
+packages/cli/src/modules/mcp/tools/get-workflow-history.tool.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 7
+  s_74402fcac1c7e4::t_34e594ff63b7a6 8
+packages/@n8n/backend-common/src/utils/flatted-async.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 8
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 11
+  s_74402fcac1c7e4::t_f731dda687fad5 12
+packages/cli/src/workflows/workflow.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 29
+  ai_agent 30
+packages/cli/src/modules/mcp/tools/unpublish-workflow.tool.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+  s_74402fcac1c7e4::t_d4bbc68ad3cda4 3
+packages/cli/src/blob-storage/azure-byte-store.ee.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+packages/nodes-base/nodes/Kafka/KafkaTrigger.node.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 9
+  ai_agent 10
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchema.test.ts
+  ai_agent 32
+  s_74402fcac1c7e4::t_fd2e95b264989d 31
+pnpm-lock.yaml
+  ai_agent 1288-1290,1358-1360,3263-3265,4246-4248,6288-6290
+packages/nodes-base/nodes/Compression/decompress/BoundedGunzip.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+packages/core/src/binary-data/object-store/object-store.service.ee.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 21-22
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_74402fcac1c7e4::t_c7199d1ec5511c 24
+  s_74402fcac1c7e4::t_b36eed5657f3a5 23
+packages/core/src/binary-data/azure-blob/azure-blob.service.ee.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 6
+  s_74402fcac1c7e4::t_8f5ce786588ff4 7
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/web-fetch.utils.test.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 3
+packages/cli/src/modules/instance-registry/storage/redis-instance-storage.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 6-7
+packages/core/package.json
+  s_74402fcac1c7e4::t_66471af0f404ef 70
+packages/@n8n/backend-common/package.json
+  s_74402fcac1c7e4::t_6c96641a49b222 30
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 17
+  s_74402fcac1c7e4::t_ad940c7d8d28da 18
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_74402fcac1c7e4::t_b1988d247780e3 21
+  s_74402fcac1c7e4::t_455682f3f856d6 9-10
+packages/workflow/src/errors/ensure-error.ts
+  s_74402fcac1c7e4::t_3c67eed48e955f 1
+packages/cli/src/modules/mcp/tools/test-workflow.tool.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+packages/@n8n/instance-ai/src/mcp/mcp-client-manager.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 6
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 18
+packages/cli/src/executions/execution-data/azure-store.ee.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 5
+  s_74402fcac1c7e4::t_ef9a0e32b31816 6
+packages/cli/src/modules/external-secrets.ee/provider-lifecycle.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 3
+packages/@n8n/instance-ai/src/mcp/__tests__/mcp-client-manager.test.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 18
+  s_74402fcac1c7e4::t_70309f0b810a36 19
+packages/cli/src/modules/community-packages/community-packages.lifecycle.service.ts
+  s_74402fcac1c7e4::t_2eb78cefb1b577 6
+  s_74402fcac1c7e4::t_b36eed5657f3a5 5
+packages/nodes-base/nodes/AiTransform/AiTransform.node.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 1
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 6
+packages/cli/src/commands/audit.ts
+  s_74402fcac1c7e4::t_4eef2cb57807b8 5
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+packages/nodes-base/nodes/Code/test/JsTaskRunnerSandbox.test.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 3
+packages/cli/src/webhooks/webhook.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 6
+packages/cli/src/modules/community-packages/community-node-types.service.ts
+  s_74402fcac1c7e4::t_756ee344132385 6
+  s_74402fcac1c7e4::t_b36eed5657f3a5 5
+packages/@n8n/backend-network/src/ssrf/ip-range-builder.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 1
+packages/cli/src/modules/instance-ai/web-research/__tests__/fetch-and-extract.test.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 12
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 5
+packages/cli/src/controllers/oauth/oauth1-credential.controller.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 4
+  s_74402fcac1c7e4::t_b058f11ce7d07a 5
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 11
+packages/@n8n/task-runner/src/js-task-runner/built-ins-parser/built-ins-parser.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 4
+packages/@n8n/task-runner/src/start.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 2
+  s_74402fcac1c7e4::t_ce65270f700b40 3
+packages/cli/src/load-nodes-and-credentials.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 33
+  ai_agent 34
+packages/@n8n/utils/src/result.test.ts
+  s_74402fcac1c7e4::t_d1534c99e97a0b 38
+  s_74402fcac1c7e4::t_abf9b3c449e625 1-9,13-21,24,26,28-31,34-36,39-41
+  s_74402fcac1c7e4::t_496d1d2782ca6a 10-12,22-23,25,27,32-33,37
+packages/cli/src/commands/base-command.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 26
+  s_74402fcac1c7e4::t_abd771df8f2178 27
+packages/core/src/instance-settings/instance-settings.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 7
+  s_74402fcac1c7e4::t_465fe61906b9fa 8
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  s_74402fcac1c7e4::t_2c1217b9c538e1 8
+  s_74402fcac1c7e4::t_b36eed5657f3a5 7
+packages/cli/src/scaling/__tests__/multi-main-setup.ee.test.ts
+  s_74402fcac1c7e4::t_fd2e95b264989d 8
+packages/cli/src/executions/execution.service.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 31
+packages/cli/src/wait-tracker.ts
+  s_74402fcac1c7e4::t_b36eed5657f3a5 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf727d29eeed994915649464e37e9a32c30f801e",
+  "prompts": {},
+  "sessions": {
+    "s_74402fcac1c7e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e853d50-a6b5-4c82-b935-d5a8f8ad1608",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_13c1e4f119e39a::t_87916462fc7e05 1124
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_13c1e4f119e39a::t_a961b0b7c72f51 684-686
+packages/@n8n/instance-ai/evaluations/harness/in-memory-event-bus.ts
+  s_13c1e4f119e39a::t_20c90307424551 44-45
+packages/@n8n/instance-ai/src/event-bus/event-bus.interface.ts
+  s_13c1e4f119e39a::t_7fd620088bf9a7 48-49,51
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_13c1e4f119e39a::t_e1e64fb5ea94e4 164-169
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_13c1e4f119e39a::t_f45a159fe1d7c8 816-817,819
+  s_13c1e4f119e39a::t_8ee9a2ba6f4d3b 547-560
+  s_13c1e4f119e39a::t_cd2b9b6962c8d1 777
+  s_13c1e4f119e39a::t_3aeee13a156aee 78-79
+  s_13c1e4f119e39a::t_21b92c5999a90c 276-279
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_13c1e4f119e39a::t_0bbfb7c8fb6d01 3,8,21-25,31-75,81-90,95-98,106-107,134-208,283-284,287,291-314,352-363,367,378,386-409,416-417,422,426,430-431,437,443-444,452,455,462,466-469,471-473,478-481,486-511
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_13c1e4f119e39a::t_eb32755a795043 116,126,130
+  s_13c1e4f119e39a::t_0a594932cc824c 50-56
+  s_13c1e4f119e39a::t_3ff6f4f4ac7433 3-4,7,13,18-26,36-48,57-61,67-68,77-85,88-115,117-125,127-129,131-139,143-146,148-183,186-193,196-197,199,207-225,230-231,237-240,249-251,255-259,261,274-278,286,290,292-294,306-318,325-326,329-340,343-344,348-349,354-357
+  s_13c1e4f119e39a::t_66f60ff07a9efc 71
+  s_13c1e4f119e39a::t_4715a69f5a77cc 295-303
+  s_13c1e4f119e39a::t_5d7c6653099c13 350
+  s_13c1e4f119e39a::t_f107c13967b15e 327
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_13c1e4f119e39a::t_6fb8cdfe6f7799 397-435
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_13c1e4f119e39a::t_0d5881c765877d 416-422
+  s_13c1e4f119e39a::t_dfa14fc42c170b 55-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47de7eb4dd1c89102a2a74e1b24b0a7f88c4a4a6",
+  "prompts": {},
+  "sessions": {
+    "s_13c1e4f119e39a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa0f6b89-d719-4f10-abee-71e063c95ea7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

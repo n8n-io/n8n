@@ -1,0 +1,157 @@
+packages/@n8n/telemetry/vite.config.ts
+  s_f2c373a699c792::t_656cffac3e74d1 1-4
+packages/@n8n/telemetry/src/constants.ts
+  s_f2c373a699c792::t_de5158b08e09c7 1,4-6
+  s_f2c373a699c792::t_839936c9a0b9ea 2
+  s_f2c373a699c792::t_00b26e6e9a971b 3
+packages/@n8n/telemetry/src/index.ts
+  s_f2c373a699c792::t_b2d09099b0e9b3 1-3
+  s_f2c373a699c792::t_90796de519039d 4,6-7
+  s_f2c373a699c792::t_7421216a259cd1 8
+  s_f2c373a699c792::t_6edf72c7a118c4 5
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_f2c373a699c792::t_070b7d618fcaa5 9-10
+  s_f2c373a699c792::t_b317cb9ab7be5d 144
+packages/@n8n/telemetry/package.json
+  s_f2c373a699c792::t_4880b416eaf4ef 31
+  s_f2c373a699c792::t_12b4fa21522c21 15
+  s_f2c373a699c792::t_8ca7254c2c29db 17
+  s_f2c373a699c792::t_152da4170cb087 1-14,16,18-30,32-38
+packages/@n8n/telemetry/src/__tests__/registry-checks.test.ts
+  s_f2c373a699c792::t_0537cee1dcd68e 1
+  s_f2c373a699c792::t_0c8eb5897b2032 102-104,107-113,115-116
+  s_f2c373a699c792::t_44f1ef3206a7c7 12-13,17-18,25-26,44-45,61-62,66-67,76,89,101,105-106,114,121-122,139
+  s_f2c373a699c792::t_deaec6edbcabbd 144
+  s_f2c373a699c792::t_26c5ad8cae21b5 2
+  s_f2c373a699c792::t_35b1968e0301ff 3-11,14-16,19-24,27-43,46-60,63-65,68-75,77-88,90-100,117-120,123-138,140-141,152
+  s_f2c373a699c792::t_b35f45fb662ffa 142-143,145-151
+packages/@n8n/telemetry/src/__tests__/types.test-d.ts
+  s_f2c373a699c792::t_918203926bbc1a 1-2,4-8,15,21-41,51,53
+  s_f2c373a699c792::t_a8c38b968f2ba2 16-17,20,42,46-48,50
+  s_f2c373a699c792::t_dcf047d17b8580 9-14,18-19
+  s_f2c373a699c792::t_b928a38da30329 3,43-45,49
+  s_f2c373a699c792::t_114bf46859807c 52
+packages/frontend/editor-ui/src/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store.ts
+  s_f2c373a699c792::t_c8c4aad39e6e0d 2-3
+  s_f2c373a699c792::t_f231fd243046fb 121
+packages/frontend/editor-ui/src/experiments/resourceCenter/stores/__tests__/resourceCenter.store.test.ts
+  s_f2c373a699c792::t_86a003566fa8f8 4
+  s_f2c373a699c792::t_98353233ef81ca 101
+  s_f2c373a699c792::t_e22f07d0b1f948 104-105
+packages/frontend/editor-ui/package.json
+  s_f2c373a699c792::t_7ce376c4466cc9 56
+packages/@n8n/telemetry/src/__tests__/catalog.test.ts
+  s_f2c373a699c792::t_b0a31bf52db4f0 44-59
+  s_f2c373a699c792::t_5de6f0c18c7527 1-43,60-70
+packages/@n8n/telemetry/src/define.ts
+  s_f2c373a699c792::t_47fb8bdb3463a3 1-4,6-11,13-17
+  s_f2c373a699c792::t_6e9b8ade20b820 12
+  s_f2c373a699c792::t_baefe9e850638e 5
+packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts
+  s_f2c373a699c792::t_5da1766d99075e 137
+  s_f2c373a699c792::t_c81f773d33d0ed 4
+  s_f2c373a699c792::t_1dfd359c51c9de 3
+  s_f2c373a699c792::t_7475029f9b1d04 22-25
+  s_f2c373a699c792::t_51b43c036bf98f 5
+  s_f2c373a699c792::t_872a11383be4b1 110-112,115-116,130,138
+  s_f2c373a699c792::t_94637fe05cd543 117-121
+packages/@n8n/telemetry/src/registry-checks.ts
+  s_f2c373a699c792::t_ea84372710b538 1-23,27-40
+  s_f2c373a699c792::t_54b7e395c70810 24-26
+packages/frontend/editor-ui/vite.config.mts
+  s_5a3940badb4621::t_fcecef61e75aae 79-85
+AGENTS.md
+  s_f2c373a699c792::t_c2ede57db47f8d 25-28
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_f2c373a699c792::t_43d2a76d562e29 1
+  s_f2c373a699c792::t_b040b1f6ec5ae9 3
+  s_f2c373a699c792::t_1f04a942e67f46 2,4-6
+packages/@n8n/telemetry/src/validate.ts
+  s_f2c373a699c792::t_27ab3d1531ca67 1-34
+packages/@n8n/telemetry/tsconfig.json
+  s_f2c373a699c792::t_9ceb73729981bd 4
+  s_f2c373a699c792::t_3b18fe7b39197c 1-3,5-7
+packages/@n8n/telemetry/src/__tests__/validate.test.ts
+  s_f2c373a699c792::t_77a1786b79f495 71-73
+  s_f2c373a699c792::t_55c94b201fb247 1-70,74-78
+packages/frontend/editor-ui/tsconfig.json
+  s_f2c373a699c792::t_c7e77060bcb8ae 32
+  s_f2c373a699c792::t_2ae251c4c1d0c6 31
+packages/@n8n/telemetry/tsconfig.build.json
+  s_f2c373a699c792::t_ea0fe73d26c6ad 1-10
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_f2c373a699c792::t_b432e5e2f27465 1
+  s_f2c373a699c792::t_881070e7d9ce26 5,10
+  s_f2c373a699c792::t_093b092c29a769 1113
+  s_f2c373a699c792::t_47abc0e9ca463c 1108-1112,1114-1128,1161
+  s_f2c373a699c792::t_150c3b77cec1f0 1129-1160
+packages/@n8n/telemetry/src/catalog.ts
+  s_f2c373a699c792::t_804fe0f9c1183f 43
+  s_f2c373a699c792::t_f057b6baec2d6b 29-33
+  s_f2c373a699c792::t_4adfa332be57f3 1-28,34-42,44-88
+packages/@n8n/telemetry/bin/catalog.mjs
+  s_f2c373a699c792::t_132721a47f501b 1-7
+packages/cli/tsconfig.json
+  s_5a3940badb4621::t_aaffad55f9a8d7 13-14
+  s_5a3940badb4621::t_825d5529596376 12
+packages/cli/vitest.config.base.ts
+  s_5a3940badb4621::t_acf49804e097ee 19
+pnpm-lock.yaml
+  ai_agent 3582-3609,4005-4007,5570-5572
+packages/@n8n/telemetry/eslint.config.mjs
+  s_f2c373a699c792::t_cbd54c6b939f93 4
+  s_f2c373a699c792::t_17252b02f95599 1-3,5-8
+packages/@n8n/telemetry/README.md
+  s_f2c373a699c792::t_6e062e78eee6e7 1-2,4
+  s_f2c373a699c792::t_6ac4b3b143194d 3
+  s_f2c373a699c792::t_886e895d98d999 7,9-15,20-21
+  s_f2c373a699c792::t_2b6e05e514a598 5-6,8,16-19,22-24
+.agents/skills/telemetry/SKILL.md
+  s_f2c373a699c792::t_f08f9d16945249 16,19-23,26,33-34,47,50,58
+  s_f2c373a699c792::t_7a89bdf2ab06af 38
+  s_f2c373a699c792::t_b79cfdb5a31c09 43
+  s_f2c373a699c792::t_4387f744a31810 1-6,10-15,17,28-31,35-37,39-42,44-46,48-49,51-57,59-70
+  s_f2c373a699c792::t_09b1274f38bbf6 7-9
+  s_f2c373a699c792::t_fd089543abf4f2 27,32
+  s_f2c373a699c792::t_98c8189cec73dd 18,24-25
+packages/@n8n/telemetry/src/events/platform.ts
+  s_f2c373a699c792::t_945cf738699451 1-15
+.claude/plugins/n8n/skills/telemetry
+  ai_agent 1
+packages/cli/src/telemetry/index.ts
+  s_f2c373a699c792::t_89cb08b09f1884 572-576
+  s_f2c373a699c792::t_1569ac3bf72215 12
+  s_f2c373a699c792::t_d25349285ad0fd 13
+  s_f2c373a699c792::t_5eb41205fe1a63 563-565,570-571
+packages/frontend/editor-ui/src/app/plugins/telemetry.test.ts
+  s_f2c373a699c792::t_6f2043e0f69959 4,7
+  s_f2c373a699c792::t_d226735c6094f8 238
+  s_f2c373a699c792::t_b6acf7a92b473c 258-279
+  s_f2c373a699c792::t_a5a577e8fe4ead 234-237,239-257,280-281
+packages/cli/package.json
+  s_f2c373a699c792::t_0ebe4c690a99d3 169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "655762f3b16079eaa2d98a3209857c4e6b370d0c",
+  "prompts": {},
+  "sessions": {
+    "s_5a3940badb4621": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8532-12ab-7941-bf5a-07e289bbef22",
+        "model": "gpt-5.5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_f2c373a699c792": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f03cf033-1e49-4d8e-9ea4-1fa000e40e6b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

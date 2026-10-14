@@ -1,0 +1,146 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c4a4e9a494a612::t_ea70e6b2adcb95 9,23,94,159,236-237,273,288,297-298,301,309,453-454,625-626,988-989
+  s_c4a4e9a494a612::t_b68b66e885a345 299-300
+  s_c4a4e9a494a612::t_5ac7b59df7be4a 1124
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_c4a4e9a494a612::t_2b0e869e603b6f 135-142
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_c4a4e9a494a612::t_1932f0204c849e 174
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_c4a4e9a494a612::t_1932f0204c849e 29
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_c4a4e9a494a612::t_cf29eb9ff4fdab 251-254,291,316,411
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_c4a4e9a494a612::t_a70caa87110199 466,517
+  s_c4a4e9a494a612::t_ed8d4a168c60eb 472-476,478,518
+  s_c4a4e9a494a612::t_2803df1153290b 101,514-516,519-521,523,577
+  s_c4a4e9a494a612::t_cc402fea537914 664
+packages/@n8n/api-types/src/agent-sse.ts
+  s_c4a4e9a494a612::t_2b0e869e603b6f 76
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_c4a4e9a494a612::t_a70caa87110199 860-861,878
+  s_c4a4e9a494a612::t_cd024ea3c69f5c 694-695,718-719,721-723,820-821,906,910-913,917,921-927,1122
+  s_c4a4e9a494a612::t_ed262399f02ab5 842-859,865-875,881-884
+  s_c4a4e9a494a612::t_a72c0522b1be76 819,914-916,918-920
+  s_c4a4e9a494a612::t_c5ea7da25e8ec6 862-864,876-877,879-880
+  s_c4a4e9a494a612::t_aa81ca02f3071f 19,194,689,713-715,717,815,1086
+  s_c4a4e9a494a612::t_d1843a01fb59c4 716,816-818,837,928-929,1259,1265-1266,1271,1277-1278
+packages/testing/playwright/tests/infrastructure/agents/preview-chat-recovery.spec.ts
+  s_c4a4e9a494a612::t_fff0499ccccc8f 89,91-97,104-138
+  s_c4a4e9a494a612::t_615c55565fa1ce 49
+  s_c4a4e9a494a612::t_439a3989b7e269 1-7,10,16-30,33-39,41-48,50-54,56-71,85-88,101-102,142-143,145
+  s_c4a4e9a494a612::t_d0a9f93610d220 8
+  s_c4a4e9a494a612::t_4e7b4b7e0956e1 9,11-15
+  s_c4a4e9a494a612::t_dd17de330daaf5 31-32,40,55,72-84,90,98-100,103,139-141,144
+packages/@n8n/api-types/src/agents/types.ts
+  s_c4a4e9a494a612::t_2b0e869e603b6f 375-376
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_c4a4e9a494a612::t_78cd377049b87e 1003-1064,1066-1074,1083-1085
+  s_c4a4e9a494a612::t_a6a795ae819d5b 1065,1075-1082,1086-1087
+packages/cli/src/scaling/constants.ts
+  s_c4a4e9a494a612::t_2b0e869e603b6f 48
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_c4a4e9a494a612::t_0d78767c44bcd1 62,71-79,83-84,89-91,94,96-99,169-170,217,228,261-262,275,298-307,313-316,409,412,416-417
+  s_c4a4e9a494a612::t_b68b66e885a345 30-33,65-70,80-82,85-88,239-245,286-292,308-312,413-415
+  s_c4a4e9a494a612::t_4abe604aa88f1f 92-93,95,247,294
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_c4a4e9a494a612::t_0d78767c44bcd1 450,512-513,595-596
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c4a4e9a494a612::t_d546e2f9b7b443 227-228,346,522-529,733-734,737-739,760,788
+  s_c4a4e9a494a612::t_b180124016d431 735-736,1126-1149,1155-1170,1173-1179,1183-1184,1189-1190,1198-1199,1201,1204-1205,1213,1223
+  s_c4a4e9a494a612::t_a72c0522b1be76 1064-1069
+  s_c4a4e9a494a612::t_615c55565fa1ce 200-205
+  s_c4a4e9a494a612::t_f1a6516483da39 18,97-99,104,148,157,167,176,183-185,196-199,225,272,274-275,277-278,286,308-311
+  s_c4a4e9a494a612::t_b68b66e885a345 100-102,775-779,851-856,1074-1078,1150-1154
+  s_c4a4e9a494a612::t_bf696578417d77 223,226,273,276
+  s_c4a4e9a494a612::t_57e23926c6172f 830-831,835-836,838-839,857,868,870,875,878-880,882-883,886-889,891-893,901-908,913,936,1029,1080-1082,1088,1102-1109,1111
+  s_c4a4e9a494a612::t_fff0499ccccc8f 890
+  s_c4a4e9a494a612::t_aa81ca02f3071f 914,935,1032,1083,1110
+  s_c4a4e9a494a612::t_812701d9aef491 96,181,186,243,846,897
+  s_c4a4e9a494a612::t_f719def8419025 415-419,423-424,1046,1049
+  s_c4a4e9a494a612::t_ed8d4a168c60eb 948-949,953,1023-1027,1047-1048,1052,1055,1061,1063,1070-1071
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_c4a4e9a494a612::t_dd46a074ea1996 16,144
+  s_c4a4e9a494a612::t_f0027c60af93ac 145-148
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_c4a4e9a494a612::t_dd46a074ea1996 22,141
+  s_c4a4e9a494a612::t_36c07c8bb18e38 142-145
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c4a4e9a494a612::t_d880d46c758b0f 2999,3063
+  s_c4a4e9a494a612::t_a72c0522b1be76 1063-1076,1079,1081-1097,1099-1105,1107-1114,2738,2897-2898,2913-2915,2974,2981,2983,2998,3069-3108
+  s_c4a4e9a494a612::t_ed262399f02ab5 8,2899-2910,2917-2923,2929-2930,2949
+  s_c4a4e9a494a612::t_c5ea7da25e8ec6 916,2924-2928,2931-2948,2950-2970,3003
+  s_c4a4e9a494a612::t_a70caa87110199 2911-2912,2916
+  s_c4a4e9a494a612::t_70b8aa25d74223 919,923,1182,1211,1239,2780-2784,2786-2833,2839-2848,2850-2871,2873-2884,2887-2891,2894-2895,2972,2980,2988-2991,2993-2996,3000,3002,3004-3010,3012-3019,3022-3031,3035-3040,3042-3046,3048-3062,3064-3068,3109
+  s_c4a4e9a494a612::t_fdcc01ea6b36f1 28,57,189-190,886,912-915,917-918,920-922,924-925,935-936,1155,1179-1181,1183,1186,1208-1210,1212,1227,1237,2338-2339,2726,2729-2730,2733-2737,2739-2745,2785,2834-2838,2849,2872,2885-2886,2892-2893,2896,2971,2973,2975-2979,2982,2984-2987,2992,2997,3001,3011,3020-3021,3032-3034,3041,3047
+packages/testing/playwright/services/agent-api-helper.ts
+  s_c4a4e9a494a612::t_615c55565fa1ce 83
+  s_c4a4e9a494a612::t_439a3989b7e269 1-19,21-27,29-30,32-39,41-42,44-52,54-55,57-66,68-80,82,84-113
+  s_c4a4e9a494a612::t_46b9b45b3c32fb 20,28,31,40,43,53,56,67,81
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_c4a4e9a494a612::t_b68b66e885a345 15-18,71-75,146-147,164-166,170,179-183,185-186,192-193,196-197,200-204,207-211,213,215-220
+  s_c4a4e9a494a612::t_2b0e869e603b6f 1-14,19-70,81-82,106-131,133-145,148-163,172-173,175-178,184,187-191,194-195,198-199,205-206,212,214,221-224
+  s_c4a4e9a494a612::t_4abe604aa88f1f 132
+  s_c4a4e9a494a612::t_1932f0204c849e 83-86,100-105,171,174
+  s_c4a4e9a494a612::t_56585086d8a7c6 76-80,87-96,98,167-169
+  s_c4a4e9a494a612::t_e248578937de89 97,99
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_c4a4e9a494a612::t_5ac7b59df7be4a 320
+  s_c4a4e9a494a612::t_de243c33201d42 325-329
+  s_c4a4e9a494a612::t_b68b66e885a345 220-221
+  s_c4a4e9a494a612::t_ea70e6b2adcb95 14,48-49,95,111-130,240-242
+  s_c4a4e9a494a612::t_4abe604aa88f1f 58,141,185,213-219,222-225
+  s_c4a4e9a494a612::t_86b607ca4d74dd 226-228
+packages/testing/playwright/services/api-helper.ts
+  s_c4a4e9a494a612::t_439a3989b7e269 22,90,116
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_c4a4e9a494a612::t_a89b0dd8e85967 228-235
+  s_c4a4e9a494a612::t_615c55565fa1ce 11-14,22-44,46-58,67-75,77-81,102-104,108-110,116-122,126-128,143-146,158-200,204-208,211-216
+  s_c4a4e9a494a612::t_85cd08b1b89996 221-227,236-239
+  s_c4a4e9a494a612::t_ec4fc844379067 1-10,15-21,45,59-66,76,82-101,105-107,111-115,123-125,129-142,147-157,201-203,209-210,217-220
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_c4a4e9a494a612::t_0d78767c44bcd1 16,26-35,37-38,40-41,43-46,48-51,56,63-64
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_c4a4e9a494a612::t_b68b66e885a345 601-605
+  s_c4a4e9a494a612::t_f1a6516483da39 594-600,606-607
+packages/cli/src/modules/agents/PREVIEW_CHAT_RECOVERY.md
+  s_c4a4e9a494a612::t_439a3989b7e269 1-15
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_c4a4e9a494a612::t_304915a430f62c 485,493,496,584,586,593,600,602
+  s_c4a4e9a494a612::t_dd46a074ea1996 44,65,70,127,307,352,400
+  s_c4a4e9a494a612::t_78cd377049b87e 597
+  s_c4a4e9a494a612::t_fff0499ccccc8f 17-20,365-379,478-479,494-495,508-512,540-545,547-563,565-570,572-573,575-579,606-618
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_c4a4e9a494a612::t_06206a2d579709 39,639
+  s_c4a4e9a494a612::t_c5ea7da25e8ec6 128-132
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_c4a4e9a494a612::t_1932f0204c849e 63,112
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_c4a4e9a494a612::t_dd46a074ea1996 36,280
+  s_c4a4e9a494a612::t_317433efe793c9 281-284,293
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_c4a4e9a494a612::t_2b0e869e603b6f 46-49
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_c4a4e9a494a612::t_c8c8b7fa684041 21,27,34-35,177-178,186,227,236,241-242
+  s_c4a4e9a494a612::t_ed262399f02ab5 30-33,179-185,362-369,380-383,387-392,2112-2136,2146
+  s_c4a4e9a494a612::t_aa81ca02f3071f 15
+  s_c4a4e9a494a612::t_2a23b896f6ebf5 305,314,324-325,337-338,346,351-361,370-379,384-386,393
+  s_c4a4e9a494a612::t_c5ea7da25e8ec6 2137-2145,2147-2149
+  s_c4a4e9a494a612::t_3ab6975e0a65a9 394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1707fcd4652698890b77b92f01403fe920e7fa7a",
+  "prompts": {},
+  "sessions": {
+    "s_c4a4e9a494a612": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c931-0a24-7242-93f9-890df461d8e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

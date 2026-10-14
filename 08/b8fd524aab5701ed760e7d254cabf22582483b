@@ -1,0 +1,174 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  ai_agent 1,5-10,16-20,22,27-36,38,40-101,115,125-129,134,143-147,155-160,164-178,180-181,183-184,186-189,195-222,224-226,229-234,238-239,241,243-253,256-257,259-261,263-277,279-288
+  s_f3d2ec4529fb2a::t_2326c8bbf7b16c 2
+  s_e3560b551eac11::t_e49e6472b76e64 3,179,182,185,235-237,242
+  s_f3d2ec4529fb2a::t_34f4fc9e243ce2 4
+  s_9a6001e67297f0::t_6c5246ba3e437b 11-15,25
+  s_f3d2ec4529fb2a::t_76e10c05876d90 21
+  s_9a6001e67297f0::t_73284eaf8b288d 23
+  s_9a6001e67297f0::t_17d16d61199c54 24
+  s_e3560b551eac11::t_9b662867526c78 26
+  s_9a6001e67297f0::t_2fbb46236d00c0 37
+  s_f3d2ec4529fb2a::t_3f15b6478ceac3 39
+  s_e3560b551eac11::t_be9d0b7fac2c72 102,116,130-131,141-142,194,254-255,258,289,298-301
+  s_e3560b551eac11::t_bcc0fb61dea711 103-107,111,113
+  s_e3560b551eac11::t_7b9c316b2248e6 108-110,112,114
+  s_9a6001e67297f0::t_5aaefa9bdeec9b 132-133,135,137-138,140
+  s_9a6001e67297f0::t_1f1a92e1b04aa5 136
+  s_e3560b551eac11::t_55307f734bca7e 139,240,290-297
+  s_f3d2ec4529fb2a::t_a5ab4171777ad8 148-154
+  s_f3d2ec4529fb2a::t_c0db08a1264f18 161-163
+  s_9a6001e67297f0::t_dbda8ab10a9511 190,262
+  s_e3560b551eac11::t_e17a51152b5568 191
+  s_9a6001e67297f0::t_cd91bc1a28e6d3 193
+  s_f3d2ec4529fb2a::t_ef4ceac8b3c550 223
+  s_e3560b551eac11::t_88f7975da7b113 227,278
+  s_9a6001e67297f0::t_9cd237417a2698 228
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_f3d2ec4529fb2a::t_af2bbc5795ed59 185-191,201-202
+  s_f3d2ec4529fb2a::t_bb5c9bf0ddf780 209-221
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_f3d2ec4529fb2a::t_a18e9653078ea2 116-117
+  s_f3d2ec4529fb2a::t_0f7718b4d4e10f 333-336
+  s_f3d2ec4529fb2a::t_308cfe23ce4708 337
+  s_f3d2ec4529fb2a::t_b1afb055d9bb16 920
+  s_f3d2ec4529fb2a::t_d7e83e8c29077b 921-922
+  s_f3d2ec4529fb2a::t_af222b511d6b9d 961-964
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  ai_agent 6,53-84,125-128,131-133,136,139,146,153,165,173,182,190,205,729,734,745,750,777,782,797,807,812,816-825,855,860,870,875
+  s_9a6001e67297f0::t_0722a6be8de6af 7
+  s_f3d2ec4529fb2a::t_2a4e8de173221b 22
+  s_9a6001e67297f0::t_adc049c2968504 23,36
+  s_9a6001e67297f0::t_9d3e74d511ba0a 38
+  s_9a6001e67297f0::t_d282cb08dbebef 39
+  s_f3d2ec4529fb2a::t_0c9c936b60439b 129-130
+  s_9a6001e67297f0::t_96b8656302ae21 134,174-181,193,200-203
+  s_9a6001e67297f0::t_30b27a8e2f36f5 135,145,147,151,163-164,166-169,172,183-189,191-192,194-197,199,204
+  s_9a6001e67297f0::t_f87191dabc388f 137-138,140-144,152,154-156,158,160-162
+  s_9a6001e67297f0::t_fefeb1272a3320 148-150,157,159
+  s_9a6001e67297f0::t_ee927f7b854ebb 170
+  s_9a6001e67297f0::t_db46ce8a519e1f 171
+  s_9a6001e67297f0::t_8d8ccc7a567470 198
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiInput.attachments.test.ts
+  s_f3d2ec4529fb2a::t_5ed279ce47c7e4 55-56,59
+  s_f3d2ec4529fb2a::t_93ea15c58671d3 160-186
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_f3d2ec4529fb2a::t_e5ca6d6e33f011 296
+  s_f3d2ec4529fb2a::t_31c40389ffbdd8 352
+  s_f3d2ec4529fb2a::t_214f499d01a4dd 483-484,486
+  s_f3d2ec4529fb2a::t_4001f4dafbda97 485
+  s_f3d2ec4529fb2a::t_3ac485cd2ede01 1541
+  s_f3d2ec4529fb2a::t_75b65d5d58bb50 1542-1547,1549-1554
+  s_f3d2ec4529fb2a::t_13508746bfdf7f 1548
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.test.ts
+  ai_agent 1,3-5,7-17,21-53,55-90,92-100,102-104,106-107,109-115,117-124,127-133,141-143,148,151,189-202,235-252,254-260,262-364,366-367,372,384,391,401,412,421,446,458
+  s_f3d2ec4529fb2a::t_ae1bb0b9448521 2,108,211,214
+  s_f3d2ec4529fb2a::t_1d810021dd457c 6
+  s_f3d2ec4529fb2a::t_323bc092cfb774 18
+  s_9a6001e67297f0::t_8c11286202abcb 19
+  s_e3560b551eac11::t_74b46c3001a67d 20,380,387,394,400,403-405,407,411
+  s_e3560b551eac11::t_e49e6472b76e64 54,253,261
+  s_e3560b551eac11::t_be9d0b7fac2c72 91
+  s_f3d2ec4529fb2a::t_f83554a52b8527 101
+  s_e3560b551eac11::t_88f7975da7b113 105
+  s_f3d2ec4529fb2a::t_1879ed10cfa4d2 116,125-126
+  s_9a6001e67297f0::t_7b59cb0ffd0c2d 134-136,138-140
+  s_f3d2ec4529fb2a::t_2f5a82fa335a26 137
+  s_9a6001e67297f0::t_359225e70d9d35 144,149,368
+  s_9a6001e67297f0::t_74f46878a5e248 145-147,150,152-153,370-371,373-374,379,381-382,385,388-389,392,395,397-398,402,406,408-409,413,416,418-419,422-445,447-457,459
+  s_f3d2ec4529fb2a::t_715af5cdc0a61e 203-210,212-213,218-222
+  s_f3d2ec4529fb2a::t_832980ff13c6ae 215-217
+  s_f3d2ec4529fb2a::t_148d0bfdecab72 223-234
+  s_e3560b551eac11::t_7f4026992ef04c 375-377,383,386,390,393,396,399,410,414,417,420
+  s_e3560b551eac11::t_9b662867526c78 378,415
+packages/frontend/editor-ui/src/features/agents/composables/useSubAgentNames.ts
+  s_f3d2ec4529fb2a::t_3a75fb5ca09a4c 6,14-15
+  s_f3d2ec4529fb2a::t_bae5bb46763e32 8-9,13
+packages/@n8n/api-types/src/agents/__tests__/provider-capabilities.test.ts
+  s_f3d2ec4529fb2a::t_3ca4b79327b490 1-13
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_f3d2ec4529fb2a::t_417ab4f8751f6c 8-12
+  s_9a6001e67297f0::t_1a7ba868dfe39d 47
+  ai_agent 70-72,247
+  s_f3d2ec4529fb2a::t_c3bedaf6c74759 91
+  s_f3d2ec4529fb2a::t_20151a32602c72 192,194
+  s_f3d2ec4529fb2a::t_5808eaf75c31eb 212-213
+  s_9a6001e67297f0::t_7f1b23eb489a4f 278-281
+  s_f3d2ec4529fb2a::t_95e1f8030a5ade 324
+  s_9a6001e67297f0::t_70611fe24970c7 331
+  s_e3560b551eac11::t_88f7975da7b113 332,361-368,375-378,382-383,503-504
+  s_e3560b551eac11::t_be9d0b7fac2c72 333,379
+  s_e3560b551eac11::t_ac989fc9b65c37 369-374
+  s_9a6001e67297f0::t_b1d932b91a1e2b 1398-1400,1404-1406,1411-1413,1415,1421-1423,1426-1428,1433-1434,1436-1438,1519-1521,1525-1527,1532-1534,1536,1542-1544,1547-1549,1554-1555,1557-1559,1631-1655,1658-1669,1671-1715,1717-1721,1723-1729,1731-1737,1739-1740,1742-1744,1752-1776,1779-1836,1838-1842,1844-1861,1863-1865
+  s_e3560b551eac11::t_9a123fb73f6e2e 1401-1402,1410,1414,1416-1420,1522-1523,1531,1535,1537-1541
+  s_e3560b551eac11::t_74b46c3001a67d 1403,1407-1409,1424-1425,1429-1432,1435,1528-1530,1545,1550-1553,1556
+  s_f3d2ec4529fb2a::t_ae1bb0b9448521 1524,1546,1670,1730,1738,1897,2428
+  s_f3d2ec4529fb2a::t_25967f2d1a276d 2492-2540
+packages/frontend/editor-ui/src/features/agents/components/agentChatInjectionKeys.ts
+  s_f3d2ec4529fb2a::t_270601fc50f049 1,9-10,13,15
+  s_f3d2ec4529fb2a::t_3a75fb5ca09a4c 11-12,14
+packages/frontend/editor-ui/src/features/agents/__tests__/useSubAgentNames.test.ts
+  s_f3d2ec4529fb2a::t_ea6bf32ec2bbab 1-6,8-18,24-51,53-55,57-59,61-63,67,69-70
+  s_f3d2ec4529fb2a::t_8a212f588d4d67 7
+  s_f3d2ec4529fb2a::t_08fe5bb9ef7563 19-23
+  s_f3d2ec4529fb2a::t_0bf033aa140422 52,56,60,64-66,68
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9a6001e67297f0::t_80e20563184827 1500
+  s_f3d2ec4529fb2a::t_0a45087b18ca45 8105
+  ai_agent 8150-8153
+  s_9a6001e67297f0::t_bb886ef6ac8b01 8154-8156,8158-8159
+  s_9a6001e67297f0::t_c4260eb699eabd 8157
+  s_e3560b551eac11::t_85762fcb294f3e 8161
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_f3d2ec4529fb2a::t_812e350f053d82 13
+  s_f3d2ec4529fb2a::t_fd6c148a599f88 545-546
+  s_f3d2ec4529fb2a::t_9e7c49bfe74230 547-551
+  s_f3d2ec4529fb2a::t_0cc9ea34d54905 878
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 4,42,69-72,91-94,111,116,133,138,166,171,175,177-191,310-312,322-325,335,436,449,522,535,552,565,800,813,833,958,1012,1053-1057,1108-1112
+  s_f3d2ec4529fb2a::t_87a066fb93e90c 33,39
+  s_f3d2ec4529fb2a::t_2622b000a79469 40
+  s_f3d2ec4529fb2a::t_3a75fb5ca09a4c 54,84,659-667
+  s_f3d2ec4529fb2a::t_8096752c72dac5 85
+  s_e3560b551eac11::t_88f7975da7b113 114,119,801-803,805-806,814,830,832,842-844,846-847,849-850,877-878,891-892,1005-1010,1060-1066,1474-1475,1529-1530
+  s_9a6001e67297f0::t_882cfce96d3c93 206,822,825-826,838,841,866,870-871
+  s_f3d2ec4529fb2a::t_3e038902e0c32d 628,630
+  s_f3d2ec4529fb2a::t_c90898d3b4b0f9 639
+  s_f3d2ec4529fb2a::t_be99d9f4489d39 668-675
+  s_9a6001e67297f0::t_7572e5dc4f12a9 821,827-829,831,834-836,860,865,872-876,879-881,887,890,905,935
+  s_e3560b551eac11::t_a6023495046ffb 945,996
+  s_e3560b551eac11::t_7b9c316b2248e6 948-951,957,972-976,998-1001,1011,1027-1031
+  s_e3560b551eac11::t_be9d0b7fac2c72 1216-1232,1271-1289,1291-1305,1307-1313,1315-1316,1318,1320-1409,1411,1413-1427,1429,1431-1464,1476-1482,1487-1505,1535-1537
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "08b8fd524aab5701ed760e7d254cabf22582483b",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

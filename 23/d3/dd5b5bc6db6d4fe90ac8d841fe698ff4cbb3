@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_1211055aa32911::t_b3b926ab1b48c5 38,54-56,120
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_1211055aa32911::t_e1d87fba1db32f 338-349
+  s_1211055aa32911::t_58f42e2c054542 565,587,868
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TypeToConfirmDialog.vue
+  s_1211055aa32911::t_a29756173982a5 61
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_1211055aa32911::t_ead9ea05f9f532 229,238,291-292
+  s_1211055aa32911::t_bd4780e1be51a6 293-294
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModal.vue
+  s_1211055aa32911::t_723a6b4691e699 326-330
+  s_1211055aa32911::t_1caaa439f61eb5 30,46,70,73,78,82-91,95-100,102
+  s_1211055aa32911::t_302b903f9654c3 114-115,126,164,192-196,213
+packages/frontend/editor-ui/src/features/agents/__tests__/utils/AgentModalTestStub.ts
+  s_1211055aa32911::t_c09b9121ecb0a3 13,29,94
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_1211055aa32911::t_b0f906a6de955c 1548,1550-1554,1596-1601,1606-1608,1627-1634,1645-1656
+  s_1211055aa32911::t_0853005267bfdd 60-62,66
+  s_1211055aa32911::t_733c4f5ecdbb67 93,167,640-653
+  s_1211055aa32911::t_6f2f6bd6008e00 1370-1375,1377-1378,1527-1529,1531-1532
+  s_1211055aa32911::t_8dd63a51aa020c 1379-1416,1418-1524,1549
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModal.test.ts
+  s_1211055aa32911::t_6e2cd730c8d327 8,17,19-35,39,45,48,169-186
+  s_1211055aa32911::t_2fc3ca9e176327 187
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_1211055aa32911::t_13389d77b7094a 129-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "23d3dd5b5bc6db6d4fe90ac8d841fe698ff4cbb3",
+  "prompts": {},
+  "sessions": {
+    "s_1211055aa32911": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c500-f15a-7422-92f7-4133f49bfe35",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/nodes-base/nodes/Cortex/test/workflow/Cortex.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a466e3992ffa69 14
+  s_2e1fa95fc44f8f::t_27e7b861bd9df2 1-13,15-33
+packages/nodes-base/nodes/ConvertKit/test/workflow/ConvertKit.workflow.test.ts
+  s_2e1fa95fc44f8f::t_1b7309bbd1ea4c 1-59
+  s_2e1fa95fc44f8f::t_05bcb46c0e79b3 60-62
+  s_1784f57a265e56::t_925392d93903c2 63-65
+packages/nodes-base/nodes/ConvertKit/test/ConvertKitTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_15b7f04437c051 1-19
+packages/nodes-base/nodes/Copper/test/CopperTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_7de25151b5274d 1-23
+packages/nodes-base/nodes/Copper/test/workflow/Copper.workflow.test.ts
+  s_2e1fa95fc44f8f::t_9e8d13e1db52a7 21-22
+  s_2e1fa95fc44f8f::t_6c31cbc4862dba 17
+  s_2e1fa95fc44f8f::t_6f6d0bfaa286cf 1-16,18-20,23-27,32-47
+  s_2e1fa95fc44f8f::t_94a7a4d825eb3a 28-31
+packages/nodes-base/nodes/CustomerIo/test/CustomerIoTriggerWebhook.test.ts
+  s_2e1fa95fc44f8f::t_6ecd0acd60a8ee 1-22
+packages/nodes-base/nodes/CustomerIo/test/workflow/CustomerIo.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a328f22049344b 1-56
+packages/nodes-base/nodes/ConvertKit/test/workflow/requests.workflow.json
+  s_1784f57a265e56::t_fa2b7c3f7bee07 1-500
+packages/nodes-base/nodes/Copper/test/workflow/requests.workflow.json
+  s_1784f57a265e56::t_4da396ec6b80e0 1-700
+packages/nodes-base/nodes/Cortex/test/workflow/requests.workflow.json
+  s_1784f57a265e56::t_1fe1b0c7e451b7 1-160
+packages/nodes-base/nodes/CustomerIo/test/workflow/requests.eu.workflow.json
+  s_1784f57a265e56::t_386425bf99ea74 1-88
+packages/nodes-base/nodes/CustomerIo/test/workflow/requests.workflow.json
+  s_1784f57a265e56::t_c3f8d5fcfec40e 1-309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "214f41f9c1715995328f106426be096fe1281cbc",
+  "prompts": {},
+  "sessions": {
+    "s_1784f57a265e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae4316d2f9da06192",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

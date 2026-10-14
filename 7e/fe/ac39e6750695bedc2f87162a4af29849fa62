@@ -1,0 +1,19 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_44aa9c6c181fe5::t_5eb188a7ebcc28 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7efeac39e6750695bedc2f87162a4af29849fa62",
+  "prompts": {},
+  "sessions": {
+    "s_44aa9c6c181fe5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8180d614-59ae-47fa-b7fc-39ddeb518c57",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

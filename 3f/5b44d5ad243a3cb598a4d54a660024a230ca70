@@ -1,0 +1,21 @@
+packages/@n8n/eslint-config/src/rules/no-unsafe-metrics-imports.test.ts
+  s_3ffba9c7659cea::t_b4c7048634238b 41-44
+packages/@n8n/eslint-config/src/rules/no-unsafe-metrics-imports.ts
+  s_3ffba9c7659cea::t_081819f14252de 48-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f5b44d5ad243a3cb598a4d54a660024a230ca70",
+  "prompts": {},
+  "sessions": {
+    "s_3ffba9c7659cea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78ea5aa5-a80a-4f60-bb5f-5fb8873c461b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

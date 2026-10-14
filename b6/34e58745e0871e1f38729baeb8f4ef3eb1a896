@@ -1,0 +1,23 @@
+packages/@n8n/config/src/configs/logging.config.ts
+  s_aeecfe178a9b3d::t_24bda96d710b9d 35
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_aeecfe178a9b3d::t_5dfd4cdeb504cb 17
+packages/@n8n/constants/src/index.ts
+  s_aeecfe178a9b3d::t_ad8f785e6d59d5 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b634e58745e0871e1f38729baeb8f4ef3eb1a896",
+  "prompts": {},
+  "sessions": {
+    "s_aeecfe178a9b3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

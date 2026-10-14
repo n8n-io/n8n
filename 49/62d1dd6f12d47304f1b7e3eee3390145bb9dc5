@@ -1,0 +1,152 @@
+packages/cli/src/webhooks/live-webhooks.ts
+  s_33db4ed9b3e91a::t_dda6d7b965894b 2,6-10,12,35,36-41,42-44,60,151-155,158,207,212,213-215,216-217,219-226,228-229
+  s_292ac6c3f556ed::t_f077d3c7fe60f9 11,227
+  s_dd6ea240bb5dca::t_4471e08885c009 218
+packages/workflow/src/node-parameters/native-parameter-resolution.ts
+  s_33db4ed9b3e91a::t_7c22ff65e8535b 1-5,6-8,14-15,17-19,20-22,26-27,29-30,32-57,58,59-80,81-82,83-93,94,95-104,110,112,115,120,124-128,157-158,160-176
+  s_292ac6c3f556ed::t_985d6e0b20980a 11-13,16,105-107,111,113-114,116-119,121-123,129-156
+  s_33db4ed9b3e91a::t_3db1fc93325db2 159
+  s_292ac6c3f556ed::t_869f644332b756 9-10
+  s_dd6ea240bb5dca::t_d5c2058858eb6a 108-109
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_33db4ed9b3e91a::t_f8ff2187a90741 64-65,70
+  s_dd6ea240bb5dca::t_b97c402008d2e0 66-69,71-72
+packages/workflow/test/node-parameters/native-parameter-resolution-parity.test.ts
+  s_33db4ed9b3e91a::t_b57cb1bd130a76 1-2,4-7,9,15,18-23,27,28-96,114-124,134-137,139-142,144-146,148-151,153-157,162-164,166-167,169-176,181-182,183-230,233-250,252-267,273-274,277,278-281,291-292,298-299,302,322,332
+  s_292ac6c3f556ed::t_0dbc4e96d3de73 8,10-14,16-17,24-26,125-133,138,143,147,152,158-161,165,168,177-180,231-232,251,268-272,295,319
+  s_c627789ff6aca2::t_15803ce29ba250 319,322-323
+  s_2391d1d4035dda::t_af70476154acd7 97-113,275-276,282-332
+  s_266ece46eae7f9::t_be273cceb7dc8b 3
+packages/workflow/test/node-parameters/native-parameter-resolution.test.ts
+  s_33db4ed9b3e91a::t_3ce838ce4d1c3f 1-4,6,9-61,68-135,137,139-145,147-154,169,176-178
+  s_292ac6c3f556ed::t_df38ceff3fa184 5,7-8,136,138,146,155-168,170-175,179-208
+packages/workflow/src/interfaces.ts
+  s_33db4ed9b3e91a::t_5e5521f3f7fa69 2997,3004,3006-3009,3011-3013,3015-3017
+  s_292ac6c3f556ed::t_100210d0b4d6f0 2998-3003,3005,3014,3031-3032
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_33db4ed9b3e91a::t_63e9c9d8495ca4 1140,1146,1170
+  s_292ac6c3f556ed::t_d3fc485ace62c7 546,1133-1135,1139,1143,1145,1149,1154-1156,1163-1164,1166-1167,1169,1202-1209
+packages/nodes-base/nodes/Webhook/test/description.test.ts
+  s_33db4ed9b3e91a::t_5f51fc3eba3902 1,3-6,7-10,11-14,17-42,43-44,48-90
+  s_292ac6c3f556ed::t_b747a3badaee17 2,15-16,45-47
+packages/nodes-base/nodes/Webhook/description.ts
+  s_33db4ed9b3e91a::t_a0e1c6d35ecfc8 8-9,35,36-37,38
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_33db4ed9b3e91a::t_458439a6a5d5f4 2,9-10,13,18-19,64,616-634,635-636,637-698,699-701,702-711,712-713,714-762,763,764-793,795-806,824-832,833-834,835-842,844-848,849-850
+  s_ac3da38d6ed562::t_799272a64a6392 794
+  s_292ac6c3f556ed::t_bc339327ebd6d0 807-823
+  s_dbbf27942dba3e::t_4ffbd89aedec6c 54
+  s_dd6ea240bb5dca::t_0e956ad0ca1639 46-48,55,843
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/webhook-helper-functions.test.ts
+  s_292ac6c3f556ed::t_a06c3ed49d70e8 131,147,182-183
+packages/core/src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts
+  s_292ac6c3f556ed::t_6eb3a8258354c6 54,56,62,64
+packages/cli/src/webhooks/__tests__/webhook-execution-context.test.ts
+  s_292ac6c3f556ed::t_96439ca56f65b9 2-4,6-7,11,16,23-26,28,30-31,34,37,40,42,44-46,48-49,52,55,57-61
+  s_dd6ea240bb5dca::t_11e8316762f80a 1,5,8-10,12-15,17-22,27,29,32-33,35-36,38-39,41,43,47,50-51,53-54,56
+packages/workflow/src/index.ts
+  s_292ac6c3f556ed::t_06376dbed9c651 97
+packages/cli/src/webhooks/webhook-execution-context.ts
+  s_292ac6c3f556ed::t_c71aca2d61fb72 9,14,31,34,51,54
+  s_dd6ea240bb5dca::t_3b2af93a4e5984 1,13,20-21,38-39,41-42,47,58-59,61-62,67
+packages/@n8n/config/test/config.test.ts
+  s_dd6ea240bb5dca::t_1df9d5092cc7eb 635
+packages/cli/src/commands/base-command.ts
+  s_dd6ea240bb5dca::t_c8c33504a68614 29,229-230
+packages/cli/src/webhooks/__tests__/webhook-description-resolver.test.ts
+  s_dd6ea240bb5dca::t_cb696a31519c3d 1-167
+packages/cli/src/webhooks/__tests__/webhook.service.test.ts
+  s_dd6ea240bb5dca::t_b90f7add134f57 1,18,33-42,476-533
+packages/cli/src/webhooks/webhook-description-resolver.ts
+  s_dd6ea240bb5dca::t_d32ae58a6dbb1c 1-103
+packages/cli/src/webhooks/webhook.service.ts
+  s_dd6ea240bb5dca::t_88f2600559365e 30,39,337-338,340-341,360-361,363-364,370-371,373-374,388-389,391-392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "4962d1dd6f12d47304f1b7e3eee3390145bb9dc5",
+  "prompts": {},
+  "sessions": {
+    "s_109e695d957305": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_109e695d957305",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_2391d1d4035dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_2391d1d4035dda",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_266ece46eae7f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_266ece46eae7f9",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_292ac6c3f556ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_292ac6c3f556ed",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_2a226e0095c004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_2a226e0095c004",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_33db4ed9b3e91a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_33db4ed9b3e91a",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_ac3da38d6ed562": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_ac3da38d6ed562",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_c627789ff6aca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_c627789ff6aca2",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_dbbf27942dba3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_dbbf27942dba3e",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    },
+    "s_dd6ea240bb5dca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_dd6ea240bb5dca",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

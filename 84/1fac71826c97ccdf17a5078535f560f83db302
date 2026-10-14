@@ -1,0 +1,23 @@
+packages/testing/playwright/tests/infrastructure/benchmarks/schedule-trigger/sqlite-single-main.spec.ts
+  s_5b0f3d5f2911b6::t_2dc8b797e3f1b7 11
+packages/testing/playwright/tests/infrastructure/benchmarks/schedule-trigger/postgres-multi-main.spec.ts
+  s_5b0f3d5f2911b6::t_b73fd89d1c1a64 11
+packages/testing/playwright/playwright-projects.ts
+  s_5b0f3d5f2911b6::t_70d64e607fe896 97-98,131-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "841fac71826c97ccdf17a5078535f560f83db302",
+  "prompts": {},
+  "sessions": {
+    "s_5b0f3d5f2911b6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ed1d8-5500-74b0-97ff-c1b3dfb259c4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

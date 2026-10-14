@@ -1,0 +1,218 @@
+packages/frontend/@n8n/frontend-module-sdk/src/registries/capabilityRegistry.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-9,13,15-16,18-21,23-29,33-39,48-49,53-54,57-58,61-66
+  s_8be9ee4c0632ab::t_a0794ab10f462b 55,59
+  s_e144e5251a2cb8::t_249e5a46793a91 10-12,14,17,22,30-32,56,60
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_8be9ee4c0632ab::t_53e2b124656163 402-412,414,416-420,424-444
+  s_e144e5251a2cb8::t_7c33be2223b0ba 415,421-422
+  s_e144e5251a2cb8::t_a6aa337fd2adfd 423
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_8be9ee4c0632ab::t_23cb21324fc972 1-8,19-21,23-25,28-60,63-69,123
+  s_e144e5251a2cb8::t_307acd86f0208d 61-62
+  s_e144e5251a2cb8::t_fdf9ea24844b4e 26-27
+  s_0c0dd4097c5884::t_d844cd383b79a7 9-18,22,70-121
+  s_0c0dd4097c5884::t_ad53edd597c9c7 122
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/modalOpeners.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-8
+packages/frontend/@n8n/frontend-module-sdk/src/declareCapability.test.ts
+  s_8be9ee4c0632ab::t_ee8317186cbb34 1-17
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_8be9ee4c0632ab::t_23cb21324fc972 1-2,4,10-24,44-45,47
+  s_0c0dd4097c5884::t_11f72818dd4fb2 3,5-9,25-43,46
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/workflowMcpAccessSync.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-6,8-11
+  s_0c0dd4097c5884::t_7e9dd42c7151c2 7
+packages/frontend/@n8n/frontend-module-sdk/src/types/capability.ts
+  s_8be9ee4c0632ab::t_e0e7afe3a8d8b1 1-5,7-22
+  s_e144e5251a2cb8::t_19c5dcbca17291 6
+packages/frontend/@n8n/frontend-module-sdk/src/declareCapability.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-22,26
+packages/frontend/@n8n/frontend-module-sdk/README.md
+  s_8be9ee4c0632ab::t_e075c0db06cd44 6-8
+packages/frontend/@n8n/frontend-module-sdk/src/index.ts
+  s_8be9ee4c0632ab::t_e075c0db06cd44 5,13-16
+packages/frontend/@n8n/frontend-module-sdk/src/registries/capabilityRegistry.test.ts
+  s_8be9ee4c0632ab::t_ee8317186cbb34 1-37,47-76,85-102
+  s_e144e5251a2cb8::t_fdf9ea24844b4e 77-84
+packages/frontend/@n8n/frontend-module-sdk/src/types/index.ts
+  s_8be9ee4c0632ab::t_e0e7afe3a8d8b1 13
+packages/frontend/editor-ui/src/main.ts
+  s_8be9ee4c0632ab::t_d76f906202f75f 35,61-62
+  s_8be9ee4c0632ab::t_a48ffbee580762 63
+packages/frontend/editor-ui/src/app/bootstrapRegistrations.test.ts
+  s_8be9ee4c0632ab::t_78b579c3b0b293 11-13,15,25
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+  s_8be9ee4c0632ab::t_e295a7d8066912 1-2
+packages/frontend/@n8n/frontend-test-utils/src/index.ts
+  s_eb2180847c08bb::t_d265a8067142f8 9
+packages/frontend/@n8n/frontend-constants/src/workflows.ts
+  s_eb2180847c08bb::t_36811115a76880 1-3
+packages/frontend/@n8n/frontend-test-utils/src/__tests__/utils.test.ts
+  s_eb2180847c08bb::t_713cae7028dd91 1,41-57
+  s_eb2180847c08bb::t_d8d7498f7228e0 58
+packages/frontend/@n8n/frontend-test-utils/src/utils.ts
+  s_eb2180847c08bb::t_d265a8067142f8 58-72
+packages/frontend/editor-ui/src/app/constants/modals.ts
+  s_eb2180847c08bb::t_485bf884fe296d 38
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_eb2180847c08bb::t_485bf884fe296d 1-9
+packages/frontend/@n8n/frontend-constants/src/agents.ts
+  s_eb2180847c08bb::t_c4410114065572 1-13
+packages/frontend/@n8n/frontend-constants/src/agents.test.ts
+  s_eb2180847c08bb::t_559691ddd2c217 1-3,14-16,18-20
+  s_14d6c74486cc9e::t_8271542f890492 4-13,17
+packages/frontend/@n8n/frontend-constants/src/durations.ts
+  s_eb2180847c08bb::t_407eceb9c4a38f 1-57
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_eb2180847c08bb::t_c75fae100b4174 63-65
+packages/frontend/editor-ui/src/__tests__/utils.ts
+  s_eb2180847c08bb::t_8c8d4de2d3754b 7,12
+  s_eb2180847c08bb::t_b58a6d69119af5 5
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/TimeAgo.test.ts
+  s_9255fcc9290949::t_136fe10a22a7e8 1-2,4-57,92
+packages/frontend/@n8n/design-system/package.json
+  s_9255fcc9290949::t_8b3e87013fafbb 65,114,126
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_9255fcc9290949::t_460a17625e876d 115-116,173-174
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 31,226
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/index.ts
+  s_9255fcc9290949::t_136fe10a22a7e8 1-4
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/SelectedItemsInfo.test.ts
+  s_9255fcc9290949::t_e8608d9ef6073f 1-61
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/SelectedItemsInfo.vue
+  s_9255fcc9290949::t_e8608d9ef6073f 1-82
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/TimeAgo.vue
+  s_9255fcc9290949::t_136fe10a22a7e8 1,3-4,9-16,19-23,25-26,38,42-57
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/component-selected-items-info.md
+  s_9255fcc9290949::t_e8608d9ef6073f 1-45
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/TimeAgo.stories.ts
+  s_9255fcc9290949::t_136fe10a22a7e8 1-45
+  s_9255fcc9290949::t_26a5ffbc1c5b5f 46
+packages/frontend/editor-ui/src/app/App.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 22,116
+packages/frontend/editor-ui/src/app/components/TimeAgo.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 2,11
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsList.test.ts
+  s_9255fcc9290949::t_79dfe208ed59eb 35-36
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 14,287,300
+  s_0c0dd4097c5884::t_40b58516f9282f 4-5,25,62,65,83,94,134,151
+packages/frontend/@n8n/design-system/src/components/N8nTimeAgo/component-time-ago.md
+  s_9255fcc9290949::t_136fe10a22a7e8 1-20,22-36
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/index.ts
+  s_9255fcc9290949::t_e8608d9ef6073f 1-4
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/SelectedItemsInfo.stories.ts
+  s_9255fcc9290949::t_e8608d9ef6073f 1-72
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_9255fcc9290949::t_460a17625e876d 20,58-60
+packages/frontend/editor-ui/src/app/utils/timeAgoLocale.ts
+  s_9255fcc9290949::t_79dfe208ed59eb 1-27
+packages/frontend/editor-ui/src/features/execution/executions/components/global/GlobalExecutionsList.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 24,481
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.vue
+  s_9255fcc9290949::t_79dfe208ed59eb 13,233,246
+  s_0c0dd4097c5884::t_40b58516f9282f 5,20,57,85,116,123,133,139,144
+packages/frontend/@n8n/design-system/src/components/N8nSelectedItemsInfo/__snapshots__/SelectedItemsInfo.test.ts.snap
+  s_9255fcc9290949::t_02c3a3562ddf66 1-8
+pnpm-lock.yaml
+  s_9255fcc9290949::t_e33f05c21f0561 5472-5474,5508-5510,5551-5553
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue
+  s_0c0dd4097c5884::t_21318ccb05fd89 18,37,132
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.test.utils.ts
+  s_0c0dd4097c5884::t_1ec305df5031c1 26
+  s_0c0dd4097c5884::t_22fb24e61ad748 1
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_0c0dd4097c5884::t_27c4a532050c79 19,39
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts
+  s_0c0dd4097c5884::t_fe7d85e0e99564 108,115,127,353,361
+  s_0c0dd4097c5884::t_e9dac5356617c8 25
+  s_0c0dd4097c5884::t_404613f721b188 2
+  s_0c0dd4097c5884::t_e69ed12dcecec6 182
+  s_0c0dd4097c5884::t_c192c6b3afdb64 208
+  s_0c0dd4097c5884::t_152709c5e19cd1 206-207
+  s_0c0dd4097c5884::t_35f2879ff64114 15
+  s_0c0dd4097c5884::t_8ce8680960d916 78-83
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts
+  s_0c0dd4097c5884::t_88db4d10c99b06 17,58
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts
+  s_0c0dd4097c5884::t_1c02f147ed0886 9
+  s_0c0dd4097c5884::t_583798f1c77bf3 136,149-166
+  s_0c0dd4097c5884::t_c87875e058b588 187,205
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.test.ts
+  s_0c0dd4097c5884::t_88db4d10c99b06 10,98
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.types.ts
+  s_0c0dd4097c5884::t_2cc153f5d84c46 1-20
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_0c0dd4097c5884::t_bb28239adbf943 13,102,289-290,330-331
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue
+  s_0c0dd4097c5884::t_21318ccb05fd89 6,32
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_0c0dd4097c5884::t_31c75f9203050c 16,57-62,64,66
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.test.ts
+  s_0c0dd4097c5884::t_54d0aadfd5ee7f 14-15
+  s_0c0dd4097c5884::t_4aeb355f01f307 300,317-318,371,383
+  s_0c0dd4097c5884::t_9090920e559b44 81,93,110-111,119
+  s_0c0dd4097c5884::t_1d09a0d5054a1e 1,3,24-28,34-37,43
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPAgentsSelect.vue
+  s_0c0dd4097c5884::t_27c4a532050c79 6,32,52
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.test.ts
+  s_0c0dd4097c5884::t_dd898e350438fd 44-64
+  s_0c0dd4097c5884::t_1b8cf82dc72878 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "671ba39b5e1ee3df19c7fe081b1900f33f422d87",
+  "prompts": {},
+  "sessions": {
+    "s_0c0dd4097c5884": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd92a685-5b4a-49c4-bcb4-6f0c28449390",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_14d6c74486cc9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a01fe19-c389-41e4-9183-7f318e77b406",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_8be9ee4c0632ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eae95162-f0a9-4fc2-a78c-2cff399c9192",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_9255fcc9290949": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8f25eb8-5987-478d-9755-27ba3bd7da2a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_e144e5251a2cb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7753e94-3650-4565-9adb-98c5d6f2ddee",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_eb2180847c08bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76142b24-1777-4700-a7dd-6a13e7cbd9a2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

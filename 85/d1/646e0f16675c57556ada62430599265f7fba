@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_b4acec529e7d71::t_269b48b99eb178 697
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "85d1646e0f16675c57556ada62430599265f7fba",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b4acec529e7d71": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ad07df8c-b41a-43a7-858b-319b98ecaa14",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiCredentialHelp.ts
+  s_3f65f7d42b22e7::t_b08e935b0a84f5 5,51-52
+  s_3f65f7d42b22e7::t_2c268c9883c256 36,39-43,47-48
+  s_3f65f7d42b22e7::t_e6a232df227398 44-46
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_3f65f7d42b22e7::t_b08e935b0a84f5 3
+  s_3f65f7d42b22e7::t_2c268c9883c256 322,324
+packages/frontend/editor-ui/src/features/agents/agents.eventBus.ts
+  s_3f65f7d42b22e7::t_b08e935b0a84f5 2-9,21-22
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3f65f7d42b22e7::t_e6a232df227398 1448-1467,1469-1486
+  s_3f65f7d42b22e7::t_b53c7e5619451d 16,24,43,145,815,1430,1440-1443,1468,1487-1516
+  s_3f65f7d42b22e7::t_33cb77b3569f67 1517
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_3f65f7d42b22e7::t_9bc8c4508f25a6 31-38,370-371
+  s_3f65f7d42b22e7::t_a79c75c672bdde 1321-1360
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_3f65f7d42b22e7::t_20b8c109f0f81e 130-133
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/__tests__/useInstanceAiCredentialHelp.test.ts
+  s_3f65f7d42b22e7::t_b53c7e5619451d 1,3-101
+  s_3f65f7d42b22e7::t_e9307e3af1bff2 2
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_3f65f7d42b22e7::t_20b8c109f0f81e 110-113
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3f65f7d42b22e7::t_b08e935b0a84f5 110-114,132-133,357-364,366-367,370-372,374-405,646,2669
+  s_3f65f7d42b22e7::t_9bc8c4508f25a6 373
+  s_3f65f7d42b22e7::t_e6a232df227398 368-369
+  s_3f65f7d42b22e7::t_2c268c9883c256 365
+  s_3f65f7d42b22e7::t_20b8c109f0f81e 3043,3153
+  s_3f65f7d42b22e7::t_b899d14f35da5e 109
+packages/frontend/editor-ui/src/features/agents/composables/useAgentAssistantCredentialHelp.ts
+  s_3f65f7d42b22e7::t_2c268c9883c256 2,8,11-13,15-16,25-26
+  s_3f65f7d42b22e7::t_b08e935b0a84f5 1,3-7,9-10,14,17-24,27
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_3f65f7d42b22e7::t_2c268c9883c256 37-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f5d03fe97b8739731322d823d28944f745a625b",
+  "prompts": {},
+  "sessions": {
+    "s_3f65f7d42b22e7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c6c-42a4-77b2-b954-d7b1808a57c6",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

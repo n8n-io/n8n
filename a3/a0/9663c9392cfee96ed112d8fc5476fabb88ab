@@ -1,0 +1,19 @@
+packages/cli/AGENTS.md
+  s_9a56d03db69323::t_fe22a6c8cc6557 30-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a3a09663c9392cfee96ed112d8fc5476fabb88ab",
+  "prompts": {},
+  "sessions": {
+    "s_9a56d03db69323": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2934ca2-4eaf-41c4-b7fe-fee57683bea8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,139 @@
+packages/@n8n/instance-ai/src/tools/orchestration/eval-setup-agent.tool.ts
+  s_16fdb2a0e62f0d::t_5038e4de7abc3c 197-200
+  s_16fdb2a0e62f0d::t_a04bffcb0dec9f 177
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_16fdb2a0e62f0d::t_3cc5ab7bfa5d26 276
+  s_16fdb2a0e62f0d::t_9d945a38511432 6
+packages/@n8n/config/src/configs/ai.config.ts
+  s_16fdb2a0e62f0d::t_983c0046d36c4e 34,40-41,43-47,51-52,54
+  s_16fdb2a0e62f0d::t_b3f40c35b7a83e 48-50
+  s_16fdb2a0e62f0d::t_08103020700886 35-39,42,53
+packages/cli/src/modules/agents/__tests__/model-stream-stall-options.test.ts
+  s_16fdb2a0e62f0d::t_c60a0f4e3d54a3 1-41,43-45
+  s_16fdb2a0e62f0d::t_e4f0818fbd2509 42
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_16fdb2a0e62f0d::t_dd4980ad67a50d 26,126,254
+  s_16fdb2a0e62f0d::t_7a30bc8f069121 49
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.executionError.test.ts
+  s_16fdb2a0e62f0d::t_14f5433644ca5f 1-61
+packages/@n8n/config/test/decorators.test.ts
+  s_16fdb2a0e62f0d::t_0061713340068f 36-53
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-stall.test.ts
+  s_16fdb2a0e62f0d::t_de72ae5ae8a5f5 150-192
+packages/@n8n/api-types/src/agents/types.ts
+  s_16fdb2a0e62f0d::t_a5e9df9b1b9779 329-333
+packages/@n8n/config/src/decorators.ts
+  s_16fdb2a0e62f0d::t_2f4ec7b3a7caa8 70-72
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_16fdb2a0e62f0d::t_721ec75a933e4d 36
+  s_16fdb2a0e62f0d::t_20f88a5fdbe968 15
+  s_16fdb2a0e62f0d::t_c0e81497765e65 35
+  s_16fdb2a0e62f0d::t_bcf6722be7aadc 137-141,143
+  s_16fdb2a0e62f0d::t_feebdee794cdd2 142
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_16fdb2a0e62f0d::t_bad11dd4c89049 17-54
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_16fdb2a0e62f0d::t_73df0835531c75 3
+  s_16fdb2a0e62f0d::t_46c18d4e0a9682 18
+  s_16fdb2a0e62f0d::t_1afcc06fa76891 19
+  s_16fdb2a0e62f0d::t_4671619e6c9ee0 206
+packages/@n8n/instance-ai/src/types.ts
+  s_16fdb2a0e62f0d::t_aa35b28c2a4887 7
+  s_16fdb2a0e62f0d::t_4c304d340fa22f 1698-1705
+packages/@n8n/config/src/configs/__tests__/ai.config.test.ts
+  s_16fdb2a0e62f0d::t_88480fae8616a3 18,20,23-25,31
+  s_16fdb2a0e62f0d::t_e8cfdd804e24c6 19,21-22,26-30
+  s_16fdb2a0e62f0d::t_3f4ecdc991ea13 9
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_16fdb2a0e62f0d::t_19462f39a135d9 1015
+  s_16fdb2a0e62f0d::t_ac5c4411b62472 814
+  s_16fdb2a0e62f0d::t_2c9a64769fcac3 963
+  s_16fdb2a0e62f0d::t_840af45fa51343 677
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_16fdb2a0e62f0d::t_a4e936b70b14b7 4
+  s_16fdb2a0e62f0d::t_261a05f07c849e 29
+  s_16fdb2a0e62f0d::t_b2981a50895b5e 30
+  s_16fdb2a0e62f0d::t_396b607ccd705b 144
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_16fdb2a0e62f0d::t_847c07f1a882f1 299-300
+  s_16fdb2a0e62f0d::t_7c93314c33c3e9 35
+  s_16fdb2a0e62f0d::t_21dc28911d9e79 9
+  s_16fdb2a0e62f0d::t_3dccab9b7829be 31-34
+  s_16fdb2a0e62f0d::t_56d93517bd3f33 149
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_16fdb2a0e62f0d::t_e455c18518e4e7 1
+  s_16fdb2a0e62f0d::t_aa57acc604f12b 1670-1671,1678-1680,1682,1684,1687-1692
+  s_16fdb2a0e62f0d::t_1397ac84c77fd7 1695-1730
+  s_16fdb2a0e62f0d::t_29f93e1718155a 1664-1666,1669,1672-1677
+  s_16fdb2a0e62f0d::t_71587b37fbc35d 8726,8731,8733-8735,8738-8745,8748-8785
+  s_16fdb2a0e62f0d::t_c4aa935a7fc75f 8727-8730,8736-8737,8746-8747
+  s_16fdb2a0e62f0d::t_133849792141a1 8732
+  s_16fdb2a0e62f0d::t_eeb7dcc496e623 6988-6989,6997,7009-7030
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_16fdb2a0e62f0d::t_5e8bd73b4f2ecc 337-351
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_16fdb2a0e62f0d::t_dd4980ad67a50d 15,99,132,193
+  s_16fdb2a0e62f0d::t_ec4e721851662c 35
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_16fdb2a0e62f0d::t_dd4980ad67a50d 11,103,357
+  s_16fdb2a0e62f0d::t_564871007cb3aa 42
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_16fdb2a0e62f0d::t_dd4980ad67a50d 11,274,462,779
+  s_16fdb2a0e62f0d::t_82b9501aae7b20 38
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_16fdb2a0e62f0d::t_9b7fc5b8c73ff6 1278
+  s_16fdb2a0e62f0d::t_ac075bb80b261c 2655
+  s_16fdb2a0e62f0d::t_fed88eb33af43d 31-36
+  s_16fdb2a0e62f0d::t_faae0c58b996e4 133
+  s_16fdb2a0e62f0d::t_928c2308f03048 1312
+  s_16fdb2a0e62f0d::t_8081cd9b32720c 855
+  s_16fdb2a0e62f0d::t_cc06ab09b7ea4c 696-697
+packages/cli/src/modules/agents/model-stream-stall-options.ts
+  s_16fdb2a0e62f0d::t_78d26566fc1f34 2,17
+  s_16fdb2a0e62f0d::t_22b7d0032c3587 1,3-4,15-16,18,23,26,36
+  s_16fdb2a0e62f0d::t_ca6648cd4e9f9a 5-7
+  s_16fdb2a0e62f0d::t_fe97ca9b8f8f43 8-14,19-22,24-25,27-35
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_16fdb2a0e62f0d::t_1f7457f2eccaf6 245
+  s_16fdb2a0e62f0d::t_d10315dcb5f067 277-279
+  s_16fdb2a0e62f0d::t_8d8e255bdc9ded 121-144,146-152
+  s_16fdb2a0e62f0d::t_b8dbe7036a7d3a 217-221,224-225
+  s_16fdb2a0e62f0d::t_ad878c28369968 156-161,164-170
+  s_16fdb2a0e62f0d::t_3eaeadf986da96 1-2
+  s_16fdb2a0e62f0d::t_047bfeb6699186 222-223,226-229
+  s_16fdb2a0e62f0d::t_e41033017ad68c 23
+  s_16fdb2a0e62f0d::t_bc607e789baf18 239
+  s_16fdb2a0e62f0d::t_59377ce72ebf71 268-271
+  s_16fdb2a0e62f0d::t_cc4e7915c18e6c 260
+  s_16fdb2a0e62f0d::t_68440f919405cf 173-175
+packages/cli/src/modules/instance-ai/__tests__/run-debug-gating.test.ts
+  s_16fdb2a0e62f0d::t_cb282d42f55ddd 69-70
+  s_16fdb2a0e62f0d::t_6a35c98ad45968 8
+  s_16fdb2a0e62f0d::t_88d68642b97aef 30
+packages/@n8n/agents/src/runtime/streaming/stream-stall.ts
+  s_16fdb2a0e62f0d::t_dca790d956a846 41-47
+  s_16fdb2a0e62f0d::t_045397bf25529b 12-15
+  s_16fdb2a0e62f0d::t_786c141be88e45 109-112,118,125-139
+  s_16fdb2a0e62f0d::t_ae0cee4efa650a 11
+  s_16fdb2a0e62f0d::t_22b5898793c639 72-75,81,90
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_16fdb2a0e62f0d::t_fedb607a847ca3 9
+  s_16fdb2a0e62f0d::t_0e3e4ce5115adc 170-177,184
+  s_16fdb2a0e62f0d::t_f570b753d61219 230-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "973e2c2c66425fd4bb1a6efdb31f4e19ebf9b439",
+  "prompts": {},
+  "sessions": {
+    "s_16fdb2a0e62f0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ed43002-afb6-4a23-a675-489f6eb0745f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

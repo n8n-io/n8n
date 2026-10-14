@@ -1,0 +1,48 @@
+packages/cli/src/modules/engine-v2/engine-control-plane-auth.middleware.ts
+  ai_agent 1-50
+packages/cli/src/modules/engine-v2/engine-control-plane-server.ts
+  ai_agent 1-100
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-auth.middleware.test.ts
+  ai_agent 1-118
+packages/cli/src/modules/engine-v2/engine-status.controller.ts
+  ai_agent 1-2,4-32,36-40
+  s_eda1948fcdabb8::t_cd5f9caea43aaf 3,33-35,42-54
+packages/@n8n/config/test/engine.config.test.ts
+  ai_agent 34-60
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-server.test.ts
+  ai_agent 1-71,76-115
+  s_eda1948fcdabb8::t_3d97815fd2f6a0 72-75
+packages/@n8n/config/src/configs/engine.config.ts
+  ai_agent 53-87
+packages/cli/src/modules/engine-v2/engine-control-plane-client.ts
+  ai_agent 1-76
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  ai_agent 7,88-89,91,105,132-148
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  ai_agent 32-36,53-57
+packages/cli/src/modules/engine-v2/__tests__/engine-status.controller.test.ts
+  ai_agent 1-56,58-63
+  s_eda1948fcdabb8::t_3d97815fd2f6a0 57,64-93,95
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  ai_agent 7,18,27,58-66,88-95
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-client.test.ts
+  ai_agent 1-138
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  ai_agent 17,40,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae456bbeff3cdd22e721be2a9c30600887de27dc",
+  "prompts": {},
+  "sessions": {
+    "s_eda1948fcdabb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f08a0677-fc8d-48bd-92e6-ce1c9bc1cd53",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_20d7140ca33a5b::t_4f4752df788a3d 887-938
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_20d7140ca33a5b::t_ea642f4d0e8f56 198-205
+  s_20d7140ca33a5b::t_d6cc95f8e3d405 269-271
+  s_20d7140ca33a5b::t_c2b7e4a0d15848 253-258
+  s_20d7140ca33a5b::t_b3663ba3556e5f 197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b881ec2aefc2bb56bbb62fd30a45957165cb3161",
+  "prompts": {},
+  "sessions": {
+    "s_20d7140ca33a5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c20dbb9-fb34-4993-a37f-0f2222020a8a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+packages/cli/src/public-api/v1/_poc-tsoa/generated/routes.ts
+  s_0b6a39ce2b9428::t_fd753f6ad6b760 1-257,259,262
+  s_0b6a39ce2b9428::t_4f7332c4700fa1 258
+  s_0b6a39ce2b9428::t_a4cee2946509ee 260-261
+  s_0b6a39ce2b9428::t_8d34266c4451ee 263-265
+packages/cli/src/public-api/v1/_poc-tsoa/dataTables.types.ts
+  s_0b6a39ce2b9428::t_2b03a439c3278c 1-17,25-115
+  s_0b6a39ce2b9428::t_baacfd88114ac5 18-24
+packages/cli/tsoa.poc.json
+  s_0b6a39ce2b9428::t_7627eae73c022b 1-26
+packages/cli/src/public-api/v1/_poc-tsoa/RECOMMENDATION.md
+  s_0b6a39ce2b9428::t_436bd528e757c3 1-213
+pnpm-workspace.yaml
+  s_0b6a39ce2b9428::t_ea4e6d0a273e52 199
+  s_f9d60b7dffc85f::t_e96731cbb994a9 40,85,134,230,262-271
+packages/cli/src/public-api/v1/_poc-tsoa/dataTables.controller.ts
+  s_0b6a39ce2b9428::t_f204821492155f 1-92
+packages/cli/src/public-api/v1/_poc-tsoa/generated/swagger.json
+  s_0b6a39ce2b9428::t_e5f224915920e9 1-305
+packages/cli/src/public-api/v1/_poc-tsoa/entry.ts
+  s_0b6a39ce2b9428::t_7627eae73c022b 1-2
+packages/cli/package.json
+  s_d8ed300529e078::t_c208db6a3a33ae 103-104,118,122
+packages/cli/src/public-api/v1/_poc-tsoa/reference/naive.controller.ts.reference
+  s_0b6a39ce2b9428::t_b50f74c230dd61 1-19
+pnpm-lock.yaml
+  s_d8ed300529e078::t_4fccb7e875ff5d 180-182,688,760,988,1104,1179,2673,2885,3996-3998,4008-4010,4194,4749,5121,5549,6206,8099-8189,11816-11824,11864-11866,11933-11935,11947-11949,12019-12021,12025-12027,12064-12066,12070-12075,13083-13086,13338-13340,14271-14274,15535-15538,15714-15717,16732-16735,17692-17698,18297-18300,18978-18980,21107-21110,21249-21253,21637-21640,22385,24927,25553-25715,26036,26889,29441,29488-29516,29550-29553,29633-29634,29645-29651,29734-29735,29738-29739,29782-29783,29788-29802,31089-31093,31146,31359-31360,31714,32430-32433,32822-32825,34101-34136,34145,34177,34386-34397,34400,34456,35107,35116,35123,35130,35165,35172,35331,35551-35552,36565-36570,36751,37461-37462,38201-38202,39242,39291,39523,39770,39956,39972,40042,40076,40549,40742,40934-40935,41133-41139,41556-41557
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c185562916a70277519beb757d22b869da74f48b",
+  "prompts": {},
+  "sessions": {
+    "s_0b6a39ce2b9428": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb000e7e-3cb3-4f8e-aa9e-caa9941c7b1e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    },
+    "s_f9d60b7dffc85f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e16436a0-4aea-405a-9d63-9ee57ae102ee",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

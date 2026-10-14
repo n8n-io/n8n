@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_0ecd32d98e3b48::t_ba31467cf18366 1660-1662,1664
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_0ecd32d98e3b48::t_ba31467cf18366 153,272-278
+packages/frontend/editor-ui/src/Interface.ts
+  s_0ecd32d98e3b48::t_ba31467cf18366 712-713
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_0ecd32d98e3b48::t_ba31467cf18366 3,268-274
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_0ecd32d98e3b48::t_ba31467cf18366 94,307-309,770
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useBuildManually.test.ts
+  s_0ecd32d98e3b48::t_ba31467cf18366 5,25-26
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_0ecd32d98e3b48::t_ba31467cf18366 354-360
+packages/frontend/editor-ui/src/app/constants/nodeCreator.ts
+  s_0ecd32d98e3b48::t_ba31467cf18366 23
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useBuildManually.ts
+  s_0ecd32d98e3b48::t_ba31467cf18366 3,21-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7533671e524db05a8c6b7700272ddc0f7b829bdb",
+  "prompts": {},
+  "sessions": {
+    "s_0ecd32d98e3b48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ef8fce-68b7-4ab7-9259-b6efca1e0c07",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

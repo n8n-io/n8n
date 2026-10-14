@@ -1,0 +1,36 @@
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_45e2f6fac3868c::t_dfa2da4f596e92 2,129
+  s_45e2f6fac3868c::t_6b60775ae8671a 68-75,85,119,299
+  s_45e2f6fac3868c::t_8b24a71a726123 329-345,348-351
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_45e2f6fac3868c::t_4ec4f6b06c0ad0 888,930,935,4362,4411,5624,5693,5711,5780,5788,5857,6463,6532,6547,6566,6611,6614
+  ai_agent 4282-4284,4331-4333,4438-4440,4489-4491
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-liveness.service.test.ts
+  s_45e2f6fac3868c::t_516b63e3f0c43c 233,235-236,260-272
+packages/cli/src/modules/instance-ai/run-trace-metadata.ts
+  s_45e2f6fac3868c::t_9193dc8524b6f7 72-77
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_45e2f6fac3868c::t_e44395d13898aa 3
+  ai_agent 93-95,152
+  s_45e2f6fac3868c::t_b58df8722e7c46 153-200
+packages/cli/src/modules/instance-ai/__tests__/run-trace-metadata.test.ts
+  s_45e2f6fac3868c::t_2546dbdc49851f 100-122
+packages/cli/src/modules/instance-ai/liveness/instance-ai-liveness.service.ts
+  s_45e2f6fac3868c::t_83913a320473a0 104,117-127,150,262,276-277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2f886c0d896bf3f757b713f18a30dcb85ea482bf",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

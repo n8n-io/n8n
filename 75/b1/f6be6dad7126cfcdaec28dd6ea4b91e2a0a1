@@ -1,0 +1,59 @@
+docs/generated/sqlite-schema/oauth_refresh_tokens.md
+  ai_agent 9,21,31-32,54
+docs/generated/postgres-schema/public.type_availability_policy_attachment.md
+  ai_agent 1-75
+docs/generated/postgres-schema/public.oauth_clients.md
+  ai_agent 84
+docs/generated/sqlite-schema/type_availability_policy_scope.md
+  ai_agent 1-85
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 1-1129
+docs/generated/postgres-schema/public.type_availability_policy_scope.md
+  ai_agent 1-80
+docs/generated/sqlite-schema/type_availability_policy_attachment.md
+  ai_agent 1-82
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 1-631
+docs/generated/postgres-schema/public.type_availability_policy.md
+  ai_agent 1-62
+docs/generated/sqlite-schema/user.md
+  ai_agent 275
+docs/generated/sqlite-schema/oauth_clients.md
+  ai_agent 88
+docs/generated/postgres-schema/public.oauth_refresh_tokens.md
+  ai_agent 10,26,50
+docs/generated/postgres-schema/README.md
+  ai_agent 96,120-122,318-320,1222,1439-1464
+docs/generated/postgres-schema/public.project.md
+  ai_agent 12,55,205-213
+docs/generated/postgres-schema/public.user.md
+  ai_agent 269
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_e76e3906c41cd0::t_cc1f5ef533d7eb 415-418
+docs/generated/sqlite-schema/README.md
+  ai_agent 96,120-122,273,303-305,1209,1428-1453
+docs/generated/sqlite-schema/type_availability_policy.md
+  ai_agent 1-67
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 74-77
+pnpm-lock.yaml
+  ai_agent 2293-2295,2537-2539,3196-3198,6417-6419,6465-6470,9957-9971,21457-21463,28945-28962,42441-42451
+docs/generated/sqlite-schema/project.md
+  ai_agent 23,61,211-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "75b1f6be6dad7126cfcdaec28dd6ea4b91e2a0a1",
+  "prompts": {},
+  "sessions": {
+    "s_e76e3906c41cd0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9568943c-ef8c-4f78-8e63-8cca829c1182",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_fd6e130ca898c8::t_a03949679f2e20 265,330,369,383
+  s_fd6e130ca898c8::t_0b0bd5c96e54d4 384-385
+  s_fd6e130ca898c8::t_6898a219467bf4 393,399
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_fd6e130ca898c8::t_305ca6099d70a1 75-77,499
+  s_fd6e130ca898c8::t_813f03f2616c61 160-161,183-192,229,241,406,409,416
+packages/@n8n/instance-ai/evaluations/README.md
+  s_fd6e130ca898c8::t_69c21d758bf79e 608
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_fd6e130ca898c8::t_a03949679f2e20 59-60,66,69,76,81-82,203,218,220-224,246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27311b86e307be1fa1a669b2363accb86c084258",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

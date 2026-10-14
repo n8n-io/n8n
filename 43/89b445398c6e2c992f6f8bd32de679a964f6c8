@@ -1,0 +1,28 @@
+packages/cli/src/services/node-resource-explorer.service.ts
+  s_52f4a11ff5a9df::t_527b6c60a8c23c 282-283
+packages/@n8n/instance-ai/src/types.ts
+  s_52f4a11ff5a9df::t_1f22594e78a332 520
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_52f4a11ff5a9df::t_1f22594e78a332 305,307-311,313-315,324-325,340-341,344,347-348,350-353,657-659,669,671,710,729-731
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  ai_agent 174
+  s_52f4a11ff5a9df::t_af3e57d3607921 125,132,137,156,163,167-169,176,178,183-184,188,190-192,194,197-200,203,209,221,236
+packages/cli/src/services/__tests__/node-resource-explorer.service.test.ts
+  s_52f4a11ff5a9df::t_dcf359b1ef8e1a 354,356-357,369-373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4389b445398c6e2c992f6f8bd32de679a964f6c8",
+  "prompts": {},
+  "sessions": {
+    "s_52f4a11ff5a9df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aed8799f-0d01-4cf1-96f4-2a82441a3d98",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

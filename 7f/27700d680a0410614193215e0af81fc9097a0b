@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_bb17b049fc2e2d::t_7ce054898a4be7 54,96,123,150,166,222,253,284,318,339,365,395,415,435,466
+  ai_agent 62-67,104-109,131-136,187-192,198-203,373-379,444-449,474-479
+  s_bb17b049fc2e2d::t_108e149bd36531 2
+  s_bb17b049fc2e2d::t_b8f3b33557b94a 91-95,97-98,118-122,124-125,300-301,425-434,436-443,450-465,467-473,480-483
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  ai_agent 143
+  s_bb17b049fc2e2d::t_6862940c51ec49 264-267,269
+  s_bb17b049fc2e2d::t_81c18da972515a 138-142,144-164
+  s_bb17b049fc2e2d::t_f8de331c7b931d 289-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f27700d680a0410614193215e0af81fc9097a0b",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

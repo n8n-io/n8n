@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputOverrides/FromAiOverrideField.vue
+  s_17c9758bfdf7df::t_f5075c7b66dd86 19,46,51-52,54,64-65,75-77
+  s_17c9758bfdf7df::t_d1eaf8ede7684d 23
+  s_17c9758bfdf7df::t_4b9b64c4583ef3 24
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputOverrides/FromAiOverrideButton.vue
+  s_17c9758bfdf7df::t_39f55e53a5ed56 2,25-28,30,33
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterOptions.vue
+  s_17c9758bfdf7df::t_39f55e53a5ed56 28,64-67
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.test.ts
+  s_17c9758bfdf7df::t_f05dbd41350038 123
+  s_17c9758bfdf7df::t_33fcd5fb55d7cf 121-122,124,126
+  s_17c9758bfdf7df::t_4830a54cd1e2ab 120,125,127-142
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolInputs.vue
+  s_17c9758bfdf7df::t_39f55e53a5ed56 3,20,92-98,203,205-217
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputFull.vue
+  s_17c9758bfdf7df::t_39f55e53a5ed56 64,83-84,124-126,131-139,153-154,159-162,166-169,196,205,227-236,248-249,359-362,379-398,424,461,510,531,539,580,602
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_17c9758bfdf7df::t_2e382762948616 217-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9e95c0bd2f2567fa4a8423ab8d3fb35fb4734b9",
+  "prompts": {},
+  "sessions": {
+    "s_17c9758bfdf7df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fc9a-3908-7400-bb29-7f163fd0d787",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

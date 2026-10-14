@@ -1,0 +1,22 @@
+packages/cli/src/services/user.service.ts
+  s_1cffc118a8bd7e::t_89320e89602821 638-639
+  s_1cffc118a8bd7e::t_4e7c1335006b64 709,717-733
+  s_1cffc118a8bd7e::t_2b0ff1749968a9 604-605
+  s_1cffc118a8bd7e::t_9950fb908a2df0 624,626,629,631
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "c2181980e8ae49c1790d656e9974835b0d61eefa",
+  "prompts": {},
+  "sessions": {
+    "s_1cffc118a8bd7e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "27515cbd-cd65-4ec9-a2f2-60e46985ca0d",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

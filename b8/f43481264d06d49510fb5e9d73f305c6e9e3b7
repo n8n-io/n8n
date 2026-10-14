@@ -1,0 +1,32 @@
+packages/cli/src/workflows/triggers/non-webhook-trigger-registrar.ts
+  s_cebe0f5823d4d7::t_3fd6fea6a8d597 123-125
+  s_cebe0f5823d4d7::t_9eec2262e61de7 4-8,31-39,54,56-60,87-95,97-111,115,128-129
+  s_cebe0f5823d4d7::t_ead7912198228c 96
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_cebe0f5823d4d7::t_3fd6fea6a8d597 110-114
+  s_cebe0f5823d4d7::t_376d3c6b0dd86e 10-13,107-109,137-141,144,150-151,177-179,197-204,210
+packages/cli/src/workflows/triggers/__tests__/non-webhook-trigger-registrar.test.ts
+  s_cebe0f5823d4d7::t_ead7912198228c 52,78-79
+  s_cebe0f5823d4d7::t_3fd6fea6a8d597 77
+  s_cebe0f5823d4d7::t_cb0b7242e6c883 18-33,43,45-51,53,67-76,80,94-97,99-101
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_cebe0f5823d4d7::t_02e2c7ad565187 151,287,289,292-294,306-323,325-327
+  s_cebe0f5823d4d7::t_3fd6fea6a8d597 324
+  s_cebe0f5823d4d7::t_23f69d18540c32 102,105-106,288,290-291,295-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b8f43481264d06d49510fb5e9d73f305c6e9e3b7",
+  "prompts": {},
+  "sessions": {
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

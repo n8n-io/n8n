@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_77a32fd9603843::t_01a82a7f8e5664 189
+  s_77a32fd9603843::t_31680b68841c66 220
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/displayGroups.test.ts
+  s_77a32fd9603843::t_f2e6f76b783afe 35-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "72a988cb46bbd711cb0a43fb231c08530999f4aa",
+  "prompts": {},
+  "sessions": {
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

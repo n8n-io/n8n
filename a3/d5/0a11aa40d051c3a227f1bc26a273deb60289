@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_2c121cd2d81e56::t_5e91c5a4dd28bf 1-9,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a3d50a11aa40d051c3a227f1bc26a273deb60289",
+  "prompts": {},
+  "sessions": {
+    "s_2c121cd2d81e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc45e65d-b973-4df7-a1b0-bb06ea7009d5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

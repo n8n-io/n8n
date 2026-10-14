@@ -1,0 +1,29 @@
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_96c73aa206456d::t_9cee1950901ba1 444,447-620,629
+  s_96c73aa206456d::t_fe738aa62fde99 445-446
+  s_96c73aa206456d::t_5b1055091ca85e 621-623,626-628
+packages/cli/src/credentials-helper.ts
+  s_96c73aa206456d::t_a2cedd3bd049a8 44
+  s_96c73aa206456d::t_5fae444257912b 660-663,666
+  s_96c73aa206456d::t_bd1cd819f32665 664-665
+  s_96c73aa206456d::t_9bfecee7cff909 45-47
+  s_96c73aa206456d::t_1fb13eb4d5ce3f 667
+packages/cli/src/oauth/dcr-managed-fields.ts
+  s_96c73aa206456d::t_5a9f7e36e4315f 19-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "d90cb6d42ddf828413d8ef035c0449c9e8cafcab",
+  "prompts": {},
+  "sessions": {
+    "s_96c73aa206456d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef410286-b597-4804-a7a4-90f10af1b511",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

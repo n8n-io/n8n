@@ -1,0 +1,61 @@
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesSearchView.vue
+  s_7a02a7a08c3da6::t_c5dcbdf74af976 301
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_7a02a7a08c3da6::t_12725ec47c3192 252-254
+  s_7a02a7a08c3da6::t_eda1ac83dd7084 37
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_7a02a7a08c3da6::t_9dd242eaa84435 738
+packages/frontend/editor-ui/src/app/init.ts
+  s_7a02a7a08c3da6::t_658c3a7b1a7b04 209
+  s_7a02a7a08c3da6::t_8e1d4f716c2e0b 127-134
+packages/frontend/editor-ui/src/app/stores/versions.store.test.ts
+  s_7a02a7a08c3da6::t_b009ab904ad4bd 359-377,379
+  s_7a02a7a08c3da6::t_cf8bc123a1c717 2
+  s_7a02a7a08c3da6::t_4a274dc59a3d15 83-86
+  s_7a02a7a08c3da6::t_d37e474ad3de18 353-355,357
+  s_7a02a7a08c3da6::t_821a0fef14626a 75-76,89-90
+  s_7a02a7a08c3da6::t_bfe1b6935f2df6 178-193,195-201,358
+  s_7a02a7a08c3da6::t_9ef8f6e9b200cd 11
+  s_7a02a7a08c3da6::t_f64ca9e3779488 77-78
+  s_7a02a7a08c3da6::t_59d649e9fe0327 144-145,168-169,211-212,228-229,248-249,286-287,311-312,341-342
+  s_5f6b1a1805bbe1::t_c2733abd9d2263 194,356,378
+packages/frontend/editor-ui/src/features/settings/users/users.store.ts
+  s_7a02a7a08c3da6::t_410b3b6befc901 491
+  s_7a02a7a08c3da6::t_e9746b8c613e01 389,392
+  s_7a02a7a08c3da6::t_132ef2d5fbdb33 45-47
+  s_7a02a7a08c3da6::t_a5a98624081191 57-69
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_7a02a7a08c3da6::t_b0d7563f26bb6c 1964
+packages/frontend/editor-ui/src/features/settings/users/users.store.test.ts
+  s_7a02a7a08c3da6::t_d211975b192f06 212-214,217
+  s_7a02a7a08c3da6::t_94ca335af55c05 210-211,215-216,218-264
+  s_7a02a7a08c3da6::t_3f58d379ff7d5c 2,4-5
+packages/frontend/editor-ui/src/app/stores/versions.store.ts
+  s_7a02a7a08c3da6::t_e258d2f0098931 66-82
+  s_7a02a7a08c3da6::t_0a9621dd23f253 25-33
+  s_7a02a7a08c3da6::t_4fc48ba26e676f 83,219,243,265,271,289,312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "084d3dab872e6b068e31462cbffb2a64cd5c96ba",
+  "prompts": {},
+  "sessions": {
+    "s_5f6b1a1805bbe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c5810aa-a787-4e71-ad5a-e2b89dc42ef5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_7a02a7a08c3da6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c1d48c1-b5b4-4d9a-9523-4ccc88e6e78a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

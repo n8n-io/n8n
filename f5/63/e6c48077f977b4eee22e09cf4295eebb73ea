@@ -1,0 +1,36 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_85ec4501a6c407::t_8d3f1dfa8b8b1e 4344-4353
+  s_85ec4501a6c407::t_ee4ae12fa1f92f 4267-4274,4276-4279,4281,4285-4288,4297,4301
+  s_85ec4501a6c407::t_d0a182c0886628 4266,4275,4280,4282-4284,4289-4296,4298-4300,4302-4308
+  s_85ec4501a6c407::t_6043b99c80c70c 2292,2378,2462-2466
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_85ec4501a6c407::t_0b591f38b025fd 128-133,676,720,757
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  h_2f80f0e06f710c 415
+  s_85ec4501a6c407::t_c4f9bfae04099a 416,805-809,822-824,3807
+  s_85ec4501a6c407::t_66608110e4eb05 22,417,524,3794,3818,3823,3828-3829
+  s_85ec4501a6c407::t_1b70e024b31e7c 3824-3827
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_85ec4501a6c407::t_4b88211eb58f03 455,820-831
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f563e6c48077f977b4eee22e09cf4295eebb73ea",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_85ec4501a6c407": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06827724-4eff-4127-ab77-fb2175314570",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

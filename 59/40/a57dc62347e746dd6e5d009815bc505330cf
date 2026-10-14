@@ -1,0 +1,66 @@
+packages/frontend/editor-ui/src/app/utils/expressions.ts
+  s_34f5d17fdf9760::t_379c5fda557e1c 5
+  s_34f5d17fdf9760::t_670d5718782943 9
+  s_34f5d17fdf9760::t_fea5b7e58a6537 79-80
+  s_34f5d17fdf9760::t_6d3f930be3b02a 90,93,95
+  s_34f5d17fdf9760::t_b799c70fae77a4 13-14,27,29
+  s_34f5d17fdf9760::t_c689499ead9724 59-62
+  s_34f5d17fdf9760::t_a47fc5a7f533e4 17,23,25,32-33,35-36,42-46,50-53,67,78,83-89,91-92,94,96-98
+  s_34f5d17fdf9760::t_90a9cf2f9b23a6 63
+  s_34f5d17fdf9760::t_881a162dc9679a 41
+  h_ce2c4b90496ac9 56
+  s_34f5d17fdf9760::t_c08cf2cfa7e572 12,15-16,34
+  s_34f5d17fdf9760::t_6d000733fc527e 11,24,30
+  s_34f5d17fdf9760::t_eec1fc40238cf0 47-49
+  s_34f5d17fdf9760::t_88289799915dd8 26,28,31
+  s_34f5d17fdf9760::t_04392b769445ae 18-21
+  s_34f5d17fdf9760::t_ad6f452e7ace8e 75-77
+  s_34f5d17fdf9760::t_d8308cf6b1f4c8 73-74
+  s_34f5d17fdf9760::t_a3196e346d286b 69-72
+  s_34f5d17fdf9760::t_f681f9f1886c20 22
+  s_34f5d17fdf9760::t_8f2e58517ad817 37-40
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.test.ts
+  ai_agent 502-524
+packages/frontend/editor-ui/src/features/shared/editors/composables/useExpressionEditor.ts
+  s_34f5d17fdf9760::t_c68898cae0d1d6 462
+  s_34f5d17fdf9760::t_0d4ef07e40e2bb 43
+  s_34f5d17fdf9760::t_52f4c071e1f4be 456-461
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 1672
+packages/frontend/editor-ui/src/app/composables/useResolvedExpression.ts
+  s_34f5d17fdf9760::t_c21e43bb080152 4
+  s_34f5d17fdf9760::t_5f395df830e245 113,117-119,122
+  s_34f5d17fdf9760::t_aa500e75106bb5 124-127
+  s_34f5d17fdf9760::t_889beabc95e328 121,123
+packages/frontend/editor-ui/src/app/utils/expressions.test.ts
+  s_34f5d17fdf9760::t_f4007b51ae3f5d 38
+  s_34f5d17fdf9760::t_cce77ad8ed70e2 50
+  s_34f5d17fdf9760::t_39152fb41813eb 13,27-31,39-43,52,54-58
+  s_34f5d17fdf9760::t_5b0902cbc0b7dc 26
+  s_34f5d17fdf9760::t_5738e8ebd72b86 51
+  s_34f5d17fdf9760::t_e8255c4b5c71c2 62-69
+  s_34f5d17fdf9760::t_31719c93ac7712 4
+packages/frontend/editor-ui/src/app/composables/useResolvedExpression.test.ts
+  ai_agent 93-95,102-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5940a57dc62347e746dd6e5d009815bc505330cf",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_34f5d17fdf9760": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "052d17a9-9d35-457d-a9ee-abf4ea20d369",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

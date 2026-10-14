@@ -1,0 +1,19 @@
+packages/@n8n/scheduler/src/core/materializer/owner-key.ts
+  s_6c6b002abcd7e0::t_dbc720a185d4f5 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a374ccc374fb4f524888f3873ee8d1267d39968a",
+  "prompts": {},
+  "sessions": {
+    "s_6c6b002abcd7e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69e71bda-a599-4ee2-a102-77dfe80d1450",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

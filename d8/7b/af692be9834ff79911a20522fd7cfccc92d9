@@ -1,0 +1,136 @@
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_6866d3ade6015c::t_db52a3a7166fe8 530-550,552-609
+  s_6866d3ade6015c::t_b9103725aefd4c 551
+packages/@n8n/api-types/src/agents/index.ts
+  s_6866d3ade6015c::t_cb677c5bc33005 19-24
+  s_6866d3ade6015c::t_a4a6bc8baab4cc 8
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_6866d3ade6015c::t_5648c3a23bdcb7 228-237
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_6866d3ade6015c::t_9c230d5d92e3ac 18,20
+  s_6866d3ade6015c::t_9d0d6b05135ce4 175-180
+  s_6866d3ade6015c::t_7ed4e2b0992e8d 109-116,118
+  s_6866d3ade6015c::t_7409c4a41339b3 53
+  s_6866d3ade6015c::t_0d3100ff02af10 43
+packages/@n8n/api-types/src/agent-sse.ts
+  s_6866d3ade6015c::t_13789d017bf3bd 50-74,122-132
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_6866d3ade6015c::t_bb742d0414e3f4 535-537,540-541
+  s_6866d3ade6015c::t_6a5881644d5eec 538-539
+  s_6866d3ade6015c::t_78f2477c7b57e8 10
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_6866d3ade6015c::t_0ba56587a6b9d1 357-360,371-376
+  s_6866d3ade6015c::t_a9f3174fb77f8e 346-356,361-370,377-398
+  s_6866d3ade6015c::t_d860035a603721 399-422
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_6866d3ade6015c::t_4733448eba5135 377-404
+packages/@n8n/agents/src/types/index.ts
+  s_6866d3ade6015c::t_a5536d79471a36 180-181
+packages/@n8n/api-types/src/agents/child-trace.ts
+  s_6866d3ade6015c::t_42918eb6238480 1-74
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_6866d3ade6015c::t_42d3ae86e02e0f 42-44
+  s_6866d3ade6015c::t_b4bd9361653db7 45-49
+  s_6866d3ade6015c::t_ea5334c2ba670c 9-15
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_6866d3ade6015c::t_ab8ef68868876b 229
+packages/@n8n/agents/src/sdk/agent.ts
+  s_6866d3ade6015c::t_b5cae1c12a34ce 1240
+  s_6866d3ade6015c::t_51f17e949ffd24 1274-1276
+  s_6866d3ade6015c::t_3e8407c49b715e 1272-1273,1277-1283,1286
+  s_6866d3ade6015c::t_5fe0c262507d70 1171-1175,1217,1226-1239,1241-1269,1271,1284-1285,1287-1294
+  s_6866d3ade6015c::t_b0c6614bd52f78 16
+  s_6866d3ade6015c::t_04a65c3801846f 1135-1136
+  s_6866d3ade6015c::t_496afbde974549 61,72
+  s_6866d3ade6015c::t_0df8b54fd4103d 1133-1134,1137-1138,1143
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_6866d3ade6015c::t_e012818a9b78da 87
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_6866d3ade6015c::t_59925e19432220 12
+  s_6866d3ade6015c::t_fd90e80470d607 56-57
+  s_6866d3ade6015c::t_d8e36f1f5026af 149
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_6866d3ade6015c::t_f80b81f000e2a8 2022,2052
+  s_6866d3ade6015c::t_63b0e500b03368 1909-2021,2023-2051,2053-2058
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_6866d3ade6015c::t_4f64bc08d093f6 43-82
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentSection.vue
+  s_6866d3ade6015c::t_6b9924abe6900a 37-38,44-46
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_6866d3ade6015c::t_f9e4bc8b1e8bb1 15
+  s_6866d3ade6015c::t_e5a6a73fbaa170 146
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_6866d3ade6015c::t_96d709c7002017 33-74,84,86-100,102-104,284,426-427
+  s_6866d3ade6015c::t_bf47f132baa2f2 14
+  s_6866d3ade6015c::t_9c7e7a095392d2 428-476
+  s_6866d3ade6015c::t_c879ff4747d6e7 373
+packages/@n8n/agents/src/runtime/streaming/stream-session.ts
+  s_6866d3ade6015c::t_538e50e00c1b6e 81-85,91
+  s_6866d3ade6015c::t_47e5489b6695f7 122
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_6866d3ade6015c::t_6c69fe95ccdaec 282-317
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_6866d3ade6015c::t_0cd4066248e66e 97-98
+  s_6866d3ade6015c::t_e54793d98e131a 38-82,99-110
+packages/@n8n/api-types/src/agents/types.ts
+  s_6866d3ade6015c::t_6394dc8e995c62 193-213,228-229
+packages/@n8n/api-types/src/agents/__tests__/child-trace.test.ts
+  s_6866d3ade6015c::t_b23938e4202aef 1-55
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_6866d3ade6015c::t_7f422c7200d1fd 930-956
+  s_6866d3ade6015c::t_d877c55aa050bf 834-929,957-969
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_6866d3ade6015c::t_5baeb7fb5386dc 326
+  s_6866d3ade6015c::t_0eb7fffeb0ccfa 52
+  s_6866d3ade6015c::t_40e541b70f4d50 256
+  s_6866d3ade6015c::t_a63a0485f26790 168,172-173
+  s_6866d3ade6015c::t_9549f509e3e931 144
+  s_6866d3ade6015c::t_acf92ab9098c98 230-234,239-255,300-304,309-325
+  s_6866d3ade6015c::t_5b927e1ad565d3 235-238
+  s_6866d3ade6015c::t_9641157dee7b2e 141-143,145-150
+  s_6866d3ade6015c::t_84bf5933e9676c 357-363
+  s_6866d3ade6015c::t_7b9c4763429d28 305-308
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_6866d3ade6015c::t_ac9faae29eb4c4 297
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_6866d3ade6015c::t_87c29c5917b311 100
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_6866d3ade6015c::t_79797327bfdef1 36-64,74,93
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_6866d3ade6015c::t_1b034bdecfeb09 14,20
+  s_6866d3ade6015c::t_d108805691393c 205
+  s_6866d3ade6015c::t_107803689774c8 537
+  s_6866d3ade6015c::t_3537d69531178f 218
+  s_6866d3ade6015c::t_716b53fdbf8e06 183-191,193-203,206-217,219-227
+  s_6866d3ade6015c::t_42732ac8dce0c7 192
+  s_6866d3ade6015c::t_d4a315fddc39f7 204
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_6866d3ade6015c::t_3b9609b426b6bf 565
+  s_6866d3ade6015c::t_1a23e5e40dc581 514
+  s_6866d3ade6015c::t_5a064286786c26 2-7,14-16
+  s_6866d3ade6015c::t_1c53d7b6b72c4e 295-296,328-344
+  s_6866d3ade6015c::t_8ff84d207e54cf 238
+  s_6866d3ade6015c::t_bc760b3744f2eb 17
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SubagentStepTimeline.test.ts
+  s_6866d3ade6015c::t_2c92eb0ac2c096 189-234
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/lets-a-real-parent-agent-call-delegate-subagent-and-use-its-result.json
+  s_6866d3ade6015c::t_838a0d2cacd2e0 73,77,80,83,86,88,92-93,96,121,125-126,129-131,135,138,141,144-145,147,149,151-153,156-157,195,201-202,215-216,268,272,275,278,281,283,287-288,291
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/stream-emits-sub-agent-lifecycle-chunks-and-events.json
+  s_6866d3ade6015c::t_1137e8756a444c 75,80,83,86,89,92,97-98,101,131-132,135-137,141,144,147,150-151,153,155,157-159,162-163,201,220-221,275,280,283,286,289,292,297-298,301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "d87baf692be9834ff79911a20522fd7cfccc92d9",
+  "prompts": {},
+  "sessions": {
+    "s_6866d3ade6015c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b5f5b886-522e-4443-9544-ecafd0960dc4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

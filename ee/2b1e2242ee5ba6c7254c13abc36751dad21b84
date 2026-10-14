@@ -1,0 +1,53 @@
+packages/@n8n/db/src/repositories/agent-eval-result.repository.ee.ts
+  s_4fc68fbc7f92d9::t_16f8f5e51e7f14 41-48
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_4fc68fbc7f92d9::t_cd90ebc77df3fa 1-10,18-184,188-200,203-241,244-248,250-259,261-262,264-324,333-349
+  ai_agent 11-17,326-328
+  s_4fc68fbc7f92d9::t_f54e7239b2731a 325,329-332
+  s_4fc68fbc7f92d9::t_ed6775739f3bbb 242-243,249,260,263
+  s_4fc68fbc7f92d9::t_d5132b5ece55e7 185-187,201-202
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_4fc68fbc7f92d9::t_6f5bdd232ac5e5 77-86
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_4fc68fbc7f92d9::t_0acb2d15fce546 152-154,163-167
+  s_4fc68fbc7f92d9::t_a01412e59fffa4 96-100
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_4fc68fbc7f92d9::t_a26366619eee82 7
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_4fc68fbc7f92d9::t_351bd5a962a72a 11,16,20-23,25-33,67-72,196-200,258-261
+  s_4fc68fbc7f92d9::t_056646f1d66905 178-183
+  ai_agent 207-209
+  s_4fc68fbc7f92d9::t_7d59053ab5de30 1-10,12,14-15,17-19,24,34-66,73-97,99-177,184-195,201-206,210-257,262-277
+  s_4fc68fbc7f92d9::t_5aa11cb73caed8 98
+  s_4fc68fbc7f92d9::t_c86805e199a339 13
+packages/@n8n/db/src/repositories/agent-eval-dataset.repository.ee.ts
+  s_4fc68fbc7f92d9::t_81c301f379ca53 41-44
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_4fc68fbc7f92d9::t_c69de8f34e555d 61,74
+  s_4fc68fbc7f92d9::t_4821c7c6ff3b33 11,15
+  s_4fc68fbc7f92d9::t_cedee20e22dd7b 110,179
+  s_4fc68fbc7f92d9::t_c6a35f131c0e2f 24,30,32,67,140
+  s_4fc68fbc7f92d9::t_059c4536963bc9 12-13,16,18,25-29,31,34-37,39-58,109,111-127,130,139,178,180,193
+  s_4fc68fbc7f92d9::t_8a289cc5b5264a 1-10,14,17,19-23,33,38,59-60,62-66,68-73,75-85,87-102,104-108,128-129,131-138,141-161,163-171,173-177,192,194-205
+  s_4fc68fbc7f92d9::t_c883c33c97f66a 86,103
+  s_4fc68fbc7f92d9::t_085bdfa63228e7 162,172
+  ai_agent 181-191
+packages/cli/src/modules/agent-evals/agent-evals.module.ts
+  s_4fc68fbc7f92d9::t_65c6ef1189bd88 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ee2b1e2242ee5ba6c7254c13abc36751dad21b84",
+  "prompts": {},
+  "sessions": {
+    "s_4fc68fbc7f92d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d6d2745-38a5-4199-b7fd-752f829892d5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

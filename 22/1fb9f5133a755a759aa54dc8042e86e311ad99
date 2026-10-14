@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_0237a66f4d3f8f::t_be24fb5d8c942b 281-287
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_0237a66f4d3f8f::t_afd1365a9a2da2 62
+  s_0237a66f4d3f8f::t_d217a62136593b 17
+  s_0237a66f4d3f8f::t_919d0f1e9f8c27 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "221fb9f5133a755a759aa54dc8042e86e311ad99",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

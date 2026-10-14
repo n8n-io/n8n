@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_0a1a804042c15b::t_d9632f8134171d 79,152,155,157,226,231-233,238
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_0a1a804042c15b::t_33fbad43db92e1 156-162,164
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_0a1a804042c15b::t_edff4067d3a9b3 1,3-4,13,44,46,55-61,64-73,100-105,243-263,370-372,380
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_0a1a804042c15b::t_1de888377db332 83-170,292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7eeec9df745e018db06ceaad2667a7b7a0e873ab",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_661b64ab4b414e::t_7d13e991e452d5 87,90
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_661b64ab4b414e::t_523a66b1d71695 19
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 76
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/disconnectGitConnection.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_661b64ab4b414e::t_f3a7a52e7e696a 151-152
+  s_661b64ab4b414e::t_be4d67d4f38dea 131,133-135,140,144,146
+  s_661b64ab4b414e::t_5d3a71f0a3bd0e 2
+packages/@n8n/permissions/src/constants.ee.ts
+  s_661b64ab4b414e::t_de69bf7836804a 33,107
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 18,20
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_661b64ab4b414e::t_97be7ebd353167 67
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_661b64ab4b414e::t_3300914b9e1d2b 37
+packages/@n8n/api-types/src/dto/index.ts
+  s_661b64ab4b414e::t_4738e1c175dfed 102
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_661b64ab4b414e::t_509f4269641698 21
+packages/@n8n/permissions/src/scope-information.ts
+  s_661b64ab4b414e::t_5166e7c95cedb6 151-152
+packages/cli/src/public-api/v1/services/git-connections-public-api.service.ts
+  s_661b64ab4b414e::t_e32424918fdcef 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "607d9760151755d89cda98e3ad174a80c24cac92",
+  "prompts": {},
+  "sessions": {
+    "s_661b64ab4b414e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d20e8a32-04c1-4301-baa9-24488d49337b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

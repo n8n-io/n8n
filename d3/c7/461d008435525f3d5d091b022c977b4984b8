@@ -1,0 +1,19 @@
+packages/cli/test/integration/scheduling/scheduler-lease-renewal.test.ts
+  s_5614fe25678684::t_fde428dc457ab8 18-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3c7461d008435525f3d5d091b022c977b4984b8",
+  "prompts": {},
+  "sessions": {
+    "s_5614fe25678684": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fd0a-cb45-7481-96f9-d72826656d72",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

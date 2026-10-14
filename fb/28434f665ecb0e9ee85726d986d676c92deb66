@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  ai_agent 28,313-315
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8159-8162
+  s_9a6001e67297f0::t_bb886ef6ac8b01 8163-8165,8167-8168
+  s_9a6001e67297f0::t_c4260eb699eabd 8166
+  s_9a6001e67297f0::t_80e20563184827 1500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fb28434f665ecb0e9ee85726d986d676c92deb66",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

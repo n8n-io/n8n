@@ -1,0 +1,28 @@
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_fbb57e103da004::t_cf1cee1e24eb11 807-808,812,817,820-824,828,832
+  s_fbb57e103da004::t_b6a9fefaf36cee 711-806,809-811,813-816,818-819,825-827,829-831,833-837
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_fbb57e103da004::t_24313b6c837899 35,37-41,50,55,57
+  s_fbb57e103da004::t_91a2e37acfe4dd 330-338,345,363
+  s_fbb57e103da004::t_cdffed1ee604a5 325-328
+  s_fbb57e103da004::t_5018d7f82c4050 329
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_fbb57e103da004::t_545a3be1e6599b 941,945
+  s_fbb57e103da004::t_8da09212c1c689 946-947
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "83f4abc8ecad34eb4300bec378b8471098de9791",
+  "prompts": {},
+  "sessions": {
+    "s_fbb57e103da004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e9c1a6b-db6a-4737-8bc3-bcf4fe723cd9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

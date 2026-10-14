@@ -1,0 +1,49 @@
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_1d360ad69afd30::t_383fdfe808cfb6 1-3,6-7,12-14,88,91-143,16,18,20,27,40-42,57-58,61-62,65-66,68-69,86-87,47-48,51-52,70,74,77-78
+  s_1d360ad69afd30::t_873133fb880266 4-5
+  s_1d360ad69afd30::t_292b6c129134e4 8
+  s_1d360ad69afd30::t_fe391421dc472c 9,11,17,19,28-31,34-36,38-39,53-55,59-60,63-64,79-85
+  s_1d360ad69afd30::t_292de58faa4a2f 10
+  h_32d8cd6a0d6aad 33
+  s_1d360ad69afd30::t_80ff673f0cfa78 37
+  s_e5d1e3f565ab47::t_dc29a61bf5564a 21,32,43-46,49-50
+  s_1d360ad69afd30::t_6af7ea6837d3d8 22-26
+  s_1d360ad69afd30::t_88e43a0840c1b3 56
+  s_1d360ad69afd30::t_11eee87d70db19 75-76
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_1d360ad69afd30::t_8236393f1cf394 2-5,7-14,17-68,70-91,127,180-181
+  s_1d360ad69afd30::t_ff135600d0ee04 1
+  s_1d360ad69afd30::t_cd05175f25739a 6,15
+  s_e5d1e3f565ab47::t_8dbe240152c63f 16,92,105-106,109-110,114,116,128,138-139,151-152,176,179,117,119,122-124,126,153-168,143,145-146
+  s_1d360ad69afd30::t_4a02471cc44c22 137,140,142,144
+  s_e5d1e3f565ab47::t_9347518bff0eb9 118,120-121,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b39afbe95a73384b29f782ac64e40eadd3ef93ec",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1d360ad69afd30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1531b3c8-1d44-4f7e-b0f1-10273a00014d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e5d1e3f565ab47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda7886d-c714-464f-ac3c-018fd3195773",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

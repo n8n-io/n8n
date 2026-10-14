@@ -1,0 +1,33 @@
+packages/@n8n/extension-sdk/package.json
+  s_fb1d6935963fdc::t_97f3d3545a0db8 35
+  s_fb1d6935963fdc::t_0f78007a45a6a8 50,56-57
+packages/@n8n/extension-sdk/oxlint.config.mts
+  s_fb1d6935963fdc::t_0f78007a45a6a8 1-2,4-7,9-11
+turbo.json
+  s_fb1d6935963fdc::t_0f78007a45a6a8 119-121,176-178
+packages/@n8n/extension-sdk/scripts/tsconfig.json
+  s_fb1d6935963fdc::t_97f3d3545a0db8 1-4
+packages/workflow/oxlint.config.mts
+  s_fb1d6935963fdc::t_3d67c3c6d86ac6 25-29
+  s_fb1d6935963fdc::t_0f78007a45a6a8 1-2,4-22,24,31-45
+packages/workflow/package.json
+  s_fb1d6935963fdc::t_0f78007a45a6a8 35-36,50,67-68
+packages/@n8n/extension-sdk/src/tsconfig.json
+  s_fb1d6935963fdc::t_97f3d3545a0db8 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a71d9c9331e8327d9547fae74f93da418c1d992",
+  "prompts": {},
+  "sessions": {
+    "s_fb1d6935963fdc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f08aabc99ffe2W7cZ4P3vyrbP5",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

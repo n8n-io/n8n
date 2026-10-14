@@ -1,0 +1,25 @@
+pnpm-workspace.yaml
+  s_bffc8b3c9193ca::t_85c1fb6e69f855 119
+packages/cli/src/controllers/ai.controller.ts
+  s_bffc8b3c9193ca::t_ce0a4acc54d768 20,30,65-77,196,209,228,237,256,267,278,293,306,326,341,355
+packages/cli/src/controllers/__tests__/ai.controller.test.ts
+  s_bffc8b3c9193ca::t_362404fdedcb79 9,15,92-99,520-529
+pnpm-lock.yaml
+  s_bffc8b3c9193ca::t_09371afab21653 181-182,1304,1404,4320,10976-10977,30408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a7df579ebc7bb2df0169e6aeb088fb262ab72fd0",
+  "prompts": {},
+  "sessions": {
+    "s_bffc8b3c9193ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "945327e3-0edb-410f-9a15-a099433efcac",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/backend-network/src/http/retryability.ts
+  s_b81b4dfe198fa6::t_2d177f4affc933 180,184,186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9fef84a14b5eac08090b097c5bbed587a8748bde",
+  "prompts": {},
+  "sessions": {
+    "s_b81b4dfe198fa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7167a850-6a16-40f9-9a01-cb59f95561a8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

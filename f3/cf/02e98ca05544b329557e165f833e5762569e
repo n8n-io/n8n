@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfig.ts
+  s_fca2302987ca57::t_f8e18800596b5f 22-35
+  s_fca2302987ca57::t_13bc08f2d71d70 60
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  s_fca2302987ca57::t_5ab974b786b98a 96
+  s_fca2302987ca57::t_c42cf7a94264f7 289-293
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_fca2302987ca57::t_3254b701eca729 269-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3cf02e98ca05544b329557e165f833e5762569e",
+  "prompts": {},
+  "sessions": {
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

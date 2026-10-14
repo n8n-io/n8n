@@ -1,0 +1,51 @@
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_6167e43a9f492f::t_4cf38d4d079470 4
+  s_6167e43a9f492f::t_8487c73bf8351c 224
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_6167e43a9f492f::t_8756226c5a7ee1 3
+  s_6167e43a9f492f::t_5f27182cdd9ba4 206
+packages/@n8n/api-types/src/agents/index.ts
+  s_6167e43a9f492f::t_917e24373cf846 1
+packages/@n8n/api-types/src/agents/agent-config-lifecycle.ts
+  s_6167e43a9f492f::t_acaaff2aba4b51 1-15
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_6167e43a9f492f::t_ff0d6922a5b96d 4
+  s_6167e43a9f492f::t_d387187d17644d 489
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_6167e43a9f492f::t_bba65744ddbd9a 1
+  s_6167e43a9f492f::t_b474cfa0016cfe 120,122
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_6167e43a9f492f::t_a9d43734777ba1 18-19
+  s_6167e43a9f492f::t_8ace28b03f3bd1 147
+  s_6167e43a9f492f::t_15e4bb248d2a56 641-642
+  s_6167e43a9f492f::t_63e0d4a7e8f34a 672-673
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_6167e43a9f492f::t_3abf64c9ac7ce8 7-8
+  s_6167e43a9f492f::t_3b31c3e433d701 320
+  s_6167e43a9f492f::t_2866cf03c4a611 431,435
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_6167e43a9f492f::t_cb893945ad0cbc 78
+  s_6167e43a9f492f::t_8a9a27777a1b07 70
+  s_6167e43a9f492f::t_c889d87a0be47a 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "bff980650b0f7139c720f992e26df70b9b2a79b5",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6167e43a9f492f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1339a674-ce23-49f2-8f5e-17168a943872",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

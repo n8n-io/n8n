@@ -1,0 +1,74 @@
+packages/@n8n/local-gateway/src/renderer/assistant/run-watcher.test.ts
+  s_53b05fe21441a7::t_305e8149ee30da 1-128
+packages/@n8n/local-gateway/src/shared/types.ts
+  s_53b05fe21441a7::t_305e8149ee30da 228-229
+packages/@n8n/local-gateway/src/renderer/permissions/permission-prompt-store.test.ts
+  s_53b05fe21441a7::t_305e8149ee30da 71,268-278
+packages/@n8n/local-gateway/src/main/ipc-handlers.test.ts
+  s_53b05fe21441a7::t_305e8149ee30da 278-312
+packages/@n8n/local-gateway/src/renderer/permissions/permission-prompt-store.ts
+  s_53b05fe21441a7::t_305e8149ee30da 133-135,159-164
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_53b05fe21441a7::t_305e8149ee30da 345-381
+packages/@n8n/instance-ai/src/agent/desktop-assistant-profile.ts
+  s_53b05fe21441a7::t_39a4c9a26c7b52 58,76
+packages/cli/src/modules/instance-ai/desktop-assistant/desktop-assistant.service.ts
+  s_53b05fe21441a7::t_305e8149ee30da 44,366-368,374
+packages/@n8n/local-gateway/src/main/instance-api.test.ts
+  s_53b05fe21441a7::t_305e8149ee30da 293-301
+packages/@n8n/local-gateway/src/renderer/chat/chat-thread.ts
+  s_53b05fe21441a7::t_39a4c9a26c7b52 20-26,85-92,128-132,145-150,152-163
+packages/@n8n/local-gateway/src/renderer/assistant/run-watcher.ts
+  s_53b05fe21441a7::t_305e8149ee30da 39,41-43
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_53b05fe21441a7::t_305e8149ee30da 96,159-160
+packages/@n8n/local-gateway/src/renderer/components/TaskResultCard.vue
+  s_53b05fe21441a7::t_71d9b405768263 2
+  s_53b05fe21441a7::t_d83ecf1492cedb 237-239,243-273
+  s_53b05fe21441a7::t_f8193d8e979b94 57-68
+packages/@n8n/local-gateway/src/renderer/chat/chat-thread.test.ts
+  s_53b05fe21441a7::t_305e8149ee30da 31-33,140-152,159,162
+packages/@n8n/api-types/src/dto/desktop-assistant/desktop-assistant-task-outcome.dto.ts
+  s_53b05fe21441a7::t_305e8149ee30da 16-21
+packages/@n8n/local-gateway/src/main/preload.ts
+  s_53b05fe21441a7::t_305e8149ee30da 126-129
+packages/@n8n/local-gateway/src/renderer/views/HomeView.vue
+  s_53b05fe21441a7::t_305e8149ee30da 13,37-50
+packages/@n8n/local-gateway/src/main/ipc-handlers.ts
+  s_53b05fe21441a7::t_305e8149ee30da 325-330
+packages/@n8n/local-gateway/src/renderer/permissions/prompt-classification.ts
+  s_53b05fe21441a7::t_305e8149ee30da 90-92
+packages/@n8n/local-gateway/src/renderer/assistant/task-result-store.ts
+  s_53b05fe21441a7::t_d50056f7a3b5a2 13-15,21-28
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.desktop-assistant.test.ts
+  s_53b05fe21441a7::t_305e8149ee30da 27-31
+packages/@n8n/local-gateway/src/renderer/components/PermissionPromptCard.vue
+  s_53b05fe21441a7::t_305e8149ee30da 111-124
+packages/@n8n/instance-ai/src/tools/orchestration/report-desktop-task-outcome.tool.ts
+  s_53b05fe21441a7::t_305e8149ee30da 23-28
+packages/@n8n/local-gateway/src/main/instance-api.ts
+  s_53b05fe21441a7::t_305e8149ee30da 332-337
+packages/cli/src/modules/instance-ai/desktop-assistant/constants.ts
+  s_53b05fe21441a7::t_305e8149ee30da 31-34,38-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "7e4dd44c383ed0124a73751384278e33a2db92d5",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53b05fe21441a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d914a37-639d-493f-bf19-e3d7e4014518",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

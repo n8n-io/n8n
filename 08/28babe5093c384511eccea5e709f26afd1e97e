@@ -1,0 +1,25 @@
+package.json
+  s_77d900a743e1d3::t_b0266cde1432e0 183-184
+packages/workflow/test/expression-arrow-body-polyfill.test.ts
+  s_77d900a743e1d3::t_b46f94ee809337 1-76
+packages/workflow/test/expression-arrow-body-parity.test.ts
+  s_77d900a743e1d3::t_0fff9a42b8a0b9 1-84
+patches/@n8n__tournament@1.9.0.patch
+  s_77d900a743e1d3::t_b0266cde1432e0 1-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0828babe5093c384511eccea5e709f26afd1e97e",
+  "prompts": {},
+  "sessions": {
+    "s_77d900a743e1d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "291d4af0-cb51-405a-b40c-8475bf7865ee",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

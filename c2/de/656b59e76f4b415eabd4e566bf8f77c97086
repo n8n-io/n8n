@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.test.ts
+  s_c46f71b1296adf::t_cdcd77983c3422 47
+  s_c46f71b1296adf::t_35a27373ecf7df 593,596-597,601-602,614,617-618,621-624
+  s_c46f71b1296adf::t_a43c38f03da6a4 727-753
+  s_c46f71b1296adf::t_6305dbe5b5123f 164
+  s_c46f71b1296adf::t_f6c5b28a87bb21 306-308
+  s_c46f71b1296adf::t_642d4fd608488d 686-687,693,712-713,720,722
+  s_c46f71b1296adf::t_565c1f0ef207a3 715-717
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardPersistence.ts
+  s_c46f71b1296adf::t_3b937494fa3378 103,113
+  s_c46f71b1296adf::t_f0716f5f977abd 175
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useUserExecutions.ts
+  s_c46f71b1296adf::t_842d549a326f1f 20-24,29-38,40,45-46,48-50,54-58,61-67,72-74
+  s_c46f71b1296adf::t_77c9e37fda1c8a 39,47
+  s_c46f71b1296adf::t_5cf7c46f75c2d9 51-53
+  s_c46f71b1296adf::t_9a7f9d388d0630 41-44
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardHydration.ts
+  s_c46f71b1296adf::t_f84111afa18617 101-105
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/useWizardHydration.test.ts
+  s_c46f71b1296adf::t_27ac373d9bded6 162-183
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useTestCasePersistence.ts
+  s_c46f71b1296adf::t_1db98dbe4ef60d 300
+  s_c46f71b1296adf::t_0c345d6de9d02e 458-460,462-472
+  s_c46f71b1296adf::t_007ef948a683e0 362,371-374
+  s_c46f71b1296adf::t_0c06cccb58d170 225
+  s_c46f71b1296adf::t_691d18288a1ef3 461
+  s_c46f71b1296adf::t_1b398c2ae937fa 419,457
+  s_c46f71b1296adf::t_8b620cb0bfe3e0 36-42
+  s_c46f71b1296adf::t_5a4c6039b3d88b 60-65,67-68,71-80,82
+  s_c46f71b1296adf::t_62475994e7ff75 66,69-70,81
+  s_c46f71b1296adf::t_2dd6fb07841a5b 139,149
+  s_c46f71b1296adf::t_4873d9b4d14496 240-243,246
+  s_c46f71b1296adf::t_01b57ed411609c 253-260,262-264,266-289
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useEvaluationPersistenceHelpers.ts
+  s_c46f71b1296adf::t_22f88fd24d00a7 232-248
+  s_c46f71b1296adf::t_9c9fe2b112573f 13
+  s_c46f71b1296adf::t_e5479f9f3213cf 38-41
+  s_c46f71b1296adf::t_0ea837ff5502e4 142,144-150,152,161
+  s_c46f71b1296adf::t_019501abf4bf94 51-56
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useUserExecutions.test.ts
+  s_c46f71b1296adf::t_9a21458425980c 1-52,57-83
+  s_c46f71b1296adf::t_9a7f9d388d0630 53-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c2de656b59e76f4b415eabd4e566bf8f77c97086",
+  "prompts": {},
+  "sessions": {
+    "s_c46f71b1296adf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "93ce490b-f2a8-430e-acee-587c52f383a1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

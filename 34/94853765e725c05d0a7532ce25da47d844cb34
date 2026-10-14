@@ -1,0 +1,45 @@
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_5b586951f97f35::t_21cc7b54dcbb32 283-287
+  s_5b586951f97f35::t_22a8a5448a2c6b 194-203,205
+  s_5b586951f97f35::t_0a96815a1b62f3 223
+  s_5b586951f97f35::t_aaafdb72c39d56 271
+  s_5b586951f97f35::t_bfc67f524554b4 85
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_5b586951f97f35::t_0c5622f33df34d 323-386
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_5b586951f97f35::t_c5a9d536529664 372-376
+  s_5b586951f97f35::t_60e4fab17d1494 428-429
+  s_5b586951f97f35::t_9ae74f3ced151b 353-360,362
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_5b586951f97f35::t_8b4049f8b105b1 549-622
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_5b586951f97f35::t_39c1badcb03d31 201
+  s_5b586951f97f35::t_60c81fa948d124 509,522
+  s_5b586951f97f35::t_c6667d0a8c2ffe 114-122
+  s_5b586951f97f35::t_dabb4950ebde83 437-464,480,485
+  s_5b586951f97f35::t_f674143ad0b30b 8
+  s_5b586951f97f35::t_eabce9baedba32 24
+  s_5b586951f97f35::t_23980d7c44d311 52-59
+  s_5b586951f97f35::t_22ddda7511d284 325-337,348-352
+  s_5b586951f97f35::t_3ade3b343589ba 417-419
+  s_5b586951f97f35::t_bfefaa6611877b 583-587
+  s_5b586951f97f35::t_2d8263a9a144a0 486
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_5b586951f97f35::t_ef4b1345d60d26 618-641
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3494853765e725c05d0a7532ce25da47d844cb34",
+  "prompts": {},
+  "sessions": {
+    "s_5b586951f97f35": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ad32431c-0f56-4daf-ada3-eaaac2bebeb5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

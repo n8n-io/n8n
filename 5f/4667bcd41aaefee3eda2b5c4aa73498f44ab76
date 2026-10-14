@@ -1,0 +1,68 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/n8nChatInteraction.ts
+  s_6e06771097abf4::t_4a3efc1dc6a6da 47-50,56,97-102,110-112
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6e06771097abf4::t_72d3418e23bec4 1406
+packages/frontend/editor-ui/src/features/agents/components/RichInteractionCard.vue
+  s_6e06771097abf4::t_4a3efc1dc6a6da 27-28,104,113
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  s_6e06771097abf4::t_7332b2c8a18b31 65-72
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_6e06771097abf4::t_5b2ff3e8699692 194,199,208
+  s_6e06771097abf4::t_8fff96c6c87fcb 187-193,195-198,200-207,209-225
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_6e06771097abf4::t_5b2ff3e8699692 1531,1535
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_6e06771097abf4::t_72d3418e23bec4 138
+  s_6e06771097abf4::t_a0ec23032260d3 236
+  s_6e06771097abf4::t_4a3efc1dc6a6da 18,64-73,304-305
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat-integration.ts
+  s_6e06771097abf4::t_2f5367cae2b207 77-86
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_6e06771097abf4::t_72d3418e23bec4 35-40
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_6e06771097abf4::t_5b2ff3e8699692 114
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_6e06771097abf4::t_72d3418e23bec4 45-46
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_6e06771097abf4::t_1c66ed860be7da 55
+  s_6e06771097abf4::t_5b2ff3e8699692 182-183
+  s_6e06771097abf4::t_eb3e7c71a9267f 193
+  s_6e06771097abf4::t_4ce6f52ffc6865 8,83-96,188-192,194-196,202
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_6e06771097abf4::t_de2e56e065a34c 588-589,596
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_6e06771097abf4::t_5b2ff3e8699692 64,69
+  s_6e06771097abf4::t_366456fbe9b3a7 38-63,65-68,70-85,88-90
+  s_6e06771097abf4::t_24162b1b6149e7 86-87
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/n8nChatInteraction.test.ts
+  s_6e06771097abf4::t_366456fbe9b3a7 4-8,44-61
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_6e06771097abf4::t_72d3418e23bec4 48
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_6e06771097abf4::t_72d3418e23bec4 103-104
+packages/cli/src/modules/agents/integrations/integration-tools.ts
+  s_6e06771097abf4::t_1c66ed860be7da 4-5
+  s_6e06771097abf4::t_3056dbd8d5dd93 1020-1027,1031
+packages/@n8n/api-types/src/agents/types.ts
+  s_6e06771097abf4::t_5b2ff3e8699692 203-204
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_6e06771097abf4::t_5b2ff3e8699692 185,213,256,267,312,323
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_6e06771097abf4::t_72d3418e23bec4 52-54,205-207,239-243,262,265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "5f4667bcd41aaefee3eda2b5c4aa73498f44ab76",
+  "prompts": {},
+  "sessions": {
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,431 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_2c14548cabdf41::t_fb194c2b72f2fa 131-132
+  s_2c14548cabdf41::t_e164086c03b1e3 2
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_2c14548cabdf41::t_337b75f4a580f4 1235,1240,1246-1249,1251,1253-1257,1266-1269
+  s_2c14548cabdf41::t_faa37792b3c342 1363-1377,1382-1418,1434,1442,1446,1469-1496,1498-1509
+  s_2c14548cabdf41::t_a4163ce75e36f9 6
+  s_2c14548cabdf41::t_be9a066b01f0b7 1603-1604
+  s_2c14548cabdf41::t_7af948addc2215 1628,1630,1635,1646-1648,1650,1655
+  s_2c14548cabdf41::t_e2d00d3beba717 1680
+  s_2c14548cabdf41::t_3dfabae30ab5df 268-277
+  s_2c14548cabdf41::t_d266ad218d8462 1280-1283
+  s_2c14548cabdf41::t_24f033dd64c883 1727
+  s_2c14548cabdf41::t_46ad52576411fa 1510
+  s_2832b667b2fecf::t_f541e20f7fae11 35-41,80-87,486-490,1378-1381
+  s_e596506e83d3e0::t_046351e9e656db 1497
+  s_9d8ef652ce7177::t_a05e06e7f2e4ef 1450-1468
+packages/@n8n/api-types/src/agents/types.ts
+  s_2c14548cabdf41::t_d406f4cdf0972a 330-335,340-341
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_2c14548cabdf41::t_41b863a86b6990 33-42
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_2c14548cabdf41::t_ec939435fdbe82 73
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_2c14548cabdf41::t_afa7810e70ca3e 80-83,86
+  s_2c14548cabdf41::t_5fc058ffc93265 194
+  s_9d8ef652ce7177::t_a8438ad4fcd48b 182-183
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_2c14548cabdf41::t_e18d3315250f6c 280
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  s_2c14548cabdf41::t_abe145c74fa453 3-20
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_2c14548cabdf41::t_c72591a7c80115 27
+  s_2c14548cabdf41::t_f0848c1294f1cf 764,779,805,813,822,826,834,839
+  s_2c14548cabdf41::t_fef2b124878368 784-788
+  s_2c14548cabdf41::t_2bd1baab3c76b0 789
+  s_df7e029a7c8d36::t_ffbaada36c0ade 140-141,783,790-791,793-796,799
+packages/cli/src/modules/agents/entities/agent-message.entity.ts
+  s_2c14548cabdf41::t_60a172fdc949bd 2,7
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_2c14548cabdf41::t_70c46f69c2bc46 416-420,423-430,433-440,541-544,764-767
+  s_2c14548cabdf41::t_3e5d6fd02ca026 94,199,237,253,281,321,443,499,520,577,585,599,608,655,659,669,673,726,730,756,761
+  s_2c14548cabdf41::t_993f18a17dd7c0 348,356
+  s_2c14548cabdf41::t_0c30de2b599375 465
+  s_2c14548cabdf41::t_00c6edab8463c0 625
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  s_2c14548cabdf41::t_893976fc72e978 62,84
+packages/cli/src/modules/agents/integrations/platforms/__tests__/linear/recorded-integration.test.ts
+  s_2c14548cabdf41::t_eb4f6bea2d858e 96
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_2c14548cabdf41::t_7b44219560d78d 142-143
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_2c14548cabdf41::t_6b95c1c54a9631 3696,3699-3701
+  s_2c14548cabdf41::t_2099c5c41b1666 3532
+  s_2c14548cabdf41::t_56749b31ff79a7 2667-2668
+  s_2c14548cabdf41::t_3f379785862ac1 1109-1112
+  s_2c14548cabdf41::t_d6b482f7aba869 1122-1130,1132-1141
+  s_2c14548cabdf41::t_be4d85582a0745 3414-3416,3418-3419,3422-3425
+  s_2c14548cabdf41::t_1f85108ba5c711 3460
+  s_2c14548cabdf41::t_a5727bd113c93c 127-128
+  s_2c14548cabdf41::t_061947949f750a 775,777,790-791,793,800,803,814-819,821-822,828,856-861,871-876
+  s_2c14548cabdf41::t_518f9dab1f567c 3620-3621,3623-3624,3626
+  s_2c14548cabdf41::t_e1372fc2bb8465 3492
+  s_2c14548cabdf41::t_73cf40b5dd301e 3575-3576
+  s_2c14548cabdf41::t_edad60de1f9e4a 3741-3742
+  s_2c14548cabdf41::t_fa031de9a600ab 3786-3787
+  s_b04c58447561ba::t_81c437f2ec4a29 116-125,134
+  s_b04c58447561ba::t_3daa4380bf2329 1529
+  s_b04c58447561ba::t_74af734c047488 12-16
+  s_b04c58447561ba::t_3b7fca2f51482f 1421-1528,1530-1557
+  s_b04c58447561ba::t_09593a269d1090 1382-1383,1402
+  s_b04c58447561ba::t_df7631ac90b0aa 286
+  s_b04c58447561ba::t_b15be7fb111cca 2597-2602
+  s_b04c58447561ba::t_62fd9ab95a65a3 2595-2596
+  s_b04c58447561ba::t_0ac88f07f45b34 3364
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/recorded-integration.test.ts
+  s_2c14548cabdf41::t_3367b3702dcedc 88
+  s_b04c58447561ba::t_d51d6bb964fc39 212-214,218,222
+  s_b04c58447561ba::t_5c68f627c04dca 175-211,215-217,219-221,223-250
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.author.test.ts
+  s_2c14548cabdf41::t_8465177c7a64c4 1-22
+packages/@n8n/agents/src/__tests__/integration/memory-episodic.test.ts
+  s_2c14548cabdf41::t_8ec17b4ad55834 137-139
+  s_2c14548cabdf41::t_0913751c368d94 314
+  s_2c14548cabdf41::t_bc26fd258d124e 316
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_2c14548cabdf41::t_0c265f160b5ba5 156
+packages/@n8n/db/src/migrations/common/1789121244489-AddAgentExecutionAuthorAndMessagesResourceThreadIndex.ts
+  s_2c14548cabdf41::t_dabc5fe22e2908 1-10,34-36,43,51-52
+  s_751e025e4b9653::t_91003ebd4ee2fb 11-33,37-42,44-50
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_2c14548cabdf41::t_4708e892a37b71 583
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_2c14548cabdf41::t_031f380b875c09 19
+  s_2c14548cabdf41::t_e2b214e8391d88 22
+packages/cli/src/modules/agents/integrations/__tests__/channel-integration-contract.test.ts
+  s_2c14548cabdf41::t_14826f4b73bd19 38
+  s_2c14548cabdf41::t_bd65546d856d2f 81
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_2c14548cabdf41::t_c5472a246a7608 327
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_2c14548cabdf41::t_da5f982b9619f0 70,72-73
+  s_2c14548cabdf41::t_4fca593c1cca19 69,71
+  s_2c14548cabdf41::t_f1d983c05d70e8 759-760
+  s_2c14548cabdf41::t_1db46b1cf59148 783,786
+  s_2c14548cabdf41::t_b0add33efadc71 8
+  s_2c14548cabdf41::t_152c2c5262dec1 103-104
+  s_2c14548cabdf41::t_ae30f749615ba1 762-764,766-769,773-775
+  s_2c14548cabdf41::t_49468be9030855 263-264,274-275
+  s_b04c58447561ba::t_7e25319c2ddaf3 662
+  s_b04c58447561ba::t_c7e687343ee7fd 526
+  s_b04c58447561ba::t_6588bcd01047af 788
+  s_b04c58447561ba::t_a37dfe0807e2bb 520-525,527-529,534-535
+  s_b04c58447561ba::t_ac593a26fccb86 536,659-661,663-699
+  s_b04c58447561ba::t_7c30ae056fdeae 438
+  s_b04c58447561ba::t_ee9c1be60cd60a 1107-1111
+  s_b04c58447561ba::t_791ba3931b10ba 26-29
+  s_b04c58447561ba::t_134d98341b3e2c 109,119
+  s_b04c58447561ba::t_4e78aa5d0573e2 268,286
+  s_b04c58447561ba::t_14ed96cd773eb8 25
+  s_b04c58447561ba::t_69a2241ca3e4d6 537
+packages/cli/src/modules/agents/integrations/__tests__/helpers/channel-integration-contract.ts
+  s_2c14548cabdf41::t_c5492ee0509a47 21
+  s_2c14548cabdf41::t_e5735fbc6c8b32 1
+  s_2c14548cabdf41::t_9d41f92c616ace 67
+packages/cli/src/modules/agents/repositories/agent-message.repository.ts
+  s_2c14548cabdf41::t_6bd2ed27f20e2c 12,20-21,23-26,28
+  s_2c14548cabdf41::t_eca81bf96b5346 11,19,27,29
+  s_e596506e83d3e0::t_a868be1244340c 13-18,22
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_2c14548cabdf41::t_578ac75b3695f1 1-5
+  s_2c14548cabdf41::t_80ce09694e2a72 43-44
+  s_b04c58447561ba::t_dfb214c9a41217 68-73
+  s_b04c58447561ba::t_0d3b991937e75a 11
+  s_b04c58447561ba::t_2c10e509bc560d 131,133-161,163-184
+  s_b04c58447561ba::t_18f9e6c0c05e48 307-321,323-336
+  s_b04c58447561ba::t_8f24d14f8b09f8 104-106
+packages/cli/src/modules/agents/__tests__/agent-sandbox-principal.test.ts
+  s_2c14548cabdf41::t_cdf61cd1a06d15 9,12,14,38,41,44,47,50-51
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_2c14548cabdf41::t_74cf476cf75e4b 232
+  s_2c14548cabdf41::t_7d746b6233d10f 603-610
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_2c14548cabdf41::t_fc486fac72b97b 204
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_2c14548cabdf41::t_634ef2d4f99900 2
+  s_2c14548cabdf41::t_72878fbdeaf67c 93-94
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_2c14548cabdf41::t_70c46f69c2bc46 6474-6477,6483-6486,6489-6493
+  s_2c14548cabdf41::t_897e73921dc849 6388-6389
+  s_2c14548cabdf41::t_73cb2dd5293679 6369
+  s_df7e029a7c8d36::t_a24744c01e6475 6394-6397,6403-6439
+  s_2c14548cabdf41::t_ce0e243103b321 6398-6402
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_2c14548cabdf41::t_d18aae4150307c 701-702,717-721,723-728
+  s_2c14548cabdf41::t_452f5e964d15bc 50,53
+  s_b04c58447561ba::t_8eb38a034b00ff 1711
+  s_b04c58447561ba::t_3f0b7a5089d63e 156,159-162,178,195-196
+  s_b04c58447561ba::t_3603a955e7d810 37
+  s_b04c58447561ba::t_3cac3780c648e3 488
+  s_b04c58447561ba::t_bb55b19be13e0a 483,691,779,990,1767,1877-1947,1949-1950,1952-2017
+  s_b04c58447561ba::t_c210574236b585 298,303-438,489,529
+  s_b04c58447561ba::t_90cb7a0aa8376e 21
+  s_b04c58447561ba::t_3aba6a800fe2c5 246-251,269,273,277-283
+  s_b04c58447561ba::t_f9bd5278d1e250 1948,1951
+  s_b04c58447561ba::t_f91a127cbc76af 439
+  s_b04c58447561ba::t_b6af5a4efd09c8 490-491
+  s_b04c58447561ba::t_91d00eb4cd6b65 778
+  s_b04c58447561ba::t_a8b8ec531e9fd9 2018-2020
+  s_b04c58447561ba::t_35ab6012575f23 441,466,504,520,543,617,663,706,722,750-751,773,822,988,1141,1154,1177,1193,1214,1233,1337,1682,1703,1714,2021-2026
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_2c14548cabdf41::t_fda5632bbccc01 9
+  s_2c14548cabdf41::t_91de44db9353fb 165
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_2c14548cabdf41::t_3678637f5a74ca 26-27
+packages/cli/src/modules/agents/agent-sandbox-principal.ts
+  s_2c14548cabdf41::t_4a5ddcbf965f5b 8,11,79,84
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_2c14548cabdf41::t_70c46f69c2bc46 900,934
+  s_2c14548cabdf41::t_88355a6ac32c3d 785-786,788-789,791-797,799,805-812,814-821
+  s_2c14548cabdf41::t_624c7bd928ce70 603-604,608,619
+  s_2c14548cabdf41::t_ee405806c2a90b 73-77
+  s_2c14548cabdf41::t_7dba30188f6a75 698,703
+  s_2c14548cabdf41::t_87abcf3b561d35 641,644
+  s_2c14548cabdf41::t_01a24ddcaf295d 699-702,711
+  s_2c14548cabdf41::t_a648d7fb39203e 268-271,275
+  s_2c14548cabdf41::t_0ee073b6b25a88 730
+  s_2c14548cabdf41::t_3543cc8fee6481 853,876,910,930,949,996
+  s_2c14548cabdf41::t_fc5c774297c576 839-840
+  s_2c14548cabdf41::t_02bd08d225138c 153
+  s_2c14548cabdf41::t_e5d57c0aa6ad21 79-80
+  s_2c14548cabdf41::t_18f16453e5f42a 78,822-823
+  s_e596506e83d3e0::t_59314af38440db 813
+  s_2832b667b2fecf::t_852d3b374b4b27 61,197-204
+  s_9d8ef652ce7177::t_b55b2ea60e6929 780-783,787
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_2c14548cabdf41::t_05c4a755a2ea20 36,39,45
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_2c14548cabdf41::t_60873bae27beda 535-543
+  s_2c14548cabdf41::t_b25bb6e6f33b8b 767-770
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_2c14548cabdf41::t_c2b4da71e46d45 71-74
+  s_2c14548cabdf41::t_1e0e84e25eb0fe 1
+  s_b04c58447561ba::t_1a66e0b23190ad 31-34
+  s_b04c58447561ba::t_4b53afe78e23a6 49-56
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_2c14548cabdf41::t_80364d5a7ba9e1 977-978
+  s_2c14548cabdf41::t_fc108309ba8de5 212,214-217
+  s_2c14548cabdf41::t_caf528bfff378f 1030
+  s_2c14548cabdf41::t_b030a60332fa9f 1120,1143
+  s_2c14548cabdf41::t_c461b38231d496 94,96-99
+  s_2c14548cabdf41::t_f26d9ce317d574 1087
+  s_2c14548cabdf41::t_6629cb7d9c1cec 8
+  s_2c14548cabdf41::t_5646764b4907d6 721-722
+  s_2c14548cabdf41::t_ae3b697001b614 1017-1019
+  s_b04c58447561ba::t_8aea6c0b4da508 105-110
+  s_b04c58447561ba::t_76ab166aa42fce 152-158
+  s_b04c58447561ba::t_b1dd8518ae04b5 455-479,551-562,564-565
+  s_b04c58447561ba::t_61451f2ec07bad 727,733-769
+  s_b04c58447561ba::t_946b6548bbb1bf 689
+  s_b04c58447561ba::t_f6672b94102be6 411
+  s_b04c58447561ba::t_d72150efa617a6 343
+  s_b04c58447561ba::t_da33a61295f614 1195,1205,1207-1208,1210,1212-1213,1222-1233
+  s_b04c58447561ba::t_605969aacbfb49 15,26-29
+  s_b04c58447561ba::t_288c75ffc9e58f 785-806,821-823
+  s_b04c58447561ba::t_2d21b0c5b59094 238-239
+  s_b04c58447561ba::t_2269231d69fbaa 1038,1049
+  s_b04c58447561ba::t_ec63c4721dba1c 1196-1204,1206,1209,1211,1214-1221
+  s_b04c58447561ba::t_ef8b27dd7ea9fc 48
+  s_b04c58447561ba::t_7037b7eac395a5 636-649,657-659,677-688,690-703
+  s_b04c58447561ba::t_597153db44a8dc 550,563
+  s_b04c58447561ba::t_1cdf209e1e8a60 650-656,886-920,938
+  s_b04c58447561ba::t_feaa2d82226b62 840-851,866-868,871-876
+  s_b04c58447561ba::t_f43b3e54110ba7 885
+  s_b04c58447561ba::t_dd72fa781b8c69 454
+  s_b04c58447561ba::t_c175df7de9783a 992,995-997,1037,1039-1048,1050
+docs/generated/postgres-schema/README.md
+  s_2c14548cabdf41::t_e1567cfc1b8158 517
+  s_b04c58447561ba::t_6ab1b9eacac6dd 22,515
+docs/generated/postgres-schema/public.agent_execution.md
+  s_2c14548cabdf41::t_f0576cddff34f1 9,67
+  s_b04c58447561ba::t_306a1658a61cc7 7,53,65
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_2c14548cabdf41::t_9402e75de37d53 102
+  s_b04c58447561ba::t_fb0e5b36e8d71e 100
+docs/generated/postgres-schema/public.agents_messages.md
+  s_2c14548cabdf41::t_f608f3915ec879 34
+docs/generated/sqlite-schema/README.md
+  s_2c14548cabdf41::t_2d1824fd6117f6 504
+  s_b04c58447561ba::t_834fb79a398c75 22,502
+docs/generated/sqlite-schema/agent_execution.md
+  s_2c14548cabdf41::t_db97f1d233d4c9 20,72
+  s_2c14548cabdf41::t_f697946412ed28 46-48
+  s_b04c58447561ba::t_e40c903d2570c7 9,18,58,70
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_2c14548cabdf41::t_a62d609f39f5b9 103
+  s_b04c58447561ba::t_312d56fb4ea50c 101
+docs/generated/sqlite-schema/agents_messages.md
+  s_2c14548cabdf41::t_e069ae1c7e523a 39
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_2c14548cabdf41::t_df0fa1651f6991 12,84,88,91,94,97,234,237,274,532
+  s_2c14548cabdf41::t_fc9347b538d231 99,103-104,106,108,124,142,160,224,228,231,239,243-244,246,248,269,272,287,301,373,377,380,383,386,388,392-393,396,412,430,433,448,512,516,519,522,525,527,531,535,548,553,558,561,563,573,576,638,645,649,652,655,658,660,664-665,667,669,685,757,761,764,767,770,772,776-777,780,801,804,806,819,833,851,855,871-872,935,939,942,945,948,950,954-955,958
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_2c14548cabdf41::t_df0fa1651f6991 12
+  s_2c14548cabdf41::t_b06b29d80f62e7 84,88,91,94,97,99,103-104,107,123,141,159,223,227,230,233,236,238,242-243,246,269,272,274,287,306,309,311,324,338,410,414,417,420,423,425,429-430,433,454,457,459,472,486,504,520,584,588,591,594,597,599,603-604,607
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_2c14548cabdf41::t_df0fa1651f6991 12
+  s_2c14548cabdf41::t_bfc23024506c15 84,88,91,94,97,99,103-104,107,123,141,159,223,227,230,233,236,238,242-243,246,267,270,272,285,299,304,307,309,322,341,344,346,359,373,445,449,452,455,458,460,464-465,467,469,490,493,495,508,522,540,556,620,624,627,630,633,635,639-640,642,644
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_2c14548cabdf41::t_df0fa1651f6991 12,84,88,91,94,97,99,103-104,107,269,272,297,310,312,430,469,647,673,949
+  s_2c14548cabdf41::t_cc5523752c15c5 123,141,154,167,170,185,190,195,259,263,266,274,278-279,282,302,307,322,325,339,411,415,418,421,424,426,431,433,435,451,473,486,489,499,502,512,515,530,535,540,545,609,613,616,619,622,624,628-629,632,646,648,653,658,661,663,676,695,698,700,710,713,732,735,737,747,750,764,836,840,843,846,849,851,855-856,858,860,883,886,888,901,915,933,950,1013,1017,1020,1023,1026,1028,1032-1033,1035,1037
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_9d8ef652ce7177::t_c87cc1af1d66d1 409
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_b04c58447561ba::t_0eefba749ef3f0 17
+  s_b04c58447561ba::t_a4c3e2f323431b 169-172,174-175
+  s_b04c58447561ba::t_ab2d36d783b627 226,228-230
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_b04c58447561ba::t_0545f38609dc6b 272
+  s_b04c58447561ba::t_0f11354e23b1bf 26
+  s_b04c58447561ba::t_a975d57fdbb93e 79-101
+  s_b04c58447561ba::t_39eb83eb32afb3 244-252
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_b04c58447561ba::t_382eddcb11ec3b 400-403
+packages/@n8n/db/src/migrations/common/1789138249046-AddActiveThreadClaimToAgentExecution.ts
+  s_b04c58447561ba::t_b713ea43322a77 3-56
+  s_b04c58447561ba::t_b4179534681cd8 1-2
+  s_b04c58447561ba::t_9921e3f7d3b9a4 57-59
+  s_b04c58447561ba::t_3287d3de4e0672 60-63
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_b04c58447561ba::t_fbe8810e3012f6 216
+packages/cli/src/modules/agents/agent-thread-turn-coordinator.ts
+  s_b04c58447561ba::t_04a2ab2af7ccbd 3
+  s_b04c58447561ba::t_113eba60bdcf49 111
+  s_b04c58447561ba::t_fb428c08ac471f 1-2,4-76,78-90,92-103,105,107-109,112-130,132-136,139-141,143,145-148,150-193
+  s_b04c58447561ba::t_89abf254d76513 91
+  s_b04c58447561ba::t_7099c1c1c0a891 104,106,110
+  s_b04c58447561ba::t_b9d651800d6101 131,137-138,142,144
+  s_b04c58447561ba::t_63bd8a12c195fd 77
+  s_b04c58447561ba::t_b33c24c1f2bed1 149
+packages/cli/src/modules/agents/__tests__/test-utils/turn-coordinator.ts
+  s_b04c58447561ba::t_110e1b4a27fed3 1-27,29-31,33,35
+  s_b04c58447561ba::t_994a326c4eb8bc 28,32,34
+packages/cli/test/migration/1789138249046-add-active-thread-claim-to-agent-execution.test.ts
+  s_b04c58447561ba::t_e2c4df4611b32d 138
+  s_b04c58447561ba::t_68f465161435fa 1-122,124,126,128-137,139-148
+  s_b04c58447561ba::t_b651072568db81 123,125,127
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_b04c58447561ba::t_f87cc027594a0f 5
+  s_b04c58447561ba::t_7e6c56c09bdf73 143-144,146
+  s_b04c58447561ba::t_173be43cd956d6 193
+  s_b04c58447561ba::t_2ec623ae83e1da 384-386,461-463,537-539,569-571,599-601,621-623,687-689,734-736,776-778
+  s_b04c58447561ba::t_d9ac01f55d9a90 500-502
+  s_b04c58447561ba::t_8a0c7e30ae102f 165-192,194-243
+  s_b04c58447561ba::t_f696cf7335f78b 119,122
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_b04c58447561ba::t_54265fc4e7ee56 225
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b04c58447561ba::t_2b14dea7f4218f 222-272
+  s_b04c58447561ba::t_da2cea2d23fa75 14-17
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_b04c58447561ba::t_e1d143198b9c2c 358-359,363-364,373-384
+  s_b04c58447561ba::t_86ec030af3d83f 308
+  s_b04c58447561ba::t_3ae42c09127a3f 13
+  s_b04c58447561ba::t_54b9dc588e712e 83-92
+  s_b04c58447561ba::t_cd0642b2f2380b 385-386
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_b04c58447561ba::t_9505693dfc6a92 1,5,15-24
+  s_b04c58447561ba::t_3d5b5471c0dab1 60-85
+  s_b04c58447561ba::t_ee19869242f2d2 99,104-107
+  s_b04c58447561ba::t_4c616b06a090d0 25-26
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_b04c58447561ba::t_7c86a6c19e0610 3-8,11-12,33-34,37,45-55,57-97
+  s_b04c58447561ba::t_dfdaecd59779cd 98-100
+  s_b04c58447561ba::t_685bac077a5ef4 101-111
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_b04c58447561ba::t_e8a99754f562da 8-9
+  s_b04c58447561ba::t_ae48fb123af829 201
+  s_b04c58447561ba::t_61978fb7d3584b 202
+  s_b04c58447561ba::t_f4020c66689c1d 226-232
+  s_b04c58447561ba::t_512f94b7d10bc1 217-218
+  s_b04c58447561ba::t_2d49f5352be6c5 263
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_b04c58447561ba::t_ade5a3644c4b9e 266
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_b04c58447561ba::t_e1e6a22ba0d2d6 6
+  s_b04c58447561ba::t_a0b3dbf16b1625 194
+  s_b04c58447561ba::t_30fe6b4b772440 40-47
+  s_b04c58447561ba::t_8f12ce74305909 242
+  s_b04c58447561ba::t_34252398b4979b 30
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_b04c58447561ba::t_9fb57c3077cea5 12
+packages/cli/src/modules/agents/__tests__/agent-thread-turn-coordinator.test.ts
+  s_b04c58447561ba::t_48ff1a751eeb9e 1-14,16-44,46-49,51,53-69,71-72,74-75,78,80-82,84-86,88-91,93-96,98-99,101-102,104-109,111-125,127-133,135-140,142-156,158-162,164-165
+  s_b04c58447561ba::t_11a03c6234ad62 15,45,52,141,157
+  s_b04c58447561ba::t_ce68d5053454cd 50,126
+  s_b04c58447561ba::t_ffab8a561b1e76 76-77,79,83,87,92,97,100,103,110
+  s_b04c58447561ba::t_1cdf209e1e8a60 70,73,134,163
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_b04c58447561ba::t_06b43d45a536d2 331-361
+  s_b04c58447561ba::t_4905d899c10aa8 16-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3603e3d3c77e8dc080aba30de0912b8678b055e1",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2832b667b2fecf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "492e4b80-f9d6-4e97-8f3f-e32b210754fc",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_2c14548cabdf41": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44a65183-869a-4c57-b1c4-7c10f11a4da2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_751e025e4b9653": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3ea88d3-424e-4aa8-b319-8ed4e68944de",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9d8ef652ce7177": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eaea5708-b7c3-4347-b8da-571498eec8ee",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_df7e029a7c8d36": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0c1be78f-7bf0-40b0-a45d-a0d0adae49ba",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e596506e83d3e0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1950895e-f491-4e38-9ddd-514eab952422",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

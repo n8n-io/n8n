@@ -1,0 +1,66 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_ce38e707b3774d::t_4aed02001afe4c 412-443
+packages/cli/src/modules/n8n-packages/entities/folder/folder-remover.ts
+  s_ce38e707b3774d::t_97190c3bd47170 1-4,6-28,30-37,39-120
+  s_ce38e707b3774d::t_9adb5cc49aa221 5
+  s_ce38e707b3774d::t_8237a2d1567698 29,38
+packages/@n8n/cli/docs/commands/package.md
+  s_ce38e707b3774d::t_9cce484a3908df 67,83
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_ce38e707b3774d::t_857b575b09da29 38,56-58,66-68,70,75,128-136
+packages/cli/src/services/folder.service.ts
+  s_ce38e707b3774d::t_1bd733a4be2cab 66-77
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_ce38e707b3774d::t_1c61a32e7dcdf3 2236-2238
+  s_ce38e707b3774d::t_fe47211a65f9cf 2296-2298
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_ce38e707b3774d::t_9adb5cc49aa221 76
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-remover.test.ts
+  s_ce38e707b3774d::t_1776b43ac053af 1-108
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ce38e707b3774d::t_d37731b15b59c4 287-288
+  s_ce38e707b3774d::t_60ac757e3c64b3 393-403,540,542-543
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_ce38e707b3774d::t_9adb5cc49aa221 187-192,202
+  s_ce38e707b3774d::t_a5a0a92cfb101e 256
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_ce38e707b3774d::t_9cce484a3908df 179-181,185-186,477-500
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_ce38e707b3774d::t_d37731b15b59c4 8,103-110
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_ce38e707b3774d::t_9adb5cc49aa221 10,66,78
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_ce38e707b3774d::t_9cce484a3908df 227
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_ce38e707b3774d::t_d37731b15b59c4 1061-1063
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_ce38e707b3774d::t_a5a0a92cfb101e 172
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_ce38e707b3774d::t_a5a0a92cfb101e 17,154,171,197
+  s_ce38e707b3774d::t_3efd8498b4b527 304-305
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_ce38e707b3774d::t_1c61a32e7dcdf3 76-78,147-149
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_ce38e707b3774d::t_857b575b09da29 34-38
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_ce38e707b3774d::t_8237a2d1567698 23,188-189,191,194
+  s_ce38e707b3774d::t_f5a68aa4766681 25-26,61,90,110,127,190,192-193,195-197,228,300-301,308
+packages/cli/src/modules/n8n-packages/entities/folder/folder-removal.types.ts
+  s_ce38e707b3774d::t_7c1c17cecc7711 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "93038c9e44723418c88aef0d9243cc537871d86f",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

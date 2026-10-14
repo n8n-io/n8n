@@ -1,0 +1,19 @@
+packages/testing/playwright/pages/n8nPage.ts
+  s_6292f7a6ebb209::t_fa238630a10506 166-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a328c2509eed12411544e09a08464eabc2d8169b",
+  "prompts": {},
+  "sessions": {
+    "s_6292f7a6ebb209": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79d76b24-efed-47cf-aba8-09fbf6fffd6a",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

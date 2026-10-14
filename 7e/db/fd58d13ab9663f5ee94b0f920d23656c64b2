@@ -1,0 +1,39 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_cb231a8d0fc542::t_27eb0e91cdb276 5309-5313
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/DitherTrailGrid.vue
+  s_ad6cf7dacc805b::t_8ff885c45643cc 180-183
+  s_159d8efde9b20c::t_e131b09e371c67 184
+  s_159d8efde9b20c::t_3097fe30e1085c 185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7edbfd58d13ab9663f5ee94b0f920d23656c64b2",
+  "prompts": {},
+  "sessions": {
+    "s_159d8efde9b20c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d2d0-56bd-7524-8e4b-fa3e263388d2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ad6cf7dacc805b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d342-507f-7524-8e4b-fa445503b72e",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cb231a8d0fc542": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d2f0-083c-7524-8e4b-fa4090b5cc34",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

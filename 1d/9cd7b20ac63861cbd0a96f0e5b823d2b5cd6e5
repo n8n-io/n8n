@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/__tests__/agent-tool-mock.service.test.ts
+  s_82508c87469e04::t_045abd138c2336 5,20,25-26,31-32,38,44
+  s_82508c87469e04::t_5d08915109f76a 96-99
+  s_82508c87469e04::t_34e265261a0102 174,176-177,182,185,187-188,192-194
+packages/cli/src/modules/agents/agent-tool-mock.service.ts
+  s_82508c87469e04::t_c22f9eb129906e 25-26
+  s_82508c87469e04::t_ec00d714261612 163
+  s_82508c87469e04::t_3b23647ba292dd 196-202,204-207,209-214
+  s_82508c87469e04::t_3b7b29ec2153f5 208
+  s_82508c87469e04::t_14902c18efd65c 51-52
+  s_82508c87469e04::t_e42c214314c1af 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1d9cd7b20ac63861cbd0a96f0e5b823d2b5cd6e5",
+  "prompts": {},
+  "sessions": {
+    "s_82508c87469e04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a71432a2-03b0-4483-9061-b9d762e81bfb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

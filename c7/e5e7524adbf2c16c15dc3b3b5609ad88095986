@@ -1,0 +1,93 @@
+packages/@n8n/mcp-browser-extension/manifest.json
+  s_1fb648c429eca3::t_fc328f8e92f95c 5,9-18
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupContent.vue
+  s_1fb648c429eca3::t_ce5d08e029a4df 7
+  s_1fb648c429eca3::t_f8ed2df568e4a7 27,29
+  s_1fb648c429eca3::t_3ad8325516a5d7 2
+  s_1fb648c429eca3::t_f25d7b0922231c 25,30
+  s_1fb648c429eca3::t_00911d12e0c9e8 78-79
+packages/@n8n/mcp-browser-extension/src/relayAllowlist.test.ts
+  s_1fb648c429eca3::t_7d183d2dc17978 1-6
+  s_1fb648c429eca3::t_e081840f59437d 49-77
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseConnectStep.vue
+  s_1fb648c429eca3::t_af1d3f45883547 5,9,13,17-18,20-39,50-51,53-55,58-62
+  s_1fb648c429eca3::t_68c517787a4786 102,107
+  s_1fb648c429eca3::t_d7a220cc09fbcd 40-47
+  s_1fb648c429eca3::t_a93d918a44128a 2
+  s_1fb648c429eca3::t_0e2566b3d22415 1,3-4,6-8,10-12,14-16,19,48-49,52,56-57,63-65,70-71,82,113-115,120-125
+  s_1fb648c429eca3::t_4d9d0306aead86 66-69,72-81,83-101,103-106,108-112,116-119
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseConnectStep.test.ts
+  s_1fb648c429eca3::t_29d4fd684b8733 63
+  s_1fb648c429eca3::t_0c296b3d6c7483 27-31,34-42,68,119-129
+  s_1fb648c429eca3::t_a358829227a379 1-26,32-33,43-62,64-67,69-118,130-131
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1fb648c429eca3::t_16a708ada36429 6742-6744
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.ts
+  s_1fb648c429eca3::t_8afa7a9210b300 155-160
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useExtensionDirectConnect.test.ts
+  s_1fb648c429eca3::t_88da55c3b0dabd 1-136,139-140,143-144,146-147
+  s_1fb648c429eca3::t_d045f00d35018c 137-138,141-142,145
+packages/@n8n/mcp-browser-extension/src/types.ts
+  s_1fb648c429eca3::t_0e4f583b2a52e0 76-95
+  s_1fb648c429eca3::t_7700b2ab820e1b 117-123
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiBrowserUse.telemetry.test.ts
+  s_1fb648c429eca3::t_c452fbf2d3c174 38-44
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.test.ts
+  s_1fb648c429eca3::t_4a7182cb6f4e98 60-62
+  s_1fb648c429eca3::t_723ef4a6e202a1 420-421,423,442,445-449,453
+  s_1fb648c429eca3::t_2085672229c996 143
+  s_1fb648c429eca3::t_d61f3a12675df4 422,424-441,443-444,450-452,454-455
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useExtensionDirectConnect.ts
+  s_1fb648c429eca3::t_b5049bee803c48 124
+  s_1fb648c429eca3::t_8e8b2e8edac48a 8-12
+  s_1fb648c429eca3::t_3e507a038899e0 1-7,13-90,94-99,101-110,112-123,125
+  s_1fb648c429eca3::t_bfa19ec4fb47ff 91-93,100,111
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiBrowserUse.telemetry.ts
+  s_1fb648c429eca3::t_7a45851ef014d8 15-17
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseSetupModal.test.ts
+  s_1fb648c429eca3::t_ac2c0670b9d2ce 83-86
+  s_1fb648c429eca3::t_40965e4780f034 1
+  s_1fb648c429eca3::t_5d06e6e31a98c7 117,119-122,126-135
+  s_1fb648c429eca3::t_01ffb84e361bec 20
+  s_1fb648c429eca3::t_a9a59817302076 4
+  s_1fb648c429eca3::t_48e920d197aaa5 118,123-125
+  s_1fb648c429eca3::t_c47df58ff88931 33-35,41,47-63
+  s_1fb648c429eca3::t_3a5f6a9d6b0d13 136-152
+  s_1fb648c429eca3::t_ccab9ba3326005 64-65
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  s_1fb648c429eca3::t_fcad8616c11cfd 179-180,184,186-191
+  s_1fb648c429eca3::t_5a09dfaafa6c9a 174-178,181-183,185,192-274
+  s_1fb648c429eca3::t_7adba11c5c9583 9-13,19,26-28,41-44
+  s_1fb648c429eca3::t_ea478af3d12c25 77-86
+  s_1fb648c429eca3::t_ef27d1b8f8b252 45
+packages/@n8n/mcp-browser-extension/src/relayAllowlist.ts
+  s_1fb648c429eca3::t_09043e59b756ed 28-43
+packages/@n8n/mcp-browser-extension/package.json
+  s_1fb648c429eca3::t_091eaeba516f13 3
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_1fb648c429eca3::t_5263771656c44e 136,144-188,190-260
+  h_44f8d1c0f2f8c4 189
+  s_1fb648c429eca3::t_4417f0fd8388a5 9,11-12
+  s_1fb648c429eca3::t_e3b05bfc2e7d24 261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c7e5e7524adbf2c16c15dc3b3b5609ad88095986",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1fb648c429eca3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed558d93-ce36-462a-b808-285763bb29a0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

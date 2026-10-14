@@ -1,0 +1,54 @@
+packages/@n8n/cli/README.md
+  s_1a0f848f816e2c::t_21cda9ed6a6745 64
+packages/@n8n/cli/docs/commands/package.md
+  s_1a0f848f816e2c::t_6d6b74cb4f8717 1-48
+packages/@n8n/cli/package.json
+  s_1a0f848f816e2c::t_5badc9d8ad582f 69-71
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_1a0f848f816e2c::t_17051279b329a0 1-10,15-22,29-116,121-129
+  s_1a0f848f816e2c::t_0e6aa8b5032dcb 11,23
+  s_1a0f848f816e2c::t_eb2fd6ffab8f20 12-14
+  s_1a0f848f816e2c::t_c49d870fbb491c 24-28
+  ai_agent 117-120
+packages/@n8n/cli/src/commands/package/import.ts
+  s_1a0f848f816e2c::t_ea2531283e2275 1-5,7-77
+  s_1a0f848f816e2c::t_cb897c6a0646b7 6
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_1a0f848f816e2c::t_7c642aaff4505c 1-63
+packages/@n8n/cli/src/client.ts
+  s_1a0f848f816e2c::t_4fc4cc4b295c82 12-21
+  s_1a0f848f816e2c::t_ba40dd2f085ede 27-28
+  s_1a0f848f816e2c::t_66971a49171b0a 62-69,81-91,94,108,110-111,119-123,126-135
+  ai_agent 136
+  s_1a0f848f816e2c::t_b4419ebe1b762c 429-444,446,448-453
+  s_1a0f848f816e2c::t_fa77a7db33f5dc 445
+  s_1a0f848f816e2c::t_e3f7f1aa47a85c 447
+packages/@n8n/cli/src/commands/package/export.ts
+  s_1a0f848f816e2c::t_8dcc7111c05d59 1-4,6-41,46-48
+  s_1a0f848f816e2c::t_ab27b7dcf8b22b 5
+  ai_agent 42-45
+packages/@n8n/cli/src/commands/package/shared.ts
+  s_1a0f848f816e2c::t_cffcb3913b8484 1-8,15-54
+  ai_agent 9-14
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_1a0f848f816e2c::t_e6a7743c9de814 1-72
+packages/@n8n/cli/src/index.ts
+  s_1a0f848f816e2c::t_42b1c9900aabaa 27-28
+  s_1a0f848f816e2c::t_87f83d1a21856d 126-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f9c798664ff1d27e51f86d33b0dc17bf4e546a74",
+  "prompts": {},
+  "sessions": {
+    "s_1a0f848f816e2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3132e599-7d12-40b4-b630-5b8a82820d22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

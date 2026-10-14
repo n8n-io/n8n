@@ -1,0 +1,29 @@
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_5da2fe073f2f3a::t_ff51d02acff49c 18-19
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_5da2fe073f2f3a::t_fdff543684a6e1 275-297
+  s_5da2fe073f2f3a::t_eb7b008912c828 272-274,298
+packages/@n8n/instance-ai/src/tools/orchestration/report-verification-verdict.tool.ts
+  s_5da2fe073f2f3a::t_fdff543684a6e1 144-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "135503a5c03df9fbeec5f295480f93a0d2a8fed1",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5da2fe073f2f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c08877c-0969-4b5a-9bc2-3d40e58743ff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

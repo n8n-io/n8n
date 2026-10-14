@@ -1,0 +1,31 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_8afcebef7d15aa::t_09b705772b7edc 87,106
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_8afcebef7d15aa::t_9d5db768bc1047 15-19
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_8afcebef7d15aa::t_90a934095bf1fe 247-253,257-270
+  s_8afcebef7d15aa::t_06e83e8fa182d5 254-256
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_8afcebef7d15aa::t_0560d6845e1799 45-55
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_8afcebef7d15aa::t_06e83e8fa182d5 108-114,116-118
+  s_8afcebef7d15aa::t_2ab51c09c359f9 106-107,115,119-132
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_8afcebef7d15aa::t_39b407abd8b22c 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1fb950619b5fe7df079fda9dc0ea2ea364da4977",
+  "prompts": {},
+  "sessions": {
+    "s_8afcebef7d15aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4151-46fb-7303-9526-e7f2de8e2586",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

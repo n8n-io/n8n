@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/core/dataTable/components/DataTableBreadcrumbs.test.ts
+  s_d2176d33b46066::t_beac7ae674dd9d 64
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectExternalSecrets.test.ts
+  s_d2176d33b46066::t_1911ec9da73117 383
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_d2176d33b46066::t_ed329f052b1a97 261
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_d2176d33b46066::t_6065fa487c2923 480,509
+packages/cli/src/controllers/project.controller.ts
+  s_d2176d33b46066::t_3020f3df08f72e 217-218
+packages/frontend/editor-ui/src/features/core/dataTable/dataTable.store.test.ts
+  s_d2176d33b46066::t_5ba3852794a16d 184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "11330ee4f0a855e7f7a5f6dfa6263ba98b351bc5",
+  "prompts": {},
+  "sessions": {
+    "s_d2176d33b46066": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3929aa-e141-4d14-a56a-9cf227daca62",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

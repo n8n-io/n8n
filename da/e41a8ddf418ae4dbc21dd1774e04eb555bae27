@@ -1,0 +1,79 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_c53aeae67e70d0::t_4ad6dea8e73aff 168
+  s_c53aeae67e70d0::t_178074266ad2d8 36
+  s_c53aeae67e70d0::t_47f85798c2aeff 238-253
+  s_c53aeae67e70d0::t_9ff9ad654e4fcb 66,71
+  s_c53aeae67e70d0::t_cd9e3704822872 254-255
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_c53aeae67e70d0::t_5115ef2f57062f 301-309
+  s_c53aeae67e70d0::t_5b47119d5619c7 672
+  s_c53aeae67e70d0::t_ea59f548aed95e 9-12
+  s_c53aeae67e70d0::t_bb30c3e06535ef 310
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_c53aeae67e70d0::t_bc8259dbf9bcce 127-128,137-138
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_c53aeae67e70d0::t_a91a392ebe83ab 12-18
+  s_c53aeae67e70d0::t_b0316d9216c926 129-145
+  s_c53aeae67e70d0::t_d8b0254813dfb6 114-128,146
+  s_0c136c09edb056::t_bad6ab9a13f0b6 147
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_c53aeae67e70d0::t_7eb0de646b0a7d 295
+  s_c53aeae67e70d0::t_5bb60f8865c357 7
+  s_c53aeae67e70d0::t_bc0274a4ba2bb9 99-108
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_c53aeae67e70d0::t_475655cbe73859 20
+  s_c53aeae67e70d0::t_70af7ad89b4a32 79-90
+  s_c53aeae67e70d0::t_09e964398bacd9 10
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialForm.vue
+  s_c53aeae67e70d0::t_2ae91f3ff2962e 7-10
+  s_c53aeae67e70d0::t_9af8118cb701fe 69
+  s_c53aeae67e70d0::t_1c6a0f9b2d9370 61-68,70,85
+  s_c53aeae67e70d0::t_dc0443f4ad61f7 2,5
+  s_c53aeae67e70d0::t_a446fdc0eaf243 19
+  s_c53aeae67e70d0::t_26eaedf0aed066 218-226
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_c53aeae67e70d0::t_212bcd4ba79ba9 481-490
+  s_c53aeae67e70d0::t_e6a24a3cf8914a 567
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.test.ts
+  s_c53aeae67e70d0::t_848aa6cb0055a8 3,5
+  s_c53aeae67e70d0::t_8c3b19ae2d9c36 85-123
+  s_c53aeae67e70d0::t_a1a6bd5ddfec20 124
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_c53aeae67e70d0::t_70a4176bf6e8e9 86-88
+  s_c53aeae67e70d0::t_85dcc063a7d809 789
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_c53aeae67e70d0::t_5e10e5cc0ea9b7 459-464,468
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_c53aeae67e70d0::t_ac983e360cf79e 254-267
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.test.ts
+  s_c53aeae67e70d0::t_719cf49fe7a55a 111-116
+  s_c53aeae67e70d0::t_fc274542bb99ef 6
+  s_c53aeae67e70d0::t_531b4984f9adbe 96-110,117-131
+  s_c53aeae67e70d0::t_53990fc32141f8 132
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c53aeae67e70d0::t_510c819d07ee21 6591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "dae41a8ddf418ae4dbc21dd1774e04eb555bae27",
+  "prompts": {},
+  "sessions": {
+    "s_0c136c09edb056": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51abf170-c140-45b5-9db8-b8ac8cd56fab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_c53aeae67e70d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52e45bea-55bb-4cdb-aca2-13e1c962acef",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

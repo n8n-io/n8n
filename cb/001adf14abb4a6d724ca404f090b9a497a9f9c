@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_ff953bd5fa5eff::t_0ebf04485d26d9 888-890
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cb001adf14abb4a6d724ca404f090b9a497a9f9c",
+  "prompts": {},
+  "sessions": {
+    "s_ff953bd5fa5eff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a86677f-f714-4b73-9d32-32cecd91c41c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

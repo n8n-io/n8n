@@ -1,0 +1,31 @@
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_2b4a89f78e7997::t_55a8bbe0fb3e6b 1072-1075,1083
+packages/workflow/test/sub-workflow-output.test.ts
+  s_2b4a89f78e7997::t_739ec2b14f754d 3,233-253,274-282
+packages/testing/playwright/tests/e2e/workflows/editor/subworkflows/output.spec.ts
+  s_2b4a89f78e7997::t_c03960ffad98d0 65-66
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_2b4a89f78e7997::t_5c3e41c581a94e 47,552-557
+  s_2b4a89f78e7997::t_9dcba368365736 599-601,724,733-736
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_2b4a89f78e7997::t_55f5ea461bf9c8 26,1991-1997,2023,2025,2027-2035
+  s_2b4a89f78e7997::t_f5af71e06658a8 2010-2017,2037-2045,2057-2059
+  s_2b4a89f78e7997::t_7a577a83741e44 2026
+  s_2b4a89f78e7997::t_55a8bbe0fb3e6b 1998-2009,2018-2022,2024,2036,2046-2056,2060-2062
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6753774ec76de000ce45445384c8fddab232830",
+  "prompts": {},
+  "sessions": {
+    "s_2b4a89f78e7997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e756-7f52-77d2-be06-7dedfde4aa9f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

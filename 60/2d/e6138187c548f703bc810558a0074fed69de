@@ -1,0 +1,24 @@
+packages/@n8n/instance-ai/docs/tools.md
+  s_33412ab6e22c2c::t_b65bdf65790a1c 613-619
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_33412ab6e22c2c::t_66c5ccd7a14841 87-93
+  s_33412ab6e22c2c::t_aae7bfeb9aec7e 114-115,503-505
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_33412ab6e22c2c::t_d556c13a47ac0d 61-97,104-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "602de6138187c548f703bc810558a0074fed69de",
+  "prompts": {},
+  "sessions": {
+    "s_33412ab6e22c2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84ae465c-f394-4bba-81e6-5d6b56fee38d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/nodes-base/nodes/Microsoft/Sql/GenericFunctions.ts
+  h_6d5d89e72ea27d 344-345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6459331f9f3bc72b375177835056d12298ac8a4d",
+  "prompts": {},
+  "humans": {
+    "h_6d5d89e72ea27d": {
+      "author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

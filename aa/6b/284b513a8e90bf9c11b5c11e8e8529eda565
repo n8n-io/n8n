@@ -1,0 +1,97 @@
+docs/generated/postgres-schema/README.md
+  s_0891c4f68590e2::t_60892d0b423aa7 85,1047
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_c9f3334d657b3a::t_9e101d2881c4e0 182
+  s_c9f3334d657b3a::t_e1eb0fd621d496 1321
+  s_c9f3334d657b3a::t_24ef8092ef42e6 78
+  s_0891c4f68590e2::t_fed9671648e083 147-181,183-234,259-278
+  s_c9f3334d657b3a::t_b82527d07589a0 235-258
+  s_c9f3334d657b3a::t_6b65defca52a33 9,12-17
+  s_c9f3334d657b3a::t_4f101d59014791 1367
+  s_c9f3334d657b3a::t_d05f2fde2a3f10 41-43,53-54
+  s_c9f3334d657b3a::t_981952102d6142 18
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_c9f3334d657b3a::t_6b65defca52a33 70
+  s_c9f3334d657b3a::t_9f77f2e76eccac 539-544
+docs/generated/postgres-schema/public.oauth_user_consents.md
+  s_0891c4f68590e2::t_60892d0b423aa7 55
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_c9f3334d657b3a::t_050aadd67f4d28 27
+  s_c9f3334d657b3a::t_2283d29085fae2 106
+  s_c9f3334d657b3a::t_6b65defca52a33 25,28
+  s_c9f3334d657b3a::t_5e55b6baf83568 245,247-253
+  s_c9f3334d657b3a::t_a76468d448f365 208-215,218-219
+  s_c9f3334d657b3a::t_2bfd9207734b00 568
+  s_c9f3334d657b3a::t_b4f58b8bd32817 615-616
+  s_c9f3334d657b3a::t_f135ca84035025 114,151,163,172,186,198-207,216-217,220-244,246
+docs/generated/postgres-schema/public.oauth_clients.md
+  s_0891c4f68590e2::t_60892d0b423aa7 12,26,54
+docs/generated/sqlite-schema/oauth_authorization_codes.md
+  s_0891c4f68590e2::t_66860216b9f5ab 76
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_0891c4f68590e2::t_66860216b9f5ab 60
+docs/generated/postgres-schema/public.oauth_access_tokens.md
+  s_0891c4f68590e2::t_60892d0b423aa7 47
+packages/cli/src/modules/oauth-server/__tests__/oauth-flow.service.api.test.ts
+  s_c9f3334d657b3a::t_4817bc88c03b2c 131
+  s_0891c4f68590e2::t_7f67462ef01359 20-22
+  s_c9f3334d657b3a::t_eedfe6b72582e1 7
+  s_c9f3334d657b3a::t_6b65defca52a33 10-11
+  s_0891c4f68590e2::t_b360663597f489 1-6,8-9,12-19,23-130,132-208,221
+  s_c9f3334d657b3a::t_635c2a09081493 209-220
+packages/cli/src/modules/oauth-server/database/repositories/oauth-user-consent.repository.ts
+  s_c9f3334d657b3a::t_c0c4160f3b956c 56-60
+  s_c9f3334d657b3a::t_4860b1a0107d37 94,99-100,108-120
+  s_c9f3334d657b3a::t_af0574e5eb9b21 121
+docs/generated/sqlite-schema/oauth_access_tokens.md
+  s_0891c4f68590e2::t_66860216b9f5ab 56
+docs/generated/sqlite-schema/README.md
+  s_0891c4f68590e2::t_66860216b9f5ab 85,1034
+packages/cli/src/modules/oauth-server/__tests__/form-trigger-resource.resolver.api.test.ts
+  s_0891c4f68590e2::t_5ece8735417470 1-279
+docs/generated/sqlite-schema/oauth_clients.md
+  s_0891c4f68590e2::t_66860216b9f5ab 9,23,58
+packages/cli/src/modules/oauth-server/oauth-flow.service.ts
+  s_c9f3334d657b3a::t_6b65defca52a33 5-10
+  s_c9f3334d657b3a::t_c0c2234e8b5233 79-118
+  s_c9f3334d657b3a::t_f479205212a8f0 1-4
+  s_c9f3334d657b3a::t_280f9a071ebeec 40
+  s_c9f3334d657b3a::t_9855295d25d632 11-39,41-78,119-121
+packages/cli/src/modules/oauth-server/__tests__/oauth-clients.controller.api.test.ts
+  s_c9f3334d657b3a::t_6f570444812a2f 108-146
+packages/cli/src/modules/oauth-server/__tests__/form-trigger-test-resource.resolver.api.test.ts
+  s_0891c4f68590e2::t_6df077f167c2f3 13
+  s_0891c4f68590e2::t_801f41a2f579eb 247-252
+  s_0891c4f68590e2::t_05ece7f656f0d4 1-12,14-246,253-256,259-271
+  s_0891c4f68590e2::t_27d1fb5c89b4c1 257-258
+docs/generated/sqlite-schema/oauth_refresh_tokens.md
+  s_0891c4f68590e2::t_66860216b9f5ab 64
+docs/generated/postgres-schema/public.oauth_authorization_codes.md
+  s_0891c4f68590e2::t_60892d0b423aa7 75
+docs/generated/postgres-schema/public.oauth_refresh_tokens.md
+  s_0891c4f68590e2::t_60892d0b423aa7 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "aa6b284b513a8e90bf9c11b5c11e8e8529eda565",
+  "prompts": {},
+  "sessions": {
+    "s_0891c4f68590e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "401bc341-73cc-418c-852c-0fbd604d5ee6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_c9f3334d657b3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f192e212-3f6d-419f-9fac-5686dcc75fc5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

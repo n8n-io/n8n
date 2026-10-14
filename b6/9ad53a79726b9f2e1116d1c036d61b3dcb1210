@@ -1,0 +1,193 @@
+packages/core/src/execution-engine/workflow-execute.ts
+  s_b640473a6277bf::t_cd7e23d2518f83 7
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/TextClassifier.node.ts
+  s_b640473a6277bf::t_12b42bde96b942 3-4
+packages/nodes-base/nodes/Databricks/actions/databricksSql/executeQuery.operation.ts
+  s_b640473a6277bf::t_c9a35210f3f2b6 1,4
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV3.test.ts
+  s_b640473a6277bf::t_23c7530eb0061b 33-35
+  s_b640473a6277bf::t_06b6bd7791b4dc 1-2
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_b640473a6277bf::t_7032561a10d80c 11,13
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/transport/index.ts
+  s_b640473a6277bf::t_db1715e6c47d32 7-8
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_b640473a6277bf::t_d03c9f3949abb2 9
+packages/nodes-base/nodes/Splunk/v1/GenericFunctions.ts
+  s_b640473a6277bf::t_c47b04123257de 9,12
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_b640473a6277bf::t_c8f62489e3c0cb 2268-2269
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.test.ts
+  s_b640473a6277bf::t_0b3a32153609cc 1-23
+packages/nodes-base/nodes/Twitter/V1/GenericFunctions.ts
+  s_b640473a6277bf::t_3f31ae47e32b89 10-12
+packages/cli/src/modules/insights/insights-compaction.service.ts
+  s_b640473a6277bf::t_fca4ef7838f49d 4
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_b640473a6277bf::t_6a857bf0f6447c 9
+packages/cli/src/modules/chat-hub/chat-hub-execution.service.ts
+  s_b640473a6277bf::t_40b12c9429c0ec 11
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  ai_agent 30
+packages/nodes-base/nodes/Kafka/test/KafkaTrigger.node.test.ts
+  s_b640473a6277bf::t_7d23ef15c32dcc 23-25
+packages/cli/src/active-executions.ts
+  s_b640473a6277bf::t_be46507dcae3f2 20
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_b640473a6277bf::t_1648bbccd9504f 26-27
+packages/frontend/@n8n/rest-api-client/src/api/nodeTypes.ts
+  s_b640473a6277bf::t_b976f260786094 10
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_b640473a6277bf::t_b976f260786094 4
+packages/cli/src/crash-journal.ts
+  s_b640473a6277bf::t_8a82c0a52d09f4 5
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/utils/WorkflowToolService.ts
+  s_b640473a6277bf::t_99944f58f3342e 30
+  s_b640473a6277bf::t_24dac8617a96a3 126
+packages/nodes-base/nodes/Discord/test/v2/transport/discord.api.test.ts
+  s_b640473a6277bf::t_263c9c9cae303b 3,9
+packages/cli/src/modules/agents/integrations/platforms/slack-bridge-behavior.ts
+  s_b640473a6277bf::t_eeb4013f381324 197-201
+  s_b640473a6277bf::t_826d09e00106af 2
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/transport.test.ts
+  s_b640473a6277bf::t_9fc9ff4191e249 7-9
+packages/cli/src/commands/start.ts
+  s_b640473a6277bf::t_a45e40dddcd1d0 17-18
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_b640473a6277bf::t_9059069b3b49cb 19
+packages/@n8n/utils/src/sleep.ts
+  s_b640473a6277bf::t_0704a2dcbaa6e5 1-30
+packages/core/src/execution-engine/routing-node.ts
+  s_b640473a6277bf::t_8ec458a2731476 6
+packages/@n8n/nodes-langchain/nodes/chains/ChainRetrievalQA/ChainRetrievalQa.node.ts
+  s_b640473a6277bf::t_c3d5ba33c4c24a 1-2
+packages/@n8n/nodes-langchain/nodes/chains/ChainSummarization/V2/ChainSummarizationV2.node.ts
+  s_b640473a6277bf::t_1bca0fc070a9b4 10-11
+packages/cli/test/integration/database/services/db-lock.service.test.ts
+  s_b640473a6277bf::t_429d2d0f02c008 6-7
+packages/cli/src/task-runners/task-runner-module.ts
+  s_b640473a6277bf::t_3c72fac1ff7015 6
+packages/cli/src/concurrency/__tests__/concurrency-queue.test.ts
+  s_b640473a6277bf::t_06e276069d26a6 1
+packages/nodes-base/nodes/HttpRequest/V1/HttpRequestV1.node.ts
+  s_b640473a6277bf::t_8680b290f6519f 20
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_b640473a6277bf::t_014ab498189f94 24
+  s_b640473a6277bf::t_853378760c953f 49
+packages/@n8n/nodes-langchain/nodes/chains/ChainLLM/ChainLlm.node.ts
+  s_b640473a6277bf::t_6c29f9f9ddffc4 7-8
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.ts
+  s_b640473a6277bf::t_a9070dc62d88ff 29-33
+  s_b640473a6277bf::t_b43961d1495a25 1-28,34-39
+packages/nodes-base/nodes/Discord/v2/transport/helpers.ts
+  s_b640473a6277bf::t_643622f78d6a81 9
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_b640473a6277bf::t_fe5fa449f31da1 5-6
+packages/cli/src/scaling/scaling.service.ts
+  s_b640473a6277bf::t_fdd2ce2a88f25d 9-10
+packages/nodes-base/nodes/Kafka/test/utils.test.ts
+  s_b640473a6277bf::t_26e2ac78c726fc 12-13,32-34
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_b640473a6277bf::t_24463f608b103b 2,4,18-20
+packages/nodes-base/nodes/Zoom/GenericFunctions.ts
+  s_b640473a6277bf::t_d6e99fab963d5c 69
+  s_b640473a6277bf::t_85754264a63172 1
+packages/@n8n/instance-ai/src/workspace/builder-templates-service.ts
+  s_b640473a6277bf::t_53fa0cc320f4ad 48
+packages/cli/src/workflows/triggers/trigger-activation-retry.ts
+  s_b640473a6277bf::t_ef25e3d062a637 2-3
+packages/workflow/src/utils.ts
+  s_b640473a6277bf::t_55b110c6bdb1f5 244-247
+packages/@n8n/nodes-langchain/nodes/chains/InformationExtractor/InformationExtractor.node.ts
+  s_b640473a6277bf::t_8803372a50de06 4-5
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/test/TextClassifier.node.test.ts
+  s_b640473a6277bf::t_444a21360029b6 2,14-16
+  ai_agent 157-158
+packages/@n8n/eslint-config/src/plugin.ts
+  s_b640473a6277bf::t_22d07329fe4c91 31
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_b640473a6277bf::t_5c8898c43261ba 4-7
+packages/cli/src/commands/base-command.ts
+  s_b640473a6277bf::t_0579109edc5442 27-28
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_b640473a6277bf::t_96133321877a53 9-10
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_b640473a6277bf::t_973fa368779269 6-7
+packages/cli/src/services/cache/__tests__/cache.service.test.ts
+  s_b640473a6277bf::t_98799848fb96b8 3
+packages/nodes-base/nodes/Simulate/SimulateTrigger.node.ts
+  s_b640473a6277bf::t_0e754f8542c61a 1,11
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/transport/index.ts
+  s_b640473a6277bf::t_7001a0478c23e8 7-8
+packages/cli/test/integration/workflow-history-compaction.service.test.ts
+  s_b640473a6277bf::t_09569da665deff 6,9
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/ToolWorkflowV2.test.ts
+  s_b640473a6277bf::t_b8e9ed7044edda 2-3,15-16,20
+  s_b640473a6277bf::t_23f9e2a0b366f8 764-765,805,880,906,937,964,968,992
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_b640473a6277bf::t_5046a5bb04a742 25-26
+packages/nodes-base/nodes/RabbitMQ/GenericFunctions.ts
+  s_b640473a6277bf::t_1c8daf8c4a1352 12,14
+packages/cli/src/wait-tracker.ts
+  s_b640473a6277bf::t_930f6a215a2957 7
+packages/cli/src/executions/execution-recovery.service.ts
+  s_b640473a6277bf::t_9e70686045d0b7 14,16
+packages/nodes-base/nodes/Splunk/v2/transport/index.ts
+  s_b640473a6277bf::t_e0f9a5d5182db4 10,12
+packages/nodes-base/nodes/Google/Calendar/GenericFunctions.ts
+  s_b640473a6277bf::t_7dea2f455db817 15,18
+packages/cli/src/__tests__/active-executions.test.ts
+  s_b640473a6277bf::t_b6c5326229e685 14
+  s_b640473a6277bf::t_e1c63bf7b8c104 32
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts
+  s_b640473a6277bf::t_1e14cf360e9f84 6,10
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/test/transport.test.ts
+  s_b640473a6277bf::t_f31b314f6d41bc 7-9
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-input-connection-data.test.ts
+  s_b640473a6277bf::t_8c48117ebec464 43-45
+  ai_agent 956
+  s_b640473a6277bf::t_cba536f4896fde 46-47,49
+  s_b640473a6277bf::t_cd7e23d2518f83 3,881,904-905,981,984,1029,1042,1044,1069,1081,1083
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/execute.ts
+  s_b640473a6277bf::t_744e87bec9e792 9-10
+packages/cli/src/workflows/triggers/__tests__/trigger-activation-retry.test.ts
+  s_b640473a6277bf::t_e97bf6e419c312 8
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_b640473a6277bf::t_fcc441679847fb 5,7
+packages/@n8n/utils/src/sleep.test.ts
+  s_b640473a6277bf::t_14535c16abc4ef 1-62
+packages/@n8n/nodes-langchain/nodes/chains/SentimentAnalysis/SentimentAnalysis.node.ts
+  s_b640473a6277bf::t_eac22a1ee0a3c6 5-6
+packages/nodes-base/nodes/Google/BigQuery/v2/actions/database/executeQuery.operation.ts
+  s_b640473a6277bf::t_b1238f014ecfaf 7,9
+packages/nodes-base/nodes/HttpRequest/V2/HttpRequestV2.node.ts
+  s_b640473a6277bf::t_c38cd9bc674132 21
+packages/nodes-base/nodes/Discord/v1/DiscordV1.node.ts
+  s_b640473a6277bf::t_a1ee70891ea1ac 10-11
+  ai_agent 9
+packages/core/src/execution-engine/node-execution-context/utils/get-input-connection-data.ts
+  s_b640473a6277bf::t_f7f246eae72471 265
+  s_b640473a6277bf::t_13ba5f0cb1fe70 3
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_b640473a6277bf::t_c506f4a5ddbe80 24-25
+packages/cli/src/task-runners/task-broker/auth/__tests__/task-broker-auth.service.test.ts
+  s_b640473a6277bf::t_1fb882da83977b 4
+packages/nodes-base/nodes/Simulate/Simulate.node.ts
+  s_b640473a6277bf::t_94b10237124727 1,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b69ad53a79726b9f2e1116d1c036d61b3dcb1210",
+  "prompts": {},
+  "sessions": {
+    "s_b640473a6277bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3defa317-c484-471a-92a3-139834624ce5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

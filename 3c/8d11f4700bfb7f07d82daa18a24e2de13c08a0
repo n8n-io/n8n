@@ -1,0 +1,57 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  s_8de443be96819f::t_9ee02819f7902d 20,63,188-207,209,218,223,229,234,238,244-245,247,255,259,265,274,278,281,286,290,293
+  s_8de443be96819f::t_464b62c2ccc4bd 30
+  s_8de443be96819f::t_5a7d49c45d6165 176-180
+  s_8de443be96819f::t_b46f3a88e9413b 17-19
+  s_8de443be96819f::t_43e47f1d5f97e1 21-23,27-29
+  s_8de443be96819f::t_e6c96e0eaf06e1 31-33,60-62
+  s_8de443be96819f::t_839a8b3d1d2ff5 64-66,173-175
+  s_8de443be96819f::t_5deb43174f0446 181-183,185-187
+  s_8de443be96819f::t_650b09ca7f5a3f 208
+  s_8de443be96819f::t_70afb64cd70452 210-212,215-217
+  s_8de443be96819f::t_31911bc93eb2d2 219-222
+  s_8de443be96819f::t_698f55fbda5dd4 224-228
+  s_8de443be96819f::t_caa565edc23210 230-233
+  s_8de443be96819f::t_a03b6ed6553340 235-237
+  s_8de443be96819f::t_76079d9de26ddc 239-243
+  s_8de443be96819f::t_405b54420fdad8 246
+  s_8de443be96819f::t_d0d0916922b29c 248-250,252-254
+  s_8de443be96819f::t_8b981fc09c2a40 256-258
+  s_8de443be96819f::t_b534412a472be6 260-264
+  s_8de443be96819f::t_1b7a586e17c1f3 266-268,271-273
+  s_8de443be96819f::t_f6e4b81b3867d5 275-277
+  s_8de443be96819f::t_63bb0160d98c63 279-280
+  s_8de443be96819f::t_4e3150baa1b262 282-285
+  s_8de443be96819f::t_cb1a486450bf70 287-289
+  s_8de443be96819f::t_651f0203a7b975 291-292
+  s_8de443be96819f::t_b44cb8ccf80841 294-296
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_8de443be96819f::t_0d9074d7624c9f 28,90
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_8de443be96819f::t_ad8d8beefc3cab 305
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_8de443be96819f::t_9c43c500ee77eb 75,88,109,147-155
+  s_8de443be96819f::t_af257af294e901 36,170,243
+  s_8de443be96819f::t_63fcee743d46d3 991-1010
+  s_8de443be96819f::t_d0239a66cd8467 990
+  s_8de443be96819f::t_0b6b446d4aa0c1 1065
+  s_8de443be96819f::t_7377015d7f49de 156
+  s_8de443be96819f::t_a273efc8129599 987-989
+  s_8de443be96819f::t_fccc051c9c8070 1011-1012
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c8d11f4700bfb7f07d82daa18a24e2de13c08a0",
+  "prompts": {},
+  "sessions": {
+    "s_8de443be96819f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fbe6-1695-734c-95cc-24258bde269e",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

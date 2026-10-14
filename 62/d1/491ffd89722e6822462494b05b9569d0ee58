@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_da76d9a372587f::t_06cb53d199c02b 813-816
+  s_da76d9a372587f::t_4802e30eab6e9b 812
+  s_da76d9a372587f::t_6a3869cb1ca2ec 851-853
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-loader.service.ts
+  s_da76d9a372587f::t_6d10589be4db1d 7-8,18-19
+  s_da76d9a372587f::t_da86f134cb841e 46-48,52
+packages/cli/src/modules/agents/tools/workflow-tool-unavailable-error.ts
+  s_da76d9a372587f::t_07fe107d54a7e2 5-7,14
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_da76d9a372587f::t_9afb2e16603a18 96
+  s_da76d9a372587f::t_246d86fa132319 153,183,290
+  s_da76d9a372587f::t_8fb67bcfc51258 3
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_da76d9a372587f::t_d804ad5cb533b8 195
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-workflow-loader.service.test.ts
+  s_da76d9a372587f::t_3f29ebcafbfdf0 7
+  s_da76d9a372587f::t_2395141190cd6b 100-102,104-107
+  s_da76d9a372587f::t_e4670a67708d6d 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "62d1491ffd89722e6822462494b05b9569d0ee58",
+  "prompts": {},
+  "sessions": {
+    "s_da76d9a372587f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "36580568-4139-410e-9a53-a65ce73b9023",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  s_5814610743239a::t_911b525131e229 245,252
+  s_5814610743239a::t_4faaf66ab36acd 143-145,147,151,157,161
+  h_5d40c27a8fdfd1 146
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_5814610743239a::t_dc3dc2f7afae70 25-27,30,35
+  s_5814610743239a::t_65cf910ec8853d 540-541
+  s_5814610743239a::t_6d82b628175c6c 21-24,28-29
+  s_5814610743239a::t_8a89efaa0c9f62 3
+  h_5d40c27a8fdfd1 538
+  s_5814610743239a::t_3b85988f73ba42 543,545
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_5814610743239a::t_ebab0884825cc5 135
+packages/cli/src/credentials/credentials.service.ts
+  s_5814610743239a::t_4be90ccb0ab089 22
+  s_5814610743239a::t_86b09add29a252 113
+packages/@n8n/db/src/repositories/index.ts
+  s_5814610743239a::t_3be35169572aa7 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "4aef11fdf91b6bf0b77c92971b4e5fd70fa8112e",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_5814610743239a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39d4de9e-ec83-446f-876b-bbf5ac0dfb22",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

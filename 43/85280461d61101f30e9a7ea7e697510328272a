@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/builder/__tests__/resolve-integration.tool.test.ts
+  s_3f16b3c7dbea10::t_f44029fb41b18f 26
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_3f16b3c7dbea10::t_22babca66c8bfe 502-504,506-508
+  s_3f16b3c7dbea10::t_7b070120ebdd3e 509-514
+packages/cli/src/modules/agents/builder/__tests__/search-mcp-servers.tool.test.ts
+  s_3f16b3c7dbea10::t_ca2cf8219c826e 32
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_3f16b3c7dbea10::t_f669b99fecc434 49
+  s_3f16b3c7dbea10::t_6151faad2c7e39 27-29
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry-search.test.ts
+  s_3f16b3c7dbea10::t_4e4e33e5ee1eb9 50
+  s_3f16b3c7dbea10::t_633b7c9e2d6ac8 102-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4385280461d61101f30e9a7ea7e697510328272a",
+  "prompts": {},
+  "sessions": {
+    "s_3f16b3c7dbea10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce04b445-967b-4c3a-a64d-270eb52dcd7e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

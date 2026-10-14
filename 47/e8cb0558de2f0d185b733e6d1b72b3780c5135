@@ -1,0 +1,21 @@
+packages/@n8n/backend-services/package.json
+  s_5b85161403cb3c::t_7538333b3d21b7 40-42,60-61
+pnpm-lock.yaml
+  s_5b85161403cb3c::t_3c7195fd589587 1913-1915
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47e8cb0558de2f0d185b733e6d1b72b3780c5135",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

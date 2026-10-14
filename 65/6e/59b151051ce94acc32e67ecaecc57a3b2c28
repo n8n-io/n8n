@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_d7e0c3d428b4f6::t_0a4f4b901e1395 48-54
+  s_d7e0c3d428b4f6::t_afd3601abfefc1 47,55-63,374-375,378-381
+packages/cli/src/modules/agents/tools/input-data-tool.ts
+  s_d7e0c3d428b4f6::t_b416e9a4ae1aaa 18-20,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "656e59b151051ce94acc32e67ecaecc57a3b2c28",
+  "prompts": {},
+  "sessions": {
+    "s_d7e0c3d428b4f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff528-3c21-7e43-90d8-d2e7dcf42a92",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_72c806d61e12d2::t_21c8bb2f10b2fd 21-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d9276aad51563e3e0a7e0bd3bd6afb26bad3b788",
+  "prompts": {},
+  "sessions": {
+    "s_72c806d61e12d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3454581-e439-4779-af65-52bc313bbe43",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

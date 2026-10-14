@@ -1,0 +1,20 @@
+.claude/plugins/n8n/skills/community-pr-readiness-check/SKILL.md
+  s_709fbaebffaf95::t_a1dc2aa607d25f 119
+  s_709fbaebffaf95::t_e04408eebd8941 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "770cf9ba3f034b23c0da0d25cfd0f8ad24415774",
+  "prompts": {},
+  "sessions": {
+    "s_709fbaebffaf95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d172b003-3e9c-49bd-b41e-1d159b079d54",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

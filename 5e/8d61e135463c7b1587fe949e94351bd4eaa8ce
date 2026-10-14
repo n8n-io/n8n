@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/tools/workflows/preserve-node-positions.ts
+  s_7887e2d350f40f::t_bc55fae2b7efdb 247,252,259,328,352
+  s_7887e2d350f40f::t_41874b8ed01854 93-95,98-106,110,115-116,122-125
+  s_7887e2d350f40f::t_215df1fd76335d 156-157,165,171,175,185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e8d61e135463c7b1587fe949e94351bd4eaa8ce",
+  "prompts": {},
+  "sessions": {
+    "s_7887e2d350f40f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62dd6632-b49e-473a-b9fb-b7945d59c21e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

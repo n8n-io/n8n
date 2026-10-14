@@ -1,0 +1,27 @@
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_704a1a6a42be24::t_4b8910414be87f 3,9
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_704a1a6a42be24::t_bdfc5653b395e8 12
+  s_704a1a6a42be24::t_aadbfa704dbd23 5617-5637
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.builderAskedForInput.test.ts
+  s_704a1a6a42be24::t_4dc13d830b91e9 167-188,191-222
+  s_704a1a6a42be24::t_9944680f136cc7 189-190
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_704a1a6a42be24::t_a5fb885badc458 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "40db14c74bae83a003967e29931799c18c48c4d4",
+  "prompts": {},
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

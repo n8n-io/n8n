@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_df8243638347b9::t_b67f213803c1ae 436,444,447,459,481
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_df8243638347b9::t_b20a9922e0e179 388
+  s_df8243638347b9::t_b67f213803c1ae 30,241,379-380,394,467,506,839
+  s_df8243638347b9::t_e0f036889c29e7 466
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_df8243638347b9::t_b67f213803c1ae 256,259
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_df8243638347b9::t_3df8d61ada47d6 95
+  s_df8243638347b9::t_470ff61b771d34 448,507,517-518,520-523,525-527
+  s_df8243638347b9::t_5e1e05677df50e 519,524
+  s_df8243638347b9::t_ee19c88b9a54d5 444
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_df8243638347b9::t_470ff61b771d34 195,202-205,207-208,211,222-224,230,234-235,240-245,247,255-256,271-276,290-306,309-312,327
+  s_df8243638347b9::t_a2113bbd5ab3c2 22-25,27,179-184
+  s_df8243638347b9::t_ee19c88b9a54d5 185
+  s_df8243638347b9::t_3df8d61ada47d6 26
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_df8243638347b9::t_3ecb7317e254eb 161-163
+  s_df8243638347b9::t_e0f036889c29e7 131,165-170
+  s_df8243638347b9::t_6140d4369bc6c5 30,157,201,203,904-910,923-927
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_df8243638347b9::t_e0f036889c29e7 167-173
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_df8243638347b9::t_b67f213803c1ae 9-10,35,37-43,59,67,70,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6797a83fef800c6886f803e019015ba099b165a",
+  "prompts": {},
+  "sessions": {
+    "s_df8243638347b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10b2f-3eee-7921-b1a8-80453ec84034",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

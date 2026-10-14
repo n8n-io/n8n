@@ -1,0 +1,60 @@
+packages/cli/src/modules/agents/builder/interactive/index.ts
+  s_fda6ba496c8fd3::t_5aca7a2016363f 1
+packages/cli/src/modules/agents/builder/prompts/planner-todos.prompt.ts
+  s_fda6ba496c8fd3::t_2dcf07c54909bb 1-26
+packages/@n8n/agents/src/index.ts
+  s_fda6ba496c8fd3::t_dfd374fd6f87df 285
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_fda6ba496c8fd3::t_8f3f555a3cbff4 602,605
+  s_fda6ba496c8fd3::t_dad9264bf6354e 624-625
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_fda6ba496c8fd3::t_f86d88007f5c9e 69-73
+  s_fda6ba496c8fd3::t_9e7bfbc36c09c5 13-17,19
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_fda6ba496c8fd3::t_9c24d112c46dc8 164-170,179
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_fda6ba496c8fd3::t_659e1ef2dec24c 85
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfigAutosave.test.ts
+  s_fda6ba496c8fd3::t_b2feb327ac6075 95-113
+packages/@n8n/agents/src/runtime/tools/planner-todos-tool.ts
+  s_fda6ba496c8fd3::t_492e8aae359022 28-30,33,35,38,48-54,56,58-59
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_fda6ba496c8fd3::t_59375d53f10636 489-512
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_fda6ba496c8fd3::t_f495d4a838bc68 35-41
+  s_fda6ba496c8fd3::t_49a5d1fd984e44 203,205-206,213
+  s_fda6ba496c8fd3::t_09a2e2e96673ce 216-230
+  s_fda6ba496c8fd3::t_981d6ae7f6e6f2 120-127
+  s_fda6ba496c8fd3::t_bca4046b5d9ddb 195,204,207
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_fda6ba496c8fd3::t_8f11d52a6c920b 265-266,269,275
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_fda6ba496c8fd3::t_5f151e79166e04 55
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_fda6ba496c8fd3::t_24b60b6f609721 522-526
+  s_fda6ba496c8fd3::t_1b11f44cbfbf31 543-548
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_fda6ba496c8fd3::t_1c13de4b9dcd63 565,584-596
+  s_fda6ba496c8fd3::t_76f79f91069b38 597-598
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_fda6ba496c8fd3::t_78deff5467feed 283-288
+  s_fda6ba496c8fd3::t_0b8f3c662a3666 31-34
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_fda6ba496c8fd3::t_9693989a7bd54d 317,430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d4fc4229c0abf75291a7e2dcff61cf78f61e7423",
+  "prompts": {},
+  "sessions": {
+    "s_fda6ba496c8fd3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "68b4961a-de46-438a-af45-50ea2d0f6ec7",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

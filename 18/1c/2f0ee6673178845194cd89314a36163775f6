@@ -1,0 +1,68 @@
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_e5a64625bc5cd1::t_f064d84bcfac52 11,65,74,86-94,99-107,135-139,145-149
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_e5a64625bc5cd1::t_3b210830ec3866 29,31-32,49,58,187-188,197,261-262,267-268,292-449
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_e5a64625bc5cd1::t_e70aaa33248c44 35-36,299-300
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_e5a64625bc5cd1::t_4a1dfa5731ccd8 12-13,29-30,56,96-97,113-133,140,145,154-163,185,240-246
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_e5a64625bc5cd1::t_08ab87b453fa55 25,407,414-423,430-451
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_e5a64625bc5cd1::t_dac139d3175300 44,64-66,275-276,413,422-531
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_e5a64625bc5cd1::t_a163f1ea7acdc9 402-473,689-719
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_e5a64625bc5cd1::t_4b84117cf48f0e 16,58-76
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_e5a64625bc5cd1::t_f98e60e423aa18 6-8,55-69,76,101,103-108,195-202,205,224-228,239-259,274
+  s_e5a64625bc5cd1::t_86d83563cd05a9 102
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_e5a64625bc5cd1::t_73868a5dde5753 153-159,164,166,175-180,196-227,271,278,282,284-289
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_e5a64625bc5cd1::t_c7ea8d644cea2e 8,11,66-67,158,168-171,217-219
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_e5a64625bc5cd1::t_c96dd389e44205 5-7,15-22,52,70-71,106,108-115,138-139,147-236,239-243,245-291,303
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_e5a64625bc5cd1::t_9da4d32f71d0ac 32,1559-1593
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_e5a64625bc5cd1::t_0bd5c86955870d 6,16,24-34,38,46,64,81-97
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_e5a64625bc5cd1::t_4722ce25f39976 495-528
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_e5a64625bc5cd1::t_d78d061a082772 20,80-93,101-102,148,241,246,273
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_e5a64625bc5cd1::t_f14a75855e9f76 13,32,38-39,100-104,117-128,135,164,268,311-316,323,329,476-502
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_e5a64625bc5cd1::t_265f2f4a8f0794 8,12,31,33-47,316-659,1304-1305
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e5a64625bc5cd1::t_c19b982c8ed6a1 7940-7942
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_e5a64625bc5cd1::t_1d313601bab169 8,35-36,38-41,72-73,102,153,255,454-529
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_e5a64625bc5cd1::t_7ff18cab0231c0 7,12,14-17,136-180
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_e5a64625bc5cd1::t_848e28647ec5af 19,26,38-41,54,192,203-205,248-284,809-826,1078-1093
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_e5a64625bc5cd1::t_f20044e6e92603 8,551-565
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  s_e5a64625bc5cd1::t_f5eda2cea546e9 4,14,38-39,125-151,203
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_e5a64625bc5cd1::t_930afa5b705a9d 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "181c2f0ee6673178845194cd89314a36163775f6",
+  "prompts": {},
+  "sessions": {
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

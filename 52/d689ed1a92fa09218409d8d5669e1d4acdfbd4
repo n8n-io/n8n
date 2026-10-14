@@ -1,0 +1,20 @@
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_a2f2604c6a0758::t_1bdbfb93d777ed 217-226,228-234,236-238
+  s_a2f2604c6a0758::t_002df89ea4f63a 227,235,239-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "52d689ed1a92fa09218409d8d5669e1d4acdfbd4",
+  "prompts": {},
+  "sessions": {
+    "s_a2f2604c6a0758": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2eebeab3-c2f8-45bc-a543-37d531da2598",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

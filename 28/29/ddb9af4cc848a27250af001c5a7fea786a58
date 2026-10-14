@@ -1,0 +1,23 @@
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  s_74402fcac1c7e4::t_2020fff7c0dd3c 7
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/web-fetch.utils.test.ts
+  s_74402fcac1c7e4::t_a75a3b990043d6 2
+packages/@n8n/db/src/connection/db-connection.ts
+  s_74402fcac1c7e4::t_6964bb803bb9e2 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2829ddb9af4cc848a27250af001c5a7fea786a58",
+  "prompts": {},
+  "sessions": {
+    "s_74402fcac1c7e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e853d50-a6b5-4c82-b935-d5a8f8ad1608",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

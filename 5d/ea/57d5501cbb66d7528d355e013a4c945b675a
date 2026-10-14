@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/init.ts
+  s_f8d74d770c4bd7::t_2acf18d7dcaa4e 137-138
+packages/frontend/editor-ui/src/features/settings/users/users.utils.ts
+  s_f8d74d770c4bd7::t_af362a9b4341bd 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5dea57d5501cbb66d7528d355e013a4c945b675a",
+  "prompts": {},
+  "sessions": {
+    "s_f8d74d770c4bd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2b59aad-f736-420b-a2dc-b6190c912dcf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

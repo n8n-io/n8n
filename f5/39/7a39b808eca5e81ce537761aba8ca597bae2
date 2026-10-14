@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_e5eb138ee1927f::t_243ab778ae91ec 23,70-77,216-226,232-236,268-269,272-313,464-466,515,537-553,555,563,565-566
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/workflowSetup.types.ts
+  s_e5eb138ee1927f::t_243ab778ae91ec 1,16
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_e5eb138ee1927f::t_f02eb0a426c985 155-166
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/__tests__/factories.ts
+  s_e5eb138ee1927f::t_243ab778ae91ec 63
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.disposal.test.ts
+  s_e5eb138ee1927f::t_243ab778ae91ec 36-43
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupSections.ts
+  s_e5eb138ee1927f::t_243ab778ae91ec 58
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInputExpanded.vue
+  s_e5eb138ee1927f::t_243ab778ae91ec 36-38,46-47,51,190-200,208
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e5eb138ee1927f::t_33f0223c987336 6229-6232
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/WorkflowSetupSectionBody.test.ts
+  s_e5eb138ee1927f::t_243ab778ae91ec 47-56
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.vue
+  s_e5eb138ee1927f::t_243ab778ae91ec 39-49
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_e5eb138ee1927f::t_243ab778ae91ec 12,114-128,131-142,177-181,226-229,239,438-441,482-484,490,493-495,498
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.test.ts
+  s_e5eb138ee1927f::t_2955cfc5a080e5 138,140-141
+  s_e5eb138ee1927f::t_243ab778ae91ec 136-137,139,142-155
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_e5eb138ee1927f::t_243ab778ae91ec 20-21,50-55
+  s_e5eb138ee1927f::t_c68e49610f2651 56-57
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialForm.vue
+  s_e5eb138ee1927f::t_150c425f6b8b9d 112-118,120,123,125,129-143,146-149,152-157,159,162-163,168-169,176-178
+  s_e5eb138ee1927f::t_8e5cbcf62b89c4 10,12-15,40-41
+  s_e5eb138ee1927f::t_dc9be2fb831e0c 186-196,324-330,333,335
+  s_e5eb138ee1927f::t_87d551bb10f7a6 224-225,358,360-362,367-369,371,376-379,381,405,414
+  s_e5eb138ee1927f::t_243ab778ae91ec 1-9,11,16-39,42-111,119,121-122,124,126-128,144-145,150-151,158,160-161,164-167,170-175,179-185,197-223,226-323,331-332,334,336-357,359,363-366,370,372-375,380,382-404,406-413,415-463
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_e5eb138ee1927f::t_243ab778ae91ec 6,11,36,40-46,68-103,150,154-169,244-261,277-289,291,298,300-301
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.vue
+  s_e5eb138ee1927f::t_243ab778ae91ec 19-21,24,40,72-73,77
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_e5eb138ee1927f::t_243ab778ae91ec 81-83,93,100-101,506-510,730-733
+  s_e5eb138ee1927f::t_c275fbdfbf03b2 734
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "f5397a39b808eca5e81ce537761aba8ca597bae2",
+  "prompts": {},
+  "sessions": {
+    "s_e5eb138ee1927f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87369f71-7cd7-4171-b908-682eacaab3f4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

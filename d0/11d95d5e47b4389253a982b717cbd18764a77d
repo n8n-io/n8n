@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  s_23ac9e46ab1748::t_3e1621c5a39828 583-595
+  s_23ac9e46ab1748::t_15ce8209e056a2 571-574
+  s_23ac9e46ab1748::t_98d325b79be18b 418-445
+  s_23ac9e46ab1748::t_bad1c661bf02db 510-513,518-527,534
+  s_23ac9e46ab1748::t_37da782c496848 542
+  h_a348dde7c02e89 555
+  s_23ac9e46ab1748::t_3090ed97d7655c 557-559
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d011d95d5e47b4389253a982b717cbd18764a77d",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_23ac9e46ab1748": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b113851a-c3ab-49d5-8c97-0a2c96719d51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

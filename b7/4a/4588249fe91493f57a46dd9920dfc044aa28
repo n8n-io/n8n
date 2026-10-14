@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelActions.test.ts
+  s_b0e06f9d9140a8::t_86a3f08965b4a0 2-3,7-9,11-14,21-22,38,41,43,54-60,73,101,157-159,169-174,267-277,324-325,327,329-330,332-333,342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b74a4588249fe91493f57a46dd9920dfc044aa28",
+  "prompts": {},
+  "sessions": {
+    "s_b0e06f9d9140a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b9d2e9f-79b9-45e5-ae63-64c961832ac6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

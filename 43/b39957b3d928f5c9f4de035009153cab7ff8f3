@@ -1,0 +1,25 @@
+packages/@n8n/api-types/src/dto/otel/__tests__/update-otel-settings.dto.test.ts
+  s_28e3aecbeec6e1::t_cf92ee988f3752 20-21,26,40-48,53-61,77-79,87-88,93-101
+  ai_agent 89-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "43b39957b3d928f5c9f4de035009153cab7ff8f3",
+  "prompts": {},
+  "humans": {
+    "h_57f0ed8cf91102": {
+      "author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_28e3aecbeec6e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8838811c-a7e8-4192-b146-69d6c6738eb1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

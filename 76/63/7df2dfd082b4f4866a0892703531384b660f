@@ -1,0 +1,27 @@
+packages/cli/test/migration/1785186578138-replace-agent-file-binary-data-id-with-stored-at.test.ts
+  s_5065593ba52be0::t_ea79fc5d0be39e 12
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_5065593ba52be0::t_c2b78292c7bbb8 234
+  s_5065593ba52be0::t_e232adf9297066 471
+packages/@n8n/db/src/migrations/common/1785186578138-ReplaceAgentFileBinaryDataIdWithStoredAt.ts
+  s_5065593ba52be0::t_c64fe10e5acece 23
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_5065593ba52be0::t_cb8f0141cbeed0 226
+  s_5065593ba52be0::t_2713acc0fe28c1 453
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "76637df2dfd082b4f4866a0892703531384b660f",
+  "prompts": {},
+  "sessions": {
+    "s_5065593ba52be0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "eb67b66e-2a8a-4b39-8cbc-978b9cc09f21",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,145 @@
+packages/cli/src/modules/n8n-packages/io/tar/tar-package-reader.ts
+  s_7c3ef9211001a1::t_0988a4ee689341 50-54
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-published-state.test.ts
+  s_7c3ef9211001a1::t_7d0d3a4a5163c0 1-3,8-25
+  s_7c3ef9211001a1::t_bed6c450f93700 4-7
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.project.test.ts
+  s_7c3ef9211001a1::t_33db36d748cc9e 19-22
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_7c3ef9211001a1::t_b24347593f9550 20
+  s_7c3ef9211001a1::t_9085b67f0f4f5b 21
+  s_7c3ef9211001a1::t_e428643643b4eb 22-23
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publishing-policy.test.ts
+  s_7c3ef9211001a1::t_d87d20e1a79564 89
+  s_7c3ef9211001a1::t_7207591581a957 88,90-128
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_7c3ef9211001a1::t_4e92cb92024cc3 32
+  s_7c3ef9211001a1::t_b3e0b38690965f 189,191
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-published-state.ts
+  s_7c3ef9211001a1::t_7919084a65c383 3,7
+  s_7c3ef9211001a1::t_c14a99171abdfd 4
+  s_7c3ef9211001a1::t_1a05495eb7f948 5,9,12
+  s_7c3ef9211001a1::t_e070c80eea09ed 1-2,8,10-11,13-15
+  s_7c3ef9211001a1::t_183426ed9d7286 6
+packages/cli/src/modules/n8n-packages/io/directory/directory-package-reader.ts
+  s_7c3ef9211001a1::t_6c6881d526b20d 54-63
+  s_7c3ef9211001a1::t_52ef652e0d536b 14-17
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_7c3ef9211001a1::t_b58401ca496082 436
+  s_7c3ef9211001a1::t_17b89e57c23b89 395
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_7c3ef9211001a1::t_e87c462153bcc7 273,275
+  s_7c3ef9211001a1::t_29a331baea5a35 303
+  s_7c3ef9211001a1::t_fd8113c3939699 238
+  s_7c3ef9211001a1::t_bd8a7c0e15f782 350
+  s_7c3ef9211001a1::t_604dd0f5dae12c 24,30,32,38,43
+  s_7c3ef9211001a1::t_285cd5dd2ab43d 441,443
+  s_7c3ef9211001a1::t_f9c6e6ed16c997 21-23
+  s_7c3ef9211001a1::t_56b3fd29fe6400 59
+  s_7c3ef9211001a1::t_94fc4a428694b5 121
+  s_7c3ef9211001a1::t_99bb9e2e34a600 28,33-35,40-42,44
+  s_7c3ef9211001a1::t_6e189c876803b1 74,76
+  s_7c3ef9211001a1::t_a35844f7643363 88
+  s_7c3ef9211001a1::t_20a17ae187964f 276-278
+  s_7c3ef9211001a1::t_fe0078e5e4cf49 444-446
+  s_7c3ef9211001a1::t_9d8eed50293d85 17,25-27,29,31,36-37,39,45
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_7c3ef9211001a1::t_aebaa67efe3adb 395
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_7c3ef9211001a1::t_6d024972f6a12e 87,92
+  s_7c3ef9211001a1::t_d14a68f8e89618 8
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow-lifecycle.schema.ts
+  s_7c3ef9211001a1::t_372a7933316ce5 1-3,6-7,9-12
+  s_7c3ef9211001a1::t_6a9c808e70460e 4
+  s_7c3ef9211001a1::t_f8b2c59164a6d3 8
+  s_7c3ef9211001a1::t_cc5326427b146a 5
+packages/cli/src/modules/n8n-packages/io/package-reader.ts
+  s_7c3ef9211001a1::t_7ae4731cdbb426 6
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-archive-transition.ts
+  s_7c3ef9211001a1::t_075dba350f1150 5,8
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-archive-transition.test.ts
+  s_7c3ef9211001a1::t_f83850185434e9 20-26
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_7c3ef9211001a1::t_ab918d16ba4414 54
+  s_7c3ef9211001a1::t_d67766ebe77b94 2484-2493,2501-2514
+  s_7c3ef9211001a1::t_d315d1dac7d7a8 2515-2570
+  s_7c3ef9211001a1::t_f4f8ea93258d53 55
+  s_7c3ef9211001a1::t_1339b1c6e0a6a2 906,2246,2252,2318,2373,2401,2429,2459,2465,2585,2626,2662,2668,2712,2718,2758,2764,2885,2891,2956
+  s_7c3ef9211001a1::t_4bd22723ce0b8f 2483,2494-2500
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_7c3ef9211001a1::t_892f14663503df 29-32
+  s_7c3ef9211001a1::t_2b5dff4c633b5f 125
+  s_7c3ef9211001a1::t_1237a609508321 326-338
+  s_7c3ef9211001a1::t_7041cf2b9b4bbb 149
+  s_7c3ef9211001a1::t_7eee0785007923 17
+  s_7c3ef9211001a1::t_40dd2212a3ba1f 123,130,132,155-157,159,162-173
+  s_7c3ef9211001a1::t_d02544429ec058 15
+  s_7c3ef9211001a1::t_fd80b267964997 124,131
+  s_7c3ef9211001a1::t_a179254fa66dc4 150
+  s_7c3ef9211001a1::t_a486c4c19cbf66 158,160-161
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_7c3ef9211001a1::t_fbd70cae650154 13
+  s_7c3ef9211001a1::t_81b276dd694bde 426
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_7c3ef9211001a1::t_a7d681bf2a1342 5-6
+  s_7c3ef9211001a1::t_a3f34d8503c1fa 134-138,141-148
+  s_7c3ef9211001a1::t_bd18b26e08d554 84
+  s_7c3ef9211001a1::t_6767db89aab348 139-140
+  s_7c3ef9211001a1::t_25c2c01932cab7 85-90
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_7c3ef9211001a1::t_1339b1c6e0a6a2 222,229
+  s_7c3ef9211001a1::t_8f291709c9c334 23
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_7c3ef9211001a1::t_a08c54ab552ba0 8-12
+  s_7c3ef9211001a1::t_99acf529250634 104,109
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_7c3ef9211001a1::t_04c993973cebf9 46
+  s_7c3ef9211001a1::t_2c48abc1613033 23
+  s_7c3ef9211001a1::t_4ab1ba876f9293 87-89
+  s_7c3ef9211001a1::t_d27504f1e706e7 81
+  s_7c3ef9211001a1::t_761cc74463d0f8 6-8
+  s_7c3ef9211001a1::t_58aff09c891aca 79-80,82-85
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  s_7c3ef9211001a1::t_9cbb2211507ae5 46
+  s_7c3ef9211001a1::t_3ebcccbedfc949 45
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_7c3ef9211001a1::t_17fbf374b8ddd2 1-2
+  s_7c3ef9211001a1::t_602422ff4e065b 84,86-87,89-103,106-107,109-110,112-113,115-116,118-122
+  s_7c3ef9211001a1::t_eef6d699a63f43 88
+  s_7c3ef9211001a1::t_b8094405f5119d 104-105,108,111,114,117
+  s_7c3ef9211001a1::t_6c67068d8572f8 85
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.ts
+  s_7c3ef9211001a1::t_57fc1bb7945a8a 21
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_7c3ef9211001a1::t_20bb2cda3256f2 63-65
+  s_7c3ef9211001a1::t_18e5a255006740 135,138
+  s_7c3ef9211001a1::t_6f581af0f1ee06 954
+  s_7c3ef9211001a1::t_ee26dd095538e9 950-951
+  s_7c3ef9211001a1::t_148ee7707ccff0 60-62,66-67
+  s_7c3ef9211001a1::t_4292d2f3c4d236 929
+  s_7c3ef9211001a1::t_ee57ec5996e949 158,162
+  s_7c3ef9211001a1::t_1f71d150547370 127-134,136-137,139-142
+  s_7c3ef9211001a1::t_a69d264c698fb0 924-925
+  s_7c3ef9211001a1::t_11d27ac42466c9 928
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "af0224fba5176b11220f59cf250a6bd8368c8fc6",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7c3ef9211001a1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "32fbcf13-2821-4919-a86f-c6e0a1232891",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

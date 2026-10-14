@@ -1,0 +1,25 @@
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_d577b851b87643::t_1d6e9535c843e2 135
+  s_d577b851b87643::t_669e12fde0263f 128-134,136-139
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_d577b851b87643::t_94c6fca94d50e7 604-663
+  s_d577b851b87643::t_d294cf1f9eebdc 482,495-498
+  s_d577b851b87643::t_90da51f8ebdab1 435
+  s_d577b851b87643::t_81060153f60372 2,4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2aad4f505e0ab012fc225504a8ebaa6ff5520d92",
+  "prompts": {},
+  "sessions": {
+    "s_d577b851b87643": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7d33ca7f-ed4e-41d2-9611-84ba84f052d2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

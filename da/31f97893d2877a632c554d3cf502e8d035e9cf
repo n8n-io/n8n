@@ -1,0 +1,14 @@
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  h_8fb27e0cdf6d1e 144,147,156,158,163,165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da31f97893d2877a632c554d3cf502e8d035e9cf",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

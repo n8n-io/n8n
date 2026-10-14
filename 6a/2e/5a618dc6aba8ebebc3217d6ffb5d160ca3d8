@@ -1,0 +1,70 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 212-216,2133-2207
+  s_14d296036e0ac5::t_2487a3ab4d7949 2208-2212
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_14d296036e0ac5::t_94b254fa12ee2b 3188
+  s_14d296036e0ac5::t_3c2a945a29c0a7 359-396,2990-3187
+packages/cli/src/eventbus/event-message-classes/event-message-audit.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 1,39-42
+packages/cli/src/modules/workflow-reviews.ee/workflow-review.mapper.ts
+  s_14d296036e0ac5::t_6aec57db2f6a6c 47-49
+  s_14d296036e0ac5::t_3c2a945a29c0a7 19-20,35-46
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-activity.service.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 21,26,39,103-105
+  s_14d296036e0ac5::t_9d79d7a055578c 106-107
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 3760-3940
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 34,86,110,487-493,505
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 41,50,99,424-431,519-523,572,579,628,636-645,724-729,822-827,833-846
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-activity.integration.test.ts
+  s_14d296036e0ac5::t_730382de268645 200
+  s_14d296036e0ac5::t_3c2a945a29c0a7 24,166-167,190-199
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.update.service.test.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 31,75,99,245,279-284,327,525-526
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 8,17
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.integration.test.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 30,193,212-218,348,368-374
+packages/@n8n/api-types/src/workflow-review-activity.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 34-36
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 108,110-111,194-195,231,237-239,242,246-251,254,257,262
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.service.test.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 15,25,35,41,73-80,85,87-94,105,108-123,135-140,151,182-196,200,228-230,233-239,246-247,267-279,288,296,304-305
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 157-163
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 132-135,226-231,239,1142-1149,1170-1238
+  s_14d296036e0ac5::t_80edacfd2ebb6d 1239-1243
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-auto-close.service.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 8,13,16-22,40,79-80,82,115-139,150-151,153,164,185-189,192,205-247
+  s_14d296036e0ac5::t_88c97c685db4e2 140-141
+packages/cli/src/events/maps/relay.event-map.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 1-8,1109-1165
+  s_14d296036e0ac5::t_84197d516d3cfb 1166-1169
+packages/@n8n/telemetry/src/events/workflow-reviews.ts
+  s_14d296036e0ac5::t_a91086da8bbbeb 1-64,70-72,74-88
+  s_14d296036e0ac5::t_0f7b628695ecc0 65-69
+  s_14d296036e0ac5::t_e5316c109bd199 73
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.decide.service.test.ts
+  s_14d296036e0ac5::t_3c2a945a29c0a7 36,79,110,153-155,167-170,299-303,346-349,413-422,464-473,509,614-618,640-643,708-710
+  s_14d296036e0ac5::t_453b07c6bc5343 711
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a2e5a618dc6aba8ebebc3217d6ffb5d160ca3d8",
+  "prompts": {},
+  "sessions": {
+    "s_14d296036e0ac5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3baca53-0dc1-4028-ab67-4ccbff152285",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

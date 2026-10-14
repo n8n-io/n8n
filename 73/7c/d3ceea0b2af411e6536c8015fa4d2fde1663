@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/test/EmbeddingsGoogleVertex.test.ts
+  s_17f95be7845aae::t_33544cb4380c1f 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "737cd3ceea0b2af411e6536c8015fa4d2fde1663",
+  "prompts": {},
+  "sessions": {
+    "s_17f95be7845aae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be842455-fb42-4a82-b874-9558a3113383",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

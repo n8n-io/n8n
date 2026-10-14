@@ -1,0 +1,26 @@
+.github/workflows/util-publish-api-schema.yml
+  h_5d40c27a8fdfd1 9-15,38
+.github/WORKFLOWS.md
+  s_e6454ae550915c::t_4e6766fd5566ce 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "4d3bb26ecae521337a25566587e872a92bb9077f",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_e6454ae550915c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d50437f-80ab-427e-86b5-73792ecfdbf9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

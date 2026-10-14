@@ -1,0 +1,49 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "446fd7f63722aecf4d283d43402127a0d7596a59",
+  "prompts": {},
+  "humans": {
+    "h_0d09e42b2cccb8": {
+      "author": "kgrhartlage <kai.grosse.hartlage@gmail.com>"
+    },
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_60c9025b151770": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a03a0f-53be-4095-a000-6d094159abd5",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_64c8e8b6d24f82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1345f18b-170b-4cd3-b34e-f41cef04df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_9006126844c8d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b699ae-12d0-405b-9a78-fb4840686602",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

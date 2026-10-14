@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/microsoft-utils.ts
+  s_0300db73a84a70::t_8d62959f3edab7 659-666,668-672
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9dd69739167710b27cc083bca2d6d9619bc31b9c",
+  "prompts": {},
+  "sessions": {
+    "s_0300db73a84a70": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "179b6cc7-2fb7-4c6f-85d8-cc2998c8f065",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

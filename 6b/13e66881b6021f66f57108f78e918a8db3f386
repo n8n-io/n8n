@@ -1,0 +1,39 @@
+packages/@n8n/instance-ai/skills/one-off-task/SKILL.md
+  s_be3053d6eb937a::t_ab91b5cc053275 4-15,30-44,47-49
+  s_be3053d6eb937a::t_bc0c96812e1622 83-89
+packages/cli/src/posthog/index.ts
+  s_be3053d6eb937a::t_5fded7a60cd413 222-224
+packages/@n8n/api-types/src/index.ts
+  h_44f8d1c0f2f8c4 390-391
+packages/@n8n/instance-ai/src/tools/orchestration/one-off-task-agent.prompt.ts
+  s_be3053d6eb937a::t_a70998e71d25c2 10-13,15
+packages/@n8n/instance-ai/src/tools/orchestration/one-off-task-agent.tool.ts
+  s_be3053d6eb937a::t_6ae315abb909fa 190-193
+  s_be3053d6eb937a::t_c2681226a17983 288-291
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_be3053d6eb937a::t_ce0e8636d01f6b 269-288
+  s_be3053d6eb937a::t_75a885621e019a 230
+packages/@n8n/instance-ai/src/workspace/scoped-workspace.ts
+  s_be3053d6eb937a::t_de0d3a1cedd9e2 32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6b13e66881b6021f66f57108f78e918a8db3f386",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be3053d6eb937a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1538c797-8fda-4ad5-8dfd-6897b2da5082",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

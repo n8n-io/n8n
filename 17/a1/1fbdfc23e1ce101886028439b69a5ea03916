@@ -1,0 +1,23 @@
+packages/frontend/@n8n/storybook/package.json
+  s_3518e47f915512::t_4685a5b5cdf77b 30
+pnpm-lock.yaml
+  s_3518e47f915512::t_b45bd61020915b 108-110,5680-5682,8964-8966,26282-26285
+pnpm-workspace.yaml
+  s_3518e47f915512::t_86e78b46d404f1 42-43,89,138,233,264-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "17a11fbdfc23e1ce101886028439b69a5ea03916",
+  "prompts": {},
+  "sessions": {
+    "s_3518e47f915512": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_3518e47f915512",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

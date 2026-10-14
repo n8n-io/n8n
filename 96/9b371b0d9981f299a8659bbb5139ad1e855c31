@@ -1,0 +1,56 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_1c2b9c253fefe3::t_b4f02e033bb0f2 37
+  s_1c2b9c253fefe3::t_52a99cccd31a6b 1441
+  s_1c2b9c253fefe3::t_32f013cf788def 372,738
+packages/@n8n/db/src/index.ts
+  s_1c2b9c253fefe3::t_a555d056b1ee47 19-20
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_1c2b9c253fefe3::t_5fba94181085a6 8
+  s_1c2b9c253fefe3::t_1931460d314feb 232-233
+packages/@n8n/db/src/utils/__tests__/list-query-sort.test.ts
+  s_1c2b9c253fefe3::t_64251dafd28714 1-14
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  s_1c2b9c253fefe3::t_73dd4214923a86 159-189
+packages/@n8n/db/src/utils/list-query-sort.ts
+  s_1c2b9c253fefe3::t_76f03f1de63fa9 1-14
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_1c2b9c253fefe3::t_1856ec7deafd99 3
+  s_1c2b9c253fefe3::t_f369145f35cd95 380
+packages/cli/src/modules/data-table/data-table.repository.ts
+  s_1c2b9c253fefe3::t_ac46994cffbb4b 254-255
+  s_1c2b9c253fefe3::t_6f6edde51c412c 8
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_1c2b9c253fefe3::t_deb18a9fdff50c 133-134
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_1c2b9c253fefe3::t_55ec10fbe0f624 18
+  s_1c2b9c253fefe3::t_1502a3deb069da 136
+  s_1c2b9c253fefe3::t_244005209d134d 19-23
+  s_1c2b9c253fefe3::t_68e0147cb1f549 206-210
+  s_1c2b9c253fefe3::t_a47a113555ca26 410
+  s_1c2b9c253fefe3::t_36616e0c83e2af 448
+  s_1c2b9c253fefe3::t_ea9d14171d005d 16
+  s_1c2b9c253fefe3::t_9c6d0d0f970276 155
+  s_1c2b9c253fefe3::t_d33610d60467e2 224
+  s_1c2b9c253fefe3::t_376ffec430ee9f 125
+  s_1c2b9c253fefe3::t_2ed94efb15f9be 180
+  s_1c2b9c253fefe3::t_e40cdf513c6241 537,539-540
+  s_1c2b9c253fefe3::t_a7f555599ec5ff 538
+  s_1c2b9c253fefe3::t_a5402c346d5112 541
+  s_1c2b9c253fefe3::t_5a1087b4ba9446 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "969b371b0d9981f299a8659bbb5139ad1e855c31",
+  "prompts": {},
+  "sessions": {
+    "s_1c2b9c253fefe3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "487028d4-9167-48b0-8db8-796d6e266cb6",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

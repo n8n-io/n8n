@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceContextStep.test.ts
+  s_583f31bceceb3e::t_c2c19231ec81ff 102,114
+  s_583f31bceceb3e::t_85a9dc64fc73e7 70
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_583f31bceceb3e::t_c2c19231ec81ff 710-712,859,6493
+  s_583f31bceceb3e::t_f22a094cc683c0 31,5362,6546-6551
+  s_583f31bceceb3e::t_f6c1cecc1b8adb 4197,4413,5483,5705,6482-6492,6494-6495
+  s_583f31bceceb3e::t_aacad291b7583d 5476-5482,5484-5495,5519-5521
+  s_583f31bceceb3e::t_c49a6a0491c0de 112,4196,4204,4237,5696-5703
+  s_583f31bceceb3e::t_153067e6c38170 6539-6541
+  ai_agent 6542-6544
+  s_583f31bceceb3e::t_8dca5a266c9768 6475-6481,6496
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_583f31bceceb3e::t_c397e2a1647fcc 288-296,298-299,301-303,305,310,315,318-323
+  s_583f31bceceb3e::t_a3cc4430734ea5 2429-2436,2444-2447
+packages/@n8n/instance-ai/src/index.ts
+  s_583f31bceceb3e::t_58e09e82d2f549 538-541
+packages/@n8n/instance-ai/src/stream/instance-context-reach.ts
+  s_583f31bceceb3e::t_58e09e82d2f549 7-8,10-11,28-31,40,42-44,46-47,57-76,78
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_583f31bceceb3e::t_cd34f39c6c50b7 567-569,571-573
+packages/@n8n/instance-ai/src/stream/work-summary-accumulator.ts
+  s_583f31bceceb3e::t_1696f736921873 4-5,24-27,83-86
+packages/cli/src/posthog/index.ts
+  s_583f31bceceb3e::t_1696f736921873 258-263
+  ai_agent 264
+packages/@n8n/instance-ai/src/stream/__tests__/instance-context-reach.test.ts
+  ai_agent 1,34-38,117,119
+  s_583f31bceceb3e::t_89f6a6b16e4897 10,16,19,28,40,59,76,81,84,96,105-116,118,120-145
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceContextStep.vue
+  s_583f31bceceb3e::t_a3cc4430734ea5 76-83
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_583f31bceceb3e::t_23e86f6962c876 5,73-80
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_583f31bceceb3e::t_85a9dc64fc73e7 193-194
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_583f31bceceb3e::t_85a9dc64fc73e7 822
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_583f31bceceb3e::t_85a9dc64fc73e7 371,419-420
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_583f31bceceb3e::t_7044ef2fdee5f7 289,296,300-302,304,308-316,319,321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1aa1a1e252e5f78cdd943fc18df00ccbcbbddc08",
+  "prompts": {},
+  "sessions": {
+    "s_583f31bceceb3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9264794a-277b-4041-ba69-ba6dee92fbf7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+packages/@n8n/inbound-auth/eslint.config.mjs
+  s_cc56bcf7ede5b6::t_c5b4dec05cdc48 1-4
+packages/cli/src/modules/provisioning.ee/role-resolver-types.ts
+  s_cc56bcf7ede5b6::t_7ae4d503fd700d 1-4
+codecov.yml
+  s_cc56bcf7ede5b6::t_b1808bdc4333e9 78
+packages/@n8n/inbound-auth/src/index.ts
+  s_cc56bcf7ede5b6::t_8703ed298650d8 1
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
+  s_cc56bcf7ede5b6::t_9af13843a992fe 1-9,11-15,18-52,56-61,63-85,87-88,103-106,108-115,117-118,123-125,127-128,133-134,138-142,144-149,188-194,196-197,199-207,210-213,215-236
+  s_cc56bcf7ede5b6::t_04e4149de2c8ed 150-170,175-186
+  s_cc56bcf7ede5b6::t_c49a5e71b4ab5d 171-174
+  s_cc56bcf7ede5b6::t_dc3755fbf6b54b 89-90,102
+  s_cc56bcf7ede5b6::t_d6f664866f18c1 10,16-17,53-55,62,86,91-101,107,116,119-122,126,129-132,135-137,143,187,195,198,208-209,214
+packages/@n8n/inbound-auth/tsconfig.json
+  s_cc56bcf7ede5b6::t_bfdbdbaf1ba50f 1-10
+packages/cli/src/modules/token-exchange/token-exchange.schemas.ts
+  s_cc56bcf7ede5b6::t_1f61fd33557fe0 2,8
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  h_435b1d7d3e52c0 52
+  s_cc56bcf7ede5b6::t_3a088c78d0f81f 33,36,39-51,53-97,108,115-141,145-167,170-208,210,212-213,215-231
+  s_cc56bcf7ede5b6::t_f0b7b3be6be4ac 98-107,109-114
+  s_cc56bcf7ede5b6::t_3ab093b8b1a8c5 1-32,34-35,37-38,142-144,168-169,209,211,214,232
+packages/@n8n/inbound-auth/package.json
+  s_cc56bcf7ede5b6::t_e64f97d3137512 1-37
+packages/cli/package.json
+  s_cc56bcf7ede5b6::t_bb37cf69a32903 171
+packages/@n8n/inbound-auth/tsconfig.build.json
+  s_cc56bcf7ede5b6::t_409357ca502671 1-10
+packages/@n8n/inbound-auth/vite.config.ts
+  s_cc56bcf7ede5b6::t_4769b04c37611f 1-14
+packages/@n8n/inbound-auth/src/__tests__/fixtures/trusted-source-config.v1.ts
+  s_cc56bcf7ede5b6::t_76e7614c76edb9 1-3,6-28
+  s_cc56bcf7ede5b6::t_99d9e76037af57 4-5
+scripts/lint-parity/layers.json
+  s_cc56bcf7ede5b6::t_34b803b6f458a7 13
+OWNERS
+  s_cc56bcf7ede5b6::t_4d4f532ce23f62 234
+packages/cli/tsconfig.json
+  s_cc56bcf7ede5b6::t_7af9b98e39f5f3 40
+pnpm-lock.yaml
+  s_cc56bcf7ede5b6::t_b5163507d51b6a 2910-2934,4517-4519
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cdef720b9c6f74f2be2450fa9d0679bf522953e6",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_cc56bcf7ede5b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "691d260e-1149-4bf0-879e-d7786b3ef9ee",
+        "model": "unknown"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

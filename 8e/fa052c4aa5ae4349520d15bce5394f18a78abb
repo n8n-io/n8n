@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_c8a607d5f9da0e::t_4f07460f716977 214
+  s_c8a607d5f9da0e::t_448e87ffc65147 286-288,290-291,304-334
+  s_c8a607d5f9da0e::t_b489da1552d385 293-303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8efa052c4aa5ae4349520d15bce5394f18a78abb",
+  "prompts": {},
+  "sessions": {
+    "s_c8a607d5f9da0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c297e62-ce10-4935-b40b-a092bee917aa",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

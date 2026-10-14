@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_6858ae05b19668::t_0e6a3f44b6d730 2,92-96
+  s_6858ae05b19668::t_282e0a5dd0e4cc 97
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.test.ts
+  s_6858ae05b19668::t_de97a03a1fa0c4 219-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9436902f816d01410c3b783e5230fbafe300af3d",
+  "prompts": {},
+  "sessions": {
+    "s_6858ae05b19668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5c1ec50-d65a-44bc-aa43-3c1eadd5030a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

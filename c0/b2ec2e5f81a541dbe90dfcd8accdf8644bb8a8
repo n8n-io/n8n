@@ -1,0 +1,365 @@
+.agents/review-rules/README.md
+  s_f4876d43d1babd::t_527ae115dde341 20
+.agents/review-rules/qa-dx/ratchets-and-allowlists.md
+  s_f4876d43d1babd::t_b3c9fb535714ad 16
+.agents/review-rules/qa-dx/workflow-safety.md
+  s_f4876d43d1babd::t_6a2860d11bd6d2 38
+.agents/skills/reproduce-bug/SKILL.md
+  s_f4876d43d1babd::t_6947a0d547c624 35
+.aikido
+  s_f4876d43d1babd::t_7d9c6ecfd748e9 11
+.code-health-baseline.json
+  s_f4876d43d1babd::t_5a8e4471687b9b 438,443,2046,2050-2051,2056-2057,2062-2063,2068-2069,2074-2075,2080-2081,2086-2087
+.dockerignore
+  s_f4876d43d1babd::t_f15380d65f752b 29,37-41
+.github/CI-TELEMETRY.md
+  s_f4876d43d1babd::t_1181aaddec7e92 84-85,88
+.github/WORKFLOWS.md
+  s_f4876d43d1babd::t_baf426d509fcba 181
+.github/actions/ci-filter/__tests__/ci-filter.test.ts
+  s_f4876d43d1babd::t_5200ca665b88b3 245,268
+.github/docker-compose.yml
+  s_f4876d43d1babd::t_1c9490c2012793 3
+.github/scripts/db-test-matrix.mjs
+  s_f4876d43d1babd::t_6c7dbc05da4ed7 10
+.github/scripts/glob.test.mjs
+  s_f4876d43d1babd::t_8ce426183caa8b 33-35,58-59
+.github/scripts/owners/review-recommendations.test.mjs
+  s_f4876d43d1babd::t_f20d57b70024e0 220
+.github/scripts/quality/check-pr-size.mjs
+  s_f4876d43d1babd::t_f11044fcd169fb 39-43
+.github/scripts/quality/check-pr-size.test.mjs
+  s_f4876d43d1babd::t_f378f0b5c3b193 206,209-217,220
+.github/workflows/build-benchmark-image.yml
+  s_f4876d43d1babd::t_90c99eea3a7064 9,36
+.github/workflows/ci-pr-quality.yml
+  s_f4876d43d1babd::t_da51aa9f468ccc 102-103
+.github/workflows/ci-pull-requests.yml
+  s_f4876d43d1babd::t_d19cc1a9564172 82,95,114-115,123-126,149-151,172-173,196-199,217-220,250,396
+.github/workflows/ci-terraform.yml
+  s_f4876d43d1babd::t_53087d4b059702 6,19
+.github/workflows/encryption-upgrade-test.yml
+  s_f4876d43d1babd::t_2c029f5121f958 32-35
+.github/workflows/test-benchmark-destroy-nightly.yml
+  s_f4876d43d1babd::t_a050a7f2da605a 39
+.github/workflows/test-benchmark-nightly.yml
+  s_f4876d43d1babd::t_a1cd45389a3ef9 65,69,84,98
+.github/workflows/test-dev-server-smoke-reusable.yml
+  s_f4876d43d1babd::t_5da4544c4ce339 13,56-57
+.github/workflows/test-e2e-coverage-nightly.yml
+  s_f4876d43d1babd::t_e95d43ffb36abb 56,218,230,238,259
+.github/workflows/test-e2e-helm.yml
+  s_f4876d43d1babd::t_709700044018bb 8-9,86,118,153-154
+.github/workflows/test-e2e-infrastructure-reusable.yml
+  s_f4876d43d1babd::t_802ec039b8c3da 77,89-90
+.github/workflows/test-e2e-pc-nightly.yml
+  s_f4876d43d1babd::t_5a1081535bfe0e 80
+.github/workflows/test-e2e-performance-reusable.yml
+  s_f4876d43d1babd::t_8f4b212524374b 40,57
+.github/workflows/test-e2e-reusable.yml
+  s_f4876d43d1babd::t_3112df416a8132 72,126,198-204,217
+.github/workflows/test-single-instance-npm.yml
+  s_f4876d43d1babd::t_18060f6e709786 93,97,99,122,128
+.github/workflows/util-data-tooling.yml
+  s_f4876d43d1babd::t_89d788c2f51973 74
+.gitignore
+  s_f4876d43d1babd::t_f35013eccc652c 49-54,58-59,68
+AGENTS.md
+  s_f4876d43d1babd::t_4338b0bf8e89f8 313,320,334
+CONTRIBUTING.md
+  s_f4876d43d1babd::t_8d4272c9283a51 435,664
+OWNERS
+  s_f4876d43d1babd::t_58e26e4314566f 257
+biome.jsonc
+  s_f4876d43d1babd::t_06ef8fe70c9f36 21
+codecov.yml
+  s_f4876d43d1babd::t_1758efa0b2e8bb 153
+cubic.yaml
+  s_f4876d43d1babd::t_001bbfbcc52977 205
+knip.ts
+  s_f4876d43d1babd::t_d00ad07b63e96d 150,207
+lefthook.yml
+  s_f4876d43d1babd::t_4a0685c40b5fb3 90
+packages/@n8n/agents/src/__tests__/integration/cassettes/guardrails/blocks-one-tool-call-and-lets-the-model-continue.json
+  s_f4876d43d1babd::t_ea01c30342f49c 1-190
+packages/@n8n/agents/src/__tests__/integration/cassettes/guardrails/checks-a-suspended-tool-once.json
+  s_f4876d43d1babd::t_7ecb87d5fa6b44 1-180
+packages/@n8n/agents/src/__tests__/integration/cassettes/guardrails/refuses-the-first-model-call-in-generate.json
+  s_f4876d43d1babd::t_53bbdc0d083f8d 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/guardrails/refuses-the-first-model-call-in-stream.json
+  s_f4876d43d1babd::t_d4035acab21dd1 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/guardrails/sees-every-model-call-and-its-usage.json
+  s_f4876d43d1babd::t_1f0f44c575edc5 1-189
+packages/@n8n/agents/src/__tests__/integration/cassettes/guardrails/stops-the-run-after-the-crossing-call.json
+  s_f4876d43d1babd::t_622ea9d683338b 1-82
+packages/@n8n/agents/src/__tests__/integration/guardrails.test.ts
+  s_f4876d43d1babd::t_b67f62f4f0473a 1-192
+packages/@n8n/agents/src/index.ts
+  s_f4876d43d1babd::t_2db541a240ce8e 9-15
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_f4876d43d1babd::t_3da6c58c307fee 19-24,1434-1801
+packages/@n8n/agents/src/runtime/guardrails/__tests__/guardrail-runner.test.ts
+  s_f4876d43d1babd::t_293a86cdbc65b4 1-170
+packages/@n8n/agents/src/runtime/guardrails/guardrail-runner.ts
+  s_f4876d43d1babd::t_210e303c4c3e99 1-73
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_f4876d43d1babd::t_8be39af3138cf2 51,55,123,730-733,753,771-773,857,903-909,996-1012,1014,1017,1019
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_f4876d43d1babd::t_9024052e06c4d4 105
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_f4876d43d1babd::t_49d46acc700ac5 474
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_f4876d43d1babd::t_dd180ca75a0909 203,471,528,532
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_f4876d43d1babd::t_af277422228ca5 30,128-146,156,163-164,194-196
+packages/@n8n/agents/src/types/index.ts
+  s_f4876d43d1babd::t_c7a6983a12166a 213-222
+packages/@n8n/agents/src/types/runtime/agent-loop.ts
+  s_f4876d43d1babd::t_cdaa67ddfb242f 13,91
+packages/@n8n/agents/src/types/runtime/tool-execution.ts
+  s_f4876d43d1babd::t_145be9562698f2 13,108,127,132-133
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_f4876d43d1babd::t_c93126dcad7fac 23,29,166,220,287,348
+packages/@n8n/agents/src/types/sdk/guardrail.ts
+  s_f4876d43d1babd::t_7f4267bb737d7e 1-2,14-54
+packages/@n8n/backend-network/eslint.config.mjs
+  s_f4876d43d1babd::t_057505dd2d17cb 3
+packages/@n8n/backend-network/oxlint.config.mts
+  s_f4876d43d1babd::t_32b1572acd0b2b 1-7
+packages/@n8n/backend-network/package.json
+  s_f4876d43d1babd::t_452ed44db53249 12-13,87,94-95
+packages/@n8n/blob-storage/eslint.config.mjs
+  s_f4876d43d1babd::t_0bc98df9e47de2 4-10,12
+packages/@n8n/blob-storage/oxlint.config.mts
+  s_f4876d43d1babd::t_1882ed46b7b6a9 1-7
+packages/@n8n/blob-storage/package.json
+  s_f4876d43d1babd::t_a1bfe0514939ec 13-14,54,59-60
+packages/@n8n/db/scripts/schema-docs.mjs
+  s_f4876d43d1babd::t_4183234d9dc775 36
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_f4876d43d1babd::t_baf171d2a63971 135-163
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_f4876d43d1babd::t_e778ccde189287 159-176
+packages/@n8n/eslint-config/src/configs/backend-network-boundary.ts
+  s_f4876d43d1babd::t_1a2a7dc09cd53b 29
+packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts
+  s_f4876d43d1babd::t_346b5ab4999cbb 28
+packages/@n8n/expression-runtime/src/__tests__/lazy-sync-cold-start.test.ts
+  s_f4876d43d1babd::t_85ca285707a043 10
+packages/@n8n/instance-ai/CLAUDE.md
+  s_f4876d43d1babd::t_9609748c429e08 32,37,55
+packages/@n8n/instance-ai/docs/configuration.md
+  s_f4876d43d1babd::t_63b11725289a4e 266-267
+packages/@n8n/instance-ai/docs/e2e-tests.md
+  s_f4876d43d1babd::t_f443c1979d8142 258,264,326,354
+packages/@n8n/instance-ai/evaluations/discovery/stream-status.ts
+  s_f4876d43d1babd::t_4a888bc1db714c 28
+packages/@n8n/oxlint-config/src/configs/backend-network-boundary.ts
+  s_f4876d43d1babd::t_8b82a63159938a 8
+packages/@n8n/workflow-sdk/eslint.config.mjs
+  s_f4876d43d1babd::t_8e4d6301918b69 19-40
+packages/@n8n/workflow-sdk/oxlint.config.mts
+  s_f4876d43d1babd::t_a0be4a09ff1bcf 1-55
+packages/@n8n/workflow-sdk/package.json
+  s_f4876d43d1babd::t_edeb7d0f347fd4 50-51,96,103-104
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_f4876d43d1babd::t_03b7e4e9cffa73 26,33
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.ts
+  s_f4876d43d1babd::t_22f38ae591e483 13,30
+packages/@n8n/workflow-sdk/src/workflow-builder/node-builders/subnode-builders.test.ts
+  s_f4876d43d1babd::t_69a18fa08467c3 316-321
+packages/cli/src/commands/__tests__/start-system-task-metrics.test.ts
+  s_f4876d43d1babd::t_7f28102a65665b 7,94
+packages/cli/src/events/maps/system-task-metrics.event-map.ts
+  s_f4876d43d1babd::t_55d96dde0878fd 27-34
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_f4876d43d1babd::t_c39e2e385c7c13 1,4,22-23,42,45-46,59,61,82-88,142-169,331-490
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_f4876d43d1babd::t_6f43dae6922d94 1,3-4,8-11,14,17-26,40-46,55-56,103-115,118,120,125,127,150,153-166,174,190-192,246-286
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_f4876d43d1babd::t_446c2511fe457b 7,52,61,189,192,197,200,235-238
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_f4876d43d1babd::t_6e1af7e0eb1a40 67,79,88-118,169
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_f4876d43d1babd::t_c091a64aa92d43 5,18-26,30-39,41-43,46-49,60-62,134,141
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-multi-main.integration.test.ts
+  s_f4876d43d1babd::t_36cb085da01808 1,3,5-10,13-23,25-45,48-51,54-56,58,61-101,103-154,156-160,162-164,168-175,177-191,193-195,199-210,212,214-219,221-233,235-236,238-255,258-268,270-273,275-297,301-319,321-324,327-337,340-358,362-401
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_f4876d43d1babd::t_17513ec59e58c0 27,66,101,103,126,136,138,169-170,233,242-243,251-252,270-271,283-287,295-296,299-300,324,330-331,334-335,353,376,414,451,453-454,464-466,468,497,505,508,512-513,535,563-565,575-576,578-579,605,640,650-651,668,686,688,694-695,726,745,760,764-765
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.module.test.ts
+  s_f4876d43d1babd::t_3f68f04e5f07fe 14,54,98-100,102,105-106,108,111-112,114,117-118,120,122,124-126,128
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_f4876d43d1babd::t_51058ad76f70a1 8,21,23,84,96-100,108-110,141,155,166-442,475,508,516,533,541,552,556,566,585,596,605,616,628-644,648,659,663,674,678,689,693,704,712,718-737,742,753,765,775,784,787,801,827,838,848,884,905,919,939,957,971,983,1005,1018,1031,1041,1057,1068,1077
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.task.test.ts
+  s_f4876d43d1babd::t_8c89222e840b9b 1-136
+packages/cli/src/modules/instance-reporting.ee/database/entities/instance-monitoring-report.ts
+  s_f4876d43d1babd::t_3e0c399d06dd26 12,17-21,67-69
+packages/cli/src/modules/instance-reporting.ee/database/repositories/__tests__/instance-monitoring-report.repository.integration.test.ts
+  s_f4876d43d1babd::t_aa8c8738455aee 27-31,43-57,100-168,193,204,211,220,239-245,248,263,272,299,309,312,328,332,342,345,369,380-410,413,416,429-430
+packages/cli/src/modules/instance-reporting.ee/database/repositories/instance-monitoring-report.repository.ts
+  s_f4876d43d1babd::t_cea96f6809f5c9 1,3,16-17,34-62,79-82,147-157,159,162-177,184-189
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.module.ts
+  s_f4876d43d1babd::t_808240d88cc5c6 12,38,43,45-50
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_f4876d43d1babd::t_e7f596ee76e29e 17-20,22,36-47,60-66,74-75,84,111-164,188-192,194,202-212,214,216,218-225,228-229,231-235,245,275,278-291,294-295,299-308,312,318-320,413-439
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.task.ts
+  s_f4876d43d1babd::t_0d793a5f729342 1-28
+packages/cli/test/integration/scheduling/system-task-durable-metrics.test.ts
+  s_f4876d43d1babd::t_8ab1026963e149 1-84
+packages/frontend/editor-ui/src/app/dev/render-tracker.ts
+  s_f4876d43d1babd::t_4d872d37ce123b 6
+packages/quality/AGENTS.md
+  s_f4876d43d1babd::t_06c7160960c4be 1-19
+packages/quality/README.md
+  s_f4876d43d1babd::t_a8e3ae111ba0d2 1-12
+packages/quality/efficiency/AGENTS.md
+  s_f4876d43d1babd::t_78a924b00958a2 1-8
+packages/quality/efficiency/README.md
+  s_f4876d43d1babd::t_4edda7c9754188 1-10
+packages/quality/efficiency/microbenchmarks/tsconfig.json
+  s_f4876d43d1babd::t_7c07f97e8dd586 2
+packages/quality/efficiency/scale/benchmark/Dockerfile
+  s_f4876d43d1babd::t_3146fe545ca8ab 41,50-51,54-56,58,67,70
+packages/quality/efficiency/scale/benchmark/README.md
+  s_f4876d43d1babd::t_807b1ca18cc52e 5-6,10,55,58,65,76-78,92,113-114,116,119,134
+packages/quality/efficiency/scale/benchmark/biome.jsonc
+  s_f4876d43d1babd::t_57bff1a2c24f49 2-3
+packages/quality/environments/AGENTS.md
+  s_f4876d43d1babd::t_a8f917be4470f6 1-7
+packages/quality/environments/README.md
+  s_f4876d43d1babd::t_46a31dc1291b10 1-5
+packages/quality/environments/containers/HELM-TESTING.md
+  s_f4876d43d1babd::t_f490a8d79b8caa 62
+packages/quality/environments/containers/package.json
+  s_f4876d43d1babd::t_c9355004f047db 24
+packages/quality/environments/containers/service-stack.ts
+  s_f4876d43d1babd::t_0e3759cbe4feb8 72
+packages/quality/environments/containers/tsconfig.json
+  s_f4876d43d1babd::t_936e26c79dedc6 2
+packages/quality/policy/AGENTS.md
+  s_f4876d43d1babd::t_714277333b39f5 1-7
+packages/quality/policy/README.md
+  s_f4876d43d1babd::t_9cfdbc1518189f 1-5
+packages/quality/policy/code-health/README.md
+  s_f4876d43d1babd::t_e2a42b2ef260f3 21,24,27,30,39,69,72,77-78
+packages/quality/policy/code-health/src/rules/adr-conventions.rule.test.ts
+  s_f4876d43d1babd::t_780c8882e7f5f8 372
+packages/quality/policy/code-health/src/rules/adr-conventions.rule.ts
+  s_f4876d43d1babd::t_9f260d0f6907aa 253
+packages/quality/policy/code-health/src/rules/single-instance-libs.rule.ts
+  s_f4876d43d1babd::t_bc2f1d0efa2fad 96
+packages/quality/policy/code-health/src/single-instance/explain-duplicates.ts
+  s_f4876d43d1babd::t_d8f15b5f58cbe9 213-214,337
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.test.ts
+  s_f4876d43d1babd::t_3d089814dac149 92-94
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts
+  s_f4876d43d1babd::t_7ef2964b97eb48 26-30
+packages/quality/policy/code-health/tsconfig.json
+  s_f4876d43d1babd::t_f79f43550346e3 2
+packages/quality/policy/rules-engine/tsconfig.json
+  s_f4876d43d1babd::t_fb193e4e7c6b09 2
+packages/quality/testing/AGENTS.md
+  s_f4876d43d1babd::t_3d7b1605e5e1f5 1-8
+packages/quality/testing/README.md
+  s_f4876d43d1babd::t_96e0ed5408e8fd 1-11
+packages/quality/testing/janitor/src/utils/git-operations.test.ts
+  s_f4876d43d1babd::t_a8582b0df3d567 7,11,14,18,21,25,28,32-35,39,43-46,50,54-57,77,85,89,95,98,102-104,108,118-120
+packages/quality/testing/janitor/src/utils/resolve-input-paths.test.ts
+  s_f4876d43d1babd::t_b93dfd01d20ac8 8,20,23,38-39,44-45,51,53,58,60,87,90,92-94
+packages/quality/testing/janitor/tsconfig.json
+  s_f4876d43d1babd::t_1a145eccb6fba9 2
+packages/quality/testing/playwright/AGENTS.md
+  s_f4876d43d1babd::t_d5eaf75b96c7d4 1-39
+packages/quality/testing/playwright/README.md
+  s_f4876d43d1babd::t_8424cd8bd32c3c 1,9,11-24,28-29,36,50,110,149,498,500,502,504
+packages/quality/testing/playwright/docs/ACCESSIBILITY.md
+  s_f4876d43d1babd::t_3d41cc2f2e7191 1,3,5-6,10-12,16,18,20,22,30,32,34,37,40,43,46
+packages/quality/testing/playwright/docs/HARNESS_BASELINE.md
+  s_f4876d43d1babd::t_4c06113685989c 207
+packages/quality/testing/playwright/docs/ORCHESTRATION.md
+  s_f4876d43d1babd::t_8c6124de839376 150
+packages/quality/testing/playwright/docs/TESTING_PATTERNS.md
+  s_f4876d43d1babd::t_6cb2addbc69946 1-53
+packages/quality/testing/playwright/janitor.config.mjs
+  s_f4876d43d1babd::t_85573b678b8dc3 77
+packages/quality/testing/playwright/playwright.config.ts
+  s_f4876d43d1babd::t_343d891e384dc9 77
+packages/quality/testing/playwright/scripts/aggregate-coverage.mjs
+  s_f4876d43d1babd::t_292150ca13b6ba 36
+packages/quality/testing/playwright/scripts/backend-coverage-resolver.ts
+  s_f4876d43d1babd::t_b17972982bf865 20
+packages/quality/testing/playwright/scripts/build-test-image.mjs
+  s_f4876d43d1babd::t_3d0997f4ffd963 10
+packages/quality/testing/playwright/scripts/canvas-perf-sentinels.mjs
+  s_f4876d43d1babd::t_72f145a4aba888 61
+packages/quality/testing/playwright/scripts/coverage-workflow.md
+  s_f4876d43d1babd::t_3f5c857131e28f 35,70,156
+packages/quality/testing/playwright/scripts/distribute-tests.mjs
+  s_f4876d43d1babd::t_a25377bf619a1b 11,41
+packages/quality/testing/playwright/scripts/fetch-currents-metrics.mjs
+  s_f4876d43d1babd::t_621d2fb902e524 7,18-19
+packages/quality/testing/playwright/scripts/run-local-isolated.mjs
+  s_f4876d43d1babd::t_29986bd7b33c8a 48
+packages/quality/testing/playwright/scripts/select-affected-e2e.mjs
+  s_f4876d43d1babd::t_e8db1f6de8f0d4 26
+packages/quality/testing/playwright/scripts/sizing-matrix-aggregate.ts
+  s_f4876d43d1babd::t_eef59f75e26d79 4,31
+packages/quality/testing/playwright/scripts/sizing-matrix-topologies.test.ts
+  s_f4876d43d1babd::t_33b685d01f5353 71
+packages/quality/testing/playwright/tests/cli-workflows/setup-workflow-tests.ts
+  s_f4876d43d1babd::t_e52132d741608a 14
+packages/quality/testing/playwright/tests/e2e/instance-ai/README.md
+  s_f4876d43d1babd::t_6fefb17b63a2e9 59
+packages/quality/testing/playwright/tests/infrastructure/benchmarks-local/README.md
+  s_f4876d43d1babd::t_85fb1c73151ec3 1-19
+packages/quality/testing/playwright/tests/infrastructure/benchmarks/AGENTS.md
+  s_f4876d43d1babd::t_5a3a7e7a525c23 36
+packages/quality/testing/playwright/tests/infrastructure/instance-registry/cluster-membership.spec.ts
+  s_f4876d43d1babd::t_d0269e9651ea47 6
+packages/quality/testing/playwright/tsconfig.json
+  s_f4876d43d1babd::t_048abb5bbedaf2 2,11
+packages/quality/testing/playwright/utils/benchmark/sizing-matrix.ts
+  s_f4876d43d1babd::t_11ca4fd7a1f6af 550
+packages/quality/testing/test-impact/README.md
+  s_f4876d43d1babd::t_83544e6233685c 1-17
+packages/quality/testing/test-impact/src/changes.test.ts
+  s_f4876d43d1babd::t_21e92af8e9308d 35,88,103
+packages/quality/testing/test-impact/src/changes.ts
+  s_f4876d43d1babd::t_d963b412f9b4fc 78
+packages/quality/testing/test-impact/tsconfig.json
+  s_f4876d43d1babd::t_380f56a5d01d1d 2
+pnpm-lock.yaml
+  s_f4876d43d1babd::t_93f35adcc6878e 1774-1776,1795-1800,1990,1992,2005,2007-2010,2525,2696,4551-4553,4572-4577,5073,5202,5353,5517,5608,5777,6145,6203,6273,6551,6996,7084,7169,7266,7628,7730,7753-7755,7757-7758,7760,7764,7766-7784,7788-7794,7801-7803,7805,7843,7846,7863,7870-7879,7883-7888,7895,7898-7932,7947,7949-7968,7970,7972-7973,7975-7987,7993,7995,8014,8017,8020,8023,8026,8029,8038,8041,8098,8101,8104,8107,8136,8144,8165,8250,38029,38363-38364,42794,42802
+pnpm-workspace.yaml
+  s_f4876d43d1babd::t_d7f05c05eed122 50
+scripts/build-n8n.mjs
+  s_f4876d43d1babd::t_84ec6bcc188e01 532
+scripts/codespace-preview/preview-labels.mjs
+  s_f4876d43d1babd::t_fbcf0e89624aa1 14
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_f4876d43d1babd::t_9d1b4e74ad1921 57-67
+scripts/lint-parity/layers.json
+  s_f4876d43d1babd::t_e53320a2da815f 32,55-60
+scripts/lint-parity/oxlint-parity.mjs
+  s_f4876d43d1babd::t_d2d5f86ecc2b55 68,159,163,166
+scripts/lint-parity/samples.json
+  s_f4876d43d1babd::t_506f7a7e1e5e15 29,379-384
+turbo.json
+  s_f4876d43d1babd::t_2a0686a67fefea 77-79,86-88,152-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c0b2ec2e5f81a541dbe90dfcd8accdf8644bb8a8",
+  "prompts": {},
+  "sessions": {
+    "s_f4876d43d1babd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af51ae32-1546-4f05-b981-05e15fb39150",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

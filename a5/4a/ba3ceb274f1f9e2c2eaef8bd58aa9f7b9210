@@ -1,0 +1,33 @@
+packages/@n8n/cli/src/commands/package/import.ts
+  s_76e4428ad7a8e8::t_3275857459a8ef 27,30-31
+  s_76e4428ad7a8e8::t_7bb6b737f26f9d 106
+  s_76e4428ad7a8e8::t_6a6c4d922223ed 12-15
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_76e4428ad7a8e8::t_aae1b06632486d 74
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_76e4428ad7a8e8::t_e72dc1b39797ac 160
+  s_76e4428ad7a8e8::t_bf4f741e0c0c9d 1,13,18,58,63,100,111-159,161-162
+  s_76e4428ad7a8e8::t_7b2f4e3f528063 10-12
+packages/@n8n/cli/docs/commands/package.md
+  s_76e4428ad7a8e8::t_4ca5cfe4fe035f 72
+  s_76e4428ad7a8e8::t_636f32106b5f17 46-49
+  s_76e4428ad7a8e8::t_45440321e6c127 55
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_76e4428ad7a8e8::t_88e5c1e73d5f55 245-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a54aba3ceb274f1f9e2c2eaef8bd58aa9f7b9210",
+  "prompts": {},
+  "sessions": {
+    "s_76e4428ad7a8e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb4eaf60-7b3e-4afc-a08b-bca9808a8f08",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

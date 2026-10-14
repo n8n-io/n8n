@@ -1,0 +1,20 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_3f16b3c7dbea10::t_dc33157a0210de 4568-4576
+  s_3f16b3c7dbea10::t_bdacbed7cd575c 4620-4641
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b6a5a8de66b4e0a4ec6b3f8b6c6d47a6ff696719",
+  "prompts": {},
+  "sessions": {
+    "s_3f16b3c7dbea10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce04b445-967b-4c3a-a64d-270eb52dcd7e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_644fa653780ed3::t_afc0077ffbb4dd 6
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_644fa653780ed3::t_30de942667f23c 175
+  s_644fa653780ed3::t_29ddd81154417e 289-296
+  s_644fa653780ed3::t_bc4c9b09d2fb07 222
+  s_644fa653780ed3::t_61e123014a7e58 8
+  s_644fa653780ed3::t_61d9bfb6964937 39
+  s_644fa653780ed3::t_38694aedc50581 232
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  s_644fa653780ed3::t_00c73a2b2dbbca 97
+  s_644fa653780ed3::t_abecd714d30432 1
+  s_644fa653780ed3::t_f4db72b5d171dc 91-96,98-111
+  s_644fa653780ed3::t_6f446444ebd58d 90
+packages/@n8n/api-types/src/dto/read-only-public-schema.ts
+  s_644fa653780ed3::t_78a7b0eef78187 1-4,6-8
+  s_644fa653780ed3::t_a9bc74ba229d19 5
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_644fa653780ed3::t_5cda20f237d3d3 132-142
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.utils.test.ts
+  s_644fa653780ed3::t_8db6d7dbed3907 17-51
+  s_644fa653780ed3::t_1ce733b6ee18e1 1,5,7,10-15
+  s_644fa653780ed3::t_f7c23975392948 120-246
+  s_644fa653780ed3::t_cd64bb11a946e5 16
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_644fa653780ed3::t_b91f7f04490225 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e2b0c55227374343e7f69791d18b54b0d6b1d65a",
+  "prompts": {},
+  "sessions": {
+    "s_644fa653780ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d77ebb3-11d2-4f3f-ba25-48171f0149f8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

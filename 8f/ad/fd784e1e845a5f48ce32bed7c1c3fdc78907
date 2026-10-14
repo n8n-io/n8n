@@ -1,0 +1,69 @@
+packages/nodes-base/nodes/Confluence/test/actions/page/create.operation.test.ts
+  s_2ebe9c07d64221::t_b930877b71f1bb 103-105,108-121
+packages/nodes-base/nodes/Confluence/test/actions/page/delete.operation.test.ts
+  s_2ebe9c07d64221::t_01e32a7ab07c83 134-136,139,142-146,150-182
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_2ebe9c07d64221::t_4893982c2a88b6 481-497,499-514
+  s_2ebe9c07d64221::t_df8b7b4cbdb8f2 498
+  s_2ebe9c07d64221::t_e0e2edf0836b84 536-546
+  s_2ebe9c07d64221::t_fced5e34acdae1 478-480
+packages/nodes-base/nodes/Confluence/actions/page/update.operation.ts
+  s_2ebe9c07d64221::t_82e0c98c278b26 37,43
+  s_2ebe9c07d64221::t_ceea568cfd6494 36,42
+packages/nodes-base/nodes/Confluence/test/actions/attachment/delete.operation.test.ts
+  s_2ebe9c07d64221::t_e9965db11f5462 68
+  s_2ebe9c07d64221::t_33a0364811fb06 64-67,69-79
+packages/nodes-base/nodes/Confluence/test/actions/page/get.operation.test.ts
+  s_2ebe9c07d64221::t_f00c3e388671f4 363-374,376,378-379,383-391,402-436
+packages/nodes-base/nodes/Confluence/actions/page/bodyEnvelope.ts
+  s_2ebe9c07d64221::t_3521420b6c1158 133-137
+  s_2ebe9c07d64221::t_b4319d51c175df 132
+packages/nodes-base/nodes/Confluence/actions/page/delete.operation.ts
+  s_2ebe9c07d64221::t_e25d92bbd41743 85
+  s_2ebe9c07d64221::t_f051452a6b2d3a 10-12
+  s_2ebe9c07d64221::t_45472ea86fff60 50,53,68,83-84,86,97-101
+packages/nodes-base/nodes/Confluence/actions/page/create.operation.ts
+  s_2ebe9c07d64221::t_45de867747c916 97
+  s_2ebe9c07d64221::t_f0aa23dc07058c 98-101
+packages/nodes-base/nodes/Confluence/actions/search/query.operation.ts
+  s_2ebe9c07d64221::t_2b0c64e155f947 23-24,31-32,34,36
+  s_2ebe9c07d64221::t_c6bdc97913e973 2
+  s_2ebe9c07d64221::t_82eed16df91163 19-22,29-30,33,35
+  s_2ebe9c07d64221::t_c6cca9eb45d2c8 160-163,165
+  s_2ebe9c07d64221::t_72c36b4aa9ddb8 16-18,37-38
+  s_2ebe9c07d64221::t_5644905b8c62be 25-28
+  s_2ebe9c07d64221::t_91eda291b39937 164
+packages/nodes-base/nodes/Confluence/actions/attachment/delete.operation.ts
+  s_2ebe9c07d64221::t_ba2fed08985df0 108,114
+  s_2ebe9c07d64221::t_764595fb10a5d2 107
+  s_2ebe9c07d64221::t_fc0c686b677aca 109-113
+packages/nodes-base/nodes/Confluence/test/actions/search/query.operation.test.ts
+  s_2ebe9c07d64221::t_48ab31fd034a8d 214,216-217,238
+  s_2ebe9c07d64221::t_fd456c4936e691 220,226
+  s_2ebe9c07d64221::t_bd7a1bb4937f6b 221-225
+  s_2ebe9c07d64221::t_df86634342fb14 219,231,237,239-243
+  s_2ebe9c07d64221::t_2e1847b5be7fde 1,6
+  s_2ebe9c07d64221::t_2af23342bbb3c8 215,218,246
+  s_2ebe9c07d64221::t_b7410e5e1d7fd5 227-230,232-236,244-245,247-248
+packages/nodes-base/nodes/Confluence/actions/page/append.operation.ts
+  s_2ebe9c07d64221::t_07acd09b02e86b 52-55
+packages/nodes-base/nodes/Confluence/test/actions/page/bodyEnvelope.test.ts
+  s_2ebe9c07d64221::t_856c38c9f8660e 73-74
+  s_2ebe9c07d64221::t_fc0c686b677aca 75-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8fadfd784e1e845a5f48ce32bed7c1c3fdc78907",
+  "prompts": {},
+  "sessions": {
+    "s_2ebe9c07d64221": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97179d9b-4930-4bb9-a7e7-0b2c899a783f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

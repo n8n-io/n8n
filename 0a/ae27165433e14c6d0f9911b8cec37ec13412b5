@@ -1,0 +1,94 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.types.ts
+  s_f89e0603529616::t_10c07a0ceb291f 25,36-37
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f89e0603529616::t_7274f2670394c5 7359
+  s_f89e0603529616::t_839d4a0855247e 7283
+  s_f89e0603529616::t_6a85f949747cae 7360-7366
+  s_f89e0603529616::t_e5375a0f45d1f5 7367-7375
+  s_f89e0603529616::t_e6c1a0395ad9d1 7335
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_f89e0603529616::t_629e57e2720bac 4
+  s_f89e0603529616::t_79e95726468e58 58-65
+  s_f89e0603529616::t_eca90476e1f9ba 211
+  s_f89e0603529616::t_e0c0da7b23ed15 95-97
+  s_f89e0603529616::t_ede7f1bf4c279f 229
+  s_f89e0603529616::t_86af466ca0b1e1 5
+  s_f89e0603529616::t_050b640cdf1163 206-210,212
+  s_f89e0603529616::t_cb7587bb249afe 253
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_f89e0603529616::t_3518884a5addf0 126,132-134,136-138
+  s_f89e0603529616::t_740aa3ae293d6f 124-125,127-131,135,139-140,142-143
+  s_f89e0603529616::t_53a8e37de467a7 141
+  s_f89e0603529616::t_6a45b6afdc2963 38-52,63,68,80,94
+  s_f89e0603529616::t_5c49825ee896ac 7
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  s_f89e0603529616::t_b0469045f9f7bf 37-38
+  s_f89e0603529616::t_b6e011e208bf54 6
+  s_f89e0603529616::t_a4facd4065aba3 195-201
+  s_f89e0603529616::t_a85b516f38f318 66-68
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_f89e0603529616::t_943d77a3ee104f 118-121
+  s_f89e0603529616::t_363c6d5863c85d 446-454,466
+  s_f89e0603529616::t_669e9ee3c9a64e 752,754
+  s_f89e0603529616::t_4792a3a9f1c996 757-791
+  s_f89e0603529616::t_b9925b0a550996 850-853
+  s_f89e0603529616::t_888893e729f6d2 743-745,753
+  s_f89e0603529616::t_415dfdaac4a348 755-756
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_f89e0603529616::t_05d4b95b82c3d5 398-403,405
+  s_f89e0603529616::t_98de2eb1c32903 232-239,242
+  s_f89e0603529616::t_86e2d0fe5aa05b 9,18,23
+  s_f89e0603529616::t_6dcb6e6734d94d 145
+  s_f89e0603529616::t_05e60525a6516d 91-98
+  s_f89e0603529616::t_cee23306094155 133-144,146-151
+  s_f89e0603529616::t_05ec50dffcc19b 525-528,530
+  s_f89e0603529616::t_02bf40a72e5e31 210,212,214-217,219,221-225,227-230
+  s_f89e0603529616::t_316331a8773e47 231,240-241,310,406-408,410-411,426,428-429,523,531-532,535-536,581
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.spec.ts
+  s_f89e0603529616::t_c97aad5120c4c6 53-56
+  s_f89e0603529616::t_4868bee7621678 246-278
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_f89e0603529616::t_fe00b92e49ac53 2,13-14,21
+  s_f89e0603529616::t_f77cea59042a28 59-69
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_f89e0603529616::t_dca79770e358de 95
+  s_f89e0603529616::t_b57f5c14822a86 111,115,120-121
+  s_f89e0603529616::t_ebe866a41c2479 181,191-220,222
+  s_f89e0603529616::t_bd343e6821b94c 178-180,182-188
+  s_f89e0603529616::t_4415b1f233c213 10
+  s_f89e0603529616::t_d69843512cf1dc 412
+  s_f89e0603529616::t_a3962ad81d9536 189-190,221,223-226,231-248,250-251,253-254,256-257,259-260,413
+  s_f89e0603529616::t_2eedede29d2a35 522-525
+  s_f89e0603529616::t_b887d261e94969 166,170-171
+  s_f89e0603529616::t_6aea72b968ef43 146,151-152
+  s_f89e0603529616::t_d380619d25b0f4 262-263,414,421,430-431,526-527,536,589,636,661,675,716-717,757,794
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.utils.ts
+  s_f89e0603529616::t_54627b3977aad8 23,33,43,59,67
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_f89e0603529616::t_1fdfcc93128c77 4
+  s_f89e0603529616::t_7d72a15878bedf 68
+  s_f89e0603529616::t_83b5b459dde480 257-273,279
+  s_f89e0603529616::t_b1e2d182592d29 58-67,69-106,113,139
+  s_f89e0603529616::t_e2f3a51ea2a6cc 107-112,140,274-278,280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0aae27165433e14c6d0f9911b8cec37ec13412b5",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f89e0603529616": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ff957d73-b86f-43ac-9e8d-c9cf542a9b79",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

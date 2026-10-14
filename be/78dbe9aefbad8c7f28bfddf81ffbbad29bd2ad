@@ -1,0 +1,80 @@
+packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts
+  s_82e0092ae85548::t_079dc7f45f942a 1240
+  s_82e0092ae85548::t_a8076ba6ef732b 1217
+  s_82e0092ae85548::t_b01e345377ed5f 81-128
+  s_82e0092ae85548::t_08f073b96282a5 1714
+  s_82e0092ae85548::t_ab6bfe2afb68de 80,449-455,467
+  s_82e0092ae85548::t_5b773a1cf003d1 797
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_f6634ef5398123::t_f302a9fd5a2fba 56
+  s_f6634ef5398123::t_e5802f0d7035db 1487-1491
+packages/@n8n/agents/src/integrations/langsmith.ts
+  s_796995090f9c19::t_de0de25c8a3f2e 143,149
+  s_796995090f9c19::t_5798faec40c792 163-172
+  s_796995090f9c19::t_c23a5cf547320d 211,213-220,224
+  s_796995090f9c19::t_b57a2babccc51a 19-27
+packages/@n8n/instance-ai/src/index.ts
+  s_f6634ef5398123::t_0a641f54ec9851 224-226
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_f6634ef5398123::t_60275100327159 163
+  s_f6634ef5398123::t_4483983f0ae9b4 1087-1090
+  s_f6634ef5398123::t_ed54185fc690dd 183
+packages/@n8n/instance-ai/src/tracing/trace-payloads.ts
+  s_6221fe02d0dfa6::t_f5a8248727a7ce 828-835,845-847
+packages/@n8n/agents/src/__tests__/langsmith-telemetry.test.ts
+  s_796995090f9c19::t_7dae399b7a731a 293-384
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_82e0092ae85548::t_a1544f6b33916a 22
+  s_82e0092ae85548::t_9d3a5ca8a4fd79 1103-1104,1107-1108,1111,1126-1213
+  s_82e0092ae85548::t_e8670b3359c6db 356-359
+  s_82e0092ae85548::t_57f175429f11c7 355
+  s_82e0092ae85548::t_8e25c44971faf4 1083,1096-1100,1105-1106
+  s_82e0092ae85548::t_b5e8c0a46c1308 2318
+  s_6221fe02d0dfa6::t_b343b81ab95d70 906-962
+  s_82e0092ae85548::t_411fe51c12cf79 2317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "be78dbe9aefbad8c7f28bfddf81ffbbad29bd2ad",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6221fe02d0dfa6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "480cc058-2d92-4831-8319-09507120721e",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_796995090f9c19": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "11e9d850-9778-4495-a020-a1949891e13f",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_82e0092ae85548": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7324d849-61d6-4b7c-9c66-7b8108625e32",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f6634ef5398123": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "57b945b7-ba5c-4f7f-9deb-eae73d5aceee",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

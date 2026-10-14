@@ -1,0 +1,26 @@
+packages/@n8n/agents/src/types/utils/json.ts
+  s_1c45d18cf14868::t_19e6eb9cd01cb8 1
+packages/@n8n/ai-utilities/src/types/json.ts
+  s_1c45d18cf14868::t_7624dca7d2ff67 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "870efee7ed6f68ffd9f91498d0bd9002607f2d69",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1c45d18cf14868": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1f8b129e-d118-4a7d-af9b-a0c6cc1cd1f3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

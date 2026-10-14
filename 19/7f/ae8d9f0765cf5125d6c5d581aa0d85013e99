@@ -1,0 +1,14 @@
+packages/cli/src/modules/project-files/DEMO.md
+  h_c63dce324dfc7b 216-376
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "197fae8d9f0765cf5125d6c5d581aa0d85013e99",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

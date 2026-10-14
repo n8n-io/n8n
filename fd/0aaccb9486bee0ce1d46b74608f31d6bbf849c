@@ -1,0 +1,21 @@
+packages/cli/src/__tests__/credentials-overwrites.test.ts
+  s_33e0d33f0a107a::t_4d8eb24a49ef6e 189-205
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_33e0d33f0a107a::t_9996f75d8e5fa8 860-903
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "fd0aaccb9486bee0ce1d46b74608f31d6bbf849c",
+  "prompts": {},
+  "sessions": {
+    "s_33e0d33f0a107a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca95b283-9aed-4a7c-b19a-895e18ef27e4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

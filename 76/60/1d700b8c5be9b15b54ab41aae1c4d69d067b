@@ -1,0 +1,126 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_d609ee1f20c15a::t_223b153d6ce045 127,342,554-560
+  s_e119f4a041ed36::t_75c44314149ca2 335-339,570-578
+  s_d609ee1f20c15a::t_7f0e6de7f5dae5 1,58-60,123-126,329-334,340-341,343-344,553
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_e119f4a041ed36::t_eb7f47218cc988 170-183
+  s_e119f4a041ed36::t_bd25e44c5188b1 169,184
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_e119f4a041ed36::t_75c44314149ca2 181-233
+  s_e119f4a041ed36::t_a1372af3bb2535 1-3,179-180,234-237
+packages/cli/src/public-api/types.ts
+  s_d609ee1f20c15a::t_7d2a28de05c669 1,128
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.api.ts
+  s_e119f4a041ed36::t_394065fe0f4a52 1-2,115-121
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.vue
+  s_e119f4a041ed36::t_775d22be8c98b1 19,28-32,64-65,76-77,177-199,203,208,227,235,274-276,281,371,376
+  s_e119f4a041ed36::t_9050e82f0f77b3 280
+  s_e119f4a041ed36::t_8aacea50e50ce9 315
+  s_e119f4a041ed36::t_06da6e522a9e7b 89-99,101-106
+  s_e119f4a041ed36::t_565625054842ce 176,285
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_e119f4a041ed36::t_75c44314149ca2 450-453
+  s_e119f4a041ed36::t_05501636d780e0 1,62,447-449,454-464
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_e119f4a041ed36::t_bd25e44c5188b1 73-80,139
+  s_e119f4a041ed36::t_fc80ecc9d3e20c 136
+  s_e119f4a041ed36::t_530d31ffa3b16b 166
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.types.ts
+  s_e119f4a041ed36::t_394065fe0f4a52 43-46
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_d609ee1f20c15a::t_7d2a28de05c669 1729,1892-1894,1897-1898
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsFlow.vue
+  s_e119f4a041ed36::t_394065fe0f4a52 1-49
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotions.types.ts
+  s_e119f4a041ed36::t_494e0fdf36e9f9 24-26
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.ts
+  s_e119f4a041ed36::t_9050e82f0f77b3 1-2,36,90,103-104,113,124-126,149-152
+  s_e119f4a041ed36::t_494e0fdf36e9f9 4-35,38,40-60,69-71,73-82,89,91-94,102,114-123,127-129,134-146,153-155,199,201-202,210-214,218,227-231,238-241,245-254,259
+  s_e119f4a041ed36::t_394065fe0f4a52 3,37,242-244
+  s_e119f4a041ed36::t_75c44314149ca2 61-67,83-88,95-101,105-112,130-133,147-148,156-171,175-198,200,203-209,215-217,219-226,232-237,255-258
+  s_e119f4a041ed36::t_8d8070e9d0bb24 172-174
+  s_d609ee1f20c15a::t_ceccba289b481a 39,68,72
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.store.ts
+  s_e119f4a041ed36::t_06da6e522a9e7b 36
+  s_e119f4a041ed36::t_775d22be8c98b1 35,37-38,95
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_e119f4a041ed36::t_394065fe0f4a52 177-181,188
+  s_e119f4a041ed36::t_75c44314149ca2 182-187
+  s_e119f4a041ed36::t_5a35254df91595 1-2
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.utils.test.ts
+  s_d609ee1f20c15a::t_7d2a28de05c669 340-343,453,569-572,576
+  s_d609ee1f20c15a::t_6285c5c2095845 145-181
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.test.ts
+  s_e119f4a041ed36::t_75c44314149ca2 1-3,20-25,28-33,36-47,52-62,64-69,78-83,116-124,133-143,147-154,163-165,174-176,180-183,192-194,201-209,212-216,218-222,224-229,246-248
+  s_e119f4a041ed36::t_394065fe0f4a52 162
+  s_e119f4a041ed36::t_78560e899e1e10 4-19,26-27,34-35,48-51,63,70-77,84-115,125-132,144-146,155-161,166-173,177-179,184-191,195-200,210-211,217,223,230-238,240-243,249-254
+  s_e119f4a041ed36::t_578a721b58ecc7 239,244-245
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.types.ts
+  s_e119f4a041ed36::t_775d22be8c98b1 1,18-19,21-29
+  s_e119f4a041ed36::t_9050e82f0f77b3 20
+packages/frontend/editor-ui/src/features/credentials/credentials.types.ts
+  s_e119f4a041ed36::t_394065fe0f4a52 47
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  s_d609ee1f20c15a::t_7d2a28de05c669 3,106-128,170,173,283
+packages/frontend/editor-ui/src/Interface.ts
+  s_e119f4a041ed36::t_9050e82f0f77b3 708
+  s_e119f4a041ed36::t_8052fea541095a 1-2,709-713
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_e119f4a041ed36::t_775d22be8c98b1 2,446-447
+packages/frontend/editor-ui/src/features/settings/environments.ee/environments.api.ts
+  s_e119f4a041ed36::t_fc80ecc9d3e20c 25-26
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_e119f4a041ed36::t_75c44314149ca2 1363-1417
+  s_e119f4a041ed36::t_22814603eb7128 1362,1418-1420
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_e119f4a041ed36::t_494e0fdf36e9f9 452,511
+  s_e119f4a041ed36::t_9050e82f0f77b3 486
+  s_e119f4a041ed36::t_f4d154a5215cad 453-457,487-491,512-516
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_d609ee1f20c15a::t_ceccba289b481a 170-172
+  s_e119f4a041ed36::t_8aacea50e50ce9 423
+  s_d609ee1f20c15a::t_8556c6b2b96e8c 2,20-21,47,149-169,173-184,211-215,218,240-241,422,424-433
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.test.ts
+  s_e119f4a041ed36::t_75c44314149ca2 129-131,144-174
+  s_e119f4a041ed36::t_a4c4ca6dd50806 1-3,175-182
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e119f4a041ed36::t_394065fe0f4a52 8917,8919-8923
+  s_e119f4a041ed36::t_9050e82f0f77b3 8918
+  s_e119f4a041ed36::t_c41db5f5db9643 8915-8916
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_d609ee1f20c15a::t_223b153d6ce045 676,955,1552-1556
+  s_e119f4a041ed36::t_494e0fdf36e9f9 1549
+  s_e119f4a041ed36::t_6210f55b0e1a9d 378-382,818
+  s_e119f4a041ed36::t_40c50555a945f2 61-62,169-170,207,225-227,317,387,390-393,458,474,645-646,671-675,677-686,691-693,697-717,810-812,946-954,956-973,1491-1494,1541-1546,1550-1551,1557
+  s_e119f4a041ed36::t_8aacea50e50ce9 1511
+  s_e119f4a041ed36::t_9050e82f0f77b3 1547
+  s_e119f4a041ed36::t_0129a411a5ccd5 1548
+  s_e119f4a041ed36::t_fc80ecc9d3e20c 981
+  s_e119f4a041ed36::t_775d22be8c98b1 1138
+  s_e119f4a041ed36::t_06da6e522a9e7b 688-690,694-696,718-720,817,819-820
+  s_d609ee1f20c15a::t_5fa53d78458780 371,687,773,942,1575-1577
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76601d700b8c5be9b15b54ab41aae1c4d69d067b",
+  "prompts": {},
+  "sessions": {
+    "s_d609ee1f20c15a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d6f0673-a2e9-44b1-bbbb-37c39c30ce18",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_e119f4a041ed36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c960-8f83-7942-9390-94d55512f1a1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

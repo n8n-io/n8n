@@ -1,0 +1,37 @@
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_0dd2e4cdabc99e::t_8694ebf69471b3 141-142,145-155,159,163-168,171-172,176-193,196,200,204
+  s_0dd2e4cdabc99e::t_ef25405812d941 309
+  s_0dd2e4cdabc99e::t_34df0f825b145c 287-295,297-298,305
+  s_0dd2e4cdabc99e::t_b28861884b77b1 265-266
+  s_0dd2e4cdabc99e::t_4c485d06f33c3c 321
+  s_0dd2e4cdabc99e::t_1a9919cfbacc70 275-276
+  s_0dd2e4cdabc99e::t_85178c98e621e5 103-113,122,125
+  s_0dd2e4cdabc99e::t_c934a24b50efe3 83-84
+  s_0dd2e4cdabc99e::t_50742657d8143f 217,221,224-227,229,232-233,235-236
+  s_0dd2e4cdabc99e::t_0506b8d6f4d776 2-6,9-10
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  s_0dd2e4cdabc99e::t_a0e5fcf90be19a 23-25,28-29,38,41-54
+  s_0dd2e4cdabc99e::t_ddc2c527946adf 91-92,94-100,103-104,106
+  s_0dd2e4cdabc99e::t_36efc73f14b8ea 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e8a065c4d9683aa4a45cf3fcc5158897218f7dd2",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0dd2e4cdabc99e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3efaa2c-318e-4f7f-8956-464298f2c641",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

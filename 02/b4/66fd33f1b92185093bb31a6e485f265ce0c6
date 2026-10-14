@@ -1,0 +1,129 @@
+packages/cli/BREAKING-CHANGES.md
+  s_71ad2034164515::t_8bafc02dccdd4b 5-13
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_71ad2034164515::t_248bfb6b5b786a 249-253,477,482-486,523
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_71ad2034164515::t_3580449498b69e 288,434-438,445,475,532-538,740-743,787
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_71ad2034164515::t_16dfbcd2514ba6 85,201-206,247,276,323
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_71ad2034164515::t_7bbe9f40af783c 83,188,224,255-260,354,386,419,445,470
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_71ad2034164515::t_fccd2d2ad2a4a7 80-81,120-127,208
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-variables.integration.test.ts
+  s_71ad2034164515::t_d54d0d211a4521 76,120,153,186,219,254-259,286,306,333,448,513
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_71ad2034164515::t_8aa55ef4c57be9 256-264,338-347,392-394,399,446-448,453,486-492,519,521-522,525,530-533,600,604-613,717-726,757,787,832,836,858,884-888,912,932,955-959,1169
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_71ad2034164515::t_5553a49f3e2eba 154-156,162,211-212,221,326-330
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_71ad2034164515::t_fc53ac5469ff78 37,378-380,700-709,753-762,814-815,1063,1069,1097-1105,1123,1133-1146,1189-1202,1265-1266,1380-1388,1437,1471-1484,1524-1532,1633-1634,1679-1687,1724-1732,1757-1765,1796-1804,1821-1829
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_71ad2034164515::t_6a810c39c7bd54 414-415,654-656
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_71ad2034164515::t_cd0a06df1f7f43 14
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_71ad2034164515::t_f7b9d20504b257 36,161
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  s_71ad2034164515::t_9f506ee1c2d6d6 68
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_71ad2034164515::t_8e402a9776a8b5 68,457,459-461
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_71ad2034164515::t_d478df6715fa0d 25-28,167,169,179,181
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_71ad2034164515::t_2f40c1354d4cfa 54,66,98,112-117,153,196,223-226
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  s_71ad2034164515::t_2479f4ce85a405 9,70,74,89,93,113,134,155,170,174,195,210,214,231,235,254,258,282,286,556,560
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-missing-mode.test.ts
+  s_71ad2034164515::t_75d2904e929058 17,30,42-47,60,64
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential.exporter.test.ts
+  s_71ad2034164515::t_84348152550b02 106,122,146-149,214,252,258
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_71ad2034164515::t_9d626cace72104 3,42
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_71ad2034164515::t_159cd00622048d 88-93
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_71ad2034164515::t_73a81fa52480c2 6,62
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_71ad2034164515::t_412204b9ca8d6c 36
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  s_71ad2034164515::t_18e630b9b08ee6 103,119,143-146
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_71ad2034164515::t_95935c7e996820 25,331
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_71ad2034164515::t_6113c69faaaaf7 73-76
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_71ad2034164515::t_9e9356ffc4d857 8,76
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_71ad2034164515::t_cbad33c799a66b 30
+packages/cli/src/modules/n8n-packages/entities/tag/tag.exporter.ts
+  s_71ad2034164515::t_c6dd86c275bd88 44,47,49-50
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_71ad2034164515::t_654d1baf606385 112-114,173-175,197-199,227-229,255-257,287-295,319-321,329,345-347,407-413
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_71ad2034164515::t_8fd2b46fca2c2b 33,80,100
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_71ad2034164515::t_add243531b3de7 92-95
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_71ad2034164515::t_b9b761b1977748 6,76
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/missing-node-type-mode.test.ts
+  s_71ad2034164515::t_abc67df55d82ab 1,60-64,72,90-102,114-121,127-129,143-158
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/sub-workflow-ordering.test.ts
+  s_71ad2034164515::t_0fa265224d516c 11
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publisher.test.ts
+  s_71ad2034164515::t_c6e19bac37f936 342-344
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-requirement.exporter.test.ts
+  s_71ad2034164515::t_877f94380bbdd1 26,49-52,57,77-78
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_71ad2034164515::t_0f7459afe92418 4,52
+packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
+  s_71ad2034164515::t_308621846037fc 3-4,12,16,42
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-ordering.ts
+  s_71ad2034164515::t_ae09cd1c2c53d1 1,24
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  s_71ad2034164515::t_13d9f1b0252054 47,55
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_71ad2034164515::t_86508b5c4310be 58-69,82-83,95-97,111-112,158-159
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_71ad2034164515::t_895a542c50d8d9 8,10,14,28-30,36-38,52-56,85-97
+packages/cli/src/modules/n8n-packages/spec/requirement-consumers.ts
+  s_71ad2034164515::t_0771a9ba6ff796 1-7
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_71ad2034164515::t_3e1d26a524fde4 3-11,16,22,31,37,47,57,122
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_71ad2034164515::t_092b13088c33d9 104,109-117,133,143-151,159
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_71ad2034164515::t_6d8f61307aea9c 30-37,48-50
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_71ad2034164515::t_c53c982d09c8ac 563
+packages/cli/src/modules/promotions.ee/import-manifest-bridge.ts
+  s_71ad2034164515::t_da6a71df21579e 9-13,73,81,83,273,282-283,286-287,291-292,295,299,305-313
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_71ad2034164515::t_23fee1532545dd 40-44,332,336,338,439
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_71ad2034164515::t_9d1f601ee670fb 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02b466fd33f1b92185093bb31a6e485f265ce0c6",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_71ad2034164515": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

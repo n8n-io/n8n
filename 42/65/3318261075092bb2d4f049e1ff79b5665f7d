@@ -1,0 +1,63 @@
+packages/@n8n/workflow-sdk/src/index.ts
+  s_7887e2d350f40f::t_0439d42ba76fff 276
+  s_7887e2d350f40f::t_043f959bf5c2b7 8
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_7887e2d350f40f::t_4c0b79ec2a524a 400
+  s_7887e2d350f40f::t_4c735af0268816 5-6,12
+  s_7887e2d350f40f::t_6c998c0832713b 192-196,201,203,205-217,219-229
+  s_7887e2d350f40f::t_36d51284973fe4 7,197-200,202,204,218,399
+packages/@n8n/instance-ai/src/tools/workflows/preserve-node-positions.ts
+  s_7887e2d350f40f::t_aa74550fba2e0e 324-326,328
+  s_7887e2d350f40f::t_0dc11de81490a5 14,327,334,473-475
+  s_7887e2d350f40f::t_15f909328331cf 2
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  s_7887e2d350f40f::t_289ba80321051f 247
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.ts
+  s_7887e2d350f40f::t_6fe1badd41b1a9 211-265,267,272-281,297-300,355,369-371,374,378,389
+  s_7887e2d350f40f::t_dcacc5ac2533de 471,478-484,1090-1098,1155,1168
+  s_7887e2d350f40f::t_70c74473c52f55 51-56,266,268-269,271,282-290,292-296,301-323,375-377,381,1053-1054,1059
+  s_7887e2d350f40f::t_965ddf92351831 11-18,291
+  s_7887e2d350f40f::t_79f0e86742cc5e 1052
+  s_7887e2d350f40f::t_c2c7a7de229421 270
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.test.ts
+  s_7887e2d350f40f::t_b94dff124a73ea 683-685
+  s_7887e2d350f40f::t_ac427c4367b60f 666-667,672-674,679,691,703-705
+  s_7887e2d350f40f::t_9697614876bff5 17,19,21-27
+  s_7887e2d350f40f::t_75c20b399b7912 678,680-682,686-690,700,724
+  s_7887e2d350f40f::t_dd04cd4e4720cb 28
+  s_7887e2d350f40f::t_99c2ce07d5fc41 644-665,668-671,675-677,725
+  s_7887e2d350f40f::t_7fb0caadd0c40c 20
+  s_7887e2d350f40f::t_d885f172c4d89a 706-723
+  s_7887e2d350f40f::t_dce42dfeb61577 625-643
+  s_7887e2d350f40f::t_adff654b6bc7c9 692-699,701-702
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/preserve-node-positions.test.ts
+  s_7887e2d350f40f::t_2a057a9226da34 215-219
+  s_7887e2d350f40f::t_737bd601e958fc 208-214,220-236
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_7887e2d350f40f::t_f39107c3fcbffd 371
+  s_7887e2d350f40f::t_289ba80321051f 8-14,369-370
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-source-compiler.test.ts
+  s_7887e2d350f40f::t_deac13c8671eea 580-589,597-598,606-619,622-648
+  s_7887e2d350f40f::t_b94dff124a73ea 590-596,599-605,620-621
+packages/@n8n/workflow-sdk/src/types/base.ts
+  s_7887e2d350f40f::t_289ba80321051f 1059-1069,1073-1075,1077
+  s_7887e2d350f40f::t_f39107c3fcbffd 1076
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_7887e2d350f40f::t_289ba80321051f 640
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42653318261075092bb2d4f049e1ff79b5665f7d",
+  "prompts": {},
+  "sessions": {
+    "s_7887e2d350f40f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62dd6632-b49e-473a-b9fb-b7945d59c21e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_d9c3b8b3fea137::t_2e979450f3b800 377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "482d175ddb09dd8bf1b9de833da86ac19a7d964a",
+  "prompts": {},
+  "sessions": {
+    "s_d9c3b8b3fea137": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c2301f2-2ea7-4da7-bcd1-14f2e18ad7a7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

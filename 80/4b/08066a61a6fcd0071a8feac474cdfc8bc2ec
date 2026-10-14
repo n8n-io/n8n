@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_c2109af6de313b::t_fca14f5acc3926 289-291
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_c2109af6de313b::t_fca14f5acc3926 194-198
+  s_c2109af6de313b::t_d9b7f96c72ff20 191
+  s_c2109af6de313b::t_48a653e52a5f3c 199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "804b08066a61a6fcd0071a8feac474cdfc8bc2ec",
+  "prompts": {},
+  "sessions": {
+    "s_c2109af6de313b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b489-b993-77c3-b655-2272a0bb0c62",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

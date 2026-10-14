@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_8631ec10eb1199::t_c422043a982d8f 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5438f7ca1db3726e823afd60972aa7bda66151c",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

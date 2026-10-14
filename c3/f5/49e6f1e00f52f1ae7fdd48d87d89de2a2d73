@@ -1,0 +1,110 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_207230a01b0f33::t_a16a24f89187dc 223-230
+  s_1a2f017b901928::t_5c7681a1c507ff 91,93
+  s_1a2f017b901928::t_8b88334b11cdd7 92
+  s_1a2f017b901928::t_9b0077f3fe579a 166
+  s_1a2f017b901928::t_9a34d7b71b7141 262-263,265,267,272
+  s_207230a01b0f33::t_3c91e094fd43b7 6,12-13
+  s_1a2f017b901928::t_e89357bebac552 264,268-271
+  h_9c8f56e3400786 90
+  s_207230a01b0f33::t_5a87cf8d64ff1f 107-117
+packages/frontend/editor-ui/src/features/workflow-reviews/constants.ts
+  s_207230a01b0f33::t_e48c065195a7e7 14-15,18
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewChangesSection.test.ts
+  s_1a2f017b901928::t_6913ba48ef020e 175
+  s_1a2f017b901928::t_63590f583e7cc8 7
+  s_1a2f017b901928::t_bb45b2663d064c 91-92
+  s_1a2f017b901928::t_1912a8d00bcc6c 171-174,176
+  s_1a2f017b901928::t_0d213dba3e2677 154,185
+  s_1a2f017b901928::t_0efa9928e8ff6e 96
+  s_1a2f017b901928::t_fb0fc59848a3c4 197-216
+  s_1a2f017b901928::t_00367ecdd13845 135-138,148-149
+  s_1a2f017b901928::t_9d7dbab3cc69c3 33-35
+  s_1a2f017b901928::t_6e0320e7141a1b 88-90,93-94
+  s_1a2f017b901928::t_ae6a57e1ab1f1f 167-168,177-184,186-196,217-233
+  s_207230a01b0f33::t_e8687b4e6a9cff 1-6,8-32,36-87,95,97-134,139-147,150-153,155-166,169-170,234-235
+packages/frontend/editor-ui/src/app/components/layouts/PageViewLayout.vue
+  s_1a2f017b901928::t_4d6f50ba283335 34
+  s_1a2f017b901928::t_1aa0783e0497a2 1-6,8,32-33
+  s_1a2f017b901928::t_b3ac9628ede44a 35-36
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  s_1a2f017b901928::t_f6f12601aadcad 209,211
+  s_1a2f017b901928::t_46770063070b00 212
+  s_1a2f017b901928::t_ca718f32d0af24 106
+  s_1a2f017b901928::t_3963c1fe7fb5bd 195
+  s_1a2f017b901928::t_404a3b68bc3f77 210
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewChangesSection.vue
+  s_1a2f017b901928::t_3f61870370a050 118
+  s_1a2f017b901928::t_f5e8ffe208739d 6
+  s_1a2f017b901928::t_dd36fe0e17ec77 135-138
+  h_9c8f56e3400786 27,32,47
+  s_1a2f017b901928::t_46d48e0671091f 139-158
+  s_1a2f017b901928::t_ac83bed900447e 93,101
+  s_1a2f017b901928::t_fd5d4341be8067 9
+  s_207230a01b0f33::t_beee7b676b7c1e 1-5,7,11-22,25-26,28-31,45-46,48,64-89,95,132-134,159,162-166
+  s_1a2f017b901928::t_59759266d1a7fe 8,10,90-92,94,96-100,102-112,127-131,160-161
+  s_1a2f017b901928::t_c6ff1aa567bf6a 23-24
+  s_1a2f017b901928::t_08d0284ccdbbbb 113-117,119-123,125-126
+  s_1a2f017b901928::t_b6018a091d050f 124
+  s_1a2f017b901928::t_04a9fc2f421102 33-44
+  s_1a2f017b901928::t_39886acaeb8ac4 49-63
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.vue
+  s_1a2f017b901928::t_6604482f8d2ea3 111
+  s_207230a01b0f33::t_37a495f7122add 1-25,27-44,78-102,104-107,117,119-130,132-142,150-153,155-156,161-166,168,170
+  h_9c8f56e3400786 26
+  s_1a2f017b901928::t_5d6a3e27997e5f 118
+  s_1a2f017b901928::t_e6fa23cbf5f378 154
+  s_1a2f017b901928::t_8e8e15b7ec7f0a 108-110,112-116,131
+  s_1a2f017b901928::t_d39f5fa16c0142 157-160
+  s_1a2f017b901928::t_6e7388f0f17fb6 45-48,50-77
+  s_1a2f017b901928::t_9d361a5c86c0ac 103
+  s_1a2f017b901928::t_a01b55f590f295 143-149,167,169
+  s_1a2f017b901928::t_e20909bfd239e5 49
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_1a2f017b901928::t_e4be24638d213e 165-196
+  s_1a2f017b901928::t_c45a6ba3eb8658 27
+  s_207230a01b0f33::t_74e9650472dde1 22-26,28-31
+  s_207230a01b0f33::t_8b79406126819c 307-344,346-347,349-353,355-361
+  s_207230a01b0f33::t_45f3a4cf143ae9 345,348,354
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1a2f017b901928::t_efe3c4a17123e8 5353
+  s_1a2f017b901928::t_970a6dc17660ab 5356-5357
+  s_207230a01b0f33::t_f9e7bc838ab033 5348-5352,5354-5355,5358
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_207230a01b0f33::t_f091390a4461c8 70,74
+  s_1a2f017b901928::t_7cdcf540a2eee6 136
+  s_1a2f017b901928::t_a5a73c5c2c32d6 150
+  s_1a2f017b901928::t_da5193bab21572 179,183-184,186-187,189-194
+  s_207230a01b0f33::t_4ace58e0e4109d 1-15,18-69,71-73,75-92,94-135,137-149,151-177,180-182,185,195-196
+  s_1a2f017b901928::t_ae6b5359b9903a 16-17
+  h_9c8f56e3400786 93,178,188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c3f549e6f1e00f52f1ae7fdd48d87d89de2a2d73",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1a2f017b901928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38ae9fad-4160-4f32-a616-4bf5b019532d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_207230a01b0f33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87dbdb9c-45ce-48f0-babc-7748959ee9de",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+packages/cli/src/metrics/prometheus/__tests__/db-pool-metrics-exposition.test.ts
+  s_c47ecc41bf6bfb::t_f7b4d7108234ec 1,14,16-39,83-84,102-106,112-114,120,134,141
+  s_1a3440617fc868::t_0b61be3bfc98db 2
+  s_1a3440617fc868::t_e8df9656ec1f99 3-13,40-48,76-82,85-101,107-111,140,142-164,168-171,174-184,186-221
+  s_1a3440617fc868::t_6fb4f4db35d7f4 15
+  s_c47ecc41bf6bfb::t_2bee00aa5a0e45 49-75,115-119,121-133,135-139,172-173
+  s_c47ecc41bf6bfb::t_0a6fd4fe672959 165-167,185
+packages/cli/src/metrics/prometheus/constant.ts
+  s_1a3440617fc868::t_319cb99d2a7c39 1-2
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_1a3440617fc868::t_319cb99d2a7c39 123
+  s_1a3440617fc868::t_77e8fdab042183 9
+packages/cli/src/abstract-server.ts
+  s_1a3440617fc868::t_319cb99d2a7c39 15,167-171,179-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa0ebf1c461c03e3a0833027bef27983019183d0",
+  "prompts": {},
+  "sessions": {
+    "s_1a3440617fc868": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0194776b-41bb-4f38-9e29-1a686c78c953",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_c47ecc41bf6bfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ed55-6ec2-7292-9252-42147f19aca6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,201 @@
+packages/frontend/editor-ui/src/features/roles/composables/useRoleEditorForm.ts
+  s_8c84bb939ddee5::t_a0c1f77b4188de 2
+packages/frontend/editor-ui/src/features/roles/composables/useRolesListActions.ts
+  s_8c84bb939ddee5::t_fb26a8a45621b5 3
+packages/@n8n/config/src/configs/evaluation.config.ts
+  s_5b46ef6d9188b2::t_d1e059a665f480 54-60
+packages/@n8n/config/test/config.test.ts
+  s_5b46ef6d9188b2::t_503bf34b0f5a3a 476
+packages/@n8n/db/src/entities/workflow-publication-trigger-status.ts
+  s_5b46ef6d9188b2::t_a5f6dafed53194 14-16
+packages/@n8n/db/src/repositories/__tests__/agent-eval-run.repository.test.ts
+  s_5b46ef6d9188b2::t_fe40335c1e7022 85-103
+packages/@n8n/db/src/repositories/agent-eval-run.repository.ee.ts
+  s_5b46ef6d9188b2::t_a06e483c1dd47a 48-57,63
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_5b46ef6d9188b2::t_b315593b209412 130-133
+packages/cli/src/controllers/api-keys.controller.ts
+  s_5b46ef6d9188b2::t_e42d4170f23cab 64-66,79-80,128-129
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  s_5b46ef6d9188b2::t_d2174ac712eca8 1,51-53
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_5b46ef6d9188b2::t_90c73fc407583a 1,98,123-124,128-129,159,202-212,455-669
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  s_5b46ef6d9188b2::t_69fdaa6d09e3ca 1,40,84-85,98,155-166
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_5b46ef6d9188b2::t_a36679befe7345 2,34,43-45,73-74,83,114-116,240-241,245-253,255-262,266-270,275-277,281-282,285,290-292,306-307,309-314,317-333,338-339,341,343-361,363-369,378-405
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  s_5b46ef6d9188b2::t_364a1b29d0ac40 12,28,44,211-214,216
+packages/cli/src/modules/agent-evals/agent-evals-required-modules.ts
+  s_5b46ef6d9188b2::t_95032e57a63164 1-6,8-10,12-19
+packages/cli/src/push/__tests__/sse.push.test.ts
+  s_5b46ef6d9188b2::t_9f920017d64798 52-53
+packages/cli/src/push/sse.push.ts
+  s_5b46ef6d9188b2::t_901acebc8714fe 21-22
+packages/cli/src/workflows/publication/__tests__/published-workflow-trigger-deactivator.test.ts
+  s_5b46ef6d9188b2::t_0dbb8cf2ef744d 13-15,26,57-59,61-64,66-67,69,71-80,82-99,101-106,108-110,112-115,118-122,124-126,128,131-140,142-143,255-321
+packages/cli/src/workflows/publication/__tests__/workflow-publication-reconciler.service.test.ts
+  s_5b46ef6d9188b2::t_5e0498e1d23f98 265-288
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_5b46ef6d9188b2::t_e9169e1427a3ae 13-16,18,24-34,40,65,67,78,80,97-134,140
+packages/cli/src/workflows/publication/workflow-publication-lifecycle-lock.ts
+  s_5b46ef6d9188b2::t_852843df7d1fe5 16-18,23-25
+packages/cli/src/workflows/publication/workflow-publication-reconciler.service.ts
+  s_5b46ef6d9188b2::t_94acee0d98a6d1 181-193
+packages/cli/src/workflows/triggers/__tests__/trigger-test-utils.ts
+  s_5b46ef6d9188b2::t_5f1bba546d8ca1 43-52
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_5b46ef6d9188b2::t_2ac6fa768fa400 166-185
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_5b46ef6d9188b2::t_62dae8099a4c85 21-27,48-55,130-134,147-149
+packages/cli/test/integration/api-keys.api.test.ts
+  s_5b46ef6d9188b2::t_1754344659310f 23,847-932
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_5b46ef6d9188b2::t_7193994bc2fa79 272,291-294,301-304
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_5b46ef6d9188b2::t_58e1ae27bcb8e2 17,62-70,76,354-389
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_5b46ef6d9188b2::t_367cb48fb3fe9f 15-20,838-918
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_5b46ef6d9188b2::t_53ce483f9e0012 472-494
+packages/core/src/execution-engine/workflow-active-triggers-state.ts
+  s_5b46ef6d9188b2::t_9d0e0e723c628b 92-99
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_5b46ef6d9188b2::t_3518bdedafaa34 1-54
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_5b46ef6d9188b2::t_5e1b2225cb9d20 79-82,122-123,125,130,144,166,168-171,368-376
+packages/frontend/@n8n/design-system/src/types/tabs.ts
+  s_5b46ef6d9188b2::t_57ce39a7e0a280 12-13
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5b46ef6d9188b2::t_6b98b296b780f6 2896,2918,3673,3717
+packages/frontend/editor-ui/src/app/components/RedactionMembersModal.vue
+  s_5b46ef6d9188b2::t_7d72a3c0e8c3ae 2
+packages/frontend/editor-ui/src/app/components/WorkflowShareModal.ee.test.ts
+  s_5b46ef6d9188b2::t_59bbc2e4006348 19
+packages/frontend/editor-ui/src/app/components/WorkflowShareModal.ee.vue
+  s_5b46ef6d9188b2::t_bf9df124da41d1 24
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_5b46ef6d9188b2::t_e1e9c1f9ca234a 33
+packages/frontend/editor-ui/src/app/router.ts
+  s_5b46ef6d9188b2::t_e8e55df6255e03 947
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useDynamicCredentialsStatus.test.ts
+  s_5b46ef6d9188b2::t_71282bfbc91805 275-276,279,283,311,322-369,391,394-395,425-426,438-447,449-468
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useDynamicCredentialsStatus.ts
+  s_5b46ef6d9188b2::t_13e5d465353657 9-12,64-69,76,86-95,107,109,123-126,130-133,142-148,150-159,162-169,171-174,180,182,188,190
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_5b46ef6d9188b2::t_25920ccb8289de 21
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_5b46ef6d9188b2::t_00dc102fda7743 18
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_5b46ef6d9188b2::t_3582ed0eeee988 18
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_5b46ef6d9188b2::t_5cde28f4fadf94 2,29-34,172-177,1087-1092,1141-1143,1146-1167,1169
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  s_5b46ef6d9188b2::t_816f7be63ba0c9 8
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.vue
+  s_5b46ef6d9188b2::t_caa61e9d5d5de7 9
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/oauthCallback.test.ts
+  s_5b46ef6d9188b2::t_2f92091644f0b6 1-2,6-8,76-306
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialOAuth.test.ts
+  s_5b46ef6d9188b2::t_0273f39850cfeb 439-440,657-768,787-788,792-795,815,828,838,953-1009
+packages/frontend/editor-ui/src/features/credentials/composables/oauthCallback.ts
+  s_5b46ef6d9188b2::t_c7895dc0eee765 1-2,8-15,54-167
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_5b46ef6d9188b2::t_7002dc3d79abfb 20,209-214,225-231,249-288,382-393
+packages/frontend/editor-ui/src/features/roles/RolesView.test.ts
+  s_5b46ef6d9188b2::t_cad69a424fd724 6,77,80,82-83,87-102
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_5b46ef6d9188b2::t_5aac8302eeaefb 6,48-58
+packages/frontend/editor-ui/src/features/roles/composables/useRoleDeletion.test.ts
+  s_5b46ef6d9188b2::t_2bf244891b72eb 4
+packages/frontend/editor-ui/src/features/roles/composables/useRoleDeletion.ts
+  s_5b46ef6d9188b2::t_ebece9d206f0fc 5
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.test.ts
+  s_5b46ef6d9188b2::t_29968231e5732b 6
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.vue
+  s_5b46ef6d9188b2::t_6eb0c55abf9c9e 2
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.test.ts
+  s_5b46ef6d9188b2::t_ad8a4d69a0a58e 6
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_5b46ef6d9188b2::t_4f2ca84c9a423c 6
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRolesView.test.ts
+  s_5b46ef6d9188b2::t_4f7eaefe37d386 5
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRolesView.vue
+  s_5b46ef6d9188b2::t_c68f2079094927 4
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_5b46ef6d9188b2::t_9ca4755f8c216d 168,175-176,181-182
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.test.ts
+  s_5b46ef6d9188b2::t_ec20bec05f918f 6
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_5b46ef6d9188b2::t_a6aa3a856e8592 6
+packages/frontend/editor-ui/src/features/roles/project/ProjectRolesView.test.ts
+  s_5b46ef6d9188b2::t_28e7e319f9422d 6
+packages/frontend/editor-ui/src/features/roles/project/ProjectRolesView.vue
+  s_5b46ef6d9188b2::t_bcce2da9ae2179 4
+packages/frontend/editor-ui/src/features/roles/project/RoleAssignmentsTab.test.ts
+  s_5b46ef6d9188b2::t_9964db804f17bf 5
+packages/frontend/editor-ui/src/features/roles/project/RoleAssignmentsTab.vue
+  s_5b46ef6d9188b2::t_b7d97f07f8f3e2 3
+packages/frontend/editor-ui/src/features/roles/project/RoleProjectMembersModal.vue
+  s_5b46ef6d9188b2::t_80b8083c890133 3
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.test.ts
+  s_5b46ef6d9188b2::t_04f49b3c366f17 14,70,75-76,80,497-541
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue
+  s_5b46ef6d9188b2::t_e0089e13d761c2 13,53,131,133-141,288-294,461
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyTable.vue
+  s_5b46ef6d9188b2::t_8e141e49c9047f 24-25,30,71,88-89
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_5b46ef6d9188b2::t_12bd9ec4573e98 104-111,322-329,382-464
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_5b46ef6d9188b2::t_2803ddbe2d1292 33,152-155,376-388,400,442,445-449
+packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/InstanceRoleAssignmentSelect.vue
+  s_5b46ef6d9188b2::t_8af1b9abbede3d 7
+packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/ProjectRoleAssignmentSelect.vue
+  s_5b46ef6d9188b2::t_b46629d35addd3 5
+packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/RoleMappingRuleEditor.vue
+  s_5b46ef6d9188b2::t_9025001fe1a536 6
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.test.ts
+  s_5b46ef6d9188b2::t_cb8e4f73e64c29 12
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_5b46ef6d9188b2::t_73d859117799bd 14
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersProjectsModal.vue
+  s_5b46ef6d9188b2::t_68839ee0de765d 15
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersRoleCell.vue
+  s_5b46ef6d9188b2::t_5214b01378bca3 6
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.test.ts
+  s_5b46ef6d9188b2::t_6600e44f5691c8 10
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.vue
+  s_5b46ef6d9188b2::t_e1eed8825b4d69 16
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.test.ts
+  s_5b46ef6d9188b2::t_d2a1e7348ac141 17
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_5b46ef6d9188b2::t_9cd469257b4e56 20
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_5b46ef6d9188b2::t_cd85814092a83d 16,540-575
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_5b46ef6d9188b2::t_18fd534416a6e2 29-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "5f9e6186998221dcdaff8bfc3533760b96c24f2d",
+  "prompts": {},
+  "sessions": {
+    "s_5b46ef6d9188b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60eeb129-0c05-4f19-89ae-2e56f00f5d8b",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_8c84bb939ddee5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48ed4e0e-2a97-4426-be0c-2ac5ccb4a8be",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

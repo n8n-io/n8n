@@ -1,0 +1,41 @@
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_c4380fad56171a::t_ae6da6123b661c 282,296-297,299,304,307
+  s_c4380fad56171a::t_26f68504215ec1 287-290
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_c4380fad56171a::t_537cbd61f60092 187
+  s_c4380fad56171a::t_4b10d8b2c69709 172,178,181,186
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.service.ee.test.ts
+  s_c4380fad56171a::t_d5739f874a838a 991-1000
+  s_c4380fad56171a::t_1e1ae86911cac9 803-804,810-816
+  h_5d40c27a8fdfd1 805-809
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  h_5d40c27a8fdfd1 800-804
+  s_c4380fad56171a::t_0e69bfe4d172c6 798-799,805-807
+  s_c4380fad56171a::t_584c6352625655 847
+  s_c4380fad56171a::t_fe02555c079bc4 790,797,823
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.controller.ee.test.ts
+  s_c4380fad56171a::t_c4d10e36b0bb91 216-225
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/deleteRoleMappingRule.generated.yml
+  h_5d40c27a8fdfd1 17,19-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5267b8b84156543c1529d1b30122541a2138749a",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_c4380fad56171a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cded8a6-fdd9-4474-92c8-611d255c86bf",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

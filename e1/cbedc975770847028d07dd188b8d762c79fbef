@@ -1,0 +1,23 @@
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  ai_agent 18-20,59-64
+  s_cebe0f5823d4d7::t_9febc260a9c857 35-37
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  ai_agent 144-147
+  s_cebe0f5823d4d7::t_9febc260a9c857 20-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e1cbedc975770847028d07dd188b8d762c79fbef",
+  "prompts": {},
+  "sessions": {
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

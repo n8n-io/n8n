@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/index.ts
+  s_53c8de4ace3cfc::t_724b1e3e855110 1
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_53c8de4ace3cfc::t_3278548158a89d 169
+  s_53c8de4ace3cfc::t_61286eb1a79461 134-135
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/useInstanceAiBrowserUseExperiment.test.ts
+  s_53c8de4ace3cfc::t_1f979013e7a712 1-39
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_53c8de4ace3cfc::t_cd44fae11585d7 41-45
+  s_53c8de4ace3cfc::t_40d525e040fb95 34
+  s_53c8de4ace3cfc::t_fe620060b0e9c1 13
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_53c8de4ace3cfc::t_053aab0a5f4182 25
+  s_53c8de4ace3cfc::t_8118c3b508445c 8
+  s_53c8de4ace3cfc::t_cd3eada53d63f6 172
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_53c8de4ace3cfc::t_9a950930081a39 275-289
+  s_53c8de4ace3cfc::t_246353e48ef016 114
+  s_53c8de4ace3cfc::t_8b42025e4a7874 53,55,62-63
+  s_53c8de4ace3cfc::t_6273d5ab5a9b72 64-65
+packages/frontend/editor-ui/src/experiments/instanceAiBrowserUse/useInstanceAiBrowserUseExperiment.ts
+  s_53c8de4ace3cfc::t_47e81966d7bc4f 1-16
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/ConnectionsCard.test.ts
+  s_53c8de4ace3cfc::t_fd39f305a5352d 1-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "776107834d575deefe3844376f1ea6823e1eb300",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53c8de4ace3cfc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccee9d50-3da4-4b03-9909-29276bbd0483",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

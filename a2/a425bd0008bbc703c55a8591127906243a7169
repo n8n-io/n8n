@@ -1,0 +1,19 @@
+packages/cli/src/modules/dynamic-credentials.ee/constants.ts
+  s_58acc4bc4a3d27::t_0cb388b5c57ba7 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "a2a425bd0008bbc703c55a8591127906243a7169",
+  "prompts": {},
+  "sessions": {
+    "s_58acc4bc4a3d27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "912c2f8a-f52c-4260-a0ae-ba1a609aef8c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

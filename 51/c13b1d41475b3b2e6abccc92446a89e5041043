@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_cc47cd448ab69c::t_67465f92df4fcb 2961-2990
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_cc47cd448ab69c::t_84bfcdb76df8e7 74,78,90-93,96-98,103,107
+packages/@n8n/db/src/repositories/index.ts
+  s_cc47cd448ab69c::t_ee418cc3592844 111
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_cc47cd448ab69c::t_f2c5bcad547989 552-560,564-565,567-569
+  s_cc47cd448ab69c::t_ee418cc3592844 131-133
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_cc47cd448ab69c::t_5688cdc7796f0b 29-34,44-48,106-110
+packages/cli/test/integration/modules/workflow-index/node-type-usage.integration.test.ts
+  s_cc47cd448ab69c::t_3ae3dba2401646 12,27,32,120-175
+  s_cc47cd448ab69c::t_0aa1b985cd40fe 7,15,33-35
+packages/cli/test/integration/database/repositories/workflow-dependency.repository.test.ts
+  s_cc47cd448ab69c::t_7c125575bc7769 356,380-384,397,410,428,441,455-492,494-495,602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51c13b1d41475b3b2e6abccc92446a89e5041043",
+  "prompts": {},
+  "sessions": {
+    "s_cc47cd448ab69c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "266c82bd-d88a-4444-80c5-0ea2f9c42cdb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_12c33f0ed1e1cb::t_9f32f63e9b242c 3,14-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1cec80cd9ea05657e1f823ee4602cd7a8313d501",
+  "prompts": {},
+  "sessions": {
+    "s_12c33f0ed1e1cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c13e1ec-06cf-4a89-bf08-71c00d627970",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

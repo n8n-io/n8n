@@ -1,0 +1,71 @@
+packages/@n8n/api-types/src/agents/__tests__/inline-agent-config.schema.test.ts
+  s_69f0f345c55132::t_b7c6bdfc6ce533 23
+packages/@n8n/api-types/src/agents/__tests__/sanitize-agent-json-config.test.ts
+  s_69f0f345c55132::t_47a58dc55d319f 99-100,134-135
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_69f0f345c55132::t_9ec85a46002615 385-389
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_69f0f345c55132::t_8948939338e521 230-264
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_69f0f345c55132::t_e21da83264520e 105
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_69f0f345c55132::t_350c7c2713b003 76,352,356,375-379,396-400
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_69f0f345c55132::t_5267957da914ec 69,227-229,244-247,261-263
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_69f0f345c55132::t_1969a7f72a5cc2 60,785-786,789,797,847-851
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_69f0f345c55132::t_b47965ad5feeab 1333,1340-1342
+packages/cli/src/modules/agents/__tests__/attachable-workflows.service.test.ts
+  s_69f0f345c55132::t_667c57b8ab64d0 46,59-61,91-93,115,121
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_69f0f345c55132::t_407df98440c173 92,147,155-160,170,176-194,270,276,278-283,287-290,294-301
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_69f0f345c55132::t_8e5dda68a26e46 281
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_69f0f345c55132::t_541d4ff58b9afd 268,279,287,290,300,304,306,311,505,527,540,543,546,551
+packages/cli/src/modules/agents/attachable-workflows.service.ts
+  s_69f0f345c55132::t_f620fc36b8c0d2 8,63
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_69f0f345c55132::t_49a5ef3f2e0393 18
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_69f0f345c55132::t_68a55777392bd5 48,85
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_69f0f345c55132::t_553ef90ae7cd58 592,596
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-resolver.ts
+  s_69f0f345c55132::t_977eab790c41fd 1-5,10,13,15-33,35,40,43-45,51-53,63-64,66-71,75
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_69f0f345c55132::t_4c34373b232559 7410,7761
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_69f0f345c55132::t_72b03920260fe4 101,361-362,364-365,368-369,374,377-389
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_69f0f345c55132::t_6cbec5f9b11e2d 270,272,274-281,285-286
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolRefAdapter.test.ts
+  s_69f0f345c55132::t_92913c832f4ee1 323,327,345,356,360,371,382-387
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_69f0f345c55132::t_ef72abd0009418 264,270
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_69f0f345c55132::t_e2b8a3cc1408c7 40-44,52
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_69f0f345c55132::t_23588a95791802 480
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_69f0f345c55132::t_4d54eff814c068 8-9,55,73,97-118,123,132,135,137,141-142,156,159-161,167,171-177,180-182,187-188,203,206,213-221,228-229,290-292
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolRefAdapter.ts
+  s_69f0f345c55132::t_d002665c1eec46 117-118,125,158-164,173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cab534ad0f3bf7cada14579d2f96cc67de38bf2a",
+  "prompts": {},
+  "sessions": {
+    "s_69f0f345c55132": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "138879b6-9eeb-4d2c-9768-76825ef2c5c2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

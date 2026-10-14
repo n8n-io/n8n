@@ -1,0 +1,23 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_37673e41e391c1::t_edab2584906711 3818
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCheckoutStatus.vue
+  s_37673e41e391c1::t_a4b87d83b66397 62
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionCheckoutStatus.test.ts
+  s_37673e41e391c1::t_4cc41f69324719 34,39,44,49,53,62,64,68,70,73,88,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d90a0bba8065e87480490a46fc4fae41928525f2",
+  "prompts": {},
+  "sessions": {
+    "s_37673e41e391c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "132597aa-c30d-4e63-a29d-c9b94c18f3b0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

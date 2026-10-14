@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  s_fca2302987ca57::t_497bcc53450d29 16
+  s_fca2302987ca57::t_1c070c03271d29 5,38,41,58,67
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_fca2302987ca57::t_497bcc53450d29 24,251
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCreate.ts
+  s_fca2302987ca57::t_497bcc53450d29 28
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvBuilderBanner.test.ts
+  s_fca2302987ca57::t_1c070c03271d29 16-17,30,83,90,94,98,130
+  s_fca2302987ca57::t_497bcc53450d29 28-29
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCreate.test.ts
+  s_fca2302987ca57::t_497bcc53450d29 3,35,45,79,102,117,133,151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9cfc19660519ea422142920473178a3479504c97",
+  "prompts": {},
+  "sessions": {
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

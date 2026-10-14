@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_c345592441274b::t_5cacfabbb47d46 121-168
+  s_c345592441274b::t_548b91b1167ce3 10
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_c345592441274b::t_73546b26093f80 86
+  s_c345592441274b::t_36baada53f0c2b 77-78
+  s_c345592441274b::t_5c50ee3cc3bdce 67-76,79-82,90-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "423925f427cf1e9319b22e1c71483467d77c0eaa",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c345592441274b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44d4b7e1-ff47-45f4-90e1-e74bbf6568a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

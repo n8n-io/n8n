@@ -1,0 +1,39 @@
+packages/cli/src/public-api/v1/handlers/ldap/ldap.handler.ts
+  s_33452312e2f130::t_e99440c4b68b8a 93-95
+  s_33452312e2f130::t_7939f564f4095f 55-56
+  s_33452312e2f130::t_f91f616297469e 7
+  s_33452312e2f130::t_4b8927935e5f11 96
+packages/cli/src/modules/ldap.ee/ldap.service.ee.ts
+  s_33452312e2f130::t_2d58fa96987b52 51-57
+  s_33452312e2f130::t_158febf2f3f2d5 404-405
+  s_33452312e2f130::t_d860a61222576a 49
+  ai_agent 400-403
+  s_33452312e2f130::t_b85b74800946a5 116
+  s_33452312e2f130::t_e4373639e747e5 397-399
+packages/cli/src/modules/ldap.ee/__tests__/ldap.service.test.ts
+  s_33452312e2f130::t_471557375f6f45 43-45
+packages/cli/src/modules/ldap.ee/ldap.errors.ts
+  s_33452312e2f130::t_84145fa9ff6818 1-2,4-7
+  h_57f0ed8cf91102 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "259aac5f368f8909689d0136a2108b70e07a4a33",
+  "prompts": {},
+  "humans": {
+    "h_57f0ed8cf91102": {
+      "author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_33452312e2f130": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b77a3f83-b3d4-4657-90ac-96a737bf7981",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

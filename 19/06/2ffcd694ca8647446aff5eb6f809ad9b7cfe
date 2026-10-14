@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_2d683a49d216ba::t_94673b68a4a894 51,53
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_2d683a49d216ba::t_c93d0ffc27e84c 180,188,214,240,266,292,320,348,396,409,422,435,448
+packages/frontend/editor-ui/src/features/resolvers/composables/useDynamicCredentials.ts
+  s_2d683a49d216ba::t_591f34a81f692d 5-12
+packages/frontend/editor-ui/src/features/resolvers/composables/usePrivateCredentials.test.ts
+  s_2d683a49d216ba::t_cbbd9734c43399 1-56
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_2d683a49d216ba::t_cbd4fecef188c8 62,76,104,241
+  s_2d683a49d216ba::t_01e58752d136f6 20
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  s_2d683a49d216ba::t_39f7e0c7ea706e 28-29,32,34,86,983,1111
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  s_2d683a49d216ba::t_4833dc84c3926c 55
+  s_2d683a49d216ba::t_3cbe45bb54be68 77,437
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.module.ts
+  s_2d683a49d216ba::t_fce56c9817cc66 6-22,29,33-42
+  s_2d683a49d216ba::t_84a0265e18e297 74
+  s_2d683a49d216ba::t_fb7e56f3673af9 87
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.vue
+  s_2d683a49d216ba::t_e35b3ef9ded452 62
+  s_2d683a49d216ba::t_47545bd451d182 244,246
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  s_2d683a49d216ba::t_3c13b35de13e79 52
+  s_2d683a49d216ba::t_a21eee61fdaa9e 120,321
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_2d683a49d216ba::t_ad4195d5f11dc0 1683
+  s_2d683a49d216ba::t_3b635e0c388472 127
+  s_2d683a49d216ba::t_30b10c4e8ddccc 70
+packages/frontend/editor-ui/src/features/resolvers/composables/usePrivateCredentials.ts
+  s_2d683a49d216ba::t_f9451e7f372c62 1-24
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_2d683a49d216ba::t_7b192685bb6fe6 40
+  s_2d683a49d216ba::t_bc826f53a033f8 103,166,174,844
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.vue
+  s_2d683a49d216ba::t_5d52b11247e13e 6
+  s_2d683a49d216ba::t_4bc9d573314d94 14,120
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_2d683a49d216ba::t_11d28b11b095da 69,212,455
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.test.ts
+  s_2d683a49d216ba::t_077f96adf3d680 20-21,36,38,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "19062ffcd694ca8647446aff5eb6f809ad9b7cfe",
+  "prompts": {},
+  "sessions": {
+    "s_2d683a49d216ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc733960-a6b7-4bcf-8e29-8aed3d56b6fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

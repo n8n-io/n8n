@@ -1,0 +1,62 @@
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_b1a69ed75d6063::t_af05514fcda77f 101
+  s_b1a69ed75d6063::t_b3ea4ca6df5ce6 205
+  s_b1a69ed75d6063::t_26ef90e5ec4d67 1774-1783,1787-1790
+  s_8bfbf7a375b636::t_c0caba43004f8b 1784-1786
+packages/modules/type-availability-policies/frontend/src/composables/useNodeTypeRestriction.ts
+  s_326dd039c6d306::t_39bd925d46ff6b 1-7,9-25
+  s_326dd039c6d306::t_99040c74c40d12 8
+packages/modules/type-availability-policies/frontend/src/index.ts
+  s_326dd039c6d306::t_7147f2ad4aefa8 3-7
+  s_326dd039c6d306::t_6b7fa57c398070 8
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.vue
+  s_326dd039c6d306::t_e80ec0163f9869 6,47,65
+packages/modules/type-availability-policies/frontend/README.md
+  s_326dd039c6d306::t_7147f2ad4aefa8 26-29
+  s_326dd039c6d306::t_d51385a4329986 32
+pnpm-lock.yaml
+  ai_agent 6819-6821,6825-6827,6841-6843,6862-6864,6868-6870,6889-6891
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_326dd039c6d306::t_6b7fa57c398070 2432,2434-2437
+packages/modules/type-availability-policies/frontend/package.json
+  s_326dd039c6d306::t_6b7fa57c398070 22,24,38,40
+  s_326dd039c6d306::t_034adc2dc6568e 31,47
+packages/modules/type-availability-policies/frontend/vite.config.ts
+  s_326dd039c6d306::t_034adc2dc6568e 2-3,15
+packages/modules/type-availability-policies/frontend/src/composables/useNodeTypeRestriction.test.ts
+  s_326dd039c6d306::t_4e492b669250e0 1-37
+packages/modules/type-availability-policies/frontend/src/components/ContactInstanceAdminModal.test.ts
+  s_326dd039c6d306::t_20cb46e4d85dfb 2,5-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f8197f339275f9dc1a78ec450844245ee6daa63",
+  "prompts": {},
+  "sessions": {
+    "s_326dd039c6d306": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd049455-bc63-41dc-808b-f75c96f484d1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    },
+    "s_8bfbf7a375b636": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71c3c153-cff6-4553-b48e-985f97aec971",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    },
+    "s_b1a69ed75d6063": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77ef5e06-1c4a-4ad6-ac34-da5435a74cdb",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

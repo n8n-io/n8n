@@ -1,0 +1,23 @@
+packages/modules/type-availability-policies/frontend/src/policy-violations/PolicyViolationList.vue
+  s_3b39ddbce7fb2f::t_bd8769e4d8f23c 22
+  s_3b39ddbce7fb2f::t_757756981ee37b 63-64
+packages/frontend/editor-ui/src/app/composables/usePolicyViolationToast.ts
+  s_3b39ddbce7fb2f::t_e5a04638902f94 63-64
+  s_3b39ddbce7fb2f::t_1d1a19e106ad4f 27,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "02cf2f500b28e890e35827891e48744997ecdf59",
+  "prompts": {},
+  "sessions": {
+    "s_3b39ddbce7fb2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b86ea06-4d76-49d6-abca-d6713a03c77f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

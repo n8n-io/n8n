@@ -1,0 +1,38 @@
+packages/cli/test/integration/services/role.service.test.ts
+  s_57c3811f2e5b52::t_c11b6808b2f184 1122-1127
+  s_57c3811f2e5b52::t_e34e1f3e8da3c5 1200-1202
+  s_57c3811f2e5b52::t_1146d3859f2741 1217-1219
+  s_57c3811f2e5b52::t_55e723000f0356 1237
+  s_57c3811f2e5b52::t_7063c6ab455191 1041-1045,1084-1088,1147-1151,1176-1180
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_57c3811f2e5b52::t_79a0805d7ca895 139
+packages/cli/src/services/__tests__/role.service.customRoles.test.ts
+  s_57c3811f2e5b52::t_314b3719e31551 10,22,31
+  s_57c3811f2e5b52::t_55d3798ccac43b 102-104,112
+packages/cli/src/services/role.service.ts
+  s_57c3811f2e5b52::t_f8e7a6f8c9ee59 226,241-249
+  s_57c3811f2e5b52::t_95d17212fc2f3e 45,60
+packages/cli/src/controllers/role.controller.ts
+  s_57c3811f2e5b52::t_540c053d226765 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "669421360979a99d491817307e0e44f018ed46f0",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_57c3811f2e5b52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c36cba-8c8b-42fb-b560-44173f55ef20",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

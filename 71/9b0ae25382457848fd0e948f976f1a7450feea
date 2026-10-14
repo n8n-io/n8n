@@ -1,0 +1,23 @@
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_e99de54a53d3e4::t_eec471baa3207c 48-52,62,89-91,112
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_e99de54a53d3e4::t_3ca3f286bb722c 187-190,197,218-222
+  s_e99de54a53d3e4::t_eec471baa3207c 205-207,213-217,223-239
+  s_e99de54a53d3e4::t_be183c7fb0a649 208-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "719b0ae25382457848fd0e948f976f1a7450feea",
+  "prompts": {},
+  "sessions": {
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

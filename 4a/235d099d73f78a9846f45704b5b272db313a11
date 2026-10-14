@@ -1,0 +1,21 @@
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_cc494e5cb5c9e7::t_fcf61e7f131f55 1910
+packages/@n8n/scheduler/src/core/factory.ts
+  s_cc494e5cb5c9e7::t_fcf61e7f131f55 338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4a235d099d73f78a9846f45704b5b272db313a11",
+  "prompts": {},
+  "sessions": {
+    "s_cc494e5cb5c9e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bd7e753-1718-403c-90d8-d55db50813a7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

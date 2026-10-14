@@ -1,0 +1,31 @@
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.types.ts
+  s_1b995c2a71c1af::t_29ce3e2731d258 67
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry-search.test.ts
+  s_1b995c2a71c1af::t_e5e0ff62f55d35 89,93
+packages/cli/src/modules/mcp-registry/__tests__/node-description-transform.test.ts
+  s_1b995c2a71c1af::t_604fd03dd05eb3 687
+  s_1b995c2a71c1af::t_0ea7cc653856a7 381
+  s_1b995c2a71c1af::t_d312ef9319d636 636
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  s_1b995c2a71c1af::t_413e5c0351fce2 233-238,243,248,253
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_1b995c2a71c1af::t_e4978ded47ee79 29-32,37
+packages/cli/src/modules/mcp-registry/registry/mock-servers.ts
+  s_1b995c2a71c1af::t_6ed840c5ce4ddb 106-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d114ad9ab995a8c9e647a017f47c6a00a958178b",
+  "prompts": {},
+  "sessions": {
+    "s_1b995c2a71c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db82b089-8508-49c4-99ee-6e3df49f7230",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+packages/cli/src/modules/project-files/project-file.service.ts
+  s_b239e5ec600a48::t_2fa2028772483c 207-213
+packages/cli/src/modules/project-files/project-files.module.ts
+  s_b239e5ec600a48::t_ce1d0b54fe55f0 46-51
+packages/nodes-base/nodes/ProjectFile/test/ProjectFile.node.test.ts
+  s_b239e5ec600a48::t_67b846f84da17d 1-186
+packages/cli/test/integration/modules/project-files.proxy.test.ts
+  s_b239e5ec600a48::t_7db0d1f7ca02de 107,109-112
+  s_b239e5ec600a48::t_ad892ad845cded 45-46
+  s_b239e5ec600a48::t_2a8d526fbcb5ea 133
+  s_b239e5ec600a48::t_5dfa0ed99e7c77 31-32
+  s_b239e5ec600a48::t_c369c814e6ac4c 215
+  s_b239e5ec600a48::t_e9db14a91e815f 1-30,33-44,47-106,108,113-132,134-214,216-244
+packages/core/src/execution-engine/node-execution-context/execute-context.ts
+  s_b239e5ec600a48::t_2b10f26b95c1d2 97
+  s_b239e5ec600a48::t_159de97a8a21b1 41
+packages/nodes-base/package.json
+  s_b239e5ec600a48::t_1f621e9aa335fc 757
+packages/workflow/src/interfaces.ts
+  s_b239e5ec600a48::t_7e7ad16928eea5 32
+  s_b239e5ec600a48::t_a075b6dd3706d7 1288
+  s_b239e5ec600a48::t_ce5e06526d5375 1156-1164
+packages/workflow/src/index.ts
+  s_b239e5ec600a48::t_ff9f20d0d648e8 11
+packages/nodes-base/nodes/ProjectFile/ProjectFile.node.json
+  s_b239e5ec600a48::t_549d18ede75d60 1-28
+packages/core/src/execution-engine/index.ts
+  s_b239e5ec600a48::t_f91923a45a0f8f 53
+  s_b239e5ec600a48::t_96e9488bf8ac7e 10
+packages/cli/src/modules/project-files/project-files.types.ts
+  s_b239e5ec600a48::t_ea4169c5f3dbeb 2
+  s_b239e5ec600a48::t_828437b44fc221 18-21
+packages/cli/src/modules/project-files/project-file-proxy.service.ts
+  s_b239e5ec600a48::t_8e161d32e9b4e3 1-158
+packages/core/src/execution-engine/node-execution-context/utils/project-file-helper-functions.ts
+  s_b239e5ec600a48::t_d5967882d5084a 1-20
+packages/workflow/src/project-file.types.ts
+  s_b239e5ec600a48::t_90b9d3a2acb672 1-40
+packages/nodes-base/nodes/ProjectFile/ProjectFile.node.ts
+  s_b239e5ec600a48::t_a63562abf3b729 1-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f4fe65fde96205cf825c8dcd093cebf6fdaca5ac",
+  "prompts": {},
+  "sessions": {
+    "s_b239e5ec600a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb525e80-f251-4a62-9109-617b677b1d8f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

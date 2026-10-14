@@ -1,0 +1,25 @@
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  s_2635341d65672f::t_d0dc25dace3164 145-147
+  s_2635341d65672f::t_7e6adf0a594439 7
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_2635341d65672f::t_f22d81ea85218a 61
+  s_2635341d65672f::t_01336f27520ec6 299-301,305-309
+  s_2635341d65672f::t_4b7e0a659a0cee 384
+  s_2635341d65672f::t_196cfec022708c 290-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf79cef584ba02982c6e30f1c7d7f8c71ee55c9f",
+  "prompts": {},
+  "sessions": {
+    "s_2635341d65672f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "adaa899d-c18d-4ff6-ac9a-5ffa8b01a628",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null
+    }
+  }
+}

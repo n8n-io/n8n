@@ -1,0 +1,45 @@
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_bb7d9b26b8514f::t_a69a0add8c3dc6 511-536
+packages/cli/src/modules/agent-evals/agent-evals-required-modules.ts
+  s_bb7d9b26b8514f::t_b07d0883f067eb 1-19
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  s_bb7d9b26b8514f::t_68aaaebc5b4c0c 211-214
+  s_bb7d9b26b8514f::t_20a880a772c0b8 28
+  s_bb7d9b26b8514f::t_7d852b079d39e9 216
+  s_bb7d9b26b8514f::t_c8b44456b5327c 12
+  s_bb7d9b26b8514f::t_eb313db5abcdf7 44
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_bb7d9b26b8514f::t_0e750115b812f1 357
+  s_bb7d9b26b8514f::t_2821e52dbfa9ec 315-318,327
+  s_bb7d9b26b8514f::t_d9ab35f2a9a877 114-115
+  s_bb7d9b26b8514f::t_bee2c22dc8fca8 34
+  s_bb7d9b26b8514f::t_a1aceaa4c38e07 319-326
+  s_bb7d9b26b8514f::t_a0cc39503dadf6 330
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  s_bb7d9b26b8514f::t_f09d3131062acc 40
+  s_bb7d9b26b8514f::t_20abc0c19fb68e 84-85
+  s_bb7d9b26b8514f::t_ee9c551bfb5732 98
+  s_bb7d9b26b8514f::t_597ca18aecea47 1
+  s_bb7d9b26b8514f::t_5d995f3890aa42 155-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b7f328eb4903ace43c1fffb26632595afb9703a",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bb7d9b26b8514f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3977fda-eb0a-42ec-87df-ad23a317d352",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

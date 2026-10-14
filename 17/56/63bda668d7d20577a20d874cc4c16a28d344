@@ -1,0 +1,47 @@
+packages/@n8n/api-types/package.json
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 12-13,26,35-36
+packages/@n8n/constants/package.json
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 12-13,24,26-27
+packages/@n8n/api-types/oxlint.config.mts
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 1-7
+packages/@n8n/telemetry/package.json
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 12-13,31,36-37
+packages/@n8n/permissions/package.json
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 12-13,29,33-34
+packages/@n8n/chat-hub/package.json
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 12-13,26,30-31
+packages/@n8n/inbound-auth/oxlint.config.mts
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 1-7
+turbo.json
+  s_4d4515bb8fac55::t_8e6f560ccb350b 74-76,92-94,110-112,134-136,152-154,167-169
+packages/@n8n/inbound-auth/package.json
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 12-13,33,37-38
+packages/@n8n/constants/oxlint.config.mts
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 1-7
+packages/@n8n/permissions/oxlint.config.mts
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 1-7
+packages/@n8n/telemetry/oxlint.config.mts
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 1-8
+packages/@n8n/chat-hub/oxlint.config.mts
+  s_4d4515bb8fac55::t_1a114ed3e5a55c 1-7
+scripts/lint-parity/samples.json
+  s_4d4515bb8fac55::t_5fe31feec86b58 82-85
+pnpm-lock.yaml
+  s_4d4515bb8fac55::t_aa37feb222aafe 1616-1618,1634-1639,2073-2075,2085-2090,2434-2436,2440-2445,3098,3100,3110,3112-3115,4069-4071,4081-4086,4357,4359,4372,4374-4377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "175663bda668d7d20577a20d874cc4c16a28d344",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

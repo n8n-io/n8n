@@ -1,0 +1,39 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential.ts
+  s_34985ccb3740e2::t_40a095e01df4e9 7-10,18,37
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_34985ccb3740e2::t_72c4efbd489c2a 14,24-29
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/N8nOAuth2TokenCredential.test.ts
+  s_34985ccb3740e2::t_d27009b3290b45 97-118
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/resolveFoundryEndpoint.test.ts
+  s_34985ccb3740e2::t_c4403b9d33b89d 1-25
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/api-key.ts
+  s_34985ccb3740e2::t_da0cd456671370 3,34-37,42-43
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/oauth2.ts
+  s_34985ccb3740e2::t_3b7ca26c3866a6 9,11,22-23
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/resolveFoundryEndpoint.ts
+  s_34985ccb3740e2::t_513671a7d39a5f 1-16
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  s_34985ccb3740e2::t_e686596292abd7 1-136
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_34985ccb3740e2::t_4c6a99f3028937 1-82
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/properties.ts
+  s_34985ccb3740e2::t_b8d9bb2d6c2b3f 47-54
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_34985ccb3740e2::t_7d1c2f1f744e0c 67-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f4ae0e0cf227a88d869e852a20e25d71a0a36e1f",
+  "prompts": {},
+  "sessions": {
+    "s_34985ccb3740e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f9b98b0-92c2-4b52-b807-1f44b42c1cf2",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

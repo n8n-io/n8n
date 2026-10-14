@@ -1,0 +1,50 @@
+packages/@n8n/constants/src/scheduler.ts
+  s_7460882e4002de::t_37651ae4a61e2b 128
+  s_7460882e4002de::t_24e8cd39d6c0e2 111-127,129
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 98-101
+docs/generated/postgres-schema/public.workflow_published_version.md
+  ai_agent 10
+packages/cli/test/migration/1787306400000-generalize-scheduled-job-owner.test.ts
+  s_7460882e4002de::t_2a319aac9f475c 1-17,24-58,61-64,66-69,71-388
+  s_7460882e4002de::t_bef9f697607b1e 59
+  s_7460882e4002de::t_44e395141249dc 18-23,60,65,70
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_7460882e4002de::t_98a3aa286829d4 8,31-34,41-43,49-54,56-57,60-71,74,179-197,199-204
+docs/generated/postgres-schema/README.md
+  ai_agent 107,1308-1311
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 20-23,53-54,65,89-92
+docs/generated/sqlite-schema/scheduled_job.md
+  ai_agent 9,31-34,46-54,63,86-89
+docs/generated/sqlite-schema/README.md
+  ai_agent 107,1295-1298
+docs/generated/sqlite-schema/scheduled_task.md
+  ai_agent 97-100
+docs/generated/sqlite-schema/workflow_published_version.md
+  ai_agent 21
+packages/@n8n/db/src/entities/index.ts
+  s_7460882e4002de::t_051c8a5da704b9 42-44,134-136
+packages/@n8n/db/src/migrations/common/1787306400000-GeneralizeScheduledJobOwner.ts
+  s_7460882e4002de::t_9266e26920aaae 204-210
+  s_7460882e4002de::t_259204b788e142 1-19,21-25,27-203,211-213
+  s_7460882e4002de::t_e71ae3c143da4b 20,26
+packages/@n8n/db/src/migrations/sqlite/1787306400000-GeneralizeScheduledJobOwner.ts
+  s_7460882e4002de::t_eaa4455cb16ee7 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5bc4926595e5934b2f97008695fa152b0171945c",
+  "prompts": {},
+  "sessions": {
+    "s_7460882e4002de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "822ef9d5-c335-4d18-bee0-aba1c28bdda0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

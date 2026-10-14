@@ -1,0 +1,135 @@
+packages/cli/src/executions/executions.controller.ts
+  h_8fb27e0cdf6d1e 38
+  s_8ffb60b90d5223::t_1322106bd6231a 41
+  s_8ffb60b90d5223::t_338c91ff13ef66 52
+packages/cli/test/integration/executions/execution-list.test.ts
+  s_8ffb60b90d5223::t_73d689a7383916 15
+  s_8ffb60b90d5223::t_abd7f759d86d42 141
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  h_8fb27e0cdf6d1e 6,73,140
+  s_8ffb60b90d5223::t_1d16e771ba9fcf 120
+packages/@n8n/engine/src/execution/execution-view-store.ts
+  h_8fb27e0cdf6d1e 27
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_8ffb60b90d5223::t_326f2815dc9208 1
+  s_8ffb60b90d5223::t_df60ce8fcccc57 2,9-10,12,15-16,26-36,40-44,47-48,50-51,53-55,57-58,60-62,64-65,67-68,71-78,80-85,131-138
+  s_8ffb60b90d5223::t_b30733d7dd021c 6-7
+  s_8ffb60b90d5223::t_820ccd9d35d876 89-92,94-101,104-127,129-130
+  s_8ffb60b90d5223::t_92b484db45ab31 18-19,21,23-24
+packages/cli/src/executions/merge-execution-pages.ts
+  s_8ffb60b90d5223::t_21e66ea8937705 12-18
+  s_8ffb60b90d5223::t_234e7e1d980a2b 27-31,33-35
+  h_8fb27e0cdf6d1e 22,24-26,32,36-37,40
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_8ffb60b90d5223::t_af682225f7b2fd 232,262
+  s_8ffb60b90d5223::t_26a61a4af787be 1-7,9-48,62-231,233-261,263-305,308,310-311,315-317
+  s_8ffb60b90d5223::t_4b30f559a9c127 306-307,309,312-314
+  s_8ffb60b90d5223::t_581c0a71e866ec 53-61
+  s_8ffb60b90d5223::t_9cfd0f4a42df8e 49-52
+  s_8ffb60b90d5223::t_da352c248a87a0 8
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_8ffb60b90d5223::t_2f81395b3a1a68 22,113,166,374,965,1020,1100
+packages/cli/src/executions/execution.types.ts
+  h_8fb27e0cdf6d1e 1,5-6,35
+  s_8ffb60b90d5223::t_17645adf8020ac 10
+packages/cli/src/executions/execution-list-v2.service.ts
+  s_8ffb60b90d5223::t_d576492ea71691 142-143
+  s_8ffb60b90d5223::t_daffcd5158f7e8 222-225
+  s_8ffb60b90d5223::t_5989d754c6425b 9-10
+  s_8ffb60b90d5223::t_4df5b839a03863 73,147,162
+  s_8ffb60b90d5223::t_ea623b3d9e8c3f 259
+  h_8fb27e0cdf6d1e 1-5,7-8,12-13,15,24-29,32-52,57-61,74-75,79-84,90,96,100,112-116,121-141,144-146,148-152,154-157,165-167,174-175,183-195,197-199,210-213,216-221,226-256,260-261,265-271
+  s_8ffb60b90d5223::t_76cae4c9a03337 6,11,14,16,30-31
+  s_8ffb60b90d5223::t_5ae96301c8bb1a 53-56,62-72,76-78,85-89,91-95,97-99,101-111,117-120
+  s_8ffb60b90d5223::t_9738730585f098 17
+  s_8ffb60b90d5223::t_eef13daa39beb1 153,158-161,163-164,168-173,176-182,196,200-209,214-215
+  s_8ffb60b90d5223::t_97504f2d76012b 18-23
+  s_8ffb60b90d5223::t_ad93cd1d155126 257-258,262-264
+packages/cli/src/executions/__tests__/parse-range-query.middleware.test.ts
+  s_8ffb60b90d5223::t_203e6bee81b880 16-17,21-22,33,41,46,50,55,61,71-72,83,92,101-102,114-115,124,133,142,154-155,159,169,180
+  s_8ffb60b90d5223::t_d29f02f7e541c6 31
+  s_8ffb60b90d5223::t_df0006d69f2284 141,146,151-153,160,164-168,173-174
+  s_8ffb60b90d5223::t_2b2cacbd9b6a29 18-20,23-30,32
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_8ffb60b90d5223::t_9738730585f098 18
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_8ffb60b90d5223::t_2f81395b3a1a68 11,127
+packages/cli/test/integration/executions.controller.test.ts
+  s_8ffb60b90d5223::t_57855eb033827e 156-158,173,175
+  s_8ffb60b90d5223::t_53e367750cb1b1 167-172
+  s_8ffb60b90d5223::t_42dac10c36314f 22
+  s_8ffb60b90d5223::t_57767072bb33bf 100-155,159-166,174,176-179
+packages/cli/test/integration/engine-v2-active-triggers.test.ts
+  s_8ffb60b90d5223::t_9864b8b6ae2054 36
+  s_8ffb60b90d5223::t_5d23c8cfabe4d5 91-95
+packages/cli/src/executions/parse-range-query.middleware.ts
+  h_8fb27e0cdf6d1e 50,63
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_8ffb60b90d5223::t_a9ffd844d00005 121
+  s_8ffb60b90d5223::t_970f53ac72e104 14
+  h_8fb27e0cdf6d1e 25-30,41-44,64,102,108
+  s_8ffb60b90d5223::t_229587ecba094c 47-51
+  s_8ffb60b90d5223::t_1b5309bb4bea4d 16
+  s_8ffb60b90d5223::t_dc2bfe381cc03f 73-78
+  s_8ffb60b90d5223::t_09e8bc5d8084e1 67,79-85,92-94,96-100,103
+packages/cli/src/executions/execution-list.service.ts
+  s_8ffb60b90d5223::t_b33b66d8fd3b73 1,7,18
+  s_8ffb60b90d5223::t_4134d51d06baf4 59-61,63-65,67-69
+  s_8ffb60b90d5223::t_b00ba0e7c80a97 2,9-10,12,35,37-44,47,49-56,72-73,75
+  s_8ffb60b90d5223::t_58a4253bec0987 3,6,19,23-25,27-32
+  h_8fb27e0cdf6d1e 16
+packages/cli/src/executions/execution-list-v1.service.ts
+  h_8fb27e0cdf6d1e 2,5,7,9-10,12-15,19,23-31,41,57-64,74,79-81,83-97,99-122,124-131,133-142,145-168
+  s_8ffb60b90d5223::t_6994c53e7c7e12 1,3-4,6,8,11,16-18,20-22
+  s_8ffb60b90d5223::t_f2e0246e41882b 32-40,42-43,45-56
+  s_8ffb60b90d5223::t_bcd7b3b0148466 65-73,75-78,82
+  s_8ffb60b90d5223::t_7a12f35753d758 44
+  s_8ffb60b90d5223::t_546c27b87e298f 98,123
+packages/cli/src/modules/mcp/mcp.service.ts
+  h_8fb27e0cdf6d1e 28,53,212,472
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_8ffb60b90d5223::t_e9b7ef9b049834 196
+  s_8ffb60b90d5223::t_c0c666ebe487a0 29-30
+  s_8ffb60b90d5223::t_f3f4a3f98e1918 181-191
+  s_8ffb60b90d5223::t_bcb6cd56def5e7 7
+  s_8ffb60b90d5223::t_400ba2727b9ac0 210,213
+  s_8ffb60b90d5223::t_2d2aaa2d9a763d 31,37-41
+  s_8ffb60b90d5223::t_dc2bfe381cc03f 62
+  s_8ffb60b90d5223::t_10c18d40200b5e 84,130,137,150,158,165,177,217,237
+  s_8ffb60b90d5223::t_09241b99c31527 36
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_8ffb60b90d5223::t_8c66668a256c81 13,92,137,168,193,221,245,269,296,324,355,388,441,476,511,542,580-581,618-619,643,672,706,745-746,840,864,886,900,925,980,1029,1071,1116
+  s_8ffb60b90d5223::t_72a8a48950138e 7
+  s_8ffb60b90d5223::t_20908d7d38665a 21,32-35
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_8ffb60b90d5223::t_9d1d8d7ceb0196 82-95,99-101,103,105-108,113-140
+  s_8ffb60b90d5223::t_b02fea6e2c838c 97
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_8ffb60b90d5223::t_9b8d3e721b4af6 119-125,133
+  s_8ffb60b90d5223::t_d88050cc2847bf 8
+  s_8ffb60b90d5223::t_abd7f759d86d42 112,135
+packages/cli/src/executions/__tests__/execution-list-v1.service.test.ts
+  s_8ffb60b90d5223::t_d48f89a4baebfa 1-26,28-173
+  s_8ffb60b90d5223::t_9cfd0f4a42df8e 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4b052e796d3e65e14111e7e5ceb787864b5958db",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_8ffb60b90d5223": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03c01f0c-6a29-4038-9e4e-6da02b39e1bf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

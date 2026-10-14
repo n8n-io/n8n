@@ -1,0 +1,24 @@
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.ts
+  s_716c5144ea2746::t_560807e8d60fee 87
+  s_716c5144ea2746::t_0368283c7bdd48 75-86,88-89
+  s_716c5144ea2746::t_fe10817ad040ed 22-26
+  s_716c5144ea2746::t_04ec2239bca3b8 62-63
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.test.ts
+  s_716c5144ea2746::t_737f8d30883b0d 46-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bc66990ecfe1b52c652eb675ac54fccc74b07bff",
+  "prompts": {},
+  "sessions": {
+    "s_716c5144ea2746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e10bd622-3863-483b-8737-b0d99bd0c883",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

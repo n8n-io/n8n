@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_a5630915c5ba0e::t_3afeaacd46af1c 273-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49a20d8935101a4f11faf37f5873c48800e8baff",
+  "prompts": {},
+  "sessions": {
+    "s_a5630915c5ba0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d26675dc-a0b7-43aa-be23-999caa8d7e49",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

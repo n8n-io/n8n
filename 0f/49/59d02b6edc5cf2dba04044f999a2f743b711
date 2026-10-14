@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_e7b82576de0350::t_0d50c030009be7 97-100,104-107
+  s_e7b82576de0350::t_cae8bdd7b9c3de 108
+packages/nodes-base/nodes/Microsoft/Outlook/v2/helpers/utils.ts
+  s_e7b82576de0350::t_04876ac653471c 346-350
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_e7b82576de0350::t_04c9ad554a0d98 593-600
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_e7b82576de0350::t_cd5fdd468bf083 371-381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "0f4959d02b6edc5cf2dba04044f999a2f743b711",
+  "prompts": {},
+  "sessions": {
+    "s_e7b82576de0350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8559a775-ab76-4c98-9eef-2dc047602094",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

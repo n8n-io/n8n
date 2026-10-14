@@ -1,0 +1,44 @@
+packages/@n8n/decorators/src/controller/types.ts
+  s_8631ec10eb1199::t_2837efedd76636 34-37
+  s_8631ec10eb1199::t_6231aa5d35a4d5 18-19
+packages/cli/src/public-api/media-types/binary-response.ts
+  s_8631ec10eb1199::t_133f0018953e13 51,58,61-65,68,70,80
+  s_8631ec10eb1199::t_bed463db3c98c8 15,22,27-29,32,34-36,45-46,50,52,54,56-57,59,73,85
+  s_8631ec10eb1199::t_17c0a028693186 12-14
+  s_8631ec10eb1199::t_d1d95a61d99a97 16-21
+  s_8631ec10eb1199::t_0cf1a2bbd27bc4 23-26
+  s_8631ec10eb1199::t_5942898820c902 53
+  s_8631ec10eb1199::t_2fb7581e6f323e 55
+  s_8631ec10eb1199::t_2ccca75ccab84f 60
+  s_8631ec10eb1199::t_8250acdc7209ce 71-72
+  s_8631ec10eb1199::t_dbaa99eb2477d9 78-79
+  s_8631ec10eb1199::t_8128f850ad46b8 81-84
+  s_8631ec10eb1199::t_5bd303bb77a0a7 86
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_ee57221f66476e 153-155
+  s_8631ec10eb1199::t_bed463db3c98c8 171-174
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_bed463db3c98c8 744-747,871-904
+  s_8631ec10eb1199::t_ac660a31bec3bc 905
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_8631ec10eb1199::t_1272372eb1d7a4 12
+  s_8631ec10eb1199::t_6231aa5d35a4d5 4-10,13-18
+  s_8631ec10eb1199::t_a00b1b2e07cbad 11
+  s_8631ec10eb1199::t_b0b7890d87298b 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f3d747003ebda9aab086ef24051a055eb0f96a5",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

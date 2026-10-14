@@ -1,0 +1,13 @@
+packages/@n8n/scheduler/src/core/executor/lease-heartbeat.ts
+  s_cc52d4d80ec002::t_dd94d1b3d8dc4c 1-86,88-96,98-123
+  s_a3b9c396dd9cf8::t_148b3f671325c7 87,97
+packages/@n8n/scheduler/src/core/executor/__tests__/lease-heartbeat.test.ts
+  s_a3b9c396dd9cf8::t_2479dea54a034d 37-51
+  s_cc52d4d80ec002::t_dd94d1b3d8dc4c 1-36,52-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "586c6099b70e693599be8297950a44b2885f98fe",
+  "prompts": {}
+}

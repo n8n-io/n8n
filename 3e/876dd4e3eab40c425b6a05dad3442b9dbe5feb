@@ -1,0 +1,9 @@
+packages/cli/src/modules/external-secrets.ee/secrets-cache.service.ts
+  ai_agent 17,61,64,66,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e876dd4e3eab40c425b6a05dad3442b9dbe5feb",
+  "prompts": {}
+}

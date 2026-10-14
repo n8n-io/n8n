@@ -1,0 +1,29 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/test/LmChatGoogleGemini.test.ts
+  s_6858ae05b19668::t_0e1bdf7f1d467f 11
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts
+  s_7887e2d350f40f::t_36063c6a8aa296 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "30a1d114f099a004d16b20c4146db496abc66cbb",
+  "prompts": {},
+  "sessions": {
+    "s_6858ae05b19668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5c1ec50-d65a-44bc-aa43-3c1eadd5030a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_7887e2d350f40f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62dd6632-b49e-473a-b9fb-b7945d59c21e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

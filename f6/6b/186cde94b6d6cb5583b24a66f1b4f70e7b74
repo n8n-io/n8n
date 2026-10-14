@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_2ed659fa6b1ae7::t_025bd29e4e1c19 14,21,145,155-156,183-187,236-252
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_2ed659fa6b1ae7::t_025bd29e4e1c19 480-512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f66b186cde94b6d6cb5583b24a66f1b4f70e7b74",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

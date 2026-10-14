@@ -1,0 +1,24 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/__tests__/span-collector.test.ts
+  s_b0c355fb704b12::t_33ffd41c4b89dc 126-139
+packages/@n8n/nodes-langchain/nodes/vendors/Databricks/mlflow/span-collector.ts
+  s_b0c355fb704b12::t_09430954e285dd 114,117
+  s_b0c355fb704b12::t_2ee37f457d27c2 391-395
+  s_b0c355fb704b12::t_cb148cb1727126 9
+  s_b0c355fb704b12::t_5f52b174d15c30 410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6e0e8848a3bd9732591fdbd0397bf845ed34a63",
+  "prompts": {},
+  "sessions": {
+    "s_b0c355fb704b12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a36de08-8b34-4eac-a120-4a61b959a8ae",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

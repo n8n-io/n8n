@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.test.ts
+  s_fa7e97f5e2e666::t_cf65b5714b7b4a 1-3,5-26,31-51
+  s_fa7e97f5e2e666::t_01ee75496b703a 30
+  s_fa7e97f5e2e666::t_3fba356aed3972 4,27-29
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPromptSuggestions.test.ts
+  s_fa7e97f5e2e666::t_608ae4df5d5ec5 95
+  s_fa7e97f5e2e666::t_85d4345ec40196 40,61
+  s_fa7e97f5e2e666::t_7b702a838488c2 157,174,183
+  s_fa7e97f5e2e666::t_66ece7295aa85b 142
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_fa7e97f5e2e666::t_61a300bfd9df5a 15,24,91
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPromptSuggestions.vue
+  s_fa7e97f5e2e666::t_d8ba4dd5e0d019 254
+  s_fa7e97f5e2e666::t_f30f5e2c6f3e7f 17,27,73,79,145
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_fa7e97f5e2e666::t_63f1f9578a058e 881
+  s_fa7e97f5e2e666::t_ca9be99ba1f702 822,824,841-846,854,890-894
+  s_fa7e97f5e2e666::t_e56cfaeb4f07e3 327,338-339,341,343,346,503,521-522,524
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "46611e656f27b131cc61876a45e3d327273ae1f6",
+  "prompts": {},
+  "sessions": {
+    "s_fa7e97f5e2e666": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eabf0-931c-7171-bb8a-34e49a7aedb2",
+        "model": "gpt-5.5"
+      },
+      "human_author": null
+    }
+  }
+}

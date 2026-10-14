@@ -1,0 +1,39 @@
+packages/cli/src/services/pending-webhook-response.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 1-59
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 43-45,52
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 6,62,64,1133,1951-1952,2043,2045-2055,2058-2069,2098-2166,2238-2247
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 1-180
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 1-117
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 20,38-44,65,89-97,120
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 29-30,63,77,87-91,431-478,838-839,1150-1158,1249-1269,1271-1275,1277-1282,1412-1414
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 9,15,23,79-84,146,156-158
+packages/workflow/src/interfaces.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 3764-3769
+packages/@n8n/config/src/configs/engine.config.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 4,66-73
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 11,14,86-91,107-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2f089048f3a44a5a68bf9b9699cca9c3f8907688",
+  "prompts": {},
+  "sessions": {
+    "s_794845deccc20b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b43d-9fd7-7372-ae87-3043b41ce227",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

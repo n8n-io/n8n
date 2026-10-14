@@ -1,0 +1,31 @@
+packages/cli/src/modules/instance-ai/onboarding.ts
+  s_2ed659fa6b1ae7::t_12266abe49d8b5 55-60
+  s_2ed659fa6b1ae7::t_2df98fadf880a6 61,68,71,161,189,193-194,219-220,248-250,254-255
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_2ed659fa6b1ae7::t_8a908a6d7fc45a 15,40-44
+  s_2ed659fa6b1ae7::t_527aa5d31007af 97,447-451,454-459
+packages/@n8n/instance-ai/src/tools/shared/leave-onboarding.tool.ts
+  s_2ed659fa6b1ae7::t_1b480b6baf04c3 22-33
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_2ed659fa6b1ae7::t_e71366ee653819 493-498,512-517,525-544
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_2ed659fa6b1ae7::t_dd03c7a6833cfe 77
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_2ed659fa6b1ae7::t_690d92f308774c 107-113,150-154,1111-1125,1836
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "17ebc5c32a82b9c393e9639ce59f3f2a258eebfd",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

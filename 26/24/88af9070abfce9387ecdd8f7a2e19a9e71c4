@@ -1,0 +1,26 @@
+packages/nodes-base/credentials/common/aws/system-credentials-utils.ts
+  s_81836eca248d3b::t_15905de60bf4ed 318
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.test.ts
+  s_81836eca248d3b::t_1db8a9c6b1e9a6 289-291
+  s_81836eca248d3b::t_de82427e2df4e6 124,126,134,142,146,148,150-155,162,179,187,195,205,207,215,221,223,237,244,252
+  s_81836eca248d3b::t_8218eb12b38017 278
+  s_81836eca248d3b::t_35b26a7846d3ec 270
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.ts
+  s_81836eca248d3b::t_1cca3d1258434a 90-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "262488af9070abfce9387ecdd8f7a2e19a9e71c4",
+  "prompts": {},
+  "sessions": {
+    "s_81836eca248d3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "321ee3fb-df6a-48f4-999d-69946457bd1d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

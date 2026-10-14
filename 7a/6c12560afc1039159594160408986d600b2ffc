@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_6bf40a92f12566::t_610626e1bca460 48-51,53-57,59-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7a6c12560afc1039159594160408986d600b2ffc",
+  "prompts": {},
+  "sessions": {
+    "s_6bf40a92f12566": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acd166d2-e453-445b-bc4e-6dfd687860cd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

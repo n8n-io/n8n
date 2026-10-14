@@ -1,0 +1,48 @@
+packages/cli/src/modules/agents/json-config/__tests__/credential-field-mapping.test.ts
+  s_d152c3a3ec1270::t_a8da8b9b84a1dd 8-22
+packages/@n8n/agents/src/__tests__/integration/helpers.ts
+  s_d152c3a3ec1270::t_53fe42d1d201db 21,23-27
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_d152c3a3ec1270::t_a8da8b9b84a1dd 11-30
+packages/@n8n/agents/vitest.integration.setup.ts
+  s_d152c3a3ec1270::t_53fe42d1d201db 180
+packages/cli/src/modules/agents/json-config/credential-field-mapping.ts
+  s_d152c3a3ec1270::t_8f74fd41e09e4f 34-35,37-41
+  s_d152c3a3ec1270::t_76fb22aa50e106 36
+packages/cli/src/modules/agents/json-config/__tests__/fixtures/vercel-ai-gateway-responses.json
+  s_d152c3a3ec1270::t_c79c2640abbb84 1-131
+packages/@n8n/agents/src/__tests__/integration/vercel-ai-gateway.test.ts
+  s_d152c3a3ec1270::t_53fe42d1d201db 1-8,10-16,22-35,37-47,49-60,62-81
+  s_d152c3a3ec1270::t_0dd616d07b7b21 9,17-21,36,48,61
+packages/cli/src/modules/agents/json-config/__tests__/vercel-ai-gateway.test.ts
+  s_d152c3a3ec1270::t_63712cac11ad56 1-8,13-16,18-23,25-36,39,47-54,75-78
+  s_d152c3a3ec1270::t_f558810a42d14d 9-12,17,24,37-38,40-42,44-46,55-60,62-74
+  s_d152c3a3ec1270::t_04696d4ad95398 43,61
+packages/@n8n/agents/AGENTS.md
+  s_d152c3a3ec1270::t_53fe42d1d201db 120
+  s_d152c3a3ec1270::t_8f74fd41e09e4f 119
+packages/@n8n/agents/src/__tests__/integration/cassettes/vercel-ai-gateway/executes-a-tool-and-continues-the-stream-through-the-native-gateway.json
+  s_d152c3a3ec1270::t_873ed5078020d5 1-183
+packages/@n8n/agents/src/__tests__/integration/cassettes/vercel-ai-gateway/generates-a-response-through-the-native-gateway.json
+  s_d152c3a3ec1270::t_cbdf272641c4f1 1-47
+packages/@n8n/agents/src/__tests__/integration/cassettes/vercel-ai-gateway/reports-the-resource-error-when-the-native-sdk-uses-the-openai-compatible-url.json
+  s_d152c3a3ec1270::t_8c7f09ab2a0763 1-45
+packages/@n8n/agents/src/__tests__/integration/cassettes/vercel-ai-gateway/streams-a-response-through-the-native-gateway.json
+  s_d152c3a3ec1270::t_c16d163b31a12a 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57f55bd3890e93acbea43dcbedcff24c0c3ed695",
+  "prompts": {},
+  "sessions": {
+    "s_d152c3a3ec1270": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a111df-140a-7562-89a8-3a4fde659c94",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

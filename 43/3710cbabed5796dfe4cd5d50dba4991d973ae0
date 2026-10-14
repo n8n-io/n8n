@@ -1,0 +1,19 @@
+packages/cli/src/services/__tests__/role.service.rolesWithScope.test.ts
+  s_4826b2a338fcf3::t_3fd5c6be3ff771 4,47-68,70,85,96-101,147,169,176,183,202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "433710cbabed5796dfe4cd5d50dba4991d973ae0",
+  "prompts": {},
+  "sessions": {
+    "s_4826b2a338fcf3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a90b-f9ef-7ef1-b9d6-592d8414d15e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

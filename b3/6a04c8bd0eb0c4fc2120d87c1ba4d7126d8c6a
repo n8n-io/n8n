@@ -1,0 +1,20 @@
+scripts/preview.mjs
+  s_4554a797ecf2fb::t_07daca1117eacb 96-98
+  s_4554a797ecf2fb::t_81af35f21bf1e2 99-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b36a04c8bd0eb0c4fc2120d87c1ba4d7126d8c6a",
+  "prompts": {},
+  "sessions": {
+    "s_4554a797ecf2fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40b3b796-6891-474f-9a70-edd3ae8f62be",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

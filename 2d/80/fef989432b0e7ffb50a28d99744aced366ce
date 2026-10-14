@@ -1,0 +1,9 @@
+packages/@n8n/scheduler/src/observability/__tests__/executor-tracing.test.ts
+  ai_agent 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d80fef989432b0e7ffb50a28d99744aced366ce",
+  "prompts": {}
+}

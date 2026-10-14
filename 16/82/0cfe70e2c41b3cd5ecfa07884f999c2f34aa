@@ -1,0 +1,29 @@
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_af62986d6ef75e::t_cf4f9642a8d8b9 45
+  s_af62986d6ef75e::t_22875e6bee96b8 132,138,185,706,1037,1113,1288,1448,1595,1703,1760,1804
+  s_af62986d6ef75e::t_5e6ab858efa629 230-262,264-299
+  s_af62986d6ef75e::t_3bf75e0f0478e1 263
+  s_af62986d6ef75e::t_3ed183112c1cb6 13,16
+  s_af62986d6ef75e::t_b45014d2ab7473 117-118
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_af62986d6ef75e::t_f768af3811142f 118-121,124,131,137-154
+  s_af62986d6ef75e::t_e0113ce6cf0250 36
+  s_af62986d6ef75e::t_cc712786eeda42 85
+  s_af62986d6ef75e::t_dde058494efd25 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "16820cfe70e2c41b3cd5ecfa07884f999c2f34aa",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

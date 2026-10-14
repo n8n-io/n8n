@@ -1,0 +1,48 @@
+packages/@n8n/instance-ai/knowledge-base/use-cases/other.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/business-owner.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/sales-and-marketing.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/engineering.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/onboarding.yaml
+  s_805dfaf49a4974::t_0079751d1c78ec 1-46
+packages/@n8n/instance-ai/knowledge-base/use-cases/product-design.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_805dfaf49a4974::t_2c5b8ac4ddd173 6-9,23-50,54-59,65-69,73-83,106,111-112,115-127,142,149
+packages/@n8n/instance-ai/src/knowledge-base/materialize-knowledge-base.ts
+  s_805dfaf49a4974::t_433c24c541914b 46-51
+packages/@n8n/instance-ai/src/index.ts
+  s_805dfaf49a4974::t_433c24c541914b 8,136-138,320,323-325,454-457
+packages/@n8n/instance-ai/knowledge-base/use-cases/security.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/src/knowledge-base/rank-use-cases.ts
+  s_805dfaf49a4974::t_b41d6c1f9ac2ca 31-104
+  s_805dfaf49a4974::t_b9cc53ffab8378 1-30,105-221
+packages/@n8n/instance-ai/knowledge-base/use-cases/customer-support.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/devops.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/data-science.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+packages/@n8n/instance-ai/knowledge-base/use-cases/it.md
+  s_805dfaf49a4974::t_58d027bd33600c 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cca77155843b2fc81561d7984444d6518571c8fc",
+  "prompts": {},
+  "sessions": {
+    "s_805dfaf49a4974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bca039b-dcd6-4f04-960e-82d23622ba13",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Confluence/actions/common.ts
+  s_ea16ab0e32e89a::t_1007d451b301e5 1-145,147-169
+  ai_agent 146
+packages/nodes-base/nodes/Confluence/actions/page/get.operation.ts
+  s_ea16ab0e32e89a::t_443a9a8feb7188 1,4,11,13-16,18-29,31-41,46,91,235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27c7ac67f9d0053b866294eb4dfdb47c60349a05",
+  "prompts": {},
+  "sessions": {
+    "s_ea16ab0e32e89a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9520c59a-f77e-4d65-859e-651e5c0871d8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

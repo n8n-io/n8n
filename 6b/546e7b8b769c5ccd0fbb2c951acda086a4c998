@@ -1,0 +1,14 @@
+OWNERS
+  h_52a137d26d774c 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b546e7b8b769c5ccd0fbb2c951acda086a4c998",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

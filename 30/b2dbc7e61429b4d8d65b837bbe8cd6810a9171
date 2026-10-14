@@ -1,0 +1,453 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/tool-call-details.spec.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2,75
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1,5-30,32-33,36-37,40-42,46-49,53-62,66-68,71,73-86,88-103,107-113,116-117,120-125,132-141,143-144,146-149,152,155-160,163-164,166-169,172,176-177,179-180,183-193,196-198,200-206,209-214,217,220-224,226-230,233-234,236-237
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3,262-276,926-968
+packages/@n8n/api-types/src/dto/workflows/__tests__/manual-run.dto.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-97
+packages/@n8n/instance-ai/src/types.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 828,830-833,836,838-840,845-854,857-860,864-867,869-871,873-875,907,909-910,915
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 7-8,11,15,17,21-32,34-36,56-82,99-103,105-106,112,114,116-119,121,123-124,126,131-133,135,137-139
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_09a5e5f505f496::t_6ba249c51999d1 2412-2414,2419-2426,2428,2433-2438,2445,2737-2738,2745,3932,6095-6096,6743-6745
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_09a5e5f505f496::t_6ba249c51999d1 229
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 17,277
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 248,250
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiChannelSetup.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 2-12,29-34,37-38,41,50-58
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 7-18,44-87
+packages/cli/src/modules/mcp/mcp.config.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4-22,32-46
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 11,267-291
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 37-53,105,160-546
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 232-234,240-242,255-257
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2,68-69,71-74,77-80,82-83,86-89,91
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 127-131
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 30,195-199
+packages/@n8n/instance-ai/src/tools/__tests__/templates.tool.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-3,5-7,9,13-19,22,24-25,27-30,33-35
+packages/frontend/editor-ui/src/features/workflows/templates/templates.store.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 21,179-190,201-202
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_09a5e5f505f496::t_7bbf8e44be2544 51-55,1304,1577,1903,2657,2919,3519,3521-3523,3530-3541
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 316-374
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 7-9,12-19,24-28,37-39,42-47,57-59,72,82
+packages/@n8n/api-types/src/agent-builder-interactive.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3-7,18,30-31,55-60,63
+packages/@n8n/api-types/src/agents/__tests__/agent-build-resume.dto.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-45
+packages/nodes-base/credentials/common/aws/index.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-credential.tool.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 69-72,74,94-111,118-137,177,180,186,189,244-249,252-255,260
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 40-69
+packages/@n8n/instance-ai/src/tools/templates.tool.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4-5,7-20,22-23,25-27
+packages/cli/src/workflows/workflow.request.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2-8,32-34,36-38,40,69
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 31
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1013-1014,1018-1020,1026-1031,1041-1043,1053,1057-1075
+packages/@n8n/instance-ai/src/index.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 630,634-637
+packages/@n8n/nodes-langchain/utils/aws/createBedrockRuntimeClient.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-13,15-17,19-24,26-30,32-42,45
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-7,10-14,21-22,24-73,75-76,80-86,89,92,95-105,107,109-118,125-128,131-135,137-142
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3,12-13,17,59-88
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 129-134,600-602,614,620-621,627,630-633
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 21,25,43-46,60-65,70,73-74,80,82-86,88-143,148-154,156,168-169,193,220-249
+packages/nodes-base/credentials/common/aws/descriptions.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 119-146
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 306
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 104-110,112-124,178-182,184-189,230-231,233-234,249-250,263-264,291
+packages/cli/src/modules/agents/builder/errors.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1,8-10,12
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 96-122,261-282,387-395,412-431
+packages/testing/playwright/tests/e2e/instance-ai/thread-launcher.spec.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-51
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-350
+packages/@n8n/api-types/src/agents/index.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 17-18,30
+packages/@n8n/permissions/src/constants.ee.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 17
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/header/connectPopover/McpConnectPopover.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 3,9,29
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_09a5e5f505f496::t_7bbf8e44be2544 36-39,83-85,107,111,141,145,194-197
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 61,158
+packages/cli/src/modules/agents/__tests__/agent-vector-stores.service.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 50-68
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 33
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3,51,55-59,64-74,78
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4,19-39,41,123-127,139,152,155-161,165,175-179,181-184,446,448,450,472,477,479,481,484-485,507,519,631,639,641,643,646-647,668,670,686,688
+packages/frontend/editor-ui/src/features/agents/__tests__/AskCredentialCard.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 9,14,83-87,91-94,104,111,141,152,159,178-182,184-185,188,191,194,203
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4-8,12-13
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4,6,131-169
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingModal.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 49,98
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 6,285-333,341-343,360-439
+packages/cli/src/workflows/workflows.controller.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 8,504-512,528
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-questions.tool.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1,4,18-19,21,24-25,27,29-32,35,37-47,50-53,55,59-71,74,76,79-81,84,86-88,91,93-108,111-205,208-210,213,215-227
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskQuestionsCard.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 2-12,14-18,21-22,24,28,33-42,45-66,68-80,84-98,100-103,105,109,112-114,117,119
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 421
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2,5-6,8-14,37,75-102,114-116,119-121,124-126
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/contextMenuGroupView.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-19
+packages/testing/playwright/tests/e2e/workflows/executions/filter.spec.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 65-68
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 7,81,88-89,106,120-128,162-163,170-171,358,362-363,369,377-378,936,938-948,955-956,963,980
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 73,106-109,571
+packages/cli/src/modules/instance-ai/workflow-templates.service.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-4,6,8-10,12-13,16-18,20-27,29,31-56
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4-5,18,28-48,59-63,66-73,77-89
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupActions.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 31,35-39,43,50,56,67-77,81,86-89,91,104,116
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-agent-builder-leak.json
+  s_09a5e5f505f496::t_6ba249c51999d1 13,17
+packages/cli/src/modules/agents/builder/interactive/__tests__/configure-channel.tool.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-2,5,7-10,12,14-16,19-26,28-29,31,33,36-38,40-41,47,50-60,63-68,71-80,82-87,90-98,101-102,105-108,110,112-113
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4-8,10-11,13-27,29-34,36-38,41-42,44-50,52-77
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 11,14,59-61
+packages/frontend/editor-ui/src/features/agents/__tests__/ConfigureChannelCard.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2,4-42,45-46,52-53,56-60,63,66,68,71,74,76,79,82-84,86,89-90,92-94,97-98,100
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 18-19,34-39,52,57-61,66-70,73-81
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4-5,21,28,32-37,40,43-48,64,66-77
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-2,5-13,16-24,26-31,33,35-41,45-53,56-59,62-75,77-137,140-150,152,154-164,167-168,170,173-195,197-202,204,206-207,209-215,218-237,239,241-247,250-258,261-277,279-291,294-306,308-314,317-330,332-336,339-340,342-348,351-353,355,357-380,383-399,401-406,409-493
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 16-18,20,600-661
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 44,48,56
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 97-154
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3-8,14-43,147-249
+packages/cli/src/credentials/credentials.controller.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 238-243
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 453,459-464,489
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 8-9,11-12,14,35-36,40-41,43,48-58,60-78,80-84,90,94-99,101-114,118-138,150-151,155,158,160
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/apply-workflow-credentials.tool.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 45
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 364,366,441-469
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_09a5e5f505f496::t_7bbf8e44be2544 15,1975-1976,1982,2036,2072
+packages/cli/src/modules/agents/builder/skills/resource-locators.skill.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 22,65
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 587,589-600,606-614,647,649-660,666-672
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 15,33,59
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1,9,21,315-319,350
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 397-451
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 76-78
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4,427-474
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 100-101
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file.tool.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 65-67
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 9-14,17,67-71,76,84-85
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 291-292
+packages/cli/src/modules/agents/builder/agents-builder-model-recommendations.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 85-86,89
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 19,599-608,614
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 39-42,221-235
+packages/frontend/editor-ui/src/features/shared/contextMenu/components/ContextMenu.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 20-22,53-56
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 17-23,40,92,99,261-273
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 34
+packages/cli/src/modules/instance-ai/__tests__/workflow-templates.service.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-82
+packages/cli/src/modules/mcp/mcp.module.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 29-30,34,37-40
+packages/frontend/editor-ui/src/app/moduleInitializer/moduleInitializer.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 13-16,89-91,94
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 134-169
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 308,337,366,382-464
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 12-13,16-21,53,59
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 55,81,387,400,411-415,419,449-460,523-526,568,630-654,676-679,688,690,694,696-698,706-707,709-711,743-807,840-842,1172-1180,1183-1186,1201,1206-1230,1232-1237,1240,1278-1304,1553,1599,1608,1666,1729-1742
+packages/@n8n/instance-ai/evaluations/system-prompts/build-expectations-verify.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 15
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 35,769,802,848,979-980
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 199
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 83,98,118-123,638-659
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 44,58,69,87-93,126-135,185-187,212,283-289,316-322,349-351,418-421,423-425,438-442,491-498
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3,164-176,226-233
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 11-15,33-34,62-83,199-216,276-311
+packages/@n8n/instance-ai/src/skills/skill-gates.ts
+  s_09a5e5f505f496::t_7bbf8e44be2544 5
+packages/@n8n/api-types/src/dto/workflows/manual-run.dto.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1,4-6,8-24,26-31,34-37,40-56,58-61,63-67,69-71,73-78,80-89
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 214-219
+packages/cli/src/modules/agents/builder/prompts/memory.prompt.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 34
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.builderAskedForInput.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 21
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 10-12,348-375
+packages/cli/src/modules/agents/builder/interactive/ask-questions.tool.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4-10,12-14,16-107,109-116,118-120,122-147
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3-8,13,69-84,100-133,152-156,163-170,172-177,182-189,193
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 5,7-11,29,176-180,183,186-197
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiChannelSetup.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1,11-20,22-31,57-58,63,69,71-72,75,77,81,83-84,96,108,115-129,135-137
+packages/@n8n/api-types/src/index.ts
+  s_09a5e5f505f496::t_7bbf8e44be2544 320-321,355-361
+packages/@n8n/permissions/src/scope-information.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 98,101-104
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 15-16,52-54
+packages/@n8n/instance-ai/src/planned-tasks/__tests__/planned-task-permissions.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 18
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/selection/CanvasSelectionToolbar.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 12,21-26,30,58-66,70
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 41,101
+packages/@n8n/instance-ai/evaluations/data/agents/ops-data-table-question.json
+  s_09a5e5f505f496::t_6ba249c51999d1 14
+packages/nodes-base/credentials/common/aws/types.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 13-14
+packages/@n8n/api-types/src/agents/dto.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 211-217
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1,9-15,19,21,24-25,28,31-32,36-40,45-48,50-55,57-59,61-62,64-65,68-71,73-76,78-90,93-95,98,100,104-106,108,110,112-113,116-118,120-121
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 452-547
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 252-255,453-454
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 188-258
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 7-8,35-40,126,145-155
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 17-18,42-46,115-119
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3-7,21-49,77
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 234-245
+packages/cli/src/credentials/credentials.service.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 936-941,1453-1471,1475-1477
+packages/@n8n/instance-ai/docs/tools.md
+  s_09a5e5f505f496::t_6ba249c51999d1 678-711
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 373,376-386
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 179-205,212,217-242,245-251,258,260-264,267-303,359,385-396
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 53,61
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3-4
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4,6,9-15,18-19,21,24,37,40,42,49-50,55-60,150-289,291,299-301,307-311,313-316,354-356,358-362,365-366,371-374,377-379,383-385,388-390,401-404,461
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2,12,106-109,112
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-3,5-53,55-59,61-97,99,101-103,105-106,109-110,112-114,117-118,120-121,124-128,131-135
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4,11-25
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/__snapshots__/useContextMenu.test.ts.snap
+  ai_agent 107-117,212-223,358-369,504-515,610-621,768-779,926-937,1084-1095,1242-1253,1353-1362
+packages/@n8n/instance-ai/evaluations/data/agents/meta-what-can-you-build.json
+  s_09a5e5f505f496::t_6ba249c51999d1 13-14
+packages/cli/src/services/protected-resource.registry.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 30-37,108-110,136,140-142,159-165
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 20,22,44-50,54-59,61-65,73-77,84-85,99,123-126,176-194,196-202,206-221,242,248-261,269,287-352,368,401,403,415-418
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3-5,24,26,36,48,50-53,65,67,69-70,75-165
+packages/cli/test/integration/ai/ai.api.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 77
+packages/@n8n/api-types/src/dto/index.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 114-120
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 55-56,516-524,634-635
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 27-37
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4,15,17-19,25,42-43,50,59
+packages/frontend/editor-ui/src/features/agents/utils/model-string.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3-4
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupSelection.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-229
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 78-95,118-123
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_09a5e5f505f496::t_7bbf8e44be2544 12-13,53-57,65,130-131,265,288,310,330,335,338-346,350-366,388-390,393,424-430
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1440,1470,1501
+packages/@n8n/api-types/src/agents/agent-interaction.schema.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-4,6-8,10-15,18-119
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2-17,20-21,24-35,37-67,69,71-73,75-87,90-142,145-174,176-179,182-217,220-240,242-250,252-254,257-263,266-274
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 3,39-55,58-65,111,113-119,125,149,159-165,195,211-218,239-242,259,269,275,277
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.refineTitle.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 25
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 4730,4743,4747-4758
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 20-22,24,1092-1145
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 229,232-233,236,239
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 1-15,17-28,31-40,45,49-67,70-87,90-121,124-125,128-129,132-135,138-156,159-166,169-178,182-186,190-283,285-297,304-310,313,317-318,321-322,325-326,329,332
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_09a5e5f505f496::t_6ba249c51999d1 172-177
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 44-50,55,80-89,94,141-144,201,260,342-343,369,395
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 31-33,51,71-77,82-89
+packages/cli/src/modules/agents/builder/interactive/index.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2-3
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2,29,106
+packages/@n8n/permissions/src/roles/__tests__/end-user-credential-scope.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-29
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/components/onboarding/MCPOnboardingModal.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 8,82
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 529,531
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 15,60,136-143
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 30-31
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 1310-1314
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-2,4,6-12,617-663,780-1077
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2,49-55,226
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_09a5e5f505f496::t_7bbf8e44be2544 159-165,878-907,911-913,1483-1489
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 712-761,769-776,782-789,808-815,821-828,851-853,877-879,890-913
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 266,284,417-420,426,435-438,444,456-459,465,1263
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 113
+packages/frontend/editor-ui/src/features/agents/__tests__/AskQuestionsCard.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1-5,7-20,22-30,33-36,39-41,43-54,57-59,62,64-69,72-81,84-85,88-94,96-97
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 93-94
+packages/cli/src/modules/agents/builder/skills/__tests__/index.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 1,3,5-7,9,12-15,18-21
+packages/cli/src/modules/mcp/__tests__/mcp.config.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 12,47-73
+packages/frontend/editor-ui/src/features/agents/__tests__/toolDisplayName.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 12
+packages/cli/src/modules/agents/builder/skills/sub-agents.skill.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 14,17,58-60,76-77
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskCredentialCard.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 2-12,14-15,17,19-20,23,26-28,30,34,42-50,52-62,65-76,78-79,84-86,88,90,92-93,96-104,107-108,111-152,158-180,183-209,220-223,227,258-263,276-277,282-285
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 109-139,390-402,404-407,409,411-413,416-420,427-439,443-450
+packages/cli/src/modules/agents/builder/skills/index.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 2,11-18,32-34
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.threadPushRef.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 21
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 90-95
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.focusHandoff.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 8-11,19
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 30,37-39,88-89,93,103,110-128,215,217,237-238,240,243,260,266,269,285-470,758-1179
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 10
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 6,103,111,113,117-121,124-139,141,297,301-309,362,366-374,387
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 33
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 50-56,62,713
+packages/frontend/editor-ui/src/features/agents/components/interactive/ConfigureChannelCard.vue
+  s_09a5e5f505f496::t_6ba249c51999d1 1,3-8,10-13,15-16,18-35,38-60,62-73,75-79,81
+packages/cli/src/modules/agents/__tests__/agents-credential-provider.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 151-197
+packages/cli/test/integration/credentials/credentials.resolvable.api.test.ts
+  s_09a5e5f505f496::t_6ba249c51999d1 29,53-57,558-718
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30b2dbc7e61429b4d8d65b837bbe8cd6810a9171",
+  "prompts": {},
+  "sessions": {
+    "s_09a5e5f505f496": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e84f2b02-e2a2-457e-b181-159419e9f0ab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

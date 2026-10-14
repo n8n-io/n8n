@@ -1,0 +1,58 @@
+packages/workflow/src/interfaces.ts
+  s_87a3c66f78bbdd::t_d73cf22542e2f0 1163-1168
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-check-proxy.service.test.ts
+  s_87a3c66f78bbdd::t_d7da95f9f0a3ea 9
+  s_87a3c66f78bbdd::t_ee2fb8d8cbb94d 52-53
+  s_87a3c66f78bbdd::t_4d10f308ebbbaa 399-400,421-425,429-435,452-459,465,469-471,474-483,487-491,493-496
+  s_87a3c66f78bbdd::t_0d5fd5703b24c7 408-409
+  s_87a3c66f78bbdd::t_3192e1fa1c329d 100-112,123-124
+  s_87a3c66f78bbdd::t_a9ef3bbb8b261f 401-407,410-420,426-428,436-451,460-464,466-468,472-473,484-486,492
+  s_87a3c66f78bbdd::t_fab3af74c77b37 5,7,12,14
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-check-proxy.service.ts
+  s_87a3c66f78bbdd::t_7d50aa1ad14955 9,12,14
+  s_87a3c66f78bbdd::t_771f60108cab14 74
+  s_87a3c66f78bbdd::t_cd41ffd237a36c 8
+  s_87a3c66f78bbdd::t_36753d326dce71 22-25
+  s_87a3c66f78bbdd::t_0ab2d1f4267c28 36-37
+  s_87a3c66f78bbdd::t_4853d791bd22b4 105-160
+packages/testing/playwright/tests/e2e/dynamic-credentials/form-trigger-submit-gate-client.spec.ts
+  s_87a3c66f78bbdd::t_1cbfd0f48f74f9 27
+packages/cli/templates/form-shell.handlebars
+  s_87a3c66f78bbdd::t_b06d0dd797b17a 32-34,41,43,49,52-53,56,61,63-68,70,77-78,81,88,94-99,101-108,120,124,131-135,140-169,172-178,183,199,202,205,209,229-244,247-249,352-356,456,468-469
+  s_87a3c66f78bbdd::t_8eda85defff048 267-280
+  s_87a3c66f78bbdd::t_71aef38aec09e6 250-251
+  s_87a3c66f78bbdd::t_e76c876efc4fc9 281-283
+  s_87a3c66f78bbdd::t_2904497eeb553a 470-471
+  s_87a3c66f78bbdd::t_922aa692d37ab5 255,287
+packages/cli/templates/form-trigger.handlebars
+  s_87a3c66f78bbdd::t_3938fab21280ca 264-269
+  s_87a3c66f78bbdd::t_79986d2b9e70e9 754,760
+  s_87a3c66f78bbdd::t_c5ffdbe390e2fc 659
+  s_87a3c66f78bbdd::t_6f668ac34ac600 671-675
+  s_87a3c66f78bbdd::t_7d4fc2e303d8e7 1232
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_87a3c66f78bbdd::t_03693ca5656f0f 975-1035,1037,1044,1053,1059,1063-1067,1069
+packages/nodes-base/nodes/Form/test/formShellViewModel.test.ts
+  s_87a3c66f78bbdd::t_dfa3bf2aefd586 1-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2dd3c7ca97a5afce5c2aff42dda0befd2a673216",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_87a3c66f78bbdd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67b6555c-e98b-4459-9470-da10ce744840",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

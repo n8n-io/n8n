@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_dff57e7b253b23::t_527ccc1a4872ff 1204,1390,1425,1438,1459-1486,1494,1527,1541-1543,1581
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_dff57e7b253b23::t_cef69656bbf438 267
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_dff57e7b253b23::t_5e8d50e9ad7398 20,54-55,82-92,426,727-728,1843-1848,2295,2297
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  ai_agent 61,238
+  s_dff57e7b253b23::t_2916397e53b7b9 64-65,71-73
+  s_dff57e7b253b23::t_56ea54b3115e70 230,232
+  s_dff57e7b253b23::t_647fa8bad09a55 226,228-229
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  ai_agent 22
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useOpenArtifactTabs.ts
+  s_dff57e7b253b23::t_2916397e53b7b9 177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ff8ad0f32f9851d3224fc37dfaa25456f49d59fc",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

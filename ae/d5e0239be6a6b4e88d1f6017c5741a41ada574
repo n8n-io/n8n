@@ -1,0 +1,19 @@
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_c6542a835c36e8::t_00485d02819e26 126-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aed5e0239be6a6b4e88d1f6017c5741a41ada574",
+  "prompts": {},
+  "sessions": {
+    "s_c6542a835c36e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952fe7f2-30d3-40e1-833a-f7eb7386f5a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

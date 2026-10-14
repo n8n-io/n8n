@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_ddb70a7092f02b::t_ddb6c7dcb37a2b 266-267,277-278,303-304,314-315,335-336,346-347,380-381,391-392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "281d6a3b85ef7360a0460eeed9908bd68dc15e12",
+  "prompts": {},
+  "sessions": {
+    "s_ddb70a7092f02b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad143469-37e4-41a7-981b-d978a09bcd18",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

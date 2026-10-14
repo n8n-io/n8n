@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue
+  s_63fb8ae124025a::t_36fa4252047808 112-122
+  s_63fb8ae124025a::t_aa426f799eb2a0 26-30,475-489
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.store.test.ts
+  s_63fb8ae124025a::t_e21e42e1c65ecb 154-156,391-392
+  s_63fb8ae124025a::t_4f1b48428b56f2 82,84-88,142-143,145,148-153,157-184,189-190,192,194-201
+  s_63fb8ae124025a::t_2d3f714fe5e88a 1-6,15-17
+  s_63fb8ae124025a::t_f04837f3e3a244 185-188,191,193
+  s_63fb8ae124025a::t_1876323cd565c5 24,28
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.test.ts
+  s_63fb8ae124025a::t_40143b82e3b21f 18,213-253
+  s_63fb8ae124025a::t_dc827a5338456f 15,61-65
+  s_63fb8ae124025a::t_3ae50462aa8fc3 20-25
+  s_63fb8ae124025a::t_4c80df5b110b57 19
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 1381
+.agents/specs/operator-console.md
+  ai_agent 592
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.api.ts
+  s_63fb8ae124025a::t_b6942a3b761f60 40-49
+  s_63fb8ae124025a::t_2c9d5238976ac4 1-6,12-18,71-74
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.store.ts
+  s_63fb8ae124025a::t_6eba8705f86f47 295-300
+  ai_agent 308-315
+  s_63fb8ae124025a::t_f05dfcb0f6494f 17,24,72-75,104-107,260-274,305-307,332,397
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.constants.ts
+  s_63fb8ae124025a::t_bcb63191627175 27-30,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05b8e9730344f5faeeb457514671209e6f27edc7",
+  "prompts": {},
+  "sessions": {
+    "s_63fb8ae124025a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5cf8404-b5d2-4900-b9d5-47b84d4533a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

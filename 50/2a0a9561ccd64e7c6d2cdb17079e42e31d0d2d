@@ -1,0 +1,30 @@
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_fb30b1b6ca962d::t_297bb36b92c011 1378-1382
+  s_fb30b1b6ca962d::t_2278b97c223ef8 29,1405-1420
+  s_fb30b1b6ca962d::t_17f802dede715c 1421-1422
+packages/cli/src/workflows/workflow.service.ts
+  s_fb30b1b6ca962d::t_4bfde66f808348 620-626
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_fb30b1b6ca962d::t_2934c702ae0398 153-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "502a0a9561ccd64e7c6d2cdb17079e42e31d0d2d",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.ts
+  s_babe1787c26a86::t_23eea00a13ac5c 1-48
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_babe1787c26a86::t_cc26706cacf9eb 27
+  s_babe1787c26a86::t_f366ce702f2f08 55
+packages/workflow/src/utils.ts
+  s_babe1787c26a86::t_0b1541cb4e75d9 245-246
+packages/@n8n/eslint-config/src/plugin.ts
+  s_babe1787c26a86::t_068d751345f095 32
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-import.test.ts
+  s_babe1787c26a86::t_578d543a01e847 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "442e1d37c781f06115cfe1f96828adebd89f8a57",
+  "prompts": {},
+  "sessions": {
+    "s_babe1787c26a86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e413df3-d3eb-45bc-a1e6-c79c0fb588e1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

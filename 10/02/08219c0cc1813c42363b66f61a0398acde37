@@ -1,0 +1,48 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml
+  s_b1905cb0c0aa57::t_d549be53da84b6 27-30
+  s_b1905cb0c0aa57::t_c8852204f1b11b 61-62
+  s_b1905cb0c0aa57::t_41b46945d77d56 88-102
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_b1905cb0c0aa57::t_dc473811d4d2df 189
+  s_b1905cb0c0aa57::t_a5b20c1cf999c7 129
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_b1905cb0c0aa57::t_cf4b983aa19f00 538
+  s_b1905cb0c0aa57::t_41d94c3043dc80 116
+  s_b1905cb0c0aa57::t_505b1163e95186 47
+  s_b1905cb0c0aa57::t_26cc12da57cacf 89-93
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_b1905cb0c0aa57::t_3d2def1ac00375 618-620
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_b1905cb0c0aa57::t_f22bee3e27096e 289-290,298
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_b1905cb0c0aa57::t_a87a7d8f49c6a2 1176
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_b1905cb0c0aa57::t_98bdd3eea73c9c 109,115,124,130,137
+  s_b1905cb0c0aa57::t_7c6a48315059bf 22
+  s_b1905cb0c0aa57::t_a11da79cae9ec4 40
+  s_b1905cb0c0aa57::t_d85b82af85d82b 174
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_b1905cb0c0aa57::t_6ef3a9d690dc87 27
+  s_b1905cb0c0aa57::t_ab7eb1d2cdbf53 530,532
+  s_b1905cb0c0aa57::t_ec50a5041dfcde 543,553-579,593,601,610
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_b1905cb0c0aa57::t_3714c7ce2fbba2 277
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_b1905cb0c0aa57::t_4c32c6486a63ce 122,140-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "100208219c0cc1813c42363b66f61a0398acde37",
+  "prompts": {},
+  "sessions": {
+    "s_b1905cb0c0aa57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13d20cfd-891f-46ea-8ea2-de932961c242",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_19f9f03a4b2b7f::t_1fbc1ae5325d85 9,11-12,15,19,23-24,27,38-39,41,48,78,85,91-93,125,127,133,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5b3f3f0f3fad193c23421fbf13afba8573e80650",
+  "prompts": {},
+  "sessions": {
+    "s_19f9f03a4b2b7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a01f3661-f3e4-4a3e-921d-b926c8c92801",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

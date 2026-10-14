@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  h_7555c3ee6524cf 281
+  s_bb17b049fc2e2d::t_f47754bebb40a4 276-279
+  s_f1b975d79f5215::t_44c8abca92bf1e 217-224
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_bb17b049fc2e2d::t_a224958d437da8 463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73c66fcaeec74556ba8419f0a316a6c8e3a3618f",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f1b975d79f5215": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1781256735949",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

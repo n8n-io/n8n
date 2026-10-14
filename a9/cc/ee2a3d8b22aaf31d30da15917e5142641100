@@ -1,0 +1,70 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_302391aec95cb2::t_4db2fcf677f27a 490-493
+  s_302391aec95cb2::t_5e5e38e9194f80 1589-1590,1604-1606
+  s_302391aec95cb2::t_20a1e81a399af7 1546-1551
+  s_302391aec95cb2::t_eb2ee309a459ee 1626-1629
+  s_302391aec95cb2::t_ff63d8c423323b 415,432
+  s_302391aec95cb2::t_814a0a7a192cad 1643-1644,1650-1652
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_302391aec95cb2::t_caff843ae37e28 290
+  s_302391aec95cb2::t_1f8b84d70af60c 278
+  s_302391aec95cb2::t_923dc1918cae26 306,312,316
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_302391aec95cb2::t_5a76a3035aac74 148
+  s_302391aec95cb2::t_d6ec410a2c477c 140
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_302391aec95cb2::t_293457183c9cfb 343-375
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_302391aec95cb2::t_ef575fccdbb3e8 46
+  s_302391aec95cb2::t_bc69d502ee73ca 114
+  s_302391aec95cb2::t_31ef97c5b7b9d0 101-103
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_302391aec95cb2::t_12683126cfc9ad 55
+  s_302391aec95cb2::t_b3836bc441a949 506-507
+  s_302391aec95cb2::t_aa4e9a75286dc5 672
+  s_302391aec95cb2::t_7b2f85f112b3af 703
+  s_302391aec95cb2::t_fceeb5ed497eea 382
+  s_302391aec95cb2::t_43d607fd61e99a 2349-2353,2355
+  s_302391aec95cb2::t_3990279c519f38 2551
+  s_302391aec95cb2::t_207bd06a73abe3 916,2284,2290,2354,2465,2495,2568,2609,2868,2874,2939
+  s_302391aec95cb2::t_48054ad6086e17 508
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_302391aec95cb2::t_eaf3993e61fd70 155,170,176
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_302391aec95cb2::t_207bd06a73abe3 221,228
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_302391aec95cb2::t_5108d5abaf0f06 21
+  s_302391aec95cb2::t_04affcbc2720d9 26
+  s_302391aec95cb2::t_21c11e2bbdfc38 22
+  s_302391aec95cb2::t_7a2be2139ab6a3 49-52
+  s_302391aec95cb2::t_695713d0ac7f61 68,70,72,82
+  s_302391aec95cb2::t_bff56c27c30dd5 53,55
+  s_302391aec95cb2::t_211fef6f4a8b3d 89
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_302391aec95cb2::t_54cebb50dfeeb7 28
+  s_302391aec95cb2::t_4d17dba4439fd9 300
+  s_302391aec95cb2::t_34599b089d76ea 345-349
+  s_302391aec95cb2::t_8e35a7d1f003b1 344
+  s_302391aec95cb2::t_dea48006e944d8 121,127-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a9ccee2a3d8b22aaf31d30da15917e5142641100",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_302391aec95cb2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "40f3fdd1-0f9b-4598-ad15-07acab675a8e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

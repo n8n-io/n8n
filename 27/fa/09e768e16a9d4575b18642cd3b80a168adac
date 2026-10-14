@@ -1,0 +1,36 @@
+packages/@n8n/cli/src/commands/promotion-connection/promote-selection.ts
+  s_fbbfaee81367ae::t_cf72442b84d62c 1-41
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_fbbfaee81367ae::t_87aa016cc5b03d 12
+  s_fbbfaee81367ae::t_61ce182741c342 142-147
+  s_fbbfaee81367ae::t_07362a609034ca 141
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_fbbfaee81367ae::t_62a5d19cf6f939 96-130
+  s_fbbfaee81367ae::t_610b04a2db98bc 7
+packages/@n8n/cli/src/client.ts
+  s_fbbfaee81367ae::t_d2b4a59421177f 119-136
+  s_fbbfaee81367ae::t_9dd1c2823c390d 398-409
+packages/@n8n/cli/docs/commands/promotions.md
+  s_fbbfaee81367ae::t_1fe02ba357e794 228-260
+packages/@n8n/cli/src/index.ts
+  s_fbbfaee81367ae::t_cebd1abeb0bac2 46,49
+  s_fbbfaee81367ae::t_2aae056c0b21cb 120,124
+packages/@n8n/cli/src/commands/promotion-connection/list-changes.ts
+  s_fbbfaee81367ae::t_7a994a3c936ffe 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27fa09e768e16a9d4575b18642cd3b80a168adac",
+  "prompts": {},
+  "sessions": {
+    "s_fbbfaee81367ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37dad267-b0c1-413b-996c-7f6f63ca6270",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

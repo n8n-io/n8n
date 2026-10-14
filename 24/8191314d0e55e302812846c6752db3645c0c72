@@ -1,0 +1,69 @@
+packages/workflow/src/execution-context.ts
+  s_8e55b5df4deddc::t_a710ad96da7dfb 267
+packages/core/src/execution-engine/execution-context.ts
+  s_b7dbf3e0ff71f7::t_d7c2978661c829 123-125,129
+  s_8e55b5df4deddc::t_a710ad96da7dfb 126,146,165,220
+packages/cli/src/services/oauth-token-verifier-proxy.service.ts
+  s_a326439a748997::t_5545915cc6fac5 103-110
+  s_a326439a748997::t_aba89a0de1f797 59-66
+packages/core/src/execution-engine/execution-context.service.ts
+  s_8e55b5df4deddc::t_3f8c19ce527209 104
+  s_b7dbf3e0ff71f7::t_7623c5052867ed 120-124
+packages/core/src/execution-engine/__tests__/execution-context.service.test.ts
+  s_8e55b5df4deddc::t_a710ad96da7dfb 453,473,482,504,518,527,536,545,559,568
+packages/core/src/execution-engine/__tests__/workflow-execute-node-error-reporting.test.ts
+  s_8e55b5df4deddc::t_2d39df9ed73cd2 48,67
+packages/cli/src/services/__tests__/oauth-token-verifier-proxy.service.test.ts
+  s_a326439a748997::t_56840229829421 54-73
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_a326439a748997::t_824da614673d67 138-141,144-146
+  s_a326439a748997::t_f15fb310831467 149-166
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_8e55b5df4deddc::t_a710ad96da7dfb 29,780,782-784,1239
+  s_b7dbf3e0ff71f7::t_026feb6b35614c 1442
+  s_b7dbf3e0ff71f7::t_5c7bcb8c244e16 1241,1411,1427-1441,1443-1460
+  s_b7dbf3e0ff71f7::t_c4a9b7a367518f 1242-1243
+  s_b7dbf3e0ff71f7::t_6fba7c3176649d 1461-1463
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_a326439a748997::t_7a4a8bcdc4dc1b 483-524
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_a326439a748997::t_34dfebe4829faa 505-510
+  s_a326439a748997::t_0da48359ccdc52 511-537
+  s_a326439a748997::t_8f5424854f8071 28
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_a326439a748997::t_e173e1e1d7b154 316-326
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_8e55b5df4deddc::t_2d39df9ed73cd2 1322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "248191314d0e55e302812846c6752db3645c0c72",
+  "prompts": {},
+  "sessions": {
+    "s_8e55b5df4deddc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c365c72-dacd-4574-a993-6bd50c77ebde",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_a326439a748997": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "530f361c-824b-4497-8b4f-ce165e4ffd61",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_b7dbf3e0ff71f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90c5d0ba-7852-4aa6-9ce0-b2086caeaaac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

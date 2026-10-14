@@ -1,0 +1,20 @@
+docs/adr/ADR-20261005-replay-the-first-public-api-response-for-an-idempotency-key.md
+  s_97b2e2a4f3d080::t_fe545cb946ab17 32-40
+  s_97b2e2a4f3d080::t_4b8d939f1698c7 41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66b97aaca1bcca0bb271491a0bdea71d4e8d6189",
+  "prompts": {},
+  "sessions": {
+    "s_97b2e2a4f3d080": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ac7b07c7-7d74-41fb-80d6-220b6bac9b5a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

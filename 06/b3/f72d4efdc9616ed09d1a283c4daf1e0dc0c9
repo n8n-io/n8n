@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useAgentNavigationCommands.ts
+  s_b8eb3cc2dbf3f8::t_f445fd6f6cd60a 3,8-11,45-52,61-62,66-68
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useAgentNavigationCommands.test.ts
+  s_b8eb3cc2dbf3f8::t_95ad1a980bef74 79,156
+  s_b8eb3cc2dbf3f8::t_f445fd6f6cd60a 167-178,180-184,187,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06b3f72d4efdc9616ed09d1a283c4daf1e0dc0c9",
+  "prompts": {},
+  "sessions": {
+    "s_b8eb3cc2dbf3f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ba76698-3554-4571-b883-3f647863c085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

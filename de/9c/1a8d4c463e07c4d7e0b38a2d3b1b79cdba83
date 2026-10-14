@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionHelpers.test.ts
+  s_af62986d6ef75e::t_54d49e6ecb4262 1-2,26-29
+  s_af62986d6ef75e::t_e7bfd4b619fb65 90-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "de9c1a8d4c463e07c4d7e0b38a2d3b1b79cdba83",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

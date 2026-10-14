@@ -1,0 +1,50 @@
+packages/cli/src/telemetry/agent-source.ts
+  s_8c384ca8ef3fe0::t_873cecb467111c 1-4
+packages/@n8n/telemetry/src/events/agents.ts
+  s_8c384ca8ef3fe0::t_1fa1684fd57077 254
+  s_8c384ca8ef3fe0::t_873cecb467111c 18-45,206-209,249-252,269-275
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_8c384ca8ef3fe0::t_6cc1727f14af68 1312,1332,1335,1354,1378,1702
+packages/cli/src/telemetry/index.ts
+  s_8c384ca8ef3fe0::t_873cecb467111c 30,75-80,82,86,108,352,362-368,375-387,468,475-484,499,503-514,516-522
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_8c384ca8ef3fe0::t_6cc1727f14af68 1268
+packages/cli/src/modules/agents/__tests__/agent-tool-approval.service.test.ts
+  s_8c384ca8ef3fe0::t_882396d88721f2 89-122,125-126,139,142-146
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_8c384ca8ef3fe0::t_8ea2324ab3e781 3932-3943,3945-3953,3955-3964,3966-3977,3979-3981,3983-3987
+  s_8c384ca8ef3fe0::t_1fa1684fd57077 3982
+  s_8c384ca8ef3fe0::t_e45452b1fa339f 1960,3978
+  s_8c384ca8ef3fe0::t_882396d88721f2 1903,1961-1976
+packages/cli/src/modules/agents/agent-tool-approval.service.ts
+  s_8c384ca8ef3fe0::t_6cc1727f14af68 7,26-27,42
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_8c384ca8ef3fe0::t_882396d88721f2 311,980
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_8c384ca8ef3fe0::t_882396d88721f2 1113,1149
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_8c384ca8ef3fe0::t_fa088c994123da 486,494,499-510,528,530-532,537-542,546-553,559,562-566,570-574,597,607,610-615,628,637,639-648,706-712,718,735,744-748,750-769,771
+  s_8c384ca8ef3fe0::t_8ea2324ab3e781 515-527,529
+packages/cli/src/interfaces.ts
+  s_8c384ca8ef3fe0::t_873cecb467111c 224,262
+packages/cli/src/modules/agents/utils/agent-execution-counter.ts
+  s_8c384ca8ef3fe0::t_6cc1727f14af68 12-13,22,30,38
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_8c384ca8ef3fe0::t_6cc1727f14af68 450,906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9453c14333aec9d0c321747c3f8c83c205b5ef3d",
+  "prompts": {},
+  "sessions": {
+    "s_8c384ca8ef3fe0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11751-dee6-7193-9479-bfa31c4f9d0d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

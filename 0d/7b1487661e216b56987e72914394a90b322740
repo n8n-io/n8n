@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/resolvers/components/RunAsCallout.vue
+  s_af62986d6ef75e::t_5a6309f4b01a8c 43-48
+  s_af62986d6ef75e::t_46e54f40a00996 14-21
+  s_af62986d6ef75e::t_156d8fda6d38c4 79,83
+packages/frontend/editor-ui/src/features/resolvers/components/RunAsCallout.test.ts
+  s_af62986d6ef75e::t_55a899b4cec6f1 169-178
+  s_af62986d6ef75e::t_4ba71eac46d8ed 64
+  s_af62986d6ef75e::t_7e0cf955c27804 254-273
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_af62986d6ef75e::t_7b599e27e0e18d 736
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0d7b1487661e216b56987e72914394a90b322740",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/cli/src/workflows/publication/__tests__/publication-startup-enqueuer.test.ts
+  s_ad127fc6c64f27::t_351698f2200a7f 1-25
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_ad127fc6c64f27::t_e6289e9b3e8c7b 25,37
+  ai_agent 72
+  s_ad127fc6c64f27::t_48f4ace6f40b72 69-71,73-91
+packages/cli/src/commands/start.ts
+  s_9e0d693dce169a::t_14a624d3ced05d 295,299-304
+  s_9e0d693dce169a::t_97ba9ac0981e25 296-298
+  s_ad127fc6c64f27::t_19131d178f5fd8 424-442
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_ad127fc6c64f27::t_ae9597e130656c 21
+  s_ad127fc6c64f27::t_e55849252b42d3 208-229
+packages/cli/src/workflows/publication/publication-startup-enqueuer.ts
+  s_ad127fc6c64f27::t_ebfb993437b8e2 1-30
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_ad127fc6c64f27::t_7db6b0c29c747c 42,44-49
+  s_ad127fc6c64f27::t_fefaa4595d66d3 97-102,104-106,110-112,121
+  h_8fb27e0cdf6d1e 43
+  s_ad127fc6c64f27::t_b546ba4e1e931f 107-109
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_ad127fc6c64f27::t_43c8f887e384ab 151-211
+  s_ad127fc6c64f27::t_2c2b6f87e0dda8 1-2
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_ad127fc6c64f27::t_1f624d15876044 82-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b12ecbe5e5f7f7a31ee4ef91437c9290ee62e0e5",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_9e0d693dce169a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eccd5-de80-7210-a4bb-686225521d9c",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_ad127fc6c64f27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "895e8912-ee04-4f5e-92bb-99ab1c713e89",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

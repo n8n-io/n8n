@@ -1,0 +1,22 @@
+packages/frontend/@n8n/design-system/src/components/PreviewBadge/PreviewBadge.vue
+  s_109dd91b8ca1de::t_8e088f6bc51717 37,64,90
+  s_109dd91b8ca1de::t_1c82fb518123b1 58,65-66
+  s_109dd91b8ca1de::t_3885856fb615b0 68-74
+  s_109dd91b8ca1de::t_af9620ca0cf665 34-36,38-57,59-63,67,75-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a413f4c1867a834a23e86ff0a21911b7b7c2c2fe",
+  "prompts": {},
+  "sessions": {
+    "s_109dd91b8ca1de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0e832-1b09-70fe-93d0-af649e9e548d",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

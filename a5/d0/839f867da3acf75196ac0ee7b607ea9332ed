@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_2df5bb80907049::t_25d7a66d1191d2 195-196
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_2df5bb80907049::t_66323ce1ee6797 660-674
+  s_2df5bb80907049::t_9191b38d4c9efc 1101-1103
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_2df5bb80907049::t_66323ce1ee6797 143-147,149
+  s_2df5bb80907049::t_9191b38d4c9efc 138,171-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a5d0839f867da3acf75196ac0ee7b607ea9332ed",
+  "prompts": {},
+  "sessions": {
+    "s_2df5bb80907049": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa973-8fa0-7ea0-97af-f07c3b2abc9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

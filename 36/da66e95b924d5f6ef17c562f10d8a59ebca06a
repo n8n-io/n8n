@@ -1,0 +1,30 @@
+packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts
+  s_d64d432ee2bd9a::t_0b963a542478fb 209-212
+packages/cli/src/public-api/v1/controllers/role-mapping-rules.public.controller.ts
+  s_d64d432ee2bd9a::t_dbcbe4ceece098 141
+packages/cli/test/integration/public-api/role-mapping-rules.test.ts
+  s_d64d432ee2bd9a::t_0e407923d7ff49 622,635-636
+packages/cli/src/modules/provisioning.ee/__tests__/role-mapping-rule.service.ee.test.ts
+  s_d64d432ee2bd9a::t_91a29e6e1a328a 646-659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "36da66e95b924d5f6ef17c562f10d8a59ebca06a",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d64d432ee2bd9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2dd4d14-a5c2-4343-994f-5e116c36149d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

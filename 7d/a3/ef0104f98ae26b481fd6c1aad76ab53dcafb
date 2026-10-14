@@ -1,0 +1,40 @@
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_923c8f43bce732::t_9ef6dbfd2d8d46 640
+  s_923c8f43bce732::t_4ae6d274cd7947 656
+  s_923c8f43bce732::t_f0fd942ce4a3c3 632-639,641-645
+  s_cc52d4d80ec002::t_5746233ba8b5c0 648
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_2383220778fec5::t_112a5f5a4571e7 1169-1170,1172-1199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7da3ef0104f98ae26b481fd6c1aad76ab53dcafb",
+  "prompts": {},
+  "sessions": {
+    "s_2383220778fec5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85d7fc26-63e5-4ba1-9910-b9a9c14358e9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_923c8f43bce732": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62147b38-e8f8-4987-be1c-87842a71352b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_cc52d4d80ec002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14df1071-d247-4331-af4e-4ce488ddaae0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

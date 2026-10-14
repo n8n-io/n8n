@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_ffa0492de4d6b4::t_402553188355ea 445,661-679,690-701,706,712,721-724
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_ffa0492de4d6b4::t_aa04f0cbf764bf 1496-1497,1517
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_ffa0492de4d6b4::t_aa04f0cbf764bf 1212
+  s_ffa0492de4d6b4::t_9a465aa064c03e 1202-1208,1213-1219,1273,1276-1280,1287
+  s_ffa0492de4d6b4::t_e6a37dc66e8993 1221,1223-1224,1259-1260,1262,1274-1275,1283,1311,1348,1360-1365,1367,1375-1379,1381-1392,1401,1469,1495
+  s_ffa0492de4d6b4::t_3ec4a9afa143aa 1220,1261,1270,1281-1282,1284-1286,1288-1291,1307,1310,1315-1317,1324,1340-1341,1347,1393-1400,1402-1403,1437,1440,1442-1445,1468,1470-1475,1491,1494,1568,1571,1630-1632
+packages/cli/src/modules/agents/agent-message-steering.service.ts
+  s_ffa0492de4d6b4::t_2db931ea44c86e 92,98-101,124,143-148,155,167,182-183,186-191,197-201,223,225-226
+packages/@n8n/api-types/src/agent-sse.ts
+  s_ffa0492de4d6b4::t_e6a37dc66e8993 12-14
+packages/testing/playwright/tests/infrastructure/agents/message-queue.spec.ts
+  s_ffa0492de4d6b4::t_2bf296fd8c04ea 253-254,261-262,286,310,314,325,335-336,341,385-388
+  s_ffa0492de4d6b4::t_18838a319092fe 389-392,405,429,431,445,447-460
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_ffa0492de4d6b4::t_402553188355ea 3,95
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_ffa0492de4d6b4::t_402553188355ea 31-34,37
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_ffa0492de4d6b4::t_2db931ea44c86e 155-162,176-178,184
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_ffa0492de4d6b4::t_2bf296fd8c04ea 134-139,141
+  s_ffa0492de4d6b4::t_8f3dcde70361e7 142-143
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_ffa0492de4d6b4::t_441a552802c4f5 678-690,704-705
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_ffa0492de4d6b4::t_2db931ea44c86e 456,468-469
+packages/cli/src/modules/agents/PREVIEW_CHAT_RECOVERY.md
+  s_ffa0492de4d6b4::t_341cd9fdb2f3de 23,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "32280fa41305aab2de16917915d27483bd6f9dcc",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

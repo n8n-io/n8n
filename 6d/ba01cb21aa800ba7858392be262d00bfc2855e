@@ -1,0 +1,27 @@
+packages/@n8n/db/src/migrations/common/1784000000026-AddScopeColumnToOAuthTables.ts
+  s_7d04c7a04e948a::t_c44ba955c20fb5 3-5,7,10,12-14,17-19
+packages/cli/test/migration/1784000000026-add-scope-column-to-oauth-tables.test.ts
+  s_7d04c7a04e948a::t_80aefb8de3db6c 153,161,163,170
+  s_7d04c7a04e948a::t_2e234a4f8af89b 193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6dba01cb21aa800ba7858392be262d00bfc2855e",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7d04c7a04e948a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5abc9d02-798b-48d4-bb51-0b22ee053cf2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

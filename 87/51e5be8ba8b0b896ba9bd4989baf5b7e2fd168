@@ -1,0 +1,74 @@
+packages/@n8n/db/src/repositories/binary-data.repository.ts
+  s_c4e1926762d663::t_9f40ca02cff2fa 6
+  s_c4e1926762d663::t_f01e3fc6f911b9 25-33
+packages/cli/src/binary-data/binary-data-access.service.ts
+  s_c4e1926762d663::t_a2974eedf41cbf 1-3,5-51,54-55
+  s_a42e84c90b6778::t_21cada98296575 4
+  s_a42e84c90b6778::t_7aece2da2d8a20 52-53
+packages/cli/src/controllers/__tests__/binary-data.controller.test.ts
+  s_c4e1926762d663::t_742bb2cb1d2b4e 2-3,10-11,15,18-19,24
+  s_a42e84c90b6778::t_33aafad5ba26a0 187-189,199-200
+  s_0e9a962ef4ba4a::t_58c24d36ed8e97 190-191
+  s_c4e1926762d663::t_a8e6ae7e8399f3 161-178
+packages/cli/test/integration/binary-data.api.test.ts
+  s_c4e1926762d663::t_f852cd8ea59552 181-226,257-267,311
+  s_a42e84c90b6778::t_3b8d7e16bd1a37 7
+  s_c4e1926762d663::t_64a0c02257835f 8
+  s_c4e1926762d663::t_b1e0e89e3b69ab 1-6,13-14
+  s_c4e1926762d663::t_ae180d62be057c 32
+  s_a42e84c90b6778::t_6f8ab9e70d9fd0 244-256
+  s_c4e1926762d663::t_c2d105eb43827c 268-310
+  s_a42e84c90b6778::t_4cb4e2379d3eac 40-54
+  s_a42e84c90b6778::t_ac252954444cde 227-243
+  s_a42e84c90b6778::t_e94d5873465a37 55
+  s_c4e1926762d663::t_5d70bec5358032 312-314
+packages/core/src/binary-data/blob.manager.ts
+  s_c4e1926762d663::t_47a7090577674b 13
+  s_a42e84c90b6778::t_11187750d5819c 16-20
+  s_a42e84c90b6778::t_cf2ab2940822f3 21
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_c4e1926762d663::t_9584c5974f8e4c 265-273,276-278
+  s_a42e84c90b6778::t_4e8234549d4830 274-275
+packages/core/src/binary-data/index.ts
+  s_a42e84c90b6778::t_3298dcf4a50d77 2
+packages/cli/src/controllers/binary-data.controller.ts
+  s_c4e1926762d663::t_ff0fa469dc184f 2,13,18-21,25,31-33
+  s_0e9a962ef4ba4a::t_9682296a3dad03 83-84
+  s_a42e84c90b6778::t_028a07a8b7576d 80-82,85
+  s_a42e84c90b6778::t_db89ff9ddc381c 79
+packages/cli/src/binary-data/__tests__/binary-data-access.service.test.ts
+  s_c4e1926762d663::t_c978e1c6d446a2 1-99
+  s_c4e1926762d663::t_f478b8f50e0cb0 100-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "8751e5be8ba8b0b896ba9bd4989baf5b7e2fd168",
+  "prompts": {},
+  "sessions": {
+    "s_0e9a962ef4ba4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b115972a-ef43-4f0d-8f7c-69c8e6f49ba6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_a42e84c90b6778": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db5efae0-8613-44a4-8d33-f252782a4254",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_c4e1926762d663": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "247dc47e-6709-4e4f-9050-62b1c4079fb8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

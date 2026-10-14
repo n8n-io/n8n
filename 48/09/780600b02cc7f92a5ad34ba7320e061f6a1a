@@ -1,0 +1,25 @@
+packages/@n8n/api-types/src/agents/__tests__/agent-skill.dto.test.ts
+  s_a5630915c5ba0e::t_0d72a6de0b454a 5-6
+packages/@n8n/api-types/src/agents/dto.ts
+  s_a5630915c5ba0e::t_9440eb2a8bd70d 6
+packages/@n8n/api-types/src/agents/agent-skill.schema.ts
+  s_a5630915c5ba0e::t_20f747fdc5915f 1-84
+packages/@n8n/api-types/src/agents/index.ts
+  s_a5630915c5ba0e::t_74adc0c19acd5b 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4809780600b02cc7f92a5ad34ba7320e061f6a1a",
+  "prompts": {},
+  "sessions": {
+    "s_a5630915c5ba0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d26675dc-a0b7-43aa-be23-999caa8d7e49",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

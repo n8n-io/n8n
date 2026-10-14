@@ -1,0 +1,55 @@
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 9,39,93,123,217,274,335
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 8
+packages/nodes-base/nodes/Microsoft/OneDrive/test/GenericFunctions.test.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 957,972,987
+packages/@n8n/nodes-langchain/utils/aws/test/resolveAwsCredentials.test.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 72,91,109,141-142,155,169,192,228-229,239-240,250-251,261-262,289,324,342,360
+packages/nodes-base/eslint.config.mjs
+  s_716c5144ea2746::t_7fd9c69968b0e8 24
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.test.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 1-60
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 23
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 486-488
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 172-174,179,408
+packages/@n8n/nodes-langchain/eslint.config.mjs
+  s_716c5144ea2746::t_7fd9c69968b0e8 13-14
+packages/nodes-base/nodes/Jwt/Jwt.node.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 30
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/listSearch.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 192,208
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/loadOptions.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 9,54
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 25,58
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/GenericFunctions.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 10
+packages/nodes-base/AGENTS.md
+  s_716c5144ea2746::t_bf808b0e293812 67
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 42-47,51
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 114
+packages/@n8n/eslint-config/src/rules/no-defaulted-item-index.ts
+  s_716c5144ea2746::t_7fd9c69968b0e8 1-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d8da36ac3800ea73062d2609eae62186ccea1a8c",
+  "prompts": {},
+  "sessions": {
+    "s_716c5144ea2746": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e10bd622-3863-483b-8737-b0d99bd0c883",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

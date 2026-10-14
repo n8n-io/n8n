@@ -1,0 +1,23 @@
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_8ce68994e328bc::t_1ced3de56d5bab 96-108
+packages/@n8n/api-types/src/dto/security-settings/security-settings.dto.ts
+  s_8ce68994e328bc::t_1ced3de56d5bab 17
+packages/cli/src/controllers/__tests__/security-settings.controller.test.ts
+  s_8ce68994e328bc::t_a3c0d16d9adc2d 107-108,110,112-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "54156a4bddb67d8643d284df82f1f52d0c0e4f16",
+  "prompts": {},
+  "sessions": {
+    "s_8ce68994e328bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d405f5-0eed-4fee-a11a-893b52a11ea3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

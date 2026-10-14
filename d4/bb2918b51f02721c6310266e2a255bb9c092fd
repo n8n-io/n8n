@@ -1,0 +1,55 @@
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_d8ed300529e078::t_3c3d5917533109 42,50,52,63,71-83
+  s_d8ed300529e078::t_44e1ead765a1d5 84-85
+  s_d8ed300529e078::t_fa0f98a1982d20 7
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_d8ed300529e078::t_c56373201fe0a0 7-10
+  s_d8ed300529e078::t_e56df345b5beae 76,81,83-85,102,104-106,111-122,126-129,136,145-154
+  h_5d40c27a8fdfd1 82
+  s_d8ed300529e078::t_edab981ced64be 155
+packages/cli/scripts/build.mjs
+  h_5d40c27a8fdfd1 67-68
+  s_d8ed300529e078::t_202ff45963b7b5 84-87
+  s_d8ed300529e078::t_3cf1916d96a95e 17
+  s_d8ed300529e078::t_68e3a7a5dfd7c1 2,5
+  s_d8ed300529e078::t_de91603d8b648f 28
+  s_d8ed300529e078::t_7781ce714e171b 66,69-83,88-90,92,107-113,115,118,134-146
+  s_d8ed300529e078::t_b49b4996e74afe 16
+  s_d8ed300529e078::t_3e3a50d2005e23 147
+packages/cli/src/public-api/v1/openapi-gen/__tests__/merge-decorator-document.test.ts
+  s_d8ed300529e078::t_71924391075c59 1-72
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_d8ed300529e078::t_295025a1d0498f 6
+  h_5d40c27a8fdfd1 21-22
+  s_d8ed300529e078::t_dea7eaa05d7fd8 23-32
+  s_d8ed300529e078::t_67e3142065ea41 19
+  s_d8ed300529e078::t_692ca78510eea6 219-228,232-277
+  s_d8ed300529e078::t_ee6454a9f6e96e 229-231
+  s_d8ed300529e078::t_0a3d6a23283f36 161-181,191,195-202
+  s_d8ed300529e078::t_7d91dbd45b9c41 20
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  s_d8ed300529e078::t_5e88c5c1eb5765 5
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_d8ed300529e078::t_b7c870a24b748d 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d4bb2918b51f02721c6310266e2a255bb9c092fd",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

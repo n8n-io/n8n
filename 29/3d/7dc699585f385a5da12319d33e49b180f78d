@@ -1,0 +1,138 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_339360d3808066::t_6157573e20f3b1 183-184
+  s_339360d3808066::t_dac22a948c1f64 249-268
+  s_339360d3808066::t_afceb5a0bf559a 131
+  s_339360d3808066::t_8e9122aa30f145 37-51
+  s_339360d3808066::t_8e8bdcebe55e5c 299-300
+  s_339360d3808066::t_bd5f57a43c4e7e 334
+packages/cli/src/workflow-execute-additional-data.ts
+  s_339360d3808066::t_9e59442977e286 403-404,409
+  s_339360d3808066::t_5b2e74dafe347b 420-430
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_339360d3808066::t_8a6cb7af016f4f 4-7,16-36
+  s_339360d3808066::t_1b03e242db38cf 54,58,67-93,119-122
+  s_339360d3808066::t_a88e8b77162e0d 37
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_339360d3808066::t_01eafb8dc72b0b 9,21,23,25-26,56,74,76,78-79
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_339360d3808066::t_4403df827f5e2b 13-16
+  s_339360d3808066::t_9e227136c2ef1e 57-68
+  s_339360d3808066::t_ad09c058479244 163-164,168,173,176-178
+  s_339360d3808066::t_32bc60cae53233 22-25,27
+  s_339360d3808066::t_e1fbef0485d122 87
+  s_339360d3808066::t_13c8a337092176 42-45
+  s_339360d3808066::t_c8d4d55a139096 6-7,10
+  s_339360d3808066::t_463534553712c9 19
+  s_339360d3808066::t_2414fec0027e30 513-520
+  s_339360d3808066::t_46ffeb47f5c10e 96-146
+  s_339360d3808066::t_8b456c1144ad53 95
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_339360d3808066::t_01eafb8dc72b0b 10,12,14-15,41,56,74,76,78-79
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_339360d3808066::t_184921d35e2e32 225,451
+packages/cli/test/migration/1785151856791-add-thread-identity-to-agent-execution-threads.test.ts
+  s_339360d3808066::t_d8c7749afa39c8 1-289
+  s_339360d3808066::t_7afe06e0218467 290-294
+docs/generated/postgres-schema/README.md
+  s_339360d3808066::t_01eafb8dc72b0b 18,427,429,431-432
+docs/generated/sqlite-schema/agent_history.md
+  s_339360d3808066::t_01eafb8dc72b0b 101,103,105-106
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_339360d3808066::t_4fe3c2d1b721ca 71-73,75-82
+  s_339360d3808066::t_1884404bd7ef11 32
+packages/@n8n/db/src/migrations/common/1785151856791-AddThreadIdentityToAgentExecutionThreads.ts
+  s_339360d3808066::t_184921d35e2e32 1-2,29,114,147,156-157
+  s_339360d3808066::t_3a247dd8758bd0 3-28,30-113,115-146,148-155
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_339360d3808066::t_9160fdbe6c67ba 25-27
+  s_339360d3808066::t_5b7261c4a5a1b9 43-67
+  s_339360d3808066::t_01aff005258271 8-10
+  s_339360d3808066::t_03164d8b205d68 24,42
+docs/generated/sqlite-schema/README.md
+  s_339360d3808066::t_01eafb8dc72b0b 18,414,416,418-419
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_339360d3808066::t_1e6ad33eef828e 5
+  s_339360d3808066::t_51255e47440a20 192-193,197-207
+docs/generated/sqlite-schema/agent_execution.md
+  s_339360d3808066::t_01eafb8dc72b0b 88,90,92-93
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_339360d3808066::t_6695f3010eb0b0 213,224
+  s_339360d3808066::t_28cf59f9b9ecbd 241-242
+  s_339360d3808066::t_4628e53d4ac1d9 158
+docs/generated/postgres-schema/public.agent_execution.md
+  s_339360d3808066::t_01eafb8dc72b0b 83,85,87-88
+docs/generated/postgres-schema/public.agent_history.md
+  s_339360d3808066::t_01eafb8dc72b0b 94,96,98-99
+docs/generated/sqlite-schema/project.md
+  s_339360d3808066::t_01eafb8dc72b0b 94,96,98-99
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_339360d3808066::t_d4e76dc8d76f60 97-110,118,786,822,874,932,985,1048,1103,1331
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_339360d3808066::t_184921d35e2e32 233,469
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_339360d3808066::t_48c97977082585 127-195
+  s_339360d3808066::t_36b769b0fcdc68 12
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_339360d3808066::t_536b5630e97eee 74-79
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_339360d3808066::t_3f2ab26856c830 40,1338,1344,1354,1429,1489,1527,1560,1622,1654,1688
+  s_339360d3808066::t_3b223868c6eca3 1438-1462
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_339360d3808066::t_1d800543c532f4 16-20
+  s_339360d3808066::t_e4e34021365307 61-68,71-75
+  s_339360d3808066::t_ce2e89cf2432fc 108
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_339360d3808066::t_93c5480a86176d 521
+  s_339360d3808066::t_1e3c97657ceb09 525-527
+  s_339360d3808066::t_bc84983e1d411a 576
+  s_339360d3808066::t_63230b0b737da3 485
+docs/generated/postgres-schema/public.project.md
+  s_339360d3808066::t_01eafb8dc72b0b 88,90,92-93
+docs/generated/postgres-schema/public.agents.md
+  s_339360d3808066::t_01eafb8dc72b0b 125,127,129-130
+docs/generated/sqlite-schema/agents.md
+  s_339360d3808066::t_01eafb8dc72b0b 128,130,132-133
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_339360d3808066::t_308c2e9fb3d87c 47,61-64,69,77-82,85-94
+  s_339360d3808066::t_12d45412ee8118 21-27
+  s_339360d3808066::t_c8a050e7720194 105-109
+  s_339360d3808066::t_86a26cdeb38b84 132
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_339360d3808066::t_10ee8227ae9e5b 87
+  s_339360d3808066::t_ff68d6d2ad93b4 3
+  s_339360d3808066::t_ea53fca446b34a 74
+  s_339360d3808066::t_7c3e9e29bb4ca7 96-164
+  s_339360d3808066::t_6da401f3091a94 172,227
+  s_339360d3808066::t_dca262aeefbfda 17
+  s_339360d3808066::t_3ab47124a7ea6c 342
+  s_339360d3808066::t_479e5aa5203132 62
+  s_339360d3808066::t_544e847552cd2f 297-298,306-317
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_339360d3808066::t_bf7a37ad2bc412 353
+  s_339360d3808066::t_74f39061759da3 312-321
+  s_339360d3808066::t_2bfe0dd0351b64 12-16
+  s_339360d3808066::t_dbbcdc5da4434a 427
+  s_339360d3808066::t_ece234494ab631 484
+  s_339360d3808066::t_1fa8b0d2aa9d48 19
+  s_339360d3808066::t_fc4165b8d360bc 23
+  s_339360d3808066::t_5113448f41f6bf 547-548
+  s_339360d3808066::t_f7dbd128649e82 462
+  s_339360d3808066::t_53f32cf4acd20c 135-136
+  s_339360d3808066::t_236bad5614e0c7 392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "293d7dc699585f385a5da12319d33e49b180f78d",
+  "prompts": {},
+  "sessions": {
+    "s_339360d3808066": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cc405351-a624-4aec-bcd6-63cc3c0200c1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

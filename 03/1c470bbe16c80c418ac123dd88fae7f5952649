@@ -1,0 +1,29 @@
+packages/@n8n/instance-ai/evaluations/README.md
+  s_fd6e130ca898c8::t_9dc18101708042 586-589,595-597
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_fd6e130ca898c8::t_10f9d0c5fa84cd 428-434
+packages/@n8n/instance-ai/evaluations/routing/__tests__/cases.test.ts
+  s_fd6e130ca898c8::t_a698298edeb985 42,69
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_fd6e130ca898c8::t_4e4dd4e87f703e 336
+packages/@n8n/instance-ai/evaluations/routing/cases.ts
+  s_fd6e130ca898c8::t_864798b5413c76 10-13,70
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_fd6e130ca898c8::t_af00eba9d71b87 215-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "031c470bbe16c80c418ac123dd88fae7f5952649",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

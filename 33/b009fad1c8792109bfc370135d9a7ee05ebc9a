@@ -1,0 +1,22 @@
+packages/workflow/src/workflow-structure-validation.ts
+  s_88f1ce9b846740::t_c82a1e12bd194c 138-141,148
+packages/workflow/test/workflow-structure-validation.test.ts
+  s_88f1ce9b846740::t_acf097038f7ad0 201
+  s_88f1ce9b846740::t_704bc64efa2128 257-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "33b009fad1c8792109bfc370135d9a7ee05ebc9a",
+  "prompts": {},
+  "sessions": {
+    "s_88f1ce9b846740": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09b9df3b-2732-480e-8fa5-f6d21439cc65",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

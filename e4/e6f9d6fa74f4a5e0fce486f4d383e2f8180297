@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_e3560b551eac11::t_d701e336118a97 487-488,495,497,500,503-504
+  s_f3d2ec4529fb2a::t_ef4a893518d929 3
+  s_f3d2ec4529fb2a::t_e9f359e6feb08e 458,489,492-494,502
+  s_f3d2ec4529fb2a::t_ad16bba8b99284 490-491,501
+  s_f3d2ec4529fb2a::t_552e8aefca8e9e 496,498-499
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatThreadHistory.test.ts
+  s_f3d2ec4529fb2a::t_d15a44e24a34ea 196-197,29,198-199,203,211,215,220-221,254,256,258-259,263,271,226,232,236,239-240
+  s_f3d2ec4529fb2a::t_eb0feba2cdcfbf 3,8-9,22-28
+  s_f3d2ec4529fb2a::t_90be47ea10ba94 48-49
+  s_9a6001e67297f0::t_9e78b9f9ce65f4 50
+  s_f3d2ec4529fb2a::t_1bd3c91772d1a7 200-201,216,241-253,264-270,237
+  s_f3d2ec4529fb2a::t_2fba973dadf577 202,204,212-214,217-219,255,257,260-262,225,227,233-235
+  s_f3d2ec4529fb2a::t_cab1a96e8e6e09 205-210,230-231
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatThreadHistory.vue
+  s_9a6001e67297f0::t_a262d3b5d71060 50,39,57-58,63-64
+  s_f3d2ec4529fb2a::t_8fb8c3a22e79d0 5,16
+  s_f3d2ec4529fb2a::t_72e1e871bc3822 15
+  s_f3d2ec4529fb2a::t_bc1126a720c6f3 28,56,59
+  s_f3d2ec4529fb2a::t_36dfea435a4131 38
+  s_f3d2ec4529fb2a::t_6c4b682ec5cc65 51-52,60-62
+  s_f3d2ec4529fb2a::t_40f99e799f4a34 53
+  s_f3d2ec4529fb2a::t_1beaf7a0a4c391 104
+  s_f3d2ec4529fb2a::t_0a2af59ce00ad1 144
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.test.ts
+  s_f3d2ec4529fb2a::t_7a2416199991f6 247,250-253,255,258-260,262-264,267-271,279
+  s_f3d2ec4529fb2a::t_e0995688290cd9 248-249,26,254,256-257,261,272-273
+  s_f3d2ec4529fb2a::t_3dd695da24a113 1
+  s_f3d2ec4529fb2a::t_452de7bd793b83 20-22
+  s_f3d2ec4529fb2a::t_c4c8b3d49f0ba6 23-25
+  s_f3d2ec4529fb2a::t_0e2a6e4055adab 50
+  s_f3d2ec4529fb2a::t_974639745fab7c 265-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e4e6f9d6fa74f4a5e0fce486f4d383e2f8180297",
+  "prompts": {}
+}

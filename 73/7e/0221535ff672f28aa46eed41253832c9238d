@@ -1,0 +1,9 @@
+packages/@n8n/instance-ai/load-test/FINDINGS.md
+  ai_agent 36-38,182-231,259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "737e0221535ff672f28aa46eed41253832c9238d",
+  "prompts": {}
+}

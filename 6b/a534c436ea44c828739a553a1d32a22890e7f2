@@ -1,0 +1,31 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_aeecfe178a9b3d::t_c9994138f82526 99-106,108-110,326,335
+packages/cli/src/public-api/v1/openapi.yml
+  s_c49a2c9eccdc63::t_0fb0a482b6e41d 42-43
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 14-19,24,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ba534c436ea44c828739a553a1d32a22890e7f2",
+  "prompts": {},
+  "sessions": {
+    "s_aeecfe178a9b3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c49a2c9eccdc63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4438d6f2-9586-4cae-a94e-42a967f048af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/cli/src/__tests__/abstract-server.test.ts
+  h_b49cecddc99496 10-19,108-122
+packages/cli/src/__tests__/response-helper.test.ts
+  h_b49cecddc99496 59-81
+packages/cli/src/webhooks/__tests__/webhook-request-handler.test.ts
+  h_b49cecddc99496 4-8,15,25,322-343,365-382,384,403-526
+packages/quality/testing/playwright/tests/e2e/api/webhook-isolation.spec.ts
+  h_b49cecddc99496 62-74
+packages/quality/testing/playwright/workflows/webhook-origin-isolation.json
+  h_b49cecddc99496 236-260,527-537
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ec85ee64dbab0f3738e42e14d09c14b89c83e207",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

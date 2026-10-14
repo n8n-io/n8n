@@ -1,0 +1,19 @@
+packages/@n8n/mcp-browser-extension/src/ui/tokens.scss
+  s_673ebdb7a22401::t_a3b6e96a1f7c58 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93125be069fc41687b7f52b9bf9c5e46ea1365ad",
+  "prompts": {},
+  "sessions": {
+    "s_673ebdb7a22401": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d898-1579-7288-b48d-9b6a92c34520",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

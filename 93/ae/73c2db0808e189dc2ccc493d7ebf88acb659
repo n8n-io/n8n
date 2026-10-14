@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/runtime/memory/tool-result-memory.ts
+  s_c5954c3047b5ed::t_bae1454ea3276a 1-74
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_c5954c3047b5ed::t_bae1454ea3276a 3,14-18
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_c5954c3047b5ed::t_bae1454ea3276a 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "93ae73c2db0808e189dc2ccc493d7ebf88acb659",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

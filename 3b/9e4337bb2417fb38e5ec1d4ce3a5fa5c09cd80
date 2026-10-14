@@ -1,0 +1,42 @@
+packages/nodes-base/nodes/Microsoft/Entra/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_d3e06b12334397 195-196,198
+  s_2e1fa95fc44f8f::t_3bae249209a08c 149,154
+  s_2e1fa95fc44f8f::t_b8bbb2842822f4 172-181,183
+  s_2e1fa95fc44f8f::t_d25bd3f72bb5d4 222,224,226
+packages/nodes-base/nodes/Microsoft/Entra/test/GenericFunctions.test.ts
+  s_cd53d62226fc5d::t_6d62b759c29ee0 8,70,92,113,135,157,179,201,223,248,276,304,338
+packages/nodes-base/nodes/Microsoft/Entra/test/MicrosoftEntra.node.test.ts
+  s_8f00b81cf677a0::t_08a602404cff5e 10,298,337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b9e4337bb2417fb38e5ec1d4ce3a5fa5c09cd80",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8f00b81cf677a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a51afceeaf7461dc7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_cd53d62226fc5d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e0d3e29-8da6-4f6f-b46c-8e43cc2c2cd7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

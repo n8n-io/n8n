@@ -1,0 +1,27 @@
+MULTI_LANGUAGE.md
+  s_5639fb684a6c15::t_c53d9b421bfed3 97-100
+  s_5639fb684a6c15::t_19cf04e280c620 1-74,80-96,101-109
+  s_5639fb684a6c15::t_03b68a22560c5a 75,77-78
+  h_c63dce324dfc7b 76,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d48fa602cf4071113224d5e64a5f558de54d1a17",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5639fb684a6c15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46059b82-7ba7-49ef-8c86-86a5a7a5a2a1",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

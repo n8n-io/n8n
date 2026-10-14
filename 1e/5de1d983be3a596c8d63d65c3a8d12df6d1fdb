@@ -1,0 +1,30 @@
+packages/nodes-base/credentials/SlackOAuth2Api.credentials.ts
+  h_330405ffe93e01 4,68
+packages/nodes-base/credentials/test/SlackOAuth2Api.credentials.test.ts
+  0b51494ce4bd478b 31,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "1e5de1d983be3a596c8d63d65c3a8d12df6d1fdb",
+  "prompts": {
+    "0b51494ce4bd478b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92f73164-6c14-4800-9e96-58781a3dcddf",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_330405ffe93e01": {
+      "author": "Jonathan Bennetts"
+    }
+  }
+}

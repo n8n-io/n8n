@@ -1,0 +1,56 @@
+packages/cli/src/modules/agents/scheduling/agent-task-job-registrar.ts
+  s_d18daf312440af::t_2be97ff55c4d23 70-73
+  s_d18daf312440af::t_ba3422275d880f 52-53
+  s_8eb3cc8f7c5911::t_291478fe9fd07b 175
+  s_d18daf312440af::t_a30c249e96041f 88-90
+packages/cli/src/modules/agents/scheduling/__tests__/agent-task-job-registrar.test.ts
+  s_d18daf312440af::t_0c33ace51fd7d6 133-143
+packages/cli/src/modules/agents/scheduling/__tests__/agent-task-task-handler.test.ts
+  s_d18daf312440af::t_316aee7e8e13f4 64-66,68
+  s_d18daf312440af::t_203f95f50b6d8d 19
+packages/cli/src/modules/agents/scheduling/agent-task-job.ts
+  s_d18daf312440af::t_f48b97a09d05dd 22-25
+packages/cli/test/integration/scheduling/agent-task-multi-main.test.ts
+  s_d18daf312440af::t_18ac4439d1e97f 164,168,170
+packages/cli/src/modules/agents/scheduling/agent-task-task-handler.ts
+  s_d18daf312440af::t_c3e47209d7ce31 46-50
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_d18daf312440af::t_dca34f1b3bc73e 598-605,607-613,615-618,621-622,624-626
+  s_d18daf312440af::t_61123aab9e99f3 508-531,535-536
+  s_d18daf312440af::t_33b336feddfb8e 479-485
+  s_d18daf312440af::t_01455419218a00 555
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_d18daf312440af::t_ab75e0460f5be5 923,928-929,939,944-945
+  s_d18daf312440af::t_c17982bcc95436 893-895,897-901,906-907
+  s_d18daf312440af::t_3f5232747b4fcf 955-972,974-975
+  s_8eb3cc8f7c5911::t_588b19cea8ce36 979,984-985,995,1000,1002,1019,1024,1039,1049,1066,1081
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "16ab41f73328d8efe60e83e35f3f694a397255ba",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8eb3cc8f7c5911": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ea6e1bfa-4c4a-4e84-9919-ed26ac6a9d0b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d18daf312440af": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0c6a8e78-b4b9-4472-80ce-0fa8977cb367",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

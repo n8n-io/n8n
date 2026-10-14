@@ -1,0 +1,27 @@
+packages/cli/src/modules/mcp/tools/workflow-builder/skills-used.ts
+  s_d9731c7b087acd::t_a08ab9f933142f 5-12,22
+packages/cli/src/modules/mcp/__tests__/skills-used.test.ts
+  s_d9731c7b087acd::t_c4094e5fc56df0 59-91
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_d9731c7b087acd::t_4f7181492f0e0b 15
+  s_d9731c7b087acd::t_e7cab5dbaea4b5 213
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_d9731c7b087acd::t_8ba654a99f8702 9
+  s_d9731c7b087acd::t_eb71b7f480afeb 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "090c9a95b9762af9007bfc5b4ca381ab88bf96d1",
+  "prompts": {},
+  "sessions": {
+    "s_d9731c7b087acd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdebc70a-710f-4727-bdd9-666439bf70df",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

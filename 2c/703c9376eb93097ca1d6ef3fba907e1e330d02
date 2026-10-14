@@ -1,0 +1,72 @@
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_be34f2a9936255::t_6db40539b6f4ad 19,25-26,37,57-63
+  s_bf5f9b5610d9e3::t_aae421f4b092e0 57-63
+  s_bf5f9b5610d9e3::t_7b5498cce4726f 19,25-26
+  s_bf5f9b5610d9e3::t_ca8b39604bb6a4 37
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_be34f2a9936255::t_89e6de8f739a8a 37,58,861-876
+  s_be34f2a9936255::t_10f2bf74418561 37,58,861-871
+  s_be34f2a9936255::t_9b46a4de5f14b0 872-876
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_be34f2a9936255::t_0cc680acf4f0bb 5,27-33
+  s_bf5f9b5610d9e3::t_fe545a2f5ff4c4 27-33
+  s_bf5f9b5610d9e3::t_63ebd70299b977 24
+  s_be34f2a9936255::t_b919dce5175fe5 5
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  s_be34f2a9936255::t_2d758b4ad056a6 1,8-9,11,13,15-19,22
+  s_bf5f9b5610d9e3::t_35847274006498 11,13,15
+  s_bf5f9b5610d9e3::t_6163c3d2ed64ce 8-9,22
+  s_be34f2a9936255::t_40dd8c3677c25f 1
+  s_be34f2a9936255::t_60030d3052ca00 18-21
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_be34f2a9936255::t_536b26fd9f0637 9,32-33,78
+  s_bf5f9b5610d9e3::t_1e44f6cab8a772 32-33
+  s_bf5f9b5610d9e3::t_9e93a93347ea04 78
+  s_be34f2a9936255::t_b919dce5175fe5 9
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.utils.test.ts
+  s_be34f2a9936255::t_f353487c772e22 1-19
+  s_be34f2a9936255::t_b919dce5175fe5 1-19
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_be34f2a9936255::t_62c6470a5aeb47 2,15-20,24-28
+  s_bf5f9b5610d9e3::t_6579a13a95a958 18
+  s_bf5f9b5610d9e3::t_4125a9c9889aba 19
+  s_bf5f9b5610d9e3::t_dd64bd8e4f88c6 2,15-17,20,28
+  s_be34f2a9936255::t_94e65be08d75f1 24-27
+  s_be34f2a9936255::t_bccd53b0c104a1 1
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_be34f2a9936255::t_0b560178058fd7 16,93-96
+  s_bf5f9b5610d9e3::t_7de77a914151b2 17
+  s_bf5f9b5610d9e3::t_d3914732558a5c 93-96
+  s_be34f2a9936255::t_b919dce5175fe5 16
+packages/cli/src/services/pruning/workflow-history-compaction.utils.ts
+  s_be34f2a9936255::t_e623fdd5c7d6d9 1-18
+  s_be34f2a9936255::t_b919dce5175fe5 1-18
+packages/cli/test/integration/workflow-history-compaction-trim.task.test.ts
+  s_be34f2a9936255::t_cf232c2a9b275e 1-118
+  s_bf5f9b5610d9e3::t_1de2bbf0213a7c 1-16,18-19,28,31,41-54,56-64,66-70,72,74-76,84-97,99-105,107-110,112-113,115-118
+  s_bf5f9b5610d9e3::t_04b1e8c99491a3 17,20-27,29-30,32-40,55,65,71,73,77-83,98,106,111,114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c703c9376eb93097ca1d6ef3fba907e1e330d02",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_bf5f9b5610d9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfe894a7-c4bd-47d0-9b42-98b4f9b7307f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

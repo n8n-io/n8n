@@ -1,0 +1,43 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_f0e6264a74d006::t_6d9bcfce389977 29-30,39-40
+  s_f0e6264a74d006::t_84c22315019b7f 12,15,19
+  s_2a17bd3c5e0666::t_cc87916a086fc3 826-919
+packages/cli/src/workflows/publication/publication-result.ts
+  s_f0e6264a74d006::t_f0ef7c9ab5aa61 8-20
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_f0e6264a74d006::t_0d3b7c4d156de2 365-406,408-414
+  s_f0e6264a74d006::t_443053158a912d 66-67
+  s_f0e6264a74d006::t_57f66526952c95 128-130
+  s_f0e6264a74d006::t_09801b87eecf0f 16-17,23-24
+  s_f0e6264a74d006::t_cca590284025c9 364
+  s_f0e6264a74d006::t_9a2e2a2e00a2c7 407
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_f0e6264a74d006::t_6cc1b3baec97e9 1254,1258-1262,1264,1271,1278
+packages/cli/src/workflows/workflow.service.ts
+  s_f0e6264a74d006::t_c6304425457efd 28
+  s_f0e6264a74d006::t_cc95c363114cc4 1149-1152,1154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c1656c0b90b336dbfe55a6aa8c0591f796550dfe",
+  "prompts": {},
+  "sessions": {
+    "s_2a17bd3c5e0666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0fc2eeebd30201c8",
+        "model": "unknown"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    },
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

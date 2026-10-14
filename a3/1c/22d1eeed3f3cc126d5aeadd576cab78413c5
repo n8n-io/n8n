@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_a39deecd8e14c0::t_e324a3c76c2663 700
+packages/nodes-base/credentials/test/Aws.signing.test.ts
+  s_a39deecd8e14c0::t_c2df3299cc54df 79,82-83,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a31c22d1eeed3f3cc126d5aeadd576cab78413c5",
+  "prompts": {},
+  "sessions": {
+    "s_a39deecd8e14c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "856ffe97-b9d7-4273-8342-f32d83a10142",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

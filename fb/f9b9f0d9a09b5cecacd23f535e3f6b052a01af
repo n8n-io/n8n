@@ -1,0 +1,19 @@
+packages/cli/src/errors/__tests__/rest-error-response.test.ts
+  s_8e9cae71c7c159::t_36dd02b6095fe5 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fbf9b9f0d9a09b5cecacd23f535e3f6b052a01af",
+  "prompts": {},
+  "sessions": {
+    "s_8e9cae71c7c159": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "93946471-1d3e-40e1-a7f0-dd60bb59d865",
+        "model": "composer-2.5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

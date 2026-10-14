@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_547679da417fdb::t_23ac896e03e3c2 7,11-17
+  s_547679da417fdb::t_5fbc80fb0f849a 18
+packages/@n8n/instance-ai/src/prompts/thread-context.ts
+  s_547679da417fdb::t_bc5ce295a6520d 1-253
+packages/@n8n/instance-ai/package.json
+  s_547679da417fdb::t_dc478d9e15ff68 76-78
+  s_547679da417fdb::t_81f11d7087a650 59-63
+packages/@n8n/instance-ai/evaluations/discovery/seeded-turn.ts
+  s_547679da417fdb::t_1615c5869491ee 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c59626a6b5b6b95bcf5eaa9d16c9cbf3f12ae643",
+  "prompts": {},
+  "sessions": {
+    "s_547679da417fdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "585e928f-fde6-4706-8e78-43312ac8d637",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

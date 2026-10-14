@@ -1,0 +1,33 @@
+packages/workflow/src/execution-context.ts
+  s_ad72ea1c24d75b::t_1198c532cf0216 30-34
+packages/cli/src/modules/inbound-secrets/inbound-secrets-context-hook.ts
+  s_ad72ea1c24d75b::t_075b0c17dd67ca 32
+packages/cli/src/modules/inbound-secrets/__tests__/inbound-secrets-context-hook.test.ts
+  s_ad72ea1c24d75b::t_76536079bdf947 4,13-14,23,27-28,35,38,40,42,48,55,59,62,64
+packages/cli/src/services/__tests__/runtime-credential-proxy.service.test.ts
+  s_ad72ea1c24d75b::t_2e8fee12648181 4-50
+packages/cli/src/modules/inbound-secrets/inbound-secrets.schemas.ts
+  s_ad72ea1c24d75b::t_0d84c6d6926b9e 3-9,13-18,22-26,29
+packages/cli/src/modules/inbound-secrets/__tests__/inbound-secrets.service.test.ts
+  s_ad72ea1c24d75b::t_9704024ad12c95 7,24,26-31,41-46,54,61,65,70-71,74,77-78,81,85,89,92-97,100,102-103,105,107-108,111-112,118,121-125,129,132,135-136,139,142-143,146,153,162,165,170
+packages/cli/src/modules/inbound-secrets/__tests__/inbound-secrets-access.service.test.ts
+  s_ad72ea1c24d75b::t_60b1bdb6cb68da 23,32-33,35,38,42-43,45,56,63,65,76
+packages/cli/src/modules/inbound-secrets/inbound-secrets.service.ts
+  s_ad72ea1c24d75b::t_4ac7287b310adc 6-10,13,17,49-59,61-64,67-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "c6bb93035fa1f184d63b792021345850cf8a5e72",
+  "prompts": {},
+  "sessions": {
+    "s_ad72ea1c24d75b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2398351-404b-443b-b321-0a68ac8c2244",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

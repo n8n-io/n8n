@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/agent-turn-queue.service.ts
+  s_b04c58447561ba::t_e0450681663778 25,28-29,37-38,107-109
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_b04c58447561ba::t_941a471eac88e4 2177-2196
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_b04c58447561ba::t_d4a2f9820ec180 727-728,882-886,907,1047,1061-1062
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_b04c58447561ba::t_bfa01a10ea30b8 32,39,42-44,177-181
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_b04c58447561ba::t_56adfbd0e205e4 10,16-29,79-80,99-109
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b04c58447561ba::t_b3132229bb9c3e 593-604
+  s_b04c58447561ba::t_2125ff0c7c3424 18-19,535-592
+  s_b04c58447561ba::t_78e04c1a49333b 605
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_b04c58447561ba::t_3ecc81abc79ad7 182-217
+packages/cli/src/modules/agents/__tests__/agent-turn-queue.service.test.ts
+  s_b04c58447561ba::t_0400ed8f597718 3,113-171
+  s_b04c58447561ba::t_180c9b59775326 94-112,172-174,178-179,184,200-235
+  s_b04c58447561ba::t_0af48d6a72f331 236
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_b04c58447561ba::t_174425e480c597 215-227,344
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_b04c58447561ba::t_5beedf15691ab9 16,272-298,325-345
+  s_b04c58447561ba::t_905c13fb4556b0 443-444,452,462,466-467,474,476
+  s_b04c58447561ba::t_326d2a29717050 346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ef1bcd621060bcb80aeba2d4f49b097bdfe9bf7d",
+  "prompts": {},
+  "sessions": {
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

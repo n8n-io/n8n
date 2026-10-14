@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/MessageAnAgent/v1/MessageAnAgentV1.node.ts
+  s_06bc7f3c2041cd::t_21abeb157c2e23 10
+  s_06bc7f3c2041cd::t_5b337f4d9c6e55 1-9,11-93
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_06bc7f3c2041cd::t_93c23efa6addea 1,8-9,11-18
+  s_06bc7f3c2041cd::t_19cbc51716591f 2-5,19-29
+packages/nodes-base/nodes/MessageAnAgent/v2/MessageAnAgentV2.node.ts
+  s_06bc7f3c2041cd::t_caefda49d49a4c 1-36
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_06bc7f3c2041cd::t_96f8725e262a61 6
+  s_06bc7f3c2041cd::t_424d3783c7a93f 7-8,11
+  s_06bc7f3c2041cd::t_6052a653f77175 34
+  s_06bc7f3c2041cd::t_db7d415fdcbdd1 392-417
+  s_06bc7f3c2041cd::t_0f86b88d943b5e 4
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_06bc7f3c2041cd::t_de26773b1506ab 16
+  s_06bc7f3c2041cd::t_bb64890b678287 1-12,17-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b78661030c8fa1a8b475695dd0c6a8e6423cbfb",
+  "prompts": {},
+  "sessions": {
+    "s_06bc7f3c2041cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "340cc0d0-3bb1-46b2-aaf6-697dfc7f4960",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

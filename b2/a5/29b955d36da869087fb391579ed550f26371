@@ -1,0 +1,30 @@
+packages/cli/src/webhooks/test-webhooks.ts
+  s_c491120e42f4d5::t_dd6561c8552533 21-25,409,456-460
+packages/cli/src/webhooks/__tests__/test-webhook-registrations.service.test.ts
+  s_c491120e42f4d5::t_dd6561c8552533 4,46,54-56,96-101,127,136-146
+  s_c491120e42f4d5::t_1662fc54456e4f 16,20
+  s_c491120e42f4d5::t_22456940981efc 147-149
+packages/cli/src/constants.ts
+  s_c491120e42f4d5::t_dd6561c8552533 133-135
+packages/cli/src/webhooks/__tests__/test-webhooks.test.ts
+  s_c491120e42f4d5::t_dd6561c8552533 21-25,122-132
+  s_c491120e42f4d5::t_bb32a204698e71 133-134
+packages/cli/src/webhooks/test-webhook-registrations.service.ts
+  s_c491120e42f4d5::t_dd6561c8552533 11-15,51-57,96-98,100-103,117,133,139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b2a529b955d36da869087fb391579ed550f26371",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

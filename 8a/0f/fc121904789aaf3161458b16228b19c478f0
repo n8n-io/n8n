@@ -1,0 +1,24 @@
+packages/testing/playwright/tests/framework/harness-contract.test.ts
+  s_5be157f6e91b85::t_f18e7853a4d168 2,16,204-236,238-244,247-255
+  s_5be157f6e91b85::t_e92559c40548b5 237
+  s_5be157f6e91b85::t_fb277a0aae3186 245-246
+packages/testing/playwright/pages/CanvasPage.ts
+  s_5be157f6e91b85::t_6f098cf1f1f2c6 1188,1194
+  s_5be157f6e91b85::t_89749ae622164b 1187,1192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a0ffc121904789aaf3161458b16228b19c478f0",
+  "prompts": {},
+  "sessions": {
+    "s_5be157f6e91b85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ae78-4d49-7f60-886d-eb5d6b02f635",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

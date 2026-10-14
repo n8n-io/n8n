@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/controllers/sso-saml.mapper.ts
+  s_b061c71f859f81::t_435d115279b5dd 52-53,56-57,61
+packages/@n8n/api-types/src/dto/saml/__tests__/saml-configuration-public.dto.test.ts
+  s_b061c71f859f81::t_20a72d8e76da09 3-6
+  s_b061c71f859f81::t_61f0533f2762a9 45-47,49-51,54-59,61,64-68,70,73-80,83-86,88-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ad9c8d2e9004a42114630daab3af5b93591a29b0",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b061c71f859f81": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "deabd09b-3174-4973-aa9d-f13b5d8ca837",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

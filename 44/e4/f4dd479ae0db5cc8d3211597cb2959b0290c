@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_84e24ec6fa2c40::t_e1673777c0e035 1975,1977,1997-2008
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44e4f4dd479ae0db5cc8d3211597cb2959b0290c",
+  "prompts": {},
+  "sessions": {
+    "s_84e24ec6fa2c40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3719f38f-95fa-4ccc-bac2-62f1b4973429",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

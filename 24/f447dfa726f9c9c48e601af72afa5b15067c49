@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/Interface.ts
+  s_7a02a7a08c3da6::t_bd5b50526c3261 657-666
+packages/frontend/editor-ui/src/features/settings/users/users.store.ts
+  s_7a02a7a08c3da6::t_00339dadf49956 396
+  s_7a02a7a08c3da6::t_811a2cd67717df 495
+  s_7a02a7a08c3da6::t_a7c1c1d7e573ee 27
+  s_7a02a7a08c3da6::t_9e1bcc1a442757 54-58,61,64-68,70-71
+packages/frontend/editor-ui/src/features/settings/users/users.store.test.ts
+  s_7a02a7a08c3da6::t_eecd82ea4e10b4 236,248,260
+packages/frontend/editor-ui/src/app/stores/versions.store.ts
+  s_7a02a7a08c3da6::t_22eb936eb8f92b 15
+  s_7a02a7a08c3da6::t_38e7f1a1936f40 66,71
+packages/frontend/editor-ui/src/app/stores/versions.store.test.ts
+  s_7a02a7a08c3da6::t_191701b62c699b 2-3
+  s_7a02a7a08c3da6::t_f2b9b1cf03a716 78-79
+packages/frontend/editor-ui/src/app/init.ts
+  s_7a02a7a08c3da6::t_1c0b20ee9415cc 129,132-134
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_7a02a7a08c3da6::t_6f6c5673d265f6 37
+  s_7a02a7a08c3da6::t_f2d528e9fcca30 253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "24f447dfa726f9c9c48e601af72afa5b15067c49",
+  "prompts": {},
+  "sessions": {
+    "s_7a02a7a08c3da6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c1d48c1-b5b4-4d9a-9523-4ccc88e6e78a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

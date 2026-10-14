@@ -1,0 +1,283 @@
+packages/nodes-base/nodes/Notion/test/v2/loadOptions.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-19
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/getAll.operation.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-163
+packages/nodes-base/utils/binary.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 6-13,223-248
+packages/testing/playwright/pages/components/NodeCreator.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 101-102
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 2,509-542
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-5
+packages/frontend/editor-ui/src/app/composables/useToast.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 6,233-235,252-254,274-276,294-296
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 20-21,894-959
+packages/frontend/@n8n/frontend-constants/vite.config.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-14
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 4,10,249,254,258,270,277-428
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/columns.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 235,247
+packages/cli/package.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 71
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/versionDescription.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 24-26
+packages/nodes-base/nodes/Amqp/Amqp.node.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 86
+packages/frontend/@n8n/composables/src/useExternalHooks.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-74
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/transport/index.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 368-398,523-540
+packages/@n8n/telemetry/src/validate.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 3,131
+packages/cli/src/modules/oauth-server/oauth.helpers.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 50-64
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 178-179,181-187
+packages/nodes-base/nodes/Amqp/AmqpTrigger.node.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 4,109,160,164,168,171,276,283,297-382,384,387-401,405-474
+packages/frontend/@n8n/composables/package.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 41
+packages/@n8n/telemetry/src/__tests__/types.test-d.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 54-56
+packages/nodes-base/nodes/Oracle/Sql/helpers/utils.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 4,14,416,422,428-439,444-446,453-481,537,541-549,551,616,622,665,671,678-682,727,733,741-745
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/utils.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1,8,10-21
+packages/nodes-base/credentials/DatabricksOAuth2Api.credentials.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 58-59,63,65
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 37,253
+packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 118
+packages/frontend/@n8n/frontend-constants/src/views.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-13
+packages/nodes-base/nodes/Google/Sheet/test/v2/methods/resourceMapping.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 115-126
+packages/nodes-base/nodes/Microsoft/Sql/GenericFunctions.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 3,6,260-275,277,282,301-305
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/create.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-205
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-100
+packages/@n8n/instance-ai/evaluations/__tests__/build-cost-report.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-251
+packages/frontend/editor-ui/tsconfig.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 12-13,29
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/index.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 3,7,9,24-27,35-46,48,51,53
+packages/nodes-base/nodes/Snowflake/GenericFunctions.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 4,7-8,57,59-62,141-170
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/get.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 7,121,184,208
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1454-1455,1485-1486,1516,1518-1519
+packages/frontend/@n8n/frontend-constants/tsconfig.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-10
+packages/frontend/@n8n/frontend-constants/tsdown.config.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-11
+packages/nodes-base/nodes/Amqp/helpers/handleMessage.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 4
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 2242-2244,2252,2255,2266
+packages/@n8n/instance-ai/evaluations/run/langsmith-driver.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 177-186
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 42-46,49,75,79,87
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-sdk-reference.tool.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 47
+packages/nodes-base/nodes/Google/Sheet/v2/methods/loadOptions.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 42,54-55,58-60
+packages/@n8n/instance-ai/evaluations/run/case-pipeline.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 177,180-185,221,244,303,328,366,419,450
+packages/@n8n/instance-ai/evaluations/ARCHITECTURE.md
+  s_b33988a7ffbb82::t_3ebc52da87067b 62-63
+packages/frontend/@n8n/frontend-constants/README.md
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-41
+packages/@n8n/instance-ai/evaluations/cli/mcp-builder.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 414,416,418,451-453,469-471,511-513
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 1010,1028-1029,1052-1053,1055,1177-1178
+packages/nodes-base/nodes/Notion/v2/methods/loadOptions.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 169-175
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/get.operation.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 4-9,78,91
+packages/nodes-base/nodes/Snowflake/Snowflake.node.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 20,30,267-268,312-316
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 12,439-465,673-675
+packages/@n8n/telemetry/src/index.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 5-10
+packages/@n8n/instance-ai/evaluations/__tests__/case-pipeline.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 131-136,150-152
+packages/nodes-base/nodes/Google/Sheet/test/v2/methods/loadOptions.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 85-99
+packages/frontend/@n8n/stores/src/notifications.store.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-77
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/create.operation.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-118
+packages/cli/src/credentials/credentials.service.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 782-804,1440-1451
+packages/nodes-base/nodes/Amqp/AmqpTrigger.node.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 22,43,46,52,61,75,83,93,97,132,166-173,176-178,181-185,187,194-208,250,267,275,278,285
+packages/nodes-base/nodes/Oracle/Sql/test/utils.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 3,456-591
+packages/cli/src/credentials/credentials.controller.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 344-377
+packages/nodes-base/nodes/MongoDb/GenericFunctions.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 4,9,15-16,190-217
+packages/frontend/editor-ui/src/app/init.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 129,132-134
+packages/frontend/@n8n/stores/src/notifications.store.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-56
+packages/@n8n/permissions/src/roles/__tests__/end-user-credential-scope.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 2-5,13,34-53
+packages/frontend/editor-ui/src/features/credentials/components/CredentialPrivateConnectionRow.vue
+  s_b33988a7ffbb82::t_3ebc52da87067b 30,37-43,50-55,72,97-105,109,117,131,183,186-188,190,194
+packages/nodes-base/nodes/Snowflake/__tests__/GenericFunctions.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 2,4-8,46-64,191-232
+packages/cli/src/telemetry/index.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 568
+packages/nodes-base/nodes/Microsoft/SharePoint/test/MicrosoftSharePoint.node.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 2,27-47
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialTypeSelector.vue
+  s_b33988a7ffbb82::t_3ebc52da87067b 3-12,15-30,40-62,86-97,99-115,117-120,138-145,148,151,155,162,164
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialTypeSelector.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 10,14,17,20,22-23,26,29-30,35,38-39,43-48
+packages/frontend/editor-ui/src/app/stores/versions.store.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 2-3,78-79
+packages/@n8n/telemetry/src/define.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 3-5,11-15,19,21-29
+packages/frontend/@n8n/frontend-constants/eslint.config.mjs
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-24
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-best-practices.tool.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 111
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 200,241,355,877
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 25,31,60-78,104
+packages/nodes-base/nodes/Notion/v3/methods/loadOptions.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 126-132
+packages/frontend/editor-ui/package.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 51
+packages/frontend/editor-ui/src/app/stores/versions.store.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 15,66,71
+packages/@n8n/instance-ai/evaluations/__tests__/reshape.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 138-163
+packages/@n8n/telemetry/package.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 4
+packages/frontend/@n8n/stores/src/constants.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 5
+packages/@n8n/instance-ai/evaluations/__tests__/mcp-builder.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 261-295
+packages/@n8n/instance-ai/evaluations/run/persist.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 35-36,432-440
+packages/@n8n/permissions/src/roles/scopes/credential-sharing-scopes.ee.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 11-13
+packages/frontend/editor-ui/src/app/composables/useToast.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 7,18,24-25,206,216
+packages/frontend/editor-ui/src/features/settings/users/users.store.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 27,54-58,61,64-68,70-71,396,495
+packages/frontend/editor-ui/src/app/components/Banner.vue
+  s_b33988a7ffbb82::t_3ebc52da87067b 10,47-57,62,69,74-79,87-89,93-95,98-99,140-153,171-175,179-181,186-187,191-199,212-217
+packages/frontend/editor-ui/src/Interface.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 656-665,709-711
+packages/nodes-base/utils/__tests__/binary.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 6,8-9,291-349
+packages/nodes-base/nodes/Notion/test/v3/loadOptions.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 22,47-53
+packages/@n8n/instance-ai/evaluations/run/build-orchestrator.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 67-68,206-208,355-357,367,375,398-400
+pnpm-lock.yaml
+  ai_agent 4465-4467,4994-4996,5257-5286,5494-5496,5760-5762
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/node.type.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 6
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 320,349,352,377-378,381,409,437-466,496,520,531,534,539,544-545,548,552-561,563,569,572-573,576,582-583,586,596-616
+packages/@n8n/instance-ai/evaluations/types.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 313-316
+packages/frontend/@n8n/frontend-constants/biome.jsonc
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-4
+packages/frontend/editor-ui/src/app/composables/useExternalHooks.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 9,11-16,38-48
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 100-103
+packages/frontend/@n8n/composables/src/useExternalHooks.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-60
+packages/@n8n/instance-ai/evaluations/cli/build-cost-report.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-494
+packages/nodes-base/nodes/Oracle/Sql/actions/versionDescription.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 12
+packages/testing/playwright/tests/e2e/node-creator/workflows.spec.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 18,32
+packages/@n8n/instance-ai/evaluations/__tests__/eval-results-dispatcher-contract.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 100-101,162-165,185-207
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 5,153-193,3136-3154
+packages/cli/src/modules/oauth-server/__tests__/oauth.helpers.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 187-220
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_b33988a7ffbb82::t_3ebc52da87067b 1126
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_b33988a7ffbb82::t_3ebc52da87067b 8,44,113-144,146-160,174-176,182
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/getAll.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-216
+packages/nodes-base/nodes/MongoDb/GenericFunctions.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-2,4,154-204
+packages/frontend/editor-ui/src/app/composables/usePostMessageHandler.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 8,225,246-247,254-255,276-277,284-285,304-305,553,570-571,738,755-756
+packages/@n8n/instance-ai/evaluations/run/reshape.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 72-76,261-262,286-288,318-319,340-341
+packages/frontend/editor-ui/src/app/composables/usePostMessageHandler.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 12,51,95
+packages/frontend/editor-ui/src/features/settings/users/users.store.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 236,248,260
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_b33988a7ffbb82::t_3ebc52da87067b 30,111,222-247,279-284,443-487,518-539,549-551,554,562,565-575,577-578,580-581,585-587,610,613-615,623-632,726-736,748-750
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 8,289-291,311-313
+packages/nodes-base/credentials/test/DatabricksOAuth2Api.credentials.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 27-28
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/columns.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 9,78-92,113-117
+packages/nodes-base/nodes/Microsoft/Sql/test/utils.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 4,261-269,279-284,295-387,396-401,418-423,442-443,462-464,469-475,483-484,497-498,512-513,526
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_b33988a7ffbb82::t_3ebc52da87067b 1160-1167
+packages/nodes-base/nodes/MongoDb/MongoDb.node.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 27,41,826-827
+packages/frontend/editor-ui/src/features/credentials/credentials.store.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 413-416,542
+packages/@n8n/telemetry/src/__tests__/define.test.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-42
+packages/nodes-base/nodes/Microsoft/Sql/MicrosoftSql.node.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 33,325-332
+packages/frontend/@n8n/stores/package.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 40
+packages/nodes-base/nodes/Google/Sheet/v2/methods/resourceMapping.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 27-33
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/transport/index.ts
+  s_b33988a7ffbb82::t_3ebc52da87067b 47-54,105-108,145-150,258,266,274
+packages/frontend/@n8n/frontend-constants/package.json
+  s_b33988a7ffbb82::t_3ebc52da87067b 1-42
+packages/@n8n/instance-ai/evaluations/README.md
+  s_b33988a7ffbb82::t_3ebc52da87067b 444-452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "896f227703e4a82cf6d90b89130eb72eb9f02d97",
+  "prompts": {},
+  "sessions": {
+    "s_b33988a7ffbb82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62567dd1-0089-41ae-82d5-3c946b11616f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

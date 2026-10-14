@@ -1,0 +1,14 @@
+packages/cli/src/modules/provisioning.ee/__tests__/provisioning.service.ee.test.ts
+  h_435b1d7d3e52c0 268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "03624fda1796202bd7dcf666f1ca464b8902d73f",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

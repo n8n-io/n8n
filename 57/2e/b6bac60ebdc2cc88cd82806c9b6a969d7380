@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.test.ts
+  s_5d6be4e6bc70a6::t_f78cf577990385 9,1577,1580,1591,1595
+packages/@n8n/db/src/repositories/evaluation-collection.repository.ts
+  ai_agent 125-129
+  s_5d6be4e6bc70a6::t_4ec92c590501c1 119-124,130-131
+packages/cli/src/evaluation.ee/__tests__/evaluation-collection.service.test.ts
+  s_5d6be4e6bc70a6::t_41122e43f737f0 491-495
+  s_5d6be4e6bc70a6::t_9e5de7e9970894 366-371
+  s_5d6be4e6bc70a6::t_a1ede54877cc00 122-125
+packages/cli/src/evaluation.ee/evaluation-collection.service.ts
+  s_5d6be4e6bc70a6::t_cbeebaa540fbd8 254-258,260,262-264,268-275
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.test.ts
+  s_5d6be4e6bc70a6::t_6f1252648acadc 275-297
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  s_5d6be4e6bc70a6::t_8a21325f36f40f 477-481,483-484
+  s_5d6be4e6bc70a6::t_79fc2c86ad4ea1 509-515
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_5d6be4e6bc70a6::t_f78cf577990385 16,48
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_f78cf577990385 145
+  s_5d6be4e6bc70a6::t_89f0ba1469bb75 157,196,245,247
+  s_5d6be4e6bc70a6::t_e75a18fae064c4 6
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_5d6be4e6bc70a6::t_f78cf577990385 11,30
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.ts
+  s_5d6be4e6bc70a6::t_44e53b9067af8a 157-165,167
+packages/cli/src/evaluation.ee/test-runner/__tests__/workflow-compiler.service.test.ts
+  s_5d6be4e6bc70a6::t_1e674523208dcb 345-366
+packages/@n8n/db/src/repositories/__tests__/evaluation-collection.repository.test.ts
+  s_5d6be4e6bc70a6::t_9010b1c382f314 129-147
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/OutputsTab.test.ts
+  s_5d6be4e6bc70a6::t_3b89cdff6461d6 63,73
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  s_5d6be4e6bc70a6::t_17f576dcb0c339 117-157
+packages/cli/src/evaluation.ee/test-runner/workflow-compiler.service.ts
+  s_5d6be4e6bc70a6::t_a9d860c29c3fe2 471-475,478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "572eb6bac60ebdc2cc88cd82806c9b6a969d7380",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

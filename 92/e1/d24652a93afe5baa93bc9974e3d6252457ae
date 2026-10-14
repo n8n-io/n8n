@@ -1,0 +1,60 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useUnusableWorkflowCredentials.ts
+  s_fb30b1b6ca962d::t_69a41f11e86d5b 11-25
+  s_fb30b1b6ca962d::t_08ba3f9ddc1aac 66
+  s_fb30b1b6ca962d::t_8668e7c60080f8 10
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  h_21437a83314767 1293
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_fb30b1b6ca962d::t_222b1b6858fa98 485-502
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_fb30b1b6ca962d::t_73de38c876b2b4 1766-1767,1769
+  s_fb30b1b6ca962d::t_30c081e0f92c84 1213,1216
+  s_fb30b1b6ca962d::t_f12649463745c2 1651-1653
+  s_fb30b1b6ca962d::t_313029ca6b3bf5 777-778,782
+  s_fb30b1b6ca962d::t_29b1b6b752b0dc 1189-1194,1199-1202,1204-1212,1214-1215,1217-1221
+  s_fb30b1b6ca962d::t_5d57c807084782 1195-1198,1203
+  s_fb30b1b6ca962d::t_3597a34cda629c 1331-1332,1339
+  s_fb30b1b6ca962d::t_a74945ff93ad09 282-304
+  s_fb30b1b6ca962d::t_0cb44a8cdb4984 1760
+  s_fb30b1b6ca962d::t_bf7b7fb74e3043 281,1141-1151,1153-1188,1222
+  s_fb30b1b6ca962d::t_6032ff448ccc47 1100-1101,1105
+  s_fb30b1b6ca962d::t_d98ecdc87cd154 1562
+  s_fb30b1b6ca962d::t_5d2cdbd4dc0399 1799-1801
+  s_fb30b1b6ca962d::t_c799faf733618e 1893-1901,1910-1911,1914,1916-1917
+  s_fb30b1b6ca962d::t_9ea86865f196a8 1902-1909
+  s_fb30b1b6ca962d::t_7deb9df9ff1d0c 1137-1140
+  s_fb30b1b6ca962d::t_efb3c22e896934 1912-1913,1915
+  s_fb30b1b6ca962d::t_d3bb39af938b7e 1351
+  s_fb30b1b6ca962d::t_372e63081ca8e2 60
+  s_fb30b1b6ca962d::t_26867d53a72f14 223
+  s_fb30b1b6ca962d::t_7af7582a2ba622 1630,1641-1650,1654-1663
+  s_fb30b1b6ca962d::t_6b4e9bd7f4419c 638
+  s_fb30b1b6ca962d::t_6a2980209620ba 1563-1564
+  s_fb30b1b6ca962d::t_76bc51901b6ae7 1758-1759,1761-1765,1768,1770-1775
+  s_fb30b1b6ca962d::t_3aecf079d1916b 1664
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fb30b1b6ca962d::t_7e9f07a92713ce 2331-2339,2493
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_fb30b1b6ca962d::t_4012440da4ebf6 37,185-194,762-767,781,819
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92e1d24652a93afe5baa93bc9974e3d6252457ae",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

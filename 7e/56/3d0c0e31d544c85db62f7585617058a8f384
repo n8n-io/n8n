@@ -1,0 +1,51 @@
+packages/@n8n/nodes-langchain/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.ts
+  s_59be3eefc13ede::t_451e104f0f0483 354
+  s_59be3eefc13ede::t_a5e74547eb8423 4
+  s_59be3eefc13ede::t_4267e04550f3ea 17
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  s_59be3eefc13ede::t_b6acb5d6d4103b 185
+  s_59be3eefc13ede::t_9d873c92cabeca 25
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  s_59be3eefc13ede::t_b259bb910b2899 44-51
+  s_59be3eefc13ede::t_6ad28e37475490 2-3
+  s_59be3eefc13ede::t_f18f23532d825e 156-218
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  s_59be3eefc13ede::t_e3dd3bca428bf4 8
+  s_59be3eefc13ede::t_be9b666ffae646 15-19
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.test.ts
+  s_59be3eefc13ede::t_541f41063aacf3 1-85
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_59be3eefc13ede::t_c090efcd4f8afc 773
+  s_59be3eefc13ede::t_b4484545f8d6cf 18
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_59be3eefc13ede::t_aff87e4d17c970 3
+  s_59be3eefc13ede::t_6c4f2b564fdbd4 277
+  s_59be3eefc13ede::t_60b306dee5001e 16
+  s_59be3eefc13ede::t_7af7f603dc9fc0 216-220
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/credentials.ts
+  s_59be3eefc13ede::t_ad548c3a67a89a 1-24
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.ts
+  s_59be3eefc13ede::t_db4abc987d12a7 256
+  s_59be3eefc13ede::t_85b339de81b4af 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e563d0c0e31d544c85db62f7585617058a8f384",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_59be3eefc13ede": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "528c1209-342b-43f8-b459-2b140d67a10a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

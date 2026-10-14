@@ -1,0 +1,50 @@
+packages/cli/src/modules/token-exchange/services/__tests__/token-exchange.service.test.ts
+  s_aeac65fc97e940::t_479e88a6a58983 39
+  s_aeac65fc97e940::t_f8fd72cae3dd68 98-102
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  h_435b1d7d3e52c0 195,516,561-562,580
+  s_ed27954ecf642c::t_fcee5f32b7726f 555-560,563
+packages/cli/src/modules/token-exchange/services/identity-resolution.service.ts
+  h_435b1d7d3e52c0 11,17,58,63-89,105,168,170-171,187,193-194,219,221,356
+packages/cli/src/modules/token-exchange/token-exchange.schemas.ts
+  h_435b1d7d3e52c0 41-44,62,70,97,126-128
+packages/cli/src/modules/token-exchange/services/__tests__/identity-resolution.service.test.ts
+  s_aeac65fc97e940::t_45820118295a1e 8,20,29,35-36,42-53,55-65,67,71,81,83-124,126-143
+  s_aeac65fc97e940::t_6f0d681d07c459 2
+  s_aeac65fc97e940::t_58a6246d06f48e 1,3-7,9-19,21-28,30-34,37-41,54,66,68-70,72-80,82,125,144-145
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  h_435b1d7d3e52c0 152
+packages/cli/src/modules/token-exchange/token-exchange.types.ts
+  h_435b1d7d3e52c0 15
+packages/cli/src/modules/token-exchange/token-exchange.config.ts
+  h_435b1d7d3e52c0 17-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "485e98ca6289149c20bab3c27a694564a0a441ce",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_aeac65fc97e940": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce6a8d16-666e-4e23-8065-70be62c8cf0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ed27954ecf642c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed15ffa8-f284-4b5f-b9cc-da240ab9cbe9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

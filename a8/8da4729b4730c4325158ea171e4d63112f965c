@@ -1,0 +1,36 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.node-usage.test.ts
+  s_794a99d9a9b327::t_92a72502b7050f 155-156,164-169
+packages/cli/src/posthog/index.ts
+  s_794a99d9a9b327::t_b17df8db870044 6,276
+docs/instance-ai-node-usage-rollout.md
+  s_794a99d9a9b327::t_b7731ec65cec76 85-86
+  s_794a99d9a9b327::t_357eb04e005b7d 1-84,87-91
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_794a99d9a9b327::t_b17df8db870044 69,6996,7024,7030-7031,7035-7036,7049-7050,7097
+packages/@n8n/api-types/src/index.ts
+  s_794a99d9a9b327::t_b17df8db870044 445
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_794a99d9a9b327::t_b17df8db870044 2823
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_794a99d9a9b327::t_b17df8db870044 14
+  s_794a99d9a9b327::t_1ae65837406933 728-729
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_794a99d9a9b327::t_1ae65837406933 423-432,434-435,437,439-441
+  s_794a99d9a9b327::t_92a72502b7050f 1-5,364,395-422,433,436,438,442-472,740,753
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a88da4729b4730c4325158ea171e4d63112f965c",
+  "prompts": {},
+  "sessions": {
+    "s_794a99d9a9b327": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0edaa-fd83-7292-a658-dab2612cce4a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

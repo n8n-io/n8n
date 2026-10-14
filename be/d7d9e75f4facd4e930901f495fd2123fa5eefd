@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_b9e402b75ca46c::t_955d7e3f26b6ac 126-151
+packages/cli/test/integration/shared/db/folders.ts
+  s_b9e402b75ca46c::t_63dfc101c873ef 24
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_b9e402b75ca46c::t_9bd9a2127cb688 18
+  s_b9e402b75ca46c::t_0444ba6d1fd603 105-125
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_b9e402b75ca46c::t_e41de17b52bc19 113-125
+  s_b9e402b75ca46c::t_e2f3e960952272 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bed7d9e75f4facd4e930901f495fd2123fa5eefd",
+  "prompts": {},
+  "sessions": {
+    "s_b9e402b75ca46c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0175b21f-7e7d-491e-a496-459c2da5cb60",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

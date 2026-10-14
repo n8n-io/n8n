@@ -1,0 +1,39 @@
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.test.ts
+  s_cf7e00ffefe182::t_c116bfa95b5568 47
+  s_cf7e00ffefe182::t_e9fbf2e3567e7b 30-33,35-46,48-68
+  s_cf7e00ffefe182::t_62b90c6420d484 34
+packages/cli/src/credentials/__tests__/credential-options.service.test.ts
+  s_cf7e00ffefe182::t_b32ef47b6b6e24 168-200
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.vue
+  s_cf7e00ffefe182::t_c8ab69e20979b9 4,87-95,97,100-105
+  s_cf7e00ffefe182::t_ad87c5de37a089 96,98-99
+  s_cf7e00ffefe182::t_63fe5b89cfa46d 106
+packages/frontend/editor-ui/src/features/credentials/credentials.api.test.ts
+  s_cf7e00ffefe182::t_b29367c534cb06 42-47,49-63
+  s_cf7e00ffefe182::t_7bc4972e8696b1 48
+  s_cf7e00ffefe182::t_17cec34f037a89 1,4,24-29,33,39-40
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_cf7e00ffefe182::t_e141b0328fb1a2 75,83-88,90
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_cf7e00ffefe182::t_daad2f66ab0e96 64-83,93,106
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.test.ts
+  s_cf7e00ffefe182::t_bbf77aa37770a8 160,174,179-205,210,213,215
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_cf7e00ffefe182::t_2d091892703d64 201-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d39a066bf608c17b936e95d33bfb80ee35c25ef",
+  "prompts": {},
+  "sessions": {
+    "s_cf7e00ffefe182": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bae-5950-7d02-881b-ef39fcf7c2bf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/@n8n/agents/package.json
+  s_474fe0e36cbf49::t_87f316abae22e2 160
+package.json
+  s_474fe0e36cbf49::t_87f316abae22e2 120
+pnpm-workspace.yaml
+  s_474fe0e36cbf49::t_87f316abae22e2 62
+packages/cli/package.json
+  s_474fe0e36cbf49::t_87f316abae22e2 176
+packages/@n8n/instance-ai/package.json
+  s_474fe0e36cbf49::t_87f316abae22e2 67
+pnpm-lock.yaml
+  s_474fe0e36cbf49::t_e5a8615b1bfee4 9200,11678-11681,21894-21897,23224,23250,23323,23346,23367,23390,23474,23497,23610,23633,23653,23676,23699,23708,23941,23994,24058,24082,24091,24115,24138,24158,24181,28886,28910-28916,28941,28964,28970,28993,29140,29224,34463,34496,41438-41443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bc8681368ff32db1c18410b154fd0beef97919dc",
+  "prompts": {},
+  "sessions": {
+    "s_474fe0e36cbf49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa5e6-a1de-7801-b0cc-c470a0c5fffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

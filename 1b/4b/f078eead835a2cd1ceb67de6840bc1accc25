@@ -1,0 +1,347 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_b546d99301cc3f::t_ab10ab508277e9 365
+  s_b546d99301cc3f::t_936bd3e9661148 354,364,366-368
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_0d3a15c539ca1d::t_a7315b6dea1d11 58-59
+  s_0d3a15c539ca1d::t_5c7ddd85a8828d 219
+  s_0d3a15c539ca1d::t_d81a67e27f4afb 82,103,135,269,292,312
+  s_0d3a15c539ca1d::t_d827be01298d60 118,152,178,200,328
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_4ecfe5017af67b::t_06c6848cc67c6d 2626-2627
+  s_db66da8198a49a::t_83975332ed9a35 2628
+  s_0d3a15c539ca1d::t_1cb8cbdc8b09c8 4053-4064,4066,4068-4070,4072-4073,4076-4078
+  s_f6202044773efc::t_a3a448050ab5fa 4080-4082
+  s_0d3a15c539ca1d::t_a2aeae71081bf6 2600
+  s_db66da8198a49a::t_7b929c57c7c0cb 967
+  s_0d3a15c539ca1d::t_37a45eff0d3d19 4223
+  s_b546d99301cc3f::t_eec914d6238bbd 1165
+  s_0d3a15c539ca1d::t_363f9cb32c4e16 4271,4279
+  s_0d3a15c539ca1d::t_534b9990023f89 5285,5291,5294-5297,5300-5304
+  s_0d3a15c539ca1d::t_025885958ac078 4313
+  s_0d3a15c539ca1d::t_7a26a6758d4b43 975
+  s_f6202044773efc::t_6a830b32e8c3da 5309-5311
+  s_0d3a15c539ca1d::t_75d9d1746876f2 2629
+  s_4ecfe5017af67b::t_3cbf5d205dcbc6 1114
+  s_db66da8198a49a::t_03030031f7be01 4884
+  s_b546d99301cc3f::t_ebaff182e833f6 1101
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_b546d99301cc3f::t_248d44d5bdd725 645-667
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_db66da8198a49a::t_4556080631cdee 728-731,734-740,742-747,766-768
+  s_0d3a15c539ca1d::t_497edfacf0949d 732-733,741,748-765
+  s_db66da8198a49a::t_910bd6ad649b19 967-971
+  s_db66da8198a49a::t_ba64ad29063be4 879-896
+  s_6866d3ade6015c::t_db52a3a7166fe8 530-550,552-609
+  s_6866d3ade6015c::t_b9103725aefd4c 551
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_4ecfe5017af67b::t_883f95fe2098a3 119
+  s_0d3a15c539ca1d::t_bdfb091657d11f 176,178
+  s_0d3a15c539ca1d::t_6a6f1f1b8f35a7 77
+  s_0d3a15c539ca1d::t_884509ce85fc90 118,120
+  s_db66da8198a49a::t_47731d6be73c1d 76
+  s_4ecfe5017af67b::t_ad0266f2027266 177
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_0d3a15c539ca1d::t_8dda516c1e2d9c 804-806
+  s_0d3a15c539ca1d::t_2d5fe2740388c8 807
+  s_4ecfe5017af67b::t_a9765f0dad2671 802-803
+  s_db66da8198a49a::t_06583837ca9853 791
+  s_db66da8198a49a::t_cb6fe6485ae19e 2
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_b546d99301cc3f::t_24cdc6731e503e 527,557-562
+  s_db66da8198a49a::t_e3faf32f0eb6a5 513-526,528-555,563-565
+  s_db66da8198a49a::t_b80e1b2d49fc49 295,475,1350,1360,1436,1446,1480
+  s_b546d99301cc3f::t_31a93bf7e3eab0 358-359
+  s_b546d99301cc3f::t_2e287dd63d1965 23,37,47
+  s_b546d99301cc3f::t_cebd7bd276f63c 601
+  s_b546d99301cc3f::t_713d8be5d08559 267
+  s_b546d99301cc3f::t_87864e9e07a303 641,649-650,655-656,676,702,716-717
+  s_b546d99301cc3f::t_5c4b3ba1393797 840-845,870-875,881-882,885,890-894,896,898,900-987,989-993,995,998,1000-1005,1012,1014-1016,1018-1020,1024,1026,1030,1036,1038,1047-1055,1059,1065,1068,1072-1073,1087,1089,1093,1100-1104,1110,1116-1120,1124-1125,1151-1155,1158,1160-1161,1163,1166-1169,1171-1172,1175-1178,1180-1189,1191,1193-1198
+  s_b546d99301cc3f::t_61bf585608cd5a 740-745,759,786-791,809
+  s_b546d99301cc3f::t_86ab7c472c6fdf 1170
+  s_b546d99301cc3f::t_9d79c3c1fbd911 386
+  s_26ab6076a72cdf::t_a96b03f8bbb521 556
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_db66da8198a49a::t_3c9fb85bcc7c07 22
+  s_6866d3ade6015c::t_79797327bfdef1 36-64,74,93
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_db66da8198a49a::t_0a2b42d360e9da 235
+  s_db66da8198a49a::t_6d54a90ccdd119 261-286
+  s_db66da8198a49a::t_6c60e01483e5f0 98-99
+  s_db66da8198a49a::t_3af80e10ac03a2 127
+  s_0d3a15c539ca1d::t_9ce29873713857 229
+  s_db66da8198a49a::t_7eea7b7987335e 24,26
+  s_4ecfe5017af67b::t_d43ab27cd07911 260
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_db66da8198a49a::t_3c815b09e230fe 3295-3313,3316-3317
+  s_0d3a15c539ca1d::t_499567b4d869e6 3314-3315
+  s_0d3a15c539ca1d::t_43819fba18e2ac 656,662-663
+  s_0d3a15c539ca1d::t_b3d4634427b26c 681
+  s_db66da8198a49a::t_2f75eae8f520c6 3444,3448,3465-3466,3474-3475,3477-3481,3501-3502,3506,3508-3509,3512-3517,3525-3526,3528-3529,3532,3534,3542
+  s_db66da8198a49a::t_e83befbdd6a6ef 3428,3430-3432,3434-3439,3441
+  s_db66da8198a49a::t_8cde3bf1c9991e 3379
+  s_0d3a15c539ca1d::t_eac78b33cc44b1 3429,3433,3440
+  s_b546d99301cc3f::t_1fe55d4a64dfb2 3445-3447,3450-3464,3476
+  s_4ecfe5017af67b::t_e0872c5b05d568 3449,3467-3473,3482-3500,3503-3505,3507,3510-3511,3527,3530-3531,3533
+  s_0d3a15c539ca1d::t_858256b880f7aa 3380
+  s_b546d99301cc3f::t_62a6bbfe498541 3518-3524,3535-3541
+  s_0d3a15c539ca1d::t_640421e7d6a563 3318-3358
+  s_db66da8198a49a::t_395ccac552619a 3442-3443
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_b546d99301cc3f::t_6eabb1160ead5c 251-256
+packages/cli/src/modules/instance-ai/__tests__/run-debug-gating.test.ts
+  s_db66da8198a49a::t_dd8b2472ce4790 54
+  s_db66da8198a49a::t_e7e8f8d4cb9576 93
+  s_0d3a15c539ca1d::t_19874158e79a35 67-70
+  s_db66da8198a49a::t_42b916375a462b 21
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_4ecfe5017af67b::t_59c9d68a2f9e2f 297
+  s_4ecfe5017af67b::t_6dd561f5c1a72e 11
+  s_4ecfe5017af67b::t_8352f52db3908c 278
+  s_4ecfe5017af67b::t_0a8f8d63abcc7c 188
+  s_4ecfe5017af67b::t_08fac234fbfcc6 179
+  s_6866d3ade6015c::t_59925e19432220 12
+  s_6866d3ade6015c::t_fd90e80470d607 56-57
+  s_6866d3ade6015c::t_d8e36f1f5026af 149
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_db66da8198a49a::t_9e4bb99fe75538 68
+  s_0d3a15c539ca1d::t_734c0aadce06d5 546-547,550,552-556
+  s_db66da8198a49a::t_3e95e2adce694e 151
+  s_4ecfe5017af67b::t_53d4fe636b8cbf 542-544
+  s_0d3a15c539ca1d::t_0d7ab4a11988c7 545
+  s_db66da8198a49a::t_4c4cee6525731f 482,484-485
+  s_db66da8198a49a::t_f79ccff10c5ca0 10
+  s_4ecfe5017af67b::t_99e95fa405a793 673-675
+  s_6866d3ade6015c::t_1b034bdecfeb09 14,20
+  s_6866d3ade6015c::t_d108805691393c 205
+  s_6866d3ade6015c::t_107803689774c8 537
+  s_6866d3ade6015c::t_3537d69531178f 218
+  s_6866d3ade6015c::t_716b53fdbf8e06 183-191,193-203,206-217,219-227
+  s_6866d3ade6015c::t_42732ac8dce0c7 192
+  s_6866d3ade6015c::t_d4a315fddc39f7 204
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_0d3a15c539ca1d::t_3afd03abe626a8 93
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_b546d99301cc3f::t_e61beca44c2797 331-341
+  s_4ecfe5017af67b::t_924a0cd9b9ce4d 149
+  s_f6202044773efc::t_c071fad03c295f 342-343
+  s_4ecfe5017af67b::t_0f3189ef5b30b6 66
+  s_4ecfe5017af67b::t_823447f8ea6a84 881-882
+  s_4ecfe5017af67b::t_ba0ca68a731ccd 132
+  s_db66da8198a49a::t_ee511d5c236f79 26
+  s_db66da8198a49a::t_50c1dc86864080 883-884
+  s_b546d99301cc3f::t_38c77dd4cff028 166,170-175,177-178,181-182,188-192,209-215
+  s_b546d99301cc3f::t_a831ea4b69925e 565
+  s_b546d99301cc3f::t_fec4fc2c2f7e04 236-241
+  s_b546d99301cc3f::t_7cf9cc3175e27e 745-750,755-777
+  s_b546d99301cc3f::t_d787d632a01830 861-866,873-874
+  s_b546d99301cc3f::t_00401dbe2e959f 682-685,702-705,711-714,717-718,726-744,751-754,778-788,791,793-819,837
+  s_b546d99301cc3f::t_b40f82cc607263 374-384
+  s_b546d99301cc3f::t_55d63b2d7ca7a1 689-692,694-697,700-701
+  s_b546d99301cc3f::t_2b7dff296ea45a 706
+  s_b546d99301cc3f::t_e6fe0180d93854 789-790,792
+  s_b546d99301cc3f::t_3b1ac2b2100348 822-823,831
+  s_b546d99301cc3f::t_7d8d8d390a88f4 42-43
+  s_b546d99301cc3f::t_5bbb44db34578f 707
+  s_26ab6076a72cdf::t_cd0b7095b50f25 470-477,483-484
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_b546d99301cc3f::t_158e1a9a274e2e 455
+packages/@n8n/instance-ai/src/types.ts
+  s_0d3a15c539ca1d::t_601e06ceb30e58 903
+  s_db66da8198a49a::t_5ffa47f5c65b60 902
+  s_b546d99301cc3f::t_cb04515c575452 989
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_b546d99301cc3f::t_c65165ec1368c3 266-268
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_0d3a15c539ca1d::t_0641e05d835a94 1444-1452
+  s_db66da8198a49a::t_14dbf62080ee79 1433-1437,1439-1440,1442-1443,1453-1455,1457-1458
+  s_0d3a15c539ca1d::t_6657cb39010524 1438,1441,1456
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_b546d99301cc3f::t_5592923909fef9 50-54
+  s_b546d99301cc3f::t_100c32b118ce83 4-5,42-49,55,63-67,115,120-121,124-126,129-130,134,140,145,149-150,153-154,158,161,163-164,167,169,172-174,177-184,188
+  s_b546d99301cc3f::t_390128cd32fe06 194,197,201,206
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_b546d99301cc3f::t_495f9ab1040b39 114-125,128-134
+  s_b546d99301cc3f::t_6ed37e9ae82d40 39-40
+  s_b546d99301cc3f::t_362bbd64766720 55-56
+  s_b546d99301cc3f::t_c63dfe76aa021b 3-7,26,30-31,36-38,41-44,46-47,54,57,110-113,126-127,135,151,153,155,157,166-167
+  s_b546d99301cc3f::t_b5db036605131c 27-29
+  s_b546d99301cc3f::t_e92fcbf2b45e5f 45
+  s_b546d99301cc3f::t_fca283739b5156 58
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_b546d99301cc3f::t_7bf54593dd8eca 441-442
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.target-registry.test.ts
+  s_b546d99301cc3f::t_7008bfa7cb7df9 1-46,48-50,54-56,61-68,70-222
+  s_b546d99301cc3f::t_0d2e022804bcd9 47,51-53,57-60,69
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_26ab6076a72cdf::t_43d573f1b41e83 419-423
+  s_6866d3ade6015c::t_0cd4066248e66e 97-98
+  s_6866d3ade6015c::t_e54793d98e131a 38-82,99-110
+packages/@n8n/api-types/src/agents/index.ts
+  s_6866d3ade6015c::t_cb677c5bc33005 20-25
+  s_6866d3ade6015c::t_a4a6bc8baab4cc 9
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_6866d3ade6015c::t_5648c3a23bdcb7 228-237
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_6866d3ade6015c::t_9c230d5d92e3ac 18,20
+  s_6866d3ade6015c::t_9d0d6b05135ce4 175-180
+  s_6866d3ade6015c::t_7ed4e2b0992e8d 109-116,118
+  s_6866d3ade6015c::t_7409c4a41339b3 53
+  s_6866d3ade6015c::t_0d3100ff02af10 43
+packages/@n8n/api-types/src/agent-sse.ts
+  s_6866d3ade6015c::t_13789d017bf3bd 50-74,122-132
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_6866d3ade6015c::t_bb742d0414e3f4 536-538,541-542
+  s_6866d3ade6015c::t_6a5881644d5eec 539-540
+  s_6866d3ade6015c::t_78f2477c7b57e8 10
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_6866d3ade6015c::t_0ba56587a6b9d1 357-360,371-376
+  s_6866d3ade6015c::t_a9f3174fb77f8e 346-356,361-370,377-398
+  s_6866d3ade6015c::t_d860035a603721 399-422
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_6866d3ade6015c::t_4733448eba5135 377-404
+packages/@n8n/agents/src/types/index.ts
+  s_6866d3ade6015c::t_a5536d79471a36 185-186
+packages/@n8n/api-types/src/agents/child-trace.ts
+  s_6866d3ade6015c::t_42918eb6238480 1-74
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_6866d3ade6015c::t_42d3ae86e02e0f 42-44
+  s_6866d3ade6015c::t_b4bd9361653db7 45-49
+  s_6866d3ade6015c::t_ea5334c2ba670c 9-15
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_6866d3ade6015c::t_ab8ef68868876b 238
+packages/@n8n/agents/src/sdk/agent.ts
+  s_6866d3ade6015c::t_b5cae1c12a34ce 1250
+  s_6866d3ade6015c::t_51f17e949ffd24 1284-1286
+  s_6866d3ade6015c::t_3e8407c49b715e 1282-1283,1287-1293,1296
+  s_6866d3ade6015c::t_5fe0c262507d70 1181-1185,1227,1236-1249,1251-1279,1281,1294-1295,1297-1304
+  s_6866d3ade6015c::t_b0c6614bd52f78 16
+  s_6866d3ade6015c::t_04a65c3801846f 1145-1146
+  s_6866d3ade6015c::t_496afbde974549 62,73
+  s_6866d3ade6015c::t_0df8b54fd4103d 1143-1144,1147-1148,1153
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_6866d3ade6015c::t_e012818a9b78da 87
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_6866d3ade6015c::t_f80b81f000e2a8 2022,2052
+  s_6866d3ade6015c::t_63b0e500b03368 1909-2021,2023-2051,2053-2058
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_6866d3ade6015c::t_4f64bc08d093f6 43-82
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentSection.vue
+  s_6866d3ade6015c::t_6b9924abe6900a 37-38,44-46
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_6866d3ade6015c::t_f9e4bc8b1e8bb1 15
+  s_6866d3ade6015c::t_e5a6a73fbaa170 146
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_6866d3ade6015c::t_96d709c7002017 33-74,84,86-100,102-104,284,426-427
+  s_6866d3ade6015c::t_bf47f132baa2f2 14
+  s_6866d3ade6015c::t_9c7e7a095392d2 428-476
+  s_6866d3ade6015c::t_c879ff4747d6e7 373
+packages/@n8n/agents/src/runtime/streaming/stream-session.ts
+  s_6866d3ade6015c::t_538e50e00c1b6e 81-85,91
+  s_6866d3ade6015c::t_47e5489b6695f7 122
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_6866d3ade6015c::t_6c69fe95ccdaec 317-352
+packages/@n8n/api-types/src/agents/types.ts
+  s_6866d3ade6015c::t_6394dc8e995c62 193-213,233-234
+packages/@n8n/api-types/src/agents/__tests__/child-trace.test.ts
+  s_6866d3ade6015c::t_b23938e4202aef 1-55
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_6866d3ade6015c::t_7f422c7200d1fd 930-956
+  s_6866d3ade6015c::t_d877c55aa050bf 834-929,957-969
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_6866d3ade6015c::t_5baeb7fb5386dc 326
+  s_6866d3ade6015c::t_0eb7fffeb0ccfa 52
+  s_6866d3ade6015c::t_40e541b70f4d50 256
+  s_6866d3ade6015c::t_a63a0485f26790 168,172-173
+  s_6866d3ade6015c::t_9549f509e3e931 144
+  s_6866d3ade6015c::t_acf92ab9098c98 230-234,239-255,300-304,309-325
+  s_6866d3ade6015c::t_5b927e1ad565d3 235-238
+  s_6866d3ade6015c::t_9641157dee7b2e 141-143,145-150
+  s_6866d3ade6015c::t_84bf5933e9676c 357-363
+  s_6866d3ade6015c::t_7b9c4763429d28 305-308
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_6866d3ade6015c::t_ac9faae29eb4c4 297
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_6866d3ade6015c::t_87c29c5917b311 85
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_6866d3ade6015c::t_3b9609b426b6bf 565
+  s_6866d3ade6015c::t_1a23e5e40dc581 514
+  s_6866d3ade6015c::t_5a064286786c26 2-7,14-16
+  s_6866d3ade6015c::t_1c53d7b6b72c4e 295-296,328-344
+  s_6866d3ade6015c::t_8ff84d207e54cf 238
+  s_6866d3ade6015c::t_bc760b3744f2eb 17
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SubagentStepTimeline.test.ts
+  s_6866d3ade6015c::t_2c92eb0ac2c096 189-234
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/lets-a-real-parent-agent-call-delegate-subagent-and-use-its-result.json
+  s_6866d3ade6015c::t_838a0d2cacd2e0 73,77,80,83,86,88,92-93,96,121,125-126,129-131,135,138,141,144-145,147,149,151-153,156-157,195,201-202,215-216,268,272,275,278,281,283,287-288,291
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/stream-emits-sub-agent-lifecycle-chunks-and-events.json
+  s_6866d3ade6015c::t_1137e8756a444c 75,80,83,86,89,92,97-98,101,131-132,135-137,141,144,147,150-151,153,155,157-159,162-163,201,220-221,275,280,283,286,289,292,297-298,301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "1b4bf078eead835a2cd1ceb67de6840bc1accc25",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0d3a15c539ca1d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7895dabc-4449-42e4-b6ab-e054ef5a74d5",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_26ab6076a72cdf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fda3005c-2ac9-47b2-a739-2932e10c066d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_4ecfe5017af67b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "14368acc-a5ee-4b1b-a4ef-b2cbda405ec9",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_6866d3ade6015c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b5f5b886-522e-4443-9544-ecafd0960dc4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b546d99301cc3f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5ee68d24-2003-4fd5-9ff6-1b4cc25f1099",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_db66da8198a49a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "45ba3e71-374e-4b9a-9350-1dbc04836783",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f6202044773efc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a6a14117-43d2-45f8-a828-26044fafeab8",
+        "model": "claude-opus-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

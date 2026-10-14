@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_f3d2ec4529fb2a::t_e0762619412888 1,33,265-266,270,275,277,279-285
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f3d2ec4529fb2a::t_e0762619412888 60-61,396-449,603-689,2018-2021,2025-2029,2884-2911
+  s_f3d2ec4529fb2a::t_3406db92585957 690
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_f3d2ec4529fb2a::t_e0762619412888 198-200,1342-1451
+  s_f3d2ec4529fb2a::t_3878d111503550 1452-1453
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_f3d2ec4529fb2a::t_cf656be3b75d71 811-812
+  s_f3d2ec4529fb2a::t_e0762619412888 2,729-810
+packages/cli/test/integration/agents/n8n-chat-production.api.test.ts
+  s_f3d2ec4529fb2a::t_e0762619412888 9,14,302-365
+  s_f3d2ec4529fb2a::t_7e53449f93b607 366-367
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_f3d2ec4529fb2a::t_e0762619412888 14,300,700-760,891-896
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_f3d2ec4529fb2a::t_b291aa823e5124 923,925-926,928
+  s_f3d2ec4529fb2a::t_543f3de452dbf5 1397-1402
+  s_f3d2ec4529fb2a::t_e0762619412888 457,474,502-504,524-525,535,540,559-569,914-915,918-922,929-933,1382-1396,1546-1548,1653
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_f3d2ec4529fb2a::t_e0762619412888 256,274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0aba6075db4b91088aab46985265fb3d01a4c4b7",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

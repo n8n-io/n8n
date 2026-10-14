@@ -1,0 +1,89 @@
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_ffa0492de4d6b4::t_25ce0780918026 42-48
+  s_ffa0492de4d6b4::t_bc3eadd62648ab 40-41,49
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_ffa0492de4d6b4::t_ca227fdaf3e382 240-245
+  s_ffa0492de4d6b4::t_d1ed97edb2012f 18,39,45-50,52,58,61-67,81,146-150,168,249,302-307
+  s_ffa0492de4d6b4::t_b88f6a6a7b4e89 22,180-201,206-213,222-231
+  s_ffa0492de4d6b4::t_821a62b8fb6384 214-221
+  s_c5954c3047b5ed::t_47495e3f787466 279-288,292-293,295-300
+  s_c5954c3047b5ed::t_f573f0a3663647 235-237,239,246-248,250-254,259,261-263,266-278,289-291,301,308-317
+  s_c5954c3047b5ed::t_3dd18a3ac0d513 318
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_ffa0492de4d6b4::t_25ce0780918026 24
+  s_c5954c3047b5ed::t_3a2626bcb4f182 105-108
+packages/cli/test/migration/1790605116208-add-agent-queue-message-references.test.ts
+  s_ffa0492de4d6b4::t_fff824bd5a46b7 140
+  s_ffa0492de4d6b4::t_d1ed97edb2012f 104,106-108,136-139,141-144,162
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_ffa0492de4d6b4::t_d1ed97edb2012f 60,1246,1249,1256-1262,1691-1694
+  s_ffa0492de4d6b4::t_b87a99428063a3 14,1441-1456,1460-1462
+  s_ffa0492de4d6b4::t_821a0526bdb3ab 1457-1459
+  s_ffa0492de4d6b4::t_267d6314fff5ea 1819
+  s_ffa0492de4d6b4::t_ca227fdaf3e382 1801-1817
+  s_ffa0492de4d6b4::t_b88f6a6a7b4e89 1752-1753,1766,1776
+  s_ffa0492de4d6b4::t_a6ac34a63a1879 1463,1695,1742,1749-1751,1754-1765,1767-1775,1783,1785-1795,1820
+  s_ffa0492de4d6b4::t_fff824bd5a46b7 1355
+  s_ffa0492de4d6b4::t_b2838e4501b405 1464
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_ffa0492de4d6b4::t_0c239e5d2fa680 195,197-200
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_ffa0492de4d6b4::t_d9aa778a9519b5 28-29,36,108,113-126,131-133,140,258,261-266,329,341,347,354-356,360-366
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_ffa0492de4d6b4::t_25ce0780918026 3,6,18
+  s_ffa0492de4d6b4::t_d9aa778a9519b5 99-100,104,113,138,144,158,180-182,190-200,240,255,260
+  s_c5954c3047b5ed::t_87cff25228796f 19,88,93-98,101-103,105-112,114-123,127,161,250-254
+packages/@n8n/db/src/migrations/common/1790605116208-AddAgentQueueMessageReferences.ts
+  s_ffa0492de4d6b4::t_25ce0780918026 6,17-19,21,46,56-58,67-71
+docs/generated/postgres-schema/README.md
+  s_ffa0492de4d6b4::t_17e75a5afbe918 27
+docs/generated/sqlite-schema/README.md
+  s_ffa0492de4d6b4::t_eca41106685e47 27
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_ffa0492de4d6b4::t_afb07f3a770927 9
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_c5954c3047b5ed::t_8197941594545f 58,70,130-150
+  s_c5954c3047b5ed::t_9e6e4028991c86 151
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_c5954c3047b5ed::t_47495e3f787466 1226-1227
+  s_c5954c3047b5ed::t_ccb52e455912ce 29,1218-1225,1228-1248
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_c5954c3047b5ed::t_3a2626bcb4f182 39-44,62-67,116-117,135-138,143-151
+  s_c5954c3047b5ed::t_bf4b0f3c83e6d8 152-153
+packages/cli/src/modules/agents/__tests__/agent-queued-preview-stream.service.test.ts
+  s_c5954c3047b5ed::t_9c6c4794b0f6d6 152-201
+packages/cli/src/modules/agents/agent-queued-preview-stream.service.ts
+  s_c5954c3047b5ed::t_74be686dd9b55e 20-21,29,79,83,91,106,111-112,116,136-137,147-150
+  s_c5954c3047b5ed::t_47495e3f787466 107-110
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_c5954c3047b5ed::t_74be686dd9b55e 17-18
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_c5954c3047b5ed::t_3a2626bcb4f182 3189
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_c5954c3047b5ed::t_59c6d853e8dbc1 12,79-80,669-686,1064
+  s_c5954c3047b5ed::t_22f3d67a500030 1065
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c745c7d1b0a9dd450f79fbcc9b1d24d5c05d3c0b",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

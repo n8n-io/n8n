@@ -1,0 +1,28 @@
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_f066721bbfd491::t_bba1161f874664 14
+  s_379ad6ba9d6637::t_31e19a4203df63 2,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9fd84bcb022e97792a7ff742c91fced29821874",
+  "prompts": {},
+  "sessions": {
+    "s_379ad6ba9d6637": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f46e5-51cb-7b11-b347-f5afe4cdae90",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_f066721bbfd491": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4161-0a6a-70a2-88e5-eed58ce13450",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

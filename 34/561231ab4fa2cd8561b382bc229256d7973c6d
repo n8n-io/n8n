@@ -1,0 +1,120 @@
+packages/cli/src/public-api/v1/handlers/insights/spec/schemas/insights.yml
+  s_20c4b2269a28ff::t_9ddbf07cdb9795 8,12,86-101
+packages/cli/src/modules/insights/database/entities/insights-shared.ts
+  s_20c4b2269a28ff::t_081030f8d5991e 40-41
+  s_20c4b2269a28ff::t_868fca10b33803 32
+packages/cli/src/modules/insights/insights-collection.service.ts
+  s_20c4b2269a28ff::t_485f9038f5f1bb 185-192
+  s_20c4b2269a28ff::t_3db2f10bbb59ce 16
+packages/@n8n/api-types/src/schemas/__tests__/insights.schema.test.ts
+  s_20c4b2269a28ff::t_62f0fd8b6c1b20 18,30,41-52,64,76
+packages/cli/src/utils/__tests__/is-billable-execution.test.ts
+  s_20c4b2269a28ff::t_56ce8a99094f22 17,24,31,38
+  s_20c4b2269a28ff::t_5b39feca8cc007 1-6
+  s_20c4b2269a28ff::t_15e59f9b8a9980 7-16,18-23,25-30,32-37,39-48
+packages/frontend/editor-ui/src/features/execution/insights/insights.utils.test.ts
+  s_20c4b2269a28ff::t_e13c947e4a4dfb 204
+  s_20c4b2269a28ff::t_5ce6150e11e233 134
+packages/cli/src/modules/insights/__tests__/insights-collection.service.integration.test.ts
+  s_20c4b2269a28ff::t_6c4aba1529e283 486-488
+  s_20c4b2269a28ff::t_2101fa473cb441 593,595
+  s_20c4b2269a28ff::t_cc304db9ffeb5d 261-278
+  s_20c4b2269a28ff::t_bff7aa338359ee 746-748
+  s_20c4b2269a28ff::t_e54a38d262d107 651-652
+  s_20c4b2269a28ff::t_708e192ae4a1a2 616,618,624,626
+  s_20c4b2269a28ff::t_ca5d7f3ae2a783 105,109-110
+  s_20c4b2269a28ff::t_e4f37cbe27ce3c 236-242
+  s_20c4b2269a28ff::t_f2b3a3374f4559 194-200,203
+  s_20c4b2269a28ff::t_7471c15c971524 111
+packages/cli/src/modules/insights/insights.service.ts
+  s_20c4b2269a28ff::t_7a04080323cc25 25-26
+  s_20c4b2269a28ff::t_9510cce9b04ba1 280
+  s_20c4b2269a28ff::t_47c0a768801680 1
+  s_20c4b2269a28ff::t_e8155055665486 228,281,283-315,318,320-338,342-343,346-347
+  s_20c4b2269a28ff::t_8bb0ed76a03840 339
+  s_20c4b2269a28ff::t_9311000caed5f2 28-35
+  s_20c4b2269a28ff::t_42bffc4a6eb4bf 2-5,18-19,27,36-39,190-192,224-227,340-341
+packages/cli/src/modules/insights/__tests__/insights.controller.test.ts
+  s_20c4b2269a28ff::t_2e5931cf9afd50 80
+  s_20c4b2269a28ff::t_d18b091c0a8611 118
+  s_20c4b2269a28ff::t_1ff4483002a6eb 160
+  s_20c4b2269a28ff::t_d338b334ceda7a 167
+  s_20c4b2269a28ff::t_7819089e6c1af8 186
+packages/cli/test/integration/public-api/insights.test.ts
+  s_20c4b2269a28ff::t_871c61a7109cfd 33-39,79-87
+  s_20c4b2269a28ff::t_4013566d5806b2 129,177,314
+  s_20c4b2269a28ff::t_1abde18db8f135 293,300
+  s_20c4b2269a28ff::t_cfdf014003adec 209-277
+  s_20c4b2269a28ff::t_0b362d69b16fb8 115,162
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_20c4b2269a28ff::t_ad8d200a603fc0 257-262
+  s_20c4b2269a28ff::t_a9336b5c3a9e39 1232,1270-1271,1273-1275,1280-1281,1283-1284
+  s_20c4b2269a28ff::t_192f320431a94f 225
+  s_20c4b2269a28ff::t_7a572a76ec8d75 323
+  s_20c4b2269a28ff::t_4636ac463c67c1 1076-1103
+  s_20c4b2269a28ff::t_ed33e391fc40c6 1539-1595
+  s_20c4b2269a28ff::t_ff85bca8da5967 393
+  s_20c4b2269a28ff::t_6bc51801933e76 229-256,263-295
+  s_20c4b2269a28ff::t_19cf17350f8e02 1285
+packages/cli/src/utils/is-billable-execution.ts
+  s_20c4b2269a28ff::t_306d2383f10970 1-6,36-40
+  s_20c4b2269a28ff::t_5e720b792dab93 7-35,41
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_20c4b2269a28ff::t_2bda792a518838 64,71
+  s_20c4b2269a28ff::t_60e5cdb7315e98 14
+  s_20c4b2269a28ff::t_755246cb61e406 362
+  s_20c4b2269a28ff::t_65dc0ef88d54f7 28-34
+  s_20c4b2269a28ff::t_741ce032725332 508
+packages/cli/test/integration/insights/insights-vs-workflow-statistics.integration.test.ts
+  s_20c4b2269a28ff::t_b9ab8383834c80 295-333,335
+  s_20c4b2269a28ff::t_ec16822b41123a 334
+packages/cli/src/modules/insights/__tests__/insights.service.test.ts
+  s_20c4b2269a28ff::t_1d909871e40813 866-940
+  s_20c4b2269a28ff::t_175cab0691db5c 1184-1197
+  s_20c4b2269a28ff::t_775dac5ae1a431 103-107
+  s_20c4b2269a28ff::t_098ce35ae21bb6 116,121,125
+  s_20c4b2269a28ff::t_186efcbdebafe3 193-208
+  s_20c4b2269a28ff::t_447568f7025ee1 1250-1272
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsSummary.vue
+  s_20c4b2269a28ff::t_b24bbef29d0733 10
+  s_20c4b2269a28ff::t_a806fe041471e4 46
+  s_20c4b2269a28ff::t_a2a988d5869932 80
+  s_20c4b2269a28ff::t_055cf935ed2e5e 66
+packages/frontend/editor-ui/src/features/execution/insights/insights.api.test.ts
+  s_20c4b2269a28ff::t_bca6d4e3fc85a5 167
+  s_20c4b2269a28ff::t_b869121ffa2483 136
+packages/cli/src/services/workflow-statistics.service.ts
+  s_20c4b2269a28ff::t_5111b21d5c6cfc 92
+  s_20c4b2269a28ff::t_2aebcc238cbc9e 21
+packages/cli/test/integration/insights/insights.api.test.ts
+  s_20c4b2269a28ff::t_9753384b5c2f70 216-250,253
+  s_20c4b2269a28ff::t_cee35f6c8a5cf4 209
+  s_20c4b2269a28ff::t_ee8270d19d181e 251-252
+packages/cli/src/modules/insights/insights.controller.ts
+  s_20c4b2269a28ff::t_f2e293872adfa6 96,102
+  s_20c4b2269a28ff::t_07dc8c60b66aec 74
+  h_ed1b2d65e81e8e 80
+packages/@n8n/api-types/src/schemas/insights.schema.ts
+  s_20c4b2269a28ff::t_ea96061f8bbb97 41-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "34561231ab4fa2cd8561b382bc229256d7973c6d",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_20c4b2269a28ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d2a59125-6a44-4d0f-a534-02f3effb3120",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,99 @@
+packages/@n8n/db/src/constants.ts
+  s_7189a6a4d7a286::t_da7f15a065f72b 56,63-65,72,81-83
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.test.ts
+  s_7189a6a4d7a286::t_f738af3f0fb800 7,32,36,136,138-148
+  s_7189a6a4d7a286::t_66adb4790df00c 149
+  s_7189a6a4d7a286::t_c19c502db07b64 137
+  s_7189a6a4d7a286::t_374fa53efa4761 150-151
+packages/frontend/@n8n/stores/src/roles.store.test.ts
+  s_7189a6a4d7a286::t_ea5d4e1b81b6f4 255-298
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_7189a6a4d7a286::t_8443f5f64549f5 522-598
+packages/@n8n/permissions/src/roles/all-roles.ts
+  s_7189a6a4d7a286::t_5e3b505b74bf23 10-12,29,35-37,51,59-62
+  s_7189a6a4d7a286::t_9f71e7f6da8a89 3-4,100-106
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.vue
+  s_7189a6a4d7a286::t_0b589e4b1fdd07 138,140-141,315
+packages/@n8n/permissions/src/roles/role-maps.ee.ts
+  s_7189a6a4d7a286::t_5e3b505b74bf23 19,27-29,45,54-56
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_7189a6a4d7a286::t_01bbfe96adc191 158-165
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_7189a6a4d7a286::t_030f9a0c3e8aea 207-211
+packages/@n8n/permissions/src/constants.ee.ts
+  s_7189a6a4d7a286::t_5e3b505b74bf23 128,134-136
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectCreateResource.vue
+  s_7189a6a4d7a286::t_47c398655cd385 29
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7189a6a4d7a286::t_169d49760d1411 275,3766,3860
+packages/@n8n/permissions/src/schemas.ee.ts
+  s_7189a6a4d7a286::t_5e3b505b74bf23 18,45-47
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_7189a6a4d7a286::t_9f71e7f6da8a89 3-7,178-180
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_7189a6a4d7a286::t_5e3b505b74bf23 198-217
+packages/cli/src/services/user.service.ts
+  s_7189a6a4d7a286::t_cac49458210be7 430,434
+  s_7189a6a4d7a286::t_91646b0ef6a4f7 373-378,383
+  s_7189a6a4d7a286::t_85ddcc982c1efc 410,412
+  s_7189a6a4d7a286::t_ec41ecf3fb279a 22
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCredentialNavigationCommands.ts
+  s_7189a6a4d7a286::t_b449608419a7a0 10,33,133-135
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.test.ts
+  s_7189a6a4d7a286::t_6a87ba47c482d7 9,160-207
+  s_7189a6a4d7a286::t_dec203fe83b8da 208-209
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_7189a6a4d7a286::t_e3e909fccd875d 276-280
+packages/frontend/editor-ui/src/features/settings/users/components/SettingsUsersTable.vue
+  s_7189a6a4d7a286::t_e997f0e55e4504 118-123
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_7189a6a4d7a286::t_07074e224b8396 15,43,121-122,134-135
+packages/@n8n/api-types/src/schemas/user.schema.ts
+  s_7189a6a4d7a286::t_375be5a66a9ca3 12
+packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersModal.vue
+  s_7189a6a4d7a286::t_4d322f93aafb00 318-325
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_7189a6a4d7a286::t_0897d4aff12692 225-226
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  s_7189a6a4d7a286::t_9170ef0be3fbcd 14,34,107-114,116,122-125
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue
+  s_7189a6a4d7a286::t_8383dfe9e96242 161-164
+packages/frontend/@n8n/stores/src/roles.store.ts
+  s_7189a6a4d7a286::t_51653deb665da9 13,16-18,54-56,58-62,77-79,93-95
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_7189a6a4d7a286::t_07074e224b8396 15,98,175-178,187-188,196
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_7189a6a4d7a286::t_5e3b505b74bf23 226-227
+packages/frontend/@n8n/stores/src/users.store.ts
+  s_7189a6a4d7a286::t_c4b3313a100b6d 112-114,511
+packages/frontend/editor-ui/src/app/stores/workflows.store.ts
+  s_7189a6a4d7a286::t_aa881c127d4425 81-83
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useGenericCommands.ts
+  s_7189a6a4d7a286::t_eefd734c060339 12,37,80,103,122
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.routes.ts
+  s_7189a6a4d7a286::t_31e3aac1ef5749 149-151
+  s_7189a6a4d7a286::t_4cdcfc5583cbab 193-196
+  s_7189a6a4d7a286::t_49855eb5378f8a 8-9,31-34,148,152-153,203-204
+  s_7189a6a4d7a286::t_1b1da9cac13475 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4e07bc82c4bf9cb645ad3512a1b2b712b4a3114a",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7189a6a4d7a286": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "832eb13c-08ad-4a3d-9529-3ec6b9ae083e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

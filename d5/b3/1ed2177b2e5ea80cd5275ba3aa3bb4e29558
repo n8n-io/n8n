@@ -1,0 +1,35 @@
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_a210c1160ac692::t_790d9aacfc24d4 12,15
+  s_a210c1160ac692::t_d3e07d13a652da 23-25,31
+  s_a210c1160ac692::t_1fadd845694b40 74-77
+  s_a210c1160ac692::t_319beff12a8c74 145-146
+  s_a210c1160ac692::t_f153a01c2db2d3 95-97
+packages/@n8n/scheduler/src/core/provisioning/types.ts
+  s_a210c1160ac692::t_07af542215e094 3-4
+packages/@n8n/decorators/src/system-task/__tests__/system-task.test.ts
+  s_a210c1160ac692::t_77bff370ab486f 8-9
+packages/@n8n/decorators/src/replayable-registry.ts
+  s_a210c1160ac692::t_c79d215fd29573 43-45
+  s_a210c1160ac692::t_8a23a9784fba77 54-56
+  s_a210c1160ac692::t_06fdf5646a6f96 18-20
+  s_a210c1160ac692::t_6f7b829b0c80e7 7-10
+packages/@n8n/constants/src/scheduler.ts
+  s_a210c1160ac692::t_c296fb3785237a 55
+  s_a210c1160ac692::t_6bba94ee62d1d9 3-4,6-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d5b31ed2177b2e5ea80cd5275ba3aa3bb4e29558",
+  "prompts": {},
+  "sessions": {
+    "s_a210c1160ac692": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e0abdc3-655e-4132-9192-fc8b1430caac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

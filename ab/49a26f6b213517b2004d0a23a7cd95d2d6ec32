@@ -1,0 +1,65 @@
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  s_bb07027ddb0032::t_0c6aa9ed794591 66
+  s_bb07027ddb0032::t_22de7730909761 26
+  s_bb07027ddb0032::t_0c8430251f16f4 284-291,295
+  s_bb07027ddb0032::t_f7106d00072c2e 276-277
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentView.test.ts
+  s_bb07027ddb0032::t_423bc5df0effc9 44
+  s_bb07027ddb0032::t_2d1ab872733698 8-11,17-20
+  s_bb07027ddb0032::t_1c7c1f59ea5a83 92-102,106-108,111
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvSettings.vue
+  s_bb07027ddb0032::t_5799756a217247 89-90,93,96
+  s_bb07027ddb0032::t_d6e99e1a327760 15
+  s_bb07027ddb0032::t_e55a164eff00b3 54-59
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_bb07027ddb0032::t_4e54564a0d8195 44-47
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvReferencedControls.test.ts
+  s_bb07027ddb0032::t_d6a58cd8cfd94f 156-158
+  s_bb07027ddb0032::t_4ce802302e0628 185
+  s_bb07027ddb0032::t_3563d1766e5052 136,139
+  s_bb07027ddb0032::t_592b7d170d259d 190-191,196-198
+  s_bb07027ddb0032::t_ae48e1edf1135b 113
+  s_bb07027ddb0032::t_ef275b3989aad3 249
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_bb07027ddb0032::t_b1434c121f9a54 1-2
+  s_bb07027ddb0032::t_241b848524f787 15
+  s_bb07027ddb0032::t_db476d98671fcb 108-113
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_bb07027ddb0032::t_e064af4bfb81d0 106,114,121-124,131-134
+packages/frontend/editor-ui/src/features/agents/views/AgentView.vue
+  s_bb07027ddb0032::t_a1ff3c8e0d3642 4-5
+  s_bb07027ddb0032::t_75b674e4652304 40-41
+  s_bb07027ddb0032::t_bd3820a97d2ced 30-39
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvSettings.test.ts
+  s_bb07027ddb0032::t_1a6c07f8a04d0b 97,100
+  s_bb07027ddb0032::t_215a819859c59e 157-158,161-163
+  s_bb07027ddb0032::t_39cc1ddd172fe7 117-119
+  s_bb07027ddb0032::t_46f3e7bbf445fd 74
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_bb07027ddb0032::t_2a2fe6c06457c5 154-157
+  s_bb07027ddb0032::t_6825f09d74ae86 122
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.test.ts
+  s_bb07027ddb0032::t_9d002d3c2dbfbf 2,19,27-32,40,52,62,76,88,92,97,114,139
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  s_bb07027ddb0032::t_3c768973bb1fa3 19
+  s_bb07027ddb0032::t_d8830b45e75524 5-12
+  s_bb07027ddb0032::t_0dd39920f0ea66 62-67
+  s_bb07027ddb0032::t_fd1275ff9eab9a 100-101,104,107
+  s_bb07027ddb0032::t_3ec1b2e83a5564 156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab49a26f6b213517b2004d0a23a7cd95d2d6ec32",
+  "prompts": {},
+  "sessions": {
+    "s_bb07027ddb0032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ac5de5a-9d81-4e7b-9015-b5d135e16aa4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

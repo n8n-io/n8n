@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_c4a4e9a494a612::t_5b3dc8a16423f4 474-483,488,492,527
+packages/@n8n/api-types/src/agents/types.ts
+  s_c4a4e9a494a612::t_5b3dc8a16423f4 385-389
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_c4a4e9a494a612::t_5b3dc8a16423f4 726-740,742-743
+  s_c4a4e9a494a612::t_2937f45f7d644a 741
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e985052052a1e2d854759bebeb81ba563a0a05e0",
+  "prompts": {},
+  "sessions": {
+    "s_c4a4e9a494a612": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c931-0a24-7242-93f9-890df461d8e8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

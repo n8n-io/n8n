@@ -1,0 +1,86 @@
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_77e141b3bb15ee::t_1c627e05e6ba82 130,185,395,1163,1220,1302
+  s_77e141b3bb15ee::t_fd8642a9a6ad23 46
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_77e141b3bb15ee::t_1c627e05e6ba82 141
+  s_77e141b3bb15ee::t_fd8642a9a6ad23 37
+packages/workflow/test/execution-context.test.ts
+  s_77e141b3bb15ee::t_8738e82c5b7439 147-148
+  s_77e141b3bb15ee::t_00d01d141eb6b4 1-5,79-146
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_77e141b3bb15ee::t_22ec9d68c94fce 46,131
+packages/cli/src/execution-lifecycle/__tests__/execute-error-workflow.test.ts
+  s_77e141b3bb15ee::t_ed4fef8c3e0ebf 211-279
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_77e141b3bb15ee::t_22a91cbe05af7c 940-942,1043-1045
+  s_77e141b3bb15ee::t_53db12e78fa8dd 1056-1165
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_77e141b3bb15ee::t_41e40eb7760236 9,5643-5764
+  s_77e141b3bb15ee::t_7d628fa7b80c33 5765
+packages/core/src/execution-engine/execution-context.ts
+  s_77e141b3bb15ee::t_4b729698beef10 47-48,50,52
+  s_77e141b3bb15ee::t_f12559e9c88dce 111-126
+  s_77e141b3bb15ee::t_1eec7596bcd84a 236
+  s_77e141b3bb15ee::t_123ac794a9e1b6 183
+  s_77e141b3bb15ee::t_3758e293dbfcd8 251-254
+  s_77e141b3bb15ee::t_065c6f6fa203a8 3-9
+  s_77e141b3bb15ee::t_c976a920aaf318 65-66
+packages/workflow/src/execution-context.ts
+  s_77e141b3bb15ee::t_76529a8f6d8ae7 270-303
+  s_77e141b3bb15ee::t_79d7e53a23cfca 269
+packages/cli/src/workflows/__tests__/error-workflow-validation.service.test.ts
+  s_77e141b3bb15ee::t_33d8feac1c4ce3 1-2,5-14,19-49,52-108,112-163,169-186
+  s_77e141b3bb15ee::t_8fc29298c12d42 3-4,50-51,109-111,165-168
+  s_77e141b3bb15ee::t_8838a9ea8cda5b 15-18,164
+packages/cli/src/workflows/workflow.service.ts
+  s_77e141b3bb15ee::t_da727fccc719e7 32-36
+  s_77e141b3bb15ee::t_6ba9190343efc2 137,140-186
+  s_77e141b3bb15ee::t_f3ef0f2f059eb5 509-515
+  s_77e141b3bb15ee::t_51eaed361814a0 187
+packages/cli/src/execution-lifecycle/execute-error-workflow.ts
+  s_77e141b3bb15ee::t_315c321bacefd9 6
+  s_77e141b3bb15ee::t_1ef42d325b0019 78
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_77e141b3bb15ee::t_1e96320cfee15f 30,205-218,233,2585,3946,3985,4024
+packages/cli/src/workflows/error-workflow-validation.service.ts
+  s_77e141b3bb15ee::t_db811741ed289d 1-149
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_77e141b3bb15ee::t_554e3df2c31d77 417,422,424-425,427-429,433-436,438-450
+  s_77e141b3bb15ee::t_2f55e1609b2411 511
+  s_77e141b3bb15ee::t_a98f188b520b6a 534
+  s_77e141b3bb15ee::t_b32f5478750c8a 28
+  s_77e141b3bb15ee::t_da3ef06b718ce0 25-27
+  s_77e141b3bb15ee::t_17f11185b96072 548
+  s_77e141b3bb15ee::t_0ba02d4a6d3ec8 1089
+  s_77e141b3bb15ee::t_c5de0489a26755 7
+  s_77e141b3bb15ee::t_11fdc2317f6c47 1111
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_77e141b3bb15ee::t_30ad1215d34cdf 237
+  s_77e141b3bb15ee::t_cad20d3c55d9fe 842
+  s_77e141b3bb15ee::t_ea93acc91e909b 52
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_77e141b3bb15ee::t_7e389d29cf8afb 38,2944-3098
+  s_77e141b3bb15ee::t_f53557fb23eab2 135,504,1288,1999,2140,2446,2616,2797,2900
+  s_77e141b3bb15ee::t_8738e82c5b7439 3099-3100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6eb09b4fc3a743930285eab5b323c2ab34be2be0",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_77e141b3bb15ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed07dceb-7ea7-4dfb-bd7b-42c43b3fd82f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

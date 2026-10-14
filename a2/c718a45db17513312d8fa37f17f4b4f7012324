@@ -1,0 +1,37 @@
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/loadOptions.test.ts
+  s_622e6646e7b730::t_a80ec66cb990a3 51-53,85-88
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/table/append.sp.batch.test.ts
+  s_622e6646e7b730::t_c841031b754e42 1-52
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/table/append.sp.batch.workflow.json
+  s_622e6646e7b730::t_3f7937313c3f34 1-91
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.drive.perItem.test.ts
+  s_622e6646e7b730::t_3df2e85da2b2da 1-30
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.drive.perItem.workflow.json
+  s_622e6646e7b730::t_96d8b83aed33a0 1-83
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItem.test.ts
+  s_622e6646e7b730::t_dcf597d19a969f 1-30
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItem.workflow.json
+  s_622e6646e7b730::t_dc55d73debf0b3 1-82
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItemContinueOnFail.test.ts
+  s_622e6646e7b730::t_0a729c99d3f480 1-23
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItemContinueOnFail.workflow.json
+  s_622e6646e7b730::t_182e13dcc5518f 1-83
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_622e6646e7b730::t_7844501b855d5f 18,62-71,93-102,123-132,154-163,185-194,216-225,247-256,278-287,311-320,332-341,353-362,371-380,388-397,507-516,529-538,560-569,582-591,606-615,636-637,646-726,729-738,747-756,768-771,792-795
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "a2c718a45db17513312d8fa37f17f4b4f7012324",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

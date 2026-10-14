@@ -1,0 +1,22 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_8cd1a0d19700c3::t_62903b55d1ea1f 448,451-454
+  s_8cd1a0d19700c3::t_09ae649055f528 449
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_8cd1a0d19700c3::t_8329b4227c5030 571-572,581-582
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "89cd5732e89b3f1b69cf4a6115ee23a0bd5f3885",
+  "prompts": {},
+  "sessions": {
+    "s_8cd1a0d19700c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa4d6b3b-305d-40d9-a0aa-5c144e99d387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_704a1a6a42be24::t_75d254f99f61e9 9
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_704a1a6a42be24::t_d2fa0738d47e9b 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7d3a2b5b7a5d42c7ba88b38319bd60da627641de",
+  "prompts": {},
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

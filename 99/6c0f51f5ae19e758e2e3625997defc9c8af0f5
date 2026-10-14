@@ -1,0 +1,21 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_6e47146cbc4df7::t_4bc6a2fd41ae1b 34-37
+packages/workflow/src/interfaces.ts
+  s_6e47146cbc4df7::t_11c09b284bfda0 62-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "996c0f51f5ae19e758e2e3625997defc9c8af0f5",
+  "prompts": {},
+  "sessions": {
+    "s_6e47146cbc4df7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88dc3916-21c9-4787-8a34-3e40f2834927",
+        "model": "unknown"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

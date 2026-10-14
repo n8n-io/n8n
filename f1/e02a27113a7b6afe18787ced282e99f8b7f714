@@ -1,0 +1,24 @@
+packages/cli/src/public-api/v1/shared/services/__tests__/pagination.service.test.ts
+  s_f132370d90443c::t_f1b4c4829cb004 3,54-57,60-62,65-70,72-78,81-82,84-87,90-91,93-96,98-99,101-104,106-107,109-112,114-118
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_f132370d90443c::t_50e0fb25d68a3f 60
+  s_f132370d90443c::t_f8fb0ab2ef3cb3 22
+packages/cli/src/public-api/v1/shared/services/pagination.service.ts
+  s_f132370d90443c::t_d2f2edd0cf91c0 20-24,26-33,49-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "f1e02a27113a7b6afe18787ced282e99f8b7f714",
+  "prompts": {},
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

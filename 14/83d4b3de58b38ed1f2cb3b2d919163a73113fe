@@ -1,0 +1,28 @@
+packages/cli/src/external-hooks.ts
+  s_32854310b34019::t_27a165ce813ea4 123
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_32854310b34019::t_9533235c78857f 1376-1377
+packages/cli/src/workflows/workflow.service.ts
+  s_32854310b34019::t_9306f4d7bcafe7 1010-1018,1021
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1483d4b3de58b38ed1f2cb3b2d919163a73113fe",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_32854310b34019": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29f57537-0c49-430f-af46-3de442b66717",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

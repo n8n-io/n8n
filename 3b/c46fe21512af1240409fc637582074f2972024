@@ -1,0 +1,30 @@
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_b0851c2f22da8a::t_de7ebeb7df7c79 442-444,446-447,449,453,455-456,467-469,471
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_b0851c2f22da8a::t_853d9e11e95887 27-30,44-51
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_b0851c2f22da8a::t_853d9e11e95887 87-91,100
+packages/cli/src/modules/instance-reporting.ee/LOCAL_VERIFICATION.md
+  s_b0851c2f22da8a::t_853d9e11e95887 166-167
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_b0851c2f22da8a::t_06be931bbdb870 591,596-597,702-703,707,713,719,722
+  s_b0851c2f22da8a::t_de7ebeb7df7c79 725,727
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_b0851c2f22da8a::t_6e36d95ae14969 240-242,245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3bc46fe21512af1240409fc637582074f2972024",
+  "prompts": {},
+  "sessions": {
+    "s_b0851c2f22da8a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7568195d-834e-4356-b70e-8dd6e074c324",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_62bddef00d4057::t_14f967ceeb23a4 242-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e13dec84fd5bcdd9b4129b49d5f59498b7442f2",
+  "prompts": {},
+  "sessions": {
+    "s_62bddef00d4057": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6396ed9-3aa0-4d3f-8dfd-eea7869f2328",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,105 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 420-424,427,432-437,439-444,453,455,457-462,466,471,473,476,478,498,516,518,545,547,568,570,579,585-586,604,612,614,630,635,637
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 54-55,180-181,296,332-341,346,357-367,1091-1553
+  s_dad740bc547829::t_e420815a65bc8b 1554
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 1-96
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_dad740bc547829::t_2c63d2f1ce8600 1-173
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_dad740bc547829::t_2c63d2f1ce8600 19,151
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 6-11,17,40,62,64,77,81-106
+  s_dad740bc547829::t_62e52946545212 107
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 126-245
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 7-8,361-476
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 866-1033
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 4,6,256-281
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionsSettings.api.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 2-6,25-60
+packages/@n8n/api-types/src/dto/index.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 671,673
+packages/@n8n/cli/docs/commands/promotions.md
+  s_dad740bc547829::t_2c63d2f1ce8600 342-392
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 107-122
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 4,6,22-25,46,115-116,461-614
+  s_dad740bc547829::t_97e4ee233684fe 615
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsFlow.vue
+  s_dad740bc547829::t_2c63d2f1ce8600 14-19,39
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 118-149
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 4,6,90-145
+  s_dad740bc547829::t_2c4c50779dd73b 146
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 57-61,63-76,79-81
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteApplyInstanceSection.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 1-145
+packages/@n8n/cli/src/index.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 41-42,131-132
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dad740bc547829::t_2c63d2f1ce8600 3833-3834,3849-3861,9077,9081-9083
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_dad740bc547829::t_2c63d2f1ce8600 292-297
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_dad740bc547829::t_2c63d2f1ce8600 28-29,59
+packages/@n8n/cli/src/commands/promotion-connection/apply-selection.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 1-44
+packages/@n8n/cli/src/commands/promotion-connection/apply-selection-continue.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 1-46
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 13-18,73-74,141-142,1455-1656
+  s_dad740bc547829::t_6d17c8755eedc6 1657
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_dad740bc547829::t_2c63d2f1ce8600 19,238-239,243-244,247-249,260-263,478-480,482-486,505
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 5,178-218
+  s_dad740bc547829::t_68ca05824355e5 219
+packages/@n8n/cli/src/client.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 467-489
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 4,6,654-705
+  s_dad740bc547829::t_8481433e840cc8 706
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 3,29
+packages/@n8n/cli/src/commands/promotion-connection/apply.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 3,27
+packages/@n8n/cli/README.md
+  s_dad740bc547829::t_2c63d2f1ce8600 64
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromoteApplyInstanceSection.vue
+  s_dad740bc547829::t_2c63d2f1ce8600 1-135
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 7,95-116
+  s_dad740bc547829::t_9f6006f62ef672 117-118
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_dad740bc547829::t_2c63d2f1ce8600 4,37-39,77,146,150,205-217
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_dad740bc547829::t_accf52fbc4aab5 1-74
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_dad740bc547829::t_3de3dd8cb822f1 1-75
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_dad740bc547829::t_52cf60850bb8de 228-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "23fa88bfca22458704e3558024505d76e7cdb83c",
+  "prompts": {},
+  "sessions": {
+    "s_dad740bc547829": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f2b2dda-ab23-49fe-bff4-55427dbfc346",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

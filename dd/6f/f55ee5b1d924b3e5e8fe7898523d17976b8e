@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_3d73547284a1cb::t_a0922535f67a2a 120,127-131
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_3d73547284a1cb::t_4176b31594b3bd 145-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd6ff55ee5b1d924b3e5e8fe7898523d17976b8e",
+  "prompts": {},
+  "sessions": {
+    "s_3d73547284a1cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9511c8b6-90c3-4eb2-b857-d29132b69b9f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

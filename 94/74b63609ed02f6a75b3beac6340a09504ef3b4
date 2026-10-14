@@ -1,0 +1,193 @@
+packages/cli/src/workflows/workflow-node-search.service.ts
+  s_fe048893d1a380::t_e00141e497f71d 42
+  s_fe048893d1a380::t_6300c365d829ab 26-28
+  s_fe048893d1a380::t_2dae2b7fb0b430 43,45-49,64
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useDataTableNavigationCommands.ts
+  s_fe048893d1a380::t_e43d1b39b1cce0 71-78
+  s_fe048893d1a380::t_b5d4e75fc4a2af 221-232
+  s_fe048893d1a380::t_13d572108149c5 1,24-25,28
+packages/workflow/src/common/node-search.ts
+  s_fe048893d1a380::t_985794a035f130 108
+  s_fe048893d1a380::t_6e6b2382e07b74 119-122
+  s_fe048893d1a380::t_7f0eb9af21a425 19,26-32,35-40,42-45,47
+  s_fe048893d1a380::t_4afebae90acc3c 33-34,41,46
+  s_fe048893d1a380::t_3ee538e918c184 118
+  s_6ef606d7508f55::t_985eac6090c3eb 48
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useRecentResources.ts
+  s_fe048893d1a380::t_26cbfb3963113f 1,32,39
+  s_fe048893d1a380::t_ffbb55514f2670 148-155
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/types.ts
+  s_fe048893d1a380::t_403d95a300a37a 3-6,10-12
+  s_fe048893d1a380::t_f696284c689e23 14-17
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCredentialNavigationCommands.test.ts
+  s_fe048893d1a380::t_6fe08d02a6151e 133,148,163,180,193,207,224,267,294,314,346,359,390,425,460,488,513,528,548,578,593,608,628
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowNavigationCommands.test.ts
+  s_fe048893d1a380::t_6fe08d02a6151e 182,193,209,229,239,250,283,308,325,350,368
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useWorkflowNavigationCommands.ts
+  s_fe048893d1a380::t_f227771bc9c0d9 31-32,35
+  s_fe048893d1a380::t_bc6c617a62e3f9 82-83
+  s_fe048893d1a380::t_a03fbc78b777d5 1
+  s_fe048893d1a380::t_6d0fab568251c8 168-172
+  s_fe048893d1a380::t_b0300f1e07291f 349-357
+  s_6ef606d7508f55::t_4fbccd1b3afe1e 88,105,122,167,348
+packages/cli/test/integration/workflows/workflow-node-search.service.test.ts
+  s_fe048893d1a380::t_b6410cfa33101a 102-121
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fe048893d1a380::t_8e2cc9a52f87d4 6612
+  s_fe048893d1a380::t_23706417391d9d 6545
+packages/frontend/editor-ui/src/app/api/workflows.ts
+  s_fe048893d1a380::t_60293f00b6976a 26-30,35-38
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useDataTableNavigationCommands.test.ts
+  s_fe048893d1a380::t_6fe08d02a6151e 137,151,169,189,207,219,236,271,297,332,345,379,412,443,472,503,523,556,571,586,609
+packages/workflow/test/node-search.test.ts
+  s_fe048893d1a380::t_c5f6946981f65f 90-115
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_fe048893d1a380::t_823e6518d43606 907-923
+  s_fe048893d1a380::t_4dcc2075385d14 936-940
+  s_fe048893d1a380::t_ce8093cc20dfbb 886
+  s_6ef606d7508f55::t_b9b0d33d580e63 941
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.ts
+  s_fe048893d1a380::t_ed2cdaf89b4951 196-197,207
+  s_fe048893d1a380::t_7163de0a64469d 447,458
+  s_fe048893d1a380::t_c77f617d596ae1 153
+  h_ed1b2d65e81e8e 23,35-36,51-53,59,62-65,68-151,154-163,208,439-446,455-457
+  s_fe048893d1a380::t_fcd86a0419ba3d 152
+  s_6ef606d7508f55::t_2e49a10d8f688d 174,180,186,192,195
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useGlobalNodeSearchCommands.ts
+  s_fe048893d1a380::t_93f9370132a56b 181,183-186,188
+  s_fe048893d1a380::t_03bf532291f5e5 330,343-352,355
+  s_fe048893d1a380::t_3ea4b8631becde 105-107
+  s_fe048893d1a380::t_c035b18410f8f6 124-125
+  s_fe048893d1a380::t_1278a999e67a98 244
+  s_fe048893d1a380::t_7b21fb5c6fb0d4 58
+  s_fe048893d1a380::t_96892859df7603 272,278,280-281,283
+  s_fe048893d1a380::t_78f2eedc95a693 1
+  s_fe048893d1a380::t_5e7a98d0b976b1 312,327-329,331-332,334-340,353-354,358,361
+  s_fe048893d1a380::t_24eb79c36b24b6 18
+  s_fe048893d1a380::t_09ad8288040342 98-101
+  s_fe048893d1a380::t_99ba0321ea1587 166
+  s_fe048893d1a380::t_633e9ace2c9c72 86,93
+  s_fe048893d1a380::t_63d6a2ca03abe6 273,279,282,288
+  s_fe048893d1a380::t_1b34401a5562ce 19
+  s_fe048893d1a380::t_c1b027f1bc4473 121,123
+  s_fe048893d1a380::t_4456c606a9e82a 87-92,94
+  s_fe048893d1a380::t_151d1c2779041d 50
+  s_fe048893d1a380::t_fc896f9eb07227 20
+  s_fe048893d1a380::t_d6d0b8a5b16cbc 25
+  s_fe048893d1a380::t_b2faee3e40c1f2 73-78
+  h_ed1b2d65e81e8e 45-46,48-49,60,97,333,341-342,356-357,359-360
+  s_fe048893d1a380::t_df9c3434ec97e5 112-120,122,126-130
+  s_fe048893d1a380::t_f3eca79242ab7e 155,159,161,208-216
+  s_fe048893d1a380::t_b992f054c0469f 237-243,245
+  s_fe048893d1a380::t_5afa156d88a709 44,47,232
+  s_fe048893d1a380::t_13813de7f03787 59
+  s_fe048893d1a380::t_2333b0d04350c9 8-12,32-40,145-153,157-158,162-165,167-172,175-180,182,187,190,274-276
+  s_6ef606d7508f55::t_d946999e6a5f2c 95,154,203-207,233,236,261,267-271,277,294-295,311,313-315,326
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useGlobalNodeSearchCommands.test.ts
+  s_fe048893d1a380::t_aa5b3458710214 94-97,99-100
+  s_fe048893d1a380::t_24d1052aba7f0c 117
+  s_fe048893d1a380::t_71634ad2e0b8bf 158,161-167,170-175,177-178,180-181,194
+  s_fe048893d1a380::t_bdb64f10780574 378-381,383-386,395-409
+  s_fe048893d1a380::t_c33cdb350ceeb0 316,318,328
+  h_ed1b2d65e81e8e 90,93,98,101,159-160,168-169,176
+  s_fe048893d1a380::t_3c70326c7aa1cb 282,285-286,288-315,317,319-322,329-331
+  s_fe048893d1a380::t_0a0dfdced6a29a 179,182-193
+  s_fe048893d1a380::t_b5897a16387ed5 10-13,17-18,29-39,41
+  s_fe048893d1a380::t_f6352186971fdf 261,270-272,287,323-327
+  s_fe048893d1a380::t_b45046ccf5d5e2 46-54
+  s_fe048893d1a380::t_3af85ec570d977 153
+  s_fe048893d1a380::t_ae31ae37bfac75 135-136,145-152,154
+  s_fe048893d1a380::t_20387d9b221389 279-281,283-284,332-359
+  s_fe048893d1a380::t_65bcd6d433b3ae 195-217
+  s_fe048893d1a380::t_7c99e6d88105d5 235
+  s_fe048893d1a380::t_1b7d01fc1077d0 155,483-499,526-551
+  s_fe048893d1a380::t_d848ac6dda8286 273-278
+  s_6ef606d7508f55::t_ac5bc5e921cae6 40,42,156-157
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useNodeCommands.ts
+  s_fe048893d1a380::t_058f70beb703ec 101
+  s_fe048893d1a380::t_2b4426b40bbe87 148
+packages/cli/src/workflows/__tests__/workflow-node-search.service.test.ts
+  s_fe048893d1a380::t_7b29a07175f5f1 186-209,215-219,227
+  s_fe048893d1a380::t_4476c6655f2c89 71-85
+  s_fe048893d1a380::t_fd646792e9e7bf 99
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBar.vue
+  s_fe048893d1a380::t_851b52cabb15f1 535-540,542-544
+  s_6ef606d7508f55::t_826b519edf8f05 29
+  s_fe048893d1a380::t_6795c144274956 559-560,574-575,582-585,589-590,592-598
+  s_fe048893d1a380::t_565ef71805893b 11
+  s_fe048893d1a380::t_1b8d165b7f9236 6,38,126,285-286,322
+  h_ed1b2d65e81e8e 16-18,123,125,287-288,324-325,329-331,334,341
+  s_fe048893d1a380::t_82e937a0956ed9 335-340,342-345
+  s_fe048893d1a380::t_6f456fffec53a4 519-534,541
+  s_fe048893d1a380::t_2881a8fda012c3 383-393,395-396
+  s_fe048893d1a380::t_857c8d104fe115 549,576-581,599
+  s_fe048893d1a380::t_c5d7bc64ef45a6 111-122,124,127-129,139-141
+  s_fe048893d1a380::t_7c7386043a6b6f 7,19,30
+  s_fe048893d1a380::t_9f4c0a7a0fa52f 564-573,586-588,591
+  s_fe048893d1a380::t_2ebfb68db4adeb 398-399,401-422
+  s_fe048893d1a380::t_0f88efbccf1a60 289-293
+  s_fe048893d1a380::t_3e9d2e7a466360 323,326-328,332-333
+  s_fe048893d1a380::t_af1102a7a5528e 397,400
+  s_fe048893d1a380::t_c3900dfa534c55 510-512,545-548
+  s_fe048893d1a380::t_9e2504df8ba9a2 550
+  s_fe048893d1a380::t_4f717ad33f045c 600
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useProjectNavigationCommands.ts
+  s_fe048893d1a380::t_17836746d9b3fd 19-20,23,30-34
+  s_fe048893d1a380::t_8dc6aa6346de3d 92-96
+packages/frontend/editor-ui/src/app/components/app/AppCommandBar.test.ts
+  s_fe048893d1a380::t_9b5ba7f1c46c16 25-27
+  h_ed1b2d65e81e8e 24
+packages/frontend/editor-ui/src/app/components/app/AppCommandBar.vue
+  h_ed1b2d65e81e8e 21,56
+  s_fe048893d1a380::t_3912014d8506a6 22-24,44,57,62
+packages/cli/src/workflows/workflows.controller.ts
+  s_fe048893d1a380::t_0094db11944480 174-176
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.test.ts
+  s_fe048893d1a380::t_6e173ad012e1b2 178-179
+  s_fe048893d1a380::t_bde0f8fae372cc 153
+  h_ed1b2d65e81e8e 152,154-177,180-184,186-187
+  s_fe048893d1a380::t_9c697888870a7f 117-120
+  s_fe048893d1a380::t_eb6e1384fac1bb 185,188-189
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCredentialNavigationCommands.ts
+  s_fe048893d1a380::t_d3fb75fd711f4c 64-69
+  s_fe048893d1a380::t_7f1df2e68a58f6 220-229
+  s_fe048893d1a380::t_23cae584e16217 1,26-27,30
+packages/@n8n/api-types/src/dto/workflows/search-workflow-nodes.dto.ts
+  s_fe048893d1a380::t_1220150a136e85 28
+  s_fe048893d1a380::t_ddbfe28573f87d 16-17
+packages/frontend/@n8n/design-system/src/components/N8nCommandBar/CommandBar.test.ts
+  s_fe048893d1a380::t_5b8774b55b7068 114-134
+  h_ed1b2d65e81e8e 135,139,147
+  s_fe048893d1a380::t_5656a846bcd104 136-138,140-146,149-150
+  s_fe048893d1a380::t_705f19d444798f 148
+  s_fe048893d1a380::t_f91dead4f6c274 151-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9474b63609ed02f6a75b3beac6340a09504ef3b4",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6ef606d7508f55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68351134-3419-4e04-a0d5-8e95b9b226b7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_fe048893d1a380": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bd2e9be9-6a64-4ba0-857c-c167b090ffbc",
+        "model": "grok-4.5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

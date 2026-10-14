@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Kafka/v2/consumer/ConsumeTopic.ts
+  s_79c0473179aa3d::t_7da2722cb54bf2 9-11,36-63,182-195
+  s_79c0473179aa3d::t_219d3f68d0bf6e 196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4f20b1ceba9928dfe3995e66885d22328a767c21",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

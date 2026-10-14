@@ -1,0 +1,9 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  ai_agent 688
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8f469e655bee6dc5f1f97c36d70462cda1a2fc51",
+  "prompts": {}
+}

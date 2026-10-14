@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.test.ts
+  s_5d6be4e6bc70a6::t_339391639ba4bd 118,127
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_499b0db8b26998 5,10,81-85,91-94,97-103,105,116-117,119,121,125-128,131-137,140,197
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/OutputsTab.vue
+  s_5d6be4e6bc70a6::t_13e9d5fe1923b8 87
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5d6be4e6bc70a6::t_14c610612993fd 5693
+  s_5d6be4e6bc70a6::t_1d2e3f3a5fad58 5688
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareTabs.vue
+  s_5d6be4e6bc70a6::t_9fd70497aa2921 50-53
+  s_5d6be4e6bc70a6::t_9dea1cce955e62 68-79
+  s_5d6be4e6bc70a6::t_4dd8ee84e990ce 19
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CasesTable.vue
+  s_5d6be4e6bc70a6::t_3ed1f6e5d53812 26,28-30
+  s_5d6be4e6bc70a6::t_efde94fa385860 100
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_5d6be4e6bc70a6::t_32545f72755a71 156
+  s_5d6be4e6bc70a6::t_772012f8956b7c 50
+  s_5d6be4e6bc70a6::t_223ec514af7ff9 42
+  s_5d6be4e6bc70a6::t_9e0347c89b3f7b 174
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/MetricsTab.vue
+  s_5d6be4e6bc70a6::t_a3121c31a415db 47
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareData.ts
+  s_5d6be4e6bc70a6::t_62816dc134c962 6
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_5869071171b2fe 93-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "783f37b97bb9b07612596dd4d35e4e2ef4d515b3",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

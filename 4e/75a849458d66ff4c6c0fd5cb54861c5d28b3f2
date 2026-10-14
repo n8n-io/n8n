@@ -1,0 +1,19 @@
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_3947ca25ee2393::t_9d466b7ac9cd48 286-289,292,296,299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4e75a849458d66ff4c6c0fd5cb54861c5d28b3f2",
+  "prompts": {},
+  "sessions": {
+    "s_3947ca25ee2393": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cdf0e36-3abb-43a7-8ee8-4e755d9e5864",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

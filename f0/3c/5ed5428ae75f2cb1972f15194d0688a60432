@@ -1,0 +1,77 @@
+packages/cli/test/integration/agents/agents-settings.test.ts
+  s_b30ec406386d61::t_ee26e8146018dc 78-80
+  s_b30ec406386d61::t_10f668cc9b559f 1,32,51-62,64-73,75-77,81-83
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_b30ec406386d61::t_4f4bfd729a66f4 11
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_b30ec406386d61::t_63490b8b51d1a8 827,834,838,849-850,1040-1041,1054,3238
+  s_b30ec406386d61::t_ff847cc48ce3e2 2908-2931,2933-2936,2938-2958,3053,3187,3226,3239,7640-7641
+packages/cli/src/controllers/e2e.controller.ts
+  s_b30ec406386d61::t_9bc3c6fdd55dc7 218
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_b30ec406386d61::t_b9f4df3a27531b 64,66,92,110,644-663
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_b30ec406386d61::t_fe765a50c4a598 9-10,20,42-43,52,79,209-232,252-314
+packages/cli/src/modules/agents/agents-settings.controller.ts
+  s_b30ec406386d61::t_ac2006df45ef9c 34-38
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_b30ec406386d61::t_1f786c6b418c7a 22,104,167
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_0a1a804042c15b::t_6f187ddff47915 1833,7580-7626
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.build-mode.test.ts
+  s_b30ec406386d61::t_a6f1a53439887d 53,74-129
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_b30ec406386d61::t_7c448562d539c8 480,525,546,663-665,669
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_b30ec406386d61::t_a0763ec22222b8 2496,2590,5202,5217-5218,5234-5246,5265-5266,5275-5281,5310-5311,5342-5343,5632,5651,5791
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.test.ts
+  s_b30ec406386d61::t_a3ab0b865856bf 62,75
+packages/frontend/editor-ui/src/features/agents/__tests__/SettingsAgentsView.test.ts
+  s_b30ec406386d61::t_bcc78fa7d0c0b1 15,167-184
+packages/frontend/editor-ui/src/features/agents/components/AgentsSandboxSettings.vue
+  s_b30ec406386d61::t_ad91bd4f52864b 43-47
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_b30ec406386d61::t_bcf668967115cf 251
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_b30ec406386d61::t_71b48ea4ae0e9a 185,209,215
+packages/frontend/editor-ui/src/features/ai/instanceAi/onboarding/InstanceAiOnboardingView.test.ts
+  s_b30ec406386d61::t_3e3e16a5c99953 135
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_b30ec406386d61::t_fa483c0d30c662 114
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_b30ec406386d61::t_d2e70108b74c52 391-415
+packages/quality/testing/playwright/services/agent-api-helper.ts
+  s_b30ec406386d61::t_939a5edb8cfe79 17-22
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-write-lock.spec.ts
+  s_b30ec406386d61::t_15322256692429 18-21
+packages/quality/testing/playwright/tests/e2e/agents/agent-sessions.spec.ts
+  s_b30ec406386d61::t_1e846a6f438d34 95-98
+packages/quality/testing/playwright/tests/infrastructure/agents/capability-activation.spec.ts
+  s_b30ec406386d61::t_f005e76af37024 119
+packages/quality/testing/playwright/tests/infrastructure/agents/message-queue.spec.ts
+  s_b30ec406386d61::t_356cd96d30fd24 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f03c5ed5428ae75f2cb1972f15194d0688a60432",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b30ec406386d61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fbac-6028-7b12-99ba-e8426f20ba57",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

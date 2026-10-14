@@ -1,0 +1,29 @@
+packages/@n8n/agents/src/runtime/__tests__/attachment-validation-error.test.ts
+  s_de30f096f807bf::t_5b377b678ab517 28
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_de30f096f807bf::t_5b377b678ab517 12,46
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_de30f096f807bf::t_5b377b678ab517 131-142,1049
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_de30f096f807bf::t_5b377b678ab517 9,946,958-961,964-965
+packages/@n8n/agents/src/runtime/model/attachment-validation-error.ts
+  s_de30f096f807bf::t_5b377b678ab517 33
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_de30f096f807bf::t_5b377b678ab517 195,200,226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "caa539f61311855bde3c069869ee2709ceca9423",
+  "prompts": {},
+  "sessions": {
+    "s_de30f096f807bf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0aa19-ec55-72c3-a0b7-b20b665f934d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

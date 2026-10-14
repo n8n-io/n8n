@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.vue
+  ai_agent 25-26,35,50-55,88,206-213,225,266-273,275,395-412,450,452-453
+packages/cli/src/controllers/security-settings.controller.ts
+  ai_agent 2,13-14,20,33-34,50,57-59,69,87-90,142-155,159-166
+packages/cli/src/controllers/__tests__/security-settings.controller.test.ts
+  ai_agent 6,10,16-17,26-27
+packages/cli/src/events/maps/relay.event-map.ts
+  ai_agent 1020-1024
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  ai_agent 1091-1093
+packages/frontend/editor-ui/src/features/settings/security/DataRedactionSection.vue
+  ai_agent 159-166,311-316,318,320-321
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  ai_agent 33-37,68-69,812-940
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  ai_agent 1-125
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 4939-4947,4949,4971,4974,5324
+packages/@n8n/api-types/src/dto/security-settings/security-settings.dto.ts
+  ai_agent 4,11-12,21,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65c1623ec007932556977f8624b922107889a39e",
+  "prompts": {}
+}

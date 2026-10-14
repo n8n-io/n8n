@@ -1,0 +1,50 @@
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_8631ec10eb1199::t_81cc0ea1d99fd8 98-219,221,224
+  s_8631ec10eb1199::t_0fd34ce4143e7a 3,6-8
+  s_8631ec10eb1199::t_2b525d15e0e526 9,220,222-223,225-233
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_8631ec10eb1199::t_510b21b5cf341c 1-207
+  s_8631ec10eb1199::t_ff8f49a121e10d 208-213
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_8631ec10eb1199::t_9264ad58b8802b 1-127
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_8631ec10eb1199::t_ab152dd266226e 17
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_ea0d3cf0d7519e 1-6
+  s_8631ec10eb1199::t_260f84e4fadd02 7-135
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_8631ec10eb1199::t_fcae94410b7595 29
+packages/@n8n/api-types/src/dto/index.ts
+  s_8631ec10eb1199::t_b23875e6ea040a 479-487
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_8631ec10eb1199::t_b1143edbb5b663 166-168
+  s_8631ec10eb1199::t_3ae5bfabc945b0 25-30
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_8631ec10eb1199::t_1572b79b2f4574 1
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_8631ec10eb1199::t_2ee2219be34d0f 6-16,19-22,26,49,57,80,88,111-113,116-132,139,153,163,174,188,198,209,223,232,244,271,280,295-298,307,320,336-339,347,359,373-376,385,398,411-422,430,442,453-456,465,478,486,503-507,516-529,536-539,550,564,574-577,588,602,612-615,626,640,650-653,664,678,688-689,702,716
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_8631ec10eb1199::t_739345cd4282a6 1-313
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_8631ec10eb1199::t_a4b3e7a9afc98a 1-486
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_8631ec10eb1199::t_df43d46fef9af8 163-165
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_8631ec10eb1199::t_3f9f29c6fb43aa 1-31,34,36,38-283,285,287,289-435,437,439,441,443,445,447,449-457
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e31d04e6743dad1c0eedec3598cbac2ef444e8b2",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

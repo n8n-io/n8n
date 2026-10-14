@@ -1,0 +1,23 @@
+packages/cli/src/modules/data-table/__tests__/data-table-file-cleanup.service.test.ts
+  s_58bf5e7192a13f::t_d6eefe19e16ff7 1,6,29-32,148,155,160
+packages/cli/src/modules/data-table/__tests__/data-table-file-cleanup.task.test.ts
+  s_58bf5e7192a13f::t_d6eefe19e16ff7 1,31
+packages/cli/src/modules/data-table/data-table-file-cleanup.service.ts
+  s_58bf5e7192a13f::t_d6eefe19e16ff7 1,10-13,15,60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19f90338ee22318fe3438b6f895adca8324cc5ec",
+  "prompts": {},
+  "sessions": {
+    "s_58bf5e7192a13f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea75da36-9456-4181-9c49-fa25136f27ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

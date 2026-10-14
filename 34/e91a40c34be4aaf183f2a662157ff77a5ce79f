@@ -1,0 +1,19 @@
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.test.ts
+  s_f4f3f37a98d31a::t_9ddff5d1d27fdd 3437-3440
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "34e91a40c34be4aaf183f2a662157ff77a5ce79f",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

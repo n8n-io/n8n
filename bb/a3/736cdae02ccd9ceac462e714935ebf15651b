@@ -1,0 +1,41 @@
+packages/cli/src/active-workflow-manager.ts
+  s_11c9efe0fd16b4::t_671c611e3a202e 447,449,451-452,454-456,459,462-466,493-497,508-551
+  s_11c9efe0fd16b4::t_11d9a31bb1d18e 150
+  s_11c9efe0fd16b4::t_8cbdfd489d207c 412-413,416,418,424
+  s_11c9efe0fd16b4::t_6a80dc1398c2ac 11-15
+  s_11c9efe0fd16b4::t_020a440040b683 183-186
+  s_11c9efe0fd16b4::t_d7045626c7fb04 448,450
+  s_11c9efe0fd16b4::t_1be0dc3d1c9d85 414
+  s_11c9efe0fd16b4::t_42bd2c92dad6de 82-83
+  s_11c9efe0fd16b4::t_cfd3631e18d33a 415
+  s_11c9efe0fd16b4::t_a8182abd9b0cb2 552-554
+packages/@n8n/db/src/repositories/workflow-published-environment-version.repository.ts
+  s_11c9efe0fd16b4::t_6bdeacd04082dc 42-61
+  s_11c9efe0fd16b4::t_a66eb1267d92b7 62-63
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_11c9efe0fd16b4::t_f08e3cd73b9495 57-58
+  s_11c9efe0fd16b4::t_ff1d4171b9a54e 189-190
+  s_11c9efe0fd16b4::t_09bb1b5dc1b1d0 363-364
+  s_11c9efe0fd16b4::t_60b8f5c709a1f9 780-781
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "bba3736cdae02ccd9ceac462e714935ebf15651b",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_11c9efe0fd16b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a36cfbc6-6239-40f4-87a9-61a2ca0f5350",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

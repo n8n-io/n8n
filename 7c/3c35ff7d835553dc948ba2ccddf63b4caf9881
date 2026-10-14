@@ -1,0 +1,21 @@
+packages/cli/test/integration/commands/worker.cmd.test.ts
+  s_7fbcb84bacec18::t_9e589c85a46916 1-5
+packages/cli/test/integration/policy/credential-decrypt-policy.worker.test.ts
+  s_7fbcb84bacec18::t_9a20269dea7415 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c3c35ff7d835553dc948ba2ccddf63b4caf9881",
+  "prompts": {},
+  "sessions": {
+    "s_7fbcb84bacec18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fc6fb1b-05c6-40e5-bc02-58b790bae67f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

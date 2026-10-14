@@ -1,0 +1,33 @@
+packages/@n8n/eslint-config/src/rules/no-unsafe-dynamic-key-init.ts
+  s_5e62dac7c72fd4::t_f95df6dd6a2976 1-34,36-150
+  ai_agent 35
+packages/@n8n/eslint-config/src/rules/no-unsafe-dynamic-key-init.test.ts
+  s_5e62dac7c72fd4::t_64df8548bffaa5 1-61
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_5e62dac7c72fd4::t_afa87f141494b2 689-692
+  s_5e62dac7c72fd4::t_4e2e328323f3b6 661-663
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_5e62dac7c72fd4::t_282a43f8f9ec27 37,75
+packages/core/eslint.config.mjs
+  s_5e62dac7c72fd4::t_9d5a1de65b45f5 12
+packages/workflow/src/node-helpers.ts
+  s_5e62dac7c72fd4::t_e325dba5551b96 631-632
+packages/workflow/eslint.config.mjs
+  s_5e62dac7c72fd4::t_9d5a1de65b45f5 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "936c4154a1992956c8e23527a28913b7f66c3d5c",
+  "prompts": {},
+  "sessions": {
+    "s_5e62dac7c72fd4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4354ac48-0049-46ef-a6c9-665145cdb7c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/credentials/common/aws/system-credentials-sdk.test.ts
+  s_81836eca248d3b::t_04dfe15b840bdd 260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "88d813a0796bcad06067075c29d456b17b7c2f33",
+  "prompts": {},
+  "sessions": {
+    "s_81836eca248d3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "321ee3fb-df6a-48f4-999d-69946457bd1d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

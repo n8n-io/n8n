@@ -1,0 +1,2019 @@
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 50-63
+packages/@n8n/scheduler/src/core/materializer/__tests__/plan.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-3,9,26-27,151-319
+  s_aedfba766afade::t_2f466dbe5a1643 320
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-227
+packages/nodes-base/nodes/OpenAi/__schema__/v1.1.0/image/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-12
+packages/cli/test/integration/scheduling/scheduled-repositories.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,89-90,557-615
+  s_aedfba766afade::t_86908c512b7af4 616-617
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.constants.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 13,23,33,43
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 280-285
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 120,126-131,167,176-180,192,195,266,282
+packages/nodes-base/nodes/JinaAI/__schema__/v1.0.0/reader/read.json
+  s_aedfba766afade::t_e6b0d285d31fc0 94-96,105-107,126
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-1367
+packages/cli/src/modules/agents/agent-mcp-access.controller.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-34
+packages/cli/src/modules/breaking-changes/rules/v3/execute-workflow-source-modes.rule.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-77
+packages/nodes-base/nodes/Magento/__schema__/v1.0.0/product/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 24-37,161-218,260,286
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/12.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-49
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 40-41,61,1173-1207,3039
+docs/generated/postgres-schema/public.project.md
+  s_aedfba766afade::t_e6b0d285d31fc0 12,42,85-96
+  s_aedfba766afade::t_c083743012d73d 97-98
+packages/@n8n/scheduler/src/core/types/task.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 13-15,29-30
+packages/nodes-base/nodes/Google/Chat/__schema__/v1.0.0/space/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 44-46,58-60,72-74,86-88,100-102,114-116,128-130,142-144,171
+packages/testing/janitor/src/core/scope-analyzer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 41-49,82-93
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 65-71
+packages/@n8n/eslint-config/src/rules/no-dynamic-import-template.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-43
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1909-2058
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,30,109,111-114,151,153,159,163-170,191-192,203-204,212-223,265-266
+packages/nodes-base/nodes/WhatsApp/__schema__/v1.1.0/message/sendTemplate.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-37
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 251
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 8,11,14,18,40-51
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPAgentsSelect.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 1-165
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 63,199,223
+packages/nodes-base/nodes/Slack/__schema__/v2.4.0/channel/open.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/@n8n/instance-ai/src/tools/orchestration/verification/scripted-gate-run.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-155
+packages/@n8n/eslint-config/src/rules/no-dynamic-import-template.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-4,10,16-17,33-48
+  s_aedfba766afade::t_dfd99c7d834732 49
+packages/@n8n/workflow-sdk/src/validation/issue-severity.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-36
+packages/cli/src/instance-settings-loader/__tests__/sso/oidc.instance-settings-loader.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 21-22,87-99
+  s_aedfba766afade::t_1f44bfa5d5e790 100
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-42
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-job-registrar.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,85,210
+packages/nodes-base/nodes/Aws/Comprehend/__schema__/v1.0.0/text/detectDominantLanguage.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-21
+packages/@n8n/api-types/src/schemas/source-controlled-file.schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-4,61
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 58-59,82,103,118,135,152,178,200,219,269,292,312,328
+packages/frontend/editor-ui/src/features/agents/components/AgentMcpPanel.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 1-63
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8,100-109
+  s_aedfba766afade::t_9d3afffab74cae 110
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 55,890
+packages/@n8n/workflow-sdk/src/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 162-168,231-239
+packages/nodes-base/nodes/RespondToWebhook/test/RespondToWebhook.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12,85,122,142,163,184,213,236,257,277,303,327,340-376,389,555,580,608,635
+packages/nodes-base/nodes/Slack/__schema__/v2.4.0/channel/invite.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-106
+packages/nodes-base/nodes/Slack/__schema__/v2.4.0/channel/replies.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-99
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 44-48
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 152-155,157-174,193-198
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15,67-76
+  s_aedfba766afade::t_74781a3de77f8f 77-78
+packages/nodes-base/credentials/test/SlackOAuth2Api.credentials.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 24-29
+packages/testing/playwright/services/api-helper.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 250-262
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,21,27,33,40-41,44-45,54,59-60,66-68,71-78
+  s_aedfba766afade::t_ad0fe213cd9bfa 79
+packages/@n8n/api-types/src/agents/types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 193-213,215,228-234
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,56-57,64
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8,22,24,26,32-34,36,59-60,83-84,86,95-97,113,119-141,531-604
+  s_aedfba766afade::t_19ddf30720fd02 605-606
+packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,34
+packages/frontend/editor-ui/src/app/utils/nodeTypesUtils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 329-332
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 1-226
+packages/frontend/editor-ui/src/features/workflow-reviews/constants.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2-16
+packages/cli/src/modules/mcp/__tests__/publish-workflow.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 7,252-293,314
+packages/@n8n/ai-utilities/src/node-catalog/get.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 183-200,242
+  s_aedfba766afade::t_d6ec77a4593026 182
+packages/frontend/editor-ui/src/features/ai/components/CredentialSelectorModal.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 18
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 60,230-241
+  s_aedfba766afade::t_24c246e03a01c2 242
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpServer.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 173-277
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/lets-a-real-parent-agent-call-delegate-subagent-and-use-its-result.json
+  s_aedfba766afade::t_e6b0d285d31fc0 73,77,80,83,86,88,92-93,96,121,125-126,129-131,135,138,141,144-145,147,149,151-153,156-157,195,201-202,215-216,268,272,275,278,281,283,287-288,291
+packages/cli/src/modules/mcp/mcp-tool-availability.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,6-9,38-80,138,143-147,149,171-173,228-327,333-334,336-337,346-347,349-350
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16,126,134-135
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 27-40,77,84
+packages/@n8n/workflow-sdk/src/codegen/codegen-roundtrip.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15,31-35,47-51,72,92,2925-2957,2959
+  s_aedfba766afade::t_5a2ffb47590f81 2958,2960-2962
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,1109-1111,1142,1146-1147,1151,1166-1187
+  s_aedfba766afade::t_7f7fd737a181c9 1188
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-394
+packages/@n8n/node-engine-compatibility/eslint.config.mjs
+  s_aedfba766afade::t_e6b0d285d31fc0 4-10
+packages/nodes-base/nodes/Notion/__schema__/v2.2.0/database/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 287-345,527
+packages/cli/src/workflows/publication/published-workflow-trigger-deactivator.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,6,9,21-25,29-31,39-40,76-141
+  s_aedfba766afade::t_f23cdc7665ac50 142
+packages/@n8n/api-types/src/agents/agent-task.schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16-20
+packages/nodes-base/nodes/Zulip/__schema__/v1.0.0/message/sendPrivate.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-15
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-node-types.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 69
+packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 18-20,25
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1319-1348
+  s_aedfba766afade::t_bc7bb9ed25277c 1349-1350
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 77-78,96-97,115-116,1224-1230,1316-1322,1377-1383,1440-1446
+packages/cli/src/modules/mcp/__tests__/credentials-auto-assign.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 421-623
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-171
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,3,106-119,260,277,279,299-301,304,308,321,364-460,475-492
+packages/frontend/editor-ui/src/features/ndv/runData/components/BinaryEntryDataTable.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 11,34
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 53-54
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-feature-gate.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-53
+packages/@n8n/ai-utilities/src/web-search/__tests__/brave-search.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 116,119-120,124,126-170
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 42,287-288
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolCredentialPicker.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 257,324
+packages/nodes-base/nodes/Contentful/__schema__/v1.0.0/entry/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 7-214,217-282,373
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 23
+packages/cli/src/modules/agents/agent-message-mapper.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15-22
+packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/account/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 12-25,28
+packages/testing/playwright/services/mcp-api-helper.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 130,985,994
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolRefAdapter.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 158,166
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 5,20,54,104-107,191-194,196,206,241-244,353,389,450-456,523-526
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 257-259
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 50,165,650-658
+  s_aedfba766afade::t_ecdca4561cc151 659
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-restricted-globals.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 73-83,96-101,109-117
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-validation-warnings.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,6-13,18-26
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 27,32-33,262,273,281-284,322-325
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9-13,20-21,25,576-625
+  s_aedfba766afade::t_2900f03bf2515c 626
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6,94-115,189,218-225,232
+packages/@n8n/scheduler/src/core/materializer/materialize.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,13,17,32-38,63-64,78-81,109-116,123,126-127,142-143,148-173,175,227-233
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 13,20,25-26,28,94-96,98-99,102-103,106,112-137,220-254,363-370,396-397,401-402,424
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 87
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 8,66,70-109,158-163,165,168,171,205-208,279-280,290-298,300,302-307,309-313,319-322,399,401
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/disconnected-node-validator.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 218
+packages/@n8n/db/src/migrations/common/1785247194307-AddMisfirePolicyToScheduler.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-141
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,6-7,9,13,16-17,20,24-27,37,50,53-102,112-113,125-126,158-165,171,188-195,321-379
+  s_aedfba766afade::t_10ac91d9c63f97 380
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 30-31,94-95,100,110-120,275-276
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 18,20,43,53,109-116,118,175-180
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/draft/delete.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 134,264-270
+  s_aedfba766afade::t_0c1a0a5c73f3b1 271-272
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15,127-128,848,852-888,911-968,990
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 80-88
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 129-168
+packages/@n8n/api-types/src/agents/dto.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4-10,29,70-81,146-164,166-197
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 15,24,44,53-57,75,230-239
+  s_aedfba766afade::t_fb8e67ee97e636 240-241
+packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 94-110,121
+packages/nodes-base/nodes/RespondToWebhook/RespondToWebhook.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 577
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-credential-ask.json
+  s_aedfba766afade::t_e6b0d285d31fc0 27
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 834-978
+packages/nodes-base/nodes/Elastic/Elasticsearch/__schema__/v1.0.0/index/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8,66,80,88,104,159,643-645
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 8,11,48,105,181,324-331,335-352,680-703,708-730,736-740,746-752,774,783
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 98-101
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 14,17,69-70,125-126,349-384
+  s_aedfba766afade::t_1b022d3dc0404c 385-386
+packages/@n8n/instance-ai/evaluations/credentials/seeder.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 47-51
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 228-237,258-281,284-285
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 17-20,35-38,40,45-68
+  s_aedfba766afade::t_c6fbe30c6e4f46 69
+packages/nodes-base/credentials/SlackOAuth2Api.credentials.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12-13
+packages/nodes-base/nodes/Twitter/__schema__/v2.0.0/tweet/search.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-9,23
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 2,16-17,51,53,62-67,69-71,85-106,124-128,131-135,203,205-219,226,234,239,245-267,292,327-361,368-370,372,470-482
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 1-312
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 105-114,193-195,306-307
+  s_aedfba766afade::t_f2800877dbef69 308
+packages/nodes-base/nodes/Google/Gmail/__schema__/v2.2.0/thread/trash.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-29
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-restricted-globals.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 20-25,35,53-67
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 139-144
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,5-10,13-15,21-22,36-38,41-42,56,61-65,140,145-273,313-476
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 13,209,213,224-242,244-254
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 266-268
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8,10-11,20,25,48,105,139,160,667,694,846,870
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,43,58,155,836-842,845,894,902-904,972-976,993-997,2054-2058,2076-2088,2096-2098,2107
+packages/frontend/editor-ui/src/app/utils/fileUtils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-68
+packages/nodes-base/nodes/Brandfetch/Brandfetch.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,4-5,7-11,13-25
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 129
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 22,36-64,74,93
+packages/@n8n/scheduler/src/core/materializer/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,7
+packages/frontend/editor-ui/src/features/shared/toolsConnection/fixtures.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 198,225,236,250-262,329
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 38-41
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/prepare-run.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 89-126
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 14
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-63
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 11,103-108,114-115,120-124,179-180,182-188,209-212,342-359
+  s_aedfba766afade::t_e56095e9d61a0f 360-361
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-4,42-47,53,121-123,196-233,298-299
+  s_aedfba766afade::t_ef5cc788d50b27 300-301
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 38-45,56
+docs/generated/postgres-schema/public.agents.md
+  s_aedfba766afade::t_e6b0d285d31fc0 10,51,94-106
+  s_aedfba766afade::t_c0898e3f59194a 107
+packages/@n8n/workflow-sdk/src/lint/code-node/python.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-42
+packages/nodes-base/nodes/Brandfetch/v1/GenericFunctions.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-114
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,38,75,210,632-633,655-663,791,802-807
+packages/@n8n/agents/src/types/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12,24-27,185-186
+packages/nodes-base/nodes/BambooHr/__schema__/v1.0.0/companyReport/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 21-23,26-31,54
+packages/@n8n/utils/src/json/json-size-exceeds.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-337
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,774
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 15,110,179-181,191-196
+packages/nodes-base/nodes/Hubspot/__schema__/v2.2.0/company/delete.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/cli/src/modules/agents/utils/agent-config-hash.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-19
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 517-552
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/BedrockInvokeModelEmbeddings.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-209
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 47
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 967,975,1101,1114,1165,2600,2626-2629,4053-4064,4066,4068-4070,4072-4073,4076-4078,4080-4082,4223,4271,4279,4313,4884,5285,5291,5294-5297,5300-5304,5309-5311
+packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 39-71,82-147,159-180,219-224,357
+packages/cli/src/modules/agents/__tests__/agent-message-mapper.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-45
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 529-568
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 18,262,270,288-292,320-322
+  s_aedfba766afade::t_0a3efb22017d88 323
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-build-telemetry.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-47
+packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/contact/addToCampaign.json
+  s_aedfba766afade::t_e6b0d285d31fc0 6-11,14
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 41-46,49-54,70-80,83,109-124
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16,19
+packages/cli/src/services/project.service.ee.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 133-138,248-254,267-272
+  s_aedfba766afade::t_92fc1f6d635065 273-278
+packages/@n8n/nodes-langchain/utils/aws/test/resolveBedrockRegion.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-34
+packages/nodes-base/nodes/Shopify/__schema__/v1.0.0/order/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 7-9,116-118,216-218,224-229,232
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 3-9,11-12,15,36-38,112-129
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,7,21,54,57-61,69,72-81
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 2,16-20,23,28,36-43,45-51,55,59-72,98,287-313
+  s_aedfba766afade::t_c7734f4c41d709 314-315
+packages/nodes-base/nodes/Hubspot/__schema__/v2.2.0/deal/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 16-64,134
+packages/nodes-base/nodes/Microsoft/Storage/__schema__/v1.0.0/blob/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 10-15,64
+packages/testing/playwright/tests/e2e/scheduling/poll-trigger-misfire-skip.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-51
+packages/@n8n/agents/src/runtime/streaming/stream-session.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 81-85,91,122
+packages/@n8n/scheduler/src/core/materializer/__tests__/materialize.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,25-26,29-40,58,63-70,76,84-91,105,111-112,122-275,277,286,297,308-315,320,339,346-353,369,383,398,423,434-441
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9-15,42-49,101-108,123
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 118,127,260-261,811-815
+packages/cli/src/workflows/publication/__tests__/published-workflow-trigger-deactivator.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,6,11-12,21-24,27-30,38-39,45,53-57,138-311
+  s_aedfba766afade::t_b1e4ee81c9ace7 312
+packages/testing/janitor/src/core/affected-packages-analyzer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 24-93,160
+packages/@n8n/workflow-sdk/src/ast-interpreter/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 43
+packages/nodes-base/nodes/SeaTable/__schema__/v2.0.0/row/update.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 7-13,64-68,77-83,259,310,312-314,317,324-326,337,342,385-386,411-412,416-424
+packages/nodes-base/nodes/Stripe/__schema__/v1.0.0/coupon/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-27
+packages/cli/src/modules/agents/agents.module.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 24,132,165
+packages/cli/src/modules/mcp/__tests__/list-tags.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 51,123,141
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9-11,390
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-best-practices.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 131
+packages/cli/test/integration/public-api/sso-oidc.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 38,88,108,214-225
+  s_aedfba766afade::t_4d3966f1f64920 226-227
+packages/nodes-base/nodes/Brandfetch/test/v1/BrandfetchV1.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-287
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 17,24-26,31,33,38-41,70,78-79,88,91,96-97,101,103,139-141,145
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 52,141-150,168,172-173,221-246,256,291-316,326,357-368
+  s_aedfba766afade::t_989c69afb15d2a 369
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 65-71
+packages/nodes-base/nodes/Perplexity/__schema__/v2.0.0/search/search.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-32
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 64,230,460-461
+.agents/skills/conventions/SKILL.md
+  s_aedfba766afade::t_e6b0d285d31fc0 49-52
+packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/page/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 173-175,275
+packages/@n8n/api-types/src/workflow-publish-blocked-details.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-17
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.activate.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 44-52
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15,21-22,169-215
+  s_aedfba766afade::t_3283136ffe4d87 216-217
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 813-816
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 167-191,198-205,207-215
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/folderMessage/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 7-25,198
+packages/nodes-base/nodes/Google/YouTube/__schema__/v1.0.0/video/delete.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/nodes-base/nodes/Slack/test/v2/MessageDescription.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-47
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10-16,24
+packages/nodes-base/nodes/HomeAssistant/__schema__/v1.0.0/state/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 20-22,42
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 19-20,32
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-5,95-100,104-124
+  s_aedfba766afade::t_8f495cef1b8dc5 125-126
+packages/cli/src/errors/webhook-response-too-large.error.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-13
+packages/cli/src/modules/instance-ai/node-definition-resolver.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9-14,77-78
+packages/nodes-base/nodes/Discord/__schema__/v2.0.0/message/send.json
+  s_aedfba766afade::t_e6b0d285d31fc0 18-20,24-29,41-43,57-59,75-77,126-128,142-147,153-155,159-161,171-173,177-179,208
+packages/cli/src/executions/execution-persistence.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 165-166
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 241-246,270-271
+packages/frontend/editor-ui/src/app/init.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12
+packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 27-32,37
+packages/cli/src/modules/agents/entities/agent-chat-attachment.entity.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-62
+.github/workflows/test-evals-mcp.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 191-193,198
+packages/@n8n/scheduler/src/core/materializer/__tests__/plan.property.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,24-25,42-43,62-63,190-306
+  s_aedfba766afade::t_320d146350cf7e 307
+packages/nodes-base/nodes/Brandfetch/v1/BrandfetchV1.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-268
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 449-451,468
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-266
+packages/frontend/editor-ui/src/features/ai/mcpAccess/composables/useMcp.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10-13,20
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 30,203,1090,1120,1156
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,634-836,864-878,1300,1305-1307,1332,1335
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 326-328,336-338
+packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 58-60,63
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-43
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 107
+packages/@n8n/scheduler/src/core/materializer/transaction.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16-30,86-92
+  s_aedfba766afade::t_31c2a3a56b4251 93
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1066-1067,1081-1085
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-publish-guard.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-32
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-source-compiler.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 190-197
+packages/frontend/editor-ui/src/features/agents/components/EmbeddingModelSelector.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 87,92,125
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10,12,536-542,716,723-736,859,861,870-877,879
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 67-99
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_aedfba766afade::t_e6b0d285d31fc0 1-97
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 195-196
+packages/@n8n/db/src/migrations/sqlite/1785247194307-AddMisfirePolicyToScheduler.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-14
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-214
+packages/nodes-base/nodes/Wordpress/__schema__/v1.0.0/page/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 188-190,238
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 237-238,478-479
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 586-587
+packages/frontend/editor-ui/src/features/agents/composables/useAgentModelCredentials.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-5,37-47,93-95,97-106
+packages/nodes-base/nodes/RabbitMQ/test/RabbitMQ.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,15,33,131-148
+  s_aedfba766afade::t_1ca407585e47cb 149
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6-10,35-36,85,133,144,147-167,169-179,184-193
+  s_aedfba766afade::t_8b790e4b3736ee 194-195
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 392-401
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentSection.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 37-38,44-46
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/resolve-schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-226
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 46,57,433-437
+docs/generated/sqlite-schema/project.md
+  s_aedfba766afade::t_e6b0d285d31fc0 23,48,91-102
+  s_aedfba766afade::t_168a09abc2578a 103-104
+packages/@n8n/scheduler/src/observability/metrics.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,21-24,26,44-45
+docs/generated/sqlite-schema/scheduled_job.md
+  s_aedfba766afade::t_e6b0d285d31fc0 9,27-28,44-45,82-83,107
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/13.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-30
+packages/cli/src/public-api/v1/__tests__/public-api-error-response.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8,52-67
+  s_aedfba766afade::t_abbca9b39669e8 68-69
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-158
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9-15,25,33,36,47-49,85,92,100-116,513-559,561-624,632-636,640-642,647-657
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 20,22,44-45,57,134,351-360,385,405,424,514,538-539,580
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1358-1393,1592-1792,2021-2032,2034,2036-2039,2044-2045
+  s_aedfba766afade::t_0c288d5a786925 2033,2035,2040-2043,2046
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 23,37,47,267,295,358-359,386,475,513-565,601,641,649-650,655-656,676,702,716-717,740-745,759,786-791,809,840-845,870-875,881-882,885,890-894,896,898,900-901,903-993,995,998,1000-1005,1012,1014-1016,1018-1020,1024,1026,1030,1036,1038,1047-1055,1059,1065,1068,1072-1073,1087,1089,1093,1100-1104,1110,1116-1120,1124-1125,1151-1155,1158,1160-1161,1163,1166-1172,1175-1178,1180-1189,1191,1193-1198,1350,1360,1436,1446,1480
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 237-254
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 484-487,489-506,1141-1184,1446-1449,1451-1468,1561-1601,1708-1710,1717
+  s_aedfba766afade::t_229ed1ca83d8c2 1711-1716,1718
+packages/cli/src/workflows/__tests__/workflow-publish-guard-proxy.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-25
+packages/cli/src/modules/mcp/__tests__/workflow-validation.utils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 11,22,32
+packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/getCards.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,96-101,107-109,218
+packages/@n8n/constants/src/scheduler.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 51-77
+packages/cli/src/modules/agents/integrations/agent-chat-suspension-cards.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 26
+packages/cli/src/modules/mcp/tools/publish-workflow.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-5,12,19-23,41,48-50,53-61,123-124,131,137
+packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/contact/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 9-11,38-40,43
+packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-23,119
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvInlineControls.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 14-15
+packages/nodes-base/nodes/Google/Calendar/__schema__/v1.3.0/event/update.json
+  s_aedfba766afade::t_e6b0d285d31fc0 18-20,96
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 8-9,18-28,30,32-33,38,48-50,54-63,71-74,78-80,82-89,95-143,148-193,198,226-229,231-357,359,372,386-443
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiMcp.store.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 19-35,101,234-257
+  s_aedfba766afade::t_fc8912f8a75619 258
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 13,80-101,294-295
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 162-169,202-209
+packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/tableRecord/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-95,108-121,133-356,359
+packages/@n8n/api-types/src/agent-sse.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 50-74,122-132
+packages/cli/src/modules/instance-ai/eval/ledger-snapshot.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-29
+packages/@n8n/scheduler/src/core/materializer/misfire.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-75
+packages/testing/janitor/src/core/scope-analyzer.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 161-210
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 30-31,79-80,106-107,124-133
+  s_aedfba766afade::t_95b61f3d55e076 134-135
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-feature-gate.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8-9,23-26,28-34,36-39,44-47,49-50
+packages/nodes-base/nodes/Affinity/__schema__/v1.0.0/person/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 19-21,26
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 412-444,550-575
+  s_aedfba766afade::t_b35053efc9558f 576
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/stream-emits-sub-agent-lifecycle-chunks-and-events.json
+  s_aedfba766afade::t_e6b0d285d31fc0 75,80,83,86,89,92,97-98,101,131-132,135-137,141,144,147,150-151,153,155,157-159,162-163,201,220-221,275,280,283,286,289,292,297-298,301
+packages/@n8n/workflow-sdk/src/lint/code-node/js.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-228
+packages/nodes-base/nodes/Google/GSuiteAdmin/__schema__/v1.0.0/user/addToGroup.json
+  s_aedfba766afade::t_e6b0d285d31fc0 6-11,14
+packages/nodes-base/utils/sendAndWait/test/util.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 179-263,538-580
+  s_aedfba766afade::t_a91d55d785e6d5 581
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2-7,9,12-15,18,31-32,44,101,128-131,167-173,178,202,265,269,286-288,292-297,299-300,302-315,326,328-329,334,337,342,347-354,366-456,494-496,504
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-684
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 455
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2-7,14-17,238,295-296,328-346,516,567
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 547-552
+packages/workflow/src/run-execution-data/run-execution-data.v0.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 54-59
+packages/cli/src/errors/response-errors/workflow-publish-blocked.error.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-19
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 79-80
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 19-20,32-47,433-438
+packages/cli/src/services/frontend.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 146
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 43-78,159-162,264-321
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-244
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 530-617,736-776,887-904,975-979
+packages/@n8n/cli/src/commands/package/import.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,98-109,145-146
+packages/nodes-base/nodes/WooCommerce/__schema__/v1.0.0/order/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 18-31,131-133,139-141,199-221,357-359,476-478,554-556,579
+packages/@n8n/workflow-sdk/src/lint/code-node/code-node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-67
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,47,72-74,80-87,138,158-162
+packages/@n8n/scheduler/src/core/factory.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 20,337-341,352-359,368-369,402-406,422-424,430
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-5,17-28,76,79,114-115
+packages/@n8n/instance-ai/src/tools/workflows/workflow-validation-warnings.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,7-8,12-17,25,31,34-37
+packages/cli/src/modules/mcp/__tests__/prepare-workflow-pin-data.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 98,807,834
+packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/account/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 62-64,75
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-218
+packages/@n8n/instance-ai/evaluations/utils/confirmation-payload.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 13-15,23-24
+packages/@n8n/workflow-sdk/src/lint/lint-workflow-source.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-61
+packages/nodes-base/nodes/Hubspot/__schema__/v2.2.0/ticket/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 69-74,95
+packages/@n8n/config/src/configs/instance-settings-loader.config.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 62-68
+packages/@n8n/scheduler/src/core/materializer/plan.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6,18-30,55-61,64,67-68,71-75,79-80,82-84
+packages/cli/test/migration/1785247194307-add-misfire-policy-to-scheduler.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-177
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,468-469
+packages/cli/src/workflows/workflow-publish-guard-proxy.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-23
+packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/member/delete.json
+  s_aedfba766afade::t_e6b0d285d31fc0 6-8,11
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,14-16,34-39,132-171,188-191,228-248,251-252,264-301,306,332,365,383-388,390
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 328-332
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 2,63-72,113-118,168-182
+  s_aedfba766afade::t_7b0832aeab4d3c 183-184
+.github/workflows/release-create-minor-pr.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 5-9,13-15,17-38,41-45
+packages/nodes-base/nodes/UptimeRobot/__schema__/v1.0.0/monitor/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-33
+packages/nodes-base/nodes/WhatsApp/__schema__/v1.1.0/media/mediaUrlGet.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-24
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,8,28,33-36,45-50,66-98
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 112-113,119-121
+  s_aedfba766afade::t_5585c79bf22514 122
+packages/nodes-base/nodes/Wait/Wait.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 534
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 48-55,71-72,92-98,116-124,138-139,173,186-192,215-216,221-222
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 214,235,331,899-955
+  s_aedfba766afade::t_f1de75cd8889ce 956
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 882-926
+packages/nodes-base/nodes/WhatsApp/__schema__/v1.1.0/message/sendAndWait.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-14
+packages/nodes-base/nodes/Brandfetch/v2/GenericFunctions.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-118
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-3474
+packages/testing/playwright/tests/e2e/ai/assistant-credential-help.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 104-111
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/tools.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 114
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanel.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16
+packages/@n8n/workflow-sdk/package.json
+  s_aedfba766afade::t_e6b0d285d31fc0 61-62,89-91,106
+packages/nodes-base/nodes/Microsoft/SharePoint/__schema__/v1.0.0/item/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 94-99,162
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9,36-43,102-148,158,160-167,169-170,176-180,193-217
+  s_aedfba766afade::t_b587dc286edf5a 218
+packages/@n8n/db/src/entities/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 37-41,125
+  s_aedfba766afade::t_dcdb05e5c0aea1 36
+packages/cli/src/modules/instance-ai/eval/__tests__/provider-shapes.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 76,79,82-100,268-314
+  s_aedfba766afade::t_da64948673272a 315
+packages/cli/src/credentials-overwrites.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 31-37,136
+packages/nodes-base/nodes/Webhook/test/utils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 317-481
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/__schema__/v1.0.0/item/delete.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/@n8n/workflow-sdk/src/validation/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-6,8-15,22,24-28,30-37,39-47
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,6,8,24-39,42,48-54,63,67-68,74-76,83-85,104,115-187,190-191,196-262,266-267,270,283,325-340,402-428
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialModeSelector.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 453-650
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/constants.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 118-119
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 2,7,13,23-25,34-55,69-99,118-120,122-125,158,163-164,193-206
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-80
+packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/task/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 41-75,131-133,194-196,214-236,300-302,394-396,421
+packages/@n8n/api-types/src/agents/child-trace.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-74
+packages/nodes-base/nodes/WhatsApp/__schema__/v1.1.0/message/send.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-34
+packages/cli/src/modules/breaking-changes/rules/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 29
+packages/frontend/editor-ui/src/app/init.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 27
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 14,33-74,84,86-100,102-104,284,373,426-476
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10,14,20,68,151,183-233,488,490-491,543,548-553,556,558-562,679-681
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 748-754,1147-1152,1164,1177-1182,1215-1218,1224,3487-3503
+  s_aedfba766afade::t_e32d90dc9b720b 3504-3505
+packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/client/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 13-15,26
+packages/cli/src/modules/mcp/tools/workflow-builder/search-workflow-nodes.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 27-32,54-68,78,82,93,97,101-107,109
+packages/nodes-base/nodes/Metabase/__schema__/v1.0.0/questions/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 28-30,52-54,122-124,133-202,211-213,226-228,343
+packages/nodes-base/nodes/QuickBase/__schema__/v1.0.0/report/run.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 22
+packages/nodes-base/nodes/Slack/test/v2/Slack.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,2383-2516
+  s_aedfba766afade::t_f5cb9bfed51f73 2517
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,3,7-25,31-37,39
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 29,43,77-84,1976-2063
+packages/workflow/test/errors/execution-base.error.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-23,26-27,34-84
+  s_aedfba766afade::t_c7a1d929ba91a4 85
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 37,147
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6,42-58
+  s_aedfba766afade::t_ccf60fc1ee2fd2 59
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 22-29
+packages/nodes-base/nodes/Slack/test/SlackTrigger.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,5,711-731
+  s_aedfba766afade::t_bf0792ed6879da 732-733
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6,26,83,86-99,357-371
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 20,142,161,182,186-188,197,205
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-275
+packages/@n8n/agents/src/types/sdk/file-store.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-26
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 202
+docs/generated/postgres-schema/public.binary_data.md
+  s_aedfba766afade::t_e6b0d285d31fc0 21
+packages/core/src/execution-engine/__tests__/eval-mock-fixtures.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,4,212-263
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 17
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,10,15-16,27-33
+packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/customObject/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-17,25
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 750
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_aedfba766afade::t_e6b0d285d31fc0 98
+packages/workflow/src/errors/abstract/node.error.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 82,84-86,106,118,129
+packages/cli/src/public-api/v1/handlers/sso-oidc/spec/schemas/oidc-configuration.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 11,51-56
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 63
+packages/nodes-base/nodes/Brandfetch/test/v2/BrandfetchV2.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-425
+packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/deal/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-123,130-149,163-171,174
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,16,19-43,54-57,60-61,69,73-89,94-102,115-117,123-128,132-139,143-158,167-170,193-428,430-431,433,435-437,439-475
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-58
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 180
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,43,349-350,353,364-371,394-395,398,428,840,1004,1021,1046-1047,1050,1065-1072,1098-1099,1102,1217,1324-1331,1393-1394,1397,1422
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-helpers.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-152
+packages/@n8n/agents/src/runtime/loop/hydrate-file-parts.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-58
+packages/@n8n/workflow-sdk/src/validation/node-port-resolvers/resolve-main-output-count.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-41
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_aedfba766afade::t_e6b0d285d31fc0 18,53,76,94-95
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-4,19-41
+  s_aedfba766afade::t_7f59ab7ad81b6f 42
+packages/testing/playwright/tests/e2e/mcp/mcp-service.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15,355
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 177-189,262-270,282
+packages/@n8n/cli/src/client.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 28-29
+packages/@n8n/api-types/src/__tests__/workflow-publish-blocked-details.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-56
+packages/cli/src/modules/agents/utils/__tests__/inbound-attachments.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-78
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10,53-80
+  s_aedfba766afade::t_9e2400b23c0206 81-82
+packages/cli/src/modules/instance-ai/__tests__/node-definition-resolver.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 79-115
+packages/@n8n/api-types/src/agents/agent-chat-attachments.constants.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-13
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-81
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 56-64
+packages/@n8n/workflow-sdk/src/lint/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-26
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 20-24
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 207-239
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 293-314,363-381
+  s_aedfba766afade::t_7f59a28f032b94 382
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,40-42,55
+docs/generated/postgres-schema/public.workflow_published_version.md
+  s_aedfba766afade::t_e6b0d285d31fc0 90-91
+packages/@n8n/instance-ai/knowledge-base/reference/workflow-builder-guardrails.md
+  s_aedfba766afade::t_e6b0d285d31fc0 7-10,121,123-126
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,8,27,33,35,112-158
+  s_aedfba766afade::t_c422f3096744af 159
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,7,15-20
+packages/@n8n/instance-ai/evaluations/__tests__/user-proxy.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 163-181,548-597
+  s_aedfba766afade::t_dc37a34dd61493 598
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,63,65,103-118,145-148,171-172,201-205,222-223,258-264,341,417-424,433
+packages/cli/src/modules/breaking-changes/rules/v3/__tests__/execute-workflow-source-modes.rule.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-108
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowPublishBlockedError.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 1-16
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 11,41-44,116,290-291,502,592,646,648,747,766-780,847
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-11,21-26,83,131,139,216-274,281,292-305,319,346,471-473,509-512,517,531-532,758-816,818-820
+  s_aedfba766afade::t_bdb683cbd5f1ac 817
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-helpers.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-64
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5-6
+packages/workflow/src/interfaces.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1246,3487-3493
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16-20,121-122
+  s_aedfba766afade::t_fc3c8e2236b72e 123-124
+packages/cli/src/modules/source-control.ee/types/import-result.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,8
+packages/@n8n/instance-ai/src/types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 390-402,909-910,996
+packages/cli/src/instance-settings-loader/loaders/sso/oidc.instance-settings-loader.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 32-33,47-48
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 38-82,97-110,419-423
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 16,58-68,129-140,143-144,282
+packages/frontend/editor-ui/src/features/agents/utils/toolIconSource.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-11
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 83
+packages/nodes-base/nodes/Aws/Transcribe/__schema__/v1.0.0/transcriptionJob/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,10-12,21-155,170-172,183
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 3,5,26-31,33-34,38,62-81,126-140,168-191,193-194,197-200,220,253,288-294,299-305,318-337
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,7,65-66,76,85,172-221
+  s_aedfba766afade::t_51b791e1cf2697 222
+packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,27-29,34
+packages/nodes-base/nodes/Google/Gmail/__schema__/v2.2.0/thread/addLabels.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-29
+packages/nodes-base/nodes/Google/Gmail/__schema__/v2.2.0/draft/delete.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+docs/generated/postgres-schema/README.md
+  s_aedfba766afade::t_e6b0d285d31fc0 11,18,102-103,157-158,334-347,420,1234-1235,1259
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 38,45,78,129,137,983-1081
+  s_aedfba766afade::t_48e7efbc2ce6d7 1082
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4-9,111-127
+  s_aedfba766afade::t_dc52dc73b359e8 128-129
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_aedfba766afade::t_e6b0d285d31fc0 16-17,37-38,49-50,83-84,108
+packages/@n8n/workflow-sdk/src/validation/output-index-validation.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-152
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 535-559
+packages/workflow/test/node-helpers.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 32-33,7590-7699
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 7-10,85,137-156
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,152-157,163
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 24-26,68,88,99,114,140,157-162,180,193,216,220-223,225,252,272,284,295,315
+packages/workflow/src/errors/abstract/execution-base.error.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10-13,16,40-41,58-63
+packages/nodes-base/nodes/Google/Gmail/__schema__/v2.2.0/message/addLabels.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,10-12,19-24,29
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 346-465
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12,45-46,79,102,121-122,131-138,143-165,169-218,222-235,246-247,256-263,276-283,289-309,311-318,349-350,363-364,373,388-395,429-436,460-467,508-515,533-534,615-622,631-638,654-661
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 10,86-103,105,132-133,145,216,221-222
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 69-74,76-78
+packages/frontend/editor-ui/src/app/utils/nodeTypeUtils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,7-8,11,18,245-372
+  s_aedfba766afade::t_7d22a783a63ca0 373
+packages/@n8n/workflow-sdk/src/cli/validate.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-291
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 7,20,62,68,84-93,97-98,101-109
+  s_aedfba766afade::t_3e5cac145545a1 110
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,7-8,872-967
+.github/workflows/test-evals-instance-ai.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 167,228
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-275
+packages/testing/janitor/src/cli.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 623-649,660,664,666-667,674-676,678-682
+packages/@n8n/config/test/config.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 470,540,646-647
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiMcp.store.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12-14,29,150-161
+  s_aedfba766afade::t_58a4686c6f5d7e 11,162
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,14,18,21
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-183
+packages/@n8n/agents/src/runtime/__tests__/file-parts.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-200
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-659
+packages/frontend/editor-ui/src/features/credentials/credentials.utils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-147
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 79
+packages/nodes-base/nodes/Okta/__schema__/v1.0.0/user/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 160-165,177-185,201
+packages/nodes-base/nodes/Webhook/description.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 113-128
+packages/@n8n/workflow-sdk/src/lint/code-node/extract-snippets.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-51
+packages/testing/playwright/pages/SettingsSsoPage.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 48
+packages/@n8n/workflow-sdk/src/cli/node-definition-dirs.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-88
+packages/@n8n/db/src/entities/scheduled-job.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,8,136-137,147-164
+packages/cli/src/modules/instance-ai/eval/mock-quirks.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 68,96-97,117
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 42,537
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-7,26-31,36-47,54-58,110-135,151,153,155,157,166-167
+packages/cli/src/node-catalog/node-catalog.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 212,253,325-339
+  s_aedfba766afade::t_77fea5ff2bbe93 340-341
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6,119,233-342
+  s_aedfba766afade::t_dfff99f3e0c77e 343
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 919,1217,1219,1227
+packages/@n8n/workflow-sdk/src/validation/informational-validation-codes.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-23
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 11-14,30-31,72,150,289
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validation-integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-606
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 5-12,14,62-115,219,221,231,247,259-263,358-359,365,376,378-388,429-434
+  s_aedfba766afade::t_d337b52365a5e8 435
+packages/@n8n/workflow-sdk/src/validation/node-port-resolvers/resolve-main-input-count.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-41
+packages/cli/src/modules/mcp/tools/webhook-utils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 72,81-84
+packages/nodes-base/nodes/MistralAI/__schema__/v1.0.0/document/extractText.json
+  s_aedfba766afade::t_e6b0d285d31fc0 21-26,103
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 30
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__schema__/v1.1.0/document/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 15-20,23
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 69-74
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 23,68-78,80-82,89,121-123,126-151,208,213-220,229-234,238-262,268-282,285-292,306,309-313,317-324,331-333,342-344,357-360,362,386-389,499-504,507-513,517-524,526,534,550,557,572,574-580,582,584-611,694-695,699-706
+  s_aedfba766afade::t_e404ae50e51e72 707
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/test-schema-setup.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-117
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 133,163
+packages/@n8n/workflow-sdk/src/cli/node-definition-dirs.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-75
+packages/cli/test/integration/scheduling/scheduler-multi-main.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 135,192,204,233
+packages/nodes-base/nodes/CustomerIo/__schema__/v1.0.0/segment/add.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,10,47,69-70,83,125,217-257
+  s_aedfba766afade::t_18900ff3cf0778 258-259
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4-5,42-55,63-67,115,120-121,124-126,129-130,134,140,145,149-150,153-154,158,161,163-164,167,169,172-174,177-184,188,194,197,201,206
+packages/@n8n/utils/src/json/json-size-exceeds.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-403
+packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/spaceTag/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-18
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,16-19,37-39
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 186,208-234
+packages/nodes-base/utils/sendAndWait/utils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16,497-512,537-539
+  s_aedfba766afade::t_fd4ada4908d88f 540
+packages/testing/janitor/src/cli/help.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 244-246,249-251,263-265,268-269
+packages/@n8n/db/src/entities/scheduled-task.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 44,103-104,196-204
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 24,26,98-99,127,229,235,260-284
+  s_aedfba766afade::t_57d3568bb0d27d 285-286
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpDetailBody.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 230
+packages/cli/src/modules/instance-ai/eval/__tests__/ledger-snapshot.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-57
+packages/@n8n/api-types/src/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 18,533
+packages/nodes-base/nodes/Brandfetch/brandfetch.svg
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9-16,53-56,108-109
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/methods/listModels.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-96
+packages/nodes-base/nodes/Coda/__schema__/v1.1.0/table/getAllRows.json
+  s_aedfba766afade::t_e6b0d285d31fc0 6-14,17
+packages/nodes-base/nodes/Brandfetch/test/v1/GenericFunctions.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-242
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/preserve-node-positions.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-192
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-1556
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/wait-gate-script.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-238
+packages/frontend/editor-ui/src/app/components/MainSidebar.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 387
+packages/cli/src/modules/mcp-registry/registry/mcp-registry-search.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 59-66,91
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 2,4-11,16-19,41,43-45,54-71,89-99,131-132,151-162,187-192,252-254
+  s_aedfba766afade::t_15061c29cb00f3 255-256
+packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/delete.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/nodes-base/nodes/Aws/Transcribe/__schema__/v1.0.0/transcriptionJob/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 21-28,39
+packages/@n8n/scheduler/src/core/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 54,58
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/no-restricted-globals.md
+  s_aedfba766afade::t_e6b0d285d31fc0 36-37,43-45,50-58
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 645-667
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 18,23-24,39,44,118,1433-1457
+  s_aedfba766afade::t_040fefef764a17 1458
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 77-78
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/create-llm-check.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 119-122,125
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,130
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 7-9,30-36,39,49-70,76,80,84-85,91,100,116,138-139,141-142,144-146,150-153,155,162,164,219-220,222,225-228,231-271,274,277,279-281,284-285,287-293,296-298,301,303,305-307,309-313,315-318,320-327,331,339-361,372,382,392,405
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 24-25,51-52,80-81,108-109,404-405,454-518
+  s_aedfba766afade::t_a9ba673865f8ed 519
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 17,41-48,57,62,64-75,182,190,198,214,226,234,268,296,318,334,350,366
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.target-registry.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-222
+packages/cli/src/permissions.ee/__tests__/project-scope.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-52
+packages/@n8n/workflow-sdk/src/validation/informational-validation-codes.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/cli/src/modules/mcp/tools/search-projects.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 71
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12-13,26-31
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 1-149
+packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 16-18,60
+packages/nodes-base/nodes/WooCommerce/__schema__/v1.0.0/product/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 138-149,251-253,256-261,266-268,403
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 74-75,129-131,135,192-198,221-222
+packages/nodes-base/nodes/FreshworksCrm/__schema__/v1.0.0/search/query.json
+  s_aedfba766afade::t_e6b0d285d31fc0 27-29,40
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 129-132,134-144,149-170,409-419,907-1146
+packages/frontend/editor-ui/src/features/credentials/credentials.utils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-38
+packages/@n8n/scheduler/src/core/recurrence/__tests__/resolve.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 23-24
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 519-546
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-sdk-reference.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 59
+packages/cli/src/modules/instance-ai/eval/provider-shapes.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 23-24,38-47,91-98,152-155,253-267,307,328,333-336
+  s_aedfba766afade::t_1199146cf9470c 337
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useMcpServerConnect.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-138
+packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/marketChart.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,9-11,14
+packages/nodes-base/nodes/Google/Task/__schema__/v1.0.0/task/update.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,58
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,13,36-51,97-113
+  s_aedfba766afade::t_6a7690fea96782 114
+packages/@n8n/instance-ai/evaluations/README.md
+  s_aedfba766afade::t_e6b0d285d31fc0 309,718,720
+packages/nodes-base/nodes/Microsoft/Teams/__schema__/v2.0.0/channel/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 22-24,32
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-workflow-converter.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,4-9,23-34,48-54,173-777
+packages/@n8n/nodes-langchain/utils/aws/resolveBedrockRegion.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-17
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/missing-trigger-validator.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 43
+packages/nodes-base/nodes/CoinGecko/__schema__/v1.0.0/coin/price.json
+  s_aedfba766afade::t_e6b0d285d31fc0 120-128,266-277,298-300,321
+packages/frontend/editor-ui/src/app/utils/fileUtils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-17,28-29
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 54
+packages/core/src/errors/error-reporter.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 133-135,137,154
+packages/@n8n/workflow-sdk/src/workflow-builder-plugins.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1086,1105
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 18
+packages/nodes-base/nodes/Microsoft/Outlook/__schema__/v2.0.0/messageAttachment/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 42-44,48-53,56-58,64
+packages/@n8n/ai-utilities/src/web-search/brave-search.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6-9,67-101
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 29,68,249,257,260,283,286,294,296,299
+packages/frontend/editor-ui/src/app/components/WhatsNewModal.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8
+packages/nodes-base/nodes/Lemlist/__schema__/v2.0.0/campaign/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 7-9,19-21,26
+packages/cli/src/__tests__/credentials-overwrites.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 633-634,641,700,757,873-875,877-878,881,886,890,895
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-66
+packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/case/addComment.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-12
+packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/project/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-42
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 30,36,137,284,299,304,359
+packages/@n8n/config/src/configs/executions.config.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,167-177
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 410-419
+packages/nodes-base/nodes/Slack/__schema__/v2.4.0/message/getPermalink.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-15
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 144-311
+packages/@n8n/api-types/src/dto/oidc/__tests__/config.dto.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 29,34-45
+  s_aedfba766afade::t_689bb3f5d9b289 46-47
+packages/@n8n/db/src/utils/dialect-time.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 31-68
+packages/@n8n/agents/src/runtime/__tests__/crash-resume.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 17-18,335-459
+  s_aedfba766afade::t_46253abb556fc3 460-461
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 36-38,65,99-101,155-158,193,198-202,208,211
+docs/generated/sqlite-schema/README.md
+  s_aedfba766afade::t_e6b0d285d31fc0 11,18,102-103,140-141,321-334,407,421,1221-1222,1246
+packages/nodes-base/nodes/ServiceNow/__schema__/v1.0.0/incident/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 22-29,62-64,77-79,86-91,116-118,142-144,151-153,177-179,183-185,218-220,267
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 11-16,135-202
+  s_aedfba766afade::t_0c9165d327aef8 203
+packages/cli/src/modules/mcp/tools/get-execution.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 71,74,78,94
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 431-497
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 1-666
+packages/cli/src/modules/mcp/tools/list-credentials.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 121
+packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 519-535,819
+packages/testing/janitor/src/core/affected-packages-analyzer.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6-11,27-28,48-50,177-203,231-328
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 50-58,65-70,79,86,93-142,146-162
+  s_aedfba766afade::t_f0f3c9c84e567e 163
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10,33-43,156-194
+packages/cli/src/scaling/scaling.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10-11,34,356-357,360
+packages/frontend/editor-ui/src/features/settings/sso/sso.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 197,230
+docs/generated/sqlite-schema/agent_execution.md
+  s_aedfba766afade::t_e6b0d285d31fc0 9,18,32,43-45,65,79
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 81-82,114-120,149-150
+packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/lead/query.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/@n8n/instance-ai/src/tools/__tests__/research.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 353-385
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,311
+packages/@n8n/workflow-sdk/src/validation/input-index-validation.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-297
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 189
+packages/nodes-base/nodes/Microsoft/Entra/__schema__/v1.0.0/user/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 13-15,20
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/BedrockInvokeModelEmbeddings.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-97
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 26,594-816
+  s_aedfba766afade::t_c1fb1e983c35b2 817-818
+packages/nodes-base/nodes/Slack/V2/MessageDescription.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 320-385,762-766,768-772,774-778,780
+packages/nodes-base/nodes/Grist/test/gristBaseUrl.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-4,6,55-97
+  s_aedfba766afade::t_447c47cefcaa31 98
+packages/nodes-base/nodes/Clockify/__schema__/v1.0.0/task/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-39
+packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/lead/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 85-87,166
+packages/nodes-base/nodes/Google/Drive/__schema__/v3.0.0/file/upload.json
+  s_aedfba766afade::t_e6b0d285d31fc0 100-102,111-135,393
+packages/nodes-base/nodes/Trello/__schema__/v1.0.0/card/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 56-58,96-101,107-109,163-165,215
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 36,127
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 72-74,210
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowDetails.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 67,603,615-616
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-5,10,16,27-43,68
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependency-resolver.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12-17,27,52
+  s_aedfba766afade::t_2c820ffe1e165b 53
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,7,70-82,88-89,221-300
+  s_aedfba766afade::t_d5b8597b8d4df7 301-302
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_aedfba766afade::t_e6b0d285d31fc0 6-10,16,37-38,40-42,64-66,71,140,186-188,197-207,211,221-224,229,440-448,450-452,460-463,711-712,718,738-739
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 34,74-76,236,674,804,808,826
+packages/nodes-base/nodes/WooCommerce/__schema__/v1.0.0/product/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 257-259,262-267,272-274,322-324,334-336,390-392,415
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 192-243
+  s_aedfba766afade::t_25cf5db1d60a49 190-191
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 67-77,95-97,99-102,222-244
+packages/@n8n/instance-ai/evaluations/harness/schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 18-26
+packages/@n8n/api-types/src/agent-builder-tool-node-types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 7-18,24-27
+packages/@n8n/workflow-sdk/src/lint/ast-walk.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-51
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9,1472-1486
+  s_aedfba766afade::t_ac09c913be8ae0 1487
+packages/nodes-base/nodes/Webflow/__schema__/v2.0.0/item/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,34
+packages/frontend/editor-ui/src/app/components/VersionUpdateCTA.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8
+packages/@n8n/ai-utilities/src/node-catalog/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 29
+packages/@n8n/scheduler/src/observability/attributes.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 24-26
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 238-267
+packages/@n8n/agents/src/sdk/agent.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16,54,62,73,175-176,373-378,1100,1143-1148,1153,1181-1185,1227,1236-1275,1277-1304
+docs/generated/sqlite-schema/scheduled_task.md
+  s_aedfba766afade::t_e6b0d285d31fc0 9,29,53,75,93-94
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 3-11,21,23,32-33,47,67,73,84-91,94-97,99-101,122,124-126,128-130,132,136-139,141,144-155,157-161,163-178,180-182,184-185,188-199,202-222,315,317-321,324-325,371,374-376,378,382-384,389
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 25,150
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-69
+packages/@n8n/workflow-sdk/src/validation/node-port-resolvers/resolve-main-input-count.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-82
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageAttachments.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-80
+packages/@n8n/workflow-sdk/src/lint/code-node/extract-snippets.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-129
+packages/@n8n/workflow-sdk/src/validation.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 11-18,21-24
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1335-1417,2331-2381,3135-3160,3418-3469
+  s_aedfba766afade::t_4be8d04a8f34de 3470
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 222-239,835,837,840,842
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-3,14-69
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 441-442
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 39
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8,17,53,55,164,273-277,281,288,470-472
+  s_aedfba766afade::t_44adad57b85d0f 473-474
+packages/cli/src/modules/agents/adapters/__tests__/agents-credential-provider.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-51
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,69-95
+  s_aedfba766afade::t_969e401455daf0 96-97
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 656,662-663,681,3295-3358,3379-3380,3428-3542
+packages/cli/src/modules/instance-ai/eval/__tests__/mock-handler.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 990-1144
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 27-38
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 14-15,239-272,288,512-551,576-578
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 326-375,715-785
+packages/testing/janitor/src/core/test-scoped-runner.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 12-13,42-43
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 28,380-400
+  s_aedfba766afade::t_e91a62d593a4d6 401-402
+packages/nodes-base/nodes/Salesforce/__schema__/v1.0.0/account/upsert.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-15
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,127,177,382,577,629,706
+packages/nodes-base/nodes/WhatsApp/__schema__/v1.1.0/media/mediaUpload.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 11-12,56-57,149,179,188,278,297
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 43-82,181-225
+  s_aedfba766afade::t_5e982373052182 226
+packages/cli/test/integration/scheduling/scheduler-cascade-delete.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 100,123
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 140-184
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-5,26-45
+  s_aedfba766afade::t_418c491a2e6d9e 46
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 116
+packages/@n8n/scheduler/src/core/types/schedule.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-5,90-93
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/scripted-gate-run.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-164
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,4-5,11,22-26,41-45,47-57,62-77
+  s_aedfba766afade::t_145c1324c01750 78
+packages/cli/src/workflows/workflow.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 23,55,57,64-65,99,568-569,633-641,643,860-865,1041-1111,1113,1128,1227,1585,1607
+packages/cli/src/services/ai-gateway.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 351-401
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 60
+packages/nodes-base/nodes/QuickBase/__schema__/v1.0.0/record/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-9,16-18,23
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 214-215
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,11-15,52,82-88,94-98,100,108,113,118-121,125,162-203
+  s_aedfba766afade::t_6f399a09ac570e 204
+packages/nodes-base/credentials/common/aws/regions.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 22-26,62-66
+packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/account/upsert.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-37
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 26,42-43,66,132,149,166,170-175,177-178,181-182,188-192,209-215,236-241,331-343,374-384,470-477,483-484,565,682-685,689-692,694-697,700-707,711-714,717-718,726-819,822-823,831,837,861-866,873-874,881-884
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 192-197
+packages/@n8n/workflow-sdk/src/cli/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,6,8-22,27,32-34,37-38
+packages/cli/src/errors/http-error-serializers.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,29-32,35-39
+packages/cli/src/modules/mcp/tools/test-workflow.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 38,83
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10,14-19,148-182,251-253,257-267,271-273,275-285,327-331,339-346,349,353,356
+packages/nodes-base/nodes/Brevo/__schema__/v1.0.0/contact/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 9-11,41-43,46
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelSlackSetup.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 171,173,185,276,398
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 23,32-35,57-58,308,324-325,377
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,36-38,92-107,134-135,232-249,253
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 93
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 35,38,58,101,106,132-225
+packages/nodes-base/nodes/Snowflake/__tests__/executeQuery.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2-7,9-11,166-203
+  s_aedfba766afade::t_23a99d3e859f5a 204
+packages/@n8n/api-types/src/agents/__tests__/child-trace.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-55
+packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/chat/setTitle.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-12
+packages/cli/src/modules/mcp/__tests__/webhook-utils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 17,311-360
+  s_aedfba766afade::t_dbab2113cee593 361
+.agents/skills/public-api/reference.md
+  s_aedfba766afade::t_e6b0d285d31fc0 1-115
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/workflow.schema.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 38-39
+packages/nodes-base/nodes/Phantombuster/__schema__/v1.0.0/agent/getOutput.json
+  s_aedfba766afade::t_e6b0d285d31fc0 4-6,14
+packages/frontend/editor-ui/src/app/components/UpdatesPanel.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 6
+packages/cli/test/integration/oidc/oidc.instance-settings-loader.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 51-52,70-71
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SubagentStepTimeline.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 189-234
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 582-583,588-590
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 103-107
+scripts/build-n8n.mjs
+  s_aedfba766afade::t_e6b0d285d31fc0 221-250
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2241-2242,2273-2279,2298-2299,2313-2317
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialModeSelector.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 60-64,71,74-78,82-86,112,115,117,119,124-131,133-141,183-188
+packages/nodes-base/nodes/UptimeRobot/__schema__/v1.0.0/monitor/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-45
+packages/nodes-base/nodes/Reddit/__schema__/v1.0.0/post/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 72-74,129-131,320
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 7-18,33-73,75,77,79,81-90,92-94,110-114,150-169,181-203
+  s_aedfba766afade::t_e99764707e0890 204
+packages/nodes-base/nodes/Brandfetch/test/Brandfetch.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-35
+packages/nodes-base/nodes/Slack/test/Slack.node.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-17
+packages/frontend/editor-ui/src/features/settings/sso/views/SettingsSso.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 536-572
+.agents/skills/public-api/SKILL.md
+  s_aedfba766afade::t_e6b0d285d31fc0 4-7,12-54,58-59,67-164
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 1-188
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-1504
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/resolve-schema.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-519
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,4,6,8,12-23,31-81,87-88,94-101,103-109,112,120,128,136-144,155-196,198-329
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 7-11,91-94,122-163,177
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-79
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 27,100,112,114-116,122,194,249,307,360,376,393,404,407
+packages/cli/test/migration/1785255306000-create-agent-chat-attachments-table.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-201
+packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issue/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 959-1073,1092
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 143,546-553,578,615-623,669,682-684,689,693,722-727,804-813,822,830-836,959,967-973
+packages/cli/src/executions/execution-recovery.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 11,13,74-81,83-87,89-101
+packages/nodes-base/nodes/Telegram/__schema__/v1.2.0/message/sendMessage.json
+  s_aedfba766afade::t_e6b0d285d31fc0 24-26,87
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 345
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4-5,13-15,17-25,43-49,55-58,65-67,136-145,175-179,190,232-389,393-396,405-413,415-418,430-435,437-438,440-441,444-446,448-451,453-466,469,515-516,519
+packages/nodes-base/nodes/Trello/__schema__/v1.0.0/list/update.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-18
+packages/nodes-base/nodes/Todoist/__schema__/v2.1.0/project/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-42
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 473
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 29-37,105-111,113-119,121-130,133-140
+packages/workflow/src/node-helpers.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 21,2143-2202
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15,21-25,32,112-117,125,130,148-155,174
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 90
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_aedfba766afade::t_e6b0d285d31fc0 99,113
+packages/@n8n/cli/src/commands/package/export.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 29-38,59-68
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 14-15
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 45,72,78
+packages/@n8n/ai-utilities/src/node-catalog/__tests__/get-node-type-definition.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,60-114
+packages/cli/src/modules/agents/__tests__/agent-mcp-access.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-218
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 251-256
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 13-14,47-51,68-69,79-102,121-123,139-140,144,214
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,255-307,531-566
+  s_aedfba766afade::t_955f38436685f8 567
+packages/cli/src/modules/agents/agents.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9,11,16,24-28,38,48-52,66,176-204,251-258
+  s_aedfba766afade::t_e865c1a5887e2a 259
+packages/frontend/editor-ui/src/features/settings/sso/components/OidcSettingsForm.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 75,90,123,192,412,428-447
+  s_aedfba766afade::t_e9552ee53bc274 448
+packages/nodes-base/nodes/HighLevel/__schema__/v2.0.0/contact/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 11-13,115
+packages/cli/src/modules/mcp/mcp.constants.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 29
+packages/cli/src/modules/mcp/tools/workflow-builder/credentials-auto-assign.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4-8,24-86,156-162,171,179-183,185,189-192,333-340,343-374
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_aedfba766afade::t_e6b0d285d31fc0 53-56
+  s_aedfba766afade::t_8af30cb2b44d08 52
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,8-59
+  s_aedfba766afade::t_b9c8beacdafaec 60
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 76-77,118-120,176-178
+packages/cli/src/modules/mcp/tools/list-tags.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 65,71,81
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 81-82,115-116,604-610,691-738,740-745,748,755-759,768,771-775,1152-1159,1168,1484,1505
+packages/nodes-base/nodes/Google/Gmail/__schema__/v2.2.0/thread/removeLabels.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-29
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 83-94
+  s_aedfba766afade::t_c250bf3e4babee 82
+packages/nodes-base/nodes/RabbitMQ/RabbitMQ.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 394
+packages/cli/src/modules/agents/integrations/callback-store.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8-9,12-13,30,35,43-49
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 786-787,1216,1218-1219,1226
+packages/nodes-base/nodes/Microsoft/Entra/__schema__/v1.0.0/group/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 22-47,55
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolRefAdapter.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 344,356,367-383,391-396
+packages/cli/src/metrics/prometheus/__tests__/scheduler-metrics.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,160-161,274,284-302,328-332
+packages/nodes-base/nodes/Sms77/__schema__/v1.0.0/sms/send.json
+  s_aedfba766afade::t_e6b0d285d31fc0 15-17,37
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 26,549-554,556
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,290-301
+.github/CLAUDE.md
+  s_aedfba766afade::t_e6b0d285d31fc0 33-38
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 62-104
+packages/workflow/test/errors/node.error.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,24-33
+  s_aedfba766afade::t_9d13250f2bd1cb 34
+packages/nodes-base/nodes/Strapi/__schema__/v1.0.0/entry/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 19-21,34
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 22-23,109-110
+docs/generated/sqlite-schema/agents.md
+  s_aedfba766afade::t_e6b0d285d31fc0 21,54,97-109
+  s_aedfba766afade::t_ac56ffe33a12ac 110
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 20,32,68
+packages/nodes-base/nodes/Brandfetch/test/v2/GenericFunctions.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-245
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 21,161-198
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15,146
+packages/frontend/editor-ui/src/features/agents/components/settings/AgentBuilderModelSection.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 64-68,214
+packages/nodes-base/nodes/Hubspot/__schema__/v2.2.0/company/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 36-38,51-56,91
+packages/@n8n/workflow-sdk/src/lint/lint-workflow-source.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-60
+packages/cli/src/services/__tests__/tag.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,79,86,94,102-104,108,110-111,113-124,128-130,150,164,177,187,197-199
+packages/nodes-base/credentials/GristApi.credentials.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 25-31,33-48
+packages/nodes-base/nodes/Airtop/__schema__/v1.1.0/extraction/scrape.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-58
+packages/frontend/editor-ui/src/app/components/VersionUpdateCTA.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 2
+packages/@n8n/instance-ai/src/tools/workflows/preserve-node-positions.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-233
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_aedfba766afade::t_e6b0d285d31fc0 1-99
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 23,38,42-70,86,98,110-112
+  s_aedfba766afade::t_2f2b05303c6bc0 113-114
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 10,39-42,47,56
+packages/core/src/execution-engine/eval-mock-fixtures.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16-17,213-313
+  s_aedfba766afade::t_58386837af2864 314
+packages/cli/src/modules/mcp/__tests__/mcp.controller.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 331-333,336-348
+packages/cli/src/auth/auth.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 42-45,65-71,112-118,335-340,347
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 25,142
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.publish.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 41-49
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 25-34,56-64,100-166
+  s_aedfba766afade::t_81bf7f137e34cc 167
+packages/cli/src/modules/mcp/__tests__/get-workflow-sdk-reference.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 17
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 14,63-83
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,45-83,108-178,217-237,263-273
+  s_aedfba766afade::t_44c42114f84013 274
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1043-1044,2390-2392,2524,3236-3240,3297-3301,3325-3326,3344,3383-3392,3440-3444,4557-4558,4580-4581,4587-4588,5094-5096,5323-5324,7183-7185,7246-7247,7249,7294-7295,7302-7308,7373-7374,7379,7779-7789,7794,7830-7831
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,567-833
+  s_aedfba766afade::t_5d80b1fbb69357 834
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 18-19,51-52
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 21-23
+packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 4,11,22,29-75,79-84,89,124,131,147
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-2,4-10,14-15,32-53,57-69,94-96,107-338
+packages/nodes-base/nodes/Pipedrive/__schema__/v1.0.0/deal/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 69-71,154-162,178-212,228-230,259-261,282-284,344
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8,22,96-97,355-357,512-514,593-596
+  s_aedfba766afade::t_6df387bf60a658 597
+packages/cli/src/commands/import/workflow.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 19
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/11.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-29
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 297
+packages/cli/src/scaling/job-processor.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 60,187,200-201,222
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 28,34,44,47-48,81-89,108-117,123-127,133-135,171-174,204-208,291-300
+  s_aedfba766afade::t_c6f64d31534b2b 301-302
+packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/product/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-159
+packages/core/src/execution-engine/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 89-90
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 30-34,458-521
+  s_aedfba766afade::t_5461ea0b0d6f46 522-523
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 10,21,25-29,44-45,92-95,140,155,162,181,228-235,247
+.github/workflows/util-publish-api-schema.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 61-68
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-694
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 35-36,50-51,142-146,149,219-226
+  s_aedfba766afade::t_4657a12f92fe49 227-228
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 848-872,874-876,919-920,927-942,956,958-999,1009-1012,1041,1049,1051,1166-1207
+  s_aedfba766afade::t_71608742664556 1208
+packages/nodes-base/nodes/Slack/SlackTrigger.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 17,299,302,307,309,312
+packages/nodes-base/nodes/Microsoft/SharePoint/__schema__/v1.0.0/item/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 49-54,67-72,79-81,97-99,109-114,118-123,186
+packages/@n8n/api-types/src/agents/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,9,20-26
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 35,40,59,175-179,5340-5450
+  s_aedfba766afade::t_801dc307f6f463 5451
+packages/nodes-base/nodes/Demio/__schema__/v1.0.0/event/register.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-12
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2-4,7,9,16-21,62-63,68,70,72-73,83-116,120-125,127-131,133-137,139-168,171
+packages/@n8n/db/src/entities/binary-data-file.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6-11
+packages/nodes-base/nodes/WooCommerce/__schema__/v1.0.0/order/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 18-42,156-158,265-267,579
+packages/nodes-base/nodes/ERPNext/__schema__/v1.0.0/document/create.json
+  s_aedfba766afade::t_e6b0d285d31fc0 17,70,76,90-92,114-116,129-131,162-164,183-185,247
+packages/cli/src/security-audit/security-audit.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 66,69
+packages/frontend/editor-ui/src/app/components/WhatsNewModal.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 6
+packages/cli/package.json
+  s_aedfba766afade::t_e6b0d285d31fc0 215
+packages/cli/src/modules/mcp/mcp.controller.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 77-82,90,99-107,199
+packages/cli/src/public-api/v1/handlers/sso-oidc/spec/schemas/oidc-configuration.update.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 15,57-62
+packages/nodes-base/nodes/Snowflake/Snowflake.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 273-277,279-281,283-286,288-289,291-293,295-297,299-310,313-321,324-327,329-345,347-350,352-355,357-359,361-383,387-390
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 14-18,38-42,50-56,62-63,188,196-198,200-207,212-214,217,244-252,256-257,260,263,265-271,282-286,349,357,376-399,498-525
+packages/cli/src/modules/mcp/__tests__/search-workflow-nodes.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 60
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,17,68,78,117-135
+  s_aedfba766afade::t_2688d05d3a6410 136
+packages/cli/test/integration/oidc/oidc.service.ee.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 73,87,100,125,149,164,189,216,249,303,349,451,526,564,594,1372-1384
+  s_aedfba766afade::t_48c393eeaebca9 1385
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentModelCredentials.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-160
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.attachments.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-62
+.github/test-metrics/e2e-impact-map.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,8,17,35-38,48,168-205,220-225,240,246-248,263-265,278-279
+docs/generated/sqlite-schema/binary_data.md
+  s_aedfba766afade::t_e6b0d285d31fc0 9,32
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-207
+packages/cli/src/services/tag.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 4,105-114,143-146,149-151,154
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useMcpServerConnect.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-351
+packages/nodes-base/nodes/Mailchimp/__schema__/v1.0.0/campaign/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 124-129,133-135,239
+packages/frontend/editor-ui/src/app/components/BottomMenu.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 12
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-135
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 9-10
+packages/nodes-base/nodes/Zoho/__schema__/v1.0.0/deal/upsert.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-37
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 377-404
+docs/generated/sqlite-schema/workflow_published_version.md
+  s_aedfba766afade::t_e6b0d285d31fc0 102-103
+packages/nodes-base/nodes/Brandfetch/v2/BrandfetchV2.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-324
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-misfire-coalesce.spec.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-67
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,21,81-88,109-110,141-146
+  s_aedfba766afade::t_c5fcfb5384cee2 147
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1,3,88-146
+  s_aedfba766afade::t_fdb19c6c9ee6ca 147
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-142
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/InstanceAiToolsConnectionModalWrapper.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 63-69,144-149,221,226,229,238-259
+packages/nodes-base/nodes/ClickUp/__schema__/v1.0.0/task/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 121-199,257-262,272-274,292-294,361-383,424-437,568
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 92-106
+packages/nodes-base/nodes/Zulip/__schema__/v1.0.0/message/sendStream.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-15
+packages/cli/src/permissions.ee/project-scope.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-24
+docs/generated/postgres-schema/public.agent_execution.md
+  s_aedfba766afade::t_e6b0d285d31fc0 7,60
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 239-257
+packages/nodes-base/nodes/Google/BusinessProfile/__schema__/v1.0.0/review/getAll.json
+  s_aedfba766afade::t_e6b0d285d31fc0 33-35,48
+packages/cli/src/modules/agents/__tests__/agents-tools.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,160
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-187
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 369-554
+packages/cli/src/modules/mcp/tools/workflow-builder/validate-workflow-code.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 112
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-requirement.exporter.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-5,9-10,15-24,26-27,29-30,57-82,85-86,88-89,95
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 2,157,358
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 8-13,21-39,58-63,97-101,103-104,107-110,113-116,118-121,194-232
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_aedfba766afade::t_e6b0d285d31fc0 61-63
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 20,40,616-619,634-638,670-673,682
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 134-168,317-351
+  s_aedfba766afade::t_b6bc19ec2bb51b 352
+packages/frontend/editor-ui/src/features/agents/agent.types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 20,28-31
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 21,182,190-196,238,262
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-telemetry.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 60-85
+packages/cli/src/events/maps/workflow-publication-metrics.event-map.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 60-65
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3,8,11-21,23-26,40-50,54,59-61
+packages/cli/src/modules/agents/utils/inbound-attachments.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-71
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/person/search.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-67
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataBinary.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 7,48-50,54,59
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/create-llm-check.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 39-64
+packages/nodes-base/nodes/Gitlab/__schema__/v1.0.0/file/edit.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-12
+packages/@n8n/db/src/migrations/common/1785255306000-CreateAgentChatAttachmentsTable.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-86
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 255-273,321-322
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 70,77,102
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16-18,26,28,32-33,37,41,43,107,376,1024,1078,1116,1132-1237,1302,1550-1667,1733,1878,1998
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 354,364-368
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 31,44,49-71,86,116,136,160,179,207,223,248,260,274,291,309,321,324-337
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 223-231,621-666,669,671,675-680,682-684
+packages/@n8n/instance-ai/src/tools/workflows/wait-gate-script.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-277
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5-6,10,31,42,50,362-521
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16-18,21
+packages/frontend/editor-ui/src/features/ai/mcpAccess/module.descriptor.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 6,8,20-21,55-66,100-102,104
+  s_aedfba766afade::t_d7e75e1fa1b344 103
+packages/nodes-base/nodes/Github/__schema__/v1.1.0/file/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 18-20,52
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 5,1351
+packages/nodes-base/nodes/HaloPSA/__schema__/v1.0.0/ticket/get.json
+  s_aedfba766afade::t_e6b0d285d31fc0 20
+packages/cli/src/modules/mcp/__tests__/get-execution.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 45,48,190
+packages/nodes-base/nodes/Dropcontact/__schema__/v1.0.0/contact/fetchRequest.json
+  s_aedfba766afade::t_e6b0d285d31fc0 55
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 95,168,171,2260-2271,2335,2363,2369-2405,2409
+packages/cli/src/modules/mcp/tools/prepare-workflow-pin-data.tool.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 65,72,82
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-4,7-9,26-28,35-53
+  s_aedfba766afade::t_ac811aeaa483f8 54
+packages/@n8n/api-types/src/dto/oidc/config.dto.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 15,28
+packages/@n8n/workflow-sdk/src/lint/types.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-28
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchemaItem.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 11,44,46
+packages/nodes-base/nodes/Slack/__schema__/v2.4.0/reaction/remove.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-9
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/manifest.json
+  s_aedfba766afade::t_e6b0d285d31fc0 112-129
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuSearchableContent.vue
+  s_aedfba766afade::t_e6b0d285d31fc0 12,109,160,166-167,179
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 42,689-715
+  s_aedfba766afade::t_8f2c7cef4bb1ce 716
+packages/@n8n/agents/src/index.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 213,226-227
+packages/cli/src/modules/agents/agent-mcp-access.service.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 1-123
+packages/nodes-base/nodes/Pipedrive/__schema__/v2.0.0/organization/search.json
+  s_aedfba766afade::t_e6b0d285d31fc0 1-41
+packages/@n8n/cli/docs/commands/package.md
+  s_aedfba766afade::t_e6b0d285d31fc0 31,37-38,41-44,74-75,82-84
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 229-230,234,236
+packages/cli/src/modules/instance-ai/__tests__/run-debug-gating.test.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 21,54,67-70,93
+packages/nodes-base/nodes/Slack/Slack.node.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 16,27
+packages/@n8n/instance-ai/src/tools/orchestration/verification/prepare-run.ts
+  s_aedfba766afade::t_e6b0d285d31fc0 3-6,13-14,69-72,77,96-99
+packages/cli/src/controllers/e2e.controller.ts
+  s_aedfba766afade::t_81d14a933ac051 268-281
+pnpm-lock.yaml
+  s_aedfba766afade::t_94171aec314708 3981-3983,4297-4299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "456e05b68d3f68f746db3ccc70804b7e0242e0d5",
+  "prompts": {},
+  "sessions": {
+    "s_aedfba766afade": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99c63170-3985-456f-b095-1970fb4ec7ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

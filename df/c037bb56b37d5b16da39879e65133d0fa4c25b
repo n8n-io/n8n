@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_69f0f345c55132::t_5ccc9a20a17c07 1340
+packages/cli/src/modules/agents/__tests__/attachable-workflows.service.test.ts
+  s_69f0f345c55132::t_823430a5f34fa2 59
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_69f0f345c55132::t_86e1c116415360 279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "dfc037bb56b37d5b16da39879e65133d0fa4c25b",
+  "prompts": {},
+  "sessions": {
+    "s_69f0f345c55132": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "138879b6-9eeb-4d2c-9768-76825ef2c5c2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

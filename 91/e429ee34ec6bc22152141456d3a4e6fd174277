@@ -1,0 +1,19 @@
+packages/testing/playwright/pages/components/CredentialModal.ts
+  s_1211055aa32911::t_cc707ab4df7801 22-23,37-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "91e429ee34ec6bc22152141456d3a4e6fd174277",
+  "prompts": {},
+  "sessions": {
+    "s_1211055aa32911": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c500-f15a-7422-92f7-4133f49bfe35",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

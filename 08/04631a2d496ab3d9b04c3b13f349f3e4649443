@@ -1,0 +1,17 @@
+packages/cli/src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts
+  h_c63dce324dfc7b 20-22,221-236
+  h_c63dce324dfc7b 127,237
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  h_c63dce324dfc7b 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0804631a2d496ab3d9b04c3b13f349f3e4649443",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

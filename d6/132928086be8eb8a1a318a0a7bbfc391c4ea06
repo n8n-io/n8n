@@ -1,0 +1,68 @@
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.service.test.ts
+  s_5b85161403cb3c::t_960a62cfddd4f1 212-215
+  s_5b85161403cb3c::t_98c8582d4d5474 1-211,216-376
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.task.ts
+  s_5b85161403cb3c::t_424d838163fc41 1-28
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_5b85161403cb3c::t_424d838163fc41 7,9,12,14,20,52-58,61,69-71,88,99-101,110-113,117,143,254
+  s_5b85161403cb3c::t_e986e84686ee27 13,50-51,89,93-98,102-109,114-116,119-126,191-194,238,241-253
+  s_5b85161403cb3c::t_0b04f2a9bbeb7e 118
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_5b85161403cb3c::t_98c8582d4d5474 1,6,10,15-16,20-21,33-34,36,40-50,115-119
+  s_5b85161403cb3c::t_20159381057fa8 120-121
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  s_5b85161403cb3c::t_0b04f2a9bbeb7e 7,9-10,12,17,43-53,72-85
+packages/@n8n/inbound-auth/src/trusted-source.ts
+  s_5b85161403cb3c::t_f8bde852b1231b 104-105,107,111,118-135,137-142
+  s_5b85161403cb3c::t_8b66e297361fb3 12,20,25-26,28,31-33,57,95-102
+packages/cli/src/modules/inbound-auth-core/database/entities/trusted-source.entity.ts
+  s_5b85161403cb3c::t_d0c17490296f55 40-47
+packages/@n8n/db/src/migrations/common/1790795921000-AddMetadataToTrustedSource.ts
+  s_5b85161403cb3c::t_d0c17490296f55 1-21
+packages/@n8n/inbound-auth/src/__tests__/trusted-source.test.ts
+  s_5b85161403cb3c::t_960a62cfddd4f1 90,98,295,299,311,315,323,327,333-334,337,343-344,346-347,352-360
+  s_5b85161403cb3c::t_034fd3f9bbf7b0 3,6-7,35-46,86-89,91-97,99-104,108-109,173,176-181,260-294,296-298,300-310,312-314,316-322,324-326,328-332,335-336,338-342,345,348-351,361-384
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.service.ts
+  s_5b85161403cb3c::t_424d838163fc41 1-4,14,16-32,37-38,42-43,150-151
+  s_5b85161403cb3c::t_0b04f2a9bbeb7e 5-13,15,33-36,39-41,44-149
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  s_5b85161403cb3c::t_02c9cf61c6f1d6 3,86-93
+  s_5b85161403cb3c::t_a681e40715ef62 81-84,94,99-102,104-111
+  s_5b85161403cb3c::t_d0c17490296f55 28,32-43,78-80,85,95-98,103,112
+packages/@n8n/inbound-auth/src/contracts.ts
+  s_5b85161403cb3c::t_d0c17490296f55 6,117-121
+  s_5b85161403cb3c::t_0c81d7fa178c0c 122-123
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_5b85161403cb3c::t_960a62cfddd4f1 415-417
+  s_5b85161403cb3c::t_424d838163fc41 8,19,25,60-61,85
+  s_5b85161403cb3c::t_98c8582d4d5474 10,67-72,338-414,418-437
+  s_5b85161403cb3c::t_f0fae8c51a688a 438-439
+docs/generated/postgres-schema/README.md
+  s_5b85161403cb3c::t_db88cdbb777130 132,1616,1622
+docs/generated/postgres-schema/public.trusted_source.md
+  s_5b85161403cb3c::t_deae6772a7f186 10,16,57,63
+docs/generated/postgres-schema/public.trusted_source_identity.md
+  s_5b85161403cb3c::t_49268c20f1bc9f 60,66
+docs/generated/sqlite-schema/README.md
+  s_5b85161403cb3c::t_8d373e1f257ac1 132,1604,1610
+docs/generated/sqlite-schema/trusted_source.md
+  s_5b85161403cb3c::t_48e92cf42af293 9,21,27,59,65
+docs/generated/sqlite-schema/trusted_source_identity.md
+  s_5b85161403cb3c::t_50928629869cab 66,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6132928086be8eb8a1a318a0a7bbfc391c4ea06",
+  "prompts": {},
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

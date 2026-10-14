@@ -1,0 +1,20 @@
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsDatabricks.test.ts
+  s_7383ee4106ddca::t_c6da9bc3d6f671 70,167-175
+  s_7383ee4106ddca::t_667ec02e73e5fd 176-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8cb9765aab7aee69e156c862c0cfc9721694c82a",
+  "prompts": {},
+  "sessions": {
+    "s_7383ee4106ddca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f219b89b-3ec7-4972-9e54-e4dac4de28f2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

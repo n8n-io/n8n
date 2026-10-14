@@ -1,0 +1,142 @@
+knip.ts
+  s_1fbc71f79b33c2::t_5b61a57acd5a52 109,112
+  s_1fbc71f79b33c2::t_ed1bce07849728 180
+  s_1fbc71f79b33c2::t_69ddbab4adeb9c 116
+packages/extensions/insights/oxlint.config.mts
+  s_1fbc71f79b33c2::t_ed1bce07849728 8
+  s_1fbc71f79b33c2::t_f59ab1b3bc186f 1,5,7,9
+packages/@n8n/eslint-config/package.json
+  s_1fbc71f79b33c2::t_05bd32f3f54e22 67-68
+packages/frontend/@n8n/eslint-plugin-design-system/package.json
+  s_1fbc71f79b33c2::t_109c78f28a9e44 28-29,40
+packages/frontend/@n8n/design-system/package.json
+  s_1fbc71f79b33c2::t_247474a6190262 48-49,56,78
+packages/frontend/@n8n/chat/package.json
+  s_1fbc71f79b33c2::t_247474a6190262 16-17,55,69
+packages/modules/otel/frontend/package.json
+  s_1fbc71f79b33c2::t_247474a6190262 15-16,39,51
+packages/@n8n/eslint-config/src/configs/frontend.ts
+  s_1fbc71f79b33c2::t_49972142ee27b3 3,45-46,52
+packages/@n8n/eslint-config/src/rules/require-macro-variable-name.ts
+  s_1fbc71f79b33c2::t_04fbccafe24e08 1-56
+packages/modules/type-availability-policies/frontend/oxlint.config.mts
+  s_1fbc71f79b33c2::t_247474a6190262 1-8
+packages/frontend/@n8n/eslint-plugin-design-system/README.md
+  s_1fbc71f79b33c2::t_cc9829d0453647 13
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.ts
+  s_1fbc71f79b33c2::t_21246d5d2739ff 45
+  s_1fbc71f79b33c2::t_2498c59ab46bb5 1,3-11,16-17,19-20,22-27,29-31,34,37-39,41-44,46-61,63-67,74-83,94,100,102-105,107-115,117
+  s_1fbc71f79b33c2::t_109c78f28a9e44 70-72
+packages/frontend/editor-ui/oxlint.config.mts
+  s_1fbc71f79b33c2::t_4b164ccfb46e26 3,6
+  s_1fbc71f79b33c2::t_270b2a370d44dc 1-2,4-5,7-12,15-20
+  s_1fbc71f79b33c2::t_c525586acc8a3a 13-14
+packages/@n8n/oxlint-config/package.json
+  s_1fbc71f79b33c2::t_3ec725b4499f39 19-22,52,57-58
+packages/@n8n/mcp-browser-extension/oxlint.config.mts
+  s_1fbc71f79b33c2::t_ed1bce07849728 8
+  s_1fbc71f79b33c2::t_4a3e13f61c2119 16-19
+  s_1fbc71f79b33c2::t_f59ab1b3bc186f 1,5,7,9
+  s_1fbc71f79b33c2::t_15e4911fee567e 15
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasConnectionLine.vue
+  s_1fbc71f79b33c2::t_c525586acc8a3a 62
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.vue
+  s_1fbc71f79b33c2::t_c525586acc8a3a 99
+packages/@n8n/eslint-config/src/rules/require-macro-variable-name.test.ts
+  s_1fbc71f79b33c2::t_11c73885b78511 1-38
+packages/frontend/editor-ui/eslint.config.mjs
+  s_1fbc71f79b33c2::t_4b164ccfb46e26 14
+packages/frontend/editor-ui/src/features/roles/components/RoleHoverPopover.vue
+  s_1fbc71f79b33c2::t_c525586acc8a3a 80
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/edges/CanvasEdge.vue
+  s_1fbc71f79b33c2::t_c525586acc8a3a 153
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_1fbc71f79b33c2::t_b34cb01753ad33 111
+scripts/lint-parity/oxlint-gap.json
+  s_1fbc71f79b33c2::t_4e89d0b525147e 49,58,60-61
+packages/quality/policy/code-health/src/rules/lint-config-layering.rule.ts
+  s_1fbc71f79b33c2::t_ed1bce07849728 16-17,21-22
+packages/@n8n/mcp-apps/oxlint.config.mts
+  s_1fbc71f79b33c2::t_247474a6190262 1-8
+packages/@n8n/mcp-apps/package.json
+  s_1fbc71f79b33c2::t_247474a6190262 31-32,51,56
+packages/modules/insights/frontend/oxlint.config.mts
+  s_1fbc71f79b33c2::t_247474a6190262 1-8
+packages/modules/type-availability-policies/frontend/package.json
+  s_1fbc71f79b33c2::t_247474a6190262 16-17,38,48
+packages/@n8n/module-cli/src/frontend.mjs
+  s_1fbc71f79b33c2::t_b34cb01753ad33 46
+packages/quality/policy/code-health/src/rules/lint-config-layering.rule.test.ts
+  s_1fbc71f79b33c2::t_0bedeb0a10c8c0 129-141
+packages/@n8n/module-cli/src/templates/frontend/oxlint.config.mts.template
+  s_1fbc71f79b33c2::t_b34cb01753ad33 1-8
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_1fbc71f79b33c2::t_cf77fa70247b12 3,80-82,84-91,93-98,102-104,144
+  s_1fbc71f79b33c2::t_dba627fdcc527f 83
+.code-health-baseline.json
+  s_1fbc71f79b33c2::t_c76c114e04ab26 1409-1416
+packages/@n8n/mcp-apps/eslint.config.mjs
+  s_1fbc71f79b33c2::t_d23e59d2a713b7 6
+packages/frontend/@n8n/design-system/oxlint.config.mts
+  s_1fbc71f79b33c2::t_ef2bba477814f1 6-9
+  s_1fbc71f79b33c2::t_247474a6190262 1-5,10
+packages/frontend/editor-ui/package.json
+  s_1fbc71f79b33c2::t_247474a6190262 66
+packages/frontend/@n8n/eslint-plugin-design-system/src/plugin.ts
+  s_1fbc71f79b33c2::t_cc9829d0453647 1,6,17-18
+packages/modules/otel/frontend/oxlint.config.mts
+  s_1fbc71f79b33c2::t_247474a6190262 1-8
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_1fbc71f79b33c2::t_b34cb01753ad33 15-16,41,50
+pnpm-workspace.yaml
+  s_1fbc71f79b33c2::t_c4d3bfbe46a9ad 248
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.test.ts
+  s_1fbc71f79b33c2::t_bd2d47d0eb7678 41-44
+  s_1fbc71f79b33c2::t_0747c74ec53605 35-36
+  s_1fbc71f79b33c2::t_109c78f28a9e44 1,3,5-6,8-9,11-34,38-40,45
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.vue
+  s_1fbc71f79b33c2::t_c525586acc8a3a 188
+AGENTS.md
+  s_1fbc71f79b33c2::t_26a88f5c4ea53c 263-269
+packages/modules/insights/frontend/package.json
+  s_1fbc71f79b33c2::t_247474a6190262 16-17,51,64
+packages/@n8n/oxlint-config/src/configs/frontend.ts
+  s_1fbc71f79b33c2::t_4a3e13f61c2119 14-21
+  s_1fbc71f79b33c2::t_0d51dcd3ee4ed9 3,6
+  s_1fbc71f79b33c2::t_ed1bce07849728 8-9
+packages/frontend/@n8n/chat/oxlint.config.mts
+  s_1fbc71f79b33c2::t_247474a6190262 1-5,10
+  s_1fbc71f79b33c2::t_ef2bba477814f1 6-9
+packages/@n8n/oxlint-config/src/configs/vue.ts
+  s_1fbc71f79b33c2::t_ef2bba477814f1 25
+  s_1fbc71f79b33c2::t_55ab22949277ea 33
+  s_1fbc71f79b33c2::t_eff7e19c13a653 1,4-8,32
+  s_1fbc71f79b33c2::t_c8f6bf7d45311a 81-82
+  s_1fbc71f79b33c2::t_4f5e77bd797ee6 24
+  s_1fbc71f79b33c2::t_5c31b2b5a62d68 26-28
+  s_1fbc71f79b33c2::t_50e7ebbb2ef8f3 2-3,9-23,29-31,34-80,83-142
+packages/frontend/@n8n/design-system/src/components/N8nDatatable/Datatable.vue
+  s_1fbc71f79b33c2::t_f33756f583761b 92-93
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_1fbc71f79b33c2::t_cab6e3d0f9e4d7 113-114,601
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_1fbc71f79b33c2::t_51c0ed7cd010d6 37,75
+pnpm-lock.yaml
+  s_1fbc71f79b33c2::t_03667b09e3304d 689-691,2870-2872,3385-3387,3403-3405,4066-4068,4084-4086,5657-5659,5699-5701,5923-5925,5989-5991,6043-6045,6697-6699,7148-7150,7187-7189,7324-7326,7360-7362,7430-7432,7460-7462,12838-12841,15512-15563,21466-21470,28826,30794-30795,33727-33750,41018-41030,41277,41281-41285,41310,41317-41327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c468ca250acb7c22efc2cffc883c0ca24c2e1ecd",
+  "prompts": {},
+  "sessions": {
+    "s_1fbc71f79b33c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c988040-403b-424c-802c-d40c9ab5ecf3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

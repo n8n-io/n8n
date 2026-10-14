@@ -1,0 +1,25 @@
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_3977282fcb4fb5::t_d154173cb4e593 159,162,164-206
+  s_3977282fcb4fb5::t_e62690ad7b73ba 160-161,163
+  s_3977282fcb4fb5::t_5898e5841dc82a 112-158,207-234
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_3977282fcb4fb5::t_b057a119a9edb8 161,167-168
+  s_3977282fcb4fb5::t_7383f020d4a6e2 155-160,162-164,166
+  s_3977282fcb4fb5::t_6884cd97258a6e 270-271,276,280-287,296-298,307-313,322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "513f5fd06ca12134a3c08748595cdb6dd7b551d8",
+  "prompts": {},
+  "sessions": {
+    "s_3977282fcb4fb5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b249567b-caff-42db-8140-3149eef9bf4e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

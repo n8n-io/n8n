@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  s_d6aa0b35ad7ed7::t_d3ab5243bac1ea 11,501,574-576,581,587,593,596,602-604
+packages/workflow/test/errors/poll-failure.error.test.ts
+  s_d6aa0b35ad7ed7::t_5c4c5d0dc1013c 1,22,26-29,31-34,39-41,44,50-53,62,81-85
+  s_d6aa0b35ad7ed7::t_ad99d8e791335c 15
+  s_d6aa0b35ad7ed7::t_0cf799d1377392 13-14,16-21
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_d6aa0b35ad7ed7::t_22abcbe1cbd641 393
+packages/workflow/src/errors/poll-failure.error.ts
+  s_d6aa0b35ad7ed7::t_a8521af3fd12cf 2,6,8,10,12,14,16,22-27,29-33
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_d6aa0b35ad7ed7::t_d3ab5243bac1ea 36-37,133,136,145
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_d6aa0b35ad7ed7::t_f33e0b561e5095 502-503,505-507
+  s_d6aa0b35ad7ed7::t_37f35b02a14dd0 543-544,546-550
+  s_d6aa0b35ad7ed7::t_f58367d422ae78 523-524,528-529,531-533
+packages/workflow/src/errors/index.ts
+  s_d6aa0b35ad7ed7::t_d3ab5243bac1ea 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "095adfc3041a33eab2a0fc6269f7a3e481f63069",
+  "prompts": {},
+  "sessions": {
+    "s_d6aa0b35ad7ed7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86471ace-b1f9-44f1-af8b-546f74add5af",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

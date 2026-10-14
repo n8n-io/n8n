@@ -1,0 +1,23 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_7517291a368d48::t_289dde82618b7a 1505
+  s_7517291a368d48::t_44269eeceacc12 1353-1354
+  s_7517291a368d48::t_9d46dad4124e2a 1463-1488
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_7517291a368d48::t_15c8193a13910f 814-835
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3344ce444e99396f7ff8ac374e91a7e07f7eed5d",
+  "prompts": {},
+  "sessions": {
+    "s_7517291a368d48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4a86c13-39ea-4e2f-85a0-e5c5c58461dd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

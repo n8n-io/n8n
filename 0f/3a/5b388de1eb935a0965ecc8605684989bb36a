@@ -1,0 +1,137 @@
+packages/cli/src/modules/agents/integrations/__tests__/callback-store.test.ts
+  s_5efa366575fc09::t_54e5fb4c97cb69 62,74-77
+packages/cli/src/modules/agents/integrations/callback-store.ts
+  s_b04c58447561ba::t_41b92587a4d842 62-63
+  s_5efa366575fc09::t_6661d91f10a5ab 61,64-65,68,76
+packages/cli/src/modules/agents/agent-thread-turn-coordinator.ts
+  s_fcc5d79528ef04::t_1c4ac524193880 110-113,115
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_01073b3d367188::t_fb9eeda86cc946 121-131
+  s_01073b3d367188::t_bee254a0d6121f 3,104-120
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_5efa366575fc09::t_5abf76eb058ce5 1,13-15,19-20,28-29,62-63,89-97,105,110,129-136,138-150
+  s_b04c58447561ba::t_3b410555892f6c 137
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_01073b3d367188::t_4f4bb4a1697ade 76,867,886,888
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_5efa366575fc09::t_a6ed639611d9b8 4,84-90,164
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_8e0493c68be783::t_e5c687e1504693 205,213
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_b04c58447561ba::t_54f8ae0a1e35f4 234-237
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_729a11adad6a4f::t_1ff4dadb5cc12d 15,519,534-535,553-556
+  s_729a11adad6a4f::t_6519060ea55730 526-533,536-537
+packages/cli/src/modules/agents/__tests__/agent-thread-turn-coordinator.test.ts
+  s_fcc5d79528ef04::t_df312335384f05 123-137
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_729a11adad6a4f::t_d7a54d676b44bf 1515-1522,1524-1546
+  s_729a11adad6a4f::t_0ce584c5b86838 4
+  s_729a11adad6a4f::t_91f1ead0bd911d 1523
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_782ffca68522eb::t_a921098b6e6124 480-488
+  s_8e0493c68be783::t_193bdaf1d02f08 894,896,904-911,964
+  s_b04c58447561ba::t_859fc77260f4f3 1239-1241,1246
+  s_eb88471ec5b6d3::t_5346df7ea37838 1242-1244,1247,1263-1265,1267
+  s_b04c58447561ba::t_f0d91a9f2e4ba1 1266
+  s_b0bb174efa94bd::t_e8da5e54724f01 657-675
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_01073b3d367188::t_841e6cd9b44285 268-272,274-277,279-286
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_01073b3d367188::t_5e649d9315f7b4 279-319
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_eb88471ec5b6d3::t_2d1f0192edbafa 364-396
+  s_782ffca68522eb::t_c25abfee57f682 1393,1396,1449-1484,1490-1492,1500-1501,1591-1592,1831,1834,1864,1867,1906,1909,1940,1943,1974,1977,2003,2056-2057
+  s_b0bb174efa94bd::t_217178095edd81 649-670
+  s_8e0493c68be783::t_2f7084eec10de8 1064-1066,1069-1078,1081,1083
+  s_782ffca68522eb::t_41f46501c72592 1395,1833,1866,1908,1942,1976,2002
+  s_8e0493c68be783::t_afc7af48bea418 1067-1068,1079-1080,1082,1084-1090
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_8e0493c68be783::t_d709623ff15a85 83,271,301,313
+  s_8e0493c68be783::t_6da95140b2242c 375-384,424,596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0f3a5b388de1eb935a0965ecc8605684989bb36a",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_01073b3d367188": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa564c34-1e77-45e4-97c0-0c05a3762c60",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5efa366575fc09": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "017dffa4-378a-403f-af52-8595835a9a78",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_729a11adad6a4f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cbe60d6c-c5b3-4dd5-bff9-84a9634b0212",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_782ffca68522eb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d867f43a-b68e-4ea7-bc18-157e55c0cddb",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_8e0493c68be783": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a534bcc5-0861-4724-ae10-c910785f9f44",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b04c58447561ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3df8d2d-7a5d-4b4e-82c4-2e70a7479fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b0bb174efa94bd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5433a26c-9df8-47b6-bab4-cf2afd79171c",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_eb88471ec5b6d3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "03ba644b-634e-457a-8e48-644a2599ce5f",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fcc5d79528ef04": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "73909cad-3d87-4412-9eff-8b92b94a49a8",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

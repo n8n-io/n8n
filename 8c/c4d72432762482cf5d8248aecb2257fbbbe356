@@ -1,0 +1,47 @@
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.vue
+  s_114a6636abd802::t_8a0e38163a4c63 230
+  s_114a6636abd802::t_f89559429b4e36 94
+  s_114a6636abd802::t_a1fbf9bccc5a0f 23
+  s_9be34dec73d585::t_b032ebd3513bcf 448-451
+  s_114a6636abd802::t_0b8d61b97ee0d0 452-455
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.test.ts
+  s_114a6636abd802::t_0d4a2e7354a2e6 126-151
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_114a6636abd802::t_f4421c274e0797 1516-1558
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_114a6636abd802::t_3ec05590337873 3468-3493
+  s_114a6636abd802::t_31594d84a463e1 3494-3495
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.types.ts
+  s_114a6636abd802::t_58a618b96b28f1 22-24
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_114a6636abd802::t_9d6788dbdfca37 550-552,554-556,559,570-574
+  s_114a6636abd802::t_783d45426f2f70 754-756
+  s_114a6636abd802::t_6a3243335141c8 1858
+  s_114a6636abd802::t_9fb3d15388101d 575
+packages/cli/src/credentials/credentials.service.ts
+  s_114a6636abd802::t_f4b3e8196facd3 1314-1318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8cc4d72432762482cf5d8248aecb2257fbbbe356",
+  "prompts": {},
+  "sessions": {
+    "s_114a6636abd802": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b16dd8d0-a949-465e-9291-50fc2f23b560",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_9be34dec73d585": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff084275-9814-495f-a25b-5cc09d362fb8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

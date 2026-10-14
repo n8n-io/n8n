@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/common/1789029973536-CreateAgentMemoryEntryCandidates.ts
+  s_816e8d02944032::t_e68da7e3da1152 1-228
+packages/cli/test/migration/1789029973536-create-agent-memory-entry-candidates.test.ts
+  s_816e8d02944032::t_e68da7e3da1152 1-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f5c6ecb8657522a789e5e899bd0a1f69db7af05b",
+  "prompts": {},
+  "sessions": {
+    "s_816e8d02944032": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e4a4a35f-e2a9-42e5-be67-c9e9bd76db57",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

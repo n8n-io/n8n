@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_ecdf2f2961dcf9::t_d83f98f19c7afb 305-308
+  s_ecdf2f2961dcf9::t_324813281ee7ee 330
+  s_ecdf2f2961dcf9::t_f6d3344f9f6bf8 56,61
+  s_ecdf2f2961dcf9::t_3c36813b9a4a4c 39
+  s_ecdf2f2961dcf9::t_31f278b6234345 282
+packages/cli/src/modules/agents/__tests__/agent-update-broadcaster.test.ts
+  s_ecdf2f2961dcf9::t_5049dcb1dd3f1d 63-64
+  s_ecdf2f2961dcf9::t_6d97ebf9fdc3cd 41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b3e4a8794c0c8f84392ed47b1c6667fdcee7399a",
+  "prompts": {},
+  "sessions": {
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

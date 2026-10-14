@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/update.operation.ts
+  s_2c121cd2d81e56::t_420785f6743f47 49-53
+  s_2c121cd2d81e56::t_128c9086dcf578 75-76
+  s_2c121cd2d81e56::t_5fbaba4d950644 10
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_2c121cd2d81e56::t_a8a18a93424471 146
+  s_2c121cd2d81e56::t_f80a4a50faba8c 145
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/update.test.ts
+  s_2c121cd2d81e56::t_3e35d25acf1a9b 315-320,322-331
+  s_2c121cd2d81e56::t_babd1186d6dbec 393-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f408706210f7c1c61274154b83f8bd6520aa497",
+  "prompts": {},
+  "sessions": {
+    "s_2c121cd2d81e56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc45e65d-b973-4df7-a1b0-bb06ea7009d5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

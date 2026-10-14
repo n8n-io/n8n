@@ -1,0 +1,41 @@
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_c345592441274b::t_0d374660cc9ed8 79
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_c345592441274b::t_0d374660cc9ed8 54,106-114
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-orchestrator.test.ts
+  s_c345592441274b::t_488b0d0f78da78 14-17
+  s_c345592441274b::t_0303cbee5bef13 80
+  s_c345592441274b::t_837acd1721eed0 1-2,4-13,18-21,23-24,26-30,32-35,37-47,49-53,55-61,66-67,69-79,82-89,93-106,109-124
+  s_c345592441274b::t_9156f22457ea45 22,25
+  s_c345592441274b::t_b7e9dac70e9246 3
+  s_c345592441274b::t_3e2ff483e73ba5 54
+  s_c345592441274b::t_169850998a7035 31,36
+  ai_agent 62-65,90-92
+  s_c345592441274b::t_2a3c759305149d 68
+  s_c345592441274b::t_2460c8de5c7d69 81,108
+  s_c345592441274b::t_7ef6e372d98183 107
+  s_c345592441274b::t_7cc04fd4951a4e 48
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_c345592441274b::t_0d374660cc9ed8 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4cd3de2b3bf7ef3c1e03e04dc3d646c0b561e731",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c345592441274b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44d4b7e1-ff47-45f4-90e1-e74bbf6568a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

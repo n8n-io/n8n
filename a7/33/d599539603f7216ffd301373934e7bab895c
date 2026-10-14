@@ -1,0 +1,36 @@
+packages/core/nodes-testing/credentials-helper.ts
+  s_53cef6894d9656::t_2b109d93255672 91-100
+packages/workflow/src/interfaces.ts
+  s_53cef6894d9656::t_dda06c976d4879 216-225
+packages/cli/src/modules/instance-ai/eval/__tests__/m3-fixtures.test.ts
+  s_53cef6894d9656::t_2b109d93255672 61
+packages/cli/src/modules/instance-ai/eval/__tests__/mock-handler-integration.test.ts
+  s_53cef6894d9656::t_2b109d93255672 42
+packages/cli/src/modules/instance-ai/eval/__tests__/credential-rewrite-roundtrip.test.ts
+  s_53cef6894d9656::t_2b109d93255672 48
+packages/cli/src/credentials-helper.ts
+  s_53cef6894d9656::t_38d970eabfc90e 330-331
+  s_53cef6894d9656::t_dda06c976d4879 14,318-329
+packages/cli/src/modules/instance-ai/eval/eval-mocked-credentials-helper.ts
+  s_53cef6894d9656::t_2b109d93255672 218-221
+packages/cli/src/__tests__/credentials-helper.test.ts
+  ai_agent 1328
+  s_53cef6894d9656::t_504ed038ce376a 1330-1332
+  s_53cef6894d9656::t_dda06c976d4879 33,1243-1327,1329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a733d599539603f7216ffd301373934e7bab895c",
+  "prompts": {},
+  "sessions": {
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

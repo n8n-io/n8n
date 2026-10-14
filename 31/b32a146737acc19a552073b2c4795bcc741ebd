@@ -1,0 +1,30 @@
+packages/@n8n/workflow-sdk/src/generate-types/schema-corpus-hash.test.ts
+  s_be6d12de03f718::t_80a6bf774adfc1 27,32,35,42,48,55,58,65
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_be6d12de03f718::t_1b505a8090c789 582-594,602-603,606-610,621-626,631-635
+  s_be6d12de03f718::t_0955a95dc1bda2 755-759,761,763-771
+  s_be6d12de03f718::t_b2fe58683c3ac8 581
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_be6d12de03f718::t_5dead528ad6b38 5322-5346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "31b32a146737acc19a552073b2c4795bcc741ebd",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

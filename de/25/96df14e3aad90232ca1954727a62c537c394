@@ -1,0 +1,26 @@
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_2397c9db9d923f::t_d135748e801716 8,16,57-58
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_2397c9db9d923f::t_d135748e801716 3,23,81-82,194-195
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_2397c9db9d923f::t_d135748e801716 13,207-212,228
+packages/cli/src/modules/n8n-packages/entities/project/project-export-access.ts
+  s_2397c9db9d923f::t_d135748e801716 1-12,16-23
+  s_2397c9db9d923f::t_c66990af0d60d0 13-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de2596df14e3aad90232ca1954727a62c537c394",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_f8b427917eda26 1595
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  h_f8b427917eda26 34,371-381,387-399,444,450-451,453-454,460-463
+packages/frontend/editor-ui/src/features/agents/components/SessionEventFilter.vue
+  h_f8b427917eda26 105,107
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  h_f8b427917eda26 244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "051df7c259a57a094b6f7f58a1787d695ca3036b",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

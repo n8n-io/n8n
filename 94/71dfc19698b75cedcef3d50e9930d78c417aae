@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_0bf6d2ccb779ff::t_8b91b4e59462ec 27-31
+  s_0bf6d2ccb779ff::t_ede45c19b59dd1 242-246
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_0bf6d2ccb779ff::t_9325f371083a75 690-718
+  s_0bf6d2ccb779ff::t_ca883a33693e8f 435-464
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9471dfc19698b75cedcef3d50e9930d78c417aae",
+  "prompts": {},
+  "sessions": {
+    "s_0bf6d2ccb779ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d96b4f2b-f082-42a2-bd81-8d59d0458b78",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

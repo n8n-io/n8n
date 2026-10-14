@@ -1,0 +1,23 @@
+packages/@n8n/db/src/migrations/common/1789717191125-AddThreadIdToAgentCheckpoints.ts
+  s_9694577ccaf82f::t_374017ea069bac 8-22
+packages/cli/test/migration/1789717191125-add-thread-id-to-agent-checkpoints.test.ts
+  s_9694577ccaf82f::t_568c1b0f58e037 74-84,121,123,128-130
+docs/generated/sqlite-schema/agent_checkpoints.md
+  s_9694577ccaf82f::t_877c9fe99da00b 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "396343decb052fcd2b2b087b7387fde3ad0e7857",
+  "prompts": {},
+  "sessions": {
+    "s_9694577ccaf82f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b389-4c7a-7e71-9cf8-201f6fdc5a43",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

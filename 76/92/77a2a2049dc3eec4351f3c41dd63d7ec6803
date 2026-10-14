@@ -1,0 +1,45 @@
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_5e51067f93bb24::t_b35795929bf9d2 4,12,62-64,75-77,85-87,92-195,513,522-582,625,640-658,675-690
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_5e51067f93bb24::t_40a9ea24ffbd01 305
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_5e51067f93bb24::t_40fcd99236b140 11,54,74,88
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_5e51067f93bb24::t_5a9132090a35a9 2,4-6,14,55-57,64-66,120-121,136-137,144-156,263,274-277,279-284,288-307,355,359-401,410-414
+packages/cli/src/modules/agents/agents.module.ts
+  s_5e51067f93bb24::t_f8e3fc86567151 37-63
+packages/cli/src/modules/agents/agents.service.ts
+  s_5e51067f93bb24::t_d13b271ef18be4 16,38,215-216
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_5e51067f93bb24::t_622bba3a574488 1-6,83-86
+packages/cli/src/modules/agents/execution-log/__tests__/agent-execution-log-store.test.ts
+  s_5e51067f93bb24::t_7e9e53bea71f6f 1-25
+packages/cli/src/modules/agents/execution-log/agent-execution-log-store.ts
+  s_5e51067f93bb24::t_b36baef8a879c0 1-55
+packages/cli/src/modules/agents/execution-log/agent-execution-log-write.error.ts
+  s_5e51067f93bb24::t_8ab27a7ce181c5 1-13
+packages/cli/src/modules/agents/execution-log/corrupted-agent-execution-log.error.ts
+  s_5e51067f93bb24::t_d66f8e4bcd1e76 1-13
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_5e51067f93bb24::t_f77ba1ce54cdbc 2,86-105
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_5e51067f93bb24::t_4c75cecbcbcf6e 20,38,610-613,641-642,655-658,671
+packages/cli/src/services/project.service.ee.ts
+  s_5e51067f93bb24::t_1ef949219a0f6c 126-131,241,244,259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "769277a2a2049dc3eec4351f3c41dd63d7ec6803",
+  "prompts": {},
+  "sessions": {
+    "s_5e51067f93bb24": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aaef45e4-2911-44bf-b165-b73f59041b70",
+        "model": "grok-4.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

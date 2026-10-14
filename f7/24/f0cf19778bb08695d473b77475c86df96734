@@ -1,0 +1,34 @@
+packages/core/src/observability/tracing/noop-tracing.ts
+  s_dd629aa6716fc1::t_62a0769fbffb1f 65-71
+packages/core/src/observability/tracing/__tests__/sentry-tracing.test.ts
+  s_dd629aa6716fc1::t_ad664009dec8a3 13,18-19
+  s_dd629aa6716fc1::t_b5a5f165b906aa 132-148
+packages/core/src/execution-engine/poll-trigger-executor.ts
+  s_dd629aa6716fc1::t_5e92a41928bbdf 43-50
+packages/core/src/execution-engine/__tests__/poll-trigger-executor.test.ts
+  s_dd629aa6716fc1::t_090f4a2b37c1d5 44-69
+packages/core/src/observability/tracing/sentry-tracing.ts
+  s_dd629aa6716fc1::t_61d10cd45a47f9 10,27-32
+packages/core/src/observability/tracing/tracing.ts
+  s_dd629aa6716fc1::t_9a2c8acee661a3 22
+  s_dd629aa6716fc1::t_cecbede0314d9f 81-92
+packages/core/src/observability/tracing/__tests__/tracing.test.ts
+  s_dd629aa6716fc1::t_fae4c000a62d76 36-60
+  s_dd629aa6716fc1::t_540e3152c4195a 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f724f0cf19778bb08695d473b77475c86df96734",
+  "prompts": {},
+  "sessions": {
+    "s_dd629aa6716fc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e847b14-d21e-4483-bb3f-78864dfce24b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

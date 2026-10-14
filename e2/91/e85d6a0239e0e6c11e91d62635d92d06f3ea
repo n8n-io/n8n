@@ -1,0 +1,30 @@
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_3f4c240f5a4957::t_6074d4eb5081bc 111-114
+  s_3f4c240f5a4957::t_9c7ae728fb46ac 56-59
+  s_3f4c240f5a4957::t_f4c4a33e74cc17 29-30
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_3f4c240f5a4957::t_736bf4cbc14a33 100-101,107
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_3f4c240f5a4957::t_6375cb92db6696 742-753
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_3f4c240f5a4957::t_0eb611e05ab24e 112
+  s_3f4c240f5a4957::t_c8193e2ee79f61 85-93
+  s_3f4c240f5a4957::t_952d5e8f8f11a1 180,188-196
+  s_3f4c240f5a4957::t_cf3d2b03a47b43 197-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e291e85d6a0239e0e6c11e91d62635d92d06f3ea",
+  "prompts": {},
+  "sessions": {
+    "s_3f4c240f5a4957": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0ee24e3b-53fe-4691-8e67-e34f81479930",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

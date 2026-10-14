@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_8bd94de82c7a30::t_8acb9abe0bda8d 139-141
+  s_8bd94de82c7a30::t_24d7887aae2a2b 143
+  s_8bd94de82c7a30::t_ac7ca72e3f7afb 10,133-138,142,144-145,167-179
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_8bd94de82c7a30::t_ac7ca72e3f7afb 41,257-261,619-630,743-746
+  s_8bd94de82c7a30::t_08ceffee58e165 747-748
+packages/frontend/editor-ui/src/features/agents/utils/scheduleBuilder.ts
+  s_8bd94de82c7a30::t_ac7ca72e3f7afb 2,112-118
+  s_8bd94de82c7a30::t_40a1fdeecfd433 119-123
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8bd94de82c7a30::t_8acb9abe0bda8d 8340
+  s_8bd94de82c7a30::t_ac7ca72e3f7afb 8341
+packages/frontend/editor-ui/package.json
+  s_8bd94de82c7a30::t_fe4e91b51d226b 190-193
+pnpm-workspace.yaml
+  s_8bd94de82c7a30::t_c63d165be50154 196
+pnpm-lock.yaml
+  s_8bd94de82c7a30::t_4c4e4822ab3c73 548-550,6059-6062,16818-16821,35822-35823
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fcdc12d77e2cc49ad496dbe5d87ca5641768a22c",
+  "prompts": {},
+  "sessions": {
+    "s_8bd94de82c7a30": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b51e-4e92-7f63-beaa-ae405c56c407",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/createRole.generated.yml
+  s_015232f2db3e42::t_e9a50ca07d8c94 1-82
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getAllRoles.generated.yml
+  s_015232f2db3e42::t_1798642fb8369f 1-124
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_015232f2db3e42::t_aa4c2ab41f5f04 1-275
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_015232f2db3e42::t_80f7db0d162cf9 6-10,14-16
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_015232f2db3e42::t_99940f2d18fa51 4-9,1099-1123
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_015232f2db3e42::t_5c83d610bf12ae 25,73-98,452-453,1569-1744
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "acf9ef62e2ed27ca5d2d44146301725a0825be7c",
+  "prompts": {},
+  "sessions": {
+    "s_015232f2db3e42": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff028-39c8-7de3-89b1-ce6a7855fc67",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

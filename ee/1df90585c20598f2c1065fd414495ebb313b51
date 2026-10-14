@@ -1,0 +1,123 @@
+packages/cli/src/workflows/__tests__/workflow-finder.service.test.ts
+  s_94ac36381d3cc8::t_acef19aae94aa0 105-127
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_5ddf40544fde37::t_5b07e0110b6722 160
+  s_5ddf40544fde37::t_c8e181b9711ad3 50-51
+  s_5ddf40544fde37::t_ef87142dcf36f5 84-87,92,97-115
+  s_5ddf40544fde37::t_33e32e80f930a8 225
+  s_5ddf40544fde37::t_3e460cb757d16d 30-35
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5ddf40544fde37::t_08e1bfc45cd8fe 360
+  ai_agent 16
+  s_5ddf40544fde37::t_f90bad6183f3bd 52-55
+  s_5ddf40544fde37::t_f271de3d39f566 291
+  s_5ddf40544fde37::t_5f64f5be41c4f4 336-338
+  s_5ddf40544fde37::t_1f030f7f3e51e9 313
+  s_5ddf40544fde37::t_8f2532470721e8 326
+  s_5ddf40544fde37::t_12785d22adff6a 319-321,340
+  s_5ddf40544fde37::t_3f670a9e038b9e 311-312,314
+  s_5ddf40544fde37::t_297365a9d42393 105
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_5ddf40544fde37::t_8b271a48b8e6c7 230-334
+packages/cli/src/modules/git-connections.ee/working-copy-updater.ts
+  s_5ddf40544fde37::t_36d2162f268f01 1-3,5-133,135-224
+  s_5ddf40544fde37::t_eab66e5eda1ba1 4
+  ai_agent 134
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_5ddf40544fde37::t_da10a02c01eb2c 178
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_5ddf40544fde37::t_418e4c7a55b0fd 21,23
+  s_5ddf40544fde37::t_c347da59fa889a 677-780,783-798,819
+  s_5ddf40544fde37::t_ba6d68fb82b84f 781-782
+  s_94ac36381d3cc8::t_5c385dcce27c1b 799-818
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_94ac36381d3cc8::t_b7d69f4af7df76 133-139,141-150,153,155-157,159-163,165-166,169
+  s_5ddf40544fde37::t_3d462aed481caf 106
+  s_94ac36381d3cc8::t_9a395fd33ea555 46-52
+  s_5ddf40544fde37::t_71088f3102defb 33-38
+  s_94ac36381d3cc8::t_7eb0095b108839 65-69,71,83,88-89
+  s_94ac36381d3cc8::t_14784df56eaade 103-105
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_5ddf40544fde37::t_fa0c5077013ca0 106-145
+packages/cli/src/modules/git-connections.ee/__tests__/manifest-merge.test.ts
+  s_5ddf40544fde37::t_888cb10ea487e6 20-21,24,143-202,204-205,232-254,256-264,267,269,271-275,277-278,281-282,284-285,287,289-291,314,318-320,322-323
+  s_5ddf40544fde37::t_7b44e7d1cce4c5 3
+  s_5ddf40544fde37::t_ededb99c1f388a 25,28-30,32,34
+  s_5ddf40544fde37::t_87f296202cf6f9 270,276,283,286,288,292-293,296-302,305-306,308,310-313,317,326
+  s_5ddf40544fde37::t_694fc8ccb188bc 38-135,137-139
+  s_5ddf40544fde37::t_b9934254bfaa0b 203,255
+  s_5ddf40544fde37::t_f95d567179b0a1 208-231
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_5ddf40544fde37::t_f8d806deb9a1ee 139
+  s_5ddf40544fde37::t_671cfa3c3f284c 30-35
+  s_5ddf40544fde37::t_27b67527d4e106 157,165
+  s_5ddf40544fde37::t_915d3af4438374 15-18
+  s_5ddf40544fde37::t_53c1ff2efa9393 179
+  s_5ddf40544fde37::t_cd19cd68f3efb0 71,77,80-93,100,103-114
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_94ac36381d3cc8::t_289bc2a89e5b4f 49-51
+  s_94ac36381d3cc8::t_9a44e145d196c6 324-325,337-344,348-396
+  s_5ddf40544fde37::t_3cc7bd32aebad3 321-323,326-336,345-347,397-398
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_5ddf40544fde37::t_cbf018f2bc2241 225-230
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-push-pull.integration.test.ts
+  s_5ddf40544fde37::t_62235e7479b32d 507,510
+  s_5ddf40544fde37::t_2889ca80003d8f 16
+  s_5ddf40544fde37::t_425f2295656cd5 508-509,511-514,519-525,527-529,531-592,597-598,600-610,612-620
+  s_5ddf40544fde37::t_1862b150102166 10
+  s_5ddf40544fde37::t_36f9169d1a9233 29,31
+  s_5ddf40544fde37::t_067104bb14d113 115
+  s_5ddf40544fde37::t_87a415697cfcab 621-641,645-646,651-652,654-662,667-668
+  s_5ddf40544fde37::t_28dcc8ec3abedb 41
+  s_5ddf40544fde37::t_e557f9ebd94b7c 90-91
+  s_5ddf40544fde37::t_e1acc52892fcdc 103
+  s_5ddf40544fde37::t_3075b8ea612d3f 351-358,360-376,393-399
+  s_5ddf40544fde37::t_b9934254bfaa0b 471,476-485,489,494-495,499-504
+  s_5ddf40544fde37::t_c5f539f937a99c 669,671-674
+  s_5ddf40544fde37::t_0cbe4b8e1fbdc5 663-666,670
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5ddf40544fde37::t_34ca1acb48416f 55
+  s_5ddf40544fde37::t_629be48cb4fd96 493-531,566-568,570,573-574,577-583,748-749,761,765,783,786-793,797,799-800,802-805,817,821,826,829,831,842,845-846,848-851,854-867,879
+  s_5ddf40544fde37::t_b870fc52e7c5a0 641-642,644,651,653-657,659-660,674
+  s_5ddf40544fde37::t_871889d6746a4b 548-549
+  s_5ddf40544fde37::t_8f00f50b2dada6 643,646-650,652,658,661
+  s_5ddf40544fde37::t_c752046b96e38a 264,273-274
+  s_5ddf40544fde37::t_98568e1ecc9b2d 536-539
+  s_5ddf40544fde37::t_b9934254bfaa0b 605,635,747,764,766-767,775,777-780
+  s_5ddf40544fde37::t_8699db5a1869e4 693-696,704,706,710-711,713-714,716,723,726-742
+  s_5ddf40544fde37::t_7e33da95c1b48f 746,753,756,760
+  s_5ddf40544fde37::t_10c4e1e754de01 1084,1093-1094
+  s_5ddf40544fde37::t_61b4714e4ea39f 587-593,596-598,600-604,606-615,618,621-622,625-631,633-634,636-638,677-687,690-691,699-703,705,707-709,712,715,722
+  s_5ddf40544fde37::t_62a058231df969 29
+  s_5ddf40544fde37::t_8b60465015bcb2 798,801,806-807
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  s_5ddf40544fde37::t_daf08db25ad62f 6-7,74-82,85-87,93,95,97-99,105-108,111,117-132,135-136,139-140,143-144,147-148,151-152,158-159,180-182,184-186,194-198,205-208,210-213,223,225-226,228,230-231,233,235-236,238,240-241,243,249-250,254
+  s_5ddf40544fde37::t_b9934254bfaa0b 209,214
+  s_5ddf40544fde37::t_e8a8a3bc40a5e8 1-2,8-50,52-61,65,68,161-176,183,193,199-202,215,220-222,224,229,234,239,245-247,251-253,255-304
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_94ac36381d3cc8::t_b9f7be5eb51e12 183-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ee1df90585c20598f2c1065fd414495ebb313b51",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    },
+    "s_94ac36381d3cc8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "012e5e2a-3318-40d1-b9ba-55e16a12b514",
+        "model": "claude-fable-5-1-thinking-high"
+      },
+      "human_author": null
+    }
+  }
+}

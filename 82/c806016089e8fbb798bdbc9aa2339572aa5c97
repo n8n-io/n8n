@@ -1,0 +1,36 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_6e3f52ff14ba6e::t_a075d71415c761 739-785
+  s_6e3f52ff14ba6e::t_10522e86ad7d5e 853
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_6e3f52ff14ba6e::t_15f607d9704c49 43-47,370-377,380,382,640-643,666-672
+  s_6e3f52ff14ba6e::t_c3a5fe0ce46268 569,597
+  s_6e3f52ff14ba6e::t_5f0a8d85062c96 612-626,628,710
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_6e3f52ff14ba6e::t_f96f35225634e1 124,143,272-291
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_6e3f52ff14ba6e::t_99ee299ab24c0c 22
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_6e3f52ff14ba6e::t_c3a5fe0ce46268 161-165
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_6e3f52ff14ba6e::t_82063e526573e0 612-618,621
+packages/cli/src/modules/mcp/__tests__/instance-context-grants.test.ts
+  s_6e3f52ff14ba6e::t_de68eee99e62b2 1-34
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_6e3f52ff14ba6e::t_fdf0c0d2b42a62 10,477-497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "82c806016089e8fbb798bdbc9aa2339572aa5c97",
+  "prompts": {},
+  "sessions": {
+    "s_6e3f52ff14ba6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62e55d43-3015-410a-8652-f8d8d66de8ef",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

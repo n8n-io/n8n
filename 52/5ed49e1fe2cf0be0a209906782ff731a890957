@@ -1,0 +1,19 @@
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_b370a35485f958::t_e4a4f82a67c3b2 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "525ed49e1fe2cf0be0a209906782ff731a890957",
+  "prompts": {},
+  "sessions": {
+    "s_b370a35485f958": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4448ea0b-13a4-4a91-af25-f141488e5900",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

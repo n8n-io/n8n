@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/AiInsightsCard.test.ts
+  s_5d6be4e6bc70a6::t_3ba0ffe178e002 90,92,94-95,97-98
+  s_5d6be4e6bc70a6::t_735dcf5561b582 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3fb9cbe01e7b41d086019b83ab8b5f2d29af7c19",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

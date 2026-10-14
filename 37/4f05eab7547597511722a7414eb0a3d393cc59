@@ -1,0 +1,80 @@
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_3af092634a4c63::t_a138a7fdd99f10 13-23
+  s_3af092634a4c63::t_9a16ab193ec06e 88
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_3af092634a4c63::t_7110fa8a256d42 4
+  s_3af092634a4c63::t_ce94f347e451aa 212
+  s_3af092634a4c63::t_9d1a9bb3c2c069 3,6-7,18,69,83-84,86-89,91-99,101-112,114,116-186,188,195-211,213-216,220-221,225-227,230,237-238,242-249
+  s_3af092634a4c63::t_918afbe0e38e21 71
+packages/cli/src/modules/agents/integrations/__tests__/channel-integration-recorder.test.ts
+  s_3af092634a4c63::t_f4fe0da87d39c5 64,105
+packages/cli/src/modules/agents/integrations/__tests__/channel-integration-contract.test.ts
+  s_3af092634a4c63::t_f129c84b0389d3 38,45
+  s_3af092634a4c63::t_40422d3cd7ecac 57-62
+packages/cli/src/modules/agents/integrations/__tests__/recording-adapter.test.ts
+  s_3af092634a4c63::t_0557454d24ac05 7
+  s_3af092634a4c63::t_41b29976ed3d1d 1-2
+  s_3af092634a4c63::t_71b65d7a1d5f75 16,19,38,43
+packages/cli/src/modules/agents/integrations/__tests__/helpers/channel-integration-contract.ts
+  s_3af092634a4c63::t_b7d238cec06b87 33
+  s_3af092634a4c63::t_83997c8b6ccf03 89
+  s_3af092634a4c63::t_6d0d134e7ab64b 1-2
+packages/cli/src/modules/agents/integrations/platforms/__tests__/linear/recorded-integration.test.ts
+  s_3af092634a4c63::t_ec60312cc312e4 93,112,127
+  s_3af092634a4c63::t_a1415b30109b0e 94
+packages/cli/src/modules/agents/integrations/CHANNEL_INTEGRATION_TESTS.md
+  s_3af092634a4c63::t_89d167234c5f18 8-63,73,78-81,86,94-98,100-102,106-109,111-115,119,122-124,126-128,130-134,138-142,144,150-151,154,159,167-168,171
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_3af092634a4c63::t_38462895b2b9ac 90-161
+  s_3af092634a4c63::t_ec016687639d5f 165-166
+  s_3af092634a4c63::t_a89bb353f08655 5-6
+  s_3af092634a4c63::t_33cd53eac1a2b0 192-193
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_3af092634a4c63::t_55ae4adbf40d2a 260
+  s_3af092634a4c63::t_02a83faf9a0e3d 6-7
+  s_3af092634a4c63::t_db083945791273 119-127,129-137,139-148,151-152,156-157,160,162-163,165,168-169,174,182,189-191,195,198-199,201,309-310
+  s_3af092634a4c63::t_b3949ae61c9436 192-193,202,205,207,216-217
+  s_3af092634a4c63::t_864f9bcb835860 267
+  s_3af092634a4c63::t_203220ee8ff638 5,9-10,18,22,99,114-116,118,166-167,170-173,175-178,180-181,183,186,188,194,204,206,208-210,212-215,218-219,222,229-236,238-259,261-264,268,272-273,277-291,293-294,296,300-301,305-308
+  s_3af092634a4c63::t_c6be964da4cf2c 149-150,154-155,158-159
+  s_3af092634a4c63::t_fa73f150e508f1 237
+  s_3af092634a4c63::t_61bf201c6fef7b 101-102
+  s_3af092634a4c63::t_977cf8fb6af69f 265-266
+  s_3af092634a4c63::t_1a3e900760e51f 311-312
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/synthetic-integration.test.ts
+  s_3af092634a4c63::t_9f003a0d22cf19 1
+  s_3af092634a4c63::t_ec64ed48861b1c 141-142,150
+  s_3af092634a4c63::t_25aa64a1c1749d 2-4,13-22
+  s_3af092634a4c63::t_3bc4a79340f03c 23
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/recorded-integration.test.ts
+  s_3af092634a4c63::t_89fd1afe385718 87,93
+  s_3af092634a4c63::t_0bcb4d9ca2d072 140,145
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_3af092634a4c63::t_e10fa9c0fbc567 87-88
+  s_3af092634a4c63::t_59d6b77f8f609f 13-14,23,27,85,104-107,109-112,115-137,139,183-199,201-203,213,217-218,220,223,225,234-235,240-248,255-256,258-264,266-269
+  s_3af092634a4c63::t_9f0aa74881f1e1 219
+  s_3af092634a4c63::t_c8a83e33a82640 7-8
+  s_3af092634a4c63::t_6ffd3bf132d105 200
+packages/cli/src/modules/agents/integrations/platforms/__tests__/slack/synthetic-integration.test.ts
+  s_3af092634a4c63::t_82ed9716d49244 52,57
+packages/cli/src/modules/agents/integrations/__tests__/fixtures/linear/basic.json
+  s_3af092634a4c63::t_4c544ee5a83f88 29
+  s_3af092634a4c63::t_8c4849c1dae4dc 56
+  s_3af092634a4c63::t_d2321f34777172 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "374f05eab7547597511722a7414eb0a3d393cc59",
+  "prompts": {},
+  "sessions": {
+    "s_3af092634a4c63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9d3d368-9b2c-4845-87d4-6cb11bd4b860",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

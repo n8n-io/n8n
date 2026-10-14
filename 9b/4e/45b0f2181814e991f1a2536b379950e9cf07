@@ -1,0 +1,26 @@
+.agents/skills/public-api/SKILL.md
+  s_56c01a41783ce1::t_2f27c8f0fe7e01 110
+.agents/skills/public-api/reference.md
+  s_56c01a41783ce1::t_4a0d9200e18969 127-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9b4e45b0f2181814e991f1a2536b379950e9cf07",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_56c01a41783ce1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e732907-7277-4e4a-acda-b16d3f4678db",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

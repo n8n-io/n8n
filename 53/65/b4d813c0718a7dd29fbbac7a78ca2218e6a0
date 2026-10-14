@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupModal.vue
+  s_1fb648c429eca3::t_0d9de09503c317 20
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/__tests__/BrowserUseConnectStep.test.ts
+  s_1fb648c429eca3::t_ef539abf33bf07 73-82
+  s_1fb648c429eca3::t_4fd9f1433de8b8 59-61
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseConnectStep.vue
+  s_1fb648c429eca3::t_f28e021d4139d8 45
+  s_1fb648c429eca3::t_fe7f18543ad2d5 13-14
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/BrowserUseSetupContent.vue
+  s_1fb648c429eca3::t_c9ef1761dedaba 140
+  s_1fb648c429eca3::t_b1d16aa9d167b5 21,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5365b4d813c0718a7dd29fbbac7a78ca2218e6a0",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1fb648c429eca3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed558d93-ce36-462a-b808-285763bb29a0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

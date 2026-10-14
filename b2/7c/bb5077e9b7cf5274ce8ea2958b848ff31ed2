@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_dff57e7b253b23::t_c4f3db09918635 384-385,392-403
+  ai_agent 386-391
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useArtifactTabSummaries.test.ts
+  s_dff57e7b253b23::t_c4f3db09918635 229-246,248-253
+  ai_agent 247
+packages/frontend/editor-ui/src/features/ai/instanceAi/useArtifactTabSummaries.ts
+  s_dff57e7b253b23::t_95e8cc56adb908 9,11-12,156-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b27cbb5077e9b7cf5274ce8ea2958b848ff31ed2",
+  "prompts": {},
+  "sessions": {
+    "s_dff57e7b253b23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a1b4b03-5790-4a03-a686-790045e59397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

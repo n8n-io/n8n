@@ -1,0 +1,130 @@
+packages/frontend/@n8n/chat/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 2,5-8
+packages/modules/otel/frontend/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 2,5-8
+packages/frontend/@n8n/storybook/oxlint.config.mts
+  s_1fbc71f79b33c2::t_54db2521694705 1,5-7,13,15-18
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 2-4,8-12,14,19-30
+packages/modules/instance-registry/frontend/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-9
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_1fbc71f79b33c2::t_3475765e3ce905 108,596
+packages/frontend/@n8n/frontend-utils/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 24-25,34,39-40
+packages/modules/type-availability-policies/frontend/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 2,5-8
+packages/frontend/@n8n/rest-api-client/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 33-34,48,53-54
+packages/frontend/@n8n/i18n/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 33-34,44,50-51
+packages/frontend/@n8n/frontend-test-utils/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-39
+packages/frontend/@n8n/rest-api-client/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-9
+packages/frontend/@n8n/frontend-module-sdk/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-15
+packages/frontend/@n8n/frontend-test-utils/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 16-17,36,41-42
+packages/modules/type-availability-policies/frontend/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 16-17,47
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_1fbc71f79b33c2::t_f574415d91f947 78,80,82-84,86,88-91,95-96,98-99,102,104,144
+packages/@n8n/mcp-apps/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 2,5-27
+packages/frontend/@n8n/composables/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 25-26,42,53-54
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 15-16,29,32-33
+packages/frontend/@n8n/frontend-constants/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-18
+packages/modules/insights/frontend/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 2,5-32
+packages/modules/insights/frontend/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 16-17,63
+packages/modules/otel/frontend/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 15-16,50
+packages/@n8n/eslint-config/package.json
+  s_1fbc71f79b33c2::t_2bff3d701314fb 63
+AGENTS.md
+  s_1fbc71f79b33c2::t_3475765e3ce905 251,253-255,259-261,264-271
+packages/frontend/@n8n/stores/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 33-34,53,59-60
+scripts/lint-parity/samples.json
+  s_1fbc71f79b33c2::t_a530ac2027311c 93-96,287-288,356-361,368-371,374
+  s_1fbc71f79b33c2::t_8d54351afe17c6 46,74,383,388-389
+  s_1fbc71f79b33c2::t_dffb838aecbc94 372-373
+packages/@n8n/oxlint-config/src/configs/frontend.ts
+  s_1fbc71f79b33c2::t_2bff3d701314fb 28-30
+  s_1fbc71f79b33c2::t_43bc28330732cb 32-34
+  s_1fbc71f79b33c2::t_e4566f487eae0e 5-11,15-23,25-26,43-54
+  s_1fbc71f79b33c2::t_3136b40c68b53b 55
+packages/frontend/@n8n/chat/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 16-17,69
+scripts/lint-parity/oxlint-parity.mjs
+  s_1fbc71f79b33c2::t_43bc28330732cb 230-235,241-244,250
+  s_1fbc71f79b33c2::t_819bd30b890627 69
+  s_1fbc71f79b33c2::t_8d54351afe17c6 236-240
+.code-health-baseline.json
+  s_1fbc71f79b33c2::t_37b384e629415a 1007,1017,1097-1098,1101-1103,1107-1109,1113-1115,1119-1121,1125-1127,1131-1133,1137-1139,1143-1145,1149-1151,1155-1157,1161-1163,1167-1169,1173-1175,1179-1181,1185-1187,1191-1193,1197-1199,1203-1205,1209-1211,1215-1217,1221-1223,1227-1229,1233-1235,1239-1241,1245-1247,1250,1253,1255,1259-1261,1264,1267-1269,1272,1275-1277,1280,1284-1285,1290-1291,1295-1297,1301-1303,1306-1309,1312-1315,1318-1321
+  s_1fbc71f79b33c2::t_f39a552af042c6 992,995-997,1001-1003,1008-1009,1013-1016,1018,1020-1023,1026-1029,1032-1035,1038-1041,1044-1047,1050-1053,1056-1059,1062-1065,1068-1071,1074-1077,1080-1083,1086-1089,1092-1096
+packages/@n8n/module-cli/src/templates/frontend/oxlint.config.mts.template
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 2,5-8
+packages/modules/mcp/frontend/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 16-17,62
+packages/modules/mcp/frontend/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 2,5-8
+scripts/lint-parity/oxlint-gap.json
+  s_1fbc71f79b33c2::t_9b17e401630f93 61-190,192-194
+  s_1fbc71f79b33c2::t_8d54351afe17c6 191
+packages/frontend/@n8n/i18n/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-12
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 15-16,49
+packages/frontend/@n8n/storybook/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 12-13,31,45-46
+packages/@n8n/mcp-apps/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 31-32,56
+packages/frontend/editor-ui/package.json
+  s_1fbc71f79b33c2::t_be9e661441b3e6 15-16
+packages/frontend/@n8n/stores/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-12
+packages/frontend/editor-ui/oxlint.config.mts
+  s_1fbc71f79b33c2::t_85712a1df5b808 2,35-36
+  s_1fbc71f79b33c2::t_be9e661441b3e6 5-14,16-33,37-170
+packages/frontend/@n8n/frontend-utils/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-22
+packages/frontend/@n8n/design-system/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 3,9-12,14-17
+  s_1fbc71f79b33c2::t_54db2521694705 1,5-6,13,18-32
+  s_1fbc71f79b33c2::t_1b8197fac25009 4
+packages/frontend/@n8n/design-system/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 48-49,78
+packages/frontend/@n8n/composables/oxlint.config.mts
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 1-15
+packages/modules/instance-registry/frontend/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 15-16,31,38-39
+packages/frontend/@n8n/frontend-constants/package.json
+  s_1fbc71f79b33c2::t_fd1d283b28b68e 24-25,30,33-34
+packages/frontend/@n8n/design-system/src/types/button.ts
+  s_1fbc71f79b33c2::t_0a08c86de5f731 17-18
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_1fbc71f79b33c2::t_369f7df60b0923 307-308
+pnpm-lock.yaml
+  s_1fbc71f79b33c2::t_ccba419d3f6134 922,3404-3406,5651-5653,5706,5708,5739-5744,5946,5950-5952,6044,6046,6053,6055-6058,6096,6098,6105-6110,6166-6168,6181,6183-6186,6212,6214,6227-6232,6273,6275,6291-6296,6337-6339,6352-6357,6413,6415,6431-6436,6498,6500,6539-6545,7275-7277,7330-7332,7351,7353-7356,7484-7486,7593-7595,7693-7695,18417-18418,33669,33671-33672,33674,33678,33680,33683,33725-33728,33778,33780-33783,33788-33789,33793,33795-33796,33803-33804,33820,33823-33825,33827,33831,33836,33838,37200,37202-37203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c2a2cf3d837b6538a3330a4d7cc817e4b6f04e2",
+  "prompts": {},
+  "sessions": {
+    "s_1fbc71f79b33c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c988040-403b-424c-802c-d40c9ab5ecf3",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/testing/containers/services/load-balancer.ts
+  s_66f58e4f568b59::t_88b450f96555ec 29-31
+packages/testing/playwright/tests/e2e/nodes/mcp-trigger.spec.ts
+  s_66f58e4f568b59::t_c2b931971e5add 239-242
+packages/testing/playwright/tests/e2e/nodes/webhook.spec.ts
+  s_66f58e4f568b59::t_a0537971a1b072 192-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9c9ff68717563c75363f6617ce6b0def878154e7",
+  "prompts": {},
+  "sessions": {
+    "s_66f58e4f568b59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_66f58e4f568b59",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

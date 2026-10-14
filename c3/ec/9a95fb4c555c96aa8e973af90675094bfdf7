@@ -1,0 +1,19 @@
+packages/@n8n/nodes-langchain/credentials/BraveSearchApi.credentials.ts
+  s_3edd6636465348::t_91fe2450790af0 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c3ec9a95fb4c555c96aa8e973af90675094bfdf7",
+  "prompts": {},
+  "sessions": {
+    "s_3edd6636465348": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2aca7f84-4cd6-42e6-8e74-993737d1efb8",
+        "model": "gpt-5.6-sol-max-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

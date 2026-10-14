@@ -1,0 +1,58 @@
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  s_3e0431ffe18c79::t_079ae1936ea7e9 390-392
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_3e0431ffe18c79::t_da4cd31523c555 124
+packages/cli/src/modules/mcp/tools/create-folder.tool.ts
+  s_3e0431ffe18c79::t_9d73851a721fbf 11-12,40,63,68,79,86
+packages/cli/src/modules/mcp/__tests__/create-folder.tool.test.ts
+  s_3e0431ffe18c79::t_e83ae46af68095 15,21
+  s_3e0431ffe18c79::t_9137da53f3b6fc 89
+packages/cli/src/modules/mcp/tools/move-workflows-to-folder.tool.ts
+  s_3e0431ffe18c79::t_0b5dd66950d177 92,95-100,103-109,115,125,129,131,139-140,146,149
+  s_3e0431ffe18c79::t_0b2eda473e5daf 1,5,13-14
+packages/cli/src/modules/mcp/tools/folder-error.utils.ts
+  s_3e0431ffe18c79::t_f3e485386fe7dc 1-2,4-7,17,19-34
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_3e0431ffe18c79::t_aebf88fb3603dd 718
+packages/cli/src/modules/mcp/__tests__/search-folders.tool.test.ts
+  s_3e0431ffe18c79::t_c48e81dcab81ef 2,4,14-19,27,41,58,60,71-77,79,81,97-99,105,107,111-113,119,123,133,137,145
+packages/cli/src/modules/mcp/__tests__/create-workflow-from-code.tool.test.ts
+  s_3e0431ffe18c79::t_26182268765d11 2
+  s_3e0431ffe18c79::t_afa068999f085d 248-255
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_3e0431ffe18c79::t_880d532fbcb0ed 112-125
+packages/cli/src/modules/mcp/tools/update-folder.tool.ts
+  s_3e0431ffe18c79::t_b13fc722c216cd 12-13
+  s_3e0431ffe18c79::t_f80b1704335ac6 70
+  s_3e0431ffe18c79::t_9f9e39b949b44c 44
+packages/cli/src/modules/mcp/__tests__/move-workflows-to-folder.tool.test.ts
+  s_3e0431ffe18c79::t_791e2273ffa45f 149
+  s_3e0431ffe18c79::t_35e2d0c0322b42 33,35-37
+  s_3e0431ffe18c79::t_f5e10600098d33 76,104,129,145,158,180
+  s_3e0431ffe18c79::t_d00f55ba710017 78-79
+packages/cli/src/modules/mcp/tools/workflow-validation.utils.ts
+  s_3e0431ffe18c79::t_f4a2024fe54f70 47-48,64,78-98
+  s_3e0431ffe18c79::t_4f3e2227d2f155 52-54
+packages/cli/src/services/folder.service.ts
+  s_3e0431ffe18c79::t_7eff4bfa701160 318-321
+packages/cli/src/modules/mcp/tools/search-folders.tool.ts
+  s_3e0431ffe18c79::t_0044477a94975b 43
+  s_3e0431ffe18c79::t_23d79fba862c8f 91-93,100-101
+  s_3e0431ffe18c79::t_020b72c62d6471 1,4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bfae3479d7f3f345578ce815ba147d0025e8a98c",
+  "prompts": {},
+  "sessions": {
+    "s_3e0431ffe18c79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "031bd27b-7b0d-4362-85fe-c09b1a7f6223",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

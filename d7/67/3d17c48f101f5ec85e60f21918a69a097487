@@ -1,0 +1,31 @@
+packages/cli/src/modules/instance-ai/AGENTS_RUNTIME_POC.md
+  s_db74c72b258827::t_ab1902487fe54b 291-333,404-405
+  s_db74c72b258827::t_c29b1743f3f7f2 206-225,227-228,230,239
+  s_db74c72b258827::t_2d04afa9f8a27e 187-205
+  s_db74c72b258827::t_9883cb922165fd 398-399
+  s_db74c72b258827::t_0e9c3e02025fd9 226,352-353
+  s_db74c72b258827::t_0ac8aa6f28eba2 1-4,44-98,100-175,186,240-262,290,334-335,389-396,400-403,406,409-411,417-419,425-427
+  s_db74c72b258827::t_2340e73ebeb7f4 5-14,43,176-185,231-234,238,263-289,397,407-408,422-424
+  s_db74c72b258827::t_8db6fb6a3445ac 235-237
+  s_db74c72b258827::t_3ca247d4260b0b 30-36
+  s_db74c72b258827::t_f4032c2fb9dafe 99
+  s_db74c72b258827::t_67fcf03bdf97d9 229,336-351,354-388,412-416,420-421
+  s_db74c72b258827::t_2c97947241c68e 15-23,37-42
+  s_db74c72b258827::t_42d0463668fae1 24-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7673d17c48f101f5ec85e60f21918a69a097487",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

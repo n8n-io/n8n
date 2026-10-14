@@ -1,0 +1,217 @@
+packages/@n8n/constants/src/index.ts
+  ai_agent 39
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  ai_agent 502-507,509-537,540-543,545-567
+packages/@n8n/backend-network/src/http/env-proxy-https-agent.ts
+  ai_agent 1,8,20-21
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  ai_agent 472-531
+packages/@n8n/utils/package.json
+  ai_agent 4
+packages/@n8n/instance-ai/package.json
+  ai_agent 3
+.github/workflows/test-unit-reusable.yml
+  ai_agent 69,129
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  ai_agent 49,1178-1200
+packages/@n8n/node-engine-compatibility/vitest.integration.config.ts
+  ai_agent 1-8
+packages/cli/src/modules/data-table/data-table.repository.ts
+  ai_agent 10,194-201
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.errorMessage.test.ts
+  ai_agent 31-48
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  ai_agent 2,118,968,992-994,1016-1041
+packages/@n8n/db/src/entities/workflow-review-activity-comment.ee.ts
+  s_ffb7ac8df0495d::t_025e70fa40395e 39
+packages/nodes-base/package.json
+  ai_agent 3
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  ai_agent 2-7,12,87,93,96,98-102,104,109-216,218-219,221-283,306-365
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-review.ts
+  ai_agent 1-139
+pnpm-workspace.yaml
+  ai_agent 5-7
+packages/@n8n/create-node/package.json
+  ai_agent 3
+packages/frontend/editor-ui/package.json
+  ai_agent 3
+packages/@n8n/utils/src/number/smart-decimal.test.ts
+  ai_agent 35-51
+packages/@n8n/instance-ai/evaluations/__tests__/mcp-builder.test.ts
+  ai_agent 132-137,171,179
+packages/cli/src/controllers/e2e.controller.ts
+  ai_agent 124
+packages/frontend/editor-ui/src/features/settings/users/components/DeleteUserModal.test.ts
+  ai_agent 65
+packages/@n8n/backend-network/src/http/client-request-error.ts
+  ai_agent 22-89
+docs/generated/sqlite-schema/workflow_review_activity_comment.md
+  s_ffb7ac8df0495d::t_025e70fa40395e 9,23,55
+packages/@n8n/config/package.json
+  ai_agent 3
+.devcontainer/codespaces/codespaces-secrets.sh
+  ai_agent 5-11
+packages/@n8n/api-types/src/dto/index.ts
+  ai_agent 190-194
+packages/@n8n/nodes-langchain/package.json
+  ai_agent 3
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 147
+packages/@n8n/typescript-config/package.json
+  ai_agent 9-10,17
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  ai_agent 7790-7886
+packages/cli/src/executions/enqueued-execution-recovery.service.ts
+  ai_agent 49-58
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-tool-calls.ts
+  ai_agent 1,3-4,6,8-9,11-19,21-24,26-28,30-35,38-52,54-68
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  ai_agent 9,538-541,1143-1145,1165-1169
+packages/modules/README.md
+  ai_agent 1-13
+docs/generated/postgres-schema/public.user.md
+  s_ffb7ac8df0495d::t_025e70fa40395e 351
+packages/core/package.json
+  ai_agent 3
+packages/frontend/editor-ui/src/features/ai/instanceAi/toolIcons.ts
+  ai_agent 2
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getAllRoles.generated.yml
+  ai_agent 1-124
+packages/@n8n/workflow-sdk/package.json
+  ai_agent 3
+packages/@n8n/backend-network/src/http/axios/redirect.ts
+  ai_agent 14,128
+packages/@n8n/instance-ai/evaluations/run/case-selection.ts
+  ai_agent 67-70
+packages/frontend/@n8n/frontend-module-sdk/src/registries/modalRegistry.ts
+  ai_agent 1-2,5-10
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  ai_agent 185,237,250,254
+packages/core/src/execution-engine/__tests__/requests-response.test.ts
+  ai_agent 499-594
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalResultRow.test.ts
+  ai_agent 1-309
+.github/scripts/db-test-matrix.test.mjs
+  ai_agent 1-128
+packages/@n8n/backend-common/package.json
+  ai_agent 3
+.devcontainer/codespaces/Dockerfile
+  ai_agent 27-31
+docs/generated/postgres-schema/public.workflow_review_activity.md
+  s_ffb7ac8df0495d::t_025e70fa40395e 81
+packages/@n8n/db/src/migrations/common/1785843640527-CreateWorkflowReviewActivityTablesAndBaseline.ts
+  s_ffb7ac8df0495d::t_025e70fa40395e 112
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  ai_agent 3,39
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.security.test.ts
+  ai_agent 2-29
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 7-8
+packages/cli/src/services/frontend.service.ts
+  ai_agent 610
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.vue
+  ai_agent 26,61-65,68
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  ai_agent 268-270
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  ai_agent 14,61-78,137,270,272-273
+.github/workflows/docker-build-push.yml
+  ai_agent 43-64
+docs/generated/postgres-schema/README.md
+  s_ffb7ac8df0495d::t_025e70fa40395e 1533
+packages/cli/test/migration/1785843640527-create-workflow-review-activity-tables-and-baseline.test.ts
+  s_ffb7ac8df0495d::t_025e70fa40395e 302,318,352
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  ai_agent 170-182,3336-3354
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionRow.vue
+  ai_agent 3,6-7,10-25,28-36,62-70,80,86-87,92-113,128-129,146-150
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ImportCurlModal.test.ts
+  ai_agent 62,85,109,130-139,145,167-169,179
+packages/@n8n/engine/src/database/index.ts
+  ai_agent 2
+docs/generated/sqlite-schema/workflow_review_activity.md
+  s_ffb7ac8df0495d::t_025e70fa40395e 86
+docs/generated/sqlite-schema/user.md
+  s_ffb7ac8df0495d::t_025e70fa40395e 357
+packages/@n8n/instance-ai/src/index.ts
+  ai_agent 190
+packages/cli/src/modules/agents/agent-knowledge-storage.ts
+  ai_agent 2,9-23
+packages/testing/playwright/tests/e2e/workflows/editor/canvas/canvas-zoom.spec.ts
+  ai_agent 58,60
+packages/frontend/@n8n/frontend-utils/package.json
+  ai_agent 4
+packages/@n8n/constants/package.json
+  ai_agent 3
+packages/@n8n/utils/src/number/smart-decimal.ts
+  ai_agent 7-10
+docs/generated/postgres-schema/public.workflow_review_activity_comment.md
+  s_ffb7ac8df0495d::t_025e70fa40395e 12,48
+packages/testing/containers/README.md
+  ai_agent 352
+packages/cli/src/modules/agents/__tests__/agent-sandbox.controller.test.ts
+  ai_agent 13-15,29-44
+pnpm-lock.yaml
+  ai_agent 2164-2166,2296-2298,3122-3124,3128-3130
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  ai_agent 56,130,647,657,665,735,745,753,967-969,1183,1931,2924,2940,2996
+docs/generated/sqlite-schema/README.md
+  s_ffb7ac8df0495d::t_025e70fa40395e 1522
+packages/testing/containers/test-containers.ts
+  ai_agent 23-24,27
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  ai_agent 237,297-306
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  ai_agent 1-3,29-30,68-99,111-122,256-262,264-272,333-371,373,377,381,385,389,399,418,425,448,460,629-637,646-656,658-659,661-663
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  ai_agent 5,191,200,211,215,262,269,274,280,285,356,657,724-729
+packages/frontend/@n8n/frontend-module-sdk/package.json
+  ai_agent 4
+packages/cli/src/modules/agents/agent-sandbox.controller.ts
+  ai_agent 37
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  ai_agent 6,137-143,178-179
+packages/cli/src/modules/data-table/register-favorite-resolver.ts
+  ai_agent 1-20
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalVoteButtons.test.ts
+  ai_agent 1-65
+packages/frontend/editor-ui/src/app/router.ts
+  ai_agent 771
+packages/@n8n/decorators/package.json
+  ai_agent 3
+packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/IconContent.vue
+  ai_agent 61-66
+packages/@n8n/db/package.json
+  ai_agent 3,63
+packages/@n8n/eslint-plugin-community-nodes/package.json
+  ai_agent 4
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.ts
+  ai_agent 4,8-19,31-50,62-71,73-79,85-136,141,144-147
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  ai_agent 15,24,193-204,207-209,214,485-496,505,509,555,560,573-574,577,589,634
+packages/@n8n/vitest-config/package.json
+  ai_agent 3
+packages/@n8n/node-engine-compatibility/src/engine-step-data-loader.ts
+  ai_agent 1-32
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.test.ts
+  ai_agent 1,3,5,7-36,38-39,42
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolIcon.vue
+  ai_agent 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5006d27ce166102b0d4f5fe3e22a1538c965f193",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

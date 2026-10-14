@@ -1,0 +1,23 @@
+packages/@n8n/scheduler/src/core/executor/task-handler.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 78-80,88-92
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 3,53-54,234,768-780,786-790,794-848,910-925,928-950,952-969
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_cc52d4d80ec002::t_3f3cf24cbec600 5-7,12,19-22,24-25,54-56,72-74,76-77,87-88,258,298-300,302,363-364,366-370,372-379,385-389,391-395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "44d9adfc7e311e721a6cc70797b854abe3ed528e",
+  "prompts": {},
+  "sessions": {
+    "s_cc52d4d80ec002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14df1071-d247-4331-af4e-4ce488ddaae0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

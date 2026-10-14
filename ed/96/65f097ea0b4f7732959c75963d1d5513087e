@@ -1,0 +1,19 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/structured-output-parser-validator.test.ts
+  s_5d7dcde052ad34::t_ca278666ba255d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ed9665f097ea0b4f7732959c75963d1d5513087e",
+  "prompts": {},
+  "sessions": {
+    "s_5d7dcde052ad34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b21e0ff-3d00-45f6-af8d-3275d26a74df",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

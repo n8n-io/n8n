@@ -1,0 +1,19 @@
+packages/cli/test/migration/1790590278292-add-agent-execution-messages.test.ts
+  s_38faa0ca3b5024::t_1b81fd8c876171 182-191,193,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8dceabd0def94d21316cf5f2204366ad26572b1d",
+  "prompts": {},
+  "sessions": {
+    "s_38faa0ca3b5024": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e878-46de-74c3-81b6-ed00ce48d78e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

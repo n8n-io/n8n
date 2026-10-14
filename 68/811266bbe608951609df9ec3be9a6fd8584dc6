@@ -1,0 +1,43 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8521b223be2102::t_03349dca48c6ea 3776-3800,3805-3806,3808-3817,3839,3845,3855-3857
+  s_8521b223be2102::t_5e6b27b2343d23 374
+  s_8521b223be2102::t_271336a9bb1f9c 3969,3974-3975,3977-3979,3981,3986
+  s_8521b223be2102::t_95b2eb013b1abf 4099-4107
+  s_8521b223be2102::t_3678c1a61869c7 3119
+  s_8521b223be2102::t_179e94d772f0df 3120-3122
+  s_8521b223be2102::t_3c043b1df45309 3858-3860
+  s_8521b223be2102::t_2b9c1c89acaee4 4108-4110
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_8521b223be2102::t_8d73e67fc2d037 404-406,408-414
+  s_8521b223be2102::t_8b811db7ae22f4 407
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8521b223be2102::t_42e70059ef6a9c 1562,1589,1597
+  s_8521b223be2102::t_dd0987845e6e04 2039,2044,2055,2059,2061-2062,2073,2077,2084-2086,2089,2097
+  s_8521b223be2102::t_e73d06b2261d8b 163
+  s_8521b223be2102::t_9a93a91544ad43 2098,2101-2195
+  s_8521b223be2102::t_24a50c8cf1553e 2099-2100
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_8521b223be2102::t_ea77b42c0d8748 5
+  s_8521b223be2102::t_f5a5272ee5601e 534-568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "68811266bbe608951609df9ec3be9a6fd8584dc6",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8521b223be2102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab3d933a-19c0-4279-b0cf-7b0be38aeac8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

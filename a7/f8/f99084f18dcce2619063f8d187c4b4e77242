@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_c5954c3047b5ed::t_8197941594545f 58,70,130-150
+  s_c5954c3047b5ed::t_9e6e4028991c86 151
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_c5954c3047b5ed::t_87cff25228796f 3,18,87,92-120,124,150,235-239
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_c5954c3047b5ed::t_47495e3f787466 1214-1215
+  s_c5954c3047b5ed::t_ccb52e455912ce 29,1206-1213,1216-1236
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_c5954c3047b5ed::t_3a2626bcb4f182 33-38,56-61,108-109,127-130,135-143
+  s_c5954c3047b5ed::t_bf4b0f3c83e6d8 144-145
+packages/cli/src/modules/agents/__tests__/agent-queued-preview-stream.service.test.ts
+  s_c5954c3047b5ed::t_9c6c4794b0f6d6 152-201
+packages/cli/src/modules/agents/agent-queued-preview-stream.service.ts
+  s_c5954c3047b5ed::t_74be686dd9b55e 20-21,29,79,83,91,106,111-112,116,136-137,147-150
+  s_c5954c3047b5ed::t_47495e3f787466 107-110
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_c5954c3047b5ed::t_74be686dd9b55e 17-18
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_c5954c3047b5ed::t_3a2626bcb4f182 80-83
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_c5954c3047b5ed::t_3a2626bcb4f182 3189
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_c5954c3047b5ed::t_47495e3f787466 208-217,221-229
+  s_c5954c3047b5ed::t_f573f0a3663647 171-173,175-183,188,190-192,195-207,218-220,230-240
+  s_c5954c3047b5ed::t_3dd18a3ac0d513 241
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_c5954c3047b5ed::t_59c6d853e8dbc1 8,75-76,637-654,1032
+  s_c5954c3047b5ed::t_22f3d67a500030 1033
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a7f8f99084f18dcce2619063f8d187c4b4e77242",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Kafka/test/v2/consumer/kafka-consumer.integration.test.ts
+  s_79c0473179aa3d::t_6c8f4029716ce2 21-22
+packages/nodes-base/nodes/Kafka/v2/transport/index.ts
+  s_79c0473179aa3d::t_2a8b294cb697c2 3
+packages/nodes-base/nodes/Kafka/v2/consumer/index.ts
+  s_79c0473179aa3d::t_ad39187d500b3e 1,7
+packages/nodes-base/nodes/Kafka/test/v2/consumer/lazy-load.test.ts
+  s_79c0473179aa3d::t_91f0dd74111e85 2-4
+  s_79c0473179aa3d::t_6c8f4029716ce2 5
+packages/nodes-base/nodes/Kafka/v2/consumer/consume-topic.ts
+  s_79c0473179aa3d::t_4904e806b9e638 23
+  s_79c0473179aa3d::t_85d93e749ed9cc 6
+  s_79c0473179aa3d::t_de38f0fbf3ef8e 69
+packages/nodes-base/nodes/Kafka/v2/transport/consumer.ts
+  s_79c0473179aa3d::t_0a4e12d311510c 1-48
+packages/nodes-base/nodes/Kafka/test/v2/consumer/kafka-v1-v2-parity.integration.test.ts
+  s_79c0473179aa3d::t_6c8f4029716ce2 25-26
+packages/nodes-base/nodes/Kafka/test/v2/consumer/consume-topic.test.ts
+  s_79c0473179aa3d::t_3d3bb28274834b 1-228
+packages/nodes-base/nodes/Kafka/test/v2/transport/consumer.test.ts
+  s_79c0473179aa3d::t_fbb3a81f4709a7 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1d8245c94119ef520456a4d3513b8174b4f0d7de",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

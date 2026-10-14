@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/docs/architecture.md
+  s_45e2f6fac3868c::t_cf27a9bda01f1a 219-221
+  s_45e2f6fac3868c::t_6e63791f9b7050 72-73
+  s_45e2f6fac3868c::t_4ade26f2cba36b 52-53
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_45e2f6fac3868c::t_cf27a9bda01f1a 400-402,404,408-412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "345d5df915989fcc2cfdec1e9cbb97b994b59c97",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

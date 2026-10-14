@@ -1,0 +1,67 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/NewAgentView.test.ts
+  s_a131959e1a7e98::t_452a0d6a54edea 6,41,59-63
+  s_a131959e1a7e98::t_6d9f647e9bec86 64
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_a131959e1a7e98::t_ee6567e09fcf47 141,143-151,155-161
+  s_a131959e1a7e98::t_737bd37037f311 11
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_a131959e1a7e98::t_648c026af0020e 6-9,11-14,41-53,55,57,59,63-66,78
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_a131959e1a7e98::t_c05a939e4da585 1-2,35,38-39,53,58-62,65,67-70,77-82
+  s_a131959e1a7e98::t_5f8b660f7a6481 3
+  s_a131959e1a7e98::t_04727330da9653 4-34,36-37,40-52,54-57,63-64,66,71-76,83-84
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiArtifactsPanel.vue
+  s_a131959e1a7e98::t_fb7e489fd72fcb 64,123
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_a131959e1a7e98::t_2854c1c34f183b 97-117,534-543,698-699,711,748-752
+  s_a131959e1a7e98::t_60aa3403a7febe 36,191-192,312-315
+  s_a131959e1a7e98::t_6f6a7be110fd2a 753
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_a131959e1a7e98::t_8624137e3d467e 111-112,240,719,1279
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_a131959e1a7e98::t_1ff8a2d8bf2691 123,255,530,1614-1622,1626-1629,1642-1649
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_a131959e1a7e98::t_b9745c4e4a4032 890-891
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_a131959e1a7e98::t_51d735a86ca1b0 351
+  s_a131959e1a7e98::t_92e943f97995c8 367-368
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_a131959e1a7e98::t_ea8f55db2c5557 232,244,256,933,938-951
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_a131959e1a7e98::t_0f291ce19a03c3 625
+  s_a131959e1a7e98::t_d7d062303051b7 628-638,646-647,654,656,666,677-679,682-684,707,714-764
+  s_a131959e1a7e98::t_b6016ef6269170 658,685-697,699,713
+  s_a131959e1a7e98::t_7ae0101fec0ad8 766-798
+  s_a131959e1a7e98::t_192d2893b28aad 377-379,680-681,1174-1175,1177-1186,1190,1192-1193,1196,1201-1234
+  s_a131959e1a7e98::t_45d04278618cbf 765
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_a131959e1a7e98::t_6367ad9f0e1ffb 37,40,132-136,139
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiArtifactsPanel.test.ts
+  s_a131959e1a7e98::t_97d020d86dc449 419-464
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_a131959e1a7e98::t_e33a8338eaabb6 238-240,252-256,260,262-264
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  s_a131959e1a7e98::t_2a71da31276bc3 14,63-68
+  s_a131959e1a7e98::t_c725bd6b7a6837 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6ee41eccd339485c709024c4eaab943a8776ca5a",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a131959e1a7e98": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7f785818-3cf1-4f8b-8144-8ca027d14f8e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

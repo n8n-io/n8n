@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/agents/types.ts
+  s_f2c709ae1e1180::t_68135460d72c7c 159-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4e3748de4d6e1edc59672dd181efdcd437132a6",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f2c709ae1e1180": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782143618017",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

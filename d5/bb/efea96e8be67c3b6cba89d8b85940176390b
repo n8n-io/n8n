@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_d9f647ba40f552::t_377ce80bce0c23 85-87
+  s_d9f647ba40f552::t_4b25343174ef12 60-61,70-76,80-84,88-90,147,170-172
+  s_d9f647ba40f552::t_f2c56dd81b140f 20,77-79
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_d9f647ba40f552::t_3ea5226500ae8b 15-18,215-217,220,223,227-229,237,239,242-246,251-256,263-267
+  s_d9f647ba40f552::t_2af4b0730b973f 4,12,213-214,218-219,221-222,224-226,230-231,233-236,238,240-241,257-262,268-270,276
+  s_d9f647ba40f552::t_87ca8ce18c14eb 11,160,174-181,232,247-250,271-275
+  s_d9f647ba40f552::t_670a96d1b406c9 156-159
+  s_d9f647ba40f552::t_8edc6a608d4628 155
+  s_d9f647ba40f552::t_2c8507dd8eaada 277-278
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_d9f647ba40f552::t_670a96d1b406c9 236-240
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_d9f647ba40f552::t_a66a02d6177bb5 23-30,80-84
+  s_d9f647ba40f552::t_48ba0743df7a63 15-22,37
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_d9f647ba40f552::t_1f6d79e902ece5 45-47
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_d9f647ba40f552::t_82301c354c9c48 42,44-45,50-53,59-62
+  s_d9f647ba40f552::t_3996bfd806cdfc 169
+  s_d9f647ba40f552::t_4b25343174ef12 170,176-181
+  s_d9f647ba40f552::t_7215463706f151 188-190,196-197
+  s_d9f647ba40f552::t_48ba0743df7a63 128,131-136
+  s_d9f647ba40f552::t_377ce80bce0c23 174-175
+  s_d9f647ba40f552::t_dd6f90f9f0af81 43,168,171-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d5bbefea96e8be67c3b6cba89d8b85940176390b",
+  "prompts": {},
+  "sessions": {
+    "s_d9f647ba40f552": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7088-5a59-7c83-845d-4b1be5f66adb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

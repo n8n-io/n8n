@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-arm-template.service.test.ts
+  s_fb30b1b6ca962d::t_d83b3741ecc0e9 17,216
+packages/cli/src/services/token-purposes.ts
+  s_fb30b1b6ca962d::t_d83b3741ecc0e9 24
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-arm-template.service.ts
+  s_fb30b1b6ca962d::t_d83b3741ecc0e9 168,181,183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "915efe285a3040787ce9f0be13ec16b7d6a5831a",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

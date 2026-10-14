@@ -1,0 +1,35 @@
+packages/cli/src/telemetry/telemetry-buffer-flush.task.ts
+  ai_agent 3,17,20
+packages/cli/src/services/workflow-statistics-rollup.task.ts
+  ai_agent 4,23,25-30,44,47
+packages/cli/src/services/__tests__/workflow-statistics-rollup.task.test.ts
+  ai_agent 24-28,42,52
+packages/cli/test/integration/workflow-statistics-rollup.task.test.ts
+  ai_agent 114,120
+packages/cli/src/eventbus/message-event-bus/event-bus-unsent-message-flush.task.ts
+  ai_agent 3,20,23
+packages/cli/src/license/license-renewal.task.ts
+  ai_agent 1,3,18,20-32
+packages/cli/src/telemetry/__tests__/telemetry-buffer-flush.task.test.ts
+  ai_agent 19
+packages/cli/src/credentials/pending-authorization-cleanup.task.ts
+  ai_agent 5,22
+packages/cli/src/license/__tests__/license-renewal.task.test.ts
+  ai_agent 19-25
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-cleanup.task.test.ts
+  ai_agent 15-20
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.task.ts
+  ai_agent 3,19,21-27
+packages/cli/src/telemetry/telemetry-pulse.task.ts
+  ai_agent 1,3,16-30
+packages/cli/src/eventbus/message-event-bus/__tests__/event-bus-unsent-message-flush.task.test.ts
+  ai_agent 20
+packages/cli/src/telemetry/__tests__/telemetry-pulse.task.test.ts
+  ai_agent 21,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "db6d04b124a0398ae36dfb7fb371c3a1c171bc2c",
+  "prompts": {}
+}

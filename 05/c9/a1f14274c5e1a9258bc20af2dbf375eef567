@@ -1,0 +1,36 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  s_4906d8d2bd547c::t_cf6db5f66db24e 214
+  s_4906d8d2bd547c::t_d7fd6cddd85c3c 218
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_4906d8d2bd547c::t_d7fd6cddd85c3c 651,672
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_4906d8d2bd547c::t_d7fd6cddd85c3c 586,613,738
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_4906d8d2bd547c::t_d7fd6cddd85c3c 479,521,804,853
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_4906d8d2bd547c::t_d7fd6cddd85c3c 296,335,366,419,433,453
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_4906d8d2bd547c::t_df5197971c5890 406
+packages/cli/src/interfaces.ts
+  s_4906d8d2bd547c::t_d7fd6cddd85c3c 253
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_4906d8d2bd547c::t_d7fd6cddd85c3c 54,374
+packages/cli/src/telemetry/index.ts
+  s_4906d8d2bd547c::t_d7fd6cddd85c3c 96,329,354,466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "05c9a1f14274c5e1a9258bc20af2dbf375eef567",
+  "prompts": {},
+  "sessions": {
+    "s_4906d8d2bd547c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c66-012b-7f63-a211-bef56d0159df",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

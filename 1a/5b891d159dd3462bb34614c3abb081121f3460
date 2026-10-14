@@ -1,0 +1,25 @@
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_a35f89225428f7::t_b19072934f3817 1,9
+  s_a35f89225428f7::t_deb652e8289f86 6,10-13,93,95
+packages/@n8n/engine/src/server/error-response.ts
+  s_a35f89225428f7::t_b19072934f3817 1-3,17-20
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_a35f89225428f7::t_b19072934f3817 11,45,54,68
+  s_a35f89225428f7::t_deb652e8289f86 1-10,12-44,46-53,55-67,69-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a5b891d159dd3462bb34614c3abb081121f3460",
+  "prompts": {},
+  "sessions": {
+    "s_a35f89225428f7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0242d-0372-73d3-8207-92c5c66c08e5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,66 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importResult.yml
+  s_d9e246703828a2::t_436bd76ccd4b1b 1-414
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_d9e246703828a2::t_b70b693742efbd 121-204
+  s_d9e246703828a2::t_e042c41227b6a0 205
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_d9e246703828a2::t_fbc0b48aa55672 35,41
+  s_d9e246703828a2::t_7b3a1ab49ee452 820-923
+  s_d9e246703828a2::t_ca74f039974024 109-123,134-137,142
+  s_d9e246703828a2::t_876355da5275aa 138-141
+  s_d9e246703828a2::t_9a04c0a18d7e74 143
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_d9e246703828a2::t_8375ce82f4fcf1 1-8
+  s_d9e246703828a2::t_31ca815a167c91 25
+  s_d9e246703828a2::t_01322e6f9a6676 9-24,26-139,145-188
+  s_d9e246703828a2::t_88f5bbf0090e56 140-144
+  s_d9e246703828a2::t_bea9c5854fede0 189-190
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_d9e246703828a2::t_87dc4a2829f8d7 22-25
+  s_d9e246703828a2::t_4be1692ba9b214 60-63,67,304
+  s_d9e246703828a2::t_769daf0b3644e2 255-303
+  s_d9e246703828a2::t_d5e0444b39e0c4 1-5
+  s_d9e246703828a2::t_6d2646196f112a 305-306
+packages/cli/src/modules/n8n-packages/utils/import-package-upload.ts
+  s_d9e246703828a2::t_fc3b7bf79978b1 1-4,14,19-21
+  s_d9e246703828a2::t_6f14f925997ecb 62-68,81
+  s_d9e246703828a2::t_ef69d71f75a5ec 22-24
+packages/cli/src/public-api/types.ts
+  s_d9e246703828a2::t_1012252c2f814c 56-71
+packages/cli/src/public-api/v1/openapi.yml
+  s_d9e246703828a2::t_82c0dda250c542 126-127
+packages/cli/src/modules/n8n-packages/__tests__/utils/import-package-upload.test.ts
+  s_d9e246703828a2::t_d8c99ab7094d58 11
+  s_d9e246703828a2::t_a7c3854d8e2535 148-193
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml
+  s_d9e246703828a2::t_1f12e431b305a8 1-142
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_d9e246703828a2::t_2a157c349abcb8 536-537,558-564
+  s_d9e246703828a2::t_96cf794da091ec 470-495,497-503
+  s_d9e246703828a2::t_3122f98993c29f 56
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_d9e246703828a2::t_aafa64a897b15d 1-3,5-179
+  s_d9e246703828a2::t_059ddb9d67ef79 4
+packages/@n8n/api-types/src/dto/index.ts
+  s_d9e246703828a2::t_26386db27a9cc0 434-435
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_d9e246703828a2::t_d5bdacb2729dd4 306-313
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_d9e246703828a2::t_5e0e0e72506610 375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0c9a73e9db7f9d4f72775bf264c4b3721576f3e",
+  "prompts": {},
+  "sessions": {
+    "s_d9e246703828a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef6bf45b-5856-493d-aa56-19350759501f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

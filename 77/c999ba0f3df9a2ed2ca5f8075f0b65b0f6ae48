@@ -1,0 +1,25 @@
+PROJECT_FILES_PLAN.md
+  s_749e9217782dea::t_b25bca5636ef89 1-352,354-511
+  h_c63dce324dfc7b 353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "77c999ba0f3df9a2ed2ca5f8075f0b65b0f6ae48",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_749e9217782dea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9256f74-4f49-46ff-9964-3b3c3eb85678",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

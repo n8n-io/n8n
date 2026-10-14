@@ -1,0 +1,18 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  h_9b272a633435fb 36-45
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  h_9b272a633435fb 9-12
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  h_9b272a633435fb 104-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1c6d3441b68f62443e1fae93de079a2bbdf67cd4",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

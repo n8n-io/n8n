@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.test.ts
+  s_a65a5a88327681::t_a3b5027d20606a 123,132
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_a65a5a88327681::t_3c472e5ab299bb 383-387,389-391
+  s_a65a5a88327681::t_a3b5027d20606a 400
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_a65a5a88327681::t_3f94a9a1c553a3 570,577,594,606-610,621,628-641,732-739,742-744,957-958,971,975-977,1001-1017
+  s_a65a5a88327681::t_481af8f5c4b56f 1018-1019
+packages/quality/testing/playwright/tests/infrastructure/agents/capability-activation.spec.ts
+  s_a65a5a88327681::t_cfeb2775efb77f 147,233-234,237
+  s_a65a5a88327681::t_58755ada864e7e 127-143,145,232,235
+  s_a65a5a88327681::t_a6d99ea82dad82 148-185,187-202,204-228,230-231
+  s_a65a5a88327681::t_d4eb133e437a07 121
+packages/cli/src/modules/agents/utils/sub-agent-resolver.ts
+  s_a65a5a88327681::t_a3b5027d20606a 23
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_a65a5a88327681::t_a3b5027d20606a 493,502
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0b6f85923847b4484d58c75bc28264729fdfd429",
+  "prompts": {},
+  "sessions": {
+    "s_a65a5a88327681": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f799-dd8b-7be3-bdcc-3de578ddb55f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

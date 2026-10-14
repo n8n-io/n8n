@@ -1,0 +1,32 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b8e290eb32d4ea::t_9a821a940faa9a 1355-1356
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_b8e290eb32d4ea::t_20dc00480f3aa7 106-107
+  s_b8e290eb32d4ea::t_531ea1dabf4921 457
+packages/frontend/editor-ui/src/app/components/app/E2ETestModeMarker.test.ts
+  s_b8e290eb32d4ea::t_158a5016775dc4 1-33
+packages/frontend/editor-ui/src/app/App.vue
+  s_b8e290eb32d4ea::t_fb71610a8ea06e 139
+  s_b8e290eb32d4ea::t_6f68ca7f07391b 8
+packages/frontend/@n8n/frontend-constants/src/z-indexes.ts
+  s_b8e290eb32d4ea::t_f03671fb55f52a 31
+packages/frontend/editor-ui/src/app/components/app/E2ETestModeMarker.vue
+  s_b8e290eb32d4ea::t_104418760edd23 31-32,35-37,39
+  s_b8e290eb32d4ea::t_ae1ee46a31341b 1-30,33-34,38,40-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c4d193f5d70f9a614c2c569cbb186e79a0a892e",
+  "prompts": {},
+  "sessions": {
+    "s_b8e290eb32d4ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74d74e4d-6611-4863-b9c5-3834dadf74d0",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

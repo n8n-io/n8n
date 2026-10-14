@@ -1,0 +1,22 @@
+packages/@n8n/nodes-langchain/utils/credentialGuardedFetch.test.ts
+  s_ac2d39a9997295::t_b233367d9f8893 1-20,31-79,82-85,104-115,87,96,98,102-103
+  s_ac2d39a9997295::t_4093a4f676dc14 80-81
+  s_ac2d39a9997295::t_81fed4fae213ed 21-30
+  s_ac2d39a9997295::t_da46b0263c51b0 86,88-95,97,99-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a7e72e050354a5e22dc537f10876181e11fae7b3",
+  "prompts": {},
+  "sessions": {
+    "s_ac2d39a9997295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c577bfa-f279-4d79-96b1-f69bf0a1ed08",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

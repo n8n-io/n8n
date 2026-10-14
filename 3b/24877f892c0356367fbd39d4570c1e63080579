@@ -1,0 +1,27 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_0e59a61b731570::t_430ce136bc694c 797-799
+  s_0e59a61b731570::t_1f99166df261ba 948,952-953
+  s_0e59a61b731570::t_819d47b2fc1e8c 956
+  s_0e59a61b731570::t_3903101f73fc25 461-465
+  s_0e59a61b731570::t_6cb7079d913052 954-955
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_0e59a61b731570::t_cc9b31ec34989e 8423-8471
+packages/@n8n/agents/src/runtime/tools/deferred-tool-manager.ts
+  s_0e59a61b731570::t_4cb6f71e329bc6 139-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3b24877f892c0356367fbd39d4570c1e63080579",
+  "prompts": {},
+  "sessions": {
+    "s_0e59a61b731570": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b5d4ab7-bab4-48b4-984a-9ea8eede8ea1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

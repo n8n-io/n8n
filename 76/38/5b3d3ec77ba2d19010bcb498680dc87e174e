@@ -1,0 +1,164 @@
+packages/cli/src/modules/apps/rendering/styles/app-chat.css
+  s_8fed88675c1307::t_6c266453e85a0a 1
+packages/cli/src/modules/apps/serving/__tests__/viewer.service.test.ts
+  s_8fed88675c1307::t_76bb015bd7a404 13
+packages/cli/src/modules/apps/actions/app-actions.controller.ts
+  s_8fed88675c1307::t_9358030cbba885 10-12,14,20-22,39-50,52-56,58-69,88-90,95,124-126,129,131,134-135,137,142-157,162,175,178-184,187,200,208,216
+packages/@n8n/db/src/migrations/sqlite/1789030187576-AddComponentsToApp.ts
+  s_8fed88675c1307::t_e2530d8142d1ea 1-10
+packages/@n8n/api-types/src/schemas/app.schema.ts
+  s_8fed88675c1307::t_16c3e9f7f0f7ac 45-50,57-58
+  s_8fed88675c1307::t_57c1c4805c0770 59
+packages/cli/src/modules/apps/serving/app-request-auth.ts
+  s_8fed88675c1307::t_cac88fc8437471 1-57
+packages/@n8n/instance-ai/docs/tools.md
+  s_8fed88675c1307::t_61cb94b13c73a4 846
+packages/cli/test/integration/apps/apps.controller.integration.test.ts
+  s_8fed88675c1307::t_1565b1138a14e2 242-243
+packages/cli/src/modules/apps/runtime/__tests__/app-code-runtime.test.ts
+  s_8fed88675c1307::t_6a4f2c34321e9b 74
+packages/cli/src/modules/apps/actions/__tests__/table-actions.test.ts
+  s_8fed88675c1307::t_260c4c912502f4 5,17-28,34-36,45-48,55-78,84,137,155
+  s_8fed88675c1307::t_58ab4402b0894b 79-83,92,107,122,175,190
+packages/cli/src/modules/apps/__tests__/apps.service.test.ts
+  s_8fed88675c1307::t_c0fb7ddd023c8a 14,17-21,29
+  s_8fed88675c1307::t_ec1ca76133b4ab 150-151
+  s_8fed88675c1307::t_0a9a6572fedf82 143-149,152-163
+  s_8fed88675c1307::t_231cb1ab5d4643 68-80
+packages/cli/test/integration/apps/app-actions.controller.integration.test.ts
+  s_8fed88675c1307::t_9a8a7aaaf3569f 114,118,128-144,146-177,431
+  s_8fed88675c1307::t_e261aded069195 308
+  s_8fed88675c1307::t_73bd3035a56953 370-425
+  s_8fed88675c1307::t_b54fddc26453c9 79
+  s_8fed88675c1307::t_c757ea486c9030 295
+  s_8fed88675c1307::t_d9fa139314d872 426-430
+packages/cli/src/modules/apps/actions/table-actions.ts
+  s_8fed88675c1307::t_be33fbbdf5f2ea 3-4
+  s_8fed88675c1307::t_118fa9408498e2 60,66-67,76-77
+packages/@n8n/api-types/src/dto/app/update-app.dto.ts
+  s_8fed88675c1307::t_efe6e079b3fc25 3,15
+packages/@n8n/api-types/src/index.ts
+  s_8fed88675c1307::t_f728325cdc3751 796-797
+  s_8fed88675c1307::t_182ebbe22e3c93 769,771
+packages/@n8n/api-types/src/schemas/app-version.schema.ts
+  s_8fed88675c1307::t_835f51857f6105 4,6
+  s_8fed88675c1307::t_e17b6ccba3cfe5 18
+packages/cli/src/modules/apps/apps.service.ts
+  s_8fed88675c1307::t_18180be77b247d 18
+  s_8fed88675c1307::t_a10829c75f675f 186-190
+  s_8fed88675c1307::t_1f30386895a9f6 237-241
+packages/cli/src/modules/apps/runtime/app-code-runtime.ts
+  s_8fed88675c1307::t_00d7f58056ed72 8
+  s_8fed88675c1307::t_6923c2f48c0af9 185
+  s_8fed88675c1307::t_7c46e4fb59cbe5 427
+  s_8fed88675c1307::t_01a1448ceb5825 428-435
+packages/@n8n/api-types/src/schemas/app-content.schema.ts
+  s_8fed88675c1307::t_fd398101ba60e8 172
+  s_8fed88675c1307::t_fc1cf8607466ad 125
+  s_8fed88675c1307::t_297f738cda1637 104-113
+packages/cli/src/modules/apps/serving/__tests__/app-token.service.test.ts
+  s_8fed88675c1307::t_d25ae02672cda3 55,61,64-78
+  s_8fed88675c1307::t_955588f38844d8 79-81
+packages/cli/src/modules/apps/rendering/__tests__/sanitize-html.test.ts
+  s_8fed88675c1307::t_37b90f2a8df98f 1
+  s_8fed88675c1307::t_d1d3c0741d688b 64-89
+packages/cli/src/modules/apps/app.repository.ts
+  s_8fed88675c1307::t_49df5719e06345 31-34
+packages/cli/test/integration/apps/app-serving.controller.integration.test.ts
+  s_8fed88675c1307::t_d69abef0f7b73f 57
+packages/cli/src/modules/apps/app.entity.ts
+  s_8fed88675c1307::t_72f476bb102fd4 26-29
+packages/cli/src/modules/apps/rendering/sanitize-html.ts
+  s_8fed88675c1307::t_4e122015913f41 100-111
+  s_8fed88675c1307::t_a31f2cc3e6d448 92-99,112-120,124,138-143
+  s_8fed88675c1307::t_b5594e241bf8e1 144
+packages/@n8n/api-types/src/schemas/__tests__/app-content.schema.test.ts
+  s_8fed88675c1307::t_feddd9ebf66e9e 50-54
+packages/@n8n/api-types/src/dto/app/create-app.dto.ts
+  s_8fed88675c1307::t_2b42333b64b67a 1-2,9-10
+packages/@n8n/api-types/src/schemas/app-layout-presets.ts
+  s_8fed88675c1307::t_0b4da85758ad86 1-13
+packages/cli/test/integration/apps/app-auth.integration.test.ts
+  s_8fed88675c1307::t_c081fdb6da20bb 317-319
+  s_8fed88675c1307::t_4b272d0617bf9c 70
+packages/@n8n/api-types/src/schemas/__tests__/app-version.schema.test.ts
+  s_8fed88675c1307::t_91f00436e59129 1-22
+packages/@n8n/instance-ai/src/tools/apps.tool.ts
+  s_8fed88675c1307::t_f8042504a37033 152-155
+  s_8fed88675c1307::t_58a695d12c0941 384-391,398
+  s_8fed88675c1307::t_ec73b4a4d86fbe 223
+  s_8fed88675c1307::t_21120501798e50 199
+packages/cli/src/modules/apps/serving/app-token.service.ts
+  s_8fed88675c1307::t_e8d4b3a026449d 10-13,20,27
+  s_8fed88675c1307::t_148ad046cb6110 90-91,98-103
+packages/cli/src/modules/apps/rendering/blocks/table.renderer.ts
+  s_8fed88675c1307::t_154c98c6434986 58
+  s_8fed88675c1307::t_9152c57cd1369a 6,9
+packages/cli/src/modules/apps/runtime/__tests__/page-context.factory.test.ts
+  s_8fed88675c1307::t_c0ab0ca6191e8c 97,99-101
+  s_8fed88675c1307::t_9f8b013a865eb0 103,110-111
+packages/cli/test/migration/1789030187576-add-components-to-app.test.ts
+  s_8fed88675c1307::t_41a70046b4752f 1-152
+packages/cli/src/modules/apps/runtime/page-context.factory.ts
+  s_8fed88675c1307::t_213ee4de928baf 268
+  s_8fed88675c1307::t_06679f74e8e7d3 30
+packages/@n8n/instance-ai/skills/app-builder/references/block-catalog.md
+  s_8fed88675c1307::t_9e96d294905bf9 99-100
+  s_8fed88675c1307::t_2404ee99644350 101-102
+packages/cli/src/modules/apps/rendering/blocks/table-rows.ts
+  s_8fed88675c1307::t_9582e01ebd04d9 1-42
+packages/@n8n/api-types/src/schemas/__tests__/app.schema.test.ts
+  s_8fed88675c1307::t_079f65a64fbf90 14-17,23-24
+packages/@n8n/db/src/migrations/common/1789030187576-AddComponentsToApp.ts
+  s_8fed88675c1307::t_28d9c863ec6982 1-2,5,16-17,20-21
+  s_8fed88675c1307::t_83b618bcbffe58 3-4,6-15,18-19
+packages/cli/src/modules/apps/rendering/styles/app.css
+  s_8fed88675c1307::t_6ca40dd7aea850 21
+packages/@n8n/instance-ai/src/tools/__tests__/apps.tool.test.ts
+  s_8fed88675c1307::t_d5948e1159c50c 449-499
+packages/cli/src/modules/apps/runtime/action-url.ts
+  s_8fed88675c1307::t_a1f2e098ddff79 1-20
+packages/@n8n/instance-ai/src/types.ts
+  s_8fed88675c1307::t_ac020c8ba54d0b 1082
+docs/generated/postgres-schema/README.md
+  s_8fed88675c1307::t_d3347760da27da 42,726
+docs/generated/postgres-schema/public.app.md
+  s_8fed88675c1307::t_305d4791d5f83c 9,54
+docs/generated/postgres-schema/public.app_version.md
+  s_8fed88675c1307::t_8841d37a5c9965 54
+docs/generated/postgres-schema/public.page.md
+  s_8fed88675c1307::t_6d5a01fe89cd28 58
+docs/generated/postgres-schema/public.project.md
+  s_8fed88675c1307::t_70dd8cc37ce227 155
+docs/generated/sqlite-schema/README.md
+  s_8fed88675c1307::t_516b1e863ea608 42,713
+docs/generated/sqlite-schema/app.md
+  s_8fed88675c1307::t_72658474ab2778 9,20,59
+docs/generated/sqlite-schema/app_version.md
+  s_8fed88675c1307::t_50f357dc2b82d5 61
+docs/generated/sqlite-schema/page.md
+  s_8fed88675c1307::t_dcb22ac6dc71a3 65
+docs/generated/sqlite-schema/project.md
+  s_8fed88675c1307::t_404598b87b6fd4 161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "76385b3d3ec77ba2d19010bcb498680dc87e174e",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8fed88675c1307": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a96b2f2-c9aa-4ec0-94bd-4ee430cd7c07",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

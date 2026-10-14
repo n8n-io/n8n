@@ -1,0 +1,37 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_3ed9d32328b843::t_77661040f4d849 381
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_3ed9d32328b843::t_147e9228c2aeda 311-314
+packages/cli/src/modules/n8n-packages/__tests__/export-stable-targets.integration.test.ts
+  s_3ed9d32328b843::t_07fd3b4fa47106 223
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_3ed9d32328b843::t_227d5227b3b303 22-23
+  s_3ed9d32328b843::t_46a4dace1b6955 196-202
+  s_3ed9d32328b843::t_ee110a3cd24c12 182-193,208,216-220,222-228,235-236
+  s_3ed9d32328b843::t_e247dfe8a67a63 207
+  s_3ed9d32328b843::t_51d63ecdf678da 221
+  s_3ed9d32328b843::t_b19991b4df1a55 181,194-195,203-206,209-215,229-234
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_3ed9d32328b843::t_62ef009c9fa930 182-184,187
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_3ed9d32328b843::t_6dd991b96622d4 192-196
+  s_3ed9d32328b843::t_0e9bc7d909436f 174
+  s_3ed9d32328b843::t_d588f7d05e93ce 163-167
+  s_3ed9d32328b843::t_36ed3fcc6a69cf 144-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa6075a09b17faae572d97156f3f6d577d3e8a21",
+  "prompts": {},
+  "sessions": {
+    "s_3ed9d32328b843": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2fa0b01d-c8c2-4984-a373-92463bb9d959",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_97124842b89319::t_e529958ef89f2e 7655-7665,7671-7673,7677-7678,7680-7683,7692,7696-7697
+  s_97124842b89319::t_e5fa39b2689f10 7705-7710
+  s_97124842b89319::t_0685b11fae0f85 7749,7751,7753
+  s_97124842b89319::t_91c511b8a89181 7761
+  s_97124842b89319::t_b8da61108d9728 7770,7772
+  s_97124842b89319::t_2a890be89149ac 7734,7738,7740
+  s_97124842b89319::t_214fe9c2d62522 7698-7700,7702-7704
+  s_97124842b89319::t_950f26d47f88b4 7701
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "665c14255ae34ffe154b0c64f4760d1db7ab11d7",
+  "prompts": {},
+  "sessions": {
+    "s_97124842b89319": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e46c036b-ecd2-4706-953f-7e6eb59d5337",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/executions/__tests__/execution-recovery.service.integration.test.ts
+  s_c4674627bea380::t_9ccf74ad9b841e 100-116,513-514,536-537,577-578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f25a3a32082ea189788a13664a6963646990a133",
+  "prompts": {},
+  "sessions": {
+    "s_c4674627bea380": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_c4674627bea380",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_f39ec3904da453 50
+  s_8631ec10eb1199::t_a35126c8f4f513 1-49,51-63,65-195
+  s_8631ec10eb1199::t_879133e92cc916 64
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_8631ec10eb1199::t_c8cbf13d77133b 1-127
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_8631ec10eb1199::t_4ab9b5199afea0 1-207
+  s_8631ec10eb1199::t_f24ff26210fe53 208-213
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_8631ec10eb1199::t_d389c246b2a4cc 1-307
+  s_8631ec10eb1199::t_4015031b95cf8d 308-313
+packages/@n8n/api-types/src/dto/index.ts
+  s_8631ec10eb1199::t_642891b309902c 479-487
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_8631ec10eb1199::t_3c26290448ab7e 6-16,19-22,26,49,57,80,88,111-113,116-132,139,153,163,174,188,198,209,223,232,244,271,280,295-298,307,320,336-339,347,359,373-376,385,398,411-422,430,442,453-456,465,478,486,503-507,516-529,536-539,550,564,574-577,588,602,612-615,626,640,650-653,664,678,688-689,702,716
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_8631ec10eb1199::t_ed913e5992a9d3 6-16,19,29,47,59,80-88,99-103,118-122,125-129,172-184
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_8631ec10eb1199::t_29edbe7c515020 3,6-9,98-233,295-338
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_8631ec10eb1199::t_313f36c335e590 17
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_8631ec10eb1199::t_1a8b7e5ec9d5dc 10,29
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_8631ec10eb1199::t_2b86dc611f585c 1
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_8631ec10eb1199::t_99fca3fb4ca105 1-211
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_8631ec10eb1199::t_c8aa900f15ee64 1-53,55-67,71,73-91,93-101
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_8631ec10eb1199::t_079022530ca5ea 163-168
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  s_8631ec10eb1199::t_366a6476e7d786 17-19,40-43,47-49,70-71,73,90-122,124-147,151-153,170,172,199-200,202,216,219,224,227,233-234,236,250-252,258,262-267,270,272,274-296,305,326-327,338,340,356,372,374,381,383,385,394-400,402-414,417-420,433-457
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  s_8631ec10eb1199::t_82ec2f47423746 12-15,60-61,69-70,74-81,98,102-106,117-121,142,145,147-150,164-169,171-179,181-184,196-198,201,203,207-208,232,234-237,260-276
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_8631ec10eb1199::t_9c1fcd297eb27c 163-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "58ee694bd40c985adffd4a11fbcf4ec7fdbd6187",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/N8n/test/node/workflow.n8n.credential-update.json
+  89db203f3dce1142 1-68
+packages/nodes-base/nodes/N8n/test/node/N8n.test.ts
+  89db203f3dce1142 17-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "f56e0b68bf75230ef8f01f6ed28f303177075244",
+  "prompts": {
+    "5268ddb42c9aefee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "500488ab-f4a8-4f6c-8068-12774f8b8e75",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 394,
+      "total_deletions": 0,
+      "accepted_lines": 1281,
+      "overriden_lines": 13
+    },
+    "89db203f3dce1142": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc19852-aa0e-4cea-8df9-95aeba73d663",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 180,
+      "total_deletions": 0,
+      "accepted_lines": 80,
+      "overriden_lines": 0
+    }
+  }
+}

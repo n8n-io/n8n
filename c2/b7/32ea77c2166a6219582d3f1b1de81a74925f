@@ -1,0 +1,19 @@
+packages/@n8n/engine/src/response-channel/__tests__/execution-response.schema.test.ts
+  s_76b78418d44c63::t_c90947ce65d08f 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c2b732ea77c2166a6219582d3f1b1de81a74925f",
+  "prompts": {},
+  "sessions": {
+    "s_76b78418d44c63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12d083a6-7c97-4017-81ae-ca968678a36f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

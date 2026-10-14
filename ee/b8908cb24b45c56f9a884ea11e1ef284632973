@@ -1,0 +1,72 @@
+packages/nodes-base/nodes/Kafka/test/v2/kafka.integration.test.ts
+  s_c08ff1af07eaeb::t_ac5d154c72f423 338-372
+  s_c08ff1af07eaeb::t_d784eea5a8b8de 35
+packages/nodes-base/nodes/Kafka/v2/KafkaTriggerV2.node.ts
+  s_c08ff1af07eaeb::t_acc3ecab43de50 16
+  s_c08ff1af07eaeb::t_6c990b2bfce53e 65-68
+packages/nodes-base/nodes/Kafka/v2/transport/admin.ts
+  s_c08ff1af07eaeb::t_d2dfcf99b0c0a3 8-19
+  s_c08ff1af07eaeb::t_b8f795ca3c1f88 21,147
+  s_c08ff1af07eaeb::t_41e6e5a2381940 52-60
+  s_c08ff1af07eaeb::t_6a094750902a74 165-166
+  s_c08ff1af07eaeb::t_465e08efdad193 2-7,44-51,61-69,81-94,102-103,140-146,156-164,167
+  s_c08ff1af07eaeb::t_2fcb554327dda8 148-155
+  s_c08ff1af07eaeb::t_fc316f4d3e7a27 22-43
+  s_c08ff1af07eaeb::t_f3063d49fce7bf 70-80
+  s_c08ff1af07eaeb::t_b077c48d633144 95-101,104-139
+  s_c08ff1af07eaeb::t_1430daed87eb58 1
+  s_c08ff1af07eaeb::t_a5d3e0eaddbba0 20
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_c08ff1af07eaeb::t_272c0b5fcf4533 62,64,73-74,92,94
+  s_c08ff1af07eaeb::t_93d583a7c3370b 42-51,53,56-61,70-72,95-107,112-113,117-119,123-127
+  s_c08ff1af07eaeb::t_9268ee12e81cec 65-67
+  s_c08ff1af07eaeb::t_2c29fb8a874492 91
+  s_c08ff1af07eaeb::t_0f107f2e2ab837 128
+  s_c08ff1af07eaeb::t_b62f9ab6e89009 204
+  s_c08ff1af07eaeb::t_02cdb75e1fa2bc 68,75-90
+  s_c08ff1af07eaeb::t_7bc48172123f98 251
+  s_c08ff1af07eaeb::t_036d5f2f6df56b 252
+  s_c08ff1af07eaeb::t_3be2764cb91b39 248,250
+  s_c08ff1af07eaeb::t_6d9930f2ba32c6 63,69,93
+  s_c08ff1af07eaeb::t_41da7ef1bde1a1 235-239
+  s_c08ff1af07eaeb::t_09bb4b7e251eee 108-109,120-122
+  s_c08ff1af07eaeb::t_a9fb2207365d73 216
+  s_c08ff1af07eaeb::t_a6fbc04702f0a2 110-111,114-116
+packages/nodes-base/nodes/Kafka/v2/transport/index.ts
+  s_c08ff1af07eaeb::t_fca4f6ebb4b1e4 3
+packages/nodes-base/nodes/Kafka/test/v2/transport/admin.test.ts
+  s_c08ff1af07eaeb::t_f161ebdccc500e 103
+  s_c08ff1af07eaeb::t_a00223ef9be7af 1-8,11,13-46,48-78,89-98,142,159,163-171,175-179,181,185-192
+  s_c08ff1af07eaeb::t_e520bf3abfc5e3 47
+  s_c08ff1af07eaeb::t_1976ee8bd4bb49 79-88
+  s_c08ff1af07eaeb::t_6d9930f2ba32c6 160-162,172-174
+  s_c08ff1af07eaeb::t_f7998929bd1462 141,180,182-184
+  s_c08ff1af07eaeb::t_b2e09206367756 9,12
+  s_c08ff1af07eaeb::t_11aa8b79ff0f5d 101-102,104-138
+  s_c08ff1af07eaeb::t_8cdeab5f0fd07c 144-158
+  s_c08ff1af07eaeb::t_d18ffc535e1404 10
+  s_c08ff1af07eaeb::t_0f8f8b258d9895 99-100,139-140
+  s_c08ff1af07eaeb::t_ae80b821a3ac12 143
+packages/nodes-base/nodes/Kafka/test/v2/KafkaTriggerV2.node.test.ts
+  s_c08ff1af07eaeb::t_c078fde5cf8617 19-20,23
+  s_c08ff1af07eaeb::t_230913754965b4 560
+  s_c08ff1af07eaeb::t_9327b08e36bb13 513-531,541,552-559,561-569
+  s_c08ff1af07eaeb::t_6d9930f2ba32c6 534-540,543-544
+  s_c08ff1af07eaeb::t_cd298c0ddec4b9 532-533,542,545-551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "eeb8908cb24b45c56f9a884ea11e1ef284632973",
+  "prompts": {},
+  "sessions": {
+    "s_c08ff1af07eaeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bbca935-0c2a-42a6-bf52-815a6d2dd432",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

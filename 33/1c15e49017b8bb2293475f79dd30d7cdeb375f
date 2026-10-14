@@ -1,0 +1,39 @@
+packages/testing/code-health/src/rules/adr-conventions.rule.ts
+  s_b3f41e2697a1c3::t_bc39444febee90 1-25,27-41,44-76,89-123,126-141,144,151-153,155-166,169-180,182-247,263-279,285-311,314,322,325-342,345-348,351-353,355-373,377-379,385-389
+  s_b3f41e2697a1c3::t_d0e5229609e920 181
+  s_b3f41e2697a1c3::t_e85218d6ae991f 248-262,374,376,380-384
+  s_b3f41e2697a1c3::t_1113d3f3d9289c 375
+  s_b3f41e2697a1c3::t_cc728321c73a44 280-284
+  s_b3f41e2697a1c3::t_c306c72754d9ef 145-146,148-150
+packages/testing/code-health/src/index.ts
+  s_b3f41e2697a1c3::t_1c5b59fef8b3e2 5,18,32-36,150
+packages/testing/code-health/package.json
+  s_b3f41e2697a1c3::t_1c5b59fef8b3e2 34,36,42-43,47
+packages/testing/code-health/README.md
+  s_b3f41e2697a1c3::t_a610d7dfa0427f 7
+  s_b3f41e2697a1c3::t_1c5b59fef8b3e2 9
+packages/@n8n/engine/docs/adr/ADR-20260828-obtain-trigger-output-before-creating-the-execution.md
+  s_b3f41e2697a1c3::t_93f9d9a197c119 4,6,64,66
+packages/@n8n/engine/docs/adr/ADR-20260904-store-the-workflow-revision-that-ran-with-the-execution.md
+  s_b3f41e2697a1c3::t_5eb8cf0c488433 11-12,14-15,19-20,24-25,33-34,49-50,52-53,58-59,61-64,70,72
+packages/testing/code-health/src/rules/adr-conventions.rule.test.ts
+  s_b3f41e2697a1c3::t_e85218d6ae991f 321,323-335,446-452,454-457
+  s_b3f41e2697a1c3::t_c306c72754d9ef 45-60,285,339-340,349-352,373-376,392-395,436-437,441-442,491-493
+  s_b3f41e2697a1c3::t_bea53ad2fb6336 1-3,5-13,19-44,61-115,119-125,128-138,149,155-157,159-165,167-170,172-180,182-190,193-205,207-226,228-234,236-243,246-257,259-265,267-284,286-297,299-307,309-320,336-338,341-348,353-354,356-372,377-378,380-388,390-391,396-405,407-435,438-440,443-444,458-464,466-469,471-479,481-490,494-496,498-508
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "331c15e49017b8bb2293475f79dd30d7cdeb375f",
+  "prompts": {},
+  "sessions": {
+    "s_b3f41e2697a1c3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c87f-6f5c-7b11-bdad-2e16ada50c63",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

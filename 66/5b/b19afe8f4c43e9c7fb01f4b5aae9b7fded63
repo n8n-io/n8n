@@ -1,0 +1,63 @@
+scripts/instance-seeding/checkPreferenceProfile.mjs
+  s_d6594e4cfdf1a3::t_04364f7112a9e2 1,5,12,14-40,56-58,63-99,9,51-52
+  s_d6594e4cfdf1a3::t_dc342923a944df 2
+  s_d6594e4cfdf1a3::t_cca53f5aaf7c8e 3-4,6-8,10-11
+  s_d6594e4cfdf1a3::t_7d264b6695d91e 13
+  s_d6594e4cfdf1a3::t_0c50dacd00e613 41-50,53-55,59-62
+scripts/instance-seeding/inspectActivity.mjs
+  s_d6594e4cfdf1a3::t_46ab86631dca90 1-3,6,10-11,13-15,17,19-20,22-25,28,39,56,68-70,75-76,85-95,104-113,116-123,129-139,141-148,151,165-190,192-195,199-238,31,33,35,38,47-48
+  s_d6594e4cfdf1a3::t_3e4aa3180bc404 55,57-65
+  s_d6594e4cfdf1a3::t_04364f7112a9e2 71-74,96-103
+  s_d6594e4cfdf1a3::t_351ecaaf0a91a1 124-128
+  s_d6594e4cfdf1a3::t_9fa54a0fa75949 149-150,153-161,164
+  s_d6594e4cfdf1a3::t_dbcdf1d9a2e3ad 162-163
+  s_d6594e4cfdf1a3::t_07a171358551d7 80-84
+  s_d6594e4cfdf1a3::t_cca53f5aaf7c8e 4-5,7-9,77-79,114-115,196-197
+  s_d6594e4cfdf1a3::t_94b28cecdd9456 140,191
+  s_d6594e4cfdf1a3::t_dae941065dabc2 152
+  s_d6594e4cfdf1a3::t_fb1cd343e190df 12,16
+  s_d6594e4cfdf1a3::t_b225beed8cfa2b 18,21
+  s_d6594e4cfdf1a3::t_8fb2c9ddf3cabd 26-27,29-30,32,34,36-37,40-46,49-54
+  s_d6594e4cfdf1a3::t_982636abe48d91 66,239-249
+  s_d6594e4cfdf1a3::t_07cf4e926eba88 198
+package.json
+  s_d6594e4cfdf1a3::t_879bbc61dd344a 40-41,44,46
+  s_d6594e4cfdf1a3::t_f0e76cee177a23 42-43
+  s_d6594e4cfdf1a3::t_0ea36be5322bb2 45
+scripts/instance-seeding/inspectActivity.test.mjs
+  s_d6594e4cfdf1a3::t_a26512a676f99c 1-2,4-36,55-58,79-81,91-97,106-140,143-149,152-156,160-169,171-176,178-182,185-193
+  s_d6594e4cfdf1a3::t_e73c121a03293e 3,59-78,141-142,150-151,157-159,170,177,183-184
+  s_d6594e4cfdf1a3::t_0ea36be5322bb2 37-54,82-90,98-105
+scripts/instance-seeding/seedHistory.mjs
+  s_d6594e4cfdf1a3::t_3f6683df1b59ce 1,5,8-16,18,22,26-27,29-30,34-48,55-58,60-65,68-74,122-124,127-138,140-142,146-147,149-157,159-178,226-230,235-237,239-241,243-246,248-263,267-278,280-305,307-332,343-345,347-421,200,216,224
+  s_d6594e4cfdf1a3::t_04364f7112a9e2 19-21,158,333-342
+  s_d6594e4cfdf1a3::t_af52d7408cbbaf 49,54
+  s_d6594e4cfdf1a3::t_c7f0a487bf1e75 77-121,125-126,139,143-145,148
+  s_d6594e4cfdf1a3::t_51c957444a5839 264-266
+  s_d6594e4cfdf1a3::t_ada609ea988107 279
+  s_d6594e4cfdf1a3::t_c3dd74a8aa1be0 182-186
+  s_d6594e4cfdf1a3::t_acea0aedd1840c 188-189
+  s_d6594e4cfdf1a3::t_354e0e050e3be8 190-199,208,211-215,218,221-223,225,231-234,238,242
+  s_d6594e4cfdf1a3::t_551fa3d4691983 2-4,6-7,50-53,66-67,75-76,179-181
+  s_d6594e4cfdf1a3::t_94b28cecdd9456 17,59,346
+  s_d6594e4cfdf1a3::t_925e0b3aaa74e2 23-25,28
+  s_d6594e4cfdf1a3::t_5cf738d734c4f0 31-33
+  s_d6594e4cfdf1a3::t_ee7a71d4d54d61 201-207,209-210,217,219-220
+  s_d6594e4cfdf1a3::t_64a90e6f6fddfc 306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "665bb19afe8f4c43e9c7fb01f4b5aae9b7fded63",
+  "prompts": {},
+  "sessions": {
+    "s_d6594e4cfdf1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4df11345-03b4-4c0a-b65a-4a0bf36e6cfa",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

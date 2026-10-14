@@ -1,0 +1,24 @@
+packages/cli/src/modules/identity/services/__tests__/trusted-key.service.test.ts
+  s_16453cac85f858::t_bc9e9851c78939 147-217
+packages/cli/src/modules/identity/identity.types.ts
+  s_16453cac85f858::t_aaade6974ac12a 1-119
+packages/cli/src/modules/identity/services/trusted-key.service.ts
+  s_16453cac85f858::t_bcadcbc6f77a1f 252-282
+  s_16453cac85f858::t_8902782db02e1e 283-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9e5fdf32ae60fd4a626da23f23d3674dce5cb538",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

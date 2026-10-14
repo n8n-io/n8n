@@ -1,0 +1,35 @@
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_b1905cb0c0aa57::t_64104d3caf9558 58,74
+  s_b1905cb0c0aa57::t_6c4fcaa055fd6c 107-111
+  s_b1905cb0c0aa57::t_0f89249e09e891 20
+  s_b1905cb0c0aa57::t_9482917f47c97f 93
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_b1905cb0c0aa57::t_b69a16cf5fa657 51-56
+  s_b1905cb0c0aa57::t_279bb18d27b0f9 79
+packages/@n8n/cli/docs/commands/package.md
+  s_b1905cb0c0aa57::t_d5992333cd715e 127-130
+  s_b1905cb0c0aa57::t_e87a323b0e9366 151-155
+  s_b1905cb0c0aa57::t_a2868093cdd63b 168,171
+packages/@n8n/cli/src/client.ts
+  s_b1905cb0c0aa57::t_362389a407784d 44
+  s_b1905cb0c0aa57::t_e5955d613cc613 813
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_b1905cb0c0aa57::t_d6d097685f99f4 483
+  s_b1905cb0c0aa57::t_38e228028a1bc9 443,459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a94053e3080401f12bef0bffaf26ab1e933729b4",
+  "prompts": {},
+  "sessions": {
+    "s_b1905cb0c0aa57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13d20cfd-891f-46ea-8ea2-de932961c242",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

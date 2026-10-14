@@ -1,0 +1,25 @@
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_ece17ffed4e460::t_aecd899c04855f 206-208,211-215,217-218
+  s_ece17ffed4e460::t_91afa0289a4d67 209,216
+  s_ece17ffed4e460::t_4d5dcc0b353622 210
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_ece17ffed4e460::t_8dc3cc404a431f 287-302,326-341
+  s_ece17ffed4e460::t_5bebb2d279870e 285-286
+  s_ece17ffed4e460::t_f0e5b8b9f283ef 342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4d37399a495d86e7a45842b00697c710a0a2d858",
+  "prompts": {},
+  "sessions": {
+    "s_ece17ffed4e460": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "22d978b8-8b22-4f9a-9c5a-69b99c6c85c0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

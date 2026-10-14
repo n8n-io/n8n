@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  s_a5c113d3dab7cc::t_5ab29e4af55731 55-56,59,64
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-compat.test.ts
+  s_a5c113d3dab7cc::t_5ab29e4af55731 130-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73a9a3a18be0cabb284306beefbf1db08a440caa",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

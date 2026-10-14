@@ -1,0 +1,34 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_2c14548cabdf41::t_df0fa1651f6991 12,84,88,91,94,97,234,237,274,532
+  s_2c14548cabdf41::t_fc9347b538d231 99,103-104,106,108,124,142,160,224,228,231,239,243-244,246,248,269,272,287,301,373,377,380,383,386,388,392-393,396,412,430,433,448,512,516,519,522,525,527,531,535,548,553,558,561,563,573,576,638,645,649,652,655,658,660,664-665,667,669,685,757,761,764,767,770,772,776-777,780,801,804,806,819,833,851,855,871-872,935,939,942,945,948,950,954-955,958
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_2c14548cabdf41::t_df0fa1651f6991 12
+  s_2c14548cabdf41::t_b06b29d80f62e7 84,88,91,94,97,99,103-104,107,123,141,159,223,227,230,233,236,238,242-243,246,269,272,274,287,306,309,311,324,338,410,414,417,420,423,425,429-430,433,454,457,459,472,486,504,520,584,588,591,594,597,599,603-604,607
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_2c14548cabdf41::t_df0fa1651f6991 12
+  s_2c14548cabdf41::t_bfc23024506c15 84,88,91,94,97,99,103-104,107,123,141,159,223,227,230,233,236,238,242-243,246,267,270,272,285,299,304,307,309,322,341,344,346,359,373,445,449,452,455,458,460,464-465,467,469,490,493,495,508,522,540,556,620,624,627,630,633,635,639-640,642,644
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_2c14548cabdf41::t_df0fa1651f6991 12,84,88,91,94,97,99,103-104,107,269,272,297,310,312,430,469,647,673,949
+  s_2c14548cabdf41::t_cc5523752c15c5 123,141,154,167,170,185,190,195,259,263,266,274,278-279,282,302,307,322,325,339,411,415,418,421,424,426,431,433,435,451,473,486,489,499,502,512,515,530,535,540,545,609,613,616,619,622,624,628-629,632,646,648,653,658,661,663,676,695,698,700,710,713,732,735,737,747,750,764,836,840,843,846,849,851,855-856,858,860,883,886,888,901,915,933,950,1013,1017,1020,1023,1026,1028,1032-1033,1035,1037
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8e7d3a4c418f7b29cfbf72f82b97e5ae6f78e2de",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2c14548cabdf41": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44a65183-869a-4c57-b1c4-7c10f11a4da2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.vue
+  s_3a323ce6ef5756::t_8785051ad7ffc2 103-110
+  s_3a323ce6ef5756::t_8f1fc0c2b4e63f 409
+  s_3a323ce6ef5756::t_9a2c863ec08ec0 39
+  s_3a323ce6ef5756::t_9591e54f5ca909 467
+  s_3a323ce6ef5756::t_b7a7068de0e435 380-382,461
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/SearchBar.vue
+  s_3a323ce6ef5756::t_92858f20373941 73-79
+  s_3a323ce6ef5756::t_43d82e6a011337 141-155
+  s_3a323ce6ef5756::t_b3698f33e89852 4
+  s_3a323ce6ef5756::t_745569f4babe4e 140
+  s_3a323ce6ef5756::t_5f46b6adddf524 26
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_3a323ce6ef5756::t_ad0ab8b34d1522 393-396
+  s_3a323ce6ef5756::t_eb29e0dfe966b8 313-392,397-415
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3a323ce6ef5756::t_4bfdcffaf27fe6 2092-2099,2152-2154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "78bc73708d33f009cfa67b28fb0ea3527f0837f5",
+  "prompts": {},
+  "sessions": {
+    "s_3a323ce6ef5756": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b280cc7-2aa7-411b-b755-f5d92f9ab557",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

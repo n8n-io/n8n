@@ -1,0 +1,57 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewActivity.store.test.ts
+  s_d8b5e951456b7b::t_0718cb174a4bec 371,376,381-395
+  s_d8b5e951456b7b::t_27a6a1a149a199 240,249
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  s_d8b5e951456b7b::t_8d2cea3e35d798 208-209
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.test.ts
+  ai_agent 379-381
+  s_d8b5e951456b7b::t_d436109fb44cfa 335-338,340-344
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_d8b5e951456b7b::t_cbbd31b6958129 25-29
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDecisionPopover.test.ts
+  s_d8b5e951456b7b::t_289f018c4f35a3 1-197
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewActivity.store.ts
+  s_d8b5e951456b7b::t_e6329c7165fc9c 30-33
+  s_d8b5e951456b7b::t_e86b4a1e0f5de7 166,170
+  s_d8b5e951456b7b::t_2a02aad76d9fda 55
+  s_d8b5e951456b7b::t_91da83113291b7 138-141
+  s_d8b5e951456b7b::t_0f5872c3aec591 153
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_d8b5e951456b7b::t_36da6cb4687384 265,270,272,275-287,296,299,304,307,312-315,318,323-325,328,340-345,360-365
+  s_d8b5e951456b7b::t_9eb06c3d990725 42-58,60,62
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDecisionPopover.vue
+  ai_agent 55-57
+  s_d8b5e951456b7b::t_7bf9fdb964fdcc 80-82
+  s_d8b5e951456b7b::t_d19c7052b16bfc 1-54,58-79,83-180
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewDetailTabs.vue
+  s_d8b5e951456b7b::t_f647cb459cfe5d 3,11
+  s_d8b5e951456b7b::t_ecc64630cf62f5 71-78
+  s_d8b5e951456b7b::t_b54a37280081dd 24
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_d8b5e951456b7b::t_5e16b24252bb5c 74-77,79-84
+  s_d8b5e951456b7b::t_6daaccd240eb23 310,315,443,447,450,456,466,477-480
+  s_d8b5e951456b7b::t_625b3d495cab46 463,474,491,510,532,550,564,583,599,613,628,644,681,705
+  s_d8b5e951456b7b::t_19a526e49006e3 636,643,649-652,655,658,660,663-664,667-677,682,684-686,689-690,693,707-710,716-719
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d8b5e951456b7b::t_2fe2537e906d43 5498-5503
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_d8b5e951456b7b::t_87a98b5dc31ec9 159,162
+  s_d8b5e951456b7b::t_7ff08dfcca2c68 163-170
+  s_d8b5e951456b7b::t_759313c6fe7221 206-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c623ab70837501659f3f8553f1cabed9e13b4cf6",
+  "prompts": {},
+  "sessions": {
+    "s_d8b5e951456b7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d598e382-1f10-4e94-a256-40ec7275df71",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

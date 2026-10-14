@@ -1,0 +1,76 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvAdvancedSection.vue
+  s_a6f570cd9e29ae::t_8753195d5cf07a 1-9,16,18-21,23-61,63-108,111-112,116-120,126,144-149,151-153,155-156,160-163,165-170,172-178,180-192,197-208,217-219,222-230,232-237,255-269,271-272,288,291-306,309,314-320,324,326-333,335,367-368,216
+  s_a6f570cd9e29ae::t_6ab6e358595ac9 10-15
+  s_a6f570cd9e29ae::t_6147e3c8f2698e 17
+  s_a6f570cd9e29ae::t_8487e83e2df988 109-110,113-114,122-125,127-143,150
+  s_a6f570cd9e29ae::t_b3b70b9fed7d31 115,121
+  s_a6f570cd9e29ae::t_14d51cc0e63c63 164,171
+  s_a6f570cd9e29ae::t_98744f464a580d 193-196
+  s_fca2302987ca57::t_cd4b5957e27363 209
+  s_a6f570cd9e29ae::t_151683869eae7e 221,231,238-254,270
+  s_a6f570cd9e29ae::t_1a9ca2e46c0ad2 307-308,310,312,321-322,325
+  s_a6f570cd9e29ae::t_3879f73d2444b3 323
+  s_a6f570cd9e29ae::t_9d8058196739bf 336,158,210,334,337-366
+  s_a6f570cd9e29ae::t_65dbd0001c25e3 22
+  s_a6f570cd9e29ae::t_7df9047a9a3857 154,157,159,179
+  s_a6f570cd9e29ae::t_f745c21f10f24b 211-215
+  s_a6f570cd9e29ae::t_bcd55fb509c4f9 273-287,289-290
+  h_7555c3ee6524cf 311,313
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvAdvancedSection.test.ts
+  s_a6f570cd9e29ae::t_ffb111bf20882a 3,6,9,14-18,22-39,49,54-75,82-83,85,92,98,102,105,108-109,111-117,121,135,139-141,143-148,151-161,164-166,168-184,187-190,195-197,209-212,219-221,223,227-229,237-241,246,254-264,266-267
+  s_a6f570cd9e29ae::t_a635a2cb49f60a 4
+  s_a6f570cd9e29ae::t_baf7aa4335701c 11-12
+  s_a6f570cd9e29ae::t_4b6cc2e2bb8313 110
+  s_a6f570cd9e29ae::t_10f714a7cd56d8 133-134
+  s_a6f570cd9e29ae::t_d530d51004adc1 193,198-201,204-208,215-218,222,224-226,232,234-236,243-245,247-253
+  s_a6f570cd9e29ae::t_752d37b3ded0fb 129-132,136-138,142
+  s_a6f570cd9e29ae::t_a92e5f0a9d8c5c 268
+packages/frontend/editor-ui/src/features/agents/components/BackToWorkflowBanner.vue
+  s_bb07027ddb0032::t_b8d32ff53cf9ed 1-39,55-60
+  s_0fadca43e9dd1b::t_3b3f82195868ea 40-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a98f97664306a18bbfa2d604b94df534de665dfe",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0fadca43e9dd1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d95ce499-5f2a-4d35-89d8-acb31d680687",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_a6f570cd9e29ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccec31f7-cf7f-4768-8223-01157ee56250",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bb07027ddb0032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ac5de5a-9d81-4e7b-9015-b5d135e16aa4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

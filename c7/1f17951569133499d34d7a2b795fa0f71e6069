@@ -1,0 +1,45 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_5dee2ed3aaed97::t_fefff864c73818 1235
+  s_5dee2ed3aaed97::t_fc2377202ec434 1236-1251
+packages/cli/src/scheduling/system-tasks/in-memory-system-task-runner.ts
+  s_5dee2ed3aaed97::t_7c421f26208808 69-72,94,115,130,158,259
+  s_5dee2ed3aaed97::t_284fa7e5c89c1d 19-20,73,111,135,167
+  s_5dee2ed3aaed97::t_23c77aa97e5dbb 242-250
+  s_5dee2ed3aaed97::t_abe267aaca59d0 128,144-149
+  h_32d8cd6a0d6aad 50-51,60-61,78,107,113-114,134,136,160,172,178,195,198
+  s_5dee2ed3aaed97::t_8d073e6ca32d36 80-84
+  s_5dee2ed3aaed97::t_c8fec0ae62e646 219-236
+  s_5dee2ed3aaed97::t_dd66844bc410dd 194,196
+  s_5dee2ed3aaed97::t_3de96c1ecdbf0a 22,24,29,31,40,54,77,85,89,92,101,105,112,116-117,122,127,132,139-142,187-188,190-193,200-202,205-207,212,218,240-241
+  s_5dee2ed3aaed97::t_556ca8c570e006 48-49,59
+  s_5dee2ed3aaed97::t_41091ea68a8059 1-16,18,21,23,25-27,30,32-39,41-47,52-53,55-58,62-67,74-76,79,86-88,90-91,93,95-100,102-104,106,108-110,119-121,123-126,129,131,133,137-138,143,150-157,159,161-166,168-171,173-177,179-186,189,197,199,203-204,208-211,213-217,237-239,251-258,260-265
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_5dee2ed3aaed97::t_67c7c3899864e7 53,66-68,71,77,101-102,123-124,126-127,141,149,164-165,178,234,239,241,247,249-250,261-272,274-277,279,282-283,285-286,290,292-300
+  s_5dee2ed3aaed97::t_527faf42427507 243,260,278
+  s_5dee2ed3aaed97::t_6a49bdfaeb71a2 253-255
+  s_5dee2ed3aaed97::t_41091ea68a8059 30,49-52,72,75,122,125
+  s_5dee2ed3aaed97::t_0bc31b5098cea1 96-100,103-117
+  s_5dee2ed3aaed97::t_03d03208875d69 166,171
+  s_5dee2ed3aaed97::t_fefff864c73818 54-56,74,159-160,251-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c71f17951569133499d34d7a2b795fa0f71e6069",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5dee2ed3aaed97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f764db7-e83b-4d7d-9e3a-17c55dae4f40",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/@n8n/db/src/repositories/__tests__/user.repository.test.ts
+  s_1cffc118a8bd7e::t_b6f81bb4a377bc 1-19,21-50
+  s_1cffc118a8bd7e::t_3a84209aa65e63 20
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_1cffc118a8bd7e::t_16d527e9debb1c 33,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "cd83d19f42289e6e4041480051fe7466b7b1d72e",
+  "prompts": {},
+  "sessions": {
+    "s_1cffc118a8bd7e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "27515cbd-cd65-4ec9-a2f2-60e46985ca0d",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

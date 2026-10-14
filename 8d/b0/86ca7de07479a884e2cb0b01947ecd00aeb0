@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.vue
+  s_27dc62af884186::t_0214247ea842e0 321-333
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/buttons/CanvasControlButtons.vue
+  s_27dc62af884186::t_0214247ea842e0 63-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8db086ca7de07479a884e2cb0b01947ecd00aeb0",
+  "prompts": {},
+  "sessions": {
+    "s_27dc62af884186": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f6f4-11af-77db-8362-8fef42dbd0b1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

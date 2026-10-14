@@ -1,0 +1,73 @@
+packages/cli/src/modules/data-table/errors/data-table-access-denied.error.ts
+  s_633895c6f69b3b::t_27a1d5bc2166a4 1-3,6-9
+  s_633895c6f69b3b::t_d3f2a3ae9ee9c7 4-5
+packages/cli/src/modules/data-table/__tests__/data-table.service.test.ts
+  s_633895c6f69b3b::t_1bc98e19a924c1 718,722,727,729,733,737,739,748,757
+  s_633895c6f69b3b::t_7e5869cdc5e2bd 753,758
+  s_633895c6f69b3b::t_0a9b7cf46935b8 23
+  s_633895c6f69b3b::t_df94b76c6845bc 685-717,719-721,723-726,728,730-732,735-736,738,740-744,747,750-752,755-756,759-761
+  s_633895c6f69b3b::t_89e402b33b9855 17
+  s_633895c6f69b3b::t_97776e2575f3e9 4
+  s_633895c6f69b3b::t_d67561d5ad7f3e 734,745-746,749,754
+  s_633895c6f69b3b::t_43bd29a0a85f93 37-38,54-55,70-71
+  s_633895c6f69b3b::t_8fc318da2f0b2b 22
+  s_633895c6f69b3b::t_853701c5c0abc2 24-25
+packages/cli/src/public-api/v1/handlers/data-tables/data-tables.handler.ts
+  s_633895c6f69b3b::t_7d10eb4fcd30f8 23
+  s_633895c6f69b3b::t_1361bcdc343a2a 120
+  s_633895c6f69b3b::t_adc49a304606e0 35
+  s_633895c6f69b3b::t_70b8f61a24056b 116-117,121-126
+  s_633895c6f69b3b::t_6b25976b16cf93 59
+  s_633895c6f69b3b::t_97869c8cd04d8b 21,60-63,85,88,92,128,145,147,166-167,169,171,173
+  s_633895c6f69b3b::t_6ddd9e9ab34674 18-20
+  s_633895c6f69b3b::t_6ddf637f1f67a7 22
+  s_633895c6f69b3b::t_b6ff8e11c9f211 24-26
+  s_633895c6f69b3b::t_4cfe52db8bf2db 17,27
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_633895c6f69b3b::t_dbcb7bb1974278 100
+  s_633895c6f69b3b::t_dbf633de41382b 114
+  s_633895c6f69b3b::t_f06c6275f76111 14
+  s_633895c6f69b3b::t_1b1e956f51da60 106
+  s_633895c6f69b3b::t_29ec13c4b20455 50
+  s_633895c6f69b3b::t_217d8040599974 42
+  s_633895c6f69b3b::t_a951ebb0c2cf7b 65-66
+  s_633895c6f69b3b::t_7a04814101b072 107-109
+  s_633895c6f69b3b::t_781b3a5914143b 87-99,101-105,110-113,115-118
+  s_633895c6f69b3b::t_e4f794288bfeda 49
+  s_633895c6f69b3b::t_25abbffe7deb4e 51-52
+packages/cli/src/services/project.service.ee.ts
+  h_ed1b2d65e81e8e 30-32
+  s_633895c6f69b3b::t_698b9659daef98 51
+packages/cli/src/public-api/v1/handlers/data-tables/__tests__/data-tables.handler.test.ts
+  s_633895c6f69b3b::t_f057de36bd15fd 9
+  h_ed1b2d65e81e8e 3
+  s_633895c6f69b3b::t_ec88536f78e9d9 78,88-94
+  s_633895c6f69b3b::t_32b12c098d9a96 100,102-104,109-112,115,120-123,127-130
+  s_633895c6f69b3b::t_89b11d3625014d 653
+  s_633895c6f69b3b::t_b9085678edf3f8 33,47,53-54
+packages/cli/src/modules/data-table/data-table-aggregate.service.ts
+  h_ed1b2d65e81e8e 9
+  s_633895c6f69b3b::t_ae0428d8b1cc2f 23
+  s_633895c6f69b3b::t_d2ac001dbbe485 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "720f1693d4f2d3fb2f58f1adfbbce1b2d5328838",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_633895c6f69b3b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ba7ed6f1-43ce-4523-b65f-098c71251e9e",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

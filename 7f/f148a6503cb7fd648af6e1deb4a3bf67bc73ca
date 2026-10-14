@@ -1,0 +1,22 @@
+packages/@n8n/client-oauth2/test/client-oauth2.test.ts
+  s_e8b790cadcb550::t_cc4f9038e675d3 189-190
+  s_e8b790cadcb550::t_fa65147758f1b1 131-147,150-169,173-174
+packages/@n8n/client-oauth2/src/client-oauth2.ts
+  s_e8b790cadcb550::t_de85057b5ac655 138-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "7ff148a6503cb7fd648af6e1deb4a3bf67bc73ca",
+  "prompts": {},
+  "sessions": {
+    "s_e8b790cadcb550": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09d82ca3-120a-40b9-bf4b-a017f68421f0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

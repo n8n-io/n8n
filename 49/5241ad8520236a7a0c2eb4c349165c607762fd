@@ -1,0 +1,21 @@
+packages/core/src/execution-engine/__tests__/workflow-execute-node-error-reporting.test.ts
+  s_35638155b998f3::t_a1a76b57d30356 166-176
+packages/core/src/execution-engine/workflow-execute.ts
+  s_35638155b998f3::t_7659a2fb1100ad 5,1980-1982
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "495241ad8520236a7a0c2eb4c349165c607762fd",
+  "prompts": {},
+  "sessions": {
+    "s_35638155b998f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_35638155b998f3",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

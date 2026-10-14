@@ -1,0 +1,19 @@
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_6615a7cad0865b::t_dbf242a2ea9458 255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "50ab027d5613e590446d663374d0f810214fcefa",
+  "prompts": {},
+  "sessions": {
+    "s_6615a7cad0865b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88080833-95f0-4af6-befe-780e1a12767c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/@n8n/nodes-langchain/utils/aws/createBedrockRuntimeClient.ts
+  s_67cc81a709e724::t_ba0996de850ac4 6
+  s_67cc81a709e724::t_87ba27269f8960 23-24,26,40-45,47-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "56cd29c4f5a0b1b498a5c63d2dc68e7c25a4b1de",
+  "prompts": {},
+  "sessions": {
+    "s_67cc81a709e724": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba1dd523-bce1-450b-9106-1b6f0c07c56e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/execution/executions/executions.store.ts
+  s_2c8fc4e7f1facf::t_1015fd08c0c2a0 177-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "90cd075babf98d489e0bb6b1ac49f8526a52e1fc",
+  "prompts": {},
+  "sessions": {
+    "s_2c8fc4e7f1facf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13df7519-fd71-4157-b381-9ed032d56611",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

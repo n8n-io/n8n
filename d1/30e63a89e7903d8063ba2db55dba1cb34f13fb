@@ -1,0 +1,44 @@
+packages/@n8n/instance-ai/src/index.ts
+  s_8ba13a05d6bfc0::t_47effe56ba7bce 688
+packages/@n8n/instance-ai/src/tools/orchestration/verification/types.ts
+  s_8ba13a05d6bfc0::t_47effe56ba7bce 36-37
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_8ba13a05d6bfc0::t_47effe56ba7bce 256
+packages/@n8n/instance-ai/docs/tools.md
+  s_8ba13a05d6bfc0::t_47effe56ba7bce 576-578
+packages/@n8n/instance-ai/src/types.ts
+  s_8ba13a05d6bfc0::t_47effe56ba7bce 173-182,185-191,193
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  s_8ba13a05d6bfc0::t_e0f312d1900fd1 744,775
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  s_8ba13a05d6bfc0::t_e0f312d1900fd1 897-928
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_8ba13a05d6bfc0::t_431e12527e3456 59,201
+  s_8ba13a05d6bfc0::t_33a4d7b5f71fcd 1357-1362
+  s_8ba13a05d6bfc0::t_e0f312d1900fd1 200,202-216,352-374,759-785,1218,1234,1237-1238,1252,1268,1270,1308,1311-1356,1363-1374
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_8ba13a05d6bfc0::t_47effe56ba7bce 134-142
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_8ba13a05d6bfc0::t_33a4d7b5f71fcd 3959-3962,3994-3997
+  s_8ba13a05d6bfc0::t_3eb94f24304cf7 2079,2107,2116,2154,2160,3955-3958,3963-3964,3969-3993,3998-4000,4070,4072,4086,4119-4125,4127-4140,4247-4278,4287,4308-4311,4313-4315,4317-4323,4325,4329-4340,4345-4347,4467
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_8ba13a05d6bfc0::t_47effe56ba7bce 91-93
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_8ba13a05d6bfc0::t_47effe56ba7bce 93-103,125,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d130e63a89e7903d8063ba2db55dba1cb34f13fb",
+  "prompts": {},
+  "sessions": {
+    "s_8ba13a05d6bfc0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "027e62b0-b994-4819-9dcb-d1def7e1e42f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/agent-dependency-index.listener.ts
+  s_db865e86d668e2::t_943dc365fc6528 34-35,37-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "26b83f8d2082f44af15d160ab531f05a36c16418",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_db865e86d668e2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f5838f10-3cfb-4926-8858-ccecf33e9908",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

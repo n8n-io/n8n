@@ -1,0 +1,21 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1e88b5cb1599b2::t_d565f8b850257c 2436-2438
+packages/modules/type-availability-policies/frontend/src/components/RestrictedNodePanel.vue
+  s_1e88b5cb1599b2::t_d565f8b850257c 30-32,36-41,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e519cc8bc3e70a5f09dca51da90e5d181b58a971",
+  "prompts": {},
+  "sessions": {
+    "s_1e88b5cb1599b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84591b3c-1bb6-4340-8d34-5e2bbe4c5d00",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

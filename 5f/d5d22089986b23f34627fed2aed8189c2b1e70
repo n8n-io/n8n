@@ -1,0 +1,197 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.vue
+  s_fb30b1b6ca962d::t_c5782bdbacce75 212
+  s_fb30b1b6ca962d::t_75bc8bde3537fc 325
+  s_fb30b1b6ca962d::t_8931ac143872a3 213-222
+.github/scripts/split-jscpd-report.mjs
+  s_fb30b1b6ca962d::t_0950d2cdcc4a53 1-68
+.github/scripts/split-jscpd-report.test.mjs
+  s_fb30b1b6ca962d::t_18e820284bf12c 1-111
+.github/test-metrics/e2e-impact-map.json
+  s_fb30b1b6ca962d::t_22235677ded305 1
+.github/workflows/jscpd.yml
+  s_fb30b1b6ca962d::t_c79180c7dabfd2 1-309
+.gitignore
+  s_fb30b1b6ca962d::t_df028412151fc9 12
+.jscpd.json
+  s_fb30b1b6ca962d::t_f50e379d6ddc88 1-26
+package.json
+  s_fb30b1b6ca962d::t_ae84b2bee59471 61,115
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_fb30b1b6ca962d::t_643c211dd74f52 186
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_fb30b1b6ca962d::t_89e3b30af6039f 111-114
+packages/@n8n/cli/docs/commands/package.md
+  s_fb30b1b6ca962d::t_e7c38d2d029611 82-83,96
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_fb30b1b6ca962d::t_667903904fdfb2 46-97
+packages/@n8n/cli/src/client.ts
+  s_fb30b1b6ca962d::t_2f22a9d3d63279 94
+packages/@n8n/cli/src/commands/package/import.ts
+  s_fb30b1b6ca962d::t_81bed8890c02c4 89,95-96
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_fb30b1b6ca962d::t_9cf89988238c3f 57-70,73-95,154-179
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_fb30b1b6ca962d::t_ba23898104f234 127-128
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_fb30b1b6ca962d::t_f16cbffac544d8 266-276
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_fb30b1b6ca962d::t_b5067afb2c18fd 24
+packages/@n8n/instance-ai/evaluations/README.md
+  s_fb30b1b6ca962d::t_50e770c31f99e0 352
+packages/@n8n/instance-ai/scripts/run-eval-lanes.sh
+  s_fb30b1b6ca962d::t_221c9760527e2a 439,449
+packages/cli/src/commands/__tests__/webhook.test.ts
+  s_fb30b1b6ca962d::t_3a525311d2b125 114-115,142-146,160-174
+packages/cli/src/commands/webhook.ts
+  s_fb30b1b6ca962d::t_9623bca54ba8dc 99-102
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_fb30b1b6ca962d::t_112ae92d8e0a06 116
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_fb30b1b6ca962d::t_17d041374e3945 3161,3215
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_fb30b1b6ca962d::t_7cb6135b9d9be1 1378
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_fb30b1b6ca962d::t_562e38e5c811af 189-211,243,346,1000-1001,1007-1009,1014-1016,1025-1027,1037-1039,1043,1055-1057,1084,1095,1108-1178,1180-1204
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_fb30b1b6ca962d::t_da46a65723c78d 121-123,128,137,386-389,394,406-469
+packages/cli/src/modules/data-table/__tests__/data-table-column.repository.test.ts
+  s_fb30b1b6ca962d::t_d7e8111b138632 2,43-47
+packages/cli/src/modules/data-table/data-table-column.repository.ts
+  s_fb30b1b6ca962d::t_8d93065156f546 2,4,16,21,25,27,143-177
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_fb30b1b6ca962d::t_cc5b430f79548c 287-297
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_fb30b1b6ca962d::t_3a74ba3c7c2e5f 19-20
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_fb30b1b6ca962d::t_304eaf7bd7f656 14-15
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_fb30b1b6ca962d::t_561fa9f7b690f7 5-6,32-40,75,138,309,333,354,434
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_fb30b1b6ca962d::t_adbe3d041a0c18 3,5,14,19-20,33,38,116-122,207-212,378-380,414-416,674-675,701-1090
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_fb30b1b6ca962d::t_21922f86d4592a 1292,1392,1462,1534
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_fb30b1b6ca962d::t_b247f39a68bd53 47,98-103,214,264
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_fb30b1b6ca962d::t_8a4f07223be86d 5,44-62
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_fb30b1b6ca962d::t_b87214ffcf3885 71,161-164
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_fb30b1b6ca962d::t_70e3e6e450286c 71,158
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_fb30b1b6ca962d::t_f93448835f76a0 185,207,234-238
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_fb30b1b6ca962d::t_375e08b7095e00 176
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-compat.test.ts
+  s_fb30b1b6ca962d::t_10505fae99e7a6 1,75-158
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_fb30b1b6ca962d::t_5c71aa293d9057 58,78-80,91
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-schema-conflict-policy.test.ts
+  s_fb30b1b6ca962d::t_b5509e44391912 9-10,13,42-43,52-62,65
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  s_fb30b1b6ca962d::t_3069c58986baf1 1-7,46-96
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_fb30b1b6ca962d::t_1b465cb58b9605 10,20-21,23-24,33-38,48-49,57-59,64,70-72,80,103-105,109,111-116,120-122,127,130-132,141-147,150-151,154,158,161,166-182,187,192,195-206,216-220,229,239-242,245-248,269-282
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-schema-conflict-policy.ts
+  s_fb30b1b6ca962d::t_bc344cbbc9d0e8 6,12-13,28-29,36
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_fb30b1b6ca962d::t_0790960c0974d0 1-2,43-50,60-67,80-98,111-112
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_fb30b1b6ca962d::t_9c118a7f8eb0b1 647
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_fb30b1b6ca962d::t_c4ba945ad438a8 138,142-143,415,687
+packages/cli/src/modules/oauth-server/__tests__/oauth-access-token-signing.api.test.ts
+  s_fb30b1b6ca962d::t_1a04acaecd358f 1-118
+packages/cli/src/modules/oauth-server/__tests__/oauth-signing-key.service.integration.test.ts
+  s_fb30b1b6ca962d::t_1ea951c90d6b2a 24,73,76,83-86
+packages/cli/src/modules/oauth-server/__tests__/oauth-signing-key.service.test.ts
+  s_fb30b1b6ca962d::t_fb232e9fcd1824 2,5,10-11,13,17-18,21,29,60-70,72-77,90,96-97,167-194,199-200,202-207,213-225,228,232-234,239-398
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_fb30b1b6ca962d::t_bc62db08ebf03c 3,11-12,20,22-29,37,39-47,57-58,77-79,104,137-141,402,507,519,544,568,582,818,823,834,845,859,900,928,1021,1030,1041,1051-1281
+packages/cli/src/modules/oauth-server/__tests__/signing-key-fixtures.ts
+  s_fb30b1b6ca962d::t_e70d0a32d1d3df 4-5,65-89,91-97
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_fb30b1b6ca962d::t_057457a89f89fb 31-32
+packages/cli/src/modules/oauth-server/oauth-signing-key.constants.ts
+  s_fb30b1b6ca962d::t_197fd607fad5ae 10-12,14-15,17-20
+packages/cli/src/modules/oauth-server/oauth-signing-key.service.ts
+  s_fb30b1b6ca962d::t_2ca79f5cc9275c 4-5,8,12,15,18,23-24,29,33,39-44,50-56,67-70,76-82,121,130,137-195,198,203-219,223-235,276,278,280-316
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_fb30b1b6ca962d::t_0bee9c44d0f5fc 12,30,58,85,242,244-246,478-503,505,510
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_fb30b1b6ca962d::t_36dc2695fe7798 128-142
+packages/cli/src/posthog/index.ts
+  s_fb30b1b6ca962d::t_e2c78296c06f33 61-62
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_fb30b1b6ca962d::t_6b1357a8618891 239-244,250,252,255-268,391-393
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importResult.yml
+  s_fb30b1b6ca962d::t_427b4b71068b86 278,286-288
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_fb30b1b6ca962d::t_a0503cc097c816 44-47
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_fb30b1b6ca962d::t_fc4753503ccfde 45,132
+packages/cli/src/services/__tests__/jwt.service.test.ts
+  s_fb30b1b6ca962d::t_b94e723a8b8c95 5,90-100
+packages/cli/src/services/jwt.service.ts
+  s_fb30b1b6ca962d::t_5c153f807d4e82 81-82,84,101-108,125-130,133,136-150
+packages/cli/src/services/project.service.ee.ts
+  s_fb30b1b6ca962d::t_3546aed685a2fd 359-362
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_fb30b1b6ca962d::t_10b25f4cb2d36e 1448,1454,1463,1477,1492,1507
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_fb30b1b6ca962d::t_b090dae57115b4 20,47,68,311,315,317,322-326,331,333-334
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_fb30b1b6ca962d::t_2c7636cb80b701 518,523
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_fb30b1b6ca962d::t_5932b91e1b19aa 38,68,165-169,171
+packages/cli/src/workflows/workflow.service.ts
+  s_fb30b1b6ca962d::t_fb126255da01ae 1926
+packages/cli/test/integration/executions/pre-execution-checks/credentials-permission-checker.test.ts
+  s_fb30b1b6ca962d::t_be772a3bd256e5 2,24,88-169
+packages/cli/test/integration/insights/insights-vs-workflow-statistics.integration.test.ts
+  s_fb30b1b6ca962d::t_e7ab9f742677db 19-22,92,181,183,257,305
+packages/cli/test/integration/insights/insights.api.test.ts
+  s_fb30b1b6ca962d::t_5df3fa24dc1697 24,142,467,553,616
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_fb30b1b6ca962d::t_37fa61df98a1c1 268,327
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_fb30b1b6ca962d::t_3faa6172231a81 46
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_fb30b1b6ca962d::t_e42449a8cc49d0 961-1027
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fb30b1b6ca962d::t_b6475f6113c735 1205
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  s_fb30b1b6ca962d::t_40275e9bceb8d4 59,700-774
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_fb30b1b6ca962d::t_273da2d42b7f50 3590,3594,3605,3629,3701-3721
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_fb30b1b6ca962d::t_106465ab38a18d 281-287,289-293,295,298-303,307-308,310,313,315,653,792-793,797,1116,1161-1177,1184-1185,1201-1202,1210,1218,1247-1250,1265,1269-1273,1280,1372,1384,1595,1675,1677,1680,1683-1687,1695,1812-1817,1842
+packages/modules/insights/backend/src/__tests__/insights-by-period.repository.integration.test.ts
+  s_fb30b1b6ca962d::t_c4a03d751d405c 12,21-30,66-68,104
+packages/modules/insights/backend/src/__tests__/insights.service.integration.test.ts
+  s_fb30b1b6ca962d::t_363dcf39f51143 2,15,23-28,32-34,93
+packages/modules/insights/backend/src/__tests__/test-users.ts
+  s_fb30b1b6ca962d::t_286a600347e7fa 1-15
+packages/modules/insights/backend/src/index.test.ts
+  s_fb30b1b6ca962d::t_25c5cdac4ef035 10,13
+packages/modules/insights/backend/src/testing.ts
+  s_fb30b1b6ca962d::t_c244cb2a5ec85f 1-6,13-27
+pnpm-lock.yaml
+  s_fb30b1b6ca962d::t_f83163fd79cd54 1120-1122,19689-19737,38742-38776
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5fd5d22089986b23f34627fed2aed8189c2b1e70",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

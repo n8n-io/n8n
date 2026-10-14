@@ -1,0 +1,25 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.test.ts
+  s_1b995c2a71c1af::t_ff44a6fd022d29 43,62,81,145-166,239-261,289,341-367
+packages/@n8n/nodes-langchain/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.ts
+  s_1b995c2a71c1af::t_7ea8a7f8bcc59c 26,156-160,164,172,176,183,186,188-192,196
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_1b995c2a71c1af::t_c45e5a21f85d52 17,849-911
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_1b995c2a71c1af::t_e71dfe110718cc 81,532-560
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d8422ed3d0310d341f51f2fea735c19e0954ba56",
+  "prompts": {},
+  "sessions": {
+    "s_1b995c2a71c1af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db82b089-8508-49c4-99ee-6e3df49f7230",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

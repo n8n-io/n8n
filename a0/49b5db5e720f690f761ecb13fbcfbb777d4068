@@ -1,0 +1,128 @@
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_7569519637010c::t_5e0e0bf98ddc74 132
+  s_0f5121623af7ca::t_b02b36c8558e5b 139-140,142-143
+  s_0f5121623af7ca::t_e30f0b512ccaa5 51
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_0f5121623af7ca::t_db9226a4a41423 2944,2963-2968
+  s_0f5121623af7ca::t_99fe19b6da3b64 164-172
+  s_0f5121623af7ca::t_eed58a769c64d0 2943,2945-2962,2969-3008
+  s_81af3e0487c8a1::t_ddadbad35bf88a 3009-3016
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_0f5121623af7ca::t_8cdc886758997c 196,201
+packages/@n8n/agents/src/sdk/memory.ts
+  s_7569519637010c::t_f488e433c8a3d0 42-43
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-model.service.test.ts
+  s_7569519637010c::t_4692549a03e633 105-126
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_7569519637010c::t_4ac95b28c855fa 2050-2056
+  s_0f5121623af7ca::t_77f2d660baa739 4124
+  s_0f5121623af7ca::t_5ef633b6546503 1687,1692-1705
+  s_0f5121623af7ca::t_65905492cd2a11 5459-5463
+  s_0f5121623af7ca::t_b4bf58c8cb25a5 2-9
+  s_0f5121623af7ca::t_3794576dc0e5b8 71
+  s_0f5121623af7ca::t_8c01c11fbd1936 5440
+  s_0f5121623af7ca::t_5cf44c7ef3f8ca 5389-5405
+  s_7569519637010c::t_94d23fadce4d68 2158
+packages/@n8n/instance-ai/src/stream/__tests__/usage-accumulator.test.ts
+  s_0f5121623af7ca::t_59cb4cc07453a8 205-255
+  s_0f5121623af7ca::t_2b791e90cc34ef 1
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_0f5121623af7ca::t_78982e3e88d541 186
+  s_7569519637010c::t_ef34ca8a003c26 231-248
+packages/@n8n/instance-ai/src/stream/usage-accumulator.ts
+  s_0f5121623af7ca::t_d3c42f956d3186 1
+  s_0f5121623af7ca::t_c5ee3998e1b88d 136-146
+  s_81af3e0487c8a1::t_326b00bec63607 147-149
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_7569519637010c::t_f8e7d413520418 1540-1556
+  s_7569519637010c::t_78deee8d904d4b 221-222
+  s_0f5121623af7ca::t_be38dd208c27c4 1476,1486,1503,1513,1519,1534
+packages/@n8n/instance-ai/src/memory/__tests__/title-utils.test.ts
+  s_81af3e0487c8a1::t_6dc675b54c89a0 76-77,79
+  s_0f5121623af7ca::t_294816d36c5944 1-15
+  s_0f5121623af7ca::t_7ca6fe88e09f7e 67-75,78,80-93
+packages/@n8n/agents/src/index.ts
+  s_0f5121623af7ca::t_a927b97313a7fb 96
+  s_0f5121623af7ca::t_fba535dd95aa4e 243
+packages/cli/src/modules/instance-ai/instance-ai-model.service.ts
+  s_7569519637010c::t_d99e082edfe2ad 124-127,139,149
+  s_7569519637010c::t_ea3a576601ce3d 92,94
+  s_7569519637010c::t_bc3623c6fc7194 116
+  s_7569519637010c::t_8cb17275fddade 152-194
+  s_7569519637010c::t_26852629e42e28 15-17
+  s_7569519637010c::t_f25fb1a0271017 150-151
+packages/@n8n/instance-ai/src/types.ts
+  s_7569519637010c::t_a579792d74dd1e 860-861
+  s_7569519637010c::t_f63af666863ac7 1477-1478
+  s_0f5121623af7ca::t_3f2cd23963ff98 1253-1254
+packages/@n8n/instance-ai/src/index.ts
+  s_0f5121623af7ca::t_74dc1b0c7b76fe 506-507
+  s_0f5121623af7ca::t_55b05735341ace 25
+  s_0f5121623af7ca::t_795a477f4fb871 113-115
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_7569519637010c::t_60595ccc5fa68e 249-254
+  s_7569519637010c::t_4c6c7a9d10ad84 62-63
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_7569519637010c::t_5b0943aea72551 128-141
+packages/@n8n/agents/src/runtime/memory/title-generation.ts
+  s_0f5121623af7ca::t_180efe140da9d4 58-59
+  s_0f5121623af7ca::t_56ba51d1fc0b62 3,10
+  s_0f5121623af7ca::t_53c95fc70d1209 136-140
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_7569519637010c::t_4527db78299579 303-306
+packages/@n8n/agents/src/types/sdk/observation-log.ts
+  s_0f5121623af7ca::t_9cfc71569da77c 107-108
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_7569519637010c::t_8b70bb095e0abc 358-375
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_7569519637010c::t_aa76d66d04e870 85
+packages/@n8n/instance-ai/src/memory/title-utils.ts
+  s_0f5121623af7ca::t_5f570cbd5cd485 54-56
+  s_0f5121623af7ca::t_94b51d61d64465 40-43,48,51-53
+  s_0f5121623af7ca::t_c1335c3bbaf159 4,7
+packages/@n8n/agents/src/runtime/__tests__/title-generation.test.ts
+  s_0f5121623af7ca::t_567dbe5b58fa59 18-21
+  s_0f5121623af7ca::t_df8679206cf9a0 217-242
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_0f5121623af7ca::t_1206998c873eae 579-584
+  s_0f5121623af7ca::t_ea120c7e6b523f 327-332
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_0f5121623af7ca::t_b2ece7adb2ff21 163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a049b5db5e720f690f761ecb13fbcfbb777d4068",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0f5121623af7ca": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ec6a8911-3d4a-419a-8a74-4f26f04cb331",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_7569519637010c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0ec8104a-a23c-4a15-badd-ed6d2ac695b3",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_81af3e0487c8a1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7a19aae2-5056-4771-84ef-fdede9d9f322",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

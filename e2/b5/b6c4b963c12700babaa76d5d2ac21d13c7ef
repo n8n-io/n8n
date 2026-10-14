@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useAgentNavigationCommands.ts
+  s_b8eb3cc2dbf3f8::t_a6d3e425f3628e 1-129
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.ts
+  s_b8eb3cc2dbf3f8::t_a6d3e425f3628e 18,31,66,120,146-153,155,157,162-163
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useAgentNavigationCommands.test.ts
+  s_b8eb3cc2dbf3f8::t_a6d3e425f3628e 1-249
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_b8eb3cc2dbf3f8::t_a6d3e425f3628e 10
+packages/@n8n/telemetry/src/events/agents.ts
+  s_b8eb3cc2dbf3f8::t_a6d3e425f3628e 464,466
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b8eb3cc2dbf3f8::t_a6d3e425f3628e 7116-7117
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useCommandBar.test.ts
+  s_b8eb3cc2dbf3f8::t_8079e2f8f5315b 7,110,175-177,229,240-253,294-295,301-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2b5b6c4b963c12700babaa76d5d2ac21d13c7ef",
+  "prompts": {},
+  "sessions": {
+    "s_b8eb3cc2dbf3f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ba76698-3554-4571-b883-3f647863c085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

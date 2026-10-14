@@ -1,0 +1,25 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_6cf45e0861d8a7::t_4153ab0fac08d2 3642-3674
+  s_6cf45e0861d8a7::t_d4f2aee60946bb 2982-3008
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_6cf45e0861d8a7::t_f7d9209c47238b 1860-1864
+  s_6cf45e0861d8a7::t_5eec0ff9e8eef9 1833,1840-1841
+  s_6cf45e0861d8a7::t_05c3493b1274af 1896-1909
+  s_6cf45e0861d8a7::t_39182e464cf9bd 1804,1811-1812
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9d4366814617bf1c03e30a8d239d2a99a4001e56",
+  "prompts": {},
+  "sessions": {
+    "s_6cf45e0861d8a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13143f7e-d2b7-44be-baa9-7f5c93be8e77",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

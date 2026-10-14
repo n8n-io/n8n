@@ -1,0 +1,30 @@
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/16.json
+  s_5d7dcde052ad34::t_8e8ea0cf91b441 1-10,12-25,27-40,42-50,52-89
+  s_5d7dcde052ad34::t_aa8b8df71bdffe 11,26,41,51
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/manifest.json
+  s_5d7dcde052ad34::t_aa8b8df71bdffe 136,144,152
+  s_5d7dcde052ad34::t_8e8ea0cf91b441 130-135,137-143,145-151,153
+  s_5d7dcde052ad34::t_f5606e7712ffc7 154-162
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/14.json
+  s_5d7dcde052ad34::t_8e8ea0cf91b441 1-10,12-25,27-40,42-50,52-89
+  s_5d7dcde052ad34::t_aa8b8df71bdffe 11,26,41,51
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/15.json
+  s_5d7dcde052ad34::t_8e8ea0cf91b441 1-10,12-25,27-40,42-55,57-94
+  s_5d7dcde052ad34::t_aa8b8df71bdffe 11,26,41,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b3ce10681f3515b4e9405cade692da54c7a18460",
+  "prompts": {},
+  "sessions": {
+    "s_5d7dcde052ad34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b21e0ff-3d00-45f6-af8d-3275d26a74df",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

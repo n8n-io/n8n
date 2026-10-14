@@ -1,0 +1,29 @@
+packages/cli/src/public-api/types.ts
+  s_a41a010865dc0a::t_6e31445630ebd9 243
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.service.test.ts
+  s_a41a010865dc0a::t_aa66f0384c863e 242,254,266
+  s_a41a010865dc0a::t_4445335924543a 307,319,331
+  s_a41a010865dc0a::t_f22f541f8d9868 124,136,148
+  s_a41a010865dc0a::t_77a9efd633c4fe 382
+  s_a41a010865dc0a::t_413db9b62517ea 5
+  s_a41a010865dc0a::t_212cff0a4c6333 422-428,430-483
+packages/cli/src/public-api/v1/handlers/credentials/credentials.service.ts
+  s_a41a010865dc0a::t_f8d8cc8ba9b602 442-446,456-461
+  s_a41a010865dc0a::t_f44ae045cad8aa 467,469-471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "3c1036ec9079e0756397140f983abcb98ef804dd",
+  "prompts": {},
+  "sessions": {
+    "s_a41a010865dc0a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f8092f8f-42e6-4020-b581-e3420f638bc8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/modules/type-availability-policies/frontend/src/policy-violations/PolicyViolationList.vue
+  s_3b39ddbce7fb2f::t_bd8769e4d8f23c 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8271fe3af4ef1b50a499e8018d55884d5f45ccfd",
+  "prompts": {},
+  "sessions": {
+    "s_3b39ddbce7fb2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b86ea06-4d76-49d6-abca-d6713a03c77f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

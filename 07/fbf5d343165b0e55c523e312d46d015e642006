@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/ToDo/descriptions/TargetDescription.ts
+  s_e7b82576de0350::t_5ba71ccc7bb0b1 19-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "07fbf5d343165b0e55c523e312d46d015e642006",
+  "prompts": {},
+  "sessions": {
+    "s_e7b82576de0350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8559a775-ab76-4c98-9eef-2dc047602094",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

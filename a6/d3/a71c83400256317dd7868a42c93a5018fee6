@@ -1,0 +1,20 @@
+packages/testing/containers/services/sandbox.ts
+  s_831f172d541ff6::t_3d65430ebcc5f5 25,27,163-178,180-198,201-202,219-221,223,225-243,257,259,261,264,280-281
+  s_831f172d541ff6::t_ef9590d9a7caca 28-31,215-218,222,244-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6d3a71c83400256317dd7868a42c93a5018fee6",
+  "prompts": {},
+  "sessions": {
+    "s_831f172d541ff6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec9fdb50-cb80-40cc-afed-fa46e7d0443a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/cli/src/controllers/oauth/__tests__/oauth1-credential.controller.test.ts
+  s_dc50b872f0e093::t_f653677298cabf 51-52
+packages/cli/src/oauth/oauth.service.ts
+  s_dc50b872f0e093::t_58d449c4b6f89f 770-771,773-774
+  s_dc50b872f0e093::t_38f2add6925a5b 530-546,550-551,553-554
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_dc50b872f0e093::t_be50d65d32378f 31
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_dc50b872f0e093::t_4b99cef9dcaceb 56-57
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_dc50b872f0e093::t_69e1fbfc86b006 8
+  s_dc50b872f0e093::t_cf154ba704db46 2044-2121
+  s_dc50b872f0e093::t_9eeec3a9be8fd6 30
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  s_dc50b872f0e093::t_5b47401e459113 166,170
+packages/cli/src/controllers/oauth/oauth1-credential.controller.ts
+  s_dc50b872f0e093::t_5f6ca395fc27b6 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e67e1f414bf9958a45df45b8da792e2e90a0519e",
+  "prompts": {},
+  "sessions": {
+    "s_dc50b872f0e093": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96054988-a1bb-43e7-90c8-d8ada7fc9bcd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

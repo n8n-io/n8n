@@ -1,0 +1,31 @@
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_8631ec10eb1199::t_32d5580284473a 157
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_8631ec10eb1199::t_cef790de1aac37 8
+  s_8631ec10eb1199::t_ede8c96c7d9740 42
+  s_8631ec10eb1199::t_2858eae7c47058 188-222,255-267
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_8631ec10eb1199::t_f3dfea88118cac 159-170
+  s_8631ec10eb1199::t_90bcf2f4b564d7 174-178
+  s_8631ec10eb1199::t_bb6ff03f3252a3 171,179
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_3e9e0d2d224512 55-58
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_8631ec10eb1199::t_59759d70838bda 58,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ef28e7e871a78bc9d0a5d3538dfb3bcfb025e3c",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

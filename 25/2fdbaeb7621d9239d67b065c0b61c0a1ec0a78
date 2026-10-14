@@ -1,0 +1,29 @@
+packages/cli/src/instance-settings-loader/loaders/sso/oidc.instance-settings-loader.ts
+  s_718adf522726fd::t_343e168368c7b4 32-33,47-48
+packages/@n8n/config/src/configs/instance-settings-loader.config.ts
+  s_718adf522726fd::t_69fdd9bee31ebf 62-68
+packages/@n8n/config/test/config.test.ts
+  s_718adf522726fd::t_cdb39e80f80100 644-645
+packages/cli/src/instance-settings-loader/__tests__/sso/oidc.instance-settings-loader.test.ts
+  s_718adf522726fd::t_c74e3297676f6f 21-22
+  s_718adf522726fd::t_179731a86611cb 87-100
+packages/cli/test/integration/oidc/oidc.instance-settings-loader.test.ts
+  s_718adf522726fd::t_2b2427e8a79a39 70-71
+  s_718adf522726fd::t_33750b80e241fd 51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "252fdbaeb7621d9239d67b065c0b61c0a1ec0a78",
+  "prompts": {},
+  "sessions": {
+    "s_718adf522726fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e81c52e-6201-4174-a233-1a63fee5c467",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

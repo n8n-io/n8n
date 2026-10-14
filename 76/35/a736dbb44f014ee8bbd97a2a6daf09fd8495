@@ -1,0 +1,14 @@
+.identity-probe
+  h_425f570cc35a09 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "7635a736dbb44f014ee8bbd97a2a6daf09fd8495",
+  "prompts": {},
+  "humans": {
+    "h_425f570cc35a09": {
+      "author": "alex <alex@n8n.io>"
+    }
+  }
+}

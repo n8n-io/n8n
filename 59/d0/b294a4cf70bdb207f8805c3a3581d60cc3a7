@@ -1,0 +1,27 @@
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_7ad6048374093f::t_adb4daf231f100 70,75,79-91
+  s_7ad6048374093f::t_5c80c09ccf4207 92
+packages/cli/test/setup-encryption-key.ts
+  s_7ad6048374093f::t_9a7f4771b842f2 1-29
+packages/cli/vitest.config.base.ts
+  s_7ad6048374093f::t_1ba5901ca9132c 41-46
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_7ad6048374093f::t_be3f450b727eaf 70-73
+  s_7ad6048374093f::t_b653f83a1b745f 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "59d0b294a4cf70bdb207f8805c3a3581d60cc3a7",
+  "prompts": {},
+  "sessions": {
+    "s_7ad6048374093f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33541f56-ba3b-4aaa-b27c-bed113227230",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

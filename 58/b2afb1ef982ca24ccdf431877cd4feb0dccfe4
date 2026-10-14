@@ -1,0 +1,59 @@
+packages/@n8n/engine/src/auth/index.ts
+  s_9c30e64d236bdf::t_639c0c484aa792 17-18
+packages/@n8n/engine/src/auth/resume-token.ts
+  s_9c30e64d236bdf::t_9f2c4e1d6d4e12 1-77
+packages/@n8n/engine/src/auth/shared-secret-token.ts
+  s_9c30e64d236bdf::t_4a7a461e98ac40 18-25,27,35,48,65
+packages/@n8n/engine/src/execution/index.ts
+  s_9c30e64d236bdf::t_db141f25df2a0d 42-43
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  s_9c30e64d236bdf::t_c3e41a7b814daf 1-121
+packages/@n8n/engine/src/index.ts
+  s_9c30e64d236bdf::t_03ca762fbad726 13-14,18,20-27
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_9c30e64d236bdf::t_28748de480763f 13,41-46,85,131
+packages/@n8n/engine/src/server/api.types.ts
+  s_9c30e64d236bdf::t_f1c3f396771808 72-91
+packages/@n8n/engine/src/server/create-engine-server.ts
+  s_9c30e64d236bdf::t_17c4ece120215d 5,21-22
+packages/@n8n/engine/src/server/index.ts
+  s_9c30e64d236bdf::t_65a98261693753 3-9
+packages/@n8n/engine/src/server/routes/workflow-executions.ts
+  s_9c30e64d236bdf::t_f0e0fd2e5d6c80 11,67-88,122-175
+packages/@n8n/node-engine-compatibility/src/types.ts
+  s_9c30e64d236bdf::t_282fb9ff3b69fd 64-68
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_9c30e64d236bdf::t_8cbbb12cdcc46e 45-48,50-54,56-59,65,70-90,105-107,133-141,144
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_9c30e64d236bdf::t_a329730274d7d9 9,17,52-60,120,129
+packages/cli/src/services/engine-v2-resume-context.service.ts
+  s_9c30e64d236bdf::t_31a2a595ee0e7e 1-33
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_9c30e64d236bdf::t_9ffeab6a4c1e1c 33,78-80
+packages/cli/src/webhooks/waiting-webhooks.ts
+  s_9c30e64d236bdf::t_c269231ecdf58e 19-23,62-63,250-255,339-433
+packages/cli/src/workflow-runner.ts
+  s_9c30e64d236bdf::t_a5c035cdae2791 420-425
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_9c30e64d236bdf::t_f53b98c0dca86e 10-12,23-26,116-160
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_9c30e64d236bdf::t_ac2b9027de553b 4-6,22-30,34-43,91-106
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_9c30e64d236bdf::t_6eb9b28e7c3e50 13,18,61,64-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "58b2afb1ef982ca24ccdf431877cd4feb0dccfe4",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

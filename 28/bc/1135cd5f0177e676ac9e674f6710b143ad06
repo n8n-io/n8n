@@ -1,0 +1,27 @@
+packages/cli/src/active-executions.ts
+  s_af62986d6ef75e::t_9cbd2b22abf6a7 105-107
+packages/cli/src/execution-lifecycle/shared/shared-hook-functions.ts
+  s_af62986d6ef75e::t_22acafa8e59f7a 66-73
+packages/cli/src/execution-lifecycle/shared/__tests__/shared-hook-functions.test.ts
+  s_af62986d6ef75e::t_10fc127292362f 96-133
+  s_af62986d6ef75e::t_185bd1405cb717 3,8-12
+packages/cli/src/__tests__/active-executions.test.ts
+  s_af62986d6ef75e::t_368a5b394019df 18
+  s_af62986d6ef75e::t_d058f73620b292 189-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "28bc1135cd5f0177e676ac9e674f6710b143ad06",
+  "prompts": {},
+  "sessions": {
+    "s_af62986d6ef75e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "137c8e00-b0af-4ad4-8af5-45842a28f12e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

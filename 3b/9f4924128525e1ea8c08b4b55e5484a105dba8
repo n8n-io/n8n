@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/workflowPartiallyActivated.ts
+  s_778a9ff0927fd4::t_5eea7f077203f8 4,6-8,15-16,18-19,21-23,28-29,36-47
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_778a9ff0927fd4::t_e8e5f34b29e318 331,362-381,383-387
+  s_778a9ff0927fd4::t_20ac9fff7dd748 347
+packages/@n8n/api-types/src/push/workflow.ts
+  s_778a9ff0927fd4::t_e9db0a922d6891 21-27
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_778a9ff0927fd4::t_9f04e89ba18be1 273-275,301
+  s_778a9ff0927fd4::t_f996ebba8a577f 17
+  s_778a9ff0927fd4::t_01bc4219cd653e 145-148
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_778a9ff0927fd4::t_4f0afffd9735a9 120-122
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_778a9ff0927fd4::t_d1a371b82b343b 319,322-325,329-333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3b9f4924128525e1ea8c08b4b55e5484a105dba8",
+  "prompts": {},
+  "sessions": {
+    "s_778a9ff0927fd4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f8162de-ffe4-488c-9410-106b26d73837",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

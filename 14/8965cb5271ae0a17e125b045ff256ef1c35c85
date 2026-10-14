@@ -1,0 +1,37 @@
+packages/nodes-base/nodes/Telegram/TelegramTrigger.node.ts
+  s_60ce6e746ce9d3::t_53f3df60d3810a 240-247
+  s_60ce6e746ce9d3::t_002058866c927d 1-2
+  s_60ce6e746ce9d3::t_86642d3316b8ba 315
+  s_60ce6e746ce9d3::t_72834823142217 336-339
+  s_60ce6e746ce9d3::t_082f13862d4e00 32
+  s_60ce6e746ce9d3::t_931b4f6e8648cd 39-40
+  s_60ce6e746ce9d3::t_7390d2a185e4bb 4
+  s_60ce6e746ce9d3::t_9cb9eea5e4e01f 16,20-31
+  s_60ce6e746ce9d3::t_eab83364cc0d3b 307-314,316-317,319-335,340-345
+  s_60ce6e746ce9d3::t_7cbe5b3bba6be0 318
+  s_60ce6e746ce9d3::t_e5e220c76733c7 346
+packages/nodes-base/nodes/Telegram/tests/TelegramTrigger.node.test.ts
+  s_60ce6e746ce9d3::t_af76b3e7068210 494-510,512-519
+  s_60ce6e746ce9d3::t_992c650a590a3b 3,13
+  s_60ce6e746ce9d3::t_1bc5cf3194fe00 511
+  s_60ce6e746ce9d3::t_b789925bc37b38 11
+  s_60ce6e746ce9d3::t_5914c85f924cfd 1-2,4
+  s_60ce6e746ce9d3::t_176e0cd4124720 12
+  s_60ce6e746ce9d3::t_b7360872ee8869 520-522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "148965cb5271ae0a17e125b045ff256ef1c35c85",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

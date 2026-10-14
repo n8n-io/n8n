@@ -1,0 +1,142 @@
+packages/cli/src/public-api/v1/handlers/community-packages/__tests__/community-packages.handler.test.ts
+  s_a2cff9ec3f16b1::t_1666dabc329d91 72,79,90,193
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_a2cff9ec3f16b1::t_f42be4efb1806b 3127,3147
+  s_a2cff9ec3f16b1::t_05c5cc7c9c2ac5 3097,3104-3109,3138-3143,3168,3172
+  s_a2cff9ec3f16b1::t_463fc6c476e341 3010,3025-3037,3057-3066,3068-3069,3071-3082,3084-3096,3098-3103,3113-3125,3129-3136,3146,3149-3156,3158-3161,3163-3167,3169-3171,3173-3174,3179-3181,3183-3198,3200-3211
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_a2cff9ec3f16b1::t_05c5cc7c9c2ac5 507
+  s_a2cff9ec3f16b1::t_137b927f3bc446 7,25-29,371-375,381,386,388-391,393,397-398,400-403,406-409,411-423,484,521,1048,1069
+packages/cli/src/public-api/v1/handlers/community-packages/spec/schemas/installCommunityPackageRequest.yml
+  s_a2cff9ec3f16b1::t_1666dabc329d91 10
+packages/cli/src/public-api/v1/handlers/community-packages/community-packages.handler.ts
+  s_a2cff9ec3f16b1::t_1666dabc329d91 12,28
+  s_a2cff9ec3f16b1::t_05c5cc7c9c2ac5 10
+packages/@n8n/nodes-langchain/utils/databricks/gateway-config.ts
+  s_a2cff9ec3f16b1::t_e024be6c92294e 2,52
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/community-packages.packageName.yml
+  s_a2cff9ec3f16b1::t_1666dabc329d91 26
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.test.ts
+  s_a2cff9ec3f16b1::t_4c4def346aa5a1 71-77,118
+  s_a2cff9ec3f16b1::t_e024be6c92294e 10,12,98-111,119
+  s_a2cff9ec3f16b1::t_bb6564fe871cc9 112-117
+  s_a2cff9ec3f16b1::t_bcbe227cb24102 120-122
+packages/@n8n/api-types/src/dto/community-packages/__tests__/community-package-request.dto.test.ts
+  s_3a9d0739deb6ee::t_9d3f6afb17f1cd 1-29
+packages/@n8n/api-types/src/dto/community-packages/community-package-request.dto.ts
+  s_3a9d0739deb6ee::t_7a0800ea940665 1-9
+packages/@n8n/api-types/src/dto/index.ts
+  s_3a9d0739deb6ee::t_56018ed75b6eb3 406
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_3a9d0739deb6ee::t_736522aa695ff2 12,32,137-146
+packages/@n8n/nodes-langchain/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.ts
+  s_3a9d0739deb6ee::t_75e25371c5351a 4,401
+packages/@n8n/nodes-langchain/nodes/llms/LmChatOpenRouter/test/LmChatOpenRouter.test.ts
+  s_3a9d0739deb6ee::t_c47d777827b78b 7,20,54-58,312-322
+packages/cli/src/credentials-helper.ts
+  s_3a9d0739deb6ee::t_3b80610887a2ef 10,33,581-590
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_3a9d0739deb6ee::t_1de1fe077b5048 1898,1935-1972,1978,2034
+packages/cli/src/credentials/credentials.service.ts
+  s_3a9d0739deb6ee::t_1c37c8af4ed1c3 1357
+packages/cli/src/execution-lifecycle/__tests__/execute-error-workflow.test.ts
+  s_3a9d0739deb6ee::t_2d8678a4c53555 211-279
+packages/cli/src/execution-lifecycle/execute-error-workflow.ts
+  s_3a9d0739deb6ee::t_d37d13bd68586d 6,78
+packages/cli/src/instance-settings-loader/loaders/community-packages.instance-settings-loader.ts
+  s_3a9d0739deb6ee::t_1b2e83decf2145 8,204-206
+packages/cli/src/modules/community-packages/__tests__/community-packages.controller.test.ts
+  s_3a9d0739deb6ee::t_e0fdc6377d5210 1,9,26,43,47,51-57,60,68-69,76-77,102,119-124,147,153,159-192,196-199
+packages/cli/src/modules/community-packages/__tests__/community-packages.integration.test.ts
+  s_3a9d0739deb6ee::t_30cf6d263505d9 252-253
+packages/cli/src/modules/community-packages/__tests__/community-packages.lifecycle.service.test.ts
+  s_3a9d0739deb6ee::t_1023556a844c68 66,71-77,81,91,96-119,144,159-237,315,442,455,460,465,475,480-481,499,510,528-534,536-552,557-589,595-622
+packages/cli/src/modules/community-packages/__tests__/community-packages.service.test.ts
+  s_3a9d0739deb6ee::t_931617b8d2d796 135-148
+packages/cli/src/modules/community-packages/community-node-types-utils.ts
+  s_3a9d0739deb6ee::t_898cbe28c1eede 26-42
+packages/cli/src/modules/community-packages/community-packages.controller.ts
+  s_3a9d0739deb6ee::t_f4a7d35bff65bb 1-3,5,15-20,39-44
+packages/cli/src/modules/community-packages/community-packages.lifecycle.service.ts
+  s_3a9d0739deb6ee::t_576ef35a654e04 21,69-71,75-80,86,89,93,133,138,144-145,158-163,254,259,265-266,269-284,286,297,325
+packages/cli/src/modules/mcp/__tests__/get-execution.tool.test.ts
+  s_3a9d0739deb6ee::t_95eff89eca88b3 3,6-8,10,20,36,46,67,100,146,220,293,349,415,470,529,598,640,681,725,788,827-1027
+packages/cli/src/modules/mcp/__tests__/install-community-node.registration.test.ts
+  s_3a9d0739deb6ee::t_6cc59b9baf6203 13,30,140,152
+packages/cli/src/modules/mcp/__tests__/install-community-node.tool.test.ts
+  s_3a9d0739deb6ee::t_3fbb941ac7bf5c 101,115,119,294
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_3a9d0739deb6ee::t_0d250ab7591a65 33,60,200,214
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_3a9d0739deb6ee::t_b6aed740937c5c 33,53,139,147,196,204,407,415,1207,1215,1266,1274,1350,1358
+packages/cli/src/modules/mcp/__tests__/update-workflow.tool.test.ts
+  s_3a9d0739deb6ee::t_7308aff0385440 30,205-218,233,2326-2345,2524,3885,3924,3963
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_3a9d0739deb6ee::t_f0be78e3256a68 31,48,250,258,507,1018
+packages/cli/src/modules/mcp/tools/get-execution.tool.ts
+  s_3a9d0739deb6ee::t_e3a59d18501a23 4,14,71,112-117
+packages/cli/src/modules/mcp/tools/workflow-builder/install-community-node.tool.ts
+  s_3a9d0739deb6ee::t_f4457c4e1c87fa 204
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_3a9d0739deb6ee::t_e22ab47e261ae6 54
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_3a9d0739deb6ee::t_07cf196872711c 30-35,199-232
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_3a9d0739deb6ee::t_7aff20c2dd7e55 126-131,299
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_3a9d0739deb6ee::t_73f50e88316b77 289-293
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_3a9d0739deb6ee::t_98bd5a34f408ee 263,272-277
+packages/cli/src/workflow-execute-additional-data.ts
+  s_3a9d0739deb6ee::t_824d60c94828ed 158-160
+packages/cli/src/workflows/__tests__/error-workflow-validation.service.test.ts
+  s_3a9d0739deb6ee::t_1fa648bbaf830c 1-186
+packages/cli/src/workflows/error-workflow-validation.service.ts
+  s_3a9d0739deb6ee::t_2db12499f8f23e 1-167
+packages/cli/test/integration/mcp/get-execution.tool.test.ts
+  s_3a9d0739deb6ee::t_af54804f433ae3 1-151
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_3a9d0739deb6ee::t_936bb52c9686d2 9,5674-5796
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_3a9d0739deb6ee::t_ea632f446f20d5 940-942,1043-1045,1056-1216
+packages/core/src/execution-engine/execution-context.ts
+  s_3a9d0739deb6ee::t_47218407944db8 3-9,36-39,48-49,51,53,66-67,112-140,163-166,168,184-187,204,257,272-275
+packages/frontend/@n8n/rest-api-client/src/api/communityNodes.ts
+  s_3a9d0739deb6ee::t_417a5b0db1a8d3 19,31
+packages/frontend/editor-ui/src/features/settings/communityNodes/communityNodes.store.ts
+  s_3a9d0739deb6ee::t_0f3c3e45870b6e 60-61,79
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue
+  s_3a9d0739deb6ee::t_be462f7256641f 163
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.test.ts
+  s_3a9d0739deb6ee::t_40397ac87b8c97 165
+packages/frontend/editor-ui/src/features/settings/communityNodes/composables/useInstallNode.test.ts
+  s_3a9d0739deb6ee::t_3db988bdf66188 205,218,243,432,554
+packages/workflow/src/execution-context.ts
+  s_3a9d0739deb6ee::t_7e1a3f057e590f 269-307
+packages/workflow/test/execution-context.test.ts
+  s_3a9d0739deb6ee::t_b0e7086594f809 1-5,79-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ccacb553e7a73292ab3351ae71754d66d195ab8",
+  "prompts": {},
+  "sessions": {
+    "s_3a9d0739deb6ee": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f09c26b75ffe9497CHF56DArXC",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_a2cff9ec3f16b1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f09c1de81ffeYCAUrC9XDN5xH6",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

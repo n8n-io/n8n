@@ -1,0 +1,27 @@
+packages/@n8n/db/src/services/auth.roles.service.ts
+  s_babec0e6d090bc::t_c09f85bcd0b4ae 147-148,152
+  s_babec0e6d090bc::t_453642df36a05e 176,178
+packages/cli/src/services/__tests__/auth.roles.service.test.ts
+  s_babec0e6d090bc::t_ca9121f6522398 439-449
+  s_babec0e6d090bc::t_9248ff9a666840 760,779,798
+packages/frontend/editor-ui/src/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue
+  s_babec0e6d090bc::t_97dfb204efa7e3 23
+packages/cli/BREAKING-CHANGES.md
+  s_babec0e6d090bc::t_357936b3a7d814 5-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ecb09deae5b4f84333a5c4a3df90f4636407387",
+  "prompts": {},
+  "sessions": {
+    "s_babec0e6d090bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1f91abd-1d9a-4ce1-a73f-a4c07449a84e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

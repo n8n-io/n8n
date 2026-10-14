@@ -1,0 +1,25 @@
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatAnthropic.test.ts
+  s_70fb4223a7d1db::t_7a4e7c1ea4146a 464-465,470-478
+  s_70fb4223a7d1db::t_6a27b6de4263cd 417,421-422,429-440
+  s_70fb4223a7d1db::t_d101ca70a88a9c 509-510
+  s_70fb4223a7d1db::t_9cb7af644f2b67 544,547,552
+  s_70fb4223a7d1db::t_8fd58fcb5f5678 556-557
+  s_70fb4223a7d1db::t_914fd616849091 530-531
+  s_70fb4223a7d1db::t_e0e401560ca228 441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "164ad0568bcc66c47e9960eccbf135839f4ec63b",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

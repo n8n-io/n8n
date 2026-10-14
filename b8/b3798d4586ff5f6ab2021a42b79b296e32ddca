@@ -1,0 +1,13 @@
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  ai_agent 1,5,48,68-71,104-117,173-185
+packages/@n8n/decorators/src/system-task/system-task.ts
+  ai_agent 4,78-85,106-107,120,150,165-167,178,227-238,277-284,286
+packages/@n8n/decorators/src/system-task/index.ts
+  ai_agent 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b8b3798d4586ff5f6ab2021a42b79b296e32ddca",
+  "prompts": {}
+}

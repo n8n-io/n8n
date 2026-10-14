@@ -1,0 +1,36 @@
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_469112840b3d4a::t_63fff2c275507b 109
+  s_469112840b3d4a::t_0f9e79e6996fd5 1028-1039
+packages/cli/src/events/maps/relay.event-map.ts
+  s_469112840b3d4a::t_72caf9c9c11118 934-939
+  s_469112840b3d4a::t_77d54155d55907 1-5
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_469112840b3d4a::t_6fce5ba7006a18 2660-2689,2748
+  s_2dbca386abe391::t_5583fcac7dac9e 2690-2747
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_469112840b3d4a::t_36dae1ce176d6d 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "a33f1a089ae784a64d63ca4fed939e70e8b12e0d",
+  "prompts": {},
+  "sessions": {
+    "s_2dbca386abe391": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f82f4c2-cc93-4158-ab35-2e0fae274d6f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_469112840b3d4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b548073-5a87-4c76-9703-dac7522232bb",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_4bc79cf80826f6::t_03004e19f61bf5 273-274
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_4bc79cf80826f6::t_361c808bce7bbb 154,159,172,240-241,268-269,302,304
+  s_4bc79cf80826f6::t_9d06cd8a4cfc30 42,65-67,69,255-256,258,260-263,270-279,387,389,391
+  s_4bc79cf80826f6::t_2cfe182760f4ac 280-281
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_4bc79cf80826f6::t_03004e19f61bf5 238-240,325-326,335,338,359
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_4bc79cf80826f6::t_03004e19f61bf5 465
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_4bc79cf80826f6::t_8173aa314aa30b 12-25,59,120
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_4bc79cf80826f6::t_8b812f6d7feb98 1057,1066-1068,1071-1072,1078-1079,1088-1090,1093-1094,1096-1097,1099,1102,1104,1107
+  s_4bc79cf80826f6::t_2fedcf39e49595 1120,1145-1147,1177-1179,1220,1222-1224,1254-1256,1266-1268,1316-1318
+  s_4bc79cf80826f6::t_56d6856c604cf4 764,777-779,781,784,800,804,809
+  s_4bc79cf80826f6::t_64544f44edd4a4 1894,1913
+  s_4bc79cf80826f6::t_5255af75802687 525
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_4bc79cf80826f6::t_89f7bcbebc606b 3
+  s_4bc79cf80826f6::t_154daf258b8c9a 206
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4bc79cf80826f6::t_b062a7508f876a 1437
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_4bc79cf80826f6::t_bb19aaada89997 19-26,282-289,291-292
+  s_4bc79cf80826f6::t_0b599477f5367f 30,181,200,290
+  s_4bc79cf80826f6::t_154daf258b8c9a 37,44,174,190
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_4bc79cf80826f6::t_a1cc43fd6670f5 124,268,273
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_4bc79cf80826f6::t_8173aa314aa30b 516-517,522-523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a6166d8bf84e53ac96b3e854df9de72f601ff96f",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4bc79cf80826f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc821-4348-7fc2-93b6-13c4143d0153",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

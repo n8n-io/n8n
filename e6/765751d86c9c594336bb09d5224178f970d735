@@ -1,0 +1,19 @@
+packages/testing/playwright/services/node-type-policy-api-helper.ts
+  s_fa1da8bd22ae88::t_96bfe2bdb00a53 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e6765751d86c9c594336bb09d5224178f970d735",
+  "prompts": {},
+  "sessions": {
+    "s_fa1da8bd22ae88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d758a5-27ef-4d66-81d2-ae0dccfd8226",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

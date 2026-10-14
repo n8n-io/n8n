@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/evaluations/routing/__tests__/cases.test.ts
+  s_fd6e130ca898c8::t_4bde0a409e7d9d 100-102
+packages/@n8n/instance-ai/evaluations/__tests__/stub-services.test.ts
+  s_fd6e130ca898c8::t_e367dcdbdf75fe 182,186
+  s_fd6e130ca898c8::t_1cabe4bd0100d6 183-185
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_fd6e130ca898c8::t_7c2258e7ab915f 219,221-222,224-225
+  s_fd6e130ca898c8::t_dfbf00a4d0f64e 220,223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "881c4bcdf171d9a8f9418bdfe7d1960cf670a843",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

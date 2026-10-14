@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-gate.test.ts
+  s_091536fda844db::t_5de45da9a41f11 114,116
+packages/@n8n/instance-ai/evaluations/run/tiers.ts
+  s_091536fda844db::t_fc86384674164c 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fc8edc8abc26d6c281f331466992fe12b538845c",
+  "prompts": {},
+  "sessions": {
+    "s_091536fda844db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df1e74f9-190c-49c3-a27a-d096cd078692",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

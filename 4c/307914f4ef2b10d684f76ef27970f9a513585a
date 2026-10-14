@@ -1,0 +1,40 @@
+packages/@n8n/agents/src/runtime/__tests__/support/otel-test-provider.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 27,37
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 641,643
+  s_f8bcded4ea5f7a::t_54f2c2018a8400 644
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 388,390
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 153,321
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 30
+packages/@n8n/agents/src/runtime/tools/untrusted-tool-output.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 41
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 106
+packages/@n8n/agents/src/runtime/memory/tool-result-memory.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 70
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 52,58
+packages/@n8n/agents/src/__tests__/integration/mcp-server-helpers.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 23,25,100,110
+packages/@n8n/agents/src/runtime/memory/title-generation.ts
+  s_f8bcded4ea5f7a::t_639152a89f4c20 185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c307914f4ef2b10d684f76ef27970f9a513585a",
+  "prompts": {},
+  "sessions": {
+    "s_f8bcded4ea5f7a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0403bfdbffegQkKvvwvumrkEY",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
