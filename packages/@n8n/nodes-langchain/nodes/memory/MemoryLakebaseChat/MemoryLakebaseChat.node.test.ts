@@ -291,36 +291,37 @@ describe('MemoryLakebaseChat', () => {
 			);
 		});
 
-		it('should explain a missing table with the SQL to create and grant it', async () => {
-			(resolveLakebaseTableUrl as unknown as Mock).mockResolvedValue(TABLE_URL);
-			request.mockRejectedValueOnce(
-				apiError(404, {
-					code: 'PGRST205',
-					message: "Could not find the table 'analytics.chat_log' in the schema cache",
-				}),
-			);
-			const context = createContext({
-				lakebaseSchema: 'analytics',
-				lakebaseTable: 'chat_log',
-				contextWindowLength: 5,
-			});
+		it.each([
+			['PGRST205', "Could not find the table 'analytics.chat_log' in the schema cache"],
+			['42P01', 'relation "analytics.chat_log" does not exist'],
+		])(
+			'should explain a missing table (%s) with the SQL to create and grant it',
+			async (code, apiMessage) => {
+				(resolveLakebaseTableUrl as unknown as Mock).mockResolvedValue(TABLE_URL);
+				request.mockRejectedValueOnce(apiError(404, { code, message: apiMessage }));
+				const context = createContext({
+					lakebaseSchema: 'analytics',
+					lakebaseTable: 'chat_log',
+					contextWindowLength: 5,
+				});
 
-			await new MemoryLakebaseChat().supplyData.call(context, 0);
-			const { chatHistory } = bufferWindowMemoryConstructor.mock.calls[0][0] as {
-				chatHistory: LakebaseChatMessageHistory;
-			};
+				await new MemoryLakebaseChat().supplyData.call(context, 0);
+				const { chatHistory } = bufferWindowMemoryConstructor.mock.calls[0][0] as {
+					chatHistory: LakebaseChatMessageHistory;
+				};
 
-			const error = await chatHistory.getMessages().catch((e: unknown) => e);
+				const error = await chatHistory.getMessages().catch((e: unknown) => e);
 
-			expect(error).toBeInstanceOf(NodeOperationError);
-			const { message, description } = error as NodeOperationError;
-			expect(message).toBe('Table analytics.chat_log does not exist');
-			expect(description).toContain(
-				'CREATE TABLE "analytics"."chat_log" (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);',
-			);
-			expect(description).toContain('CREATE INDEX ON "analytics"."chat_log" (session_id, id);');
-			expect(description).toContain('GRANT SELECT, INSERT, DELETE ON "analytics"."chat_log"');
-			expect(description).toContain('GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq"');
-		});
+				expect(error).toBeInstanceOf(NodeOperationError);
+				const { message, description } = error as NodeOperationError;
+				expect(message).toBe('Table analytics.chat_log does not exist');
+				expect(description).toContain(
+					'CREATE TABLE "analytics"."chat_log" (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);',
+				);
+				expect(description).toContain('CREATE INDEX ON "analytics"."chat_log" (session_id, id);');
+				expect(description).toContain('GRANT SELECT, INSERT, DELETE ON "analytics"."chat_log"');
+				expect(description).toContain('GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq"');
+			},
+		);
 	});
 });

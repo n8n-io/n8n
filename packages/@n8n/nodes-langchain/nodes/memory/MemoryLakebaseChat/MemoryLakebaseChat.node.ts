@@ -76,12 +76,13 @@ export class LakebaseChatMessageHistory extends BaseListChatMessageHistory {
 				json: true,
 			});
 		} catch (error) {
-			// The transport already retried PGRST205 once, so here it means the table is missing
-			if (
-				error instanceof NodeApiError &&
-				isRecord(error.context.data) &&
-				error.context.data.code === 'PGRST205'
-			) {
+			// The transport already retried PGRST205 once, so here it means the table is missing.
+			// 42P01 is the Postgres code when the Data API schema cache still lists a dropped table
+			const code =
+				error instanceof NodeApiError && isRecord(error.context.data)
+					? error.context.data.code
+					: undefined;
+			if (code === 'PGRST205' || code === '42P01') {
 				const { schema, table } = this.target;
 				throw new NodeOperationError(
 					this.context.getNode(),
