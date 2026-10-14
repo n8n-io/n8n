@@ -15,6 +15,8 @@ import { AgentsSettingsService } from '@/modules/agents/agents-settings.service'
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
+import { createAgentSkillRefsService } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -140,6 +142,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		settingsService.getEnabled.mockResolvedValue(true);
 		Container.set(AgentsSettingsService, settingsService);
 		Container.set(AgentRepository, { findByIdAndProjectId } as unknown as AgentRepository);
+		Container.set(AgentSkillRefsService, createAgentSkillRefsService());
 		Container.set(AgentRuntimeReconstructionService, {
 			reconstructFromAgentEntity,
 		} as unknown as AgentRuntimeReconstructionService);
@@ -540,11 +543,13 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(rebuiltEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'child-1' }] });
 	});
 
-	it('keeps the draft skill refs through pruning', async () => {
+	it('keeps the draft skill refs and their bodies through pruning', async () => {
 		const skillRefs = [
 			{ type: 'skill' as const, id: 'zeta' },
-			{ type: 'skill' as const, id: 'alpha', enabled: false },
+			{ type: 'skill' as const, id: 'alpha' },
 		];
+		const zeta = { name: 'Zeta', description: 'Zeta skill', instructions: 'Use zeta.' };
+		Container.set(AgentSkillRefsService, createAgentSkillRefsService({ zeta }));
 		findByIdAndProjectId.mockResolvedValue(makeEntity({ ...baseConfig, skills: skillRefs }));
 		reconstructFromAgentEntity.mockResolvedValue({
 			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
@@ -555,6 +560,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 		const runSource = reconstructFromAgentEntity.mock.calls[0][0] as AgentRunSource;
 		expect(runSource.skillRefs).toEqual(skillRefs);
+		expect(runSource.skills).toEqual({ zeta });
 	});
 
 	it('serves fallback web search and configured sub-agents through the instrumentation', async () => {

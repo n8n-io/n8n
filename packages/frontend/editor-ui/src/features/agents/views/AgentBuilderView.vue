@@ -3138,7 +3138,7 @@ useKeybindings({
 				:shortcut="{ metaKey: true, keys: ['J'] }"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					icon-only
 					:aria-label="locale.baseText('agents.builder.header.editWithAi')"
@@ -3303,7 +3303,6 @@ useKeybindings({
 					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="caps.onRemoveTool"
 					@remove-skill="caps.onRemoveSkill"
-					@toggle-skill="caps.onToggleSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"

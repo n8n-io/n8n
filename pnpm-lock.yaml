@@ -1619,6 +1619,9 @@ importers:
       '@asteasolutions/zod-to-openapi':
         specifier: 'catalog:'
         version: 7.3.4(zod@3.25.76)
+      '@n8n/inbound-auth':
+        specifier: workspace:*
+        version: link:../inbound-auth
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -3115,9 +3118,6 @@ importers:
 
   packages/@n8n/inbound-auth:
     dependencies:
-      '@n8n/api-types':
-        specifier: workspace:*
-        version: link:../api-types
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions

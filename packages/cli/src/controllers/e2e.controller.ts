@@ -147,6 +147,7 @@ export class E2EController {
 		[LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES]: false,
 		[LICENSE_FEATURES.WORKER_POOLS]: false,
 		[LICENSE_FEATURES.SCIM]: false,
+		[LICENSE_FEATURES.TRUSTED_SOURCE_MANAGE]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {

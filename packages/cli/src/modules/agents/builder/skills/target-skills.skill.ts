@@ -95,9 +95,9 @@ placeholder or vague skill.
   \`oldText\` so it matches exactly one place and retry with the same
   \`baseSkillHash\`.
   Do not create a replacement skill. Pass \`null\` for \`references\` to remove
-  all references; do not pass an empty array. When replacing \`references\`,
-  first read the content of every existing reference that must be preserved,
-  because the field is replaced as a whole.
+  all references; do not pass an empty array. The skill can be shared with other
+  agents: an update saves its next version for every agent that uses it. When replacing \`references\`, first read the content of every existing
+  reference that must be preserved, because the field is replaced as a whole.
 - Only call \`create_skills\` when no attached skill owns the capability. Fill the
   domain detail you need, deriving missing detail from the goal as stated
   assumptions so each description and applicable body section is concrete.

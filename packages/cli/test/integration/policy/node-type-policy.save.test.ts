@@ -7,7 +7,13 @@
  * to be an integration test: it depends on the stored workflow the host loads, which no unit
  * test supplies for real.
  */
-import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	getPersonalProject,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { WorkflowRepository, type Project, type User } from '@n8n/db';
 import { PolicyCheckMetadata } from '@n8n/decorators';
@@ -94,14 +100,21 @@ async function putProjectPolicy(
 	return response.body as { version: number };
 }
 
-const violationFor = (typeName: string, scope: 'instance' | 'project', matchedRuleId: string) => ({
+const violationFor = (
+	typeName: string,
+	scope: 'instance' | 'project',
+	matchedRuleId: string,
+	{ projectId, optInAvailable = false }: { projectId?: string; optInAvailable?: boolean } = {},
+) => ({
 	kind: 'node-type-unavailable',
 	checkId: CHECK_ID,
-	message: `Node type "${typeName}" is blocked by ${scope === 'instance' ? 'an instance policy' : "this project's policy"}`,
+	message: `Node type "${typeName}" is blocked by ${scope === 'instance' ? 'an instance policy' : 'a project policy'}`,
 	subject: typeName,
 	subjectType: 'nodeType',
 	scope,
 	matchedRuleId,
+	...(projectId !== undefined && { projectId }),
+	optInAvailable,
 });
 
 beforeAll(async () => {
@@ -316,9 +329,10 @@ describe('POST /workflows', () => {
 			})
 			.expect(403);
 
+		const { id: projectId } = await getPersonalProject(owner);
 		expect(response.body.meta.violations).toEqual([
-			violationFor(SET, 'instance', 'deny-set'),
-			violationFor(SCHEDULE_TRIGGER, 'instance', 'deny-schedule'),
+			violationFor(SET, 'instance', 'deny-set', { projectId }),
+			violationFor(SCHEDULE_TRIGGER, 'instance', 'deny-schedule', { projectId }),
 		]);
 	});
 });
@@ -338,7 +352,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 
 		expect(response.body).toMatchObject({
 			code: 403,
-			meta: { violations: [violationFor(SET, 'project', 'deny-set')] },
+			meta: { violations: [violationFor(SET, 'project', 'deny-set', { projectId: project.id })] },
 		});
 	});
 
@@ -382,7 +396,12 @@ describe('instance and project scope composition', () => {
 
 		const response = await saveWithSet().expect(403);
 
-		expect(response.body.meta.violations).toEqual([violationFor(SET, 'instance', 'delegate-set')]);
+		expect(response.body.meta.violations).toEqual([
+			violationFor(SET, 'instance', 'delegate-set', {
+				projectId: project.id,
+				optInAvailable: true,
+			}),
+		]);
 	});
 
 	test('keeps an instance deny in force over a project allow', async () => {
@@ -391,6 +410,8 @@ describe('instance and project scope composition', () => {
 
 		const response = await saveWithSet().expect(403);
 
-		expect(response.body.meta.violations).toEqual([violationFor(SET, 'instance', 'deny-set')]);
+		expect(response.body.meta.violations).toEqual([
+			violationFor(SET, 'instance', 'deny-set', { projectId: project.id }),
+		]);
 	});
 });

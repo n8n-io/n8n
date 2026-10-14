@@ -75,7 +75,7 @@ describe('ApiKeyAuthStrategy', () => {
 	describe('buildTokenGrant', () => {
 		it('returns a grant with subject, role scopes, and apiKeyScopes for a valid public API key', async () => {
 			const owner = await createOwnerWithApiKey({ scopes: ['workflow:read', 'workflow:list'] });
-			const [{ apiKey }] = owner.apiKeys;
+			const [{ id: apiKeyId, apiKey }] = owner.apiKeys;
 
 			const grant = await strategy.buildTokenGrant(apiKey);
 
@@ -85,6 +85,7 @@ describe('ApiKeyAuthStrategy', () => {
 			// role scopes come from the user's role and are independent of the key's apiKeyScopes
 			expect(grant.scopes.length).toBeGreaterThan(1);
 			expect(grant.apiKeyScopes).toEqual(['workflow:read', 'workflow:list']);
+			expect(grant.apiKeyId).toBe(apiKeyId);
 		});
 
 		it('accepts legacy (non-JWT) api keys by looking up the record directly', async () => {

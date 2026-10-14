@@ -2030,7 +2030,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('uses null to remove references and rejects an empty array', async () => {
+		it('uses null to remove the references and rejects an ambiguous empty array', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.updateSkill.mockResolvedValue({
 				id: 'skill_create_tickets',
@@ -2075,6 +2075,10 @@ describe('AgentsBuilderToolsService', () => {
 			expect(inputSchema.safeParse({ ...baseInput, updates: { references: [] } }).success).toBe(
 				false,
 			);
+			// Skills do not take allowed tools.
+			expect(
+				inputSchema.safeParse({ ...baseInput, updates: { allowedTools: ['search'] } }).success,
+			).toBe(false);
 			expect(inputSchema.safeParse({ ...baseInput, updates: {} }).success).toBe(false);
 			expect(
 				inputSchema.safeParse({
