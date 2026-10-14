@@ -54,6 +54,7 @@ one-paragraph description.
 - **Style:** present tense, active voice, second person. Use contractions.
   No em dashes, use a comma or a new sentence. No "e.g." or "i.e.", write
   "for example" and "that is". Spell out zero to nine, numerals from 10.
+  Values the operator types stay numerals, for example "Set to 0".
   Sentence case. One idea per sentence. End every sentence with a period.
 - **Plain words:** "use" not "utilize", "lets you" not "allows you to", cut
   "powerful", "seamless", "simply", "it's important to note".
