@@ -11,7 +11,9 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
@@ -55,7 +57,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMcp } from '@n8n/frontend-module-mcp';
 import RedactionMembersModal from '@/features/workflows/components/WorkflowSettings/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -93,6 +95,7 @@ const canUpdateCredentialResolver = hasPermission(['rbac'], {
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
@@ -913,7 +916,7 @@ onMounted(async () => {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}
-	if (settingsStore.isExecuteWorkflowNodeExcluded) {
+	if (nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)) {
 		workflowSettingsData.callerPolicy = 'none';
 	}
 	if (workflowSettingsData.executionTimeout === undefined) {
@@ -1162,7 +1165,7 @@ onBeforeUnmount(() => {
 								:disabled="
 									readOnlyEnv ||
 									!workflowPermissions.update ||
-									settingsStore.isExecuteWorkflowNodeExcluded
+									nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)
 								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
@@ -1975,7 +1978,7 @@ onBeforeUnmount(() => {
 }
 
 .no-nodes-title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
@@ -2010,7 +2013,7 @@ onBeforeUnmount(() => {
 }
 
 .nodes-active-title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
@@ -2076,7 +2079,7 @@ onBeforeUnmount(() => {
 	width: 100%;
 	gap: var(--spacing--3xs);
 	align-items: center;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--color--background--light-2);
 	color: var(--color--text--shade-1);

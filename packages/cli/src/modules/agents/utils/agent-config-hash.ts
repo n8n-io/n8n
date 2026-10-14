@@ -25,6 +25,10 @@ export function getAgentConfigHash(config: AgentJsonConfig | null): string | nul
 	return getHash(config);
 }
 
+export function isSameAgentConfig(a: unknown, b: unknown): boolean {
+	return getHash(a) === getHash(b);
+}
+
 export function getAgentSkillHash(skill: AgentSkill): string {
 	return getHash(skill);
 }

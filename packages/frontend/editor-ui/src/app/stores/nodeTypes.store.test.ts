@@ -5,6 +5,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { CommunityNodeType } from '@n8n/api-types';
 
 const mocks = vi.hoisted(() => ({
 	rootStore: {
@@ -50,6 +52,98 @@ describe('useNodeTypesStore', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: true }));
 		store = useNodeTypesStore();
+	});
+
+	describe('isNodeTypeUnavailable', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			store = useNodeTypesStore();
+			store.setNodeTypes([makeNodeType({ name: 'n8n-nodes-test.loaded', outputs: ['main'] })]);
+		});
+
+		it('should return false for a loaded node type', () => {
+			expect(store.isNodeTypeUnavailable('n8n-nodes-test.loaded')).toBe(false);
+		});
+
+		it('should return false for a loaded node type named with the preview token', () => {
+			expect(store.isNodeTypeUnavailable('n8n-nodes-preview-test.loaded')).toBe(false);
+		});
+
+		it('should return true for a node type that is not loaded', () => {
+			expect(store.isNodeTypeUnavailable('n8n-nodes-test.missing')).toBe(true);
+		});
+
+		it('should return false before any node types are loaded', () => {
+			store.nodeTypes = {};
+
+			expect(store.isNodeTypeUnavailable('n8n-nodes-test.missing')).toBe(false);
+		});
+
+		it('should return false for a vetted community node type that is not installed', async () => {
+			vi.spyOn(useSettingsStore(), 'isCommunityNodesFeatureEnabled', 'get').mockReturnValue(true);
+			vi.mocked(nodeTypesApi.fetchCommunityNodeTypes).mockResolvedValueOnce([
+				{ name: 'n8n-nodes-vetted.node', nodeDescription: { name: 'n8n-nodes-vetted.node' } },
+			] as CommunityNodeType[]);
+			await store.fetchCommunityNodePreviews();
+
+			expect(store.isNodeTypeUnavailable('n8n-nodes-vetted.node')).toBe(false);
+		});
+	});
+
+	describe('visibleNodeTypes module gating', () => {
+		const DATA_TABLE = 'n8n-nodes-base.dataTable';
+		const MESSAGE_AN_AGENT = 'n8n-nodes-base.messageAnAgent';
+
+		let activeModules: string[];
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			store = useNodeTypesStore();
+			store.setNodeTypes([
+				makeNodeType({ name: 'n8n-nodes-test.plain', outputs: ['main'] }),
+				makeNodeType({ name: DATA_TABLE, outputs: ['main'] }),
+				makeNodeType({ name: MESSAGE_AN_AGENT, outputs: ['main'] }),
+			]);
+
+			activeModules = ['data-table', 'agents'];
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation((name) =>
+				activeModules.includes(name),
+			);
+			vi.spyOn(settingsStore, 'isAgentsEnabled', 'get').mockImplementation(() =>
+				activeModules.includes('agents'),
+			);
+		});
+
+		const visibleNames = () => store.visibleNodeTypes.map((nodeType) => nodeType.name);
+
+		it('should list module-gated nodes while their modules are enabled', () => {
+			expect(visibleNames()).toEqual(
+				expect.arrayContaining(['n8n-nodes-test.plain', DATA_TABLE, MESSAGE_AN_AGENT]),
+			);
+		});
+
+		it('should hide the Data table node while the data-table module is inactive', () => {
+			activeModules = ['agents'];
+
+			expect(visibleNames()).not.toContain(DATA_TABLE);
+			expect(visibleNames()).toContain(MESSAGE_AN_AGENT);
+			expect(store.isNodeTypeModuleDisabled(DATA_TABLE)).toBe(true);
+		});
+
+		it('should hide the Message an Agent node while agents are disabled', () => {
+			activeModules = ['data-table'];
+
+			expect(visibleNames()).not.toContain(MESSAGE_AN_AGENT);
+			expect(visibleNames()).toContain(DATA_TABLE);
+			expect(store.isNodeTypeModuleDisabled(MESSAGE_AN_AGENT)).toBe(true);
+		});
+
+		it('should never treat a node type without a module as disabled', () => {
+			activeModules = [];
+
+			expect(store.isNodeTypeModuleDisabled('n8n-nodes-test.plain')).toBe(false);
+		});
 	});
 
 	describe('isModelNode', () => {

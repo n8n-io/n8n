@@ -19,6 +19,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { OperationContext } from '../services/transaction';
 import type { CredentialUsageScope, CredentialsEntity } from './credentials-entity';
 import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
@@ -66,7 +67,11 @@ export interface IExecutionBase {
 	 * correlated across queue-mode boundaries.
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
-	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	tracingContext?: {
+		traceparent: string;
+		tracestate?: string;
+		identity?: Record<string, string>;
+	} | null;
 	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
@@ -159,7 +164,7 @@ export interface CredentialUsedByWorkflow {
 	id: string;
 	name: string;
 	type?: string;
-	currentUserHasAccess: boolean;
+	currentUserCanUse: boolean;
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 }
@@ -454,6 +459,7 @@ export type AuthenticationInformation = {
 export interface TokenGrant {
 	scopes: string[];
 	apiKeyScopes?: string[];
+	apiKeyId?: string;
 	actor?: User;
 	subject: User;
 }
@@ -471,6 +477,8 @@ export type AuthenticatedRequest<
 		'push-ref': string;
 	};
 	tokenGrant?: TokenGrant;
+	/** Set by the authentication edge; controllers thread it into services as `ctx`. */
+	ctx?: OperationContext;
 };
 
 export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {

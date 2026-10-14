@@ -12,8 +12,10 @@ Allows users to search and choose one or more options from a list. All comboboxe
 Combobox (N8nCombobox2)
 ├── ComboboxAnchor (trigger chrome)
 │   ├── Single: leading icon + ComboboxInput + clear + chevron
+│   │   └── `loading`: N8nSpinner replaces the clear button and the chevron
 │   └── Multiple: N8nTagsInput2 (embedded) + clear + chevron
-│       └── #input slot: ComboboxInput as-child → TagsInputInput
+│       ├── #input slot: ComboboxInput as-child → TagsInputInput
+│       └── #trailing slot: N8nSpinner while `loading` (clear + chevron hide)
 └── ComboboxContent (portaled dropdown, role="listbox", max-height 500px by default)
     └── ComboboxViewport (scrollable list area)
         ├── ComboboxEmpty
@@ -37,7 +39,7 @@ Use `type: 'group'` for sections. The `label` is optional. Each group maps to it
 - `placeholder?: string` — Shown in the input when no value is selected | `default: t('combobox.placeholder')`
 - `emptyText?: string` — Shown when filtering returns no matches | `default: t('combobox.emptyText')`
 - `autoFocus?: boolean` — Focus the input on mount
-- `items?: ComboboxItem[]` — Array of options to render (see [Item shapes](#item-shapes) below). If `modelValue` is set before items resolve, the input shows the raw value until a matching item is available, then updates to that item's `label`. There is no built-in pending/skeleton state — wrap the field at the call site if you need one.
+- `items?: ComboboxItem[]` — Array of options to render (see [Item shapes](#item-shapes) below). If `modelValue` is set before items resolve, the input shows the raw value until a matching item is available, then updates to that item's `label`. There is no skeleton list. Set `loading` to show a spinner in the field while a parent replaces `items`.
 - `defaultValue?: ComboboxValue | ComboboxValue[]` — Initial value when uncontrolled. Seeds the selection used for tags, the clear button, leading icon, and `data-empty` (same as a controlled `modelValue`).
 - `modelValue?: ComboboxValue | ComboboxValue[]` — Controlled value. Bind with `v-model`
 - `multiple?: boolean` — Allow selecting multiple options. Selected values render as removable tags via embedded `N8nTagsInput2` (search input stays empty; filtering still works while typing)
@@ -46,12 +48,12 @@ Use `type: 'group'` for sections. The `label` is optional. Each group maps to it
 - `disabled?: boolean` — Disable interaction
 - `required?: boolean` — Mark the field as required (reka-ui root)
 - `icon?: IconName` — Leading icon in the trigger when no selected item icon is available
-- `ignoreFilter?: boolean` — Disable built-in filtering
 - `resetSearchTermOnBlur?: boolean` — Reset search text on blur | reka default: `true`
 - `resetSearchTermOnSelect?: boolean` — Reset search text on select | reka default: `true`
 - `openOnClick?: boolean` — Open dropdown when input is clicked | reka default: `false`
 - `highlightOnHover?: boolean` — Highlight items on hover (reka-ui root)
-- `clearable?: boolean` — When `true`, shows a clear button (×) when a value is selected. Hidden when disabled or empty. Default: `false`
+- `clearable?: boolean` — When `true`, shows a clear button (×) when a value is selected. Hidden when disabled, empty, or `loading`. Default: `false`
+- `loading?: boolean` — Show `N8nSpinner` (dots, medium) in place of the clear button and the popup button. In multiple mode the spinner stays at the end of the tags field while the tags scroll. The anchor sets `aria-busy`. The spinner's accessible name is "Searching". Set this while replacing `items` from a remote search. Default: `false`
 - `teleported?: boolean` — Whether to teleport the dropdown to body. Default: `true`
 - `portalTarget?: string | HTMLElement` — Portal target element (e.g. pop-out window's `document.body`). When set, portals content to the specified element.
 
@@ -75,11 +77,13 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 - `update:modelValue(value: ComboboxValue | ComboboxValue[])` — For single selection, clearing emits `undefined`. For multiple selection, clearing emits `[]`.
 - `update:open(value: boolean)`
+- `update:searchTerm(value: string)` — Text in the input. Fires as the user types and when a selection resets that text. Replace `items` from this event for a remote search.
 - `highlight(payload: { ref: HTMLElement; value: ComboboxValue } | undefined)` — reka-ui root
 
 **Exposed**
 
 - `anchorRef` — Ref to the `ComboboxAnchor` element
+- `focusOnInput()` — Focus the combobox input
 
 **Attributes**
 
@@ -381,6 +385,24 @@ const value = ref<string[]>(['apple']);
 .narrow-combobox {
   --combobox-content--max-height: 300px;
 }
+```
+
+**Remote search**
+
+Replace `items` when `update:searchTerm` fires. Keep each selected option in `items` so the field can show its label.
+
+Set `loading` while the request runs. The spinner replaces the clear button and the popup button. Set `emptyText` to the message for an empty menu.
+
+```vue
+<N8nCombobox2
+  v-model="value"
+  :items="items"
+  :loading="loading"
+  :empty-text="loading ? 'Searching…' : 'No results found.'"
+  multiple
+  clearable
+  @update:search-term="onSearchTerm"
+/>
 ```
 
 ## Related components

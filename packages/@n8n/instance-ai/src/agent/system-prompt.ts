@@ -18,6 +18,8 @@ interface SystemPromptOptions {
 	licenseHints?: string[];
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** When true, data sharing is off: parameter values are hidden and workflow writes are blocked. */
+	parameterValuesHidden?: boolean;
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
@@ -141,6 +143,17 @@ A request to build something genuinely new goes straight to the build path — n
 `;
 }
 
+/**
+ * The turn sends the tabs block only when the open tabs change, so the model
+ * needs to know what a user message without one means.
+ */
+function getPreviewTabsSection(): string {
+	return `
+## Preview Tabs
+
+The latest \`<thread-artifacts>\` block lists the tabs the user has open now. A user message without one means the tabs did not change. When a tab from an earlier block is missing from the latest one, the user closed it: you can still work on it if the user asks, but do not assume the user is looking at it.`;
+}
+
 function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
@@ -196,6 +209,21 @@ If the user asks for a blocked operation, explain that the instance is in read-o
 `;
 }
 
+function getLimitedModeSection(parameterValuesHidden?: boolean): string {
+	if (!parameterValuesHidden) return '';
+	return `
+## Limited Mode
+
+Data sharing is turned off on this instance, so you run in **limited mode**. You cannot see node parameter values or execution data. You cannot create or edit workflows. The tools that save workflows will return errors, so do not write workflow code or call them.
+
+The following remains available:
+- Explaining n8n concepts and suggesting nodes
+- Finding workflows and describing them by their structure (nodes and connections)
+
+If the user asks for a blocked action, explain that data sharing is turned off. Tell them that an instance owner or admin can turn on "Send actual data values" in Settings > AI usage. On self-hosted instances, the \`N8N_AI_ALLOW_SENDING_PARAMETER_VALUES\` environment variable may also need to be removed.
+`;
+}
+
 /**
  * Setup panel v2 changes what `workflows(action="setup")` does: it announces the
  * checklist and returns instead of opening a card. Instance-wide flag, so the
@@ -203,7 +231,7 @@ If the user asks for a blocked operation, explain that the instance is in read-o
  */
 function getCredentialSetupBullet(setupPanelEnabled?: boolean): string {
 	if (setupPanelEnabled) {
-		return '**Credential setup** uses `workflows(action="setup")` when a workflowId is available. Requirements can appear in the setup panel while the workflow is being built. The user can complete them immediately. Do not describe setup as happening only after the build. When the result has `announced: true`, the setup panel lists the remaining credentials and parameters. Summarize that result, report any validation warnings, and end your turn. Other results need their returned guidance: correct validation errors, respect denials and skipped items, and wait for requested destination approvals. Explicit credential replacement and an already-open setup card keep their card flow, including apply and test-trigger results. Do not treat a resumed card as a panel announcement. Each new user turn carries a `<workflow-setup-state>` block with current configuration; trust it over older tool results. Configuration alone does not prove successful testing. Use `credentials(action="setup")` when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor, and never ask the user to paste secrets into chat.';
+		return '**Early credential setup**: announce each explicitly requested service as soon as its exact credential type is known from node definitions or credential type search. Do this before detailed workflow planning, SDK research, or reasoning about implementation. Do not wait to identify every service. Call `credentials(action="setup", filePath, workflowName, credentials)` as the only tool call in that response. Wait for its successful `preBuild: true` result before planning the implementation or generating source. Never batch this call with workspace writes or build-workflow. Pick the source filePath now and reuse it throughout the build. Include workflowId for an existing workflow and folderPath when creating in a known folder. This creates the workflow context and makes setup actionable immediately. Use the announced credential types when configuring matching nodes. Announce only supported service-specific types; leave ambiguous services and generic authentication to build-time discovery. Pass the complete known requirement list again if the plan changes, including an empty list if all requirements are dropped. Do not wait for the user to connect. The early result has `preBuild: true`: continue generating source, omit folderPath from build-workflow, and do not end your turn. This early step overrides runtime skill guidance that defers all setup until after building. After the build, **credential setup** uses `workflows(action="setup")` when a workflowId is available. Requirements can appear in the setup panel while the workflow is being built. The user can complete them immediately. Do not describe setup as happening only after the build. When the result has `announced: true` without `preBuild: true`, the setup panel lists the remaining credentials and parameters. Summarize that result, report any validation warnings, and end your turn. Other results need their returned guidance: correct validation errors, respect denials and skipped items, and wait for requested destination approvals. Explicit credential replacement and an already-open setup card keep their card flow, including apply and test-trigger results. Do not treat a resumed card as a panel announcement. Each new user turn carries a `<workflow-setup-state>` block with current configuration; trust it over older tool results. Configuration alone does not prove successful testing. Use `credentials(action="setup")` without filePath when the user explicitly asks to create a credential outside of any workflow context. Early credential announcements and final workflow setup are separate stages; do not repeat either without changed requirements. Never describe workflow setup as something the user starts from the canvas or editor, and never ask the user to paste secrets into chat.';
 	}
 	return '**Credential setup** uses `workflows(action="setup")` when a workflowId is available — it opens the inline setup card in the n8n Assistant panel and handles credentials, parameters, and triggers in one step. Use `credentials(action="setup")` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a node in `nodesStillNeedingSetup` carries `parameterIssues`, the connected credential can\'t reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn\'t work and what you set instead. Never silently swap a model or other parameter without saying so. Nodes listed under `skippedByUser` are different: the user chose to skip them, so never re-open the setup card for those — say what stays unconfigured and offer to set it up later.';
 }
@@ -221,6 +249,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			mcpToolSearchEnabled,
 			licenseHints,
 			branchReadOnly,
+			parameterValuesHidden,
 			projectId,
 			workspaceRoot,
 			conversationHistoryEnabled,
@@ -233,6 +262,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}
+${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
@@ -271,6 +301,7 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 ${getComputerUsePrompt({ state: computerUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
+${getLimitedModeSection(parameterValuesHidden)}
 
 ## Reply language
 

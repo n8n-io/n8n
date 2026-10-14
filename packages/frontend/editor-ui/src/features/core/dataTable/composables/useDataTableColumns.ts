@@ -69,15 +69,12 @@ export const useDataTableColumns = ({
 				!isOversizedValue(params.data?.[col.name]),
 			resizable: true,
 			lockPinned: true,
-			// Dragging a column triggers a server-side move, so block it in
-			// read-only mode.
-			suppressMovable: readOnly.value,
 			headerComponent: ColumnHeader,
 			headerComponentParams: {
 				onDelete: onDeleteColumn,
 				onRename: onRenameColumn,
-				allowMenuActions: !readOnly.value,
-				readOnly: readOnly.value,
+				allowMenuActions: true,
+				readOnly: () => readOnly.value,
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
@@ -165,7 +162,7 @@ export const useDataTableColumns = ({
 						if (params.value === ADD_ROW_ROW_ID) {
 							return {
 								component: AddRowButton,
-								params: { onClick: onAddRowClick, disabled: readOnly.value },
+								params: { onClick: onAddRowClick, disabled: () => readOnly.value },
 							};
 						}
 						return undefined;
@@ -208,7 +205,7 @@ export const useDataTableColumns = ({
 					minWidth: MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH,
 					flex: 1,
 					headerComponent: AddColumnButton,
-					headerComponentParams: { onAddColumn, disabled: readOnly.value },
+					headerComponentParams: { onAddColumn, disabled: () => readOnly.value },
 				},
 			),
 		];

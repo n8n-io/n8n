@@ -23,6 +23,7 @@ on:
     paths:
       - '**/package.json'
       - '**/turbo.json'
+      - 'packages/cli/scripts/build.mjs'
       - '.github/workflows/build-windows.yml'
       - '.github/actions/setup-nodejs/**'
 

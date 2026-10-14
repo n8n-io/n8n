@@ -33,6 +33,31 @@ import type { RawActionToolOperation, RawContextToolOperation } from './integrat
 /** Resume shape for the action tool, including a follow-up interactive card. */
 export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
 
+/**
+ * True when an action tool result reports that no reply will be sent
+ * (`do_not_respond`), on its own or inside a batch.
+ */
+export function isSilentActionOutput(output: unknown): boolean {
+	if (!isRecord(output)) return false;
+	if (output.silent === true) return true;
+	// Batched action calls nest per-operation results under `results`.
+	return (
+		Array.isArray(output.results) &&
+		output.results.some(
+			(entry) =>
+				isRecord(entry) &&
+				entry.action === 'do_not_respond' &&
+				isRecord(entry.result) &&
+				entry.result.ok === true &&
+				entry.result.silent === true,
+		)
+	);
+}
+
+export function integrationActionApprovalKey(connectionId: string, action: string): string {
+	return JSON.stringify(['integration_action', connectionId, action]);
+}
+
 export async function executeContextToolOperation(params: {
 	operation: RawContextToolOperation;
 	descriptor: IntegrationToolConnectionDescriptor;
@@ -191,7 +216,10 @@ export async function executeActionToolOperation(params: {
 
 	const needsApproval =
 		operation.action !== approvedAction &&
-		actionNeedsApproval(descriptor.approval, operation.action);
+		actionNeedsApproval(descriptor.approval, operation.action) &&
+		!ctx.approvalContext?.approvedKeys.has(
+			integrationActionApprovalKey(descriptor.integrationConnectionId, operation.action),
+		);
 
 	if (needsApproval) {
 		// A batch cannot suspend, so a gated action inside one has to be refused
@@ -210,8 +238,11 @@ export async function executeActionToolOperation(params: {
 			{
 				type: 'approval',
 				toolName: operation.action,
+				...(ctx.approvalContext ? { supportsSessionApproval: true } : {}),
 				displayName: describeActionForApproval(operation),
-				args: actionInput,
+				args: ctx.approvalContext?.getDisplayArgs
+					? ctx.approvalContext.getDisplayArgs(descriptor.actionToolName, actionInput)
+					: actionInput,
 			},
 			// The card's buttons are shaped from this schema, so the decision comes
 			// back as `{ approved }` rather than the tool's own resume shape.

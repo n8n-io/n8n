@@ -4,9 +4,6 @@ tags:
 summary: Generate an audit
 description: Generate a security audit for your n8n instance.
 x-required-scope: securityAudit:generate
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   content:
     application/json:
@@ -129,10 +126,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -245,10 +242,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -364,10 +361,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -483,10 +480,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -599,10 +596,10 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
-                            additionalProperties:
-                              nullable: true
+                            additionalProperties: {}
                           nextVersions:
                             type: array
                             items:
@@ -628,8 +625,7 @@ responses:
                             nodeName: Webhook
                             nodeType: n8n-nodes-base.webhook
             - type: array
-              items:
-                nullable: true
+              items: {}
               maxItems: 0
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml

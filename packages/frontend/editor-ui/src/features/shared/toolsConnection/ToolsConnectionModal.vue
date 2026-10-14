@@ -11,6 +11,7 @@ import {
 import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
+import { partitionLast } from '@n8n/utils/sort/partition-last';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
@@ -46,6 +47,7 @@ const props = withDefaults(
 		hideBackButton?: boolean;
 		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
 		size?: DialogSize;
+		showSuggestionFooter?: boolean;
 		createAction?: PickerCreateAction;
 		createActionLoading?: boolean;
 		emptyMessage?: string;
@@ -53,6 +55,8 @@ const props = withDefaults(
 		/** Render only the modal body when an owning feature supplies the dialog shell. */
 		embedded?: boolean;
 		showConnectActions?: boolean;
+		/** Show matches from all categories under category headings while searching. */
+		groupSearchResults?: boolean;
 		/** Keep the list scrollbar visible instead of revealing it on hover. */
 		persistentScrollbar?: boolean;
 		connectLabel?: (item: ToolConnectionItem) => string;
@@ -64,12 +68,14 @@ const props = withDefaults(
 		detailItem: null,
 		detailMode: 'detail',
 		size: 'xlarge',
+		showSuggestionFooter: false,
 		createAction: undefined,
 		createActionLoading: false,
 		emptyMessage: undefined,
 		noResultsMessage: undefined,
 		embedded: false,
 		showConnectActions: false,
+		groupSearchResults: false,
 		persistentScrollbar: false,
 	},
 );
@@ -160,6 +166,7 @@ onMounted(() => {
 
 const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
 const hasActiveSearch = computed(() => normalizedSearchQuery.value.length > 0);
+const isGroupedSearch = computed(() => props.groupSearchResults && hasActiveSearch.value);
 
 function matchesQuery(item: ToolConnectionItem): boolean {
 	if (!normalizedSearchQuery.value) return true;
@@ -184,6 +191,10 @@ function allSortRank(item: ToolConnectionItem): number {
 	if (hasToolConnection(item.status)) return 0;
 	if (item.freeCredits) return 1;
 	return 2;
+}
+
+function isRestrictedItem(item: ToolConnectionItem): boolean {
+	return item.kind === 'node' && item.restriction !== undefined;
 }
 
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
@@ -218,16 +229,16 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-type ListRow = FlattenedRow | { key: 'suggestion' };
+type CategoryListRow = {
+	key: `category:${ToolCategoryKey}`;
+	category: ToolCategoryKey;
+};
+type ListRow = FlattenedRow | CategoryListRow | { key: 'suggestion' };
 
 const toolRows = computed<FlattenedRow[]>(() =>
-	itemsForCategory(activeCategory.value)
-		.filter(matchesQuery)
-		.map((item) => ({ key: `item:${item.id}`, item })),
-);
-
-const flattenedRows = computed<ListRow[]>(() =>
-	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
+	partitionLast(itemsForCategory(activeCategory.value).filter(matchesQuery), isRestrictedItem).map(
+		(item) => ({ key: `item:${item.id}`, item }),
+	),
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -274,6 +285,25 @@ function categoryLabel(category: ToolCategoryKey): string {
 	return i18n.baseText(CATEGORY_I18N[category]);
 }
 
+const groupedSearchRows = computed<ListRow[]>(() => {
+	const rows: ListRow[] = [];
+	for (const category of visibleCategories.value) {
+		if (category === 'all') continue;
+		const matches = itemsForCategory(category).filter(matchesQuery);
+		if (matches.length === 0) continue;
+		rows.push({ key: `category:${category}`, category } satisfies CategoryListRow);
+		rows.push(...matches.map((item) => ({ key: `item:${item.id}`, item })));
+	}
+	return rows;
+});
+
+const flattenedRows = computed<ListRow[]>(() => {
+	if (isGroupedSearch.value) return groupedSearchRows.value;
+	return isMcpCategory.value || props.showSuggestionFooter
+		? [...toolRows.value, { key: 'suggestion' }]
+		: toolRows.value;
+});
+
 /**
  * The count rides in the label rather than `tag`, which would render a chip per
  * tab — far louder than a muted number next to the name.
@@ -294,7 +324,9 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
-const isListEmpty = computed(() => toolRows.value.length === 0);
+const isListEmpty = computed(() =>
+	isGroupedSearch.value ? groupedSearchRows.value.length === 0 : toolRows.value.length === 0,
+);
 const resolvedEmptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		if (props.noResultsMessage) return props.noResultsMessage;
@@ -384,7 +416,7 @@ function handleOpenChange(value: boolean) {
 				</N8nInput>
 
 				<N8nTabs
-					v-if="tabsVisible"
+					v-if="tabsVisible && !isGroupedSearch"
 					:model-value="activeCategory"
 					:options="tabOptions"
 					size="small"
@@ -426,7 +458,7 @@ function handleOpenChange(value: boolean) {
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
 							<N8nText color="text-light">{{ resolvedEmptyMessage }}</N8nText>
 						</div>
-						<div v-if="isMcpCategory" :class="$style.suggestionRow">
+						<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
 							<slot name="suggestion-footer" />
 						</div>
 					</template>
@@ -439,8 +471,17 @@ function handleOpenChange(value: boolean) {
 						:class="[$style.scroller, persistentScrollbar && $style.persistentScrollbar]"
 					>
 						<template #default="{ item: row }">
+							<div
+								v-if="'category' in row"
+								:class="$style.categoryHeader"
+								:data-test-id="`tools-connection-search-category-${row.category}`"
+							>
+								<N8nText tag="h3" size="small" bold color="text-light">
+									{{ categoryLabel(row.category) }}
+								</N8nText>
+							</div>
 							<ToolRow
-								v-if="'item' in row"
+								v-else-if="'item' in row"
 								:item="row.item"
 								:show-connect-action="props.showConnectActions"
 								:connect-label="props.connectLabel?.(row.item)"
@@ -565,6 +606,15 @@ function handleOpenChange(value: boolean) {
 .scroller {
 	height: 100%;
 	overflow-y: auto;
+}
+
+.categoryHeader {
+	display: flex;
+	align-items: center;
+	height: 100%;
+	padding-inline: var(--spacing--2xs);
+	border-bottom: 1px solid var(--border-color--subtle);
+	box-sizing: border-box;
 }
 
 .persistentScrollbar {

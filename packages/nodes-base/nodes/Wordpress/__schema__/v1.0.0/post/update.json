@@ -248,6 +248,12 @@
                 "type": "integer"
             }
         },
+        "class_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "comment_status": {
             "type": "string"
         },
@@ -370,5 +376,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

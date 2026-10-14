@@ -82,6 +82,24 @@ describe('OAuthConsentView', () => {
 		expect(queryByText('Get a list of your workflows')).toBeNull();
 	});
 
+	it('should show a neutral heading and the scope picker when a named resource advertises scopes', async () => {
+		consentStore.consentDetails = {
+			clientName: 'Test MCP Client',
+			clientId: 'test-client-id',
+			resourceName: 'n8n public API',
+			scopes: ['workflow:list', 'workflow:create'],
+		};
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
+
+		const { getByText, getByTestId, queryByText } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByText('Test MCP Client requests access to n8n public API')).toBeVisible();
+		expect(getByText(/Choose what Test MCP Client is allowed to do/)).toBeVisible();
+		expect(getByTestId('consent-scopes')).toBeVisible();
+		expect(queryByText(/access this workflow on your behalf/)).toBeNull();
+	});
+
 	it('should show the generic heading and permission list when no resource is named', async () => {
 		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
 
@@ -261,6 +279,60 @@ describe('OAuthConsentView', () => {
 		expect(getByTestId('consent-redirect-warning')).not.toContainElement(
 			getByTestId('consent-redirect-confirm'),
 		);
+	});
+
+	describe('client icon', () => {
+		it('should render the generic MCP icon for a client whose name matches a known brand', async () => {
+			const details = { clientName: 'Claude Code', clientId: 'c1', scopes: [] };
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'mcp');
+		});
+
+		it('should render the icon supplied by the resource for a third-party client', async () => {
+			const details = {
+				clientName: 'Test MCP Client',
+				clientId: 'c1',
+				scopes: [],
+				uiHints: { icon: 'square-pen' },
+			};
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'square-pen');
+		});
+
+		it('should fall back to the generic MCP icon when the resource hint is blank', async () => {
+			const details = {
+				clientName: 'Test MCP Client',
+				clientId: 'c1',
+				scopes: [],
+				uiHints: { icon: '' },
+			};
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'mcp');
+		});
 	});
 
 	describe('first-party consent', () => {

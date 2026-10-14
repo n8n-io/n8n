@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, Project } from '@n8n/db';
@@ -5,7 +6,6 @@ import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import type { EventService } from '@/events/event.service';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionService } from '@/executions/execution.service';
@@ -16,7 +16,12 @@ import type { WorkflowRunner } from '@/workflow-runner';
 const project = mock<Project>({ id: 'project-1' });
 
 const enqueuedExecution = (id: string) =>
-	mock<IExecutionResponse>({ id, mode: 'webhook', workflowId: `workflow-for-${id}` });
+	mock<IExecutionResponse>({
+		id,
+		mode: 'webhook',
+		workflowId: `workflow-for-${id}`,
+		storedAt: 'fs',
+	});
 
 describe('EnqueuedExecutionRecoveryService', () => {
 	const logger = mockLogger();
@@ -71,11 +76,11 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			expect.objectContaining({ executionMode: 'webhook', projectId: 'project-1' }),
 			undefined,
 			false,
-			{ executionId: '1', expectedStatus: 'new' },
+			{ executionId: '1', expectedStatus: 'new', storedAt: 'fs' },
 		);
 		expect(workflowRunner.run.mock.calls.map((call) => call[3])).toEqual([
-			{ executionId: '1', expectedStatus: 'new' },
-			{ executionId: '2', expectedStatus: 'new' },
+			{ executionId: '1', expectedStatus: 'new', storedAt: 'fs' },
+			{ executionId: '2', expectedStatus: 'new', storedAt: 'fs' },
 		]);
 	});
 
@@ -121,7 +126,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			expect.anything(),
 			undefined,
 			false,
-			{ executionId: '1', expectedStatus: 'new' },
+			{ executionId: '1', expectedStatus: 'new', storedAt: 'fs' },
 		);
 	});
 
@@ -165,6 +170,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			{
 				executionId: '2',
 				expectedStatus: 'new',
+				storedAt: 'fs',
 			},
 		);
 	});

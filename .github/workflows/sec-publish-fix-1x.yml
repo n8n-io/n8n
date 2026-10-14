@@ -68,4 +68,4 @@ jobs:
         run: |
           node .github/scripts/slack/notify.mjs \
             --channel '#alerts-security' \
-            --text 'Security fix PR creation failed (1.x). Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+            --text 'Security fix PR creation failed (1.x). Run "Security: Sync from Public", merge the refreshed bundle branch into the fix branches, and reopen the bundle PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'

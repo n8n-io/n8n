@@ -276,6 +276,7 @@ describe('useCanvasOperations', () => {
 		vi.mocked(workflowDocumentStoreInstance.getWorkflowObjectAccessorSnapshot).mockReturnValue({
 			id: workflowDocumentStoreInstance.workflowId,
 			connectionsBySourceNode: workflowDocumentStoreInstance.connectionsBySourceNode,
+			connectionsByDestinationNode: workflowDocumentStoreInstance.connectionsByDestinationNode,
 			pinData: workflowDocumentStoreInstance.pinnedDataByNodeName as IPinData,
 			expression: workflowDocumentStoreInstance.getExpressionHandler(),
 			getNode: workflowDocumentStoreInstance.getNodeByName,
@@ -1555,6 +1556,20 @@ describe('useCanvasOperations', () => {
 			setNodeSelected();
 
 			expect(uiStore.lastSelectedNode).toBe('');
+		});
+	});
+
+	describe('addNodesAndConnections', () => {
+		it('should add nothing and clear the connection context when a node type is not loaded', async () => {
+			vi.mocked(useNodeTypesStore().isNodeTypeUnavailable).mockReturnValue(true);
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodesAndConnections } = useCanvasOperations();
+			const { addedNodes } = await addNodesAndConnections([{ type: 'type' }], [], {});
+
+			expect(addedNodes).toEqual([]);
+			expect(addNodeSpy).not.toHaveBeenCalled();
+			expect(useUIStore().resetLastInteractedWith).toHaveBeenCalled();
 		});
 	});
 
@@ -5250,7 +5265,7 @@ describe('useCanvasOperations', () => {
 			).toEqual({ openAiApi: storedCredential });
 		});
 
-		it('keeps stored credentials the current user can access when sharing is enabled', () => {
+		it('keeps stored credentials the current user can use when sharing is enabled', () => {
 			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
 			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
 
@@ -5263,14 +5278,14 @@ describe('useCanvasOperations', () => {
 							id: ownedCredential.id,
 							name: ownedCredential.name,
 							credentialType: 'openAiApi',
-							currentUserHasAccess: true,
+							currentUserCanUse: true,
 						},
 					},
 				}),
 			).toEqual({ openAiApi: storedCredential });
 		});
 
-		it('drops stored credentials the current user cannot access when sharing is enabled', () => {
+		it('drops stored credentials the current user cannot use when sharing is enabled', () => {
 			const foreignCredential = mock<ICredentialsResponse>({
 				id: 'cred-foreign',
 				name: 'Someone else',
@@ -5287,7 +5302,7 @@ describe('useCanvasOperations', () => {
 							id: foreignCredential.id,
 							name: foreignCredential.name,
 							credentialType: 'openAiApi',
-							currentUserHasAccess: false,
+							currentUserCanUse: false,
 						},
 					},
 				}),
@@ -6243,6 +6258,48 @@ describe('useCanvasOperations', () => {
 			nodes: [], //buildImportNodes(),
 			connections: {},
 		};
+
+		it('centers a pasted node in the viewport instead of using the last click', async () => {
+			const nodes = [createTestNode({ name: 'Pasted', position: [100, 100] })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			canvasOperations.lastClickPosition.value = [900, 900];
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
+			);
+
+			expect(result.nodes?.[0].position).toEqual([464, 464]);
+		});
+
+		it('centers the bounding box when pasting nodes with different leftmost and topmost nodes', async () => {
+			const nodes = [
+				createTestNode({ name: 'Top', position: [400, 0] }),
+				createTestNode({ name: 'Left', position: [0, 200] }),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(importedNodes, connections) =>
+					createTestWorkflowObject({ nodes: importedNodes, connections }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			canvasOperations.lastClickPosition.value = [900, 900];
+			const result = await canvasOperations.importWorkflowData(
+				{ nodes, connections: {} },
+				'paste',
+				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
+			);
+
+			expect(result.nodes?.map((node) => node.position)).toEqual([
+				[656, 352],
+				[256, 552],
+			]);
+		});
 
 		it.each(['paste', 'file', 'url'] as const)(
 			'strips empty groups before importing from %s when the feature is disabled',

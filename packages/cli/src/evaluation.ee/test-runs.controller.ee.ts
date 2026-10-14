@@ -12,8 +12,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
@@ -107,6 +106,7 @@ export class TestRunsController {
 		});
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
 	async getMany(req: TestRunsRequest.GetMany) {
 		const { workflowId } = req.params;

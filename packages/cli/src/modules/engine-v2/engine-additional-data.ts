@@ -1,13 +1,11 @@
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { ExternalSecretsProxy } from 'n8n-core';
 import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-
-import { EventService } from '@/events/event.service';
-import { UrlService } from '@n8n/backend-services';
 
 /** A capability the data plane does not have yet. The step that reaches it fails and says why. */
 function unimplemented(feature: string) {

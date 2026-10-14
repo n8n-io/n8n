@@ -15,15 +15,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { BadRequestError, ConflictError, UnprocessableRequestError } from '@n8n/errors';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
+import { OverwriteDeletionPolicy } from '../n8n-packages.types';
 import type { ImportSelection, ImportSelectionRequest } from '../n8n-packages.types';
 import {
 	buildEntityPackageDirectory,
@@ -539,7 +538,7 @@ describe('importPackageSelectionFromDirectory', () => {
 			});
 		}
 
-		it('archives a workflow named for deletion, even under the additive merge profile', async () => {
+		it('archives a workflow named for deletion by default, even under the additive merge profile', async () => {
 			await seedBothWorkflows();
 			expect((await findWorkflow('WFB'))?.isArchived).toBe(false);
 
@@ -560,6 +559,59 @@ describe('importPackageSelectionFromDirectory', () => {
 			]);
 			expect((await findWorkflow('WFB'))?.isArchived).toBe(true);
 			expect((await findWorkflow('WFA'))?.isArchived).toBe(false);
+		});
+
+		it('hard-deletes a workflow named for deletion when overwriteDeletionPolicy is hard-delete', async () => {
+			await seedBothWorkflows();
+			expect((await findWorkflow('WFB'))?.isArchived).toBe(false);
+
+			const result = await importSelection(
+				await packageDir(twoWorkflowPackage),
+				{
+					selectedProjectId: 'P1',
+					selectedWorkflowIds: ['WFA'],
+					deletedWorkflowIds: ['WFB'],
+				},
+				{ overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete },
+			);
+
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: 'WFB',
+					name: 'wfb',
+					projectId: 'P1',
+					parentFolderId: null,
+					deletion: 'deleted',
+				},
+			]);
+			expect(await findWorkflow('WFB')).toBeNull();
+			expect((await findWorkflow('WFA'))?.isArchived).toBe(false);
+		});
+
+		it('hard-deletes an already-archived workflow when overwriteDeletionPolicy is hard-delete', async () => {
+			await seedBothWorkflows();
+			await Container.get(WorkflowRepository).update('WFB', { isArchived: true });
+
+			const result = await importSelection(
+				await packageDir(twoWorkflowPackage),
+				{
+					selectedProjectId: 'P1',
+					selectedWorkflowIds: ['WFA'],
+					deletedWorkflowIds: ['WFB'],
+				},
+				{ overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete },
+			);
+
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: 'WFB',
+					name: 'wfb',
+					projectId: 'P1',
+					parentFolderId: null,
+					deletion: 'deleted',
+				},
+			]);
+			expect(await findWorkflow('WFB')).toBeNull();
 		});
 
 		it('tolerates deleting an already-archived or absent workflow as a no-op', async () => {

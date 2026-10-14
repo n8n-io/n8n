@@ -7,8 +7,7 @@ import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 import type { UrlService } from '@n8n/backend-services';
 
 import type { Agent } from '../../../../entities/agent.entity';

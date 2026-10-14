@@ -7,7 +7,7 @@ import type { z } from 'zod';
 
 import { IdentifierValidationError } from './identifier-interface';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 const REQUEST_TIMEOUT = 10 * Time.seconds.toMilliseconds;
 const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour

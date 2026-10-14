@@ -10,9 +10,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 

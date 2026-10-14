@@ -93,6 +93,7 @@ export interface FrontendSettings {
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
 	endpointHealth: string;
+	healthCheckTimeoutMs: number;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -307,6 +308,12 @@ export interface FrontendSettings {
 		 * `101_agent_evals` flag would otherwise never resolve.
 		 */
 		agentEvalsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_FORCE_AGENT_WORTH_TESTING`) that forces the
+		 * "Test your agent" offer's capability check to pass regardless of the
+		 * agent's actual model/tools/skills.
+		 */
+		forceAgentWorthTesting: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -372,6 +379,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for SCIM user-provisioning module.
+	 */
+	scim?: {
+		/** Whether SCIM provisioning is enabled in the instance. */
+		scimEnabled: boolean;
+	};
+
+	/**
 	 * Client settings for Chat module.
 	 */
 	'chat-hub'?: {
@@ -398,8 +413,6 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
-		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
-		activationCapped?: boolean;
 	};
 
 	/**
@@ -435,6 +448,7 @@ export type FrontendModuleSettings = {
 	 * Client settings for the agents module.
 	 */
 	agents?: {
+		enabled?: boolean;
 		/**
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's
@@ -449,6 +463,8 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/** Whether agents use the skills hub (PostHog flag `125_context_skills`, read at startup). */
+		skillsHubEnabled?: boolean;
 	};
 };
 

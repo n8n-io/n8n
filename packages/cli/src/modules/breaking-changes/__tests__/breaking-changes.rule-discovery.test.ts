@@ -35,7 +35,7 @@ describe('Breaking change rules auto-discovery', () => {
 			expect(ruleMetadata.title).toBeTruthy();
 			expect(ruleMetadata.description).toBeTruthy();
 			expect(ruleMetadata.category).toBeTruthy();
-			expect(ruleMetadata.severity).toBeTruthy();
+			expect(ruleMetadata.impact).toBeTruthy();
 		}
 	});
 

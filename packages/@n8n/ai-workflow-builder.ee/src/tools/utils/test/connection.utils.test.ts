@@ -1001,4 +1001,74 @@ describe('connection.utils', () => {
 			expect(NodeHelpers.nodeHasOutputType(returnExprNode, 'ai_tool')).toBe(true);
 		});
 	});
+
+	describe('reserved connection keys', () => {
+		const plantedKeys = ['main', 'ai_tool'];
+
+		afterEach(() => {
+			for (const key of plantedKeys) {
+				delete (Object.prototype as Record<string, unknown>)[key];
+			}
+		});
+
+		it('createConnection should refuse a source name that is not a usable object key', () => {
+			const connections: IConnections = {};
+
+			const result = createConnection(connections, '__proto__', 'Sink', NodeConnectionTypes.Main);
+
+			expect(({} as Record<string, unknown>).main).toBeUndefined();
+			expect(Object.keys(result)).toEqual([]);
+		});
+
+		it('createConnection should refuse a connection type that is not a usable object key', () => {
+			const connections: IConnections = {};
+
+			const result = createConnection(
+				connections,
+				'Source',
+				'Sink',
+				'constructor' as NodeConnectionType,
+			);
+
+			expect(Object.keys(result)).toEqual([]);
+		});
+
+		it('createConnection should still create a connection for usable keys', () => {
+			const connections: IConnections = {};
+
+			const result = createConnection(connections, 'Source', 'Sink', NodeConnectionTypes.Main);
+
+			expect(result.Source?.main?.[0]).toEqual([{ node: 'Sink', type: 'main', index: 0 }]);
+		});
+
+		it('removeConnection should not write through a reserved source name to a shared slot', () => {
+			// Start from a shared slot that already holds a connection-shaped value, so the
+			// unguarded lookup finds something to read, rewrite and store back. One entry is
+			// kept by the filter, which keeps the unguarded path away from its delete branch.
+			const seeded = [[{ node: 'Other', type: 'ai_tool', index: 0 }]];
+			(Object.prototype as Record<string, unknown>).ai_tool = seeded;
+
+			const connections: IConnections = {};
+
+			const result = removeConnection(connections, '__proto__', 'Sink', 'ai_tool');
+
+			// Identity, not deep equality: the unguarded path stores back a filtered copy
+			// whose contents happen to match.
+			expect(({} as Record<string, unknown>).ai_tool).toBe(seeded);
+			expect(seeded).toEqual([[{ node: 'Other', type: 'ai_tool', index: 0 }]]);
+			expect(Object.keys(result)).toEqual([]);
+		});
+
+		it('removeConnection should refuse a connection type that resolves through the prototype', () => {
+			const connections: IConnections = {
+				Source: { main: [[{ node: 'Sink', type: 'main', index: 0 }]] },
+			};
+
+			// 'constructor' reads back a function rather than undefined, so the unguarded
+			// path gets past its early return and then calls an array method on it.
+			expect(() => removeConnection(connections, 'Source', 'Sink', 'constructor')).not.toThrow();
+
+			expect(Object.keys(connections.Source)).toEqual(['main']);
+		});
+	});
 });

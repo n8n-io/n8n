@@ -3,9 +3,8 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -22,7 +21,7 @@ let jwtService: JwtService;
 let supportedScopes: string[];
 
 const createSessionToken = (payload: OAuthSessionPayload): string => {
-	return jwtService.sign(payload, { expiresIn: '10m' });
+	return jwtService.sign('oauthSession', payload, { expiresIn: '10m' });
 };
 let oauthClientRepository: OAuthClientRepository;
 
@@ -42,10 +41,14 @@ beforeAll(async () => {
  * `communityPackage:install` is advertised in discovery (which is
  * unauthenticated and describes what the resource supports) but withheld at
  * consent here, because the community-packages module is inactive in the test
- * instance so `install_community_node` would never register.
+ * instance so `install_community_node` would never register. `aiPreference:*`
+ * is withheld too: the test instance has no PostHog, so no user is in the
+ * preferences experiment arm and the preference tools never register.
  */
 const grantable = (scopes: string[]) =>
-	scopes.filter((scope) => scope !== 'communityPackage:install');
+	scopes.filter(
+		(scope) => scope !== 'communityPackage:install' && !scope.startsWith('aiPreference:'),
+	);
 
 afterEach(async () => {
 	await testDb.truncate(['OAuthClient', 'AuthorizationCode', 'UserConsent']);
@@ -99,6 +102,7 @@ describe('GET /rest/consent/details', () => {
 
 		const resourceUrl = 'https://n8n.example.com/mcp/named-workflow';
 		Container.get(ProtectedResourceRegistry).register({
+			surface: 'instance-mcp',
 			id: 'test-named-resource',
 			displayName: 'My Named Workflow',
 			getResourceUrl: () => resourceUrl,
@@ -309,6 +313,16 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('iss')).toBe(
 			Container.get(UrlService).getInstanceBaseUrl(),
 		);
+	});
+
+	test('rejects a scope list with duplicates', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.post('/consent/approve')
+			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
+			.send({ approved: true, scopes: ['workflow:read', 'workflow:read'] });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should handle consent denial and return error redirect URL', async () => {

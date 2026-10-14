@@ -16,7 +16,7 @@ import {
 } from '@/services/protected-resource.registry';
 import { UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 const issuer = 'https://n8n.example.com';
 

@@ -11,7 +11,10 @@ import {
 	PutProjectPolicyDto,
 	ReplaceAttachmentsDto,
 	UpdatePolicyDocumentDto,
+	isNodeTypePolicyRule,
 	nodeTypePolicyIdParamSchema,
+	type NodeTypePolicyRule,
+	type PolicyRule,
 	nodeTypePolicyScopeIdParamSchema,
 	projectIdParamSchema,
 } from '@n8n/api-types';
@@ -39,9 +42,9 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { UnexpectedError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { TypeAvailabilityPolicy } from '@/modules/type-availability-policies/database/entities/type-availability-policy.entity';
 import {
@@ -51,11 +54,19 @@ import {
 
 const tags = ['NodeTypePolicy'];
 
+/** Every write rejects an `extends` rule for this kind, so meeting one here is a bug. */
+function toNodeTypeRules(rules: readonly PolicyRule[]): NodeTypePolicyRule[] {
+	if (!rules.every(isNodeTypePolicyRule)) {
+		throw new UnexpectedError('A node type policy holds an extends rule');
+	}
+	return [...rules];
+}
+
 function toPublicDocument(policy: TypeAvailabilityPolicy): PolicyDocumentPublicDto {
 	return {
 		id: policy.id,
 		kind: policy.kind,
-		rules: [...policy.rules],
+		rules: toNodeTypeRules(policy.rules),
 		version: policy.version,
 		updatedBy: policy.updatedBy,
 		createdAt: policy.createdAt.toISOString(),
@@ -87,9 +98,9 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Retrieve the instance node type policy')
+	@ApiSummary('Preview: Retrieve the instance node type policy')
 	@ApiDescription(
-		'Returns the composed instance-scope policy: its default action and the rules of every attached policy document in evaluation order. An instance that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.',
+		'**Preview** — breaking changes may still occur without major version bump.\n\nReturns the composed instance-scope policy: its default action and the rules of every attached policy document in evaluation order. An instance that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
@@ -99,7 +110,7 @@ export class NodeTypePoliciesPublicController {
 
 		return {
 			scopeId: effective.scopeId,
-			rules: [...effective.rules],
+			rules: toNodeTypeRules(effective.rules),
 			defaultAction: effective.defaultAction,
 			version: effective.version,
 		};
@@ -109,9 +120,9 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Replace the instance node type policy')
+	@ApiSummary('Preview: Replace the instance node type policy')
 	@ApiDescription(
-		'Sets the instance default action and replaces the rules of its single policy document, creating both on first write. `version` must equal the version last read; a stale value is rejected with 409. Rule ids must be unique within the list.',
+		'**Preview** — breaking changes may still occur without major version bump.\n\nSets the instance default action and replaces the rules of its single policy document, creating both on first write. `version` must equal the version last read; a stale value is rejected with 409. Rule ids must be unique within the list.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
@@ -132,7 +143,7 @@ export class NodeTypePoliciesPublicController {
 
 		return {
 			scopeId: result.scopeId,
-			rules: result.rules,
+			rules: toNodeTypeRules(result.rules),
 			defaultAction: result.defaultAction,
 			version: result.version,
 			warnings: [...result.warnings],
@@ -143,9 +154,9 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@ProjectScope('nodeTypePolicy:manage')
-	@ApiSummary("Retrieve a project's node type policy")
+	@ApiSummary("Preview: Retrieve a project's node type policy")
 	@ApiDescription(
-		"Returns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.",
+		"**Preview** — breaking changes may still occur without major version bump.\n\nReturns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
@@ -159,7 +170,7 @@ export class NodeTypePoliciesPublicController {
 
 		return {
 			scopeId: effective.scopeId,
-			rules: [...effective.rules],
+			rules: toNodeTypeRules(effective.rules),
 			defaultAction: effective.defaultAction,
 			version: effective.version,
 		};
@@ -169,9 +180,9 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@ProjectScope('nodeTypePolicy:manage')
-	@ApiSummary("Replace a project's node type policy")
+	@ApiSummary("Preview: Replace a project's node type policy")
 	@ApiDescription(
-		"Sets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
+		"**Preview** — breaking changes may still occur without major version bump.\n\nSets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
@@ -193,7 +204,7 @@ export class NodeTypePoliciesPublicController {
 
 		return {
 			scopeId: result.scopeId,
-			rules: result.rules,
+			rules: toNodeTypeRules(result.rules),
 			defaultAction: result.defaultAction,
 			version: result.version,
 			warnings: [...result.warnings],
@@ -204,8 +215,10 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('List node type policy documents')
-	@ApiDescription('Returns a cursor-paginated list of reusable policy documents.')
+	@ApiSummary('Preview: List node type policy documents')
+	@ApiDescription(
+		'**Preview** — breaking changes may still occur without major version bump.\n\nReturns a cursor-paginated list of reusable policy documents.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyDocumentListPublicDto)
 	@ApiErrorResponse(503)
@@ -232,9 +245,9 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Create a node type policy document')
+	@ApiSummary('Preview: Create a node type policy document')
 	@ApiDescription(
-		'Creates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.',
+		'**Preview** — breaking changes may still occur without major version bump.\n\nCreates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PolicyDocumentWriteResultPublicDto)
@@ -257,7 +270,8 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Retrieve a node type policy document')
+	@ApiSummary('Preview: Retrieve a node type policy document')
+	@ApiDescription('**Preview** — breaking changes may still occur without major version bump.')
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyDocumentPublicDto)
 	@ApiErrorResponse(404)
@@ -279,9 +293,9 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Replace the rules of a node type policy document')
+	@ApiSummary('Preview: Replace the rules of a node type policy document')
 	@ApiDescription(
-		"Replaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.",
+		"**Preview** — breaking changes may still occur without major version bump.\n\nReplaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyDocumentWriteResultPublicDto)
@@ -309,9 +323,9 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary('Delete a node type policy document')
+	@ApiSummary('Preview: Delete a node type policy document')
 	@ApiDescription(
-		'Deletes a policy document. A document that is still attached to a scope is rejected with 409; detach it first.',
+		'**Preview** — breaking changes may still occur without major version bump.\n\nDeletes a policy document. A document that is still attached to a scope is rejected with 409; detach it first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(204)
@@ -330,13 +344,14 @@ export class NodeTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
-	@ApiSummary("Replace a scope's attached policy documents")
+	@ApiSummary("Preview: Replace a scope's attached policy documents")
 	@ApiDescription(
-		"Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.",
+		"**Preview** — breaking changes may still occur without major version bump.\n\nReplaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. `version` must match the current scope version. A stale version returns 409 without changes. A successful write bumps the scope's version.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyAttachmentsPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async replaceNodeTypePolicyAttachments(
 		req: AuthenticatedRequest,
@@ -348,13 +363,14 @@ export class NodeTypePoliciesPublicController {
 			NODE_TYPES_KIND,
 			scopeId,
 			dto.attachments,
+			dto.version,
 			req.user.id,
 		);
 
 		return {
 			attachments: result.attachments.map((attachment) => ({
 				policyId: attachment.policyId,
-				rules: [...attachment.rules],
+				rules: toNodeTypeRules(attachment.rules),
 				priority: attachment.priority,
 				isFloor: attachment.isFloor,
 			})),

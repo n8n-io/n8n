@@ -11,7 +11,7 @@ export const PREVIEW_LABEL_PREFIX = 'preview:';
 const PREFIX = PREVIEW_LABEL_PREFIX;
 
 // The sandbox tenant. The default (1) is production self-hosted, which rejects a
-// sandbox key. Matches packages/testing/containers/services/n8n.ts.
+// sandbox key. Matches packages/quality/environments/containers/services/n8n.ts.
 const LICENSE_TENANT_ID = '1001';
 const LICENSE_KEY_SECRET = 'N8N_LICENSE_ACTIVATION_KEY';
 

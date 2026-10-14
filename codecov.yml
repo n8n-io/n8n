@@ -89,6 +89,7 @@ component_management:
         - packages/@n8n/expression-runtime/**
         - packages/@n8n/extension-sdk/**
         - packages/@n8n/imap/**
+        - packages/@n8n/inbound-auth/**
         - packages/@n8n/local-gateway/**
         - packages/@n8n/permissions/**
         - packages/@n8n/scan-community-package/**
@@ -149,5 +150,5 @@ ignore:
   - (?s:.*/migrations/(postgresdb|sqlite|mysqldb)/.*\.ts.*)\Z
   - (?s:.*/scripts/.*)\Z
   # Test/build infrastructure packages
-  - (?s:.*/packages/testing/.*)\Z
+  - (?s:.*/packages/quality/.*)\Z
   - (?s:.*/packages/@n8n/(benchmark|eslint-config|eslint-plugin-community-nodes|stylelint-config|typescript-config|vitest-config)/.*)\Z

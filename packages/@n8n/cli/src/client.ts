@@ -41,6 +41,7 @@ export interface ImportPackageSelectionFields {
 	deletedWorkflowIds?: string[];
 	workflowConflictPolicy?: string;
 	workflowIdPolicy?: string;
+	overwriteDeletionPolicy?: string;
 }
 
 export interface ExportPackageFields {
@@ -49,8 +50,8 @@ export interface ExportPackageFields {
 	projectIds?: string[];
 	includeVariableValues?: boolean;
 	includeTags?: boolean;
-	missingWorkflowDependencyPolicy?: string;
-	workflowVersionPolicy?: string;
+	dependencyPolicy?: string;
+	versionPolicy?: string;
 	credentialExportPolicy?: string;
 	includeArchivedWorkflows?: boolean;
 }
@@ -90,7 +91,7 @@ export interface ImportPackageCounts {
 		};
 	};
 	credentials: { matched: number; stubbed: number };
-	dataTables: { matched: number; created: number };
+	dataTables: { matched: number; created: number; updated: number };
 	variables: {
 		matched: number;
 		created: number;
@@ -134,6 +135,13 @@ export interface PromotionBindingPreflight {
 	conflicts: Array<Record<string, unknown>>;
 	warnings: Array<Record<string, unknown>>;
 }
+
+/** A team project that a full Apply deletes, because the package does not hold it. */
+export type PromotionProjectDeletion = {
+	kind: 'project';
+	code: 'project-deletion';
+	project: { id: string; name: string };
+};
 
 type ApplyPackageIdentity = {
 	connectionId: string;
@@ -439,9 +447,14 @@ export class N8nClient {
 		);
 	}
 
-	async continueApplyPackage(id: string, expectedSource: PromotionExpectedSource) {
+	async continueApplyPackage(
+		id: string,
+		expectedSource: PromotionExpectedSource,
+		confirmDestructiveChanges?: boolean,
+	) {
 		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply/continue`, {
 			expectedSource,
+			confirmDestructiveChanges,
 		});
 	}
 
@@ -461,6 +474,31 @@ export class N8nClient {
 			workflowIds,
 			// Dropped by JSON serialization when undefined, so the server default applies.
 			commitMessage,
+		});
+	}
+
+	async applyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource?: PromotionExpectedSource,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
+			workflowIds,
+			// Dropped by JSON serialization when undefined, so the branch tip is applied.
+			expectedSource,
+		});
+	}
+
+	async continueApplyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource: PromotionExpectedSource,
+		confirmDestructiveChanges?: boolean,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
+			workflowIds,
+			expectedSource,
+			confirmDestructiveChanges,
 		});
 	}
 
@@ -722,8 +760,8 @@ export class N8nClient {
 			projectIds?: string[];
 			includeVariableValues?: boolean;
 			includeTags?: boolean;
-			missingWorkflowDependencyPolicy?: string;
-			workflowVersionPolicy?: string;
+			dependencyPolicy?: string;
+			versionPolicy?: string;
 			credentialExportPolicy?: string;
 			includeArchivedWorkflows?: boolean;
 		} = {};
@@ -733,9 +771,8 @@ export class N8nClient {
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
 		body.includeTags = fields.includeTags;
-		if (fields.missingWorkflowDependencyPolicy)
-			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
-		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
+		if (fields.dependencyPolicy) body.dependencyPolicy = fields.dependencyPolicy;
+		if (fields.versionPolicy) body.versionPolicy = fields.versionPolicy;
 		// Only sent when set, so an older server without this field in its schema never sees it.
 		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
 		if (fields.includeArchivedWorkflows) body.includeArchivedWorkflows = true;
@@ -786,6 +823,7 @@ export class N8nClient {
 			selectedProjectId: fields.selectedProjectId,
 			workflowConflictPolicy: fields.workflowConflictPolicy,
 			workflowIdPolicy: fields.workflowIdPolicy,
+			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
 		};
 		for (const [key, value] of Object.entries(stringFields)) {
 			if (typeof value === 'string' && value !== '') form.append(key, value);

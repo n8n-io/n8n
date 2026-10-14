@@ -1,8 +1,19 @@
 import type { ProviderCatalog } from '@n8n/agents';
 
-import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
-import { buildBuilderPrompt } from '../agents-builder-prompts';
+import {
+	buildModelRecommendationsSection,
+	getModelRecommendationsSection,
+	resetModelRecommendationsCacheForTest,
+} from '../agents-builder-model-recommendations';
+import { buildBuilderPrompt, buildBuilderSessionContext } from '../agents-builder-prompts';
 import { getBuilderRuntimeSkills } from '../skills';
+
+const { fetchProviderCatalog } = vi.hoisted(() => ({ fetchProviderCatalog: vi.fn() }));
+
+vi.mock('@n8n/agents/catalog', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents/catalog')>()),
+	fetchProviderCatalog,
+}));
 
 const catalog: ProviderCatalog = {
 	anthropic: {
@@ -83,8 +94,8 @@ const catalog: ProviderCatalog = {
 	},
 };
 
-function buildPrompt(modelRecommendationsSection: string | null) {
-	return buildBuilderPrompt({
+function buildSessionContext(modelRecommendationsSection: string | null) {
+	return buildBuilderSessionContext({
 		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
 		modelRecommendationsSection,
 	});
@@ -107,7 +118,7 @@ describe('builder model recommendations', () => {
 	});
 
 	it('routes distinct target-agent functions into autonomously managed skills', () => {
-		const prompt = buildPrompt(null);
+		const prompt = buildBuilderPrompt();
 		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-target-skills');
 
 		expect(prompt).toContain(
@@ -145,7 +156,7 @@ describe('builder model recommendations', () => {
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {
-		const prompt = buildPrompt(null);
+		const prompt = buildBuilderPrompt();
 
 		expect(prompt).toContain(
 			'When changing models, preserve existing Brave or SearXNG\n  `config.webSearch` unchanged',
@@ -160,7 +171,7 @@ describe('builder model recommendations', () => {
 	});
 
 	it('defers custom tool builder guidance to the agent-builder-custom-tools skill', () => {
-		const prompt = buildPrompt(null);
+		const prompt = buildBuilderPrompt();
 		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-custom-tools');
 
 		expect(prompt).not.toContain("import { Tool } from '@n8n/agents';");
@@ -178,13 +189,14 @@ describe('builder model recommendations', () => {
 		);
 	});
 
-	it('injects the recommendation section only into the LLM selection prompt', () => {
+	it('injects the recommendation section into the session context, not the static prompt', () => {
 		const section = buildModelRecommendationsSection(catalog);
 
-		expect(buildPrompt(section)).toContain('### Recommended LLM Models');
-		expect(buildPrompt(section)).toContain('`openai/gpt-5` GPT-5');
-		expect(buildPrompt(null)).not.toContain('### Recommended LLM Models');
-		expect(buildPrompt(null)).toContain('do not recommend or name');
+		expect(buildSessionContext(section)).toContain('### Recommended LLM Models');
+		expect(buildSessionContext(section)).toContain('`openai/gpt-5` GPT-5');
+		expect(buildBuilderPrompt()).not.toContain('### Recommended LLM Models');
+		expect(buildSessionContext(null)).not.toContain('### Recommended LLM Models');
+		expect(buildSessionContext(null)).toContain('do not recommend or name');
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
@@ -194,5 +206,41 @@ describe('builder model recommendations', () => {
 
 		expect(externalServicesSkill?.instructions).not.toContain('slackOAuth2Api');
 		expect(externalServicesSkill?.instructions).not.toContain('prefer the OAuth variant');
+	});
+});
+
+describe('getModelRecommendationsSection', () => {
+	beforeEach(() => {
+		resetModelRecommendationsCacheForTest();
+		fetchProviderCatalog.mockReset();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('caches a successful catalog fetch', async () => {
+		fetchProviderCatalog.mockResolvedValue(catalog);
+
+		const first = await getModelRecommendationsSection();
+		const second = await getModelRecommendationsSection();
+
+		expect(first).toContain('### Recommended LLM Models');
+		expect(second).toBe(first);
+		expect(fetchProviderCatalog).toHaveBeenCalledTimes(1);
+	});
+
+	it('waits before it retries a failed fetch, so turns do not each wait on the timeout', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		fetchProviderCatalog.mockRejectedValueOnce(new Error('offline')).mockResolvedValue(catalog);
+
+		expect(await getModelRecommendationsSection()).toBeNull();
+		expect(await getModelRecommendationsSection()).toBeNull();
+		expect(fetchProviderCatalog).toHaveBeenCalledTimes(1);
+
+		vi.setSystemTime(Date.now() + 10 * 60 * 1000 + 1);
+
+		expect(await getModelRecommendationsSection()).toContain('### Recommended LLM Models');
+		expect(fetchProviderCatalog).toHaveBeenCalledTimes(2);
 	});
 });

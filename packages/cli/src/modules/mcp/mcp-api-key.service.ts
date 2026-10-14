@@ -6,7 +6,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ApiKeyAudience } from 'n8n-workflow';
 
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { UserWithContext } from '@/services/oauth-token-verifier-proxy.service';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
@@ -30,10 +30,9 @@ export class McpServerApiKeyService {
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
 		const manager = trx ?? this.apiKeyRepository.manager;
 
-		const apiKey = this.jwtService.sign({
+		const apiKey = this.jwtService.sign('mcpApiKey', {
 			sub: user.id,
 			iss: API_KEY_ISSUER,
-			aud: API_KEY_AUDIENCE,
 			jti: randomUUID(),
 		});
 

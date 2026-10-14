@@ -80,7 +80,7 @@ export const arrayMethods: NativeDoc = {
 					{
 						name: 'function',
 						description:
-							'A function to run for each array element. If it returns <code>true</code>, the element will be kept. Consider using <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
+							'A function to run for each array element. If it returns <code>true</code>, the element will be kept. Consider using <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions">arrow function notation</a> to save space.',
 						type: 'Function',
 						default: 'item => true',
 						args: [
@@ -143,7 +143,7 @@ export const arrayMethods: NativeDoc = {
 					{
 						name: 'function',
 						description:
-							'A function to run for each array element. As soon as it returns <code>true</code>, that element will be returned. Consider using <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
+							'A function to run for each array element. As soon as it returns <code>true</code>, that element will be returned. Consider using <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions">arrow function notation</a> to save space.',
 						type: 'Function',
 						default: 'item => true',
 						args: [
@@ -320,7 +320,7 @@ export const arrayMethods: NativeDoc = {
 					{
 						name: 'function',
 						description:
-							'A function to run for each array element. In the new array, the output of this function takes the place of the element. Consider using <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
+							'A function to run for each array element. In the new array, the output of this function takes the place of the element. Consider using <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions">arrow function notation</a> to save space.',
 						type: 'Function',
 						default: 'item => item',
 						args: [
@@ -377,7 +377,7 @@ export const arrayMethods: NativeDoc = {
 					{
 						name: 'function',
 						description:
-							'A function to run for each array element. Takes the accumulated result and the current element, and returns a new accumulated result. Consider using <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions”>arrow function notation</a> to save space.',
+							'A function to run for each array element. Takes the accumulated result and the current element, and returns a new accumulated result. Consider using <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions">arrow function notation</a> to save space.',
 						type: 'Function',
 						default: 'item => item',
 						args: [

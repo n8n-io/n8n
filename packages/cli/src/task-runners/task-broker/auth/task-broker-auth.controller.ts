@@ -4,8 +4,7 @@ import type { AuthlessRequest } from '@/requests';
 
 import { bearerTokenSchema, taskBrokerAuthRequestBodySchema } from './task-broker-auth.schema';
 import { TaskBrokerAuthService } from './task-broker-auth.service';
-import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
-import { ForbiddenError } from '../../../errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 /**
  * Controller responsible for authenticating Task Runner connections

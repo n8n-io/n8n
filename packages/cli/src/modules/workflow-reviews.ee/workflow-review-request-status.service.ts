@@ -12,7 +12,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';

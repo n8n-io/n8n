@@ -20,7 +20,7 @@ describe('PyodideRemovedRule', () => {
 				description:
 					'The Pyodide-based Python implementation in the Code node has been removed and replaced with a native Python task runner implementation',
 				category: BreakingChangeCategory.workflow,
-				severity: 'medium',
+				impact: 'executionsFail',
 			});
 		});
 	});

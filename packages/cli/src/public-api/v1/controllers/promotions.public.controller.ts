@@ -1,7 +1,9 @@
 import {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
 	ListPromotionConnectionsQueryDto,
@@ -57,10 +59,12 @@ import {
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+	ServiceUnavailableError,
+} from '@n8n/errors';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -85,7 +89,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion provider')
 	@ApiDescription(
-		'Creates a provider and its authentication material. An SSH provider returns the generated public key; add it to the remote as a deploy key.',
+		'Creates a provider and its authentication material. A Git host provider validates authenticated API access before it saves. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. An SSH provider returns the generated public key; add it to the remote as a deploy key.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PromotionProviderCreatedPublicDto)
@@ -103,7 +107,9 @@ export class PromotionsPublicController {
 	@ApiKeyScope('gitConnection:list')
 	@GlobalScope('gitConnection:list')
 	@ApiSummary('List promotion providers')
-	@ApiDescription('Returns a cursor-paginated list of providers, without their public keys.')
+	@ApiDescription(
+		'Returns a cursor-paginated list of providers, without their public configuration.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderListPublicDto)
 	@ApiErrorResponse(503)
@@ -146,11 +152,12 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion provider')
 	@ApiDescription(
-		'Renames the provider, and replaces its credentials when `auth` is sent. New credentials apply to every connection that uses this provider. The authentication method cannot change.',
+		'Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. If another request changes the credentials or configuration before this update saves, the update returns 409. Reload the provider and try again. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. New credentials apply to every connection that uses this provider. The authentication method cannot change.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionProvider(
 		_req: AuthenticatedRequest,
@@ -533,7 +540,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Apply a package to the instance')
 	@ApiDescription(
-		'Checks the full package at the configured branch tip. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
+		'Checks the full package at the configured branch tip. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup or if the apply would delete team projects that the package does not hold. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Requires a cloned Apply direction on an instance connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -562,7 +569,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:pull')
 	@ApiSummary('Continue Apply after binding setup')
 	@ApiDescription(
-		'Rechecks the configured source and current target bindings. Send expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same cloned instance connection and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.',
+		'Rechecks the configured source and current target bindings. Send expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same cloned instance connection and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -647,6 +654,59 @@ export class PromotionsPublicController {
 			// Variable values only travel when the key may list them.
 			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
 		});
+	}
+
+	// -- Selective apply -----------------------------------------------------
+
+	@Post('/projects/:projectId/apply')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary("Apply a selection of a project's workflows")
+	@ApiDescription(
+		"Applies selected workflow changes from the project's Apply branch. Send the selected change-list IDs in workflowIds. The server imports IDs present on the branch for this project. It removes instance workflows owned by this project when their IDs are absent from the branch. Duplicate or invalid IDs reject the whole request. Unselected content stays unchanged. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview. Status `source-changed` means the source changed since that review and nothing was imported. Status `blocked` returns binding details before import writes when the selection needs binding setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Requires a cloned Apply direction for the project's resolved promotion connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ApplyPackageResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async applyProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: ApplySelectionDto,
+	): Promise<ApplyPackageResultDto> {
+		return await (await this.promotionsService()).applyProjectSelection(projectId, req.user, input);
+	}
+
+	@Post('/projects/:projectId/apply/continue')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:pull')
+	@GlobalScope('gitConnection:pull')
+	@ApiSummary('Continue applying a selection after binding setup')
+	@ApiDescription(
+		"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same cloned Apply direction and permissions as the initial selection apply. The API key needs the gitConnection:pull scope. The importer checks user write permissions.",
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, ApplyPackageResultDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
+	@ApiErrorResponse(503)
+	async continueApplyProjectSelection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Body input: ContinueApplySelectionDto,
+	): Promise<ApplyPackageResultDto> {
+		return await (await this.promotionsService()).continueApplyProjectSelection(
+			projectId,
+			req.user,
+			input,
+		);
 	}
 
 	// -- Module access -------------------------------------------------------

@@ -3,6 +3,7 @@ import {
 	CredentialsEntity,
 	In,
 	ProjectRelationRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	UserRepository,
 	type User,
@@ -18,7 +19,7 @@ import type {
 	UserConnection,
 } from '@/credentials/credential-connection-status-provider.interface';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 import { SYSTEM_RESOLVER_ID } from '../constants';
 import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry';
@@ -54,6 +55,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	async findMyConnections(
@@ -214,7 +216,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 					const validCredRoles = await this.roleService.rolesWithScope(
 						'credential',
 						CREDENTIAL_RETAIN_SCOPE,
-						em,
+						async () => await this.roleRepository.findAll(em),
 					);
 					return await this.sharedCredentialsRepository.findPairsWithCredentialAccess(
 						pairsToCheck,

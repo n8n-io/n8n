@@ -1,6 +1,6 @@
 import type { IConnections, INode } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 /**
  * A migration refused a specific node. Carries the node identity in `meta` so the
@@ -61,6 +61,35 @@ export interface WorkflowMigrationOutput {
 export interface WorkflowMigration {
 	ruleId: string;
 	migrateWorkflow(input: WorkflowMigrationInput): WorkflowMigrationOutput;
+}
+
+/**
+ * Replaces each flagged node with the result of `migrateNode`. A throw from `migrateNode`
+ * becomes a `WorkflowMigrationNodeError` that names the node. Other nodes pass through.
+ */
+export function replaceAffectedNodes(
+	nodes: INode[],
+	affectedNodeIds: Set<string>,
+	migrateNode: (node: INode) => INode,
+): Pick<WorkflowMigrationOutput, 'nodes' | 'migratedNodeIds'> {
+	const migratedNodeIds: string[] = [];
+
+	const migratedNodes = nodes.map((node) => {
+		if (!affectedNodeIds.has(node.id)) return node;
+
+		try {
+			const migrated = migrateNode(node);
+			migratedNodeIds.push(node.id);
+			return migrated;
+		} catch (error) {
+			throw new WorkflowMigrationNodeError(
+				error instanceof Error ? error.message : 'Migration failed.',
+				{ nodeId: node.id, nodeName: node.name },
+			);
+		}
+	});
+
+	return { nodes: migratedNodes, migratedNodeIds };
 }
 
 export type Migration = NodeMigration | WorkflowMigration;

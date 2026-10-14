@@ -5,8 +5,7 @@ import { Service } from '@n8n/di';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -95,10 +94,12 @@ export class BreakingChangeMigrationService {
 			unmapped.length === 0 &&
 			notes.length === 0 &&
 			wasPublishedVersion &&
-			this.workflowValidationService.validateForActivation(
-				Object.fromEntries(nodes.map((node) => [node.name, node])),
-				connections,
-				this.nodeTypes,
+			(
+				await this.workflowValidationService.validateForActivation(
+					Object.fromEntries(nodes.map((node) => [node.name, node])),
+					connections,
+					this.nodeTypes,
+				)
 			).isValid;
 
 		// Checksum of the workflow as fetched, so a concurrent edit landing between

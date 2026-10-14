@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -108,9 +108,11 @@ export class WorkflowRemover {
 			};
 		}
 
+		// An archived workflow is already removed under `archive`, but not under `hard-delete`.
 		const targets = await this.workflowFinderService.findOwnedWorkflowRemovalCandidates(
 			context.projectId,
 			[...requested],
+			{ includeArchived: request.deletionPolicy === OverwriteDeletionPolicy.HardDelete },
 		);
 		if (targets.length === 0) {
 			return {

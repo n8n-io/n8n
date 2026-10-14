@@ -4,8 +4,7 @@ import type { AuthIdentity, User } from '@n8n/db';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import type { MfaService } from '@/mfa/mfa.service';
 import type { PasswordUtility } from '@/services/password.utility';

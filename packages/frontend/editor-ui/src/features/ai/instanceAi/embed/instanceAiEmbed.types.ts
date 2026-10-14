@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { InstanceAiAgentAttachment } from '@n8n/api-types';
+import type { ComputedRef, InjectionKey } from 'vue';
 
 import { INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY } from '../constants';
 import {
@@ -17,6 +18,22 @@ import {
 export type InstanceAiEmbedSubject =
 	| InstanceAiAgentAttachment
 	| { type: 'workflow'; id: string; projectId: string; name?: string };
+
+/**
+ * The resource the host page is showing beside the embedded panel. The
+ * conversation renders references to it as plain text and skips its artifact
+ * card: the user is already looking at it.
+ */
+export const INSTANCE_AI_EMBED_SUBJECT_KEY: InjectionKey<ComputedRef<InstanceAiEmbedSubject>> =
+	Symbol('instanceAiEmbedSubject');
+
+export function isEmbedSubject(
+	subject: InstanceAiEmbedSubject | undefined,
+	type: string,
+	id: string,
+): boolean {
+	return subject?.type === type && subject.id === id;
+}
 
 /**
  * Does this thread belong to the subject's history list? A thread targets an

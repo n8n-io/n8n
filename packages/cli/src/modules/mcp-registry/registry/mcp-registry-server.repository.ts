@@ -48,6 +48,7 @@ export class McpRegistryServerRepository extends Repository<McpRegistryServerEnt
 				.insert()
 				.values(values)
 				// Deprecated, but `orUpdate` cannot express the conditional WHERE.
+				// oxlint-disable-next-line typescript/no-deprecated
 				.onConflict(
 					`(${escape('slug')}) DO UPDATE SET ${overwrite} WHERE ${storedUpdatedAt} < EXCLUDED.${escape('updatedAt')}`,
 				)

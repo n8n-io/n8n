@@ -1,12 +1,21 @@
 import type { IExecuteFunctions, ExecuteAgentData, NodeParameterValueType } from 'n8n-workflow';
 import { getNodeParameters, NodeOperationError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { MessageAnAgent, baseDescription } from '../MessageAnAgent.node';
 import { MessageAnAgentV1 } from '../v1/MessageAnAgentV1.node';
 import { MessageAnAgentV2 } from '../v2/MessageAnAgentV2.node';
+
+/** The JSON Schema type name of a JSON value. */
+function jsonType(value: unknown): string {
+	if (value === null) return 'null';
+	if (Array.isArray(value)) return 'array';
+	return typeof value;
+}
 
 describe('MessageAnAgent Node', () => {
 	let node: MessageAnAgentV2;
@@ -1023,6 +1032,49 @@ describe('MessageAnAgent Node', () => {
 		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
 		expect(result[0]).toHaveLength(0);
 	});
+
+	// Version 3 has no schema folder of its own: schema readers take the same major first.
+	it.each([
+		[1, 'v1.0.0'],
+		[2, 'v2.0.0'],
+		[3, 'v3.1.0'],
+		[3.1, 'v3.1.0'],
+	])('emits on v%s an item that the %s output schema describes', async (typeVersion, schemaDir) => {
+		const schema = JSON.parse(
+			readFileSync(join(__dirname, '..', '__schema__', schemaDir, 'output.json'), 'utf8'),
+		) as { required: string[]; properties: Record<string, { type?: string | string[] }> };
+		const versionNode =
+			typeVersion === 1
+				? new MessageAnAgentV1(baseDescription)
+				: new MessageAnAgentV2(baseDescription);
+		executeFunctions.getNode.mockReturnValue({
+			id: 'test-node-id',
+			name: 'Message an Agent',
+			type: 'n8n-nodes-base.messageAnAgent',
+			typeVersion,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		mockParams();
+
+		// Every field set; every nullable field null; and an array, which a manual
+		// output schema can ask for.
+		for (const agentResult of [
+			mockAgentResult,
+			{ ...mockAgentResult, usage: null, session: null },
+			{ ...mockAgentResult, structuredOutput: ['first', 'second'] },
+		]) {
+			executeFunctions.executeAgent.mockResolvedValue(agentResult);
+			const [[{ json: item }]] = await versionNode.execute.call(executeFunctions);
+
+			expect(Object.keys(item).sort()).toEqual([...schema.required].sort());
+			for (const [key, value] of Object.entries(item)) {
+				const declared = schema.properties[key].type;
+				if (declared) expect([declared].flat()).toContain(jsonType(value));
+			}
+		}
+	});
 });
 
 describe('MessageAnAgent versioning', () => {
@@ -1041,6 +1093,16 @@ describe('MessageAnAgent versioning', () => {
 
 		expect(versioned.description.defaultVersion).toBe(3.1);
 		expect(Object.keys(versioned.nodeVersions)).toEqual(['1', '2', '3', '3.1']);
+	});
+
+	// `hidden` marks a node as retired for the AI builder, the editor and the website.
+	// The node panel hides this node only while agents are disabled.
+	it('is not hidden in any version', () => {
+		const versioned = new MessageAnAgent();
+
+		for (const version of Object.values(versioned.nodeVersions)) {
+			expect(version.description.hidden).toBeUndefined();
+		}
 	});
 
 	it('keeps the original resourceLocator picker on v1 (non-breaking) with the listAgents method', () => {

@@ -19,7 +19,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_instance_monitoring_report_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'delivered'::character varying, 'skipped_after_max_retries'::character varying])::text[]))) |
+| CHK_instance_monitoring_report_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'delivered'::character varying, 'skipped_after_max_retries'::character varying, 'sending'::character varying])::text[]))) |
 | PK_4a5cb8aa51c67e4f5a7eb0f9509 | PRIMARY KEY | PRIMARY KEY (id) |
 | instance_monitoring_report_attempts_not_null | n | NOT NULL attempts |
 | instance_monitoring_report_createdAt_not_null | n | NOT NULL "createdAt" |

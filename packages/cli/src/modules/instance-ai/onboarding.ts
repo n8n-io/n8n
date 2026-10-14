@@ -17,7 +17,7 @@ import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { Telemetry } from '@/telemetry';
 
 import { DurableEventLog } from './event-bus/durable-event-log';

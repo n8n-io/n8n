@@ -265,6 +265,19 @@ The reasons are `parameter-values-disabled`, `replay-failed`, and
 `execution-unavailable`. Skipped checks expose no parameter values or replay
 error details. Their dynamic fields remain unverified.
 
+**Empty-output check**: when a real node returns only `{}` items,
+`emptyOutputNote` names that node. The run still counts as a success. The note
+tells the agent to compare the node's parameters with its typeVersion before it
+replies. If they do not match, the agent repairs the node, also when the agent
+did not change it. If they match, the agent does not change a node that it did
+not build, and tells the user that the node outputs no fields. Only the first
+empty node of a chain is named, because the nodes after it only pass the
+emptiness on. Triggers are skipped because a Manual Trigger emits `{}`.
+Simulated nodes are skipped because their output is a fixture. Nodes that
+output a file are skipped because their data is in the binary, which the
+preview omits. Truncated outputs are skipped because the hidden items can hold
+data.
+
 ### `report-verification-verdict` *(conditional)*
 
 Feed verification results into the deterministic workflow loop state machine.

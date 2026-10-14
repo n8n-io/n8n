@@ -476,7 +476,7 @@ minus.doc = {
 		{
 			name: 'n',
 			description:
-				'The number of units to subtract. Or use a Luxon <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to subtract multiple units at once.',
+				'The number of units to subtract. Or use a Luxon <a target="_blank" href="https://moment.github.io/luxon/api-docs/index.html#duration">Duration</a> object to subtract multiple units at once.',
 			type: 'number | object',
 		},
 		{
@@ -511,7 +511,7 @@ plus.doc = {
 		{
 			name: 'n',
 			description:
-				'The number of units to add. Or use a Luxon <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#duration”>Duration</a> object to add multiple units at once.',
+				'The number of units to add. Or use a Luxon <a target="_blank" href="https://moment.github.io/luxon/api-docs/index.html#duration">Duration</a> object to add multiple units at once.',
 			type: 'number | object',
 		},
 		{
