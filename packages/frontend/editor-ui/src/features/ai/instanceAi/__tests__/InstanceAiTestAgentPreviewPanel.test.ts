@@ -169,6 +169,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			.mockResolvedValueOnce({
 				config: {
 					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
 					instructions: '',
 					tools: [{ type: 'workflow', workflow: 'workflow-1', name: 'Slack' }],
 				},
@@ -291,6 +292,20 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		// Scoped to the answer card specifically.
 		const answerCard = getByTestId('instance-ai-test-agent-preview-output');
 		expect(answerCard.querySelector('[class*="content"]')).toHaveTextContent(/very long answer/);
+	});
+
+	it('opens the Checks tab from the expanded first check', async () => {
+		const store = useAgentEvalsStore();
+		mockPreviewRun(store);
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+		});
+		const user = userEvent.setup();
+		const { findByTestId, getByRole, emitted } = renderComponent();
+		await user.click(await findByTestId('instance-ai-test-agent-preview-check-harder'));
+		await user.click(await findByTestId('instance-ai-test-agent-examples-view-first'));
+		await user.click(getByRole('button', { name: 'Open Checks' }));
+		expect(emitted('open-evals')).toEqual([[null]]);
 	});
 
 	it('generates a batch of examples and shows the examples panel on "Check harder cases"', async () => {

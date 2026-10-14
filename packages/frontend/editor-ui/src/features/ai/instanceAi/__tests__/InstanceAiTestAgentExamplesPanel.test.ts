@@ -57,6 +57,15 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		expect(queryByText('Summarize the thread about the Acme SSO outage')).not.toBeInTheDocument();
 	});
 
+	it('opens Checks from the expanded first check without replacing the inline peek', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, getByRole, emitted } = renderComponent();
+		await user.click(getByTestId('instance-ai-test-agent-examples-view-first'));
+		expect(emitted('open-case')).toBeUndefined();
+		await user.click(getByRole('button', { name: 'Open Checks' }));
+		expect(emitted('open-case')).toEqual([[null]]);
+	});
+
 	it('emits add-example with the typed text and clears the input', async () => {
 		const user = userEvent.setup();
 		const { getByTestId, emitted } = renderComponent();
@@ -167,6 +176,11 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(getByText('Running 2 checks, 1 done')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-try')).not.toBeInTheDocument();
 			expect(queryByText(/Saved as your first check/)).not.toBeInTheDocument();
+		});
+
+		it('uses the singular count for a single running check', () => {
+			const { getByText } = renderComponent({ props: { caseRuns: [caseRuns[1]] } });
+			expect(getByText('Running 1 check, 0 done')).toBeInTheDocument();
 		});
 
 		it('updates elapsed time from the run start and removes the timer when settled', async () => {

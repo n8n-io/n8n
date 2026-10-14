@@ -25,11 +25,12 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 const node = (nodeType: string): AgentJsonToolConfig => ({
 	type: 'node',
 	name: nodeType,
-	node: { nodeType, nodeTypeVersion: 1, parameters: {} },
+	node: { nodeType, nodeTypeVersion: 1, nodeParameters: {} },
 });
 const renderComponent = createComponentRenderer(AgentEvalMockNotice);
 const config = (overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig => ({
 	name: 'Agent',
+	model: 'anthropic/claude-sonnet-4-5',
 	instructions: '',
 	...overrides,
 });

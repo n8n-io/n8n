@@ -233,6 +233,9 @@ function onCheckYourAgent() {
 					:status="previewStatus ?? 'pass'"
 					:error-message="previewReasoning ?? undefined"
 				/>
+				<N8nButton variant="ghost" size="small" @click="emit('open-case', null)">
+					{{ i18n.baseText('instanceAi.testAgentPreview.openChecks') }}
+				</N8nButton>
 			</div>
 
 			<hr :class="$style.divider" />
@@ -282,6 +285,7 @@ function onCheckYourAgent() {
 				<div>
 					<N8nText color="text-dark" :class="$style.runStatus">{{
 						i18n.baseText('instanceAi.testAgentPreview.runningChecks', {
+							adjustToNumber: caseRuns.length,
 							interpolate: {
 								count: String(caseRuns.length),
 								done: String(caseRuns.length - waitingCount),

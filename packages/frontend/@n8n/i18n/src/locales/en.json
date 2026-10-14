@@ -9080,7 +9080,8 @@
 	"agents.builder.agentEvals.mockNotice.one": "Your agent won't really use {first} here.",
 	"agents.builder.agentEvals.mockNotice.two": "Your agent won't really use {first} or {second} here.",
 	"agents.builder.agentEvals.mockNotice.more": "Your agent won't really use {first}, {second} and {count} more here.",
-	"instanceAi.testAgentPreview.runningChecks": "Running {count} checks, {done} done",
+	"instanceAi.testAgentPreview.runningChecks": "Running {count} check, {done} done | Running {count} checks, {done} done",
+	"instanceAi.testAgentPreview.openChecks": "Open Checks",
 	"instanceAi.testAgentPreview.viewFirstCheck": "View",
 	"instanceAi.testAgentPreview.hideFirstCheck": "Hide",
 
