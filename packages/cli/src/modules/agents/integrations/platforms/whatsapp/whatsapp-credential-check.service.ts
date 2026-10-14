@@ -1,8 +1,10 @@
 import type { WhatsAppBusinessProfile, WhatsAppCredentialCheck } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
@@ -39,6 +41,7 @@ export class WhatsAppCredentialCheckService {
 		private readonly credentialLookup: AgentCredentialLookupService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly logger: Logger,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	/**
@@ -60,7 +63,9 @@ export class WhatsAppCredentialCheckService {
 			credentialId,
 			WHATSAPP_CREDENTIAL_TYPE,
 		);
-		if (!data) return { status: 'failed', reason: 'incomplete' };
+		// Same answer as connecting the channel gives. Reporting this as
+		// `incomplete` would send the user to fix fields that are not empty.
+		if (!data) throw new NotFoundError(`WhatsApp credential "${credentialId}" not found`);
 
 		// Trimmed the way the channel trims them.
 		const accessToken = stringProperty(data, 'accessToken')?.trim();
@@ -92,7 +97,11 @@ export class WhatsAppCredentialCheckService {
 				}).catch(() => undefined),
 			]);
 
-			if (expiresAt !== undefined && expiresAt - Date.now() < TEMPORARY_TOKEN_WINDOW_MS) {
+			if (
+				expiresAt !== undefined &&
+				expiresAt - Date.now() < TEMPORARY_TOKEN_WINDOW_MS &&
+				!this.agentsConfig.whatsAppAllowTemporaryToken
+			) {
 				return { status: 'failed', reason: 'temporaryToken' };
 			}
 

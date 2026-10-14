@@ -1,6 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
 import { createHmac } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -52,6 +54,7 @@ describe('WhatsAppCredentialCheckService', () => {
 	let service: WhatsAppCredentialCheckService;
 	let replies: Record<Route, () => Promise<GraphReply>>;
 	let logger: ReturnType<typeof mock<Logger>>;
+	let agentsConfig: AgentsConfig;
 
 	beforeEach(() => {
 		credentialLookup = mock<AgentCredentialLookupService>();
@@ -78,7 +81,13 @@ describe('WhatsAppCredentialCheckService', () => {
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(mock({ request }) as never);
 		logger = mock<Logger>();
-		service = new WhatsAppCredentialCheckService(credentialLookup, outboundHttp, logger);
+		agentsConfig = mock<AgentsConfig>({ whatsAppAllowTemporaryToken: false });
+		service = new WhatsAppCredentialCheckService(
+			credentialLookup,
+			outboundHttp,
+			logger,
+			agentsConfig,
+		);
 	});
 
 	const check = async () => await service.check(user, PROJECT_ID, CREDENTIAL_ID);
@@ -99,10 +108,10 @@ describe('WhatsAppCredentialCheckService', () => {
 		);
 	});
 
-	it('reports an incomplete credential when the lookup finds nothing', async () => {
+	it('throws NotFoundError when the caller cannot use the credential', async () => {
 		credentialLookup.decryptForUser.mockResolvedValue(null);
 
-		expect(await check()).toEqual({ status: 'failed', reason: 'incomplete' });
+		await expect(check()).rejects.toThrow(NotFoundError);
 		expect(request).not.toHaveBeenCalled();
 	});
 
@@ -190,6 +199,14 @@ describe('WhatsAppCredentialCheckService', () => {
 		replies.debugToken = async () => ok({ data: { expires_at: expiresAt } });
 
 		expect(await check()).toEqual({ status: 'failed', reason: 'temporaryToken' });
+	});
+
+	it('passes a token that expires within 48 hours when temporary tokens are allowed', async () => {
+		agentsConfig.whatsAppAllowTemporaryToken = true;
+		const expiresAt = Math.floor((Date.now() + 24 * HOUR_MS) / 1000);
+		replies.debugToken = async () => ok({ data: { expires_at: expiresAt } });
+
+		expect(await check()).toMatchObject({ status: 'ok' });
 	});
 
 	it('passes a token that expires after 48 hours', async () => {
