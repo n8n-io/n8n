@@ -1148,27 +1148,35 @@ describe('AgentsService', () => {
 		});
 	});
 
-	describe('findByUserMembershipPaginated', () => {
+	describe('findListableByUserPaginated', () => {
 		const user = { id: 'user-1' } as unknown as User;
 
-		it('uses bare project membership and does not consult the scope service', async () => {
+		it('scopes to agent:list, the scope the project list route requires', async () => {
 			const { service, agentRepository, projectRelationRepository, projectScopeService } =
 				makeService();
-			projectRelationRepository.findAllByUser.mockResolvedValue([
-				{ projectId: 'project-1' },
-				{ projectId: 'project-2' },
-			] as never);
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
 			const options = { skip: 0, take: 10 } as never;
 
-			await service.findByUserMembershipPaginated(user, options);
+			await service.findListableByUserPaginated(user, options);
 
-			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledWith('user-1');
-			expect(projectScopeService.getProjectIds).not.toHaveBeenCalled();
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:list']);
+			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				['project-1', 'project-2'],
 				options,
 			);
+		});
+
+		it('passes a null project scope through, so a global role sees every project', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			const options = { skip: 0, take: 10 } as never;
+
+			await service.findListableByUserPaginated(user, options);
+
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(null, options);
 		});
 	});
 

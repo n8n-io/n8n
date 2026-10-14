@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
@@ -16,6 +16,7 @@ import userEvent from '@testing-library/user-event';
 import { MODAL_CONFIRM } from '@/app/constants';
 import type { ChatHubToolDto } from '@n8n/api-types';
 import { createToolSettingsStub } from '../__tests__/toolSettingsStub';
+import { hasRole } from '@/app/utils/rbac/checks/hasRole';
 
 vi.mock('virtual:node-popularity-data', () => ({
 	default: [
@@ -287,6 +288,119 @@ describe('ToolsManagerModal', () => {
 		expect(availableItems).toHaveLength(1);
 		expect(getByText('Tool A')).toBeTruthy();
 		expect(queryByText('Tool With Inputs')).toBeNull();
+	});
+
+	describe('role restrictions', () => {
+		const toolType = (name: string, displayName: string): INodeTypeDescription => ({
+			...TOOL_NODE_TYPE_A,
+			name,
+			displayName,
+		});
+
+		const CHAT_USER_BLOCKED_TOOLS = [
+			toolType('n8n-nodes-base.executeCommandTool', 'Execute Command Tool'),
+			toolType('n8n-nodes-base.gitTool', 'Git Tool'),
+			toolType('@n8n/n8n-nodes-langchain.toolCode', 'Code Tool'),
+			toolType('n8n-nodes-base.messageAnAgentTool', 'Message an Agent Tool'),
+		];
+		const CHAT_TOOL = toolType('@n8n/n8n-nodes-langchain.chatTool', 'Chat Tool');
+		const ROLE_TEST_TOOLS = [...CHAT_USER_BLOCKED_TOOLS, CHAT_TOOL];
+
+		beforeEach(() => {
+			const getDefaultNodeType = nodeTypesStore.getNodeType;
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockImplementation(
+					(name: string) =>
+						ROLE_TEST_TOOLS.find((tool) => tool.name === name) ?? getDefaultNodeType(name),
+				);
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [
+					'n8n-nodes-base.toolA',
+					...ROLE_TEST_TOOLS.map((tool) => tool.name),
+				],
+			};
+		});
+
+		afterEach(() => {
+			vi.mocked(hasRole).mockReturnValue(false);
+		});
+
+		it('should hide tools that chat users are not allowed to add', () => {
+			vi.mocked(hasRole).mockReturnValue(true);
+
+			const { container, getByText } = renderComponent({ props: defaultProps() });
+
+			expect(getByText('Tool A')).toBeTruthy();
+			expect(getAvailableItems(container)).toHaveLength(1);
+		});
+
+		it('should show those tools to users who can build workflows', () => {
+			vi.mocked(hasRole).mockReturnValue(false);
+
+			const { getByText } = renderComponent({ props: defaultProps() });
+
+			for (const tool of CHAT_USER_BLOCKED_TOOLS) {
+				expect(getByText(tool.displayName)).toBeTruthy();
+			}
+		});
+
+		it('should hide the Chat tool for users who can build workflows', () => {
+			vi.mocked(hasRole).mockReturnValue(false);
+
+			const { queryByText } = renderComponent({ props: defaultProps() });
+
+			expect(queryByText('Chat Tool')).toBeNull();
+		});
+
+		describe('configured tool that the role blocks', () => {
+			beforeEach(() => {
+				chatStore.configuredTools = [
+					createMockToolDto({
+						name: 'Shell',
+						type: 'n8n-nodes-base.executeCommandTool',
+					}),
+				];
+			});
+
+			it('should mark the tool and keep only the remove action for a chat user', () => {
+				vi.mocked(hasRole).mockReturnValue(true);
+
+				const { container } = renderComponent({ props: defaultProps() });
+
+				const [configured] = getConfiguredItems(container);
+				expect(
+					configured.querySelector('[data-test-id="chat-tool-role-blocked-icon"]'),
+				).toBeTruthy();
+				expect(getActionButtons(configured)).toHaveLength(1);
+				expect(getToggle(configured)).toBeNull();
+			});
+
+			it('should remove the tool after confirmation for a chat user', async () => {
+				vi.mocked(hasRole).mockReturnValue(true);
+				mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+
+				const { container } = renderComponent({ props: defaultProps() });
+
+				const [removeBtn] = getActionButtons(getConfiguredItems(container)[0]);
+				await userEvent.click(removeBtn);
+
+				await waitFor(() => {
+					expect(chatStore.removeConfiguredTool).toHaveBeenCalledWith('tool-1');
+				});
+			});
+
+			it('should show the tool as usual for users who can build workflows', () => {
+				vi.mocked(hasRole).mockReturnValue(false);
+
+				const { container } = renderComponent({ props: defaultProps() });
+
+				const [configured] = getConfiguredItems(container);
+				expect(configured.querySelector('[data-test-id="chat-tool-role-blocked-icon"]')).toBeNull();
+				expect(getActionButtons(configured)).toHaveLength(2);
+				expect(getToggle(configured)).toBeTruthy();
+			});
+		});
 	});
 
 	describe('tool actions', () => {

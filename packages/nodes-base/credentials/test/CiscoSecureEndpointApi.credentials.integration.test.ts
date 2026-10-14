@@ -108,3 +108,37 @@ describe('CiscoSecureEndpointApi Credential (integration)', () => {
 		expect(result.headers?.Authorization).toBe('Bearer secure-endpoint-token');
 	});
 });
+
+/**
+ * Drives the real `OutboundHttp` client (no host rewrite) so the credential's own
+ * allow-list is enforced against the actual token host. The restriction gate rejects
+ * before any socket opens, so no request reaches the network.
+ */
+describe('CiscoSecureEndpointApi Credential (integration) allow-list enforcement', () => {
+	const credential = new CiscoSecureEndpointApi();
+
+	beforeEach(() => {
+		const config = new SsrfProtectionConfig();
+		Object.assign(config, { enabled: true, allowedIpRanges: ['127.0.0.0/8'] });
+		Container.set(SsrfProtectionConfig, config);
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	test('refuses the token exchange when the allow-list excludes the token host', async () => {
+		await expect(
+			credential.authenticate(
+				{
+					region: 'eu.amp',
+					clientId: 'client-id',
+					clientSecret: 'client-secret',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'example.com',
+				},
+				{ headers: {}, method: 'GET', url: 'https://api.eu.amp.cisco.com/v3/organizations' },
+			),
+		).rejects.toThrow(/Domain not allowed/);
+	});
+});
