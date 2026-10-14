@@ -19,6 +19,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 	});
 	const event = {
 		agent,
+		config: agent.schema,
 		user,
 		projectId: 'project-1',
 		by: 'builder',
@@ -64,6 +65,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		service.record({
 			...event,
 			agent: Object.assign(new Agent(), { schema: { name: 'New name' }, integrations: [] }),
+			config: { name: 'New name' },
 			wasUnconfigured: true,
 			changedParts: ['name'],
 		});
