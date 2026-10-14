@@ -4,6 +4,24 @@ import type { McpToolResult } from './types';
 import { isMcpContentArray, type McpContentBlock } from '../../shared/utils';
 
 /**
+ * Parse a tool result string that may be a JSON-serialized MCP content array.
+ *
+ * Proxy mode passes the tool result through `DynamicStructuredTool.invoke`,
+ * which serializes the tool's return value to a string before it leaves the
+ * tool. The raw content array therefore arrives here as JSON text. Malformed
+ * JSON and JSON that is not an MCP content array return `null` so the caller
+ * wraps the original string.
+ */
+function parseMcpContentArrayString(value: string): McpContentBlock[] | null {
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return isMcpContentArray(parsed) ? parsed : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
  * Result of presenting a single missing credential's connection URL to the
  * client via URL-mode elicitation. `action` mirrors the MCP `ElicitResult`
  * actions: `accept` (the client opened the connection page), `decline`, or
@@ -24,7 +42,11 @@ export class MessageFormatter {
 		} else if (typeof result === 'object' && result !== null) {
 			content = [{ type: 'text' as const, text: JSON.stringify(result) }];
 		} else if (typeof result === 'string') {
-			content = [{ type: 'text' as const, text: result }];
+			// Proxy mode hands us a JSON string, so parse before wrapping. A failed
+			// parse or a non-MCP value falls back to the original string, never the
+			// parsed value.
+			const parsedContent = parseMcpContentArrayString(result);
+			content = parsedContent ?? [{ type: 'text' as const, text: result }];
 		} else if (result === null || result === undefined) {
 			content = [{ type: 'text' as const, text: String(result) }];
 		} else if (
