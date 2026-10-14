@@ -12,7 +12,12 @@ export async function invokeAxios(axiosConfig: AxiosRequestConfig, authSendImmed
 	} catch (error) {
 		// Axios does not destroy a stream body when the request fails. An unread file
 		// stream then holds its file handle until garbage collection.
-		if (body instanceof Readable || isFormDataInstance(body)) body.destroy();
+		// `isFormDataInstance` matches on `getHeaders` and `append` only, so check `destroy` too.
+		if (
+			body instanceof Readable ||
+			(isFormDataInstance(body) && typeof body.destroy === 'function')
+		)
+			body.destroy();
 		throw error;
 	}
 }
