@@ -470,7 +470,7 @@ onMounted(() => {
 					</div>
 					<div :class="$style.actions">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							data-testid="agent-vector-stores-modal-connect"
 							@click="selectProvider(provider)"

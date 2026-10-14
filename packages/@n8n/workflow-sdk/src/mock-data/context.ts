@@ -45,6 +45,7 @@ export function buildSchemaContexts(
 			resource,
 			operation,
 			hasOutputParser: node.name ? outputParserTargets?.has(node.name) === true : false,
+			parameters: params,
 		});
 
 		const nodeName = node.name ?? node.type;

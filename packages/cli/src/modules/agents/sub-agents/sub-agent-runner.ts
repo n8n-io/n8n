@@ -20,6 +20,7 @@ import {
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type {
+	AgentBudgetNotice,
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSource,
@@ -118,6 +119,8 @@ export interface SubAgentRunContext {
 	beforeResume?: () => Promise<void>;
 	shouldPause?: () => Promise<boolean>;
 	runtimeSnapshot?: string;
+	/** Preview-chat budget sink forwarded from the root run. Absent elsewhere. */
+	onBudgetNotice?: (notice: AgentBudgetNotice) => void;
 }
 
 export interface SubAgentRunResult {
@@ -345,6 +348,15 @@ export class SubAgentRunner {
 
 			agent = reconstructed.agent;
 			context.abortSignal?.throwIfAborted();
+			const forwardBudgetNotice = context.onBudgetNotice
+				? (notice: AgentBudgetNotice) =>
+						context.onBudgetNotice?.(
+							notice.code === 'budget.session'
+								? { code: notice.code }
+								: // The innermost budget owner wins.
+									{ ...notice, agentId: notice.agentId ?? runtimeSource.source.sourceId },
+						)
+				: undefined;
 			const executionOptions = withBudgetGuardrail(
 				{
 					approvalContext: await this.toolApprovalService.createContext(
@@ -363,6 +375,7 @@ export class SubAgentRunner {
 					sessionId: context.rootSessionId,
 					agentId: runtimeSource.source.sourceId,
 					rootSessionCapUsd: context.rootSessionCapUsd,
+					...(forwardBudgetNotice !== undefined ? { onNotice: forwardBudgetNotice } : {}),
 				},
 			);
 			context.abortSignal?.throwIfAborted();
@@ -428,6 +441,15 @@ export class SubAgentRunner {
 			if (result.finishReason === 'paused') status = 'paused';
 			else if (suspended) status = 'suspended';
 			else if (result.finishReason === 'error' || result.error !== undefined) status = 'failed';
+			else if (result.finishReason === 'guardrail') {
+				// A budget stop is not a completed task: the parent model gets a
+				// failure with the reason, and the preview chat gets the card.
+				status = 'failed';
+				const code = result.guardrail?.code;
+				if (code === 'budget.session' || code === 'budget.monthly') {
+					forwardBudgetNotice?.({ code });
+				}
+			}
 
 			return {
 				taskPath: operation.taskPath,
@@ -520,6 +542,7 @@ async function consumeAgentStream(
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 	let structuredOutput: unknown;
 	let executionError: unknown;
+	let guardrail: GenerateResult['guardrail'];
 
 	for await (const value of streamAgentChunks(resultStream.stream)) {
 		recorder.record(value);
@@ -541,8 +564,11 @@ async function consumeAgentStream(
 				...(value.resumeSchema !== undefined ? { resumeSchema: value.resumeSchema } : {}),
 			});
 		}
-		if (value.type === 'finish' && value.structuredOutput !== undefined) {
-			structuredOutput = value.structuredOutput;
+		if (value.type === 'finish') {
+			if (value.structuredOutput !== undefined) structuredOutput = value.structuredOutput;
+			// The recorder keeps only the finish reason; the stop code lives
+			// on the chunk, so capture it here or it is lost.
+			if (value.guardrail !== undefined) guardrail = value.guardrail;
 		}
 	}
 
@@ -555,6 +581,7 @@ async function consumeAgentStream(
 			structuredOutput,
 			() => resultStream.getState(),
 			pendingSuspend,
+			guardrail,
 		),
 	};
 }
@@ -640,6 +667,7 @@ function buildGenerateResultFromRecord(
 	structuredOutput: unknown,
 	getState: () => SerializableAgentState,
 	pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [],
+	guardrail?: GenerateResult['guardrail'],
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
 	const finishReason = isFinishReason(record.finishReason) ? record.finishReason : undefined;
@@ -659,6 +687,7 @@ function buildGenerateResultFromRecord(
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
 		...(pendingSuspend.length > 0 ? { pendingSuspend } : {}),
+		...(guardrail !== undefined ? { guardrail } : {}),
 		getState,
 	};
 	return result;

@@ -201,7 +201,8 @@ export class EvalAgentExecutionService {
 			return this.errorResult(`Agent ${agentId} has no JSON config to run.`);
 		}
 
-		const skillRefs = await Container.get(AgentSkillRefsService).refsForDraft(agentEntity, {});
+		const agentSkillRefs = Container.get(AgentSkillRefsService);
+		const skillRefs = await agentSkillRefs.refsForDraft(agentEntity, {});
 		const { config, skippedFeatures } = pruneConfigForEval(
 			toAgentDocument(agentEntity.schema, skillRefs),
 		);
@@ -356,7 +357,11 @@ export class EvalAgentExecutionService {
 		let agent: RuntimeAgent;
 		try {
 			({ agent } = await reconstruction.reconstructFromAgentEntity(
-				{ agent: agentEntity, skillRefs: pruned.skillRefs },
+				{
+					agent: agentEntity,
+					skillRefs: pruned.skillRefs,
+					skills: await agentSkillRefs.skillsForRefs(agentEntity, pruned.skillRefs, {}),
+				},
 				credentialProvider,
 				'test',
 				undefined,

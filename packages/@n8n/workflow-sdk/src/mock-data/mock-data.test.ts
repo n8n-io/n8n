@@ -88,6 +88,7 @@ describe('buildSchemaContexts', () => {
 			resource: 'row',
 			operation: 'get',
 			hasOutputParser: false,
+			parameters: workflow.nodes[0].parameters,
 		});
 		expect(contexts[0].schema).toEqual({ type: 'object', properties: { id: {} } });
 	});

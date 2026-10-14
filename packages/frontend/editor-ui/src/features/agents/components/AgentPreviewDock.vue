@@ -179,7 +179,11 @@ function handleEscapeKey(event: KeyboardEvent) {
 }
 
 useKeybindings({
-	'ctrl+shift+;': createNewSession,
+	'ctrl+shift+;': {
+		allowInInputs: true,
+		disabled: () => !props.isOpen,
+		run: createNewSession,
+	},
 });
 
 defineExpose({ clearBudgetStops });
