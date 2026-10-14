@@ -69,10 +69,11 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
+  datetime_3_ artifactPrunedAt
   INTEGER artifactSizeBytes
   TEXT artifactStorageRef
-  TEXT buildDiagnostics
   varchar_32_ buildStatus
+  INTEGER buildTaskId FK
   datetime_3_ createdAt
   varchar id PK
   varchar_255_ label

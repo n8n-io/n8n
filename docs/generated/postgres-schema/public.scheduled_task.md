@@ -10,7 +10,7 @@
 | dispatchedAt | timestamp(3) with time zone |  | true |  |  | When the current attempt handed off its effect; NULL until then. Splits dispatch-attempted (startedAt) from effect-happened, so the reaper completes a dispatched occurrence rather than redelivering it. |
 | errorMessage | text |  | true |  |  | Failure detail from the last attempt. |
 | finishedAt | timestamp(3) with time zone |  | true |  |  | When the occurrence reached a terminal state; drives retention pruning. |
-| id | bigint |  | false |  |  |  |
+| id | bigint |  | false | [public.app_version](public.app_version.md) |  |  |
 | jobId | integer |  | false |  | [public.scheduled_job](public.scheduled_job.md) | The scheduled_job this occurrence belongs to. |
 | leaseEpoch | integer | 0 | false |  |  | Fencing token bumped on each claim; lets a reaped worker detect it lost ownership and not overwrite the new owner's results. |
 | leaseExpiresAt | timestamp(3) with time zone |  | true |  |  | When the current lease expires; the reaper reclaims running occurrences past this. |
@@ -62,6 +62,7 @@
 ```mermaid
 erDiagram
 
+"public.app_version" }o--o| "public.scheduled_task" : "FOREIGN KEY (#quot;buildTaskId#quot;) REFERENCES scheduled_task(id) ON DELETE SET NULL"
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 
 "public.scheduled_task" {
@@ -84,6 +85,20 @@ erDiagram
   varchar_16_ status
   varchar_128_ taskType
   integer timeoutSeconds
+}
+"public.app_version" {
+  uuid appId FK
+  timestamp_3__with_time_zone artifactPrunedAt
+  integer artifactSizeBytes
+  text artifactStorageRef
+  varchar_32_ buildStatus
+  bigint buildTaskId FK
+  timestamp_3__with_time_zone createdAt
+  uuid id
+  varchar_255_ label
+  integer sourceSizeBytes
+  text sourceStorageRef
+  timestamp_3__with_time_zone updatedAt
 }
 "public.scheduled_job" {
   integer concurrencyLimit

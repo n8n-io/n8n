@@ -1,5 +1,5 @@
 import type { AppBuildStatus } from '@n8n/api-types';
-import { WithTimestamps } from '@n8n/db';
+import { DateTimeColumn, dbType, idStringifier, WithTimestamps, type ScheduledTask } from '@n8n/db';
 import {
 	Column,
 	Entity,
@@ -40,9 +40,27 @@ export class AppVersion extends WithTimestamps {
 	@Column({ type: 'int', nullable: true })
 	artifactSizeBytes: number | null;
 
+	@DateTimeColumn({ nullable: true, precision: 3 })
+	artifactPrunedAt: Date | null;
+
+	@Index()
+	@Column({
+		type: dbType === 'sqlite' ? 'integer' : 'bigint',
+		nullable: true,
+		transformer: {
+			...idStringifier,
+			from: (value: number | null) => (value === null ? null : idStringifier.from(value)),
+		},
+	})
+	buildTaskId: string | null;
+
+	@ManyToOne('ScheduledTask', { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({
+		name: 'buildTaskId',
+		foreignKeyConstraintName: 'app_version_buildTaskId_foreign',
+	})
+	buildTask: Relation<ScheduledTask> | null;
+
 	@Column({ type: 'varchar', length: 32, default: 'queued' })
 	buildStatus: AppBuildStatus;
-
-	@Column({ type: 'text', nullable: true })
-	buildDiagnostics: string | null;
 }

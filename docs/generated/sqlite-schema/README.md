@@ -51,7 +51,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [ai_preference](ai_preference.md) | 8 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [app](app.md) | 9 |  | table |
-| [app_version](app_version.md) | 11 |  | table |
+| [app_version](app_version.md) | 12 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -258,6 +258,7 @@ erDiagram
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app_version" }o--o| "scheduled_task" : "FOREIGN KEY (buildTaskId) REFERENCES scheduled_task (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "auth_identity" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -907,10 +908,11 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
+  datetime_3_ artifactPrunedAt
   INTEGER artifactSizeBytes
   TEXT artifactStorageRef
-  TEXT buildDiagnostics
   varchar_32_ buildStatus
+  INTEGER buildTaskId FK
   datetime_3_ createdAt
   varchar id PK
   varchar_255_ label

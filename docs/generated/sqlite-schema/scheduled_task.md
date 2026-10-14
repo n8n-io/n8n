@@ -21,7 +21,7 @@ CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" intege
 | dispatchedAt | datetime(3) |  | true |  |  |  |
 | errorMessage | TEXT |  | true |  |  |  |
 | finishedAt | datetime(3) |  | true |  |  |  |
-| id | INTEGER |  | false |  |  |  |
+| id | INTEGER |  | false | [app_version](app_version.md) |  |  |
 | jobId | INTEGER |  | false |  | [scheduled_job](scheduled_job.md) |  |
 | leaseEpoch | INTEGER | 0 | false |  |  |  |
 | leaseExpiresAt | datetime(3) |  | true |  |  |  |
@@ -60,6 +60,7 @@ CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" intege
 ```mermaid
 erDiagram
 
+"app_version" }o--o| "scheduled_task" : "FOREIGN KEY (buildTaskId) REFERENCES scheduled_task (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "scheduled_task" {
@@ -82,6 +83,20 @@ erDiagram
   varchar_16_ status
   varchar_128_ taskType
   INT timeoutSeconds
+}
+"app_version" {
+  varchar appId FK
+  datetime_3_ artifactPrunedAt
+  INTEGER artifactSizeBytes
+  TEXT artifactStorageRef
+  varchar_32_ buildStatus
+  INTEGER buildTaskId FK
+  datetime_3_ createdAt
+  varchar id PK
+  varchar_255_ label
+  INTEGER sourceSizeBytes
+  TEXT sourceStorageRef
+  datetime_3_ updatedAt
 }
 "scheduled_job" {
   INT concurrencyLimit

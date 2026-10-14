@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class CreateApps1791897793262 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column, addForeignKey } }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column, addForeignKey }, isSqlite }: MigrationContext) {
 		await createTable('app')
 			.withColumns(
 				column('id').uuid.primary,
@@ -37,18 +37,30 @@ export class CreateApps1791897793262 implements ReversibleMigration {
 				column('sourceSizeBytes').int.notNull,
 				column('artifactStorageRef').text.comment('Opaque reference to the built static output'),
 				column('artifactSizeBytes').int,
+				column('artifactPrunedAt')
+					.timestampTimezone()
+					.comment('Time when retention deleted the build artifact; null if not pruned'),
+				(isSqlite ? column('buildTaskId').int : column('buildTaskId').bigint).comment(
+					'Current build task; null before dispatch or after task cleanup',
+				),
 				column('buildStatus')
 					.varchar(32)
 					.notNull.default("'queued'")
 					.withEnumCheck(['queued', 'running', 'succeeded', 'failed'])
 					.comment('Build state: queued, running, succeeded, or failed'),
-				column('buildDiagnostics').text.comment('Build diagnostics, limited to 4096 characters'),
 			)
 			.withTimestamps.withIndexOn('appId')
+			.withIndexOn('buildTaskId')
 			.withForeignKey('appId', {
 				tableName: 'app',
 				columnName: 'id',
 				onDelete: 'CASCADE',
+			})
+			.withForeignKey('buildTaskId', {
+				tableName: 'scheduled_task',
+				columnName: 'id',
+				onDelete: 'SET NULL',
+				name: 'app_version_buildTaskId_foreign',
 			});
 
 		await addForeignKey(
