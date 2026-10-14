@@ -101,7 +101,7 @@ describe('Public API rate limiting', () => {
 
 	async function send(
 		app: express.Express,
-		method: 'get' | 'post',
+		method: 'get' | 'head' | 'post',
 		path: string,
 		apiKeyId: string | null = 'key-1',
 	) {
@@ -232,6 +232,15 @@ describe('Public API rate limiting', () => {
 		expect(response.status).toBe(200);
 		expect(response.headers['x-ratelimit-limit']).toBe('10');
 		expect(response.headers['x-ratelimit-remaining']).toBe('9');
+	});
+
+	it('does not count a HEAD request, which the registry rejects with 405', async () => {
+		const app = activate({ globalReadLimit: 1, endpointReadLimit: 1 });
+
+		expect((await send(app, 'head', '/widgets')).status).toBe(405);
+		expect((await send(app, 'head', '/widgets')).status).toBe(405);
+
+		expect((await send(app, 'get', '/widgets')).status).toBe(200);
 	});
 
 	it('uses the tier from @RateLimitTier over the HTTP method', async () => {
