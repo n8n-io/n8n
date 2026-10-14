@@ -211,7 +211,10 @@ export class ERPNext implements INodeType {
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
-					if (!properties.customProperty.length) {
+					// Properties defaults to {} when the fixedCollection is never touched, so
+					// customProperty is undefined rather than [] in that case — guard with
+					// optional chaining or this throws a raw TypeError instead of the message below.
+					if (!properties.customProperty?.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Please enter at least one property for the document to create.',
@@ -256,7 +259,9 @@ export class ERPNext implements INodeType {
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
-					if (!properties.customProperty.length) {
+					// Same default-shape trap as create: {} means customProperty is undefined,
+					// not [], when the field was never touched.
+					if (!properties.customProperty?.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Please enter at least one property for the document to update.',
