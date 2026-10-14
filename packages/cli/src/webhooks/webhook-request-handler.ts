@@ -128,8 +128,14 @@ class WebhookRequestHandler {
 		this.setResponseStatus(res, code);
 		this.setResponseHeaders(res, headers);
 
-		stream.pipe(res, { end: false });
-		await finished(stream);
+		ResponseHelper.pipeStreamToResponse(stream, res, { end: false });
+		try {
+			await finished(stream);
+		} catch (error) {
+			// The client disconnected, so there is no response left to end or to report the error on.
+			if (res.destroyed) return;
+			throw error;
+		}
 
 		process.nextTick(() => res.end());
 	}
@@ -175,7 +181,7 @@ class WebhookRequestHandler {
 		}
 
 		if (data instanceof Readable) {
-			data.pipe(res);
+			ResponseHelper.pipeStreamToResponse(data, res);
 			return;
 		}
 

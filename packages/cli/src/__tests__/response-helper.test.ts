@@ -9,8 +9,16 @@ import { mock } from 'vitest-mock-extended';
 import { ConflictError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
-import { reportError, sendErrorResponse } from '@/response-helper';
+import { reportError, sendErrorResponse, sendSuccessResponse } from '@/response-helper';
 import { setRouteSandboxSetting } from '@/webhooks/webhook-response-headers';
+import {
+	createLargeTempFile,
+	disconnectBeforeResponse,
+	readFirstChunkAndDisconnect,
+	readWholeBody,
+	startServer,
+	waitForClose,
+} from '@test/file-stream-server';
 
 describe('sendErrorResponse', () => {
 	let mockResponse: Response;
@@ -153,6 +161,63 @@ describe('sendErrorResponse', () => {
 					expect.stringContaining('sandbox'),
 				);
 			});
+		});
+	});
+});
+
+describe('sendSuccessResponse', () => {
+	describe('with a file stream', () => {
+		let file: Awaited<ReturnType<typeof createLargeTempFile>>;
+		let server: Awaited<ReturnType<typeof startServer>> | undefined;
+
+		beforeAll(async () => {
+			file = await createLargeTempFile();
+		});
+
+		afterEach(async () => {
+			await server?.close();
+			server = undefined;
+		});
+
+		afterAll(async () => {
+			await file.remove();
+		});
+
+		it('should send the whole file', async () => {
+			const stream = await file.openStream();
+			server = await startServer((_req, res) => {
+				sendSuccessResponse(res as unknown as Response, stream);
+			});
+
+			expect(await readWholeBody(server.url)).toBe(file.sizeInBytes);
+			expect(await waitForClose(stream)).toBe(true);
+		});
+
+		it('should close the file when the client disconnects during the download', async () => {
+			const stream = await file.openStream();
+			server = await startServer((_req, res) => {
+				sendSuccessResponse(res as unknown as Response, stream);
+			});
+
+			await readFirstChunkAndDisconnect(server.url);
+
+			expect(await waitForClose(stream)).toBe(true);
+		});
+
+		it('should close the file when the client disconnected before the response started', async () => {
+			const stream = await file.openStream();
+			let startedHandling = () => {};
+			const handling = new Promise<undefined>((resolve) => {
+				startedHandling = () => resolve(undefined);
+			});
+			server = await startServer((_req, res) => {
+				res.once('close', () => sendSuccessResponse(res as unknown as Response, stream));
+				startedHandling();
+			});
+
+			await disconnectBeforeResponse(server.url, handling);
+
+			expect(await waitForClose(stream)).toBe(true);
 		});
 	});
 });
