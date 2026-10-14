@@ -51,22 +51,26 @@ Unknown usage measurements stay null. The invocation claims measured credits onc
 Callers must not claim those credits again.
 
 Each invocation has a separate thread under `ia-self-healing:<actorId>`.
-The thread, memory, and checkpoint keep this resource identity.
-Versioned server metadata keeps the actor, project, workflow, and execution IDs.
+The thread and memory keep this resource identity. Checkpoints stay in memory.
+Server metadata records the actor, project, workflow, and execution IDs.
 The conversation stays hidden from every user, including the actor.
 Account credit updates omit its thread ID and thread total.
 Deleting the actor also removes these internal threads.
 
 The host uses its existing admission limits, run registry, sandbox, tracing, and shutdown drain.
-An unexpected suspension stops the invocation and removes its suspended checkpoint.
+An unexpected suspension stops the invocation.
 A crashed invocation becomes `crash_interrupted`. It cannot resume as ordinary chat.
 Workspace retention follows the existing sandbox lifecycle.
 The awaited completion hook persists accepted output before the host releases the run.
 
 `SelfHealingInvestigationService` owns admission, final candidate compilation, and acceptance.
 When parameter sharing is disabled, candidate source omits node parameters and verification is unavailable.
-Use `compileCandidateWorkflow()` for final reconstruction. It preserves baseline fields, node identity,
-layout, and credential references. It rejects unchanged or unsupported candidates.
+`compileCandidateWorkflow()` reuses the builder compiler, credential resolution, and save preparation.
+It uses the captured baseline for existing IDs, setup values, and layout. It keeps baseline workflow
+fields outside the candidate graph. Verification also runs the builder's credential permission check.
+Suggestions only change nodes and connections. Node-group edits are not supported.
+Apply runs the normal save validation on the retained groups.
+Unchanged candidates can be checked. Final acceptance must require a useful change for a suggestion.
 Recheck the baseline before saving the result. A successful execution is not required to store useful changes.
 There is no automatic trigger or public launch endpoint.
 
@@ -75,6 +79,8 @@ There is no automatic trigger or public launch endpoint.
 Each call compiles the current workspace file. `candidateChecksum` identifies the compiled candidate.
 Validation and execution evidence are separate. Edits require another check.
 The tool reuses the builder simulation planner, execution adapter, and coverage analysis.
+Credential changes use the normal builder rules. The response includes resolved and missing credentials.
+Nodes with mocked credentials use the same simulation rules as builder verification.
 It returns node previews, failures, simulated nodes, and nodes that the run did not reach.
 Some nodes execute against external services under the existing simulation rules.
 
@@ -92,13 +98,13 @@ No suggestion row is created by verification.
 
 The runtime validates final output. The producer compiles the named workspace file.
 It stores the accepted output, runtime usage, and compiled graph on the investigation.
-Verification findings are retained only when their checksum matches the final candidate.
 A credit-claim failure leaves unknown credits and does not discard valid output.
 
 `SelfHealingResultService.complete({ investigationId })` prepares the optional suggestion through
 `WorkflowSuggestionService`. It rechecks access and the captured baseline, then saves the result,
 suggestion, submission activity, and investigation completion in one transaction.
 A repeated completion returns the saved result. A failed transaction leaves accepted output for retry.
+Successful completion clears the temporary accepted output.
 Retries use the stored graph and report. They do not need the workspace or another model run.
 Changed baselines and lost access stop completion without creating a result.
 
@@ -130,11 +136,6 @@ return `unavailable` without an ID. Execution lookups use the normal transport t
 The review UI owns loading feedback while result details are fetched.
 
 ## Review a result
-
-Current workflow editors can read investigation status at
-`GET /projects/:projectId/workflows/:workflowId/self-healing-investigations/:investigationId`.
-The response includes the investigation phase, technical run completion, and result ID when saved.
-It excludes the private thread, captured baseline, and accepted candidate.
 
 Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 

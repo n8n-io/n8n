@@ -44,7 +44,6 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import type { InstanceAiSandboxService } from '../sandbox/instance-ai-sandbox.service';
-import { TypeORMAgentCheckpointStore } from '../storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from '../storage/typeorm-agent-memory';
 import type { InstanceAiTracingService } from '../tracing/instance-ai-tracing.service';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
@@ -57,7 +56,6 @@ export type SelfHealingRunInput = {
 	user: User;
 	baseline: WorkflowSuggestionBaseline;
 	executionId: string;
-	message: string;
 };
 
 export type SelfHealingRunResult = {
@@ -69,13 +67,11 @@ export type SelfHealingRunResult = {
 	output?: SelfHealingOutput;
 	validationError?: string;
 	error?: unknown;
-	accountingError?: unknown;
 	usage: SelfHealingResultUsage;
 	candidate?: {
 		filePath: string;
 		compile: () => Promise<CandidateWorkflowResult>;
 	};
-	verification?: Awaited<ReturnType<SelfHealingCandidateService['verify']>>;
 };
 
 export type SelfHealingRunLifecycle = {
@@ -99,12 +95,11 @@ export type SelfHealingRunOptions = {
 	sandbox: Pick<InstanceAiSandboxService, 'getOrCreateWorkspace' | 'destroySandbox'>;
 	tracing: Pick<
 		InstanceAiTracingService,
-		'storeTraceContext' | 'finalizeRunTracing' | 'finalizeMessageTraceRoot'
+		'registerTraceContext' | 'finalizeRunTracing' | 'finalizeMessageTraceRoot'
 	>;
 	createProxyRunConfig: () => Promise<ProxyRunConfig>;
 	assertCreditsAvailable: () => Promise<void>;
 	onActivity: () => void;
-	onTracing: (tracing: InstanceAiTraceContext) => void;
 	onComplete: SelfHealingRunLifecycle['onComplete'];
 	getAbortReason: () => string;
 	onFinish: (
@@ -115,6 +110,7 @@ export type SelfHealingRunOptions = {
 };
 
 const CANDIDATE_FILE_PATH = 'self-healing/candidate.workflow.ts';
+const INVESTIGATION_MESSAGE = 'Investigate the failed execution using the execution tools.';
 
 @Service()
 export class SelfHealingAgentService {
@@ -124,7 +120,6 @@ export class SelfHealingAgentService {
 		private readonly suggestions: WorkflowSuggestionService,
 		private readonly executions: SelfHealingExecutionReferenceService,
 		private readonly memory: TypeORMAgentMemory,
-		private readonly checkpoints: TypeORMAgentCheckpointStore,
 		private readonly adapter: InstanceAiAdapterService,
 		private readonly models: InstanceAiModelService,
 		private readonly settings: InstanceAiSettingsService,
@@ -145,16 +140,15 @@ export class SelfHealingAgentService {
 		input: SelfHealingRunInput,
 		options: SelfHealingRunOptions,
 	): Promise<SelfHealingRunResult> {
-		this.assertEnabled();
 		input = { ...input, baseline: structuredClone(input.baseline) };
 		const user = await this.validateInput(input);
-		const { baseline, executionId, message } = input;
+
+		const { baseline, executionId } = input;
 		const { threadId, runId, signal } = options;
 		const startedAt = Date.now();
+
 		const metadata: SelfHealingThreadMetadata = {
 			selfHealing: {
-				version: 1,
-				purpose: 'self-healing',
 				backgroundUserId: user.id,
 				projectId: baseline.projectId,
 				workflowId: baseline.workflowId,
@@ -164,10 +158,12 @@ export class SelfHealingAgentService {
 		};
 		const resourceId = getSelfHealingResourceId(user.id);
 		const messageId = nanoid();
+
 		await this.memory.saveThreadWithProject(
 			{ id: threadId, resourceId, metadata },
 			baseline.projectId,
 		);
+
 		this.events.publish(threadId, {
 			type: 'run-start',
 			runId,
@@ -189,11 +185,14 @@ export class SelfHealingAgentService {
 				durationSeconds: null,
 			},
 		};
+
 		try {
 			signal.throwIfAborted();
+
 			const environment = await this.prepareEnvironment({ ...input, user }, options);
 			modelId = environment.modelId;
 			const { context, proxy, shareParameters } = environment;
+
 			tracing = await createInstanceAiTraceContext({
 				threadId,
 				runId,
@@ -201,17 +200,17 @@ export class SelfHealingAgentService {
 				messageGroupId: options.messageGroupId,
 				userId: user.id,
 				modelId,
-				input: { message },
+				input: { message: INVESTIGATION_MESSAGE },
 				metadata,
 				proxyConfig: proxy.tracingProxyConfig,
 				n8nVersion: N8N_VERSION,
 				workflowSdkVersion: WORKFLOW_SDK_VERSION,
 			});
 			if (tracing) {
-				options.onTracing(tracing);
-				options.tracing.storeTraceContext(runId, threadId, tracing, options.messageGroupId);
+				options.tracing.registerTraceContext(runId, threadId, tracing, options.messageGroupId);
 			}
 			context.tracing = tracing;
+
 			signal.throwIfAborted();
 			const entry = await options.sandbox.getOrCreateWorkspace(threadId, user, context);
 			if (!entry) throw new UnexpectedError('The self-healing workspace is unavailable.');
@@ -221,16 +220,15 @@ export class SelfHealingAgentService {
 			);
 			context.workspace = workspace;
 			await this.prepareCandidate(baseline, workspace, shareParameters, signal);
+
 			signal.throwIfAborted();
-			const agentRun = await this.runAgent({
+			stream = await this.runAgent({
 				input: { ...input, user },
 				options,
 				context,
 				modelId,
 				metadata,
 			});
-			stream = agentRun.stream;
-			result.verification = agentRun.verification;
 			result.status = stream.status;
 			result.finishReason = stream.finishReason;
 			result.error = stream.error;
@@ -242,15 +240,8 @@ export class SelfHealingAgentService {
 				const filePath = output.data.candidateFilePath;
 				result.candidate = {
 					filePath,
-					compile: async () => {
-						await this.suggestions.requireCurrentBaseline(baseline);
-						return await compileCandidateWorkflow({
-							baseline,
-							context,
-							filePath,
-							abortSignal: signal,
-						});
-					},
+					compile: async () =>
+						await compileCandidateWorkflow({ baseline, context, filePath, abortSignal: signal }),
 				};
 			}
 			if (stream.status === 'suspended') {
@@ -261,6 +252,7 @@ export class SelfHealingAgentService {
 			result.error = error;
 		} finally {
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
+
 			try {
 				result.usage.credits =
 					(await this.credits.claimRunUsage(
@@ -271,7 +263,6 @@ export class SelfHealingAgentService {
 						result.status,
 					)) ?? null;
 			} catch (error) {
-				result.accountingError = error;
 				this.logger.warn('Could not claim self-healing usage.', {
 					runId,
 					error: getErrorMessage(error),
@@ -300,25 +291,25 @@ export class SelfHealingAgentService {
 		return result;
 	}
 
-	private async validateInput({ user, baseline, executionId, message }: SelfHealingRunInput) {
+	private async validateInput({ user, baseline, executionId }: SelfHealingRunInput) {
 		if (user.disabled || user.id !== baseline.backgroundUserId) {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
-		if (!message.trim()) throw new BadRequestError('A failure message is required.');
+
 		const actor = await this.suggestions.requireCurrentBaseline(baseline);
-		const execution = await this.executions.getReference(actor, baseline.workflowId, executionId);
-		if (execution.status !== 'available') {
-			throw new BadRequestError('The failed execution is unavailable for this workflow.');
-		}
+		await this.executions.validateReference(actor, baseline.workflowId, executionId);
+
 		return actor;
 	}
 
 	private async prepareEnvironment(input: SelfHealingRunInput, options: SelfHealingRunOptions) {
 		const { user } = input;
 		const { signal, runId, threadId } = options;
+
 		await this.credits.ensureQuotaLockApplied(user);
 		await options.assertCreditsAvailable();
 		signal.throwIfAborted();
+
 		const proxy = await options.createProxyRunConfig();
 		const proxyContext = { runId, threadId };
 		const modelId =
@@ -330,6 +321,7 @@ export class SelfHealingAgentService {
 						proxyContext,
 					)
 				: await this.models.resolveAgentModelConfig(user, proxyContext);
+
 		const shareParameters = await this.aiUsage.isParameterValueSharingAllowed();
 		const context = this.adapter.createContext(user, {
 			threadId: options.threadId,
@@ -347,7 +339,9 @@ export class SelfHealingAgentService {
 			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
 		}
 		context.threadMemory = this.memory;
+
 		this.bindWorkflowReads(context, input, shareParameters);
+
 		return { context, modelId, proxy, shareParameters };
 	}
 
@@ -357,17 +351,21 @@ export class SelfHealingAgentService {
 		shareParameters: boolean,
 	) {
 		const workflowService = context.workflowService;
+
 		const requireTarget = async (workflowId: string) => {
 			if (workflowId !== baseline.workflowId) {
 				throw new ForbiddenError('Read the workflow assigned to this investigation.');
 			}
+
 			await this.suggestions.requireEditor(user.id, workflowId);
 		};
+
 		context.workflowService = {
 			...workflowService,
 			get: async (workflowId) => {
 				await requireTarget(workflowId);
 				const detail = await workflowService.get(workflowId);
+
 				return {
 					...detail,
 					name: baseline.original.name,
@@ -384,11 +382,13 @@ export class SelfHealingAgentService {
 					})),
 				};
 			},
+
 			getAsWorkflowJSON: async (workflowId, versionId) => {
 				await requireTarget(workflowId);
 				if (versionId && versionId !== baseline.expectedBaseline.publishedVersionId) {
 					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
 				}
+
 				return toWorkflowJSON(
 					{ ...structuredClone(baseline.original), id: workflowId },
 					{ redactParameters: !shareParameters },
@@ -410,13 +410,6 @@ export class SelfHealingAgentService {
 					connections: structuredClone(baseline.original.connections),
 				};
 			},
-			getPinnedDataSummary: async (workflowId) => {
-				await requireTarget(workflowId);
-				return Object.entries(baseline.original.pinData ?? {}).map(([nodeName, items]) => ({
-					nodeName,
-					itemCount: items.length,
-				}));
-			},
 		};
 	}
 
@@ -432,38 +425,36 @@ export class SelfHealingAgentService {
 		context: InstanceAiContext;
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
-	}) {
-		const { user, baseline, executionId, message } = input;
+	}): Promise<StreamRunResult> {
+		const { user, baseline, executionId } = input;
 		const { runId, threadId, signal } = options;
 		const { tracing } = context;
 		const resourceId = getSelfHealingResourceId(user.id);
-		let verification: SelfHealingRunResult['verification'];
+
 		const agent = await createSelfHealingAgent({
 			modelId,
 			context,
 			memory: this.memory,
-			checkpointStore: this.checkpoints,
 			thinkingEnabled: this.config.instanceAi.thinkingEnabled,
 			abortSignal: signal,
 			verifyCandidate: async (args) => {
 				signal.throwIfAborted();
-				const checked = await this.candidates.verify({
+
+				return await this.candidates.verify({
 					...args,
 					user,
 					baseline,
-					executionId,
 					context,
 					abortSignal: signal,
 				});
-				if ('candidateChecksum' in checked) verification = checked;
-				return checked;
 			},
 		});
+
 		signal.throwIfAborted();
 		const consume = async () =>
 			await streamAgentRun(
 				agent,
-				`${message}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
+				`${INVESTIGATION_MESSAGE}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
 				{
 					maxIterations: MAX_STEPS.ORCHESTRATOR,
 					abortSignal: signal,
@@ -483,10 +474,8 @@ export class SelfHealingAgentService {
 					captureStreamErrors: true,
 				},
 			);
-		const stream = tracing
-			? await tracing.withActiveSpan(tracing.actorRun, consume)
-			: await consume();
-		return { stream, verification };
+
+		return tracing ? await tracing.withActiveSpan(tracing.actorRun, consume) : await consume();
 	}
 
 	private async prepareCandidate(
@@ -502,6 +491,7 @@ export class SelfHealingAgentService {
 		);
 		const body = generateWorkflowCode({ workflow, includeNodeIds: true, includePositions: false });
 		const imports = buildImports(body);
+
 		await writeWorkspaceFile(
 			workspace,
 			CANDIDATE_FILE_PATH,
@@ -518,16 +508,6 @@ export class SelfHealingAgentService {
 		options: SelfHealingRunOptions,
 	): Promise<void> {
 		try {
-			if (stream?.status === 'suspended' && stream.agentRunId) {
-				await this.checkpoints.delete(stream.agentRunId);
-			}
-		} catch (error) {
-			this.logger.warn('Could not retire the self-healing checkpoint.', {
-				runId: result.runId,
-				error: getErrorMessage(error),
-			});
-		}
-		try {
 			options.onFinish(result, modelId, stream);
 		} catch (error) {
 			this.logger.warn('Could not report self-healing completion.', {
@@ -535,6 +515,7 @@ export class SelfHealingAgentService {
 				error: getErrorMessage(error),
 			});
 		}
+
 		const finalization = {
 			status:
 				result.status === 'errored' || result.status === 'suspended' ? 'error' : result.status,
@@ -542,23 +523,11 @@ export class SelfHealingAgentService {
 			modelId,
 			outputs: { output: result.output, validationError: result.validationError },
 		} satisfies Parameters<InstanceAiTracingService['finalizeRunTracing']>[2];
-		try {
-			await options.tracing.finalizeRunTracing(result.runId, tracing, finalization);
-		} catch (error) {
-			this.logger.warn('Could not finalize the self-healing run trace.', {
-				runId: result.runId,
-				error: getErrorMessage(error),
-			});
-		}
+
+		await options.tracing.finalizeRunTracing(result.runId, tracing, finalization);
+
 		if (tracing) {
-			try {
-				await options.tracing.finalizeMessageTraceRoot(result.runId, tracing, finalization);
-			} catch (error) {
-				this.logger.warn('Could not finalize the self-healing message trace.', {
-					runId: result.runId,
-					error: getErrorMessage(error),
-				});
-			}
+			await options.tracing.finalizeMessageTraceRoot(result.runId, tracing, finalization);
 		}
 	}
 }

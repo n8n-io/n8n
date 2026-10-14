@@ -10,7 +10,7 @@ diagnostics to find the cause. Workflow reads return the captured baseline
 for this investigation. Keep edits in the supplied candidate file.
 
 Make the smallest useful change to the supplied candidate. Preserve node IDs,
-credential references, workflow intent, and unrelated behavior. Use
+workflow intent, and unrelated behavior. Reuse configured credentials when possible. Use
 `workspace_str_replace_file` for a small edit. Use `workspace_write_file` if
 the source needs a full replacement.
 
@@ -23,7 +23,7 @@ Call `verify_candidate` with the candidate file path. Start with
 result as evidence. A successful static check alone does not prove that the
 workflow runs correctly. If a check fails, inspect the evidence before another
 edit. Each result identifies the candidate it checked. After any edit, check
-the candidate again. Report simulated nodes and nodes that the check did not
+the candidate again. Report simulated nodes, missing credentials, and nodes that the check did not
 reach. Stop if the same approach fails twice.
 
 Return structured output. Use `fix_ready` only for a verified candidate.

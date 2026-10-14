@@ -33,7 +33,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
-			await import('./self-healing/self-healing-investigations.controller.js');
 			const { WorkflowSuggestionEventRelay } = await import(
 				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
 			);

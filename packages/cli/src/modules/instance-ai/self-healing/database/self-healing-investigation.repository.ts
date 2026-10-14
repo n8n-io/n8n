@@ -22,16 +22,16 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 	}
 
 	async getUnfinishedForWorkflow(workflowId: string, ctx: OperationContext = {}) {
-		return await this.managerFor(ctx).findOneBy(SelfHealingInvestigation, {
-			workflowId,
-			finishedAt: IsNull(),
+		return await this.managerFor(ctx).findOne(SelfHealingInvestigation, {
+			where: { workflowId, finishedAt: IsNull() },
+			select: { id: true },
 		});
 	}
 
 	async getForExecution(workflowId: string, executionId: string, ctx: OperationContext = {}) {
-		return await this.managerFor(ctx).findOneBy(SelfHealingInvestigation, {
-			workflowId,
-			executionId,
+		return await this.managerFor(ctx).findOne(SelfHealingInvestigation, {
+			where: { workflowId, executionId },
+			select: { id: true },
 		});
 	}
 
@@ -68,11 +68,6 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 			{ id, finishedAt: IsNull(), acceptedOutput: IsNull() },
 			{ acceptedOutput },
 		);
-		const investigation = await this.get(id, ctx);
-		if (!investigation.acceptedOutput) {
-			throw new ConflictError('The self-healing investigation has already finished.');
-		}
-		return investigation;
 	}
 
 	async finishWithoutResult(id: string, ctx: OperationContext = {}) {
@@ -87,7 +82,7 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 		const updated = await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
 			{ id, finishedAt: IsNull(), resultId: IsNull(), acceptedOutput: Not(IsNull()) },
-			{ resultId, finishedAt: new Date() },
+			{ resultId, finishedAt: new Date(), acceptedOutput: null },
 		);
 		if (updated.affected !== 1) {
 			throw new ConflictError('The self-healing investigation has already finished.');

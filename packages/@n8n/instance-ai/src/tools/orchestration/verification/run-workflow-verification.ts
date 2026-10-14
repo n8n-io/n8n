@@ -6,7 +6,9 @@ export type WorkflowVerificationRunArgs = Omit<ScriptedGateRunArgs, 'script'>;
 /** Run prepared verification without builder task lookup or persistence. */
 export async function runWorkflowVerification(args: WorkflowVerificationRunArgs) {
 	args.abortSignal?.throwIfAborted();
+
 	const { prepared } = args;
+
 	if (prepared.gateScript) {
 		return await runScriptedGateVerification({ ...args, script: prepared.gateScript });
 	}
@@ -18,6 +20,7 @@ export async function runWorkflowVerification(args: WorkflowVerificationRunArgs)
 		isVerificationRun: true,
 		abortSignal: args.abortSignal,
 	});
+
 	const analysis = analyzeVerificationResult({
 		result,
 		buildOutcome: args.buildOutcome,

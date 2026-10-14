@@ -50,6 +50,7 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 		await this.investigations.reconcile(signal);
 		if (signal.aborted) return;
 		await this.instanceAiService.pruneExpiredData(Date.now(), signal);
+
 		await this.temporaryWorkflows.cleanupAbandoned(signal);
 	}
 }

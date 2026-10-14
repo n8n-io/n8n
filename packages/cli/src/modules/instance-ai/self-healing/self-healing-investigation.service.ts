@@ -1,4 +1,4 @@
-import type { SelfHealingInvestigationStatus, WorkflowSuggestionBaseline } from '@n8n/api-types';
+import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { InstanceAiConfig } from '@n8n/config';
 import {
@@ -36,14 +36,6 @@ type StartInvestigation = {
 type ExistingWork =
 	| { kind: 'investigation'; investigationId: string }
 	| { kind: 'suggestion'; suggestionId: string };
-
-function getPhase(
-	investigation: SelfHealingInvestigation,
-): SelfHealingInvestigationStatus['phase'] {
-	if (investigation.resultId) return 'completed';
-	if (investigation.finishedAt) return 'stopped';
-	return investigation.acceptedOutput ? 'finalizing' : 'investigating';
-}
 
 @Service()
 export class SelfHealingInvestigationService {
@@ -128,7 +120,6 @@ export class SelfHealingInvestigationService {
 					user,
 					baseline: investigation.baseline,
 					executionId: investigation.executionId,
-					message: 'Investigate the failed execution using the execution tools.',
 				},
 				{
 					threadId: investigation.threadId,
@@ -166,11 +157,6 @@ export class SelfHealingInvestigationService {
 			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
 			accepted.candidate = {
 				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
-				...(run.verification &&
-				'candidateChecksum' in run.verification &&
-				run.verification.candidateChecksum === candidate.candidateChecksum
-					? { verification: run.verification }
-					: {}),
 			};
 		}
 		await this.suggestions.requireCurrentBaseline(investigation.baseline);
@@ -225,32 +211,6 @@ export class SelfHealingInvestigationService {
 		if (await this.events.getRunFinish(threadId, runId)) {
 			await this.investigations.finishWithoutResult(investigation.id);
 		}
-	}
-
-	async getStatus(
-		user: User,
-		projectId: string,
-		workflowId: string,
-		investigationId: string,
-	): Promise<SelfHealingInvestigationStatus> {
-		await this.suggestions.requireEditor(user.id, workflowId);
-		await this.requireProject(workflowId, projectId);
-		const investigation = await this.investigations.get(investigationId);
-		if (investigation.workflowId !== workflowId || investigation.projectId !== projectId) {
-			throw new NotFoundError('Self-healing investigation not found.');
-		}
-		await this.eventLog.flush(investigation.threadId);
-		return {
-			investigationId,
-			workflowId,
-			projectId,
-			backgroundUserId: investigation.backgroundUserId,
-			phase: getPhase(investigation),
-			run: await this.events.getRunFinish(investigation.threadId, investigation.runId),
-			resultId: investigation.resultId,
-			createdAt: investigation.createdAt.toISOString(),
-			finishedAt: investigation.finishedAt?.toISOString() ?? null,
-		};
 	}
 
 	private async requireProject(workflowId: string, projectId: string) {

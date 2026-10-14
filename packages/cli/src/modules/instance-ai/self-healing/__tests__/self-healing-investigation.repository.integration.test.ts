@@ -74,10 +74,10 @@ it('releases technical failures while retaining the original execution identity'
 	const first = await createInvestigation();
 	await investigations.finishWithoutResult(first.id);
 	expect(await investigations.getUnfinishedForWorkflow(baseline.workflowId)).toBeNull();
-	expect(
-		await investigations.getForExecution(baseline.workflowId, first.executionId),
-	).toMatchObject({
+	expect(await investigations.getForExecution(baseline.workflowId, first.executionId)).toEqual({
 		id: first.id,
+	});
+	expect(await investigations.get(first.id)).toMatchObject({
 		resultId: null,
 		finishedAt: expect.any(Date),
 	});
@@ -89,13 +89,11 @@ it('releases technical failures while retaining the original execution identity'
 it('does not accept late output after technical cleanup released a claim', async () => {
 	const first = await createInvestigation();
 	await investigations.finishWithoutResult(first.id);
-	await expect(
-		investigations.storeAcceptedOutput(first.id, {
-			output: { outcome: 'could_not_fix', summary: 'Stopped', report: 'The run stopped.' },
-			usage: { credits: null, turns: null, durationSeconds: null },
-			completedAt: new Date().toISOString(),
-		}),
-	).rejects.toThrow('already finished');
+	await investigations.storeAcceptedOutput(first.id, {
+		output: { outcome: 'could_not_fix', summary: 'Stopped', report: 'The run stopped.' },
+		usage: { credits: null, turns: null, durationSeconds: null },
+		completedAt: new Date().toISOString(),
+	});
 	expect((await investigations.get(first.id)).acceptedOutput).toBeNull();
 });
 

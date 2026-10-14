@@ -38,6 +38,9 @@ import type * as ResolvedParameterWarningsMod from './tools/orchestration/verifi
 import type * as WorkflowVerificationMod from './tools/orchestration/verification/run-workflow-verification';
 import type * as ToolSimulationPreflightMod from './tools/orchestration/verification/tool-simulation-preflight';
 import type * as VerificationSimulationMod from './tools/workflows/plan-verification-simulation';
+import type * as PrepareWorkflowForSaveMod from './tools/workflows/prepare-workflow-for-save';
+import type * as ResolveCredentialsMod from './tools/workflows/resolve-credentials';
+import type * as SetupWorkflowMod from './tools/workflows/setup-workflow.service';
 import type * as WorkflowSourceCompilerMod from './tools/workflows/workflow-source-compiler';
 import type * as WorkflowNodeDiffMod from './tools/workflows/workflow-node-diff';
 import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
@@ -153,6 +156,15 @@ const loadToolSimulationPreflight = lazyModule<typeof ToolSimulationPreflightMod
 );
 const loadVerificationSimulation = lazyModule<typeof VerificationSimulationMod>(() =>
 	require('./tools/workflows/plan-verification-simulation'),
+);
+const loadPrepareWorkflowForSave = lazyModule<typeof PrepareWorkflowForSaveMod>(() =>
+	require('./tools/workflows/prepare-workflow-for-save'),
+);
+const loadResolveCredentials = lazyModule<typeof ResolveCredentialsMod>(() =>
+	require('./tools/workflows/resolve-credentials'),
+);
+const loadSetupWorkflow = lazyModule<typeof SetupWorkflowMod>(() =>
+	require('./tools/workflows/setup-workflow.service'),
 );
 const loadWorkflowSourceCompiler = lazyModule<typeof WorkflowSourceCompilerMod>(() =>
 	require('./tools/workflows/workflow-source-compiler'),
@@ -714,6 +726,17 @@ export type {
 } from './workflow-loop';
 export const compileWorkflowSource: typeof WorkflowSourceCompilerMod.compileWorkflowSource =
 	lazyFunction(() => loadWorkflowSourceCompiler().compileWorkflowSource);
+export const prepareWorkflowForSave: typeof PrepareWorkflowForSaveMod.prepareWorkflowForSave =
+	lazyFunction(() => loadPrepareWorkflowForSave().prepareWorkflowForSave);
+export const buildCredentialMap: typeof ResolveCredentialsMod.buildCredentialMap = lazyFunction(
+	() => loadResolveCredentials().buildCredentialMap,
+);
+export const resolveCredentials: typeof ResolveCredentialsMod.resolveCredentials = lazyFunction(
+	() => loadResolveCredentials().resolveCredentials,
+);
+export const stripStaleCredentialsFromWorkflow: typeof SetupWorkflowMod.stripStaleCredentialsFromWorkflow =
+	lazyFunction(() => loadSetupWorkflow().stripStaleCredentialsFromWorkflow);
+export type { CredentialResolutionResult } from './tools/workflows/resolve-credentials';
 export const downgradeUnchangedNodeBlockers: typeof WorkflowNodeDiffMod.downgradeUnchangedNodeBlockers =
 	lazyFunction(() => loadWorkflowNodeDiff().downgradeUnchangedNodeBlockers);
 export const partitionWarnings: typeof WorkflowValidationWarningsMod.partitionWarnings =
@@ -913,7 +936,6 @@ export const isSelfHealingResourceId: typeof SelfHealingMod.isSelfHealingResourc
 );
 export type {
 	SelfHealingOutput,
-	SelfHealingIdentity,
 	SelfHealingThreadMetadata,
 	SelfHealingCandidateInput,
 	SelfHealingCandidateVerifier,
@@ -937,10 +959,3 @@ defineLazyExport(
 );
 export declare const selfHealingOutputSchema: typeof SelfHealingMod.selfHealingOutputSchema;
 defineLazyExport('selfHealingOutputSchema', () => loadSelfHealing().selfHealingOutputSchema);
-export declare const selfHealingIdentitySchema: typeof SelfHealingMod.selfHealingIdentitySchema;
-defineLazyExport('selfHealingIdentitySchema', () => loadSelfHealing().selfHealingIdentitySchema);
-export declare const selfHealingThreadMetadataSchema: typeof SelfHealingMod.selfHealingThreadMetadataSchema;
-defineLazyExport(
-	'selfHealingThreadMetadataSchema',
-	() => loadSelfHealing().selfHealingThreadMetadataSchema,
-);

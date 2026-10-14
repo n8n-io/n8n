@@ -18,7 +18,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
-		isSelfHealingResourceId: profiles.isSelfHealingResourceId,
 		RunStateRegistry: profiles.RunStateRegistry,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
@@ -1551,7 +1550,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 			projectId: 'project-1',
 		}),
 		executionId: 'execution-1',
-		message: 'The execution failed.',
 	};
 	const lifecycle = {
 		threadId: 'persisted-thread',
@@ -1627,6 +1625,8 @@ describe('InstanceAiService — self-healing launcher', () => {
 			service.runState.getActiveRun(options.threadId)?.abortController.signal,
 		);
 		expect(options.threadId).toBe(lifecycle.threadId);
+		expect(options.runId).toBe(lifecycle.runId);
+		expect(options.onComplete).toBe(lifecycle.onComplete);
 
 		const result = completedRun(options);
 		pending.resolve(result);
@@ -1637,24 +1637,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(service.createExecutionEnvironment).not.toHaveBeenCalled();
 		expect(service.executeRun).not.toHaveBeenCalled();
 		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
-	});
-
-	it('keeps the producer identity and completion hook in the host lifecycle', async () => {
-		const service = createLauncher();
-		const onComplete = vi.fn(async () => {});
-		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
-			expect(options.onComplete).toBe(onComplete);
-			const result = completedRun(options);
-			await options.onComplete(result, options.signal);
-			return result;
-		});
-		const result = await service.startSelfHealingRun(input, {
-			...lifecycle,
-			onComplete,
-		});
-		expect(result).toMatchObject({ threadId: 'persisted-thread', runId: 'persisted-run' });
-		expect(onComplete).toHaveBeenCalledWith(result, expect.any(AbortSignal));
-		expect(service.runState.activeRunCount()).toBe(0);
 	});
 
 	it('applies concurrency admission before registering an internal run', async () => {
@@ -1830,39 +1812,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 		);
 		expect(service.emitRunMetrics).toHaveBeenCalledTimes(1);
 	});
-
-	it.each([undefined, { selfHealing: { version: 99 }, profileVersion: 'unsupported' }])(
-		'rejects internal checkpoints before rebuilding ordinary chat tools: %j',
-		async (hostMetadata) => {
-			const service = Object.assign(createTerminalGuardOrderService(), {
-				revalidateActiveUser: vi.fn(async () => fakeUser),
-				createExecutionEnvironment: vi.fn(),
-				createAgentFromEnvironment: vi.fn(),
-			});
-			service.checkpointStore.load.mockResolvedValue({
-				status: 'suspended',
-				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-				pendingToolCalls: {},
-				persistence: {
-					threadId: 'internal-thread',
-					resourceId: `ia-self-healing:${fakeUser.id}`,
-					hostMetadata,
-				},
-			});
-
-			const result = await service.rebuildSuspendedRunFromCheckpoint(
-				mock<ResumableOrphan>({
-					userId: fakeUser.id,
-					threadId: 'internal-thread',
-					checkpointKey: 'checkpoint-1',
-				}),
-			);
-
-			expect(result).toEqual({ kind: 'no-checkpoint' });
-			expect(service.createExecutionEnvironment).not.toHaveBeenCalled();
-			expect(service.createAgentFromEnvironment).not.toHaveBeenCalled();
-		},
-	);
 
 	it('rejects an actor who tries to use a producer thread as ordinary chat', async () => {
 		const service = Object.assign(

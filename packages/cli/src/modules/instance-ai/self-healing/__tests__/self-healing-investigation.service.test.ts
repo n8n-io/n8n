@@ -2,7 +2,7 @@ import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { Project, SharedWorkflowRepository, TransactionRunner, User } from '@n8n/db';
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
@@ -99,10 +99,8 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.getForExecution.mockResolvedValue(null);
 		investigations.getUnfinishedForWorkflow.mockResolvedValue(null);
 		investigations.createInvestigation.mockResolvedValue(investigation);
-		investigations.get.mockResolvedValue(investigation);
 		investigations.storeAcceptedOutput.mockImplementation(async (_id, output) => {
 			investigation.acceptedOutput = output;
-			return investigation;
 		});
 		suggestionRepository.getPendingForWorkflow.mockResolvedValue(null);
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
@@ -135,7 +133,6 @@ describe('SelfHealingInvestigationService', () => {
 				user,
 				baseline,
 				executionId: input.executionId,
-				message: 'Investigate the failed execution using the execution tools.',
 			},
 			expect.objectContaining({ threadId: investigation.threadId, runId: investigation.runId }),
 		);
@@ -163,19 +160,11 @@ describe('SelfHealingInvestigationService', () => {
 				compile: vi.fn().mockResolvedValue({
 					success: true,
 					workflow: { nodes: [], connections: {} },
-					candidateChecksum: 'checked',
 				}),
-			};
-			run.verification = {
-				filePath: 'candidate.ts',
-				candidateChecksum: 'checked',
-				validation: { success: true, warnings: [] },
-				verification: { status: 'not_run' },
 			};
 			await startAndFinish();
 			expect(investigation.acceptedOutput?.candidate).toEqual({
 				graph: { nodes: [], connections: {} },
-				verification: run.verification,
 			});
 		},
 	);
@@ -189,31 +178,6 @@ describe('SelfHealingInvestigationService', () => {
 		await startAndFinish();
 		expect(investigation.acceptedOutput?.output.outcome).toBe('needs_you');
 		expect(investigation.acceptedOutput?.candidate).toBeUndefined();
-	});
-
-	it('does not attach findings from a different candidate', async () => {
-		run.output = {
-			outcome: 'fix_ready',
-			summary: 'Updated.',
-			report: 'Updated the node.',
-			candidateFilePath: 'candidate.ts',
-		};
-		run.candidate = {
-			filePath: 'candidate.ts',
-			compile: vi.fn().mockResolvedValue({
-				success: true,
-				workflow: { nodes: [], connections: {} },
-				candidateChecksum: 'new',
-			}),
-		};
-		run.verification = {
-			filePath: 'candidate.ts',
-			candidateChecksum: 'old',
-			validation: { success: true, warnings: [] },
-			verification: { status: 'not_run' },
-		};
-		await startAndFinish();
-		expect(investigation.acceptedOutput?.candidate?.verification).toBeUndefined();
 	});
 
 	it.each(['cancelled', 'errored', 'suspended'] as const)(
@@ -362,26 +326,5 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.listUnfinished.mockResolvedValue([investigation]);
 		await service.reconcile();
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
-	});
-
-	it('returns status without exposing the private conversation or accepted payload', async () => {
-		events.getRunFinish.mockResolvedValue({ status: 'interrupted', reason: 'crash_interrupted' });
-		const status = await service.getStatus(
-			user,
-			input.projectId,
-			input.workflowId,
-			investigation.id,
-		);
-		expect(status.run).toEqual({ status: 'interrupted', reason: 'crash_interrupted' });
-		expect(status).not.toHaveProperty('threadId');
-		expect(status).not.toHaveProperty('acceptedOutput');
-	});
-
-	it('rejects a status request for another workflow', async () => {
-		investigation.workflowId = 'other';
-		await expect(
-			service.getStatus(user, input.projectId, input.workflowId, investigation.id),
-		).rejects.toBeInstanceOf(NotFoundError);
-		expect(events.getRunFinish).not.toHaveBeenCalled();
 	});
 });

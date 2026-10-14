@@ -23,7 +23,6 @@ import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { SelfHealingInvestigationRepository } from '../self-healing/database/self-healing-investigation.repository';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 
@@ -66,7 +65,6 @@ export class WorkflowSuggestionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
-		private readonly investigations: SelfHealingInvestigationRepository,
 	) {}
 
 	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
@@ -164,6 +162,7 @@ export class WorkflowSuggestionService {
 			baseline.workflowId,
 			ctx,
 		);
+
 		const target = {
 			workflow,
 			projectId: workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId,
@@ -173,6 +172,7 @@ export class WorkflowSuggestionService {
 					ctx,
 				),
 		};
+
 		if (
 			(await calculateWorkflowChecksum(baseline.original)) !== baseline.expectedBaseline.checksum ||
 			!(await this.matchesBaseline(baseline, target)) ||
@@ -180,6 +180,7 @@ export class WorkflowSuggestionService {
 		) {
 			throw new ConflictError('The workflow no longer matches the published baseline.');
 		}
+
 		return user;
 	}
 
@@ -212,19 +213,11 @@ export class WorkflowSuggestionService {
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
-	async createSuggestion(
-		prepared: PreparedWorkflowSuggestion,
-		ctx: OperationContext = {},
-		investigationId?: string,
-	) {
+	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
 		const { baseline, payload } = prepared;
 		const { workflowId } = baseline;
 		return await this.txRunner.run(ctx, async (ctx) => {
-			const target = await this.readWorkflowTargetForApply(workflowId, ctx);
-			const active = await this.investigations.getUnfinishedForWorkflow(workflowId, ctx);
-			if (active && active.id !== investigationId) {
-				throw new ConflictError('This workflow already has an active investigation.');
-			}
+			const target = await this.readWorkflowTarget(workflowId, ctx);
 			if (
 				!target.workflow ||
 				!(await this.matchesBaseline(baseline, target)) ||

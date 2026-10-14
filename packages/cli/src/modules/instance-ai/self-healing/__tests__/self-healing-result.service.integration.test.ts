@@ -242,25 +242,6 @@ it.each(['same', 'different'] as const)(
 	},
 );
 
-it.each([
-	['fix_ready', true],
-	['needs_you', true],
-	['needs_you', false],
-	['could_not_fix', false],
-] as const)('completes durable %s output with changes=%s', async (outcome, withSuggestion) => {
-	const { investigation, original } = await prepareInvestigation(outcome, withSuggestion);
-	const result = await service.complete({ investigationId: investigation.id });
-	expect(result.outcome).toBe(outcome);
-	expect(result.executionId).toBe(investigation.executionId);
-	expect(Boolean(result.suggestionId)).toBe(withSuggestion);
-	expect(await investigations.get(investigation.id)).toMatchObject({
-		resultId: result.id,
-		finishedAt: expect.any(Date),
-	});
-	expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
-	expect((await workflows.findById(original.id))?.nodes).toEqual(original.nodes);
-});
-
 it('returns committed completion without repeating access or execution checks', async () => {
 	const { investigation, user } = await prepareInvestigation();
 	const result = await service.complete({ investigationId: investigation.id });
@@ -304,7 +285,10 @@ it('rolls back all completion writes and retries from accepted data', async () =
 		acceptedOutput: expect.any(Object),
 	});
 	const result = await service.complete({ investigationId: investigation.id });
-	expect((await investigations.get(investigation.id)).resultId).toBe(result.id);
+	expect(await investigations.get(investigation.id)).toMatchObject({
+		resultId: result.id,
+		acceptedOutput: null,
+	});
 });
 
 it('rejects a changed baseline when finalizing an accepted report', async () => {
@@ -335,59 +319,48 @@ it('keeps the first accepted output and protects it from technical cleanup', asy
 	expect(await results.count()).toBe(0);
 });
 
-it('blocks a separate suggestion while an investigation owns the workflow', async () => {
-	const { investigation, graph } = await prepareInvestigation();
-	const prepared = await suggestionService.prepareSuggestion(investigation.baseline, {
-		graph,
-		explanation: 'Update the workflow graph.',
-		resultKind: 'fix_ready',
-	});
-	await expect(suggestionService.createSuggestion(prepared)).rejects.toThrow(
-		'active investigation',
-	);
-	expect(await results.count()).toBe(0);
-	await service.complete({ investigationId: investigation.id });
-	expect(await suggestions.count()).toBe(1);
-});
-
 it.each([
 	['fix_ready', true],
 	['needs_you', true],
 	['needs_you', false],
 	['could_not_fix', false],
-] as const)('reads a saved %s result with suggestion=%s', async (outcome, withSuggestion) => {
-	const { user, result, input, url, original, graph } = await fixture(outcome, withSuggestion);
-	const response = await testServer.authAgentFor(user).get(url);
-	expect(response.status).toBe(200);
-	expect(response.body.data).toMatchObject({
-		resultId: result.id,
-		outcome,
-		report: input.report,
-		reviewState: 'open',
-		usage: input.usage,
-		execution: { status: 'available', id: input.executionId },
-	});
-	if (withSuggestion) {
-		expect(response.body.data.suggestion).toMatchObject({
-			resultKind: outcome,
-			payload: { original: { nodes: original.nodes }, candidate: graph },
-			activity: [expect.objectContaining({ action: 'submitted' })],
+] as const)(
+	'completes and reads a %s result with suggestion=%s',
+	async (outcome, withSuggestion) => {
+		const { user, result, input, url, original, graph, investigation } = await fixture(
+			outcome,
+			withSuggestion,
+		);
+		expect(result.executionId).toBe(investigation.executionId);
+		expect(Boolean(result.suggestionId)).toBe(withSuggestion);
+		expect(await investigations.get(investigation.id)).toMatchObject({
+			resultId: result.id,
+			finishedAt: expect.any(Date),
+			acceptedOutput: null,
 		});
-	} else {
-		expect(response.body.data.suggestion).toBeNull();
-	}
-	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-});
-
-it.each([
-	['fix_ready', false],
-	['could_not_fix', true],
-] as const)('rejects %s with suggestion=%s without partial records', async (outcome, attached) => {
-	const { investigation } = await prepareInvestigation(outcome, attached);
-	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow();
-	expect(await results.count()).toBe(0);
-	expect(await suggestions.count()).toBe(0);
-});
+		expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
+		const response = await testServer.authAgentFor(user).get(url);
+		expect(response.status).toBe(200);
+		expect(response.body.data).toMatchObject({
+			resultId: result.id,
+			outcome,
+			report: input.report,
+			reviewState: 'open',
+			usage: input.usage,
+			execution: { status: 'available', id: input.executionId },
+		});
+		if (withSuggestion) {
+			expect(response.body.data.suggestion).toMatchObject({
+				resultKind: outcome,
+				payload: { original: { nodes: original.nodes }, candidate: graph },
+				activity: [expect.objectContaining({ action: 'submitted' })],
+			});
+		} else {
+			expect(response.body.data.suggestion).toBeNull();
+		}
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+	},
+);
 
 it('rechecks the background user after execution validation', async () => {
 	const { investigation, user } = await prepareInvestigation();
@@ -438,26 +411,6 @@ it('omits token counts from previously stored usage', async () => {
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
 	expect(detail.usage).toEqual(input.usage);
 });
-
-it.each(['before', 'after'] as const)(
-	'rolls back completion when result storage fails %s insertion',
-	async (failureTiming) => {
-		const { investigation } = await prepareInvestigation();
-		const createResult = results.createResult.bind(results);
-		vi.spyOn(results, 'createResult').mockImplementationOnce(async (...args) => {
-			if (failureTiming === 'after') await createResult(...args);
-			throw new Error('Result unavailable.');
-		});
-		await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
-			'Result unavailable.',
-		);
-		expect(await results.count()).toBe(0);
-		expect(await suggestions.count()).toBe(0);
-		expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(
-			0,
-		);
-	},
-);
 
 it('keeps the report and unknown usage after the execution is removed', async () => {
 	const usage = {

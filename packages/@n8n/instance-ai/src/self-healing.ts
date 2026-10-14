@@ -20,6 +20,7 @@ export const selfHealingOutputSchema = z
 				message: 'A ready fix requires a candidate file.',
 			});
 		}
+
 		if (output.outcome === 'could_not_fix' && output.candidateFilePath !== undefined) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
@@ -31,23 +32,15 @@ export const selfHealingOutputSchema = z
 
 export type SelfHealingOutput = z.infer<typeof selfHealingOutputSchema>;
 
-export const selfHealingIdentitySchema = z.object({
-	version: z.literal(1),
-	purpose: z.literal('self-healing'),
-	backgroundUserId: z.string().min(1),
-	projectId: z.string().min(1),
-	workflowId: z.string().min(1),
-	executionId: z.string().min(1),
-});
-
-export type SelfHealingIdentity = z.infer<typeof selfHealingIdentitySchema>;
-
-export const selfHealingThreadMetadataSchema = z.object({
-	selfHealing: selfHealingIdentitySchema,
-	profileVersion: z.literal(SELF_HEALING_PROFILE_VERSION),
-});
-
-export type SelfHealingThreadMetadata = z.infer<typeof selfHealingThreadMetadataSchema>;
+export type SelfHealingThreadMetadata = {
+	selfHealing: {
+		backgroundUserId: string;
+		projectId: string;
+		workflowId: string;
+		executionId: string;
+	};
+	profileVersion: typeof SELF_HEALING_PROFILE_VERSION;
+};
 
 export function getSelfHealingResourceId(actorId: string): string {
 	return `${SELF_HEALING_RESOURCE_PREFIX}${actorId}`;

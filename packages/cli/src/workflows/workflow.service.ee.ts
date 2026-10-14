@@ -201,7 +201,7 @@ export class EnterpriseWorkflowService {
 	/**
 	 * @param restoredNodes the nodes of the history version this update restores, if any.
 	 */
-	async preventTampering<T extends IWorkflowBase>(
+	async preventTampering<T extends Pick<IWorkflowBase, 'nodes'>>(
 		workflow: T,
 		workflowId: string,
 		user: User,
@@ -235,7 +235,7 @@ export class EnterpriseWorkflowService {
 		}
 	}
 
-	validateWorkflowCredentialUsage<T extends IWorkflowBase>(
+	validateWorkflowCredentialUsage<T extends Pick<IWorkflowBase, 'nodes'>>(
 		newWorkflowVersion: T,
 		previousWorkflowVersion: IWorkflowBase,
 		credentialsUserHasAccessTo: Array<{ id: string }>,
@@ -340,7 +340,10 @@ export class EnterpriseWorkflowService {
 	 * non-managed reference (id null/empty) that could resolve by name to a
 	 * credential the user does not own. Inline sub-workflow credentials are included.
 	 */
-	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: Iterable<string>) {
+	getNodesWithInaccessibleCreds(
+		workflow: Pick<IWorkflowBase, 'nodes'>,
+		userCredIds: Iterable<string>,
+	) {
 		if (!workflow.nodes) {
 			return [];
 		}

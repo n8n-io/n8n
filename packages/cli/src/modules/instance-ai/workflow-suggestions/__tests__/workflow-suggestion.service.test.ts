@@ -18,7 +18,6 @@ import { mock } from 'vitest-mock-extended';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { SelfHealingInvestigationRepository } from '../../self-healing/database/self-healing-investigation.repository';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import type { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
@@ -31,7 +30,6 @@ const workflowRepository = mock<WorkflowRepository>();
 const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 const workflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 const tx = mock<TransactionRunner>();
-const investigations = mock<SelfHealingInvestigationRepository>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
 const service = new WorkflowSuggestionService(
 	suggestions,
@@ -42,7 +40,6 @@ const service = new WorkflowSuggestionService(
 	workflowRepository,
 	sharedWorkflowRepository,
 	workflowPublishHistoryRepository,
-	investigations,
 );
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
@@ -215,7 +212,7 @@ it('stores the exact final graph and activity in the caller transaction', async 
 		'fix_ready',
 	);
 	expect(tx.run).toHaveBeenCalledWith(ctx, expect.any(Function));
-	expect(workflowRepository.findForContentUpdate).toHaveBeenCalledWith(workflow.id, ctx);
+	expect(workflowRepository.findByIdInContext).toHaveBeenCalledWith(workflow.id, ctx);
 	expect(sharedWorkflowRepository.getWorkflowOwningProject).toHaveBeenCalledWith(workflow.id, ctx);
 	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, ctx);
 	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledWith(suggestion.id, ctx);
@@ -414,7 +411,7 @@ it.each([
 			);
 		if (change === 'missing owner')
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
-		if (change === 'deleted') workflowRepository.findForContentUpdate.mockResolvedValue(null);
+		if (change === 'deleted') workflowRepository.findByIdInContext.mockResolvedValue(null);
 		await expect(service.createSuggestion(prepared)).rejects.toThrow('baseline');
 		expect(suggestions.createPending).not.toHaveBeenCalled();
 		expect(suggestions.appendSubmittedActivity).not.toHaveBeenCalled();

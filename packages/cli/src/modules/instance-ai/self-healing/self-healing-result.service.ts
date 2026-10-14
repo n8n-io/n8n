@@ -13,7 +13,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
@@ -62,9 +62,7 @@ export class SelfHealingResultService {
 				throw new ConflictError('The self-healing investigation has already finished.');
 			}
 			await this.suggestions.requireCurrentBaseline(current.baseline, ctx);
-			const suggestion = prepared
-				? await this.suggestions.createSuggestion(prepared, ctx, investigationId)
-				: null;
+			const suggestion = prepared ? await this.suggestions.createSuggestion(prepared, ctx) : null;
 			const result = await this.results.createResult(
 				{
 					workflowId: current.workflowId,
@@ -94,12 +92,6 @@ export class SelfHealingResultService {
 			report: output.report,
 			usage: accepted.usage,
 		});
-		if (
-			(output.outcome === 'fix_ready' && !candidate) ||
-			(output.outcome === 'could_not_fix' && candidate)
-		) {
-			throw new BadRequestError('The suggestion does not match the result outcome.');
-		}
 		const suggestion = candidate
 			? await this.suggestions.prepareSuggestion(baseline, {
 					graph: candidate.graph,

@@ -356,31 +356,6 @@ describe('executeResumableStream', () => {
 		expect(result.usage).toBeUndefined();
 	});
 
-	it('reports the terminal finish reason of a completed run', async () => {
-		const result = await executeResumableStream({
-			agent: {},
-			stream: {
-				runId: 'agent-run-1',
-				fullStream: fromChunks([
-					textChunk('Working...'),
-					{ type: 'finish', finishReason: 'max-iterations' },
-				]),
-			},
-			context: {
-				threadId: 'thread-1',
-				runId: 'run-1',
-				agentId: 'agent-1',
-				eventBus: createEventBus(),
-				signal: new AbortController().signal,
-				logger: createLogger(),
-			},
-			control: { mode: 'manual' },
-		});
-
-		expect(result.status).toBe('completed');
-		expect(result.finishReason).toBe('max-iterations');
-	});
-
 	it('reports the finish reason of the resumed stream, not the suspended one', async () => {
 		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',

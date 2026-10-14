@@ -39,6 +39,7 @@ export class SelfHealingTemporaryWorkflowService {
 		verify: (workflowId: string) => Promise<T>,
 	): Promise<T> {
 		const workflow = await this.create(input);
+
 		try {
 			return await verify(workflow.id);
 		} finally {
@@ -50,6 +51,7 @@ export class SelfHealingTemporaryWorkflowService {
 		if (user.disabled || user.id !== baseline.backgroundUserId) {
 			throw new ForbiddenError('Workflow edit and execution access is required.');
 		}
+
 		const original = await this.finder.findWorkflowForUser(baseline.workflowId, user, [
 			'workflow:read',
 			'workflow:update',
@@ -86,6 +88,7 @@ export class SelfHealingTemporaryWorkflowService {
 			},
 			{ kind: 'user', user },
 		);
+
 		return await this.transactions.run(
 			{ policyCleared },
 			async (ctx) => await this.workflows.createTemporary(workflow, original.id, ctx),
@@ -94,9 +97,11 @@ export class SelfHealingTemporaryWorkflowService {
 
 	async cleanupAbandoned(signal?: AbortSignal): Promise<void> {
 		if (signal?.aborted) return;
+
 		const before = new Date(Date.now() - TEMPORARY_VERIFICATION_RETENTION_MS);
 		for (const workflowId of await this.workflows.findAbandonedIds(before)) {
 			if (signal?.aborted) return;
+
 			await this.cleanup(workflowId);
 		}
 	}
@@ -106,8 +111,10 @@ export class SelfHealingTemporaryWorkflowService {
 			for (const executionId of await this.workflows.findUnfinishedExecutionIds(workflowId)) {
 				await this.executionService.stop(executionId, [workflowId]);
 			}
+
 			// Cancellation can return before a worker finishes its final writes.
 			if (!(await this.workflows.canDelete(workflowId))) return;
+
 			await this.executions.hardDeleteByWorkflowId(workflowId);
 			await this.workflows.deleteTemporary(workflowId);
 		} catch (error) {

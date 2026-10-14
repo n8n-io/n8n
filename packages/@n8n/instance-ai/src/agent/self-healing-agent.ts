@@ -4,7 +4,6 @@ import {
 	Tool,
 	loadRuntimeSkillSourceFromDirectory,
 	type BuiltMemory,
-	type CheckpointStore,
 } from '@n8n/agents';
 import { resolve } from 'node:path';
 
@@ -38,7 +37,6 @@ export interface CreateSelfHealingAgentOptions {
 	modelId: ModelConfig;
 	context: InstanceAiContext;
 	memory?: BuiltMemory;
-	checkpointStore?: CheckpointStore;
 	verifyCandidate: SelfHealingCandidateVerifier;
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
@@ -75,14 +73,13 @@ function createSelfHealingTools(
 		createN8nDocsTool(context),
 		createResearchTool(context, { interactive: false }),
 		new Tool('verify_candidate')
-			.description(
-				'Verify the candidate against the original failed execution and workflow baseline.',
-			)
+			.description('Verify the candidate against the captured workflow baseline.')
 			.input(selfHealingCandidateInputSchema)
 			.handler(async (input, ctx) => {
 				const signal = abortSignal ?? ctx.abortSignal;
 				signal?.throwIfAborted();
-				return await verifyCandidate(selfHealingCandidateInputSchema.parse(input), signal);
+
+				return await verifyCandidate(input, signal);
 			})
 			.build(),
 	]);
@@ -92,9 +89,11 @@ export async function createSelfHealingAgent(
 	options: CreateSelfHealingAgentOptions,
 ): Promise<Agent> {
 	const { context, verifyCandidate, abortSignal } = options;
+
 	if (typeof verifyCandidate !== 'function') {
 		throw new Error('Self-healing requires a candidate verifier');
 	}
+
 	abortSignal?.throwIfAborted();
 
 	const workspace = context.workspace
@@ -109,17 +108,20 @@ export async function createSelfHealingAgent(
 		: options.modelId;
 	const domainContext = { ...context, modelId, workspace };
 	const tools = createSelfHealingTools(domainContext, verifyCandidate, abortSignal);
+
 	const tracing = context.tracing;
 	const tracedTools =
 		tracing?.wrapTools(tools, {
 			agentRole: 'self-healing',
 			tags: [SELF_HEALING_PROFILE_VERSION],
 		}) ?? tools;
+
 	const skillSource = loadRuntimeSkillSourceFromDirectory(
 		resolve(__dirname, '..', '..', 'skills', 'internal'),
 	);
 	const skill = await skillSource.loadSkill('self-healing');
 	if (!skill) throw new Error('Self-healing skill is unavailable');
+
 	const systemPrompt = [
 		'Investigate the supplied failed execution. Prepare one candidate workflow for review.',
 		'Work without user interaction. Report blockers in the structured output.',
@@ -129,6 +131,7 @@ export async function createSelfHealingAgent(
 
 	setTracePromptVersion(tracing, SELF_HEALING_PROFILE_VERSION);
 	setTraceModelId(tracing, modelId);
+
 	const agent = new Agent('n8n-self-healing-agent')
 		.model(modelId)
 		.instructions(systemPrompt, {
@@ -136,10 +139,12 @@ export async function createSelfHealingAgent(
 		})
 		.tool(toolRegistryValues(tracedTools))
 		.structuredOutput(selfHealingOutputSchema)
-		.checkpoint(options.checkpointStore ?? 'memory');
+		.checkpoint('memory');
+
 	if (workspace) agent.workspace(workspace);
 	if (options.memory) agent.memory(new Memory().storage(options.memory));
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
+
 	const telemetry = tracing?.getTelemetry?.({
 		agentRole: 'self-healing',
 		functionId: 'instance-ai.self-healing',
@@ -147,6 +152,7 @@ export async function createSelfHealingAgent(
 		metadata: modelIdTraceMetadata(modelId),
 	});
 	if (telemetry) agent.telemetry(telemetry);
+
 	mergeTraceRunInputs(
 		tracing?.actorRun,
 		buildAgentTraceInputs({
@@ -157,6 +163,8 @@ export async function createSelfHealingAgent(
 			runtimeSkills: skillSource.registry,
 		}),
 	);
+
 	abortSignal?.throwIfAborted();
+
 	return agent;
 }

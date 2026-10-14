@@ -192,6 +192,7 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 	if (isNativeStreamResult(result)) {
 		const [eventStream, textStream] = result.stream.tee();
 		const text = collectNativeStreamText(textStream);
+
 		// Structured-output callers do not need to await the text branch.
 		void text.catch(() => undefined);
 
@@ -312,13 +313,16 @@ async function* readStreamChunks(
 ) {
 	const iterator = stream[Symbol.asyncIterator]();
 	let finished = false;
+
 	try {
 		while (true) {
 			let next: IteratorResult<unknown, unknown>;
+
 			try {
 				next = await iterator.next();
 			} catch (error) {
 				finished = true;
+
 				if (context.signal.aborted) {
 					context.logger.debug('Instance AI abort drain ended early', {
 						threadId: context.threadId,
@@ -330,12 +334,15 @@ async function* readStreamChunks(
 				} else {
 					throw error;
 				}
+
 				return;
 			}
+
 			if (next.done) {
 				finished = true;
 				return;
 			}
+
 			yield next.value;
 		}
 	} finally {
@@ -390,6 +397,7 @@ async function consumeStreamPass(args: {
 			finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
 			structuredOutput = chunk.structuredOutput;
 		}
+
 		// Drain cancelled streams for terminal output and billing, without publishing events.
 		if (options.context.signal.aborted) continue;
 
@@ -524,6 +532,7 @@ export async function executeResumableStream(
 		});
 		currentResponseId = pass.currentResponseId;
 		nativeStepIndex = pass.nativeStepIndex;
+
 		const result = {
 			agentRunId: activeAgentRunId,
 			text,

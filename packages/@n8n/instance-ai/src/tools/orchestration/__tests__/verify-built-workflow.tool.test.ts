@@ -1949,6 +1949,74 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		'Trigger A': [successfulVerification('Trigger A', ['Trigger A', 'Step A'])],
 	};
 
+	it('records cancellation after starting verification without running the workflow', async () => {
+		const { ctx, getOutcome } = makeSequenceContext(
+			makeTrackedOutcome({ verificationProgress: passedA }),
+		);
+		const controller = new AbortController();
+		const cancellation = new Error('The user canceled verification.');
+		const startVerification = vi.mocked(ctx.workflowTaskService.startVerification);
+		const start = startVerification.getMockImplementation()!;
+		startVerification.mockImplementationOnce(async (...args) => {
+			const previousProgress = await start(...args);
+			expect(getOutcome().verification?.status).toBe('running');
+			controller.abort(cancellation);
+			return previousProgress;
+		});
+		const context = { ...ctx, abortSignal: controller.signal };
+
+		await expect(runTool(context, triggerAInput)).rejects.toBe(cancellation);
+
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(getOutcome().verifyAttempts).toBe(1);
+		expect(getOutcome().verificationProgress).toEqual({});
+		expect(getOutcome().verification).toMatchObject({
+			attempted: true,
+			success: false,
+			status: 'error',
+			evidence: { errorMessage: 'Verification was canceled.' },
+		});
+	});
+
+	it('records cancellation between gate decisions without running another pass', async () => {
+		const { ctx, getOutcome } = makeSequenceContext(
+			makeTrackedOutcome({
+				verificationProgress: passedA,
+				nodeSimulationPlan: [
+					{ ...executeVerdict('Step A'), verdict: 'simulate', haltBranch: true },
+				],
+				waitGateScripts: [
+					{
+						nodeName: 'Step A',
+						cutEdge: { source: 'Step A', target: 'Step A' },
+						decisions: [
+							{ label: 'approve', items: [{ approved: true }] },
+							{ label: 'decline', items: [{ approved: false }] },
+						],
+					},
+				],
+			}),
+		);
+		const controller = new AbortController();
+		const cancellation = new Error('The user canceled verification.');
+		ctx.domainContext.executionService.run.mockImplementationOnce(async () => {
+			controller.abort(cancellation);
+			return await Promise.resolve(successfulA);
+		});
+		const context = { ...ctx, abortSignal: controller.signal };
+
+		await expect(runTool(context, triggerAInput)).rejects.toBe(cancellation);
+
+		expect(ctx.domainContext.executionService.run).toHaveBeenCalledTimes(1);
+		expect(getOutcome().verificationProgress).toEqual({});
+		expect(getOutcome().verification).toMatchObject({
+			attempted: true,
+			success: false,
+			status: 'error',
+			evidence: { errorMessage: 'Verification was canceled.' },
+		});
+	});
+
 	it('keeps the attempt and removes old coverage when the result cannot be saved', async () => {
 		const { ctx, getOutcome } = makeSequenceContext(
 			makeTrackedOutcome({

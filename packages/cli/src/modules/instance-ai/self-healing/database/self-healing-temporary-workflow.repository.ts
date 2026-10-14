@@ -32,13 +32,16 @@ export class SelfHealingTemporaryWorkflowRepository extends BaseRepository<Insta
 	): Promise<WorkflowEntity> {
 		const manager = this.managerFor(ctx);
 		const saved = await this.workflows.createContent(workflow, ctx);
+
 		const shares = await manager.findBy(SharedWorkflow, { workflowId: originalWorkflowId });
 		await manager.insert(
 			SharedWorkflow,
 			shares.map(({ projectId, role }) => ({ workflowId: saved.id, projectId, role })),
 		);
+
 		// Resource markers survive thread deletion, so interrupted runs remain recoverable.
 		await manager.insert(InstanceAiResource, { id: RESOURCE_PREFIX + saved.id });
+
 		return saved;
 	}
 
@@ -50,6 +53,7 @@ export class SelfHealingTemporaryWorkflowRepository extends BaseRepository<Insta
 			},
 			select: { id: true },
 		});
+
 		return rows.map(({ id }) => id.slice(RESOURCE_PREFIX.length));
 	}
 
@@ -59,32 +63,39 @@ export class SelfHealingTemporaryWorkflowRepository extends BaseRepository<Insta
 			select: { createdAt: true },
 		});
 		if (!marker) return undefined;
+
 		const workflow = await this.manager.findOne(WorkflowEntity, {
 			where: { id: workflowId },
 			select: ['id', 'isArchived', 'activeVersionId'],
 		});
 		if (workflow && (!workflow.isArchived || workflow.activeVersionId)) return undefined;
+
 		return marker;
 	}
 
 	async findUnfinishedExecutionIds(workflowId: string): Promise<string[]> {
 		if (!(await this.findCleanupMarker(workflowId))) return [];
+
 		const executions = await this.manager.find(ExecutionEntity, {
 			where: { workflowId, status: In(['new', 'running', 'waiting', 'unknown']) },
 			select: { id: true },
 		});
+
 		return executions.map(({ id }) => id);
 	}
 
 	async canDelete(workflowId: string): Promise<boolean> {
 		const marker = await this.findCleanupMarker(workflowId);
 		if (!marker) return false;
+
 		const executions = await this.manager.find(ExecutionEntity, {
 			where: { workflowId, status: In(['new', 'running', 'waiting', 'unknown', 'canceled']) },
 			select: { status: true, stoppedAt: true },
 		});
+
 		// A canceled status can precede the worker's final writes. Wait after cancellation, not creation.
 		const before = Date.now() - TEMPORARY_VERIFICATION_RETENTION_MS;
+
 		return executions.every(
 			({ status, stoppedAt }) =>
 				status === 'canceled' && (stoppedAt ?? marker.createdAt).getTime() < before,

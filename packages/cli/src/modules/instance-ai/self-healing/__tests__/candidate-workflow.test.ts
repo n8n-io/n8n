@@ -47,10 +47,14 @@ function makeBaseline(): WorkflowSuggestionBaseline {
 					type: 'n8n-nodes-base.httpRequest',
 					typeVersion: 4.2,
 					position: [625, 173],
-					parameters: { url: 'https://example.test/original', options: {} },
+					parameters: {
+						authentication: 'genericCredentialType',
+						genericAuthType: 'httpHeaderAuth',
+						url: 'https://example.test/original',
+						options: {},
+					},
 					credentials: { httpHeaderAuth: { id: 'credential-1', name: 'Request credential' } },
 					continueOnFail: true,
-					forceCustomOperation: { resource: 'record', operation: 'read' },
 				},
 				{
 					id: 'start',
@@ -72,6 +76,7 @@ describe('compileCandidateWorkflow', () => {
 	let context: InstanceAiContext;
 
 	beforeEach(async () => {
+		baseline = makeBaseline();
 		directory = await mkdtemp(join(tmpdir(), 'n8n-candidate-test-'));
 		const filesystem = mock<WorkspaceFilesystem>({
 			provider: 'local',
@@ -81,10 +86,18 @@ describe('compileCandidateWorkflow', () => {
 		context = mock<InstanceAiContext>({
 			workspace: createScopedWorkspace(new Workspace({ filesystem }), directory),
 			nodeTypesProvider: undefined,
-			credentialService: mock<InstanceAiContext['credentialService']>(),
+			workflowService: mock<InstanceAiContext['workflowService']>(),
+			nodeService: mock<InstanceAiContext['nodeService']>(),
+			credentialService: mock<InstanceAiContext['credentialService']>({
+				list: async () => [
+					{ id: 'credential-1', name: 'Request credential', type: 'httpHeaderAuth' },
+					{ id: 'other-credential', name: 'Other credential', type: 'httpHeaderAuth' },
+				],
+				isAiGatewayCredentialType: undefined,
+				isManagedOAuthCredentialType: undefined,
+			}),
 			logger: mock<InstanceAiContext['logger']>(),
 		});
-		baseline = makeBaseline();
 	});
 
 	afterEach(async () => {
@@ -124,74 +137,49 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
-		expect(result.workflow).toEqual({
-			...baseline.original,
-			nodes: [
-				{
-					...baseline.original.nodes[0],
-					parameters: { url: 'https://example.test/fixed', options: {} },
-				},
-				baseline.original.nodes[1],
-			],
+		expect(result.workflow).toMatchObject({
+			name: baseline.original.name,
+			description: baseline.original.description,
+			settings: baseline.original.settings,
+			meta: baseline.original.meta,
+			pinData: baseline.original.pinData,
+			connections: baseline.original.connections,
 		});
-		expect(result.candidateChecksum).toEqual(expect.any(String));
+		expect(result.workflow.nodes.find((node) => node.id === 'request')).toMatchObject({
+			name: 'Request',
+			position: [625, 173],
+			parameters: { url: 'https://example.test/fixed' },
+			credentials: baseline.original.nodes[0].credentials,
+		});
+		expect(result.workflow.nodes.find((node) => node.id === 'start')).toMatchObject({
+			name: 'Start',
+			position: [125, 173],
+		});
 		expect(baseline.original.nodes[0].parameters.url).toBe('https://example.test/original');
 	});
 
-	it('keeps credential preferences informational when a candidate uses captured credentials', async () => {
-		baseline.original.nodes[0].parameters = {
-			url: 'https://api.stripe.com/v1/charges',
-			authentication: 'genericCredentialType',
-			genericAuthType: 'httpHeaderAuth',
-			options: {},
-		};
-		context.credentialService.listHttpCredentialHosts = vi
-			.fn()
-			.mockResolvedValue([{ type: 'stripeApi', hosts: ['api.stripe.com'] }]);
+	it('accepts an unchanged candidate for verification', async () => {
+		await writeCandidate(generatedWorkflow());
+
+		expect(await compile()).toMatchObject({ success: true });
+	});
+
+	it('restores an existing webhook ID through the builder preparation', async () => {
+		baseline.original.nodes[1].type = 'n8n-nodes-base.webhook';
+		baseline.original.nodes[1].typeVersion = 2;
+		baseline.original.nodes[1].parameters = { path: 'example' };
+		baseline.original.nodes[1].webhookId = 'existing-webhook';
 		const workflow = generatedWorkflow();
-		changeUrl(workflow, 'https://api.stripe.com/v1/customers');
+		delete workflow.nodes.find((node) => node.id === 'start')!.webhookId;
 		await writeCandidate(workflow);
 
 		const result = await compile();
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
-		expect(result.workflow.nodes[0].parameters.url).toBe('https://api.stripe.com/v1/customers');
-		expect(result.workflow.nodes[0].credentials).toEqual(baseline.original.nodes[0].credentials);
-		expect(result.warnings).toContainEqual(
-			expect.objectContaining({
-				code: 'PREFER_PREDEFINED_CREDENTIAL',
-				nodeName: 'Request',
-				severity: 'informational',
-			}),
+		expect(result.workflow.nodes.find((node) => node.id === 'start')?.webhookId).toBe(
+			'existing-webhook',
 		);
-	});
-
-	it('rejects an unchanged SDK roundtrip despite automatic layout and node order changes', async () => {
-		await writeCandidate(generatedWorkflow());
-
-		expect(await compile()).toMatchObject({ success: false, reason: 'candidate_unchanged' });
-	});
-
-	it('does not treat a generated webhook ID as a workflow change', async () => {
-		baseline.original.nodes[1].type = 'n8n-nodes-base.webhook';
-		baseline.original.nodes[1].typeVersion = 2;
-		baseline.original.nodes[1].parameters = { path: 'example' };
-		await writeCandidate(generatedWorkflow());
-
-		expect(await compile()).toMatchObject({ success: false, reason: 'candidate_unchanged' });
-	});
-
-	it('rejects an unchanged JSON baseline with legacy node fields', async () => {
-		await writeFile(
-			join(directory, 'candidate.json'),
-			JSON.stringify({
-				...baseline.original,
-				id: baseline.workflowId,
-			}),
-		);
-
-		expect(await compile()).toMatchObject({ success: false, reason: 'candidate_unchanged' });
 	});
 
 	it('removes the legacy error flag when the candidate removes its generated setting', async () => {
@@ -204,23 +192,9 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
-		expect(result.workflow.nodes[0]).not.toHaveProperty('continueOnFail');
-		expect(result.workflow.nodes[0]).not.toHaveProperty('onError');
-	});
-
-	it('reads each edit to the same file and identifies the actual compiled candidate', async () => {
-		const workflow = generatedWorkflow();
-		changeUrl(workflow, 'https://example.test/first');
-		await writeCandidate(workflow);
-		const first = await compile();
-		changeUrl(workflow, 'https://example.test/second');
-		await writeCandidate(workflow);
-		const second = await compile();
-
-		expect(first.success && second.success).toBe(true);
-		if (!first.success || !second.success) return;
-		expect(first.candidateChecksum).not.toBe(second.candidateChecksum);
-		expect(second.workflow.nodes[0].parameters.url).toBe('https://example.test/second');
+		const compiledRequest = result.workflow.nodes.find((node) => node.id === 'request');
+		expect(compiledRequest).not.toHaveProperty('continueOnFail');
+		expect(compiledRequest).not.toHaveProperty('onError');
 	});
 
 	it('accepts added nodes and connection changes', async () => {
@@ -240,53 +214,93 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
-		expect(result.workflow.nodes.map((node) => node.id)).toEqual(['request', 'start', 'finish']);
+		expect(result.workflow.nodes.map((node) => node.id)).toEqual(
+			expect.arrayContaining(['request', 'start', 'finish']),
+		);
 		expect(result.workflow.connections).toEqual(workflow.connections);
 	});
 
-	it('rejects changes to workflow settings', async () => {
+	it('keeps baseline workflow fields when source changes them', async () => {
 		const workflow = generatedWorkflow();
+		workflow.name = 'Candidate name';
 		workflow.settings = { timezone: 'UTC' };
-		await writeCandidate(workflow);
-
-		expect(await compile()).toMatchObject({
-			success: false,
-			errors: [expect.stringContaining('workflow field "settings"')],
-		});
-	});
-
-	it('rejects an explicit removal of workflow metadata', async () => {
 		await writeFile(
 			join(directory, 'candidate.json'),
 			JSON.stringify({
-				...generatedWorkflow(),
+				...workflow,
 				meta: null,
 			}),
 		);
 
 		expect(await compile()).toMatchObject({
-			success: false,
-			errors: [expect.stringContaining('workflow field "meta"')],
+			success: true,
+			workflow: {
+				name: baseline.original.name,
+				settings: baseline.original.settings,
+				meta: baseline.original.meta,
+			},
 		});
 	});
 
-	it('rejects changed identities and credential references', async () => {
+	it('recovers an existing node ID through the builder preparation', async () => {
 		const workflow = generatedWorkflow();
 		const request = workflow.nodes.find((node) => node.id === 'request')!;
 		request.id = 'different-id';
 		await writeCandidate(workflow);
-		expect(await compile()).toMatchObject({
-			success: false,
-			errors: [expect.stringContaining('existing ID')],
-		});
 
-		request.id = 'request';
+		const result = await compile();
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.workflow.nodes.find((node) => node.name === 'Request')?.id).toBe('request');
+	});
+
+	it('accepts a credential reference available to the builder', async () => {
+		const workflow = generatedWorkflow();
+		const request = workflow.nodes.find((node) => node.id === 'request')!;
 		request.credentials = { httpHeaderAuth: { id: 'other-credential', name: 'Other credential' } };
 		await writeCandidate(workflow);
-		expect(await compile()).toMatchObject({
-			success: false,
-			errors: [expect.stringContaining('Credential changes')],
+
+		const result = await compile();
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.workflow.nodes.find((node) => node.id === 'request')?.credentials).toEqual(
+			request.credentials,
+		);
+		expect(result.credentialResolution.mockedNodeNames).toEqual([]);
+	});
+
+	it('reports missing credentials for verification simulation', async () => {
+		const workflow = generatedWorkflow();
+		workflow.nodes.push({
+			id: 'new-request',
+			name: 'New request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [900, 173],
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpBasicAuth',
+				url: 'https://example.test/new',
+			},
+			credentials: { httpBasicAuth: { id: 'missing', name: 'Missing credential' } },
 		});
+		workflow.connections.Request = { main: [[{ node: 'New request', type: 'main', index: 0 }]] };
+		await writeCandidate(workflow);
+
+		const result = await compile();
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.credentialResolution).toMatchObject({
+			mockedNodeNames: ['New request'],
+			mockedCredentialTypes: ['httpBasicAuth'],
+			mockedCredentialsByNode: { 'New request': ['httpBasicAuth'] },
+		});
+		expect(result.workflow.nodes.find((node) => node.id === 'new-request')?.credentials).toEqual(
+			{},
+		);
 	});
 
 	it('rejects a connection to a missing node', async () => {
@@ -367,8 +381,10 @@ try {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
-		expect(result.workflow.nodes[0].parameters.url).toBe('https://example.test/typescript');
-		expect(result.workflow.nodes[0].position).toEqual([625, 173]);
+		expect(result.workflow.nodes.find((node) => node.id === 'request')).toMatchObject({
+			parameters: { url: 'https://example.test/typescript' },
+			position: [625, 173],
+		});
 
 		await writeFile(join(directory, 'candidate.workflow.ts'), 'export default broken;');
 		expect(await compile('candidate.workflow.ts')).toMatchObject({

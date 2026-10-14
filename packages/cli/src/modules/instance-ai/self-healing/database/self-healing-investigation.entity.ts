@@ -14,7 +14,6 @@ import {
 import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
-import type { SelfHealingCandidateService } from '../self-healing-candidate.service';
 import { SelfHealingResult } from './self-healing-result.entity';
 
 export type AcceptedSelfHealingOutput = {
@@ -22,7 +21,6 @@ export type AcceptedSelfHealingOutput = {
 	usage: SelfHealingResultUsage;
 	candidate?: {
 		graph: WorkflowSuggestionGraph;
-		verification?: Awaited<ReturnType<SelfHealingCandidateService['verify']>>;
 	};
 	completedAt: string;
 };
