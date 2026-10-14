@@ -1,4 +1,4 @@
-import { createCanvas } from '@napi-rs/canvas';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
 import getSystemFonts from 'get-system-fonts';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 
 import { EditImage } from '../EditImage.node';
-import { calculateResizeDimensions } from '../v2/EditImageV2';
+import { calculateResizeDimensions, toCanvasColor } from '../v2/EditImageV2';
 
 const node: INode = {
 	id: 'edit-image-v2',
@@ -29,10 +29,57 @@ async function imageBuffer(color = '#ff0000', width = 20, height = 10): Promise<
 	return await canvas.encode('png');
 }
 
+async function imageBufferWithTransparentCorners(): Promise<Buffer> {
+	const canvas = createCanvas(10, 10);
+	const context = canvas.getContext('2d');
+	context.fillStyle = '#ff0000';
+	context.fillRect(2, 2, 6, 6);
+	return await canvas.encode('png');
+}
+
 function outputBuffer(result: INodeExecutionData[][], propertyName = 'data'): Buffer {
 	const data = result[0][0].binary?.[propertyName]?.data;
 	if (!data) throw new Error('Expected output binary data');
 	return Buffer.from(data, 'base64');
+}
+
+async function colorAt(buffer: Buffer, x: number, y: number): Promise<number[]> {
+	const image = await loadImage(buffer);
+	const canvas = createCanvas(image.width, image.height);
+	const context = canvas.getContext('2d');
+	context.drawImage(image, 0, 0);
+	return Array.from(context.getImageData(x, y, 1, 1).data);
+}
+
+async function alphaAt(buffer: Buffer, x: number, y: number): Promise<number> {
+	return (await colorAt(buffer, x, y))[3];
+}
+
+async function nonWhiteBounds(
+	buffer: Buffer,
+): Promise<{ left: number; top: number; right: number; bottom: number }> {
+	const image = await loadImage(buffer);
+	const canvas = createCanvas(image.width, image.height);
+	const context = canvas.getContext('2d');
+	context.drawImage(image, 0, 0);
+	const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+	let left = canvas.width;
+	let top = canvas.height;
+	let right = 0;
+	let bottom = 0;
+
+	for (let y = 0; y < canvas.height; y++) {
+		for (let x = 0; x < canvas.width; x++) {
+			const index = (y * canvas.width + x) * 4;
+			if (pixels[index] > 240 && pixels[index + 1] > 240 && pixels[index + 2] > 240) continue;
+			left = Math.min(left, x);
+			top = Math.min(top, y);
+			right = Math.max(right, x + 1);
+			bottom = Math.max(bottom, y + 1);
+		}
+	}
+
+	return { left, top, right, bottom };
 }
 
 function createExecuteFunctions({
@@ -75,9 +122,35 @@ describe('Edit Image v2', () => {
 		expect(editImage.description.defaultVersion).toBe(2);
 	});
 
+	it('shows quality only for supported formats', () => {
+		const editImage = new EditImage();
+		const options = editImage.description.properties.find(
+			(property) => property.name === 'options',
+		);
+		const qualityOptions = options?.options?.filter((option) => option.name === 'quality');
+
+		expect(qualityOptions).toHaveLength(2);
+		expect(qualityOptions?.[0].displayOptions?.show).toEqual({
+			format: ['jpeg', 'png', 'tiff'],
+			'@version': [{ _cnd: { lt: 2 } }],
+		});
+		expect(qualityOptions?.[1].displayOptions?.show).toEqual({
+			format: ['jpeg'],
+			'@version': [{ _cnd: { gte: 2 } }],
+		});
+	});
+
+	it.each([
+		['#ffeeccff', '#ffeecc00'],
+		['#ffeecc00', '#ffeeccff'],
+		['#ffeecc', '#ffeecc'],
+	])('converts the legacy opacity in %s to %s', (color, expected) => {
+		expect(toCanvasColor(color)).toBe(expected);
+	});
+
 	it.each([
 		['ignoreAspectRatio', 200, 100, { width: 200, height: 100 }],
-		['maximumArea', 100, 100, { width: 100, height: 50 }],
+		['maximumArea', 100, 100, { width: 141, height: 70 }],
 		['minimumArea', 100, 100, { width: 200, height: 100 }],
 		['onlyIfLarger', 1000, 1000, { width: 200, height: 100 }],
 		['onlyIfSmaller', 100, 100, { width: 200, height: 100 }],
@@ -131,6 +204,120 @@ describe('Edit Image v2', () => {
 
 		expect(outputBuffer(result).length).toBeGreaterThan(0);
 		expect(result[0][0].json).toEqual({ id: 1 });
+	});
+
+	it('adds a border without filling transparent source pixels', async () => {
+		const input = await imageBufferWithTransparentCorners();
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'border',
+				dataPropertyName: 'data',
+				borderColor: '#66339900',
+				borderWidth: 2,
+				borderHeight: 2,
+			},
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+		const output = outputBuffer(result);
+
+		expect(await alphaAt(output, 0, 0)).toBe(255);
+		expect(await alphaAt(output, 2, 2)).toBe(0);
+		expect(await alphaAt(output, 6, 6)).toBe(255);
+	});
+
+	it('preserves the legacy background RGB when creating a JPEG', async () => {
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'create',
+				dataPropertyName: 'data',
+				width: 10,
+				height: 10,
+				backgroundColor: '#3366ccff',
+				options: { format: 'jpeg', quality: 80 },
+			},
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+		const [red, green, blue, alpha] = await colorAt(outputBuffer(result), 0, 0);
+
+		expect(red).toBeGreaterThan(40);
+		expect(green).toBeGreaterThan(90);
+		expect(blue).toBeGreaterThan(180);
+		expect(alpha).toBe(255);
+	});
+
+	it.each([
+		[
+			'rotate',
+			{
+				operation: 'rotate',
+				dataPropertyName: 'data',
+				rotate: 30,
+				backgroundColor: '#ffeeccff',
+			},
+		],
+		[
+			'multi-step rotate',
+			{
+				operation: 'multiStep',
+				dataPropertyName: 'data',
+				operations: {
+					operations: [
+						{
+							operation: 'rotate',
+							rotate: 30,
+							backgroundColor: '#ffeeccff',
+						},
+					],
+				},
+			},
+		],
+	])('preserves transparent backgrounds for %s', async (_, parameters) => {
+		const input = await imageBuffer();
+		const executeFunctions = createExecuteFunctions({
+			parameters,
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+
+		expect(await alphaAt(outputBuffer(result), 0, 0)).toBe(0);
+	});
+
+	it('matches the legacy shear dimensions and direction', async () => {
+		const input = await imageBuffer('#ff0000', 100, 100);
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'shear',
+				dataPropertyName: 'data',
+				degreesX: 14,
+				degreesY: 7,
+			},
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+		const output = outputBuffer(result);
+		const image = await loadImage(output);
+
+		expect({ width: image.width, height: image.height }).toEqual({ width: 112, height: 111 });
+		expect(await alphaAt(output, 5, 5)).toBe(0);
+		expect(await alphaAt(output, 15, 5)).toBeGreaterThan(0);
+		expect(await alphaAt(output, 5, 95)).toBeGreaterThan(0);
 	});
 
 	it('composites a second binary image', async () => {
@@ -256,6 +443,52 @@ describe('Edit Image v2', () => {
 
 		expect(outputBuffer(result).length).toBeGreaterThan(0);
 	});
+
+	it.each([
+		['west', 'north'],
+		['east', 'south'],
+	])(
+		'positions %s and %s text from the font baseline',
+		async (horizontalAlignment, verticalAlignment) => {
+			const fonts = await getSystemFonts();
+			const font = fonts.find((systemFont) => systemFont.includes('Arial.')) ?? fonts[0];
+			expect(font).toBeDefined();
+			const input = await imageBuffer('#ffffff', 100, 100);
+			const executeFunctions = createExecuteFunctions({
+				parameters: {
+					operation: 'text',
+					dataPropertyName: 'data',
+					text: verticalAlignment === 'north' ? 'Left top' : 'Right bottom',
+					fontSize: 14,
+					fontColor: '#111111',
+					positionX: 5,
+					positionY: 5,
+					horizontalAlignment,
+					verticalAlignment,
+					lineLength: 20,
+					options: { font },
+				},
+				input: {
+					json: {},
+					binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+				},
+				binaryBuffers: { data: input },
+			});
+
+			const result = await new EditImage().execute.call(executeFunctions);
+			const bounds = await nonWhiteBounds(outputBuffer(result));
+
+			if (verticalAlignment === 'north') {
+				expect(bounds.top).toBe(0);
+			} else {
+				expect(bounds.top).toBe(84);
+				expect(bounds.right).toBeGreaterThanOrEqual(94);
+				expect(bounds.right).toBeLessThanOrEqual(95);
+				expect(bounds.bottom).toBeGreaterThanOrEqual(96);
+				expect(bounds.bottom).toBeLessThanOrEqual(98);
+			}
+		},
+	);
 
 	it('runs multiple operations in order', async () => {
 		const executeFunctions = createExecuteFunctions({

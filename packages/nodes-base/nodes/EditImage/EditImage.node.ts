@@ -1083,9 +1083,27 @@ export class EditImage implements INodeType {
 						displayOptions: {
 							show: {
 								format: ['jpeg', 'png', 'tiff'],
+								'@version': [{ _cnd: { lt: 2 } }],
 							},
 						},
 						description: 'Sets the jpeg|png|tiff compression level from 0 to 100 (best)',
+					},
+					{
+						displayName: 'Quality',
+						name: 'quality',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						default: 100,
+						displayOptions: {
+							show: {
+								format: ['jpeg'],
+								'@version': [{ _cnd: { gte: 2 } }],
+							},
+						},
+						description: 'Sets the JPEG quality from 0 to 100',
 					},
 				],
 			},

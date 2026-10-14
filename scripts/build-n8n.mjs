@@ -239,6 +239,62 @@ try {
 	await verifyNoPnpmIntermediateLinks(config.compiledAppDir);
 	await removePnpmDeployFiles(config.compiledAppDir);
 
+	// The app deploy excludes optional dependencies, but these packages contain the
+	// native bindings that Edit Image loads at runtime.
+	const nativeModules = [
+		{
+			name: 'canvas',
+			bindings: ['@napi-rs/canvas-linux-x64-musl', '@napi-rs/canvas-linux-arm64-musl'],
+		},
+		{
+			name: 'image',
+			bindings: ['@napi-rs/image-linux-x64-musl', '@napi-rs/image-linux-arm64-musl'],
+		},
+	];
+	const nativeBindingsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-native-bindings-'));
+	try {
+		const dependencies = {};
+		const moduleDirs = {};
+		for (const nativeModule of nativeModules) {
+			const moduleDir = await fs.realpath(
+				path.join(
+					config.compiledAppDir,
+					'node_modules/.pnpm/node_modules/@napi-rs',
+					nativeModule.name,
+				),
+			);
+			moduleDirs[nativeModule.name] = moduleDir;
+			const manifest = await fs.readJson(path.join(moduleDir, 'package.json'));
+			for (const binding of nativeModule.bindings) {
+				const version = manifest.optionalDependencies?.[binding];
+				if (!version) {
+					throw new Error(
+						`${binding} is not an optional dependency of @napi-rs/${nativeModule.name}`,
+					);
+				}
+				dependencies[binding] = version;
+			}
+		}
+
+		await fs.writeJson(path.join(nativeBindingsDir, 'package.json'), {
+			private: true,
+			dependencies,
+		});
+		await $`pnpm --dir ${nativeBindingsDir} --ignore-workspace install --prod --frozen-lockfile=false --os=linux --cpu=x64,arm64 --libc=musl --ignore-scripts`;
+
+		for (const nativeModule of nativeModules) {
+			for (const binding of nativeModule.bindings) {
+				const packageName = binding.slice('@napi-rs/'.length);
+				const source = await fs.realpath(
+					path.join(nativeBindingsDir, 'node_modules/@napi-rs', packageName),
+				);
+				await fs.copy(source, path.join(path.dirname(moduleDirs[nativeModule.name]), packageName));
+			}
+		}
+	} finally {
+		await fs.remove(nativeBindingsDir);
+	}
+
 	// Strip test/example/benchmark dirs shipped inside production deps that lack a
 	// `files` field in their package.json. These are valid runtime deps but their
 	// authors published full source trees; syft inventories the subdirs as phantom
@@ -422,6 +478,12 @@ try {
 		'*agent-browser/bin/*linux-musl*',
 		// The launcher that package.json's `bin` resolves to.
 		'*agent-browser/bin/agent-browser.js',
+		// Edit Image v2 loads these native packages at runtime. The Docker build context
+		// serves both supported architectures, so the deploy must keep both musl bindings.
+		'*@napi-rs+canvas@*/node_modules/@napi-rs/canvas-linux-x64-musl/*.node',
+		'*@napi-rs+canvas@*/node_modules/@napi-rs/canvas-linux-arm64-musl/*.node',
+		'*@napi-rs+image@*/node_modules/@napi-rs/image-linux-x64-musl/*.node',
+		'*@napi-rs+image@*/node_modules/@napi-rs/image-linux-arm64-musl/*.node',
 	];
 
 	echo(chalk.yellow('INFO: Verifying Runtime assets'));

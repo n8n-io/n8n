@@ -41,6 +41,19 @@ type CompositeMode =
 
 const VALID_IMAGE_FORMATS = new Set<string>(['bmp', 'gif', 'jpeg', 'png', 'tiff', 'tif', 'webp']);
 
+export function toCanvasColor(color: string): string {
+	const match = /^#([0-9a-f]{6})([0-9a-f]{2})$/i.exec(color);
+	if (!match) return color;
+
+	const alpha = (255 - Number.parseInt(match[2], 16)).toString(16).padStart(2, '0');
+	return `#${match[1]}${alpha}`;
+}
+
+function toCanvasMatteColor(color: string): string {
+	const match = /^#([0-9a-f]{6})[0-9a-f]{2}$/i.exec(color);
+	return match ? `#${match[1]}` : color;
+}
+
 const requiredOperationParameters: Record<string, string[]> = {
 	blur: ['blurRadius'],
 	border: ['borderColor', 'borderWidth', 'borderHeight'],
@@ -229,7 +242,7 @@ async function createCanvas(width: number, height: number, color: string): Promi
 	const { createCanvas: createNapiCanvas } = await import('@napi-rs/canvas');
 	const canvas = createNapiCanvas(Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));
 	const context = canvas.getContext('2d');
-	context.fillStyle = color;
+	context.fillStyle = toCanvasColor(color);
 	context.fillRect(0, 0, canvas.width, canvas.height);
 	return canvas;
 }
@@ -260,9 +273,15 @@ async function applyBorder(canvas: Canvas, operation: OperationData): Promise<Ca
 	const output = await createCanvas(
 		canvas.width + width * 2,
 		canvas.height + height * 2,
-		getString(operation, 'borderColor'),
+		'#000000ff',
 	);
-	output.getContext('2d').drawImage(canvas, width, height);
+	const context = output.getContext('2d');
+	context.fillStyle = toCanvasColor(getString(operation, 'borderColor'));
+	context.fillRect(0, 0, output.width, height);
+	context.fillRect(0, output.height - height, output.width, height);
+	context.fillRect(0, height, width, canvas.height);
+	context.fillRect(output.width - width, height, width, canvas.height);
+	context.drawImage(canvas, width, height);
 	return output;
 }
 
@@ -423,8 +442,8 @@ function applyDraw(canvas: Canvas, operation: OperationData): Canvas {
 	const color = getString(operation, 'color');
 
 	context.beginPath();
-	context.fillStyle = color;
-	context.strokeStyle = color;
+	context.fillStyle = toCanvasColor(color);
+	context.strokeStyle = toCanvasColor(color);
 
 	if (primitive === 'line') {
 		context.moveTo(startX, startY);
@@ -460,6 +479,13 @@ export function calculateResizeDimensions(
 		return {
 			width: Math.round((currentWidth * width) / 100),
 			height: Math.round((currentHeight * height) / 100),
+		};
+	}
+	if (resizeOption === 'maximumArea') {
+		const scale = Math.sqrt((width * height) / (currentWidth * currentHeight));
+		return {
+			width: Math.floor(currentWidth * scale),
+			height: Math.floor(currentHeight * scale),
 		};
 	}
 
@@ -509,25 +535,26 @@ async function applyRotate(canvas: Canvas, operation: OperationData): Promise<Ca
 }
 
 async function applyShear(canvas: Canvas, operation: OperationData): Promise<Canvas> {
-	const shearX = Math.tan((getNumber(operation, 'degreesX') * Math.PI) / 180);
-	const shearY = Math.tan((getNumber(operation, 'degreesY') * Math.PI) / 180);
+	const shearX = Math.tan((getNumber(operation, 'degreesX') * Math.PI) / 360);
+	const shearY = Math.sin((getNumber(operation, 'degreesY') * Math.PI) / 180);
+	const scaleY = 1 - shearX * shearY;
 	const corners = [
 		{ x: 0, y: 0 },
 		{ x: canvas.width, y: 0 },
 		{ x: 0, y: canvas.height },
 		{ x: canvas.width, y: canvas.height },
-	].map(({ x, y }) => ({ x: x + shearX * y, y: shearY * x + y }));
+	].map(({ x, y }) => ({ x: x - shearX * y, y: shearY * x + scaleY * y }));
 	const minX = Math.min(...corners.map(({ x }) => x));
 	const maxX = Math.max(...corners.map(({ x }) => x));
 	const minY = Math.min(...corners.map(({ y }) => y));
 	const maxY = Math.max(...corners.map(({ y }) => y));
 	const { createCanvas: createNapiCanvas } = await import('@napi-rs/canvas');
 	const output = createNapiCanvas(
-		Math.max(1, Math.ceil(maxX - minX)),
-		Math.max(1, Math.ceil(maxY - minY)),
+		Math.max(1, Math.round(maxX - minX)),
+		Math.max(1, Math.round(maxY - minY)),
 	);
 	const context = output.getContext('2d');
-	context.transform(1, shearY, shearX, 1, -minX, -minY);
+	context.transform(1, shearY, -shearX, scaleY, -minX, -minY);
 	context.drawImage(canvas, 0, 0);
 	return output;
 }
@@ -579,17 +606,16 @@ async function applyText(
 			typeof operation.verticalAlignment === 'string' ? operation.verticalAlignment : 'north';
 		const lines = wrapText(getString(operation, 'text'), getNumber(operation, 'lineLength'));
 		const lineHeight = fontSize * 1.2;
-		const blockHeight = Math.max(lineHeight, lines.length * lineHeight);
 
 		context.font = `${fontSize}px "${family}"`;
-		context.fillStyle = getString(operation, 'fontColor');
+		context.fillStyle = toCanvasColor(getString(operation, 'fontColor'));
 		context.textAlign =
 			horizontalAlignment === 'center'
 				? 'center'
 				: horizontalAlignment === 'east'
 					? 'right'
 					: 'left';
-		context.textBaseline = 'top';
+		context.textBaseline = 'alphabetic';
 
 		const x =
 			horizontalAlignment === 'center'
@@ -597,11 +623,21 @@ async function applyText(
 				: horizontalAlignment === 'east'
 					? canvas.width - positionX
 					: positionX;
+		const metrics = lines.map((line) => context.measureText(line));
+		const measuredAscent = Math.max(
+			...metrics.map((lineMetrics) => lineMetrics.actualBoundingBoxAscent),
+		);
+		const ascent = measuredAscent || fontSize;
+		const descent = Math.max(
+			0,
+			...metrics.map((lineMetrics) => lineMetrics.actualBoundingBoxDescent),
+		);
+		const textHeight = ascent + descent + Math.max(0, lines.length - 1) * lineHeight;
 		const y =
 			verticalAlignment === 'middle'
-				? canvas.height / 2 + positionY - blockHeight / 2
+				? canvas.height / 2 + positionY - textHeight / 2 + ascent
 				: verticalAlignment === 'south'
-					? canvas.height - positionY - blockHeight
+					? canvas.height - positionY - Math.max(0, lines.length - 1) * lineHeight
 					: positionY;
 
 		lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
@@ -702,6 +738,7 @@ async function encodeCanvas(
 	canvas: Canvas,
 	format: OutputFormat,
 	quality: number | undefined,
+	jpegBackground: string | undefined,
 ): Promise<Buffer> {
 	if (format === 'bmp' || format === 'tiff' || format === 'tif') {
 		const { Transformer } = await import('@napi-rs/image');
@@ -709,9 +746,16 @@ async function encodeCanvas(
 		const transformer = Transformer.fromRgbaPixels(pixels, canvas.width, canvas.height);
 		return format === 'bmp' ? await transformer.bmp() : await transformer.tiff();
 	}
-	if (format === 'jpeg' || format === 'webp') {
-		return await canvas.encode(format, quality);
+	if (format === 'jpeg') {
+		if (!jpegBackground) return await canvas.encode(format, quality);
+
+		// GraphicsMagick keeps RGB values under transparent pixels. Canvas replaces
+		// them with black, so flatten onto the legacy RGB color before JPEG encoding.
+		const output = await createCanvas(canvas.width, canvas.height, jpegBackground);
+		output.getContext('2d').drawImage(canvas, 0, 0);
+		return await output.encode(format, quality);
 	}
+	if (format === 'webp') return await canvas.encode(format, quality);
 	if (format === 'gif') return await canvas.encode('gif');
 	return await canvas.encode('png');
 }
@@ -748,12 +792,15 @@ export async function executeV2(this: IExecuteFunctions): Promise<INodeExecution
 
 			let inputBuffer: Buffer | undefined;
 			let canvas: Canvas;
+			let jpegBackground: string | undefined;
 			if (operations[0].operation === 'create') {
+				const backgroundColor = getString(operations[0], 'backgroundColor');
 				canvas = await createCanvas(
 					getNumber(operations[0], 'width'),
 					getNumber(operations[0], 'height'),
-					getString(operations[0], 'backgroundColor'),
+					backgroundColor,
 				);
+				jpegBackground = toCanvasMatteColor(backgroundColor);
 			} else {
 				this.helpers.assertBinaryData(itemIndex, dataPropertyName);
 				inputBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
@@ -779,10 +826,13 @@ export async function executeV2(this: IExecuteFunctions): Promise<INodeExecution
 					continue;
 				}
 				canvas = await applyOperation(this, itemIndex, canvas, currentOperation, options);
+				if (currentOperation.operation === 'create' || currentOperation.operation === 'rotate') {
+					jpegBackground = toCanvasMatteColor(getString(currentOperation, 'backgroundColor'));
+				}
 			}
 
 			const format = options.format ?? 'png';
-			const outputBuffer = await encodeCanvas(canvas, format, options.quality);
+			const outputBuffer = await encodeCanvas(canvas, format, options.quality, jpegBackground);
 			const binaryPropertyName =
 				options.destinationKey ??
 				(typeof dataPropertyName === 'string' ? dataPropertyName : 'data');
