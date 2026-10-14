@@ -135,8 +135,10 @@ export class SelfHealingAgentService {
 		options: SelfHealingRunOptions,
 	): Promise<SelfHealingRunResult> {
 		this.assertEnabled();
+
 		input = { ...input, baseline: structuredClone(input.baseline) };
 		const user = await this.validateInput(input);
+
 		const { baseline, executionId, message } = input;
 		const { threadId, runId, signal } = options;
 		const startedAt = Date.now();
@@ -273,12 +275,15 @@ export class SelfHealingAgentService {
 		if (user.disabled || user.id !== baseline.backgroundUserId) {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
+
 		if (!message.trim()) throw new BadRequestError('A failure message is required.');
+
 		const actor = await this.suggestions.requireCurrentBaseline(baseline);
 		const execution = await this.executions.getReference(actor, baseline.workflowId, executionId);
 		if (execution.status !== 'available') {
 			throw new BadRequestError('The failed execution is unavailable for this workflow.');
 		}
+
 		return actor;
 	}
 
@@ -316,7 +321,9 @@ export class SelfHealingAgentService {
 			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
 		}
 		context.threadMemory = this.memory;
+
 		this.bindWorkflowReads(context, input, shareParameters);
+
 		return { context, modelId, proxy, shareParameters };
 	}
 
@@ -326,17 +333,21 @@ export class SelfHealingAgentService {
 		shareParameters: boolean,
 	) {
 		const workflowService = context.workflowService;
+
 		const requireTarget = async (workflowId: string) => {
 			if (workflowId !== baseline.workflowId) {
 				throw new ForbiddenError('Read the workflow assigned to this investigation.');
 			}
+
 			await this.suggestions.requireEditor(user.id, workflowId);
 		};
+
 		context.workflowService = {
 			...workflowService,
 			get: async (workflowId) => {
 				await requireTarget(workflowId);
 				const detail = await workflowService.get(workflowId);
+
 				return {
 					...detail,
 					name: baseline.original.name,
@@ -353,18 +364,22 @@ export class SelfHealingAgentService {
 					})),
 				};
 			},
+
 			getAsWorkflowJSON: async (workflowId, versionId) => {
 				await requireTarget(workflowId);
 				if (versionId && versionId !== baseline.expectedBaseline.publishedVersionId) {
 					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
 				}
+
 				return toWorkflowJSON(
 					{ ...structuredClone(baseline.original), id: workflowId },
 					{ redactParameters: !shareParameters },
 				);
 			},
+
 			getPinnedDataSummary: async (workflowId) => {
 				await requireTarget(workflowId);
+
 				return Object.entries(baseline.original.pinData ?? {}).map(([nodeName, items]) => ({
 					nodeName,
 					itemCount: items.length,
@@ -399,6 +414,7 @@ export class SelfHealingAgentService {
 			abortSignal: signal,
 			verifyCandidate: async (args) => {
 				signal.throwIfAborted();
+
 				return await this.candidates.verify({
 					...args,
 					user,

@@ -67,6 +67,7 @@ export async function runScriptedGateVerification(args: ScriptedGateRunArgs): Pr
 	const passes: DecisionPass[] = [];
 	for (const decision of script.decisions) {
 		args.abortSignal?.throwIfAborted();
+
 		const result = await executionService.run(workflowId, args.inputData, {
 			timeout: args.timeout,
 			triggerNodeName: args.triggerNodeName,

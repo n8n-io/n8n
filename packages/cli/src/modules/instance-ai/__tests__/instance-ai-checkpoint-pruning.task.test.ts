@@ -63,6 +63,7 @@ describe('InstanceAiCheckpointPruningTask', () => {
 		await task.run(signal);
 
 		expect(temporaryWorkflows.cleanupAbandoned).toHaveBeenCalledWith(signal);
+
 		expect(instanceAiService.pruneExpiredData).toHaveBeenCalledTimes(1);
 		expect(instanceAiService.pruneExpiredData).toHaveBeenCalledWith(expect.any(Number), signal);
 	});

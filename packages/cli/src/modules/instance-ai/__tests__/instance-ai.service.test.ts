@@ -1614,8 +1614,10 @@ describe('InstanceAiService — self-healing launcher', () => {
 
 		const run = service.startSelfHealingRun(input);
 		const options = service.selfHealingAgent.execute.mock.calls[0][1];
+
 		expect(service.runState.activeRunCountForUser(fakeUser.id)).toBe(1);
 		expect(service.inFlightExecutions.size).toBe(1);
+
 		expect(options.sandbox).toBe(service.sandboxService);
 		expect(options.tracing).toBe(service.tracing);
 		expect(options.signal).toBe(
@@ -1625,6 +1627,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 
 		const result = completedRun(options);
 		pending.resolve(result);
+
 		expect(await run).toBe(result);
 		expect(service.runState.activeRunCount()).toBe(0);
 		expect(service.inFlightExecutions.size).toBe(0);
@@ -1678,19 +1681,23 @@ describe('InstanceAiService — self-healing launcher', () => {
 			await cleanup.promise;
 			return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
 		});
+
 		const run = service.startSelfHealingRun(input);
 		const { activeRuns } = service.runState.shutdown();
 		for (const active of activeRuns) active.abortController.abort('service_shutdown');
+
 		let drained = false;
 		const drain = service.drainInFlightExecutions(1000).then(() => {
 			drained = true;
 		});
 		await Promise.resolve();
+
 		expect(drained).toBe(false);
 
 		cleanup.resolve(undefined);
 		expect(await run).toMatchObject({ status: 'cancelled', reason: 'service_shutdown' });
 		await drain;
+
 		expect(service.inFlightExecutions.size).toBe(0);
 	});
 

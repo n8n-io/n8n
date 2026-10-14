@@ -161,6 +161,7 @@ export class WorkflowSuggestionService {
 			baseline.backgroundUserId,
 			baseline.workflowId,
 		);
+
 		const target = {
 			workflow,
 			projectId: workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId,
@@ -169,6 +170,7 @@ export class WorkflowSuggestionService {
 					baseline.workflowId,
 				),
 		};
+
 		if (
 			(await calculateWorkflowChecksum(baseline.original)) !== baseline.expectedBaseline.checksum ||
 			!(await this.matchesBaseline(baseline, target)) ||
@@ -176,6 +178,7 @@ export class WorkflowSuggestionService {
 		) {
 			throw new ConflictError('The workflow no longer matches the published baseline.');
 		}
+
 		return user;
 	}
 

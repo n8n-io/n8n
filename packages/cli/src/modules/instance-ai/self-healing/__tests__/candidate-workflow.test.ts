@@ -83,6 +83,7 @@ describe('compileCandidateWorkflow', () => {
 			basePath: directory,
 			readFile: async (path) => await readFile(path, 'utf-8'),
 		});
+
 		context = mock<InstanceAiContext>({
 			workspace: createScopedWorkspace(new Workspace({ filesystem }), directory),
 			nodeTypesProvider: undefined,
@@ -128,6 +129,7 @@ describe('compileCandidateWorkflow', () => {
 	function changeUrl(workflow: WorkflowJSON, url: string) {
 		const request = workflow.nodes.find((node) => node.id === 'request');
 		if (!request) throw new Error('The request node is missing.');
+
 		request.parameters = { ...request.parameters, url };
 	}
 
@@ -140,6 +142,7 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
+
 		expect(result.workflow).toMatchObject({
 			name: baseline.original.name,
 			description: baseline.original.description,
@@ -148,6 +151,7 @@ describe('compileCandidateWorkflow', () => {
 			pinData: baseline.original.pinData,
 			connections: baseline.original.connections,
 		});
+
 		expect(result.workflow.nodes.find((node) => node.id === 'request')).toMatchObject({
 			name: 'Request',
 			position: [625, 173],
@@ -158,6 +162,7 @@ describe('compileCandidateWorkflow', () => {
 			name: 'Start',
 			position: [125, 173],
 		});
+
 		expect(baseline.original.nodes[0].parameters.url).toBe('https://example.test/original');
 	});
 
@@ -180,6 +185,7 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
+
 		expect(result.workflow.nodes.find((node) => node.id === 'start')?.webhookId).toBe(
 			'existing-webhook',
 		);
@@ -195,6 +201,7 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
+
 		const compiledRequest = result.workflow.nodes.find((node) => node.id === 'request');
 		expect(compiledRequest).not.toHaveProperty('continueOnFail');
 		expect(compiledRequest).not.toHaveProperty('onError');
@@ -204,13 +211,17 @@ describe('compileCandidateWorkflow', () => {
 		const workflow = generatedWorkflow();
 		changeUrl(workflow, 'https://example.test/first');
 		await writeCandidate(workflow);
+
 		const first = await compile();
+
 		changeUrl(workflow, 'https://example.test/second');
 		await writeCandidate(workflow);
+
 		const second = await compile();
 
 		expect(first.success && second.success).toBe(true);
 		if (!first.success || !second.success) return;
+
 		expect(first.workflow.nodes.find((node) => node.id === 'request')?.parameters.url).toBe(
 			'https://example.test/first',
 		);
@@ -236,6 +247,7 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
+
 		expect(result.workflow.nodes.map((node) => node.id)).toEqual(
 			expect.arrayContaining(['request', 'start', 'finish']),
 		);
@@ -274,6 +286,7 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
+
 		expect(result.workflow.nodes.find((node) => node.name === 'Request')?.id).toBe('request');
 	});
 
@@ -287,6 +300,7 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
+
 		expect(result.workflow.nodes.find((node) => node.id === 'request')?.credentials).toEqual(
 			request.credentials,
 		);
@@ -315,11 +329,13 @@ describe('compileCandidateWorkflow', () => {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
+
 		expect(result.credentialResolution).toMatchObject({
 			mockedNodeNames: ['New request'],
 			mockedCredentialTypes: ['httpBasicAuth'],
 			mockedCredentialsByNode: { 'New request': ['httpBasicAuth'] },
 		});
+
 		expect(result.workflow.nodes.find((node) => node.id === 'new-request')?.credentials).toEqual(
 			{},
 		);
@@ -403,12 +419,14 @@ try {
 
 		expect(result.success).toBe(true);
 		if (!result.success) return;
+
 		expect(result.workflow.nodes.find((node) => node.id === 'request')).toMatchObject({
 			parameters: { url: 'https://example.test/typescript' },
 			position: [625, 173],
 		});
 
 		await writeFile(join(directory, 'candidate.workflow.ts'), 'export default broken;');
+
 		expect(await compile('candidate.workflow.ts')).toMatchObject({
 			success: false,
 			reason: 'workflow_source_build_failed',

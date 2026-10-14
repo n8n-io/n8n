@@ -1959,7 +1959,9 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		const start = startVerification.getMockImplementation()!;
 		startVerification.mockImplementationOnce(async (...args) => {
 			const previousProgress = await start(...args);
+
 			expect(getOutcome().verification?.status).toBe('running');
+
 			controller.abort(cancellation);
 			return previousProgress;
 		});
@@ -1968,6 +1970,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		await expect(runTool(context, triggerAInput)).rejects.toBe(cancellation);
 
 		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+
 		expect(getOutcome().verifyAttempts).toBe(1);
 		expect(getOutcome().verificationProgress).toEqual({});
 		expect(getOutcome().verification).toMatchObject({
@@ -2008,6 +2011,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		await expect(runTool(context, triggerAInput)).rejects.toBe(cancellation);
 
 		expect(ctx.domainContext.executionService.run).toHaveBeenCalledTimes(1);
+
 		expect(getOutcome().verificationProgress).toEqual({});
 		expect(getOutcome().verification).toMatchObject({
 			attempted: true,

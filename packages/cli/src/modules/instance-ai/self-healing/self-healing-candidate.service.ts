@@ -33,6 +33,7 @@ type CandidateInput = SelfHealingCandidateInput & {
 	context: InstanceAiContext;
 	abortSignal: AbortSignal;
 };
+
 type CompiledCandidate = Extract<CandidateWorkflowResult, { success: true }> & {
 	candidateChecksum: string;
 };
@@ -51,9 +52,11 @@ export class SelfHealingCandidateService {
 	async verify(input: CandidateInput) {
 		const { baseline, context, filePath, abortSignal } = input;
 		abortSignal.throwIfAborted();
+
 		if (input.user.id !== baseline.backgroundUserId) {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
+
 		const user = await this.suggestions.requireCurrentBaseline(baseline);
 		const execution = await this.executions.getReference(
 			user,
@@ -63,6 +66,7 @@ export class SelfHealingCandidateService {
 		if (execution.status !== 'available') {
 			throw new ForbiddenError('The failed execution is unavailable for this workflow.');
 		}
+
 		const compiled = await compileCandidateWorkflow({
 			baseline,
 			context,
@@ -72,6 +76,7 @@ export class SelfHealingCandidateService {
 		if (!compiled.success) {
 			return { filePath, validation: compiled, verification: { status: 'not_run' } };
 		}
+
 		// Match the builder's save checks before identifying the graph that will run.
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isSharingEnabled()) {
@@ -81,6 +86,7 @@ export class SelfHealingCandidateService {
 				user,
 			);
 		}
+
 		const candidate = {
 			...compiled,
 			candidateChecksum: await calculateWorkflowChecksum(compiled.workflow),
@@ -91,10 +97,12 @@ export class SelfHealingCandidateService {
 			validation: { success: true, warnings: candidate.warnings },
 			credentialResolution: candidate.credentialResolution,
 		};
+
 		if (input.validationOnly) return { ...validated, verification: { status: 'not_run' } };
 
 		try {
 			const verification = await this.verifyExecution({ ...input, user }, candidate);
+
 			return { ...validated, verification };
 		} catch (error) {
 			return {
@@ -124,12 +132,14 @@ export class SelfHealingCandidateService {
 			logger: this.logger,
 		});
 		abortSignal.throwIfAborted();
+
 		if (!plan.nodeSimulationPlan) {
 			return {
 				status: 'not_run',
 				error: 'The verification simulation plan is unavailable.',
 			};
 		}
+
 		const buildOutcome: WorkflowBuildOutcome = {
 			...plan,
 			workItemId: candidate.candidateChecksum,
@@ -145,6 +155,7 @@ export class SelfHealingCandidateService {
 		if (preparation.kind === 'blocked') {
 			return { ...preparation.result, status: 'not_run' };
 		}
+
 		const blocker = checkToolSimulationSupport({
 			workflow,
 			workflowPinnedNodeNames: Object.keys(candidate.workflow.pinData ?? {}),
@@ -158,6 +169,7 @@ export class SelfHealingCandidateService {
 		// Planning can take time. Recheck access and the baseline before creating a snapshot.
 		await this.suggestions.requireCurrentBaseline(baseline);
 		abortSignal.throwIfAborted();
+
 		return await this.temporaryWorkflows.withTemporaryWorkflow(
 			{ user, baseline, graph: candidate.workflow },
 			async (workflowId) => {
@@ -170,6 +182,7 @@ export class SelfHealingCandidateService {
 					runId,
 					abortSignal,
 				});
+
 				return await this.summarizeVerification(input, candidate, verification);
 			},
 		);
@@ -185,11 +198,13 @@ export class SelfHealingCandidateService {
 			runs: parameterCheckRuns,
 			logger: this.logger,
 		});
+
 		// The simulation plan omits triggers and disconnected nodes. Report their coverage too.
 		const nodesNotReached = candidate.workflow.nodes
 			.filter((node) => !node.disabled && node.type !== STICKY_NODE_TYPE)
 			.filter((node) => !analysis.reachedNames.has(node.name))
 			.map((node) => node.name);
+
 		return {
 			status: abortSignal.aborted ? 'cancelled' : result.status,
 			success: !abortSignal.aborted && analysis.success,

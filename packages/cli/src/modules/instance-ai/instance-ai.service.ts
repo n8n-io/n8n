@@ -1533,12 +1533,14 @@ export class InstanceAiService {
 	async startSelfHealingRun(input: SelfHealingRunInput): Promise<SelfHealingRunResult> {
 		this.selfHealingAgent.assertEnabled();
 		this.assertRunAdmissible(input.user);
+
 		const threadId = randomUUID();
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user: input.user,
 		});
+
 		const execution = this.selfHealingAgent
 			.execute(input, {
 				threadId,
@@ -1585,7 +1587,9 @@ export class InstanceAiService {
 				this.runState.clearActiveRun(threadId);
 				this.liveness.clearThreadState(threadId);
 			});
+
 		this.trackInFlightExecution(execution);
+
 		return await execution;
 	}
 

@@ -60,6 +60,7 @@ function candidateSource(
 	workflow.nodes[1].name = nodeName;
 	workflow.nodes.push(...extraNodes);
 	workflow.connections.Start.main = [[{ node: nodeName, type: 'main', index: 0 }]];
+
 	return JSON.stringify({ ...workflow, id: baseline.workflowId });
 }
 
@@ -73,6 +74,7 @@ describe('SelfHealingCandidateService', () => {
 	const executionService = mock<InstanceAiExecutionService>();
 	const filesystem = mock<WorkspaceFilesystem>();
 	const workspace = mock<Workspace>({ filesystem });
+
 	const service = new SelfHealingCandidateService(
 		suggestions,
 		executions,
@@ -81,11 +83,13 @@ describe('SelfHealingCandidateService', () => {
 		enterpriseWorkflows,
 		license,
 	);
+
 	let source: string;
 	let input: Parameters<SelfHealingCandidateService['verify']>[0];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+
 		license.isSharingEnabled.mockReturnValue(false);
 		enterpriseWorkflows.preventTampering.mockImplementation(async (workflow) => workflow);
 		source = candidateSource('Repaired process');
@@ -101,6 +105,7 @@ describe('SelfHealingCandidateService', () => {
 			executedNodeNames: ['Start', 'Repaired process'],
 			data: { 'Repaired process': [{ value: 'repaired' }] },
 		});
+
 		input = {
 			user,
 			baseline: structuredClone(baseline),
@@ -144,6 +149,7 @@ describe('SelfHealingCandidateService', () => {
 			validation: { success: true },
 			verification: { status: 'not_run' },
 		});
+
 		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
@@ -161,11 +167,13 @@ describe('SelfHealingCandidateService', () => {
 			baseline.workflowId,
 			user,
 		);
+
 		expect(result).toMatchObject({
 			candidateChecksum: await calculateWorkflowChecksum(baseline.original),
 			validation: { success: true },
 			verification: { status: 'not_run' },
 		});
+
 		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
@@ -193,12 +201,14 @@ describe('SelfHealingCandidateService', () => {
 			validation: { success: false, reason: 'workflow_json_parse_failed' },
 			verification: { status: 'not_run' },
 		});
+
 		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
 	it('recompiles each edit and verifies only the temporary workflow', async () => {
 		const first = await service.verify(input);
+
 		source = candidateSource('Second repair');
 		executionService.run.mockResolvedValueOnce({
 			executionId: 'verification-2',
@@ -219,17 +229,21 @@ describe('SelfHealingCandidateService', () => {
 			verification: { status: 'success', success: true, nodesNotReached: [] },
 		});
 		expect(first).not.toHaveProperty('candidateChecksum', Reflect.get(second, 'candidateChecksum'));
+
 		expect(filesystem.readFile).toHaveBeenCalledTimes(2);
 		expect(executionService.run).toHaveBeenCalledTimes(2);
+
 		for (const [workflowId, , options] of executionService.run.mock.calls) {
 			expect(workflowId).toBe('temporary-1');
 			expect(options).toMatchObject({ isVerificationRun: true, abortSignal: input.abortSignal });
 		}
+
 		expect(
 			temporaryWorkflows.withTemporaryWorkflow.mock.calls[1][0].graph.nodes.find(
 				(node) => node.id === 'process-1',
 			)?.name,
 		).toBe('Second repair');
+
 		expect(input.baseline).toEqual(baseline);
 		expect(suggestions.createSuggestion).not.toHaveBeenCalled();
 	});
@@ -238,6 +252,7 @@ describe('SelfHealingCandidateService', () => {
 		vi.stubEnv('N8N_INSTANCE_AI_MODEL_API_KEY', '');
 		vi.stubEnv('N8N_AI_ANTHROPIC_KEY', '');
 		vi.stubEnv('ANTHROPIC_API_KEY', '');
+
 		const workflow = structuredClone(baseline.original);
 		workflow.nodes[1] = {
 			...workflow.nodes[1],
@@ -252,6 +267,7 @@ describe('SelfHealingCandidateService', () => {
 			credentials: { httpHeaderAuth: { id: 'missing', name: 'Missing credential' } },
 		};
 		source = JSON.stringify({ ...workflow, id: baseline.workflowId });
+
 		executionService.getResolvedNodeParameters.mockResolvedValueOnce({
 			nodeName: 'Process',
 			runIndex: 0,
@@ -279,6 +295,7 @@ describe('SelfHealingCandidateService', () => {
 				simulatedNodes: [expect.objectContaining({ nodeName: 'Process' })],
 			},
 		});
+
 		expect(executionService.run).toHaveBeenCalledWith(
 			'temporary-1',
 			undefined,
@@ -286,6 +303,7 @@ describe('SelfHealingCandidateService', () => {
 				verificationPinData: { Process: [expect.any(Object)] },
 			}),
 		);
+
 		expect(input.baseline).toEqual(baseline);
 	});
 
@@ -337,6 +355,7 @@ describe('SelfHealingCandidateService', () => {
 		expect(result).toMatchObject({
 			verification: { success: false, error: 'The workflow baseline has changed.' },
 		});
+
 		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});

@@ -47,6 +47,7 @@ export async function compileCandidateWorkflow({
 	abortSignal,
 }: CandidateWorkflowInput): Promise<CandidateWorkflowResult> {
 	abortSignal?.throwIfAborted();
+
 	if (context.allowSendingParameterValues === false) {
 		return {
 			success: false,
@@ -54,6 +55,7 @@ export async function compileCandidateWorkflow({
 			errors: ['Candidate verification requires parameter sharing to be enabled.'],
 		};
 	}
+
 	if (!context.workspace) {
 		return {
 			success: false,
@@ -61,11 +63,13 @@ export async function compileCandidateWorkflow({
 			errors: ['The workspace is unavailable.'],
 		};
 	}
+
 	const source = await readWorkspaceFile(context.workspace, filePath, {
 		logger: context.logger,
 		abortSignal,
 	});
 	abortSignal?.throwIfAborted();
+
 	if (source === null) {
 		return {
 			success: false,
@@ -73,9 +77,11 @@ export async function compileCandidateWorkflow({
 			errors: ['The candidate file was not found in this workspace.'],
 		};
 	}
+
 	try {
 		const compiled = await compileWorkflowSource(context, filePath, source, abortSignal);
 		if (!compiled.success) return compiled;
+
 		const original = toWorkflowJSON({ ...baseline.original, id: baseline.workflowId });
 		const warnings = downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, original);
 		const { blocking } = partitionWarnings(warnings);
@@ -86,6 +92,7 @@ export async function compileCandidateWorkflow({
 				errors: blocking.map(({ message }) => message),
 			};
 		}
+
 		// Builder helpers must read the captured baseline, not a newer saved version.
 		const preparationContext: InstanceAiContext = {
 			...context,
@@ -94,6 +101,7 @@ export async function compileCandidateWorkflow({
 				getAsWorkflowJSON: async () => structuredClone(original),
 			},
 		};
+
 		const credentialResolution = await resolveCredentials(
 			compiled.workflow,
 			baseline.workflowId,
@@ -102,17 +110,20 @@ export async function compileCandidateWorkflow({
 		);
 		await stripStaleCredentialsFromWorkflow(preparationContext, compiled.workflow);
 		await prepareWorkflowForSave(compiled.workflow, baseline.workflowId, preparationContext);
+
 		const { toEngineConnections } = await import('@n8n/workflow-sdk');
 		const connections = toEngineConnections(compiled.workflow.connections);
 		if (!isEqual(connections, compiled.workflow.connections)) {
 			throw new BadRequestError('The candidate contains unsupported connection types.');
 		}
+
 		const workflow: WorkflowSuggestionSnapshot = {
 			...structuredClone(baseline.original),
 			nodes: compiled.workflow.nodes.map((node) => INodeSchema.parse(node)),
 			connections,
 		};
 		validateWorkflowStructure(workflow);
+
 		return {
 			success: true,
 			workflow,
@@ -122,6 +133,7 @@ export async function compileCandidateWorkflow({
 		};
 	} catch (error) {
 		abortSignal?.throwIfAborted();
+
 		return { success: false, reason: 'candidate_invalid', errors: [getErrorMessage(error)] };
 	}
 }

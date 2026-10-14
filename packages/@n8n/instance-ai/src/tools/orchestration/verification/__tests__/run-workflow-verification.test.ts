@@ -60,6 +60,7 @@ describe('runWorkflowVerification', () => {
 		});
 		const preparation = prepareVerificationRun(buildOutcome, {});
 		if (preparation.kind !== 'ready') throw new Error('Expected verification fixtures');
+
 		const abortSignal = new AbortController().signal;
 		const inputData = { message: 'Test' };
 
@@ -83,6 +84,7 @@ describe('runWorkflowVerification', () => {
 			isVerificationRun: true,
 			abortSignal,
 		});
+
 		expect(analysis.success).toBe(true);
 		expect(analysis.nodesNotReached).toEqual(['Process result']);
 		expect(analysis.coverageNote).toContain('Process result');
@@ -90,6 +92,7 @@ describe('runWorkflowVerification', () => {
 			'Send message',
 			'Trigger',
 		]);
+
 		expect(parameterCheckRuns).toEqual([
 			{ executionId: 'execution-1', nodeNames: ['Send message', 'Trigger'] },
 		]);
@@ -131,6 +134,7 @@ describe('runWorkflowVerification', () => {
 				isVerificationRun: true,
 			}),
 		);
+
 		expect(parameterCheckRuns).toEqual([{ executionId: 'approve-1', nodeNames: ['Approval'] }]);
 	});
 });

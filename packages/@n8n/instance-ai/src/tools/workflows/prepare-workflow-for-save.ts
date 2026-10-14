@@ -24,6 +24,7 @@ export async function prepareWorkflowForSave(
 	await preserveExistingSetupValues(json, workflowId, context);
 	await ensureWebhookIds(json, workflowId, context);
 	await preserveExistingNodeGroupIds(json, workflowId, context);
+
 	const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
 	const droppedGroupWarnings = nodeGroupDroppedWarnings(
 		dropInvalidWorkflowJsonGroups(
@@ -32,6 +33,7 @@ export async function prepareWorkflowForSave(
 		),
 	);
 	const droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
+
 	// Layout reads group membership after invalid groups are removed.
 	await preserveExistingNodePositions(json, workflowId, context);
 
