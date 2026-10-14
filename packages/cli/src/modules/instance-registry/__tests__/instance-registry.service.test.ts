@@ -6,6 +6,8 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+
 import { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 import type { InstanceStorage } from '../storage/instance-storage.interface';
@@ -57,6 +59,11 @@ vi.mock('../storage/redis-instance-storage', () => {
 
 	return { RedisInstanceStorage: MockRedisStorage };
 });
+
+vi.mock('@/utils/container-limits', () => ({
+	getMemoryLimit: vi.fn(() => null),
+	getCpuLimit: vi.fn(() => ({ limit: null, source: 'unreadable', weight: null })),
+}));
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -245,6 +252,46 @@ describe('InstanceRegistryService', () => {
 			await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS * 3);
 
 			expect(heartbeatSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('resource limits', () => {
+		beforeEach(() => {
+			vi.mocked(getMemoryLimit).mockReturnValue(null);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: null, source: 'unreadable', weight: null });
+		});
+
+		it('should register the memory and CPU limits', async () => {
+			vi.mocked(getMemoryLimit).mockReturnValue(1_073_741_824);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: 0.5, source: 'cgroup_v2', weight: 100 });
+			service = createService();
+
+			await service.init();
+
+			const [reg] = await service.getAllInstances();
+			expect(reg).toMatchObject({ memoryLimit: 1_073_741_824, cpuLimit: 0.5 });
+		});
+
+		it('should register null for a process without limits', async () => {
+			service = createService();
+
+			await service.init();
+
+			const [reg] = await service.getAllInstances();
+			expect(reg.memoryLimit).toBeNull();
+			expect(reg.cpuLimit).toBeNull();
+		});
+
+		it('should write the current limits on every heartbeat', async () => {
+			service = createService();
+			await service.init();
+
+			vi.mocked(getMemoryLimit).mockReturnValue(2_147_483_648);
+			vi.mocked(getCpuLimit).mockReturnValue({ limit: 2, source: 'cgroup_v2', weight: 100 });
+			await service.heartbeat();
+
+			const [reg] = await service.getAllInstances();
+			expect(reg).toMatchObject({ memoryLimit: 2_147_483_648, cpuLimit: 2 });
 		});
 	});
 
