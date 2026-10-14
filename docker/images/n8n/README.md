@@ -154,6 +154,8 @@ Tags with a `-pc` suffix (for example `n8nio/n8n:2.36.0-pc`) are a pointer-compr
 
 Tags with a `-debian` suffix (for example `n8nio/n8n:2.41.0-debian`) use Debian (glibc) instead of Alpine (musl). Use them only to add a vendor library that needs glibc, for example Oracle Instant Client for Thick mode or the IBM Db2 driver (`ibm_db`). Use the regular tags otherwise.
 
+**The `-debian` tags are a preview.** They can change without notice, and they report more unfixed OS vulnerabilities than the regular tags.
+
 Like the regular image, this image has no package manager, so `RUN apt-get install` does not work in a derived image. Build the library in a stage that has one, then copy it in:
 
 1. Start a build stage from an image with `apt` and the same Debian release: `debian:trixie-slim`, or `node:26-trixie` if the library is a Node native addon that you must compile.

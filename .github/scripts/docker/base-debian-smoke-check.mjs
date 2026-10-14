@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const run = (file, args = [], options = {}) =>
@@ -36,6 +36,22 @@ run('tini', ['-s', '--', 'true']);
 
 // The n8n image runs as this user and chowns /home/node to it.
 assert.equal(run('id', ['-u', 'node']), '1000', 'User node does not have uid 1000');
+
+// The n8n image bundles librdkafka, which loads these at runtime.
+const libDir = path.join('/usr/lib', readdirSync('/usr/lib').find((d) => d.endsWith('-linux-gnu')));
+const missingLibraries = [
+	'libsasl2.so.2',
+	'libssl.so.3',
+	'libcrypto.so.3',
+	'liblz4.so.1',
+	'libzstd.so.1',
+	'libxxhash.so.0',
+	'libz.so.1',
+].filter((soname) => !existsSync(path.join(libDir, soname)));
+assert.deepEqual(missingLibraries, [], `Missing libraries: ${missingLibraries.join(', ')}`);
+
+const caBundle = '/etc/ssl/certs/ca-certificates.crt';
+assert.ok(existsSync(caBundle), `${caBundle} is missing`);
 
 // A module that `npm install -g` puts in place must be require()-able.
 const moduleDir = path.join(run('npm', ['root', '-g']), 'base-smoke-module');
