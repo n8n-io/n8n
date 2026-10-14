@@ -1,16 +1,6 @@
 import type { AppBuildStatus } from '@n8n/api-types';
-import { DateTimeColumn, dbType, idStringifier, WithTimestamps, type ScheduledTask } from '@n8n/db';
-import {
-	Column,
-	Entity,
-	Index,
-	JoinColumn,
-	ManyToOne,
-	PrimaryColumn,
-	type Relation,
-} from '@n8n/typeorm';
-
-import type { App } from './app.entity';
+import { DateTimeColumn, dbType, idStringifier, WithTimestamps } from '@n8n/db';
+import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'app_version' })
 export class AppVersion extends WithTimestamps {
@@ -20,10 +10,6 @@ export class AppVersion extends WithTimestamps {
 	@Index()
 	@Column({ type: 'uuid' })
 	appId: string;
-
-	@ManyToOne('App', { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'appId' })
-	app: Relation<App>;
 
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	label: string | null;
@@ -53,13 +39,6 @@ export class AppVersion extends WithTimestamps {
 		},
 	})
 	buildTaskId: string | null;
-
-	@ManyToOne('ScheduledTask', { onDelete: 'SET NULL', nullable: true })
-	@JoinColumn({
-		name: 'buildTaskId',
-		foreignKeyConstraintName: 'app_version_buildTaskId_foreign',
-	})
-	buildTask: Relation<ScheduledTask> | null;
 
 	@Column({ type: 'varchar', length: 32, default: 'queued' })
 	buildStatus: AppBuildStatus;

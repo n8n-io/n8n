@@ -22,11 +22,11 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_app_version_buildStatus | CHECK | CHECK ((("buildStatus")::text = ANY ((ARRAY['queued'::character varying, 'running'::character varying, 'succeeded'::character varying, 'failed'::character varying])::text[]))) |
+| FK_93f7f9719991a7e6c3ebd93145a | FOREIGN KEY | FOREIGN KEY ("buildTaskId") REFERENCES scheduled_task(id) ON DELETE SET NULL |
 | FK_e9aeab5b1db8dc77708231ae44e | FOREIGN KEY | FOREIGN KEY ("appId") REFERENCES app(id) ON DELETE CASCADE |
 | PK_f2573b981a7eac664875e7483ac | PRIMARY KEY | PRIMARY KEY (id) |
 | app_version_appId_not_null | n | NOT NULL "appId" |
 | app_version_buildStatus_not_null | n | NOT NULL "buildStatus" |
-| app_version_buildTaskId_foreign | FOREIGN KEY | FOREIGN KEY ("buildTaskId") REFERENCES scheduled_task(id) ON DELETE SET NULL |
 | app_version_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_version_id_not_null | n | NOT NULL id |
 | app_version_sourceSizeBytes_not_null | n | NOT NULL "sourceSizeBytes" |

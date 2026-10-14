@@ -60,7 +60,6 @@ export class CreateApps1791897793262 implements ReversibleMigration {
 				tableName: 'scheduled_task',
 				columnName: 'id',
 				onDelete: 'SET NULL',
-				name: 'app_version_buildTaskId_foreign',
 			});
 
 		await addForeignKey(
