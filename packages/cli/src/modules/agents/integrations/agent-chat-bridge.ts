@@ -810,7 +810,7 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * A failed lookup leaves the message without the extra files, never unanswered.
+	 * A failed lookup drops only the extra files: a message with text is still answered.
 	 * It is only logged: the activity does not say whether the message has files
 	 * (a Teams channel message carries no sign of them), so a note to the agent
 	 * would appear on every message, not only on one whose files were lost.
