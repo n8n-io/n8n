@@ -191,7 +191,6 @@ import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
 import { InstanceAiConversationHistoryService } from './instance-ai-conversation-history.service';
-import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import {
 	getAgentErrorSeverity,
@@ -565,9 +564,7 @@ function createInertAbortSignal(): AbortSignal {
 export function isAssistantCreditBalanceExhausted(credits: {
 	creditsQuota: number;
 	creditsClaimed: number;
-	quotaLocked?: boolean;
 }): boolean {
-	if (credits.quotaLocked) return true;
 	return credits.creditsQuota >= 0 && credits.creditsClaimed >= credits.creditsQuota;
 }
 
@@ -1111,18 +1108,9 @@ export class InstanceAiService {
 		return this.modelService.isProxyEnabled();
 	}
 
-	/**
-	 * Get current credit usage from the AI service proxy.
-	 *
-	 * Doubles as the reconcile point for the activation lock: this runs on every page load, so a
-	 * lock call that was lost to a failed request, an evicted record or a process restart is
-	 * re-asserted here without any scheduled job.
-	 */
+	/** Get current credit usage from the AI service proxy. */
 	async getCredits(user: User): Promise<InstanceAiCredits> {
-		await this.creditService.ensureQuotaLockApplied(user);
-
-		const credits = await this.modelService.getCredits(user);
-		return maskCreditsForDisplay(credits, this.settingsService.isActivationCapped());
+		return await this.modelService.getCredits(user);
 	}
 
 	/**
@@ -1217,13 +1205,8 @@ export class InstanceAiService {
 	): Promise<unknown> {
 		if (!isMaskedStreamFailure(error)) return error;
 		try {
-			const { creditsQuota, creditsClaimed, quotaLocked } =
-				await this.modelService.getCredits(user);
-			// The activation lock refuses use while the quota still has credits left, so the numbers
-			// alone wouldn't explain the failure. Read from the proxy, not from n8n's own trigger
-			// state: that only says the lock *should* apply, so a lock call that failed would turn
-			// any unrelated stream death into a spurious upgrade wall.
-			if (!quotaLocked && (creditsQuota < 0 || creditsClaimed < creditsQuota)) return error;
+			const { creditsQuota, creditsClaimed } = await this.modelService.getCredits(user);
+			if (creditsQuota < 0 || creditsClaimed < creditsQuota) return error;
 		} catch (creditsError) {
 			this.logger.debug('Masked stream failure credit re-check failed; keeping original error', {
 				error: getErrorMessage(creditsError),
@@ -2626,8 +2609,6 @@ export class InstanceAiService {
 		);
 		const userGateway = this.gatewayService.findGateway(user.id);
 
-		// There's another ensure lock check at `getCredits`, which only fires when the frontend mounts.
-		await this.creditService.ensureQuotaLockApplied(user);
 		// Stop before this run resolves a model. A cached proxy token stays valid
 		// after the balance hits zero, so a later token request would not 403.
 		await this.assertAssistantCreditsAvailable(user);
