@@ -17,7 +17,6 @@ describe('selfHealingResultContentSchema', () => {
 			turns: null,
 			durationSeconds: null,
 		};
-
 		expect(selfHealingResultContentSchema.parse({ ...content, usage }).usage).toEqual(usage);
 	});
 
@@ -27,7 +26,6 @@ describe('selfHealingResultContentSchema', () => {
 			turns: null,
 			durationSeconds: null,
 		};
-
 		expect(selfHealingResultContentSchema.parse({ ...content, usage }).usage).toEqual(usage);
 	});
 

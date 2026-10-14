@@ -26,7 +26,6 @@ const original: WorkflowSuggestionBaseline['original'] = {
 
 it('converts a supplied snapshot with node identity, settings, and legacy options', () => {
 	const converted = toWorkflowJSON({ ...original, id: 'workflow-id' });
-
 	expect(converted).toMatchObject({
 		id: 'workflow-id',
 		name: 'Captured name',
@@ -47,7 +46,6 @@ it('converts a supplied snapshot with node identity, settings, and legacy option
 
 it('redacts parameters while retaining credential references', () => {
 	const converted = toWorkflowJSON({ ...original, id: 'workflow-id' }, { redactParameters: true });
-
 	expect(converted.nodes[0]).toMatchObject({ parameters: {}, credentials: node.credentials });
 	expect(original.nodes[0].parameters).toEqual({ secret: 'parameter' });
 });
@@ -63,7 +61,6 @@ it('preserves historical graph substitution and explicit error behavior', () => 
 			},
 		},
 	);
-
 	expect(converted.name).toBe(original.name);
 	expect(converted.settings).toEqual(original.settings);
 	expect(converted.nodes[0]).toMatchObject({ name: 'Historical node', onError: 'stopWorkflow' });
