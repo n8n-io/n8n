@@ -70,9 +70,10 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background-color: var(--run-data--color--background);
+	// The text colour flips with the theme, so the stripes show on light and dark run data.
 	background-image: repeating-linear-gradient(
 		135deg,
-		oklch(0% 0 0 / 0.025) 0 5px,
+		color-mix(in srgb, var(--text-color) 3%, transparent) 0 5px,
 		transparent 5px 10px
 	);
 
