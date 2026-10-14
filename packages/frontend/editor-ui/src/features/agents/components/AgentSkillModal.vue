@@ -272,11 +272,7 @@ function getPickerCategory(librarySkill: SkillListItem): 'project' | 'this-agent
 async function loadLibrarySkills() {
 	libraryLoading.value = true;
 	try {
-		librarySkills.value = await listAttachableSkills(
-			rootStore.restApiContext,
-			props.data.projectId,
-			props.data.agentId,
-		);
+		librarySkills.value = await listAttachableSkills(rootStore.restApiContext, props.data.agentId);
 	} catch (error) {
 		showError(error, i18n.baseText('agents.builder.skills.picker.loadError'));
 	} finally {

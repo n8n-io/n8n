@@ -472,7 +472,7 @@ describe('AgentSkillModal', () => {
 				onAttach,
 			});
 
-			expect(listAttachableSkills).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+			expect(listAttachableSkills).toHaveBeenCalledWith(expect.anything(), 'a1');
 			expect(await findAllByTestId('agent-skill-picker-row')).toHaveLength(3);
 			const picker = getByTestId('agent-skill-picker');
 			expect(getAllByTestId('agent-skill-picker-category').map((node) => node.textContent)).toEqual(

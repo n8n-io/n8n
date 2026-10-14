@@ -750,12 +750,10 @@ export const updateAgentSkillAvailability = async (
 
 export const listAttachableSkills = async (
 	context: IRestApiContext,
-	projectId: string,
 	agentId: string,
 ): Promise<SkillListItem[]> => {
 	const { data } = await makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
-		attachableTo: projectId,
-		attachableAgentId: agentId,
+		attachableTo: agentId,
 	});
 	const targetRank = (skill: SkillListItem) =>
 		skill.scope === 'instance' ? 2 : skill.agentId ? 1 : 0;

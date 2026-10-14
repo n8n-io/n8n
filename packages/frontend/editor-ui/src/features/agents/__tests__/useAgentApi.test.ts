@@ -56,11 +56,10 @@ describe('useAgentApi', () => {
 				],
 			});
 
-			const result = await listAttachableSkills(restApiContext, 'project-1', 'agent-1');
+			const result = await listAttachableSkills(restApiContext, 'agent-1');
 
 			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills', {
-				attachableTo: 'project-1',
-				attachableAgentId: 'agent-1',
+				attachableTo: 'agent-1',
 			});
 			expect(result.map(({ name }) => name)).toEqual(['Billing', 'SQL', 'Notes', 'Brand', 'Tone']);
 		});
