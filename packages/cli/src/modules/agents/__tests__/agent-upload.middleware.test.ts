@@ -1,4 +1,3 @@
-import { MAX_AGENT_FILES_PER_UPLOAD } from '@n8n/api-types';
 import multer from 'multer';
 
 import { describeMulterError, isAllowedAgentFile } from '../agent-upload.middleware';
@@ -20,11 +19,11 @@ describe('AgentUploadMiddleware', () => {
 });
 
 describe('describeMulterError', () => {
-	it('explains the per-upload file count limit instead of surfacing "Unexpected field"', () => {
-		const error = new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'files');
+	it('names the form field instead of surfacing "Unexpected field"', () => {
+		const error = new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'attachments');
 
 		expect(describeMulterError(error)).toBe(
-			`You can upload at most ${MAX_AGENT_FILES_PER_UPLOAD} files at a time`,
+			'Files were sent in an unexpected form field "attachments"',
 		);
 	});
 

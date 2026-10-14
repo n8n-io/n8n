@@ -10,7 +10,9 @@ import { nanoid } from 'nanoid';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import {
+	buildMirrorDeleteListBody,
 	buildMirrorFinalizeCommand,
+	buildMirrorManifestBody,
 	buildReadKnowledgeCommand,
 	buildScopedKnowledgeShellCommand,
 	buildSearchKnowledgeCommand,
@@ -41,7 +43,9 @@ import {
 import {
 	assertKnowledgePathSegment,
 	getAgentKnowledgePaths,
+	getMirrorStagingPaths,
 	type AgentKnowledgePaths,
+	type AgentKnowledgeStagingPaths,
 	storageFileNameForOriginalFileName,
 } from './agent-knowledge-storage';
 import {
@@ -296,11 +300,11 @@ export class AgentKnowledgeMirrorService {
 		}
 
 		const stagingId = nanoid();
-		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
 		try {
 			await this.finalizeMirror(runtime, files, toCopy, toDelete, present, stagingId);
 		} finally {
-			if (toCopy.length > 0) await this.cleanMirrorStaging(runtime, stagingDir, stagingId);
+			// Every sync stages a manifest, so there is always a staging dir to drop.
+			await this.cleanMirrorStaging(runtime, getMirrorStagingPaths(runtime.paths, stagingId));
 		}
 	}
 
@@ -320,8 +324,8 @@ export class AgentKnowledgeMirrorService {
 		const copiedNames = new Set<string>();
 		if (files.length === 0) return copiedNames;
 
-		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
-		await runtime.filesystem.mkdir(stagingDir, { recursive: true });
+		const stagingFilesDir = getMirrorStagingPaths(runtime.paths, stagingId).filesDir;
+		await runtime.filesystem.mkdir(stagingFilesDir, { recursive: true });
 
 		for (const file of files) {
 			const name = file.file;
@@ -348,7 +352,7 @@ export class AgentKnowledgeMirrorService {
 				continue;
 			}
 
-			await runtime.filesystem.writeFile(`${stagingDir}/${name}`, buffer);
+			await runtime.filesystem.writeFile(`${stagingFilesDir}/${name}`, buffer);
 			copiedNames.add(name);
 		}
 
@@ -524,16 +528,24 @@ export class AgentKnowledgeMirrorService {
 		const staleFiles = toCopy
 			.filter((file) => present.has(file.file) && !copiedNames.has(file.file))
 			.map((file) => file.file);
+		const deletions = [...toDelete, ...staleFiles];
+
+		const staging = getMirrorStagingPaths(runtime.paths, stagingId);
+		await runtime.filesystem.mkdir(staging.root, { recursive: true });
+		await runtime.filesystem.writeFile(
+			staging.manifest,
+			buildMirrorManifestBody(finalManifestFiles),
+		);
+		if (deletions.length > 0) {
+			await runtime.filesystem.writeFile(
+				staging.deleteList,
+				buildMirrorDeleteListBody(deletions, runtime.paths),
+			);
+		}
 
 		const syncResult = await this.agentSandboxRuntimeService.executeSandboxCommand(
 			runtime.sandbox,
-			buildMirrorFinalizeCommand(
-				[...copiedNames],
-				[...toDelete, ...staleFiles],
-				finalManifestFiles,
-				runtime.paths,
-				stagingId,
-			),
+			buildMirrorFinalizeCommand(runtime.paths, stagingId, deletions.length > 0),
 			MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
 		);
 		if (syncResult.exitCode !== 0) {
@@ -545,15 +557,14 @@ export class AgentKnowledgeMirrorService {
 
 	private async cleanMirrorStaging(
 		runtime: AgentKnowledgeMirrorRuntime,
-		stagingDir: string,
-		stagingId: string,
+		staging: AgentKnowledgeStagingPaths,
 	): Promise<void> {
 		try {
-			await runtime.filesystem.rmdir(stagingDir, { recursive: true, force: true });
+			await runtime.filesystem.rmdir(staging.root, { recursive: true, force: true });
 		} catch (error) {
 			this.logger.warn('Failed to clean agent knowledge mirror staging directory', {
 				sandboxName: runtime.cacheKey,
-				stagingId,
+				stagingDir: staging.root,
 				error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
 			});
 		}

@@ -22,7 +22,6 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILE_SIZE_MB,
-	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	addMissingAgentPersonalisation,
@@ -1020,18 +1019,6 @@ async function onUploadAgentFiles(files: File[]) {
 	}
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
 	if (filesWithinLimit.length === 0) return;
-
-	if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
-		showError(
-			new Error(
-				locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
-					interpolate: { max: String(MAX_AGENT_FILES_PER_UPLOAD) },
-				}),
-			),
-			locale.baseText('agents.builder.files.uploadTooManyFiles.title' as BaseTextKey),
-		);
-		return;
-	}
 
 	const existingTotalSizeBytes = agentFiles.value.reduce(
 		(total, file) => total + file.fileSizeBytes,

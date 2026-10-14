@@ -16,7 +16,12 @@ import {
 	type SearchKnowledgeMatch,
 	type SearchKnowledgeRequest,
 } from './agent-knowledge-retrieval';
-import { assertKnowledgePathSegment, type AgentKnowledgePaths } from './agent-knowledge-storage';
+import {
+	assertKnowledgePathSegment,
+	getMirrorStagingPaths,
+	hasControlCharacter,
+	type AgentKnowledgePaths,
+} from './agent-knowledge-storage';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
 export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;
@@ -553,45 +558,70 @@ export function buildScopedKnowledgeShellCommand(
 }
 
 /**
- * Finalizes a mirror sync: moves `toCopy` names from their already-uploaded
- * per-sync staging path into place, removes `toDelete` names, and rewrites the
- * manifest to `manifestFiles`. The staging + `mv` sequence means a search
- * running concurrently never sees a partially-written file.
+ * Body of the mirror manifest: one `<fileId>\t<file>` line per mirrored file.
+ * The caller uploads this as a file rather than embedding it in the finalize
+ * command, so the command stays a fixed size however many files are mirrored.
  */
-export function buildMirrorFinalizeCommand(
-	toCopy: string[],
-	toDelete: string[],
+export function buildMirrorManifestBody(
 	manifestFiles: Array<Pick<AgentKnowledgeFileReference, 'file' | 'fileId'>>,
-	paths: AgentKnowledgePaths,
-	stagingId: string,
 ): string {
-	for (const name of [...toCopy, ...toDelete, ...manifestFiles.map((file) => file.file)]) {
+	for (const { file, fileId } of manifestFiles) {
+		assertKnowledgePathSegment(file, 'knowledge mirror file name');
+		// A tab or newline here would split one manifest entry into two on read.
+		if (hasControlCharacter(fileId)) {
+			throw new Error('Invalid knowledge mirror file ID for agent knowledge storage');
+		}
+	}
+
+	if (manifestFiles.length === 0) return '';
+	return `${manifestFiles.map(({ file, fileId }) => `${fileId}\t${file}`).join('\n')}\n`;
+}
+
+/**
+ * NUL-separated list of mirrored files to remove, for `xargs -0`. NUL is the
+ * one byte a knowledge file name cannot contain, and the names never reach the
+ * shell as words, so no quoting is involved.
+ */
+export function buildMirrorDeleteListBody(toDelete: string[], paths: AgentKnowledgePaths): string {
+	for (const name of toDelete) {
 		assertKnowledgePathSegment(name, 'knowledge mirror file name');
 	}
-	assertKnowledgePathSegment(stagingId, 'knowledge mirror staging ID');
 
-	const commands = [`mkdir -p ${paths.filesDir}`];
+	return toDelete.map((name) => `${paths.filesDir}/${name}\0`).join('');
+}
 
-	for (const name of toCopy) {
-		const tmpPath = quoteShellArg(`${paths.stagingDir}/${stagingId}/${name}`);
-		const finalPath = quoteShellArg(`${paths.filesDir}/${name}`);
-		commands.push(`mv ${tmpPath} ${finalPath}`);
+/**
+ * Finalizes a mirror sync: moves the already-uploaded staged files into place,
+ * removes the names listed in the staged delete list, and swaps in the staged
+ * manifest. The staging + `mv` sequence means a search running concurrently
+ * never sees a partially-written file.
+ *
+ * Every per-file name lives in a staged file rather than in the command, so
+ * the command is a fixed size no matter how large the knowledge base is. An
+ * earlier version named each file inline, which made the command exceed the
+ * kernel's single-argument limit and fail with "argument list too long".
+ */
+export function buildMirrorFinalizeCommand(
+	paths: AgentKnowledgePaths,
+	stagingId: string,
+	hasDeletions: boolean,
+): string {
+	const staging = getMirrorStagingPaths(paths, stagingId);
+
+	const commands = [
+		// dotglob so a knowledge file like `.notes.txt` is mirrored too, and
+		// nullglob so an empty staging dir moves nothing instead of trying to
+		// move a literal `*`.
+		'shopt -s dotglob nullglob',
+		`mkdir -p ${quoteShellArg(paths.filesDir)}`,
+		`for staged in ${quoteShellArg(staging.filesDir)}/*; do mv -- "$staged" ${quoteShellArg(`${paths.filesDir}/`)} || exit 1; done`,
+	];
+
+	if (hasDeletions) {
+		commands.push(`xargs -0 -r rm -f -- < ${quoteShellArg(staging.deleteList)}`);
 	}
 
-	if (toDelete.length > 0) {
-		const targets = toDelete.map((name) => quoteShellArg(`${paths.filesDir}/${name}`));
-		commands.push(`rm -f ${targets.join(' ')}`);
-	}
-
-	const manifestBody =
-		manifestFiles.length > 0
-			? `${manifestFiles.map(({ file, fileId }) => `${fileId}\t${file}`).join('\n')}\n`
-			: '';
-	const stagedManifest = `${paths.manifest}.${stagingId}.tmp`;
-	commands.push(
-		`printf '%s' ${quoteShellArg(manifestBody)} > ${stagedManifest}`,
-		`mv ${stagedManifest} ${paths.manifest}`,
-	);
+	commands.push(`mv ${quoteShellArg(staging.manifest)} ${quoteShellArg(paths.manifest)}`);
 
 	return `timeout ${MIRROR_SYNC_TIMEOUT_SECONDS} bash -o pipefail -c ${quoteShellArg(commands.join(' && '))}`;
 }

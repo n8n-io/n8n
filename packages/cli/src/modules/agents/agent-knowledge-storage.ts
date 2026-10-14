@@ -12,6 +12,13 @@ export interface AgentKnowledgePaths {
 	stagingDir: string;
 }
 
+export interface AgentKnowledgeStagingPaths {
+	root: string;
+	filesDir: string;
+	manifest: string;
+	deleteList: string;
+}
+
 export function getAgentKnowledgePaths(provider: SandboxProvider): AgentKnowledgePaths {
 	const home = path.dirname(getPromptWorkspaceRoot(provider));
 	const mirrorDir = `${home}/knowledge-mirror`;
@@ -19,6 +26,26 @@ export function getAgentKnowledgePaths(provider: SandboxProvider): AgentKnowledg
 		filesDir: `${mirrorDir}/files`,
 		manifest: `${mirrorDir}/manifest`,
 		stagingDir: `${mirrorDir}/.staging`,
+	};
+}
+
+/**
+ * Per-sync staging layout. The knowledge files go in their own `files`
+ * subdirectory so the finalize command can move them with one glob without
+ * also picking up the sync's own manifest and delete list, and so removing
+ * `root` cleans up everything the sync staged.
+ */
+export function getMirrorStagingPaths(
+	paths: AgentKnowledgePaths,
+	stagingId: string,
+): AgentKnowledgeStagingPaths {
+	assertKnowledgePathSegment(stagingId, 'knowledge mirror staging ID');
+	const root = `${paths.stagingDir}/${stagingId}`;
+	return {
+		root,
+		filesDir: `${root}/files`,
+		manifest: `${root}/manifest`,
+		deleteList: `${root}/delete-list`,
 	};
 }
 

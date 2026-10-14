@@ -1,5 +1,7 @@
 import {
+	buildMirrorDeleteListBody,
 	buildMirrorFinalizeCommand,
+	buildMirrorManifestBody,
 	buildReadKnowledgeCommand,
 	buildSearchKnowledgeCommand,
 	getSearchContextWindow,
@@ -8,7 +10,7 @@ import {
 	parseRipgrepCountOutput,
 	parseRipgrepOutput,
 } from '../agent-knowledge-commands';
-import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
+import { getAgentKnowledgePaths, getMirrorStagingPaths } from '../agent-knowledge-storage';
 import {
 	searchKnowledgeInputSchema,
 	type AgentKnowledgeFileReference,
@@ -199,54 +201,104 @@ describe('agent knowledge commands', () => {
 	});
 
 	describe('buildMirrorFinalizeCommand', () => {
-		it('moves per-sync staged files and manifest into place atomically', () => {
-			const command = buildMirrorFinalizeCommand(
-				['doc1.txt'],
-				[],
-				[{ file: 'doc1.txt', fileId: 'file-1' }],
-				knowledgePaths,
-				'sync-1',
-			);
+		const staging = getMirrorStagingPaths(knowledgePaths, 'sync-1');
 
-			expect(command).toContain(`mkdir -p ${knowledgePaths.filesDir}`);
-			expect(command).toContain(`${knowledgePaths.stagingDir}/sync-1/doc1.txt`);
-			expect(command).not.toContain(`${knowledgePaths.filesDir}/.tmp-`);
-			expect(command).toContain(`${knowledgePaths.filesDir}/doc1.txt`);
-			expect(command).toMatch(/mv\s+.*\.staging\/sync-1\/doc1\.txt.*doc1\.txt/);
-			expect(command).toContain(`> ${knowledgePaths.manifest}.sync-1.tmp`);
-			expect(command).toContain(
-				`mv ${knowledgePaths.manifest}.sync-1.tmp ${knowledgePaths.manifest}`,
-			);
-			expect(command).toContain('file-1\tdoc1.txt');
+		/** Unwraps the `bash -c '<script>'` payload so assertions read as shell. */
+		function innerScript(command: string): string {
+			const marker = "bash -o pipefail -c '";
+			const start = command.indexOf(marker);
+			expect(start).toBeGreaterThan(-1);
+			return command.slice(start + marker.length, -1).replaceAll("'\\''", "'");
+		}
+
+		it('moves the staged files and manifest into place atomically', () => {
+			const command = buildMirrorFinalizeCommand(knowledgePaths, 'sync-1', false);
+			const script = innerScript(command);
+
+			expect(script).toContain(`mkdir -p '${knowledgePaths.filesDir}'`);
+			expect(script).toContain(`for staged in '${staging.filesDir}'/*`);
+			expect(script).toContain(`mv -- "$staged" '${knowledgePaths.filesDir}/'`);
+			expect(script).toContain(`mv '${staging.manifest}' '${knowledgePaths.manifest}'`);
 			expect(command).toContain(`timeout ${MIRROR_SYNC_TIMEOUT_SECONDS}`);
 		});
 
-		it('removes deleted names with rm -f', () => {
-			const command = buildMirrorFinalizeCommand([], ['stale.txt'], [], knowledgePaths, 'sync-1');
+		it('mirrors dotfiles and tolerates an empty staging directory', () => {
+			const script = innerScript(buildMirrorFinalizeCommand(knowledgePaths, 'sync-1', false));
 
-			expect(command).toContain('rm -f');
-			expect(command).toContain(`${knowledgePaths.filesDir}/stale.txt`);
+			expect(script).toContain('shopt -s dotglob nullglob');
+		});
+
+		it('removes deleted names from the staged delete list, not from the command', () => {
+			const script = innerScript(buildMirrorFinalizeCommand(knowledgePaths, 'sync-1', true));
+
+			expect(script).toContain(`xargs -0 -r rm -f -- < '${staging.deleteList}'`);
+		});
+
+		it('omits the delete step when nothing is deleted', () => {
+			const command = buildMirrorFinalizeCommand(knowledgePaths, 'sync-1', false);
+
+			expect(command).not.toContain('rm -f');
+		});
+
+		it('rejects a staging ID that looks like path traversal', () => {
+			expect(() => buildMirrorFinalizeCommand(knowledgePaths, '../secret', false)).toThrow();
+		});
+
+		/**
+		 * Linux caps a single argv entry at 128 KiB, and the whole command is one
+		 * argument to `bash -c`. Naming each file inline used to blow that cap at a
+		 * few hundred files, which surfaced as "argument list too long".
+		 */
+		it('stays the same size however many files the sync touches', () => {
+			const command = buildMirrorFinalizeCommand(knowledgePaths, 'sync-1', true);
+
+			expect(command.length).toBeLessThan(1024);
+		});
+	});
+
+	describe('buildMirrorManifestBody', () => {
+		it('writes one fileId/name line per mirrored file', () => {
+			const body = buildMirrorManifestBody([
+				{ file: 'doc1.txt', fileId: 'file-1' },
+				{ file: 'doc2.txt', fileId: 'file-2' },
+			]);
+
+			expect(body).toBe('file-1\tdoc1.txt\nfile-2\tdoc2.txt\n');
+		});
+
+		it('is empty when nothing is mirrored', () => {
+			expect(buildMirrorManifestBody([])).toBe('');
 		});
 
 		it('rejects names that look like path traversal', () => {
+			expect(() => buildMirrorManifestBody([{ file: '../secret', fileId: 'file-1' }])).toThrow();
 			expect(() =>
-				buildMirrorFinalizeCommand(
-					['../secret'],
-					[],
-					[{ file: '../secret', fileId: 'file-1' }],
-					knowledgePaths,
-					'sync-1',
-				),
+				buildMirrorManifestBody([{ file: 'nested/name.txt', fileId: 'file-1' }]),
 			).toThrow();
+		});
+
+		it('rejects a file ID that would split one manifest entry into two', () => {
 			expect(() =>
-				buildMirrorFinalizeCommand(
-					[],
-					[],
-					[{ file: 'nested/name.txt', fileId: 'file-1' }],
-					knowledgePaths,
-					'sync-1',
-				),
+				buildMirrorManifestBody([{ file: 'doc1.txt', fileId: 'file\t1\nfile-2' }]),
 			).toThrow();
+		});
+	});
+
+	describe('buildMirrorDeleteListBody', () => {
+		it('NUL-separates the full path of each removed file', () => {
+			const body = buildMirrorDeleteListBody(['stale.txt', 'old.md'], knowledgePaths);
+
+			expect(body).toBe(
+				`${knowledgePaths.filesDir}/stale.txt\0${knowledgePaths.filesDir}/old.md\0`,
+			);
+		});
+
+		it('is empty when nothing is deleted', () => {
+			expect(buildMirrorDeleteListBody([], knowledgePaths)).toBe('');
+		});
+
+		it('rejects names that look like path traversal', () => {
+			expect(() => buildMirrorDeleteListBody(['../secret'], knowledgePaths)).toThrow();
 		});
 	});
 

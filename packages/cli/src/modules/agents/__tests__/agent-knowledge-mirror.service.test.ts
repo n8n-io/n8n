@@ -6,6 +6,7 @@ import type {
 } from '@n8n/agents/sandbox';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
+import escapeRegExp from 'lodash/escapeRegExp';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
@@ -253,7 +254,29 @@ describe('AgentKnowledgeMirrorService', () => {
 		}
 
 		function isMirrorSyncCommand(command: string): boolean {
-			return command.includes(`mkdir -p ${knowledgePaths.filesDir}`);
+			return command.includes(`mkdir -p '\\''${knowledgePaths.filesDir}'\\''`);
+		}
+
+		/** `<stagingDir>/<syncId>` of the most recent sync, read back from its mkdir. */
+		function stagingRoot(fs: ReturnType<typeof mock<WorkspaceFilesystem>>): string {
+			const pattern = new RegExp(`^${escapeRegExp(knowledgePaths.stagingDir)}/[^/]+/files$`);
+			const stagingFilesDirs = fs.mkdir.mock.calls
+				.map(([path]) => path)
+				.filter((path) => pattern.test(path));
+			expect(stagingFilesDirs.length).toBeGreaterThan(0);
+			return stagingFilesDirs[stagingFilesDirs.length - 1].slice(0, -'/files'.length);
+		}
+
+		/**
+		 * Knowledge file uploads only. Every sync also stages a manifest, and a
+		 * sync with deletions stages a delete list.
+		 */
+		function stagedFileWrites(
+			fs: ReturnType<typeof mock<WorkspaceFilesystem>>,
+		): Array<[string, unknown]> {
+			return fs.writeFile.mock.calls
+				.map(([path, content]) => [path, content] as [string, unknown])
+				.filter(([path]) => path.includes('/files/'));
 		}
 
 		function makeMirrorFile(id: string, fileName: string): AgentFile {
@@ -303,13 +326,18 @@ describe('AgentKnowledgeMirrorService', () => {
 			expect(runtimeService.acquireKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 			expect(runtimeService.acquireWorkspaceSandbox).not.toHaveBeenCalled();
 			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(2);
-			const stagingDir = filesystem.mkdir.mock.calls[0][0];
-			expect(stagingDir).toContain(`${knowledgePaths.stagingDir}/`);
-			expect(filesystem.mkdir).toHaveBeenCalledWith(stagingDir, { recursive: true });
-			expect(filesystem.writeFile).toHaveBeenCalledTimes(2);
-			expect(filesystem.writeFile.mock.calls[0][0]).toBe(`${stagingDir}/doc1.txt`);
-			expect(filesystem.writeFile.mock.calls[1][0]).toBe(`${stagingDir}/doc2.txt`);
-			expect(filesystem.rmdir).toHaveBeenCalledWith(stagingDir, {
+			const staging = stagingRoot(filesystem);
+			expect(filesystem.mkdir).toHaveBeenCalledWith(`${staging}/files`, { recursive: true });
+			expect(stagedFileWrites(filesystem).map(([path]) => path)).toEqual([
+				`${staging}/files/doc1.txt`,
+				`${staging}/files/doc2.txt`,
+			]);
+			// The manifest is staged as a file so the sync command stays a fixed size.
+			expect(filesystem.writeFile).toHaveBeenCalledWith(
+				`${staging}/manifest`,
+				'file-1\tdoc1.txt\nfile-2\tdoc2.txt\n',
+			);
+			expect(filesystem.rmdir).toHaveBeenCalledWith(staging, {
 				recursive: true,
 				force: true,
 			});
@@ -338,8 +366,17 @@ describe('AgentKnowledgeMirrorService', () => {
 			expect(syncCommands).toHaveLength(1);
 			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(1);
 			expect(syncCommands[0]).toContain(`${knowledgePaths.stagingDir}/`);
-			expect(syncCommands[0]).toContain('/doc1.txt');
-			expect(syncCommands[0]).toContain('file-1-replacement\tdoc1.txt');
+			// No per-file name reaches the command; only the staged files and
+			// manifest carry them.
+			expect(syncCommands[0]).not.toContain('doc1.txt');
+			const replacementStaging = stagingRoot(filesystem);
+			expect(stagedFileWrites(filesystem).map(([path]) => path)).toEqual([
+				`${replacementStaging}/files/doc1.txt`,
+			]);
+			expect(filesystem.writeFile).toHaveBeenCalledWith(
+				`${replacementStaging}/manifest`,
+				'file-1-replacement\tdoc1.txt\nfile-2\tdoc2.txt\n',
+			);
 		});
 
 		it('reads mirrored knowledge through the knowledge sandbox', async () => {
@@ -435,8 +472,8 @@ describe('AgentKnowledgeMirrorService', () => {
 				await service.searchKnowledge(projectId, agentId, { pattern: 'first' });
 				await service.searchKnowledge(projectId, agentId, { pattern: 'second' });
 
-				expect(staleFilesystem.writeFile).toHaveBeenCalledOnce();
-				expect(replacementFilesystem.writeFile).toHaveBeenCalledOnce();
+				expect(stagedFileWrites(staleFilesystem)).toHaveLength(1);
+				expect(stagedFileWrites(replacementFilesystem)).toHaveLength(1);
 			},
 		);
 
@@ -473,7 +510,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			expect(
 				sandbox.executeCommand.mock.calls.some(([command]) => isMirrorSyncCommand(command)),
 			).toBe(false);
-			expect(filesystem.rmdir).toHaveBeenCalledWith(filesystem.mkdir.mock.calls[0][0], {
+			expect(filesystem.rmdir).toHaveBeenCalledWith(stagingRoot(filesystem), {
 				recursive: true,
 				force: true,
 			});
@@ -508,7 +545,9 @@ describe('AgentKnowledgeMirrorService', () => {
 			await expect(
 				service.searchKnowledge(projectId, agentId, { pattern: 'foo' }),
 			).resolves.toBeDefined();
-			expect(filesystem.writeFile).not.toHaveBeenCalled();
+			expect(stagedFileWrites(filesystem)).toHaveLength(0);
+			// The file never reached the mirror, so the manifest must not claim it did.
+			expect(filesystem.writeFile).toHaveBeenCalledWith(expect.stringMatching(/\/manifest$/), '');
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to load agent knowledge file for mirror sync',
 				expect.objectContaining({ file: 'doc1.txt' }),
@@ -518,7 +557,7 @@ describe('AgentKnowledgeMirrorService', () => {
 				service.searchKnowledge(projectId, agentId, { pattern: 'bar' }),
 			).resolves.toBeDefined();
 			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(2);
-			expect(filesystem.writeFile).toHaveBeenCalledTimes(1);
+			expect(stagedFileWrites(filesystem)).toHaveLength(1);
 		});
 	});
 });
