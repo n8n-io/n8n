@@ -18,6 +18,8 @@
 			"**/cl100k_base.json",
 			"**/o200k_base.json",
 			"**/*.generated.ts",
+			// Frozen contract snapshots, compared byte for byte
+			"packages/@n8n/hooks-api/api/**",
 			"**/benchmark/scripts/mock-api/**",
 			"**/expectations/**"
 		]
