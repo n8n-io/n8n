@@ -1,5 +1,6 @@
 import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { FindOptionsWhere, TagEntity, User, Variables, WorkflowEntity } from '@n8n/db';
 import {
 	CredentialsRepository,
@@ -31,7 +32,6 @@ import type { AutoPublishMode } from 'n8n-workflow';
 import {
 	shouldAutoPublishWorkflow,
 	jsonParse,
-	NODE_ID_MAX_LENGTH,
 	OperationalError,
 	UnexpectedError,
 	UserError,

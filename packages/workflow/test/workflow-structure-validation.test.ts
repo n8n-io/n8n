@@ -1,6 +1,7 @@
 import { MAX_CONNECTION_INDEX } from '../src/common';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
+
 import {
-	NODE_ID_MAX_LENGTH,
 	safeParseWorkflowStructure,
 	parseWorkflowStructure,
 	WorkflowStructureValidationError,

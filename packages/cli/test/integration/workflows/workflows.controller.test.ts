@@ -14,7 +14,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { UUID_V7_PATTERN } from '@n8n/constants';
+import { NODE_ID_MAX_LENGTH, UUID_V7_PATTERN } from '@n8n/constants';
 import { WorkflowsConfig } from '@n8n/config';
 import type {
 	User,
@@ -37,7 +37,6 @@ import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
 import {
-	NODE_ID_MAX_LENGTH,
 	PROJECT_ROOT,
 	calculateWorkflowChecksum,
 	type INode,

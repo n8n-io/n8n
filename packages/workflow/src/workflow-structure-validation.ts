@@ -1,3 +1,4 @@
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import { z } from 'zod';
 
 import { MAX_CONNECTION_INDEX } from './common/map-connections-by-destination';
@@ -32,12 +33,6 @@ import { MAX_CONNECTION_INDEX } from './common/map-connections-by-destination';
  *   - Activation readiness
  *
  */
-
-/**
- * Longest accepted node id. n8n generates UUIDs (36 characters). The rest leaves
- * room for readable ids that API and source control clients supply.
- */
-export const NODE_ID_MAX_LENGTH = 64;
 
 const workflowNodeStructureSchema = z
 	.object({

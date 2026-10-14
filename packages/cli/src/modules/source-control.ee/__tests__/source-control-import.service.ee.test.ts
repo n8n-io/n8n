@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import {
 	type Variables,
@@ -29,7 +30,6 @@ import { In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { type InstanceSettings } from 'n8n-core';
-import { NODE_ID_MAX_LENGTH } from 'n8n-workflow';
 import fsp from 'node:fs/promises';
 
 vi.mock('node:fs/promises');

@@ -1480,7 +1480,7 @@ erDiagram
   integer consecutiveErrors
   timestamp_3__with_time_zone createdAt
   json cursor
-  text nodeId
+  varchar_64_ nodeId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }
@@ -1599,7 +1599,7 @@ erDiagram
   timestamp_3__with_time_zone nextRunAt
   timestamp_3__with_time_zone orphanedAt
   varchar_255_ ownerId
-  varchar_255_ ownerMemberId
+  varchar_64_ ownerMemberId
   varchar_32_ ownerType
   json payload
   integer recurrenceSize
@@ -1949,7 +1949,7 @@ erDiagram
 "public.workflow_publication_trigger_status" {
   timestamp_3__with_time_zone createdAt
   text errorMessage
-  text nodeId
+  varchar_64_ nodeId
   varchar_20_ status
   varchar_20_ triggerKind
   timestamp_3__with_time_zone updatedAt

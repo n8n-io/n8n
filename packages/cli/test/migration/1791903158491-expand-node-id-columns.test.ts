@@ -56,27 +56,43 @@ describe.skipIf(isSqlite)('ExpandNodeIdColumns migration', () => {
 		);
 	}
 
-	async function insertNodeIdRows(nodeId: string, ownerMemberId: string): Promise<void> {
-		await withContext(async (context) => {
-			await context.runQuery(
-				`INSERT INTO ${context.escape.tableName('workflow_publication_trigger_status')}
-				   ("workflowId", "nodeId", "versionId", "status", "triggerKind", "createdAt", "updatedAt")
-				 VALUES (:workflowId, :nodeId, :versionId, 'activated', 'persisted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-				{ workflowId, nodeId, versionId },
-			);
-			await context.runQuery(
-				`INSERT INTO ${context.escape.tableName('poller_state')}
-				   ("workflowId", "nodeId", "createdAt", "updatedAt")
-				 VALUES (:workflowId, :nodeId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-				{ workflowId, nodeId },
-			);
-			await context.runQuery(
-				`INSERT INTO ${context.escape.tableName('scheduled_job')}
-				   ("name", "kind", "intervalSeconds", "taskType", "ownerType", "ownerId", "ownerMemberId", "createdAt", "updatedAt")
-				 VALUES ('job', 'interval', 60, 'test', 'workflow', :workflowId, :ownerMemberId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-				{ workflowId, ownerMemberId },
-			);
-		});
+	const insertInto = {
+		triggerStatus: async (nodeId: string) =>
+			await withContext(
+				async (context) =>
+					await context.runQuery(
+						`INSERT INTO ${context.escape.tableName('workflow_publication_trigger_status')}
+						   ("workflowId", "nodeId", "versionId", "status", "triggerKind", "createdAt", "updatedAt")
+						 VALUES (:workflowId, :nodeId, :versionId, 'activated', 'persisted', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+						{ workflowId, nodeId, versionId },
+					),
+			),
+		pollerState: async (nodeId: string) =>
+			await withContext(
+				async (context) =>
+					await context.runQuery(
+						`INSERT INTO ${context.escape.tableName('poller_state')}
+						   ("workflowId", "nodeId", "createdAt", "updatedAt")
+						 VALUES (:workflowId, :nodeId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+						{ workflowId, nodeId },
+					),
+			),
+		scheduledJob: async (ownerMemberId: string) =>
+			await withContext(
+				async (context) =>
+					await context.runQuery(
+						`INSERT INTO ${context.escape.tableName('scheduled_job')}
+						   ("name", "kind", "intervalSeconds", "taskType", "ownerType", "ownerId", "ownerMemberId", "createdAt", "updatedAt")
+						 VALUES ('job', 'interval', 60, 'test', 'workflow', :workflowId, :ownerMemberId, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+						{ workflowId, ownerMemberId },
+					),
+			),
+	};
+
+	async function insertNodeIdRows(nodeId: string): Promise<void> {
+		await insertInto.triggerStatus(nodeId);
+		await insertInto.pollerState(nodeId);
+		await insertInto.scheduledJob(nodeId);
 	}
 
 	async function readNodeIds(): Promise<Record<string, string[]>> {
@@ -97,7 +113,7 @@ describe.skipIf(isSqlite)('ExpandNodeIdColumns migration', () => {
 
 	it('keeps the existing rows', async () => {
 		const uuidLengthId = 'u'.repeat(36);
-		await insertNodeIdRows(uuidLengthId, uuidLengthId);
+		await insertNodeIdRows(uuidLengthId);
 
 		await runSingleMigration(MIGRATION_NAME);
 
@@ -108,25 +124,27 @@ describe.skipIf(isSqlite)('ExpandNodeIdColumns migration', () => {
 		});
 	});
 
-	it('stores node ids longer than 36 characters', async () => {
+	it('stores node ids of up to 64 characters', async () => {
 		await runSingleMigration(MIGRATION_NAME);
 
-		const longNodeId = 'n'.repeat(300);
-		const longestMemberId = 'm'.repeat(255);
-		await insertNodeIdRows(longNodeId, longestMemberId);
+		const longestNodeId = 'n'.repeat(64);
+		await insertNodeIdRows(longestNodeId);
 
 		expect(await readNodeIds()).toEqual({
-			triggerStatus: [longNodeId],
-			pollerState: [longNodeId],
-			scheduledJob: [longestMemberId],
+			triggerStatus: [longestNodeId],
+			pollerState: [longestNodeId],
+			scheduledJob: [longestNodeId],
 		});
 	});
 
-	it('rejects a scheduled job owner member id longer than 255 characters', async () => {
-		await runSingleMigration(MIGRATION_NAME);
+	it.each(['triggerStatus', 'pollerState', 'scheduledJob'] as const)(
+		'rejects a node id longer than 64 characters in %s',
+		async (table) => {
+			await runSingleMigration(MIGRATION_NAME);
 
-		await expect(insertNodeIdRows('n1', 'm'.repeat(256))).rejects.toThrow(
-			'value too long for type character varying(255)',
-		);
-	});
+			await expect(insertInto[table]('n'.repeat(65))).rejects.toThrow(
+				'value too long for type character varying(64)',
+			);
+		},
+	);
 });

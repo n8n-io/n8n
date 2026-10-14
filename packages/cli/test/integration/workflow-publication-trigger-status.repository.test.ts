@@ -1,4 +1,5 @@
 import { createWorkflow, createWorkflowHistory, testDb } from '@n8n/backend-test-utils';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { IWorkflowDb } from '@n8n/db';
 import {
 	WorkflowHistoryRepository,
@@ -93,8 +94,8 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		expect(rows[0]).toMatchObject({ nodeId: 'n1', versionId: 'v2', status: 'activated' });
 	});
 
-	it('replaceForWorkflow stores node ids longer than 36 characters', async () => {
-		const longNodeId = 'n'.repeat(45);
+	it('replaceForWorkflow stores node ids of the maximum length', async () => {
+		const longNodeId = 'n'.repeat(NODE_ID_MAX_LENGTH);
 
 		await repo.replaceForWorkflow(workflow.id, [
 			{
