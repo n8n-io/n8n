@@ -1067,5 +1067,29 @@ describe('PublicApiControllerRegistry', () => {
 			expect(idempotencyKeyService.release).toHaveBeenCalledWith('row-1');
 			expect(idempotencyKeyService.complete).not.toHaveBeenCalled();
 		});
+
+		it('releases the key when storing the response fails', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+			idempotencyKeyService.complete.mockRejectedValue(new Error('db down'));
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(201);
+
+			expect(response.body).toEqual({ id: 'new' });
+			expect(idempotencyKeyService.release).toHaveBeenCalledWith('row-1');
+		});
 	});
 });

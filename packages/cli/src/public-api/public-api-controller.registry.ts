@@ -237,6 +237,7 @@ export class PublicApiControllerRegistry {
 			await this.idempotencyKeyService.complete(id, status, body);
 		} catch (error) {
 			this.logger.error('Failed to store an idempotency response', { error });
+			await this.releaseIdempotencyClaimById(id);
 		}
 	}
 
@@ -244,6 +245,10 @@ export class PublicApiControllerRegistry {
 		const id = takeIdempotencyClaimId(res);
 		if (!id) return;
 
+		await this.releaseIdempotencyClaimById(id);
+	}
+
+	private async releaseIdempotencyClaimById(id: string): Promise<void> {
 		try {
 			await this.idempotencyKeyService.release(id);
 		} catch (error) {
