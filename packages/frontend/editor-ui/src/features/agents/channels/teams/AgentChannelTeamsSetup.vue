@@ -132,7 +132,11 @@ const offerManagedApp = computed(() => {
 });
 
 // The credential the saved channel runs on, so a swap counts as an app change.
-const savedCredentialId = credentialId.value;
+// The modal can hand it over after mount, so the first one given is the saved one.
+const savedCredentialId = ref(credentialId.value);
+watch(credentialId, (id) => {
+	if (!savedCredentialId.value) savedCredentialId.value = id;
+});
 
 // The sign-in the recommended setup runs on, which names who approves file access.
 const organization = computed(() => {
@@ -215,7 +219,7 @@ const manifestChanged = computed(() => {
 		availability.value.groupChats !== (saved?.groupChats ?? false) ||
 		availability.value.readAllChannelMessages !== (saved?.readAllChannelMessages ?? false) ||
 		availability.value.readAllGroupMessages !== (saved?.readAllGroupMessages ?? false) ||
-		credentialId.value !== savedCredentialId ||
+		credentialId.value !== savedCredentialId.value ||
 		savedIdentityOverride.value
 	);
 });
@@ -531,7 +535,7 @@ function showDownloaded() {
 // The package matches what n8n has saved, not the unsaved form, so an
 // installed app never runs on settings that were never saved.
 async function downloadSaved() {
-	if (await downloadPackage(props.savedSettings, savedCredentialId)) showDownloaded();
+	if (await downloadPackage(props.savedSettings, savedCredentialId.value)) showDownloaded();
 }
 
 /**

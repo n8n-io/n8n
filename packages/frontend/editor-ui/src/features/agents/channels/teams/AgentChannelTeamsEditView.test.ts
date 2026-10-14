@@ -353,6 +353,17 @@ describe('AgentChannelTeamsEditView', () => {
 			expect(getByTestId('teams-managed-app-outdated')).toBeVisible();
 		});
 
+		it('does not flag an older version when the credential arrives after mount', async () => {
+			const { getByTestId, queryByTestId, rerender } = renderView({
+				props: { ...viewProps, modelValue: '', runtime: managedRuntime() },
+				pinia: createTestingPinia(),
+			});
+			await rerender({ ...viewProps, modelValue: 'cred-1', runtime: managedRuntime() });
+
+			await waitFor(() => expect(getByTestId('teams-managed-app')).toBeVisible());
+			expect(queryByTestId('teams-managed-app-outdated')).not.toBeInTheDocument();
+		});
+
 		// The manual route says the same thing throughout: the package is handed
 		// over by the download, so a change here does not alter what to do next.
 		it('keeps one message for a hand-made channel, changed or not', async () => {
