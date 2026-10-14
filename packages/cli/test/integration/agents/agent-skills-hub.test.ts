@@ -246,8 +246,8 @@ describe('Agent skills in the skills hub', () => {
 		).rejects.toThrow('This agent uses an older version of this skill.');
 	});
 
-	it('refuses a skill from the agent builder whose name another skill has', async () => {
-		await createSkill(body('Triage'), { projectId: null });
+	it('refuses a skill from the agent builder whose name a skill of its project has', async () => {
+		await createSkill(body('Triage'));
 		const agent = await createAgent([]);
 
 		await expect(
@@ -256,6 +256,20 @@ describe('Agent skills in the skills hub', () => {
 				modifiedBy: 'builder',
 			}),
 		).rejects.toThrow('That name is taken, choose another');
+	});
+
+	it('lets the agent builder use a name that only an instance skill has', async () => {
+		await createSkill(body('Triage'), { projectId: null });
+		const agent = await createAgent([]);
+
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Triage'),
+			{ user: editor, modifiedBy: 'builder' },
+		);
+
+		expect(created.id).toBeDefined();
 	});
 
 	it('creates, updates and detaches a skill from the agent builder', async () => {

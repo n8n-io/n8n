@@ -177,21 +177,24 @@ describe('SkillRepository', () => {
 		});
 	});
 
-	describe('findAllLatestNames', () => {
-		it('returns the name of the latest version of every skill', async () => {
-			const renamed = await createSkill({}, content({ name: 'Old name' }));
-			await skills.insertSavedVersion(renamed, 2, content({ name: 'New name' }), null);
-			const other = await createSkill({}, content({ name: 'Other' }));
+	describe('findLatestNamesInTarget', () => {
+		it('returns the latest name of each skill in one target only', async () => {
+			const instance = await createSkill({}, content({ name: 'Old name' }));
+			await skills.insertSavedVersion(instance, 2, content({ name: 'New name' }), null);
+			const inProject = await createSkill({ projectId: project.id }, content({ name: 'P' }));
+			const agent = await createAgent('Agent', { projectId: project.id });
+			const ofAgent = await createSkill({ agentId: agent.id }, content({ name: 'A' }));
 
-			const names = await skills.findAllLatestNames();
-
-			expect(names).toEqual(
-				expect.arrayContaining([
-					{ skillId: renamed, name: 'New name' },
-					{ skillId: other, name: 'Other' },
-				]),
-			);
-			expect(names.find((row) => row.name === 'Old name')).toBeUndefined();
+			expect(await skills.findLatestNamesInTarget({ projectId: null, agentId: null })).toEqual([
+				{ skillId: instance, name: 'New name' },
+			]);
+			// The agent skills of a project are not project skills.
+			expect(
+				await skills.findLatestNamesInTarget({ projectId: project.id, agentId: null }),
+			).toEqual([{ skillId: inProject, name: 'P' }]);
+			expect(await skills.findLatestNamesInTarget({ projectId: null, agentId: agent.id })).toEqual([
+				{ skillId: ofAgent, name: 'A' },
+			]);
 		});
 	});
 

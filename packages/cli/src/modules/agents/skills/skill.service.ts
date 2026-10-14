@@ -22,7 +22,10 @@ import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
 import { findIntroducedNameClashes, renameIntroducesClash, skillNameKey } from './skill-names';
 
-/** Skill names are unique across the instance, by the same rule as inside one agent. */
+/**
+ * Skill names are unique in each scope (one agent, one project, the instance), by the
+ * same rule as inside one agent.
+ */
 export const SKILL_NAME_TAKEN_MESSAGE = 'That name is taken, choose another';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
@@ -179,7 +182,9 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<string> {
 		assertHasInstructions(input.skill);
-		if (input.checkNameTaken) await this.assertNameFree(input.skill.name, undefined, ctx);
+		if (input.checkNameTaken) {
+			await this.assertNameFree(input.skill.name, input.target, undefined, ctx);
+		}
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
@@ -228,7 +233,7 @@ export class SkillService {
 				return { saved: result, following: [] };
 			}
 			if (skill.name !== latest.version.name) {
-				await this.assertNameFree(skill.name, skillId, txCtx);
+				await this.assertNameFree(skill.name, latest.skill, skillId, txCtx);
 				await this.assertRenameKeepsNamesApart(skillId, latest.version.name, skill.name, txCtx);
 			}
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
@@ -272,14 +277,18 @@ export class SkillService {
 		}
 	}
 
-	/** Refuses a name that is hard to tell apart from the name of another skill. */
+	/** Refuses a name that is hard to tell apart from another skill's name in the same scope. */
 	private async assertNameFree(
 		name: string,
+		target: SkillTarget,
 		exceptSkillId: string | undefined,
 		ctx: OperationContext,
 	): Promise<void> {
 		const key = skillNameKey(name);
-		const names = await this.skillRepository.findAllLatestNames(ctx);
+		const names = await this.skillRepository.findLatestNamesInTarget(
+			{ projectId: target.projectId, agentId: target.agentId },
+			ctx,
+		);
 		if (
 			names.some((other) => other.skillId !== exceptSkillId && skillNameKey(other.name) === key)
 		) {
@@ -468,6 +477,11 @@ export class SkillService {
 						: 'Agents use this skill. Detach it from every agent first, then change where it can be added.',
 				);
 			}
+			// The skill keeps its name, so the new scope must not already hold a name like it.
+			const name = (await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(
+				skillId,
+			)?.name;
+			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);
 		});
 	}

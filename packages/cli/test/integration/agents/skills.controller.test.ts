@@ -400,16 +400,38 @@ describe('SkillsController', () => {
 	});
 
 	describe('unique names', () => {
-		it('refuses a name like one that another skill in the instance has', async () => {
+		it('refuses a name like one that another skill in the same scope has', async () => {
 			await create(editor, { scope: 'project', projectId: project.id, skill: body });
 
-			// Another scope does not matter: the name is taken for the whole instance.
-			const response = await owner
+			const response = await editor
 				.post('/skills')
-				.send({ scope: 'instance', skill: { ...body, name: 'brand-voice' } })
+				.send({ scope: 'project', projectId: project.id, skill: { ...body, name: 'brand-voice' } })
 				.expect(409);
 
 			expect(response.body.message).toBe('That name is taken, choose another');
+		});
+
+		it('allows the same name in another scope', async () => {
+			await create(editor, { scope: 'project', projectId: project.id, skill: body });
+
+			await create(owner, { scope: 'instance', skill: { ...body, name: 'brand-voice' } });
+		});
+
+		it('refuses to move a skill into a scope that holds a name like it', async () => {
+			await create(owner, { scope: 'instance', skill: body });
+			const { id, skillHash } = await create(owner, {
+				scope: 'project',
+				projectId: project.id,
+				skill: { ...body, name: 'BRAND VOICE' },
+			});
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(409);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(read.body.data).toMatchObject({ scope: 'project', projectId: project.id });
 		});
 
 		it('refuses a rename to a taken name and allows a save that keeps the name', async () => {
