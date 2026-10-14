@@ -430,6 +430,12 @@ export function shouldRestartParentExecution(
 	return parentExecution.shouldResume;
 }
 
+/** The ids in either list, once each; `undefined` when both are empty. */
+function unionIds(first: string[] | undefined, second: string[] | undefined) {
+	const ids = new Set([...(first ?? []), ...(second ?? [])]);
+	return ids.size > 0 ? [...ids].sort() : undefined;
+}
+
 /**
  * Updates a parent execution's nodeExecutionStack with the final results from a completed child execution.
  * This ensures that when the parent resumes, the Execute Workflow node (running in disabled mode)
@@ -447,12 +453,6 @@ export function shouldRestartParentExecution(
  * @returns whether the parent's stack was patched: `false` when the child carried no usable
  * result, or the parent was not in a state that can take one
  */
-/** The ids in either list, once each; `undefined` when both are empty. */
-function unionIds(first: string[] | undefined, second: string[] | undefined) {
-	const ids = new Set([...(first ?? []), ...(second ?? [])]);
-	return ids.size > 0 ? [...ids].sort() : undefined;
-}
-
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
