@@ -600,7 +600,7 @@ type TerminalGuardOrderServiceInternals = {
 	) => void;
 	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
-	creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+	creditService: { claimRunUsage: Mock };
 	failedInternalFollowUpStreaks: Map<string, number>;
 	schedulePlannedTasks: Mock;
 	createPlannedTaskState: Mock;
@@ -698,10 +698,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
-	service.creditService = {
-		claimRunUsage: vi.fn(async () => {}),
-		ensureQuotaLockApplied: vi.fn(async () => {}),
-	};
+	service.creditService = { claimRunUsage: vi.fn(async () => {}) };
 	service.failedInternalFollowUpStreaks = new Map();
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.preserveHitlOnShutdown = new Set();
@@ -922,7 +919,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			creditService: { claimRunUsage: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
@@ -1024,10 +1021,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
-		service.creditService = {
-			claimRunUsage: vi.fn(),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
-		};
+		service.creditService = { claimRunUsage: vi.fn() };
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
 			init: vi.fn(async () => {}),
@@ -1312,7 +1306,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			creditService: { claimRunUsage: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
@@ -1412,10 +1406,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.aiUsageService = {
 			isParameterValueSharingAllowed: vi.fn(async () => allowSendingParameterValues),
 		};
-		service.creditService = {
-			claimRunUsage: vi.fn(),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
-		};
+		service.creditService = { claimRunUsage: vi.fn() };
 		(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
 		(createWorkspace as Mock).mockReturnValue({
 			init: vi.fn(async () => {}),
@@ -6433,7 +6424,7 @@ describe('createAgentMemoryOptions', () => {
 			'observerMessageTokens' | 'reflectorObservationTokens'
 		>;
 		runState: { getObserverThresholdTokens: Mock };
-		creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+		creditService: { claimRunUsage: Mock };
 		logger: { warn: Mock };
 	};
 
@@ -6441,10 +6432,7 @@ describe('createAgentMemoryOptions', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
 		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
 		service.runState = { getObserverThresholdTokens: vi.fn().mockReturnValue(undefined) };
-		service.creditService = {
-			claimRunUsage: vi.fn(async () => {}),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
-		};
+		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
