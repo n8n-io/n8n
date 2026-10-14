@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/app/stores/ui.store';
-import type { IUser, PublicInstalledPackage } from 'n8n-workflow';
+import type { IUser, PublicInstalledNode, PublicInstalledPackage } from 'n8n-workflow';
 import { COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../communityNodes.constants';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
@@ -8,6 +8,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { UserAction } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { getNodeTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 import { computed, ref, watch } from 'vue';
 import {
 	findVettedCommunityNodeAttributes,
@@ -16,6 +17,7 @@ import {
 
 import {
 	N8nActionToggle,
+	N8nBadge,
 	N8nButton,
 	N8nIcon,
 	N8nLoading,
@@ -55,6 +57,16 @@ const hasUpdateAvailable = computed(() => {
 		isUnverifiedPackagesEnabled: settingsStore.isUnverifiedPackagesEnabled,
 		isManagedByEnv: isManagedByEnv.value,
 	});
+});
+
+// Community packages are installed instance-wide, so a project-scoped restriction doesn't make
+// the package itself restricted here; only an instance-wide block does.
+const blockedNodes = computed<PublicInstalledNode[]>(() => {
+	if (!props.communityPackage) return [];
+
+	return props.communityPackage.installedNodes.filter(
+		(node) => getNodeTypeRestriction(node.type)?.scope === 'instance',
+	);
 });
 
 const packageActions = computed<Array<UserAction<IUser>>>(() => {
@@ -120,6 +132,25 @@ watch(
 			<div :class="$style.cardInfoContainer">
 				<div :class="$style.cardTitle">
 					<N8nText :bold="true" size="large">{{ communityPackage.packageName }}</N8nText>
+					<N8nTooltip v-if="blockedNodes.length > 0" placement="top">
+						<template #content>
+							<div>
+								<N8nText tag="p" size="small" :bold="true">
+									{{ i18n.baseText('settings.communityNodes.restricted.tooltip.heading') }}
+								</N8nText>
+								<ul :class="$style.blockedNodesList">
+									<li v-for="node in blockedNodes" :key="node.type">{{ node.name }}</li>
+								</ul>
+							</div>
+						</template>
+						<N8nBadge
+							variant="filled"
+							leading-icon="lock"
+							data-test-id="community-package-restricted-badge"
+						>
+							{{ i18n.baseText('settings.communityNodes.restricted.badge.label') }}
+						</N8nBadge>
+					</N8nTooltip>
 				</div>
 				<div :class="$style.cardSubtitle">
 					<N8nText :bold="true" size="small" color="text-light">
@@ -216,11 +247,19 @@ watch(
 }
 
 .cardTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	flex-basis: 100%;
 
 	span {
 		line-height: 1;
 	}
+}
+
+.blockedNodesList {
+	margin: var(--spacing--4xs) 0 0;
+	padding-left: var(--spacing--sm);
 }
 
 .cardSubtitle {
