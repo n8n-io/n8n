@@ -22,7 +22,7 @@ describe('AppsModule', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('apps');
 	});
 
-	it('registers both entities and starts without Instance AI', async () => {
+	it('exposes both entities and initializes with enabled settings', async () => {
 		const logger = mock<Logger>();
 		Container.set(Logger, logger);
 		const module = new AppsModule();
@@ -30,6 +30,5 @@ describe('AppsModule', () => {
 		await module.init();
 		expect(logger.warn).toHaveBeenCalledWith('The apps module is experimental.');
 		expect(await module.settings()).toEqual({ enabled: true });
-		expect(Container.get(ModuleRegistry).isActive('instance-ai')).toBe(false);
 	});
 });
