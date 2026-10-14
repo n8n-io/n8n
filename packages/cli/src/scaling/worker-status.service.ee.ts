@@ -8,6 +8,7 @@ import process from 'node:process';
 
 import { N8N_VERSION } from '@/constants';
 import { Push } from '@/push';
+import { getMemoryLimit } from '@/utils/container-limits';
 
 import { JobProcessor } from './job-processor';
 import { Publisher } from './pubsub/publisher.service';
@@ -60,11 +61,7 @@ export class WorkerStatusService {
 	}
 
 	private generateStatus(): WorkerStatus {
-		const constrainedMemory = process.constrainedMemory();
-
-		// See https://github.com/nodejs/node/issues/59227 for information about why we cap at MAX_SAFE_INTEGER
-		// The number 18446744073709552000 does come back when running in a container with no constraints
-		const isInContainer = constrainedMemory > 0 && constrainedMemory < Number.MAX_SAFE_INTEGER;
+		const isInContainer = getMemoryLimit() !== null;
 		return {
 			senderId: this.instanceSettings.hostId,
 			runningJobsSummary: this.jobProcessor.getRunningJobsSummary(),
