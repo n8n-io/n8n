@@ -50,7 +50,9 @@ try {
 		{ cwd: packageDir, stdio: 'inherit', shell: process.platform === 'win32' },
 	);
 	if (tsc.error) {
-		console.error(`Could not run tsc: ${tsc.error.message}. Run this script with \`pnpm check:api\`.`);
+		console.error(
+			`Could not run tsc: ${tsc.error.message}. Run this script with \`pnpm check:api\`.`,
+		);
 		process.exit(1);
 	}
 	if (tsc.status !== 0) process.exit(tsc.status ?? 1);
