@@ -21,11 +21,8 @@ import {
 	TimeoutExecutionCancelledError,
 	Workflow,
 	UnexpectedError,
-<<<<<<< HEAD
 	createRunExecutionData,
-=======
 	CHAT_TRIGGER_NODE_TYPE,
->>>>>>> f3e2bd83 (feat(core): Suspend in-flight production executions at worker shutdown (#40568))
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
