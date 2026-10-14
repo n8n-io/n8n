@@ -217,6 +217,77 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		await running;
 	});
 
+	it('publishes a mocked send while the tool waits for a reply', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		const onProgress = vi.fn().mockResolvedValue(undefined);
+		let finish!: (value: GenerateResult) => void;
+		let mockRequest!: EvalLlmMockHandler;
+		const send = async () =>
+			await mockRequest(
+				{ url: 'https://slack.com/api/chat.postMessage', method: 'POST', body: { text: 'Hello' } },
+				{ name: 'Slack_Tool', type: 'n8n-nodes-base.slackTool' } as INode,
+			);
+		const generate = vi.fn(async () => {
+			handlers.get(AgentEvent.ToolExecutionStart)?.({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId: 'send-1',
+				toolName: 'Slack_Tool',
+				args: { text: 'Hello' },
+			});
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
+				configureToolAdditionalData: (
+					data: Record<string, unknown>,
+					context: { toolName: string; toolKind: string },
+				) => void;
+			};
+			const data: Record<string, unknown> = { credentialsHelper: { getDecrypted: vi.fn() } };
+			instrumentation.configureToolAdditionalData(data, {
+				toolName: 'Slack_Tool',
+				toolKind: 'node',
+			});
+			mockRequest = data.evalLlmMockHandler as EvalLlmMockHandler;
+			await send();
+			return await new Promise<GenerateResult>((resolve) => {
+				finish = resolve;
+			});
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate,
+				close: vi.fn(),
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+			},
+		});
+		let settled = false;
+		const running = buildService()
+			.executeWithLlmMock('agent-1', user, request, 'Send then wait', { onProgress })
+			.then((result) => {
+				settled = true;
+				return result;
+			});
+		try {
+			await vi.waitFor(() => expect(onProgress).toHaveBeenCalledTimes(2));
+			expect(settled).toBe(false);
+			expect(onProgress).toHaveBeenLastCalledWith([
+				expect.objectContaining({
+					toolCallId: 'send-1',
+					status: 'running',
+					mocked: true,
+					interceptedRequests: [
+						expect.objectContaining({ requestBody: { text: 'Hello' }, mockResponse: { ok: true } }),
+					],
+				}),
+			]);
+		} finally {
+			finish(makeGenerateResult());
+			await running;
+		}
+		const writes = onProgress.mock.calls.length;
+		await send();
+		await Promise.resolve();
+		expect(onProgress).toHaveBeenCalledTimes(writes);
+	});
+
 	it('serializes progress writes and waits for the last write without failing the run', async () => {
 		const handlers = new Map<AgentEvent, AgentEventHandler>();
 		let releaseWrite: () => void = () => {};
