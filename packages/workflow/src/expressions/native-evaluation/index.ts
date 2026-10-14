@@ -3,7 +3,7 @@ import type { ParsedCode } from '@n8n/tournament';
 import { LruCache } from '@n8n/utils/lru-cache';
 
 import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
-import { MAX_DEPTH, MAX_RESULT_LENGTH, isArray, isObj, type SimpleNode } from './grammar';
+import { MAX_DEPTH, MAX_RESULT_LENGTH, hasOwn, isArray, isObj, type SimpleNode } from './grammar';
 import { parseSimple, usesPolyfilledChain } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
@@ -174,7 +174,7 @@ function copyResult(value: unknown, depth = 0): unknown {
 		// Holes stay holes: the corpus pins an engine divergence on sparse arrays.
 		const copy = new Array<unknown>(value.length);
 		for (let i = 0; i < value.length; i++) {
-			if (i in value) copy[i] = copyResult(value[i], depth + 1);
+			if (hasOwn(value, i)) copy[i] = copyResult(value[i], depth + 1);
 		}
 		return copy;
 	}
