@@ -6,8 +6,12 @@ import { mock } from 'vitest-mock-extended';
 import { AppsModule } from '../apps.module';
 
 describe('AppsModule', () => {
+	const moduleMetadata = Container.get(ModuleMetadata);
+
+	afterEach(() => Container.reset());
+
 	it('registers the module entrypoint', () => {
-		expect(Container.get(ModuleMetadata).get('apps')?.class).toBe(AppsModule);
+		expect(moduleMetadata.get('apps')?.class).toBe(AppsModule);
 	});
 
 	it('requires explicit module enablement', () => {
@@ -16,7 +20,6 @@ describe('AppsModule', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('apps');
 		config.enabledModules = ['apps'];
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('apps');
-		config.enabledModules = [];
 	});
 
 	it('registers both entities and starts without Instance AI', async () => {
