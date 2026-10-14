@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_209d3652df9edf::t_8d1c693c09d869 149,165
+  s_209d3652df9edf::t_94c45dbcb88678 9
+packages/cli/test/integration/public-api/source-control.test.ts
+  s_209d3652df9edf::t_794a6c92432788 126-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a7a362cfc1518fc11e84a8549b2e98068025def",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_209d3652df9edf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b430ae3-90b8-4e4f-a650-99bf71711d23",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
