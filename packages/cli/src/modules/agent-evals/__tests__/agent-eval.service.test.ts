@@ -10,9 +10,10 @@ import type {
 } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentEvalCaseGenerationService } from '../agent-eval-case-generation.service';
 import type { AgentEvalRunnerService } from '../agent-eval-runner.service';
@@ -28,6 +29,9 @@ vi.mock('../agent-eval-runner.service', () => ({
 }));
 vi.mock('../agent-eval-case-generation.service', () => ({
 	AgentEvalCaseGenerationService: class AgentEvalCaseGenerationService {},
+}));
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
 
 const AGENT_ID = 'agent-1';
@@ -81,6 +85,26 @@ describe('AgentEvalService', () => {
 			...over,
 		});
 
+	const makeResult = (over: Partial<AgentEvalResult> = {}) =>
+		mock<AgentEvalResult>({
+			id: 'result-1',
+			runId: 'run-1',
+			sourceRowId: '1',
+			runIndex: 0,
+			status: 'success',
+			input: { input: 'hello' },
+			output: { finalText: 'hi' },
+			toolCalls: null,
+			metrics: null,
+			runAt: new Date('2026-01-03T00:00:00.000Z'),
+			completedAt: new Date('2026-01-03T00:00:05.000Z'),
+			errorCode: null,
+			errorDetails: null,
+			createdAt: new Date('2026-01-03T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-03T00:00:05.000Z'),
+			...over,
+		});
+
 	beforeEach(() => {
 		moduleRegistry = mock<ModuleRegistry>();
 		moduleRegistry.isActive.mockReturnValue(true);
@@ -96,7 +120,8 @@ describe('AgentEvalService', () => {
 		runRepository.findByIdAndAgentId.mockResolvedValue(makeRun());
 		runRepository.findAndCountByDatasetIdAndAgentId.mockResolvedValue([[], 0]);
 		resultRepository.findAndCountByRunId.mockResolvedValue([[], 0]);
-
+		vi.mocked(userHasScopes).mockReset().mockResolvedValue(true);
+		resultRepository.findById.mockResolvedValue(makeResult());
 		service = new AgentEvalService(
 			moduleRegistry,
 			agentRepository,
@@ -136,7 +161,10 @@ describe('AgentEvalService', () => {
 			],
 			['startRun', async () => await service.startRun(user, AGENT_ID, PROJECT_ID, 'ds-1', {})],
 			['listRuns', async () => await service.listRuns(AGENT_ID, PROJECT_ID, 'ds-1', PAGE)],
-			['getRunDetail', async () => await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', PAGE)],
+			[
+				'getRunDetail',
+				async () => await service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-1', PAGE),
+			],
 			['getRunSummary', async () => await service.getRunSummary(AGENT_ID, PROJECT_ID, 'run-1')],
 			['cancelRun', async () => await service.cancelRun(AGENT_ID, PROJECT_ID, 'run-1')],
 		];
@@ -187,9 +215,9 @@ describe('AgentEvalService', () => {
 		it('404s a run belonging to another agent, and reads no results for it', async () => {
 			runRepository.findByIdAndAgentId.mockResolvedValue(null);
 
-			await expect(service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-other', PAGE)).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-other', PAGE),
+			).rejects.toThrow(NotFoundError);
 			expect(resultRepository.findAndCountByRunId).not.toHaveBeenCalled();
 		});
 
@@ -248,6 +276,77 @@ describe('AgentEvalService', () => {
 				columnMapping: null,
 				createdById: 'user-1',
 			});
+		});
+
+		it('checks the creating user can read the referenced data table', async () => {
+			datasetRepository.createDataset.mockResolvedValue(makeDataset());
+
+			await service.createDataset(user, AGENT_ID, PROJECT_ID, {
+				name: 'cases',
+				agentId: AGENT_ID,
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'dt-1' },
+			});
+
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
+				dataTableId: 'dt-1',
+			});
+		});
+
+		it('refuses a data table the creating user cannot read', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.createDataset(user, AGENT_ID, PROJECT_ID, {
+					name: 'cases',
+					agentId: AGENT_ID,
+					datasetSource: 'data_table',
+					datasetRef: { dataTableId: 'dt-other' },
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(datasetRepository.createDataset).not.toHaveBeenCalled();
+		});
+	});
+
+	// Results hold copies of the source rows, and the table can live in another
+	// project than the agent, so `agent:read` alone must not open them.
+	describe('getRunDetail data table access', () => {
+		it('checks the reader can read the run dataset’s data table', async () => {
+			await service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-1', PAGE);
+
+			expect(datasetRepository.findByIdAndAgentId).toHaveBeenCalledWith('ds-1', AGENT_ID);
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['dataTable:readRow'], false, {
+				dataTableId: 'dt-1',
+			});
+		});
+
+		it('refuses a reader without access to the data table, and reads no results', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-1', PAGE)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(resultRepository.findAndCountByRunId).not.toHaveBeenCalled();
+		});
+
+		it('reads no results when the run’s dataset does not resolve', async () => {
+			datasetRepository.findByIdAndAgentId.mockResolvedValue(null);
+
+			await expect(service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-1', PAGE)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(resultRepository.findAndCountByRunId).not.toHaveBeenCalled();
+		});
+
+		it('refuses a data-table dataset whose ref carries no table id', async () => {
+			datasetRepository.findByIdAndAgentId.mockResolvedValue(
+				makeDataset({ datasetRef: { credentialId: 'c-1', spreadsheetId: 's-1', sheetName: 'S' } }),
+			);
+
+			await expect(service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-1', PAGE)).rejects.toThrow(
+				/without a table id/,
+			);
+			expect(resultRepository.findAndCountByRunId).not.toHaveBeenCalled();
 		});
 	});
 
@@ -332,7 +431,7 @@ describe('AgentEvalService', () => {
 
 	describe('response mapping', () => {
 		it('serializes dates as ISO strings and keeps run coordination columns off the wire', async () => {
-			const detail = await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', PAGE);
+			const detail = await service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-1', PAGE);
 
 			expect(detail.runAt).toBe('2026-01-03T00:00:00.000Z');
 			expect(detail.createdAt).toBe('2026-01-03T00:00:00.000Z');
@@ -399,7 +498,7 @@ describe('AgentEvalService', () => {
 				1,
 			]);
 
-			const detail = await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', PAGE);
+			const detail = await service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-1', PAGE);
 
 			expect(detail.results.data).toHaveLength(1);
 			expect(detail.results.data[0]).toMatchObject({
@@ -431,7 +530,7 @@ describe('AgentEvalService', () => {
 		it('passes the run-detail window to the repository and reports the case total', async () => {
 			resultRepository.findAndCountByRunId.mockResolvedValue([[], 500]);
 
-			const detail = await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', {
+			const detail = await service.getRunDetail(user, AGENT_ID, PROJECT_ID, 'run-1', {
 				take: 25,
 				skip: 50,
 			});
