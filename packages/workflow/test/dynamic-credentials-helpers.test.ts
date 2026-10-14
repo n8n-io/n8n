@@ -110,6 +110,18 @@ describe('dynamic-credentials-helpers', () => {
 			expect(runDataUsedCredentialIds(undefined)).toEqual([]);
 		});
 
+		it('ignores null slots and malformed ids in persisted run data', () => {
+			// Persisted run data is not validated, so a task can hold any value here.
+			const runData = {
+				caller: [
+					null,
+					task({ usedCredentialIds: 'cred-1' as never }),
+					task({ usedCredentialIds: ['cred-2', 7, null] as never }),
+				],
+			} as unknown as IRunData;
+			expect(runDataUsedCredentialIds(runData)).toEqual(['cred-2']);
+		});
+
 		it("reports the run's own credentials and those its sub-workflows reported", () => {
 			const usage = summarizeDynamicCredentialsUsage(
 				executionData({ caller: [task({ usedCredentialIds: ['grandchild-cred'] })] }),

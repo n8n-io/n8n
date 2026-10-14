@@ -1331,6 +1331,43 @@ describe('updateParentExecutionWithChildResults', () => {
 			]);
 		});
 
+		it('stamps them when the sub-workflow fails, next to the resume error', async () => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+			const parent = waitingParent();
+			parent.data.resultData = {
+				runData: {
+					'Execute Sub-workflow': [
+						{
+							startTime: 0,
+							executionTime: 0,
+							executionIndex: 0,
+							executionStatus: 'waiting',
+							source: [],
+						} as ITaskData,
+					],
+				},
+			} as unknown as IExecutionResponse['data']['resultData'];
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(parent);
+			mockInstance(CredentialsPermissionChecker).getCredentialIdsForNodes.mockReturnValue([
+				'child-cred',
+			]);
+			const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+
+			await updateParentExecutionWithChildResults(
+				PARENT_ID,
+				childRun('error', 'Stop and Error', { error }, error),
+				undefined,
+				mock<IWorkflowBase>({ nodes: [] }),
+			);
+
+			const waitingTask = parent.data.resultData.runData['Execute Sub-workflow'][0];
+			expect(waitingTask.usedCredentialIds).toEqual(['child-cred']);
+			const entry = parent.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+			expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+			expect(entry.metadata?.dynamicCredentialsUsage?.usedCredentialIds).toEqual(['child-cred']);
+		});
+
 		it('reports nothing with credential sharing off', async () => {
 			const parent = waitingParent();
 			const executionPersistence = mockInstance(ExecutionPersistence);
