@@ -50,9 +50,10 @@ functions and configuration, and the scheduler composes its algorithms over them
 test in isolation with a fake store. The work is split into a few focused
 submodules, described below.
 
-Everything sits behind the `N8N_SCHEDULER_ENABLED` flag (off by default). Turning
-it off reverts n8n to its previous in-memory scheduling, which is the rollback
-path during rollout.
+Everything sits behind the `N8N_SCHEDULER_ENABLED` flag (on by default). Schedule
+Trigger nodes move to the durable scheduler only while the workflow publication
+service is also on. Turning the flag off reverts n8n to its previous in-memory
+scheduling.
 
 ## The moving parts
 

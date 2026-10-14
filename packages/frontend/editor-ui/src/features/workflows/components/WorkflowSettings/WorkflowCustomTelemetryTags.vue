@@ -214,7 +214,7 @@ const onModalOpenChange = (open: boolean) => {
 			<ElCol :span="14" :class="$style.customTelemetryTagsControl">
 				<div :class="$style.customTelemetryTagsSummary">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="large"
 						native-type="button"
 						:class="$style.customTelemetryTagsConfigure"
@@ -372,7 +372,7 @@ const onModalOpenChange = (open: boolean) => {
 			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:disabled="isSaving"
 					data-test-id="workflow-settings-custom-telemetry-tags-cancel"
 					@click="cancelModal"

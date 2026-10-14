@@ -781,7 +781,7 @@ describe('AgentChatController budget notice', () => {
 	it('emits a budget-notice event when the resumed preview run reports one', async () => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
 		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
-			config.onBudgetNotice?.();
+			config.onBudgetNotice?.({ code: 'budget.alert' });
 			yield { type: 'finish', finishReason: 'stop' };
 		});
 
@@ -797,6 +797,31 @@ describe('AgentChatController budget notice', () => {
 			.filter((line) => line.startsWith('data: '))
 			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
 		expect(events).toContainEqual({ type: 'budget-notice', code: 'budget.alert' });
+	});
+
+	it('forwards a child budget stop code and owner on the budget-notice event', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			config.onBudgetNotice?.({ code: 'budget.monthly', agentId: 'agent-2' });
+			yield { type: 'finish', finishReason: 'stop' };
+		});
+
+		const writes: string[] = [];
+		await controller.chatResume(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse(writes),
+			'agent-1',
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		expect(events).toContainEqual({
+			type: 'budget-notice',
+			code: 'budget.monthly',
+			agentId: 'agent-2',
+		});
 	});
 });
 

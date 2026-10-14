@@ -303,6 +303,7 @@ describe('AgentTriggersSection', () => {
 
 			expect(credentialsApi.getUsableCredentials).toHaveBeenLastCalledWith(expect.anything(), {
 				projectId: 'project-id',
+				forAgent: true,
 			});
 			expect(credentialsStore.getCredentialById(modelCredential.id), phase).toEqual(
 				modelCredential,

@@ -80,7 +80,7 @@ function onConfirm() {
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				:label="i18n.baseText('generic.cancel')"
 				:disabled="isSaving"
 				data-test-id="mcp-connect-workflows-cancel-button"

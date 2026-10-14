@@ -118,7 +118,7 @@ const handleCancel = () => {
 				</N8nDialogBody>
 
 				<N8nDialogFooter>
-					<N8nButton variant="subtle" :label="cancelLabel" @click="handleCancel" />
+					<N8nButton variant="outline" :label="cancelLabel" @click="handleCancel" />
 					<N8nButton
 						:variant="actionVariant === 'destructive' ? 'destructive' : 'solid'"
 						:label="actionLabel"

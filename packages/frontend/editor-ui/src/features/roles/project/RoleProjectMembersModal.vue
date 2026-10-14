@@ -103,7 +103,7 @@ function navigateToProjectSettings() {
 		</N8nDialogBody>
 
 		<N8nDialogFooter>
-			<N8nButton variant="subtle" @click="emit('update:open', false)">
+			<N8nButton variant="outline" @click="emit('update:open', false)">
 				{{ i18n.baseText('projectRoles.assignments.membersModal.cancel') }}
 			</N8nButton>
 			<N8nButton @click="navigateToProjectSettings">

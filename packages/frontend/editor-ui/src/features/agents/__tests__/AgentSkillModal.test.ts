@@ -45,13 +45,11 @@ function renderModal({
 	onConfirm = vi.fn(),
 	skill,
 	skillId,
-	availableTools,
 	existingSkillNames,
 }: {
 	onConfirm?: (payload: { id?: string; skill: AgentSkill }) => void;
 	skill?: AgentSkill;
 	skillId?: string;
-	availableTools?: Array<{ name: string; label: string }>;
 	existingSkillNames?: string[];
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
@@ -82,7 +80,6 @@ function renderModal({
 				agentId: 'a1',
 				skill,
 				skillId,
-				availableTools,
 				existingSkillNames,
 				onConfirm,
 			},

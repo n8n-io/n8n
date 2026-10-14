@@ -4,7 +4,9 @@ import {
 	BreakingChangeReportQueryDto,
 	BreakingChangeRuleDetailResult,
 	BreakingChangeVersion,
+	MigrationNotifyResult,
 	MigrationWorkflowOwnerResponse,
+	NotifyMigrationOwnersRequestDto,
 	UpdateMigrationFindingStatusRequestDto,
 	UpdateMigrationFindingStatusesRequestDto,
 	WorkflowMigrationResult,
@@ -29,6 +31,7 @@ import { Response } from 'express';
 
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
+import { MigrationFindingNotificationService } from './notifications/migration-finding-notification.service';
 import { MigrationOwnerAssignmentService } from './owners/migration-owner-assignment.service';
 import {
 	MigrationFindingQueryService,
@@ -52,6 +55,7 @@ export class BreakingChangesController {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly ownerAssignmentService: MigrationOwnerAssignmentService,
+		private readonly notificationService: MigrationFindingNotificationService,
 	) {}
 
 	/**
@@ -151,6 +155,22 @@ export class BreakingChangesController {
 		@Body body: UpdateMigrationFindingStatusesRequestDto,
 	): Promise<void> {
 		await this.triageService.setStatuses(ruleId, body.workflowIds, body.status);
+	}
+
+	/**
+	 * Emails the owners of the given workflows about the rule's finding on them.
+	 * A repeated call is a reminder. The response names the workflows that were
+	 * notified and the ones that were skipped, with the reason.
+	 */
+	@Post('/report/:ruleId/workflows/notify')
+	@GlobalScope('breakingChanges:migrate')
+	async notifyOwners(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('ruleId') ruleId: string,
+		@Body body: NotifyMigrationOwnersRequestDto,
+	): Promise<MigrationNotifyResult> {
+		return await this.notificationService.notifyOwners(ruleId, body.workflowIds, req.user);
 	}
 
 	/** Sets the status a user picks for the finding of one rule on one workflow. */

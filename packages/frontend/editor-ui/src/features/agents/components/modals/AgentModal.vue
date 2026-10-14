@@ -14,7 +14,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
-import { computed, provide, ref, useSlots, useTemplateRef } from 'vue';
+import { computed, nextTick, provide, ref, useSlots, useTemplateRef } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 
@@ -31,6 +31,8 @@ const props = withDefaults(
 		showCancel?: boolean;
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
+		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
+		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -47,6 +49,7 @@ const props = withDefaults(
 		showCancel: true,
 		bodyScrollable: true,
 		bodyFlush: false,
+		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -104,6 +107,24 @@ function onInteractOutside(event: Event) {
 	if (dismissalBlocked.value) event.preventDefault();
 	emit('interactOutside', event);
 }
+const bodyAutofocusSelector =
+	'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]';
+
+function onOpenAutoFocus(event: Event) {
+	const body =
+		bodyElement() ?? document.querySelector<HTMLElement>('[data-testid="agent-modal-body"]');
+	const dialog = body?.closest('[role="dialog"]');
+	const autofocusTarget =
+		body?.querySelector<HTMLElement>(bodyAutofocusSelector) ??
+		body?.querySelector<HTMLElement>('button:not([disabled])') ??
+		dialog?.querySelector<HTMLElement>(
+			'[data-testid="dialog-close-button"]:not([disabled]), [data-test-id="dialog-close-button"]:not([disabled])',
+		);
+	if (!autofocusTarget) return;
+
+	event.preventDefault();
+	void nextTick(() => autofocusTarget.focus());
+}
 </script>
 
 <template>
@@ -119,6 +140,7 @@ function onInteractOutside(event: Event) {
 		:container-class="$style.dialog"
 		@escape-key-down="onEscapeKeyDown"
 		@interact-outside="onInteractOutside"
+		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
 		<N8nDialogHeader :class="$style.header">
@@ -134,6 +156,10 @@ function onInteractOutside(event: Event) {
 					data-testid="agent-modal-back"
 					@click="onBack"
 				/>
+
+				<div v-if="$slots.titlePrefix" :class="$style.titlePrefix">
+					<slot name="titlePrefix" />
+				</div>
 
 				<N8nDialogTitle as-child>
 					<div :class="$style.titleGroup">
@@ -174,7 +200,11 @@ function onInteractOutside(event: Event) {
 
 		<N8nDialogBody
 			ref="bodyRoot"
-			:class="[$style.body, hasFooter && $style.bodyAboveFooter]"
+			:class="[
+				$style.body,
+				hasFooter && $style.bodyAboveFooter,
+				props.stableHeight && $style.bodyStableHeight,
+			]"
 			:data-flush="props.bodyFlush ? 'true' : undefined"
 			:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
 			data-testid="agent-modal-body"
@@ -249,6 +279,12 @@ function onInteractOutside(event: Event) {
 	flex-shrink: 0;
 }
 
+.titlePrefix {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+}
+
 .titleGroup {
 	display: flex;
 	align-items: center;
@@ -291,6 +327,7 @@ function onInteractOutside(event: Event) {
 
 .footer {
 	padding: var(--spacing--md) var(--spacing--lg);
+	border-top: var(--border);
 }
 
 .body {
@@ -300,6 +337,7 @@ function onInteractOutside(event: Event) {
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
+	scrollbar-gutter: stable;
 	padding: 0 var(--agent-modal-body--padding-inline) var(--agent-modal-body--padding-block-end);
 
 	@include scrollbar-mixins.scroll-bar;
@@ -316,6 +354,10 @@ function onInteractOutside(event: Event) {
 
 .body[data-scrollable='false'] {
 	overflow: hidden;
+}
+
+.bodyStableHeight {
+	height: min(60dvh, calc(var(--height--5xl) * 5));
 }
 
 .body :global(.n8n-markdown) {

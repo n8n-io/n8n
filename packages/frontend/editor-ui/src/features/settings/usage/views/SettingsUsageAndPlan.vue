@@ -306,7 +306,7 @@ const openCommunityRegisterModal = () => {
 
 			<div :class="$style.buttons">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					v-if="canUserActivateLicense"
 					:class="$style.buttonTertiary"
 					size="large"
@@ -344,7 +344,7 @@ const openCommunityRegisterModal = () => {
 				</template>
 				<template #footer>
 					<div :class="$style.dialogButtonsContainer">
-						<N8nButton variant="subtle" @click="onActivationCancel">
+						<N8nButton variant="outline" @click="onActivationCancel">
 							{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 						</N8nButton>
 						<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
