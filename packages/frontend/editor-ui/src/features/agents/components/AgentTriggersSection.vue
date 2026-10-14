@@ -6,7 +6,7 @@ import type {
 	AgentJsonTaskConfig,
 } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { agentsEventBus } from '../agents.eventBus';
@@ -19,6 +19,7 @@ import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
+import { GENERIC_ISSUE_KEYS as ISSUE_KEYS } from '../utils/validationIssues';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
@@ -132,16 +133,6 @@ function channelIcon(integrationIcon?: string): IconName {
 	if (isIconName(integrationIcon)) return integrationIcon;
 	return 'zap';
 }
-
-const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-};
 
 const channelIssueMessages = computed(() => {
 	const messages = new Map<string, string[]>();
