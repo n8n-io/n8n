@@ -106,3 +106,27 @@ it('preserves live call identity and running state', () => {
 	});
 	expect(calls[0]).toMatchObject({ toolCallId: 'call-1', state: 'running' });
 });
+
+it('preserves recorded mock requests without treating them as completed output', () => {
+	const request = {
+		url: 'https://slack.com/api/chat.postMessage',
+		method: 'POST',
+		nodeType: 'n8n-nodes-base.slack',
+		requestBody: { text: 'Mock update' },
+		mockResponse: { ok: true },
+	};
+	const [call] = toDisplayToolCalls({
+		calls: [
+			{ tool: 'send_and_wait', status: 'running', mocked: true, interceptedRequests: [request] },
+		],
+	});
+	expect(call).toMatchObject({ mocked: true, interceptedRequests: [request], state: 'running' });
+	expect(call.output).toBeUndefined();
+});
+
+it('filters malformed intercepted requests without discarding the tool call', () => {
+	const [call] = toDisplayToolCalls({
+		calls: [{ tool: 'lookup', mocked: 'yes', interceptedRequests: [null, {}, { url: 42 }] }],
+	});
+	expect(call).toMatchObject({ mocked: false, interceptedRequests: [] });
+});

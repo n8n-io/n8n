@@ -1,3 +1,4 @@
+import type { InstanceAiEvalInterceptedRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 
@@ -11,13 +12,26 @@ const CANCELED_ERROR = 'canceled';
 
 /**
  * Only the fields the review view renders. Narrowing to the full record would
- * reject rows written before a field existed, for no gain — the extra fields
- * (`kind`, `mocked`, `interceptedRequests`) have no bearing on the disclosure.
+ * reject rows written before a field existed.
  */
 type PersistedToolCall = Pick<
 	InstanceAiEvalAgentToolCallRecord,
-	'tool' | 'input' | 'output' | 'error' | 'toolCallId' | 'status'
+	'tool' | 'input' | 'output' | 'error' | 'toolCallId' | 'status' | 'mocked' | 'interceptedRequests'
 >;
+
+export type EvalDisplayToolCall = ToolCall & {
+	mocked?: boolean;
+	interceptedRequests?: InstanceAiEvalInterceptedRequest[];
+};
+
+function isInterceptedRequest(value: unknown): value is InstanceAiEvalInterceptedRequest {
+	return (
+		isRecord(value) &&
+		typeof value.url === 'string' &&
+		typeof value.method === 'string' &&
+		typeof value.nodeType === 'string'
+	);
+}
 
 function isPersistedToolCall(value: unknown): value is PersistedToolCall {
 	return isRecord(value) && typeof value.tool === 'string';
@@ -48,7 +62,7 @@ function resolveState(
  * says nothing useful about its elements, and narrowing from `JsonValue` can't
  * reach a record shape whose `input`/`output` are themselves opaque.
  */
-export function toDisplayToolCalls(toolCalls: unknown): ToolCall[] {
+export function toDisplayToolCalls(toolCalls: unknown): EvalDisplayToolCall[] {
 	if (!isRecord(toolCalls) || !isUnknownArray(toolCalls.calls)) return [];
 
 	return toolCalls.calls.filter(isPersistedToolCall).map((call, index) => ({
@@ -58,6 +72,10 @@ export function toDisplayToolCalls(toolCalls: unknown): ToolCall[] {
 		input: call.input,
 		output: call.output,
 		state: resolveState(call.error, call.status),
+		mocked: call.mocked === true,
+		interceptedRequests: isUnknownArray(call.interceptedRequests)
+			? call.interceptedRequests.filter(isInterceptedRequest)
+			: [],
 		// `error` is deliberately not forwarded as `output`: it can be an
 		// internal diagnostic about unattributed requests or interrupted execution. Leaving `output` empty
 		// makes the renderer fall back to its generic tool-error copy, which is
