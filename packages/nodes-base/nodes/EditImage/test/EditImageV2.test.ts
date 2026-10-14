@@ -37,6 +37,15 @@ async function imageBufferWithTransparentCorners(): Promise<Buffer> {
 	return await canvas.encode('png');
 }
 
+async function firstPixel(buffer: Buffer): Promise<[number, number, number, number]> {
+	const image = await loadImage(buffer);
+	const canvas = createCanvas(image.width, image.height);
+	const context = canvas.getContext('2d');
+	context.drawImage(image, 0, 0);
+	const data = context.getImageData(0, 0, 1, 1).data;
+	return [data[0], data[1], data[2], data[3]];
+}
+
 function outputBuffer(result: INodeExecutionData[][], propertyName = 'data'): Buffer {
 	const data = result[0][0].binary?.[propertyName]?.data;
 	if (!data) throw new Error('Expected output binary data');
@@ -395,6 +404,38 @@ describe('Edit Image v2', () => {
 		const result = await new EditImage().execute.call(executeFunctions);
 
 		expect(outputBuffer(result).length).toBeGreaterThan(0);
+	});
+
+	it.each([
+		['Plus', [255, 255, 170, 255]],
+		['Add', [44, 4, 170, 255]],
+		['Minus', [100, 40, 0, 255]],
+		['Subtract', [100, 40, 186, 255]],
+	])('matches GraphicsMagick channel arithmetic for %s', async (operator, expected) => {
+		const input = await imageBuffer('#646e78', 1, 1);
+		const overlay = await imageBuffer('#c89632', 1, 1);
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'composite',
+				dataPropertyName: 'data',
+				dataPropertyNameComposite: 'overlay',
+				operator,
+				positionX: 0,
+				positionY: 0,
+			},
+			input: {
+				json: {},
+				binary: {
+					data: { data: input.toString('base64'), mimeType: 'image/png' },
+					overlay: { data: overlay.toString('base64'), mimeType: 'image/png' },
+				},
+			},
+			binaryBuffers: { data: input, overlay },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+
+		expect(await firstPixel(outputBuffer(result))).toEqual(expected);
 	});
 
 	it('returns normalized image information', async () => {

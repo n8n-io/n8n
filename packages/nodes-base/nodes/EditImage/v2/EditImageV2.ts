@@ -287,9 +287,6 @@ async function applyBorder(canvas: Canvas, operation: OperationData): Promise<Ca
 
 function getCompositeMode(operator: string): CompositeMode | undefined {
 	switch (operator) {
-		case 'Add':
-		case 'Plus':
-			return 'lighter';
 		case 'Atop':
 			return 'source-atop';
 		case 'Copy':
@@ -313,6 +310,10 @@ function getCompositeMode(operator: string): CompositeMode | undefined {
 
 function clampChannel(value: number): number {
 	return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function wrapChannel(value: number): number {
+	return ((Math.round(value) % 256) + 256) % 256;
 }
 
 function applyCustomComposite(
@@ -366,14 +367,28 @@ function applyCustomComposite(
 				for (let channel = 0; channel < 3; channel++) {
 					const source = overlayData.data[sourceIndex + channel];
 					const target = baseData.data[targetIndex + channel];
-					if (operator === 'Bumpmap') {
+					if (operator === 'Plus') {
+						baseData.data[targetIndex + channel] = clampChannel(source + target);
+					} else if (operator === 'Add') {
+						baseData.data[targetIndex + channel] = wrapChannel(source + target);
+					} else if (operator === 'Minus') {
+						baseData.data[targetIndex + channel] = clampChannel(source - target);
+					} else if (operator === 'Subtract') {
+						baseData.data[targetIndex + channel] = wrapChannel(source - target);
+					} else if (operator === 'Bumpmap') {
 						baseData.data[targetIndex + channel] = clampChannel(target * luminance);
 					} else if (operator === 'Divide') {
 						baseData.data[targetIndex + channel] =
 							source === 0 ? 255 : clampChannel((target * 255) / source);
-					} else {
-						baseData.data[targetIndex + channel] = clampChannel(target - source);
 					}
+				}
+				if (
+					operator === 'Plus' ||
+					operator === 'Add' ||
+					operator === 'Minus' ||
+					operator === 'Subtract'
+				) {
+					baseData.data[targetIndex + 3] = 255;
 				}
 			}
 		}
