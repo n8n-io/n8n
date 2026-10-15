@@ -64,6 +64,7 @@ export type AgentSkillModalData = {
 	existingSkillNames?: string[];
 	hubSkillsEnabled?: boolean;
 	getAttachedSkills?: () => Array<{ id: string; name: string }>;
+	/** The agent's project as the user knows it. Names the picker tab and the "available to" option. */
 	projectLabel?: string;
 	canCreateInstanceSkills?: boolean;
 	/**
@@ -284,7 +285,11 @@ const AVAILABILITY_ICONS = {
 	instance: 'globe',
 } as const satisfies Record<AgentSkillAvailability, string>;
 const availabilityOptions = computed(() => [
-	{ value: 'project' as const, label: i18n.baseText('agents.builder.skills.availableTo.project') },
+	// The modal hides the page behind it, so the project option names the project.
+	{
+		value: 'project' as const,
+		label: props.data.projectLabel ?? i18n.baseText('agents.builder.skills.availableTo.project'),
+	},
 	{ value: 'agent' as const, label: i18n.baseText('agents.builder.skills.availableTo.agent') },
 	...(showInstanceTarget.value
 		? [
