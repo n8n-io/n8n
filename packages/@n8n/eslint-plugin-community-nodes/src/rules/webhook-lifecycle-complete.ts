@@ -114,7 +114,7 @@ function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleM
 	const [properties, spreads] = conclusiveProperties(group);
 
 	return WEBHOOK_LIFECYCLE_METHODS.filter((method) => {
-		const declared = properties.find((property): property is TSESTree.Property =>
+		const declared = [...properties].reverse().find((property): property is TSESTree.Property =>
 			declaresKey(property, method),
 		);
 

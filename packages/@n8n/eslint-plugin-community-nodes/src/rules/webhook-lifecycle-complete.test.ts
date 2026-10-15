@@ -131,6 +131,20 @@ export class RegularClass {
 				webhookMethods: '{ default: { delete: undefined, ...sharedLifecycle } }',
 			}),
 		},
+		{
+			name: 'later lifecycle implementation supersedes an earlier duplicate key',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { delete: undefined, delete: removeWebhook, checkExists, create } }',
+			}),
+		},
+		{
+			name: 'later lifecycle implementation after a spread supersedes an earlier duplicate key',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { ...sharedLifecycle, delete: undefined, delete: removeWebhook } }',
+			}),
+		},
 	],
 	invalid: [
 		{
@@ -255,6 +269,32 @@ export class RegularClass {
 						delete: null,
 					},
 				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'later nullish lifecycle value supersedes an earlier implementation',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { checkExists, create, delete: removeWebhook, delete: undefined } }',
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'later nullish lifecycle value after a spread supersedes an earlier implementation',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { ...sharedLifecycle, delete: removeWebhook, delete: undefined } }',
 			}),
 			errors: [
 				{
