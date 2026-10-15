@@ -68,3 +68,9 @@ export {
 	API_KEY_PURPOSES,
 	LEGACY_UNBOUND_PURPOSES,
 } from './services/token-purposes';
+
+export {
+	WorkflowPublishedDataService,
+	type PublishedWorkflowData,
+	type PublishedWorkflowDataForExecution,
+} from './workflows/workflow-published-data.service';
