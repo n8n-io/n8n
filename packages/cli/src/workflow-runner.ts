@@ -205,11 +205,14 @@ export class WorkflowRunner {
 								if (isManualExecution && !saveSettings.manual) {
 									await this.executionRepository.softDelete(executionId);
 								} else if (!isManualExecution && !saveSettings.success) {
-									await this.executionPersistence.deleteInFlightExecution({
-										workflowId: fullExecutionData.workflowId,
-										executionId,
-										storedAt: fullExecutionData.storedAt,
-									});
+									await this.executionPersistence.deleteInFlightExecution(
+										{
+											workflowId: fullExecutionData.workflowId,
+											executionId,
+											storedAt: fullExecutionData.storedAt,
+										},
+										fullExecutionData,
+									);
 								}
 							} catch (pruneError) {
 								this.logger.warn('Could not prune a recovered false-positive success', {

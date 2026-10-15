@@ -2183,6 +2183,11 @@ describe('ExecutionPersistence', () => {
 
 	describe('deleteUnsaved', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
+		const outcome = {
+			finished: true,
+			status: 'success' as const,
+			stoppedAt: new Date('2026-10-14T21:15:14.000Z'),
+		};
 
 		it('should soft-delete with backdated `deletedAt` when pruning is enabled', async () => {
 			vi.useFakeTimers();
@@ -2192,9 +2197,10 @@ describe('ExecutionPersistence', () => {
 			executionsConfig.pruneDataHardDeleteBuffer = 1;
 			const executionPersistence = createPersistenceService('db');
 
-			await executionPersistence.deleteInFlightExecution(target);
+			await executionPersistence.deleteInFlightExecution(target, outcome);
 
 			expect(executionRepository.update).toHaveBeenCalledWith('exec-1', {
+				...outcome,
 				deletedAt: new Date(now - 3600_000),
 			});
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
@@ -2206,7 +2212,7 @@ describe('ExecutionPersistence', () => {
 			executionsConfig.pruneData = false;
 			const executionPersistence = createPersistenceService('db');
 
-			await executionPersistence.deleteInFlightExecution(target);
+			await executionPersistence.deleteInFlightExecution(target, outcome);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
 			expect(executionRepository.update).not.toHaveBeenCalled();

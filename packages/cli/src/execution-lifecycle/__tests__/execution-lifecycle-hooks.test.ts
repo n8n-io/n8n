@@ -1466,11 +1466,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await testHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
-					workflowId,
-					executionId,
-					storedAt: 'db',
-				});
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+					{ workflowId, executionId, storedAt: 'db' },
+					successfulRun,
+				);
 			});
 
 			it('should delete unsaved failed executions when error saving is disabled', async () => {
@@ -1490,11 +1489,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await testHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
-				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
-					workflowId,
-					executionId,
-					storedAt: 'db',
-				});
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+					{ workflowId, executionId, storedAt: 'db' },
+					failedRun,
+				);
 			});
 
 			describe('metadata handling', () => {
@@ -1528,11 +1526,10 @@ describe('Execution Lifecycle Hooks', () => {
 					// Metadata should not be saved before deletion
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
 					// Execution should be deleted
-					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
-						workflowId,
-						executionId,
-						storedAt: 'db',
-					});
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+						{ workflowId, executionId, storedAt: 'db' },
+						successfulRunWithMetadata,
+					);
 				});
 
 				it('should NOT save metadata when execution has none', async () => {
@@ -1568,11 +1565,10 @@ describe('Execution Lifecycle Hooks', () => {
 					await testLifecycleHooks.runHook('workflowExecuteAfter', [failedRunWithMetadata, {}]);
 
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
-					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
-						workflowId,
-						executionId,
-						storedAt: 'db',
-					});
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith(
+						{ workflowId, executionId, storedAt: 'db' },
+						failedRunWithMetadata,
+					);
 				});
 
 				it('should save metadata for crashed executions when error saving is enabled', async () => {
