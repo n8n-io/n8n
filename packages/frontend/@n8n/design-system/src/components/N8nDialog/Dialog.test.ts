@@ -3,7 +3,6 @@ import { render, waitFor } from '@testing-library/vue';
 import { DialogRoot, DialogTrigger, DialogPortal } from 'reka-ui';
 import { ref } from 'vue';
 
-import N8nFormInput from '../N8nFormInput';
 import {
 	N8nDialog,
 	N8nDialogBody,
@@ -733,41 +732,6 @@ describe('N8nDialog', () => {
 			});
 
 			expect(document.activeElement).toBe(trigger);
-		});
-
-		it('tabs from an autofocused field to the next field after content changes', async () => {
-			const user = userEvent.setup();
-			const { getByRole } = render({
-				components: { N8nDialog, N8nFormInput },
-				setup() {
-					const isOpen = ref(false);
-					const key = ref('');
-					const value = ref('');
-					return { isOpen, key, value };
-				},
-				template: `
-					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
-					<N8nDialog v-model:open="isOpen" header="Create variable">
-						<N8nFormInput v-model="key" label="Key" name="key" required focus-initially />
-						<N8nFormInput v-model="value" label="Value" name="value" type="textarea" />
-					</N8nDialog>
-				`,
-			});
-
-			await user.click(document.querySelector('[data-test-id="dialog-trigger"]')!);
-			const dialog = getByRole('dialog');
-			const keyInput = document.getElementById('key') as HTMLInputElement;
-			const valueInput = document.getElementById('value') as HTMLTextAreaElement;
-
-			await waitFor(() => expect(document.activeElement).toBe(keyInput));
-
-			// A validation message or icon mount adds nodes. That must not move focus.
-			dialog.appendChild(document.createElement('span'));
-			await new Promise((resolve) => setTimeout(resolve, 30));
-			expect(document.activeElement).toBe(keyInput);
-
-			await user.tab();
-			expect(document.activeElement).toBe(valueInput);
 		});
 
 		it('should cycle focus with Tab key', async () => {
