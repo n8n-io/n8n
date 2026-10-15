@@ -1,7 +1,7 @@
 import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { extractBearer, inboundFrom } from '@n8n/inbound-auth';
+import { extractBearer, inboundFrom, inboundRequestOf, ResourceAdmission } from '@n8n/inbound-auth';
 import {
 	getApiKeyScopesForRole,
 	isApiKeyScope,
@@ -13,7 +13,6 @@ import type { AuthStrategy } from '@/services/auth-strategy.types';
 import { JwtService } from '@n8n/backend-services';
 
 import { PublicApiProtectedResource } from './public-api-protected-resource';
-import { inboundRequestOf, ResourceAdmission } from './resource-admission';
 
 // Token scopes arrive as plain strings; `isApiKeyScope` only takes known scope names.
 const isApiKeyScopeName = (scope: string): scope is ApiKeyScope =>

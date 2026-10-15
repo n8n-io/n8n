@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { PublicApiOAuthStrategy } from '../public-api-oauth.strategy';
 import type { PublicApiProtectedResource } from '../public-api-protected-resource';
-import { ResourceAdmission } from '../resource-admission';
+import { InboundResourceAdmission } from '../resource-admission';
 
 const RESOURCE_URL = 'https://n8n.test/api/v1';
 const CHALLENGE =
@@ -66,7 +66,7 @@ beforeEach(() => {
 	});
 	strategy = new PublicApiOAuthStrategy(
 		resource,
-		new ResourceAdmission(pipeline, authenticationService, mock<Logger>()),
+		new InboundResourceAdmission(pipeline, authenticationService, mock<Logger>()),
 		jwtService,
 		userRepository,
 	);

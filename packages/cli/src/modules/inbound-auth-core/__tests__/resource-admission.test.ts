@@ -6,10 +6,9 @@ import type {
 	ProtectedResource,
 } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
-import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { inboundRequestOf, ResourceAdmission } from '../resource-admission';
+import { InboundResourceAdmission } from '../resource-admission';
 
 const RESOURCE_URL = 'https://n8n.test/form/abc';
 const GRANT = { audiences: [RESOURCE_URL], executeAccessWorkflowId: 'wf-1' };
@@ -40,7 +39,7 @@ const context: SecurityContext = {
 const pipeline = mock<AuthenticationPipeline>();
 const authenticationService = mock<AuthenticationService>();
 const logger = mock<Logger>();
-const admission = new ResourceAdmission(pipeline, authenticationService, logger);
+const admission = new InboundResourceAdmission(pipeline, authenticationService, logger);
 
 /** What the pipeline advertises for this resource, as every challenge must name it. */
 const advertised = expect.objectContaining({
@@ -59,32 +58,7 @@ beforeEach(() => {
 	});
 });
 
-describe('inboundRequestOf', () => {
-	it('takes method, original URL, headers and ip from an Express request', () => {
-		const headers = { authorization: 'Bearer t', 'x-forwarded-for': '198.51.100.1' };
-		const req = mock<Request>({
-			method: 'GET',
-			originalUrl: '/api/v1/workflows?limit=1',
-			headers,
-			ip: '203.0.113.7',
-		});
-
-		expect(inboundRequestOf(req)).toEqual({
-			method: 'GET',
-			url: '/api/v1/workflows?limit=1',
-			headers,
-			ip: '203.0.113.7',
-		});
-	});
-
-	it('stamps an empty ip when Express has none', () => {
-		const req = mock<Request>({ method: 'GET', originalUrl: '/', headers: {}, ip: undefined });
-
-		expect(inboundRequestOf(req).ip).toBe('');
-	});
-});
-
-describe('ResourceAdmission', () => {
+describe('InboundResourceAdmission', () => {
 	describe('admitBearer', () => {
 		it('stamps the inbound with the resource and sends the token through the pipeline', async () => {
 			const result = await admission.admitBearer(resource, REQUEST, 'the-token');
