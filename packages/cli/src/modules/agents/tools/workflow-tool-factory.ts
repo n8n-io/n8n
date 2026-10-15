@@ -29,6 +29,8 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	AI_TRANSFORM_NODE_TYPE,
+	CODE_NODE_TYPE,
 	createRunExecutionData,
 	isTerminalExecutionStatus,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -36,6 +38,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	OperationalError,
+	UserError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -661,6 +664,44 @@ async function stopWaitingExecution(
 }
 
 /**
+ * These nodes run user code in the task runner. A main that offloads executions to
+ * workers starts none, and such a node there would wait until the tool timeout.
+ */
+const TASK_RUNNER_NODE_TYPES: ReadonlySet<string> = new Set([
+	CODE_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
+	'@n8n/n8n-nodes-langchain.toolCode',
+]);
+
+function needsTaskRunner(node: INode): boolean {
+	if (node.disabled === true) return false;
+	if (TASK_RUNNER_NODE_TYPES.has(node.type)) return true;
+	// Sort and Item Lists use the task runner only to sort with code.
+	if (node.type === 'n8n-nodes-base.sort') return node.parameters.type === 'code';
+	if (node.type === 'n8n-nodes-base.itemLists') {
+		return node.parameters.operation === 'sort' && node.parameters.type === 'code';
+	}
+	return false;
+}
+
+/**
+ * Fail at once, with the reason, when the workflow has a node that needs the task
+ * runner and this process runs none. Only this workflow's own nodes are checked.
+ */
+async function assertTaskRunnerAvailable(workflow: WorkflowEntity) {
+	if (!workflow.nodes.some(needsTaskRunner)) return;
+
+	const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
+	if (Container.get(TaskRunnerModule).isStarted) return;
+
+	throw new UserError(
+		'This workflow has a node that runs code, such as a Code node, but this instance runs no task runner on the main process. ' +
+			'This happens in queue mode when OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true. ' +
+			'An eval runs workflow tools on the main process, so the node cannot run.',
+	);
+}
+
+/**
  * Runs the tool workflow in this process through the sub-workflow path, which
  * is never enqueued — also in queue mode. The path reads the result from the
  * execution store, the same as a manual run through `WorkflowRunner`.
@@ -677,6 +718,7 @@ async function executeInProcess(
 	configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) => void,
 ): Promise<WorkflowToolExecutionResult> {
 	const { activeExecutions, abortSignal } = context;
+	await assertTaskRunnerAvailable(workflow);
 	const { executeWorkflow: runSubWorkflow, getBase } = await import(
 		'@/workflow-execute-additional-data.js'
 	);

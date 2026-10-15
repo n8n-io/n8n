@@ -66,13 +66,16 @@ interface CaseUsage {
  * Executes an agent-eval dataset against a real agent and persists per-case
  * results, then aggregates run-level status.
  *
- * Runs on the main process only: the tool-mock substrate reused from the
- * instance-ai eval path carries a closure that cannot cross a queue boundary
- * (see {@link EvalAgentExecutionService}). A per-run pool caps in-flight cases
- * and layers on the shared, license-tiered instance-wide evaluation concurrency
- * queue (the same one the workflow eval uses), so a single run can't flood the
- * queue and concurrent runs can't collectively exceed the plan limit;
- * cross-main *cancellation* is honored via the run's `cancelRequested` flag.
+ * Runs on the main process, also in queue mode: the tool-mock substrate reused
+ * from the instance-ai eval path carries a closure that cannot cross a queue
+ * boundary, so workflow-tool sub-executions run in process instead of through
+ * the queue (see {@link EvalAgentExecutionService}). A per-run pool caps in-flight
+ * cases at the license-tiered evaluation limit, up to a backstop of 10. In regular
+ * mode the pool also uses the shared evaluation concurrency queue (the same one
+ * the workflow eval uses), so concurrent runs can't collectively exceed the plan
+ * limit. In queue mode that queue is off. Each run is capped, but the instance-wide
+ * limit is not enforced across runs or mains. Cross-main *cancellation* is honored
+ * via the run's `cancelRequested` flag.
  * A run-level deadline bounds the wall clock, since a 1-slot plan otherwise
  * lets a large dataset run until the process restarts.
  * Behind the `101_agent_evals` flag.
@@ -112,10 +115,6 @@ export class AgentEvalRunnerService {
 		// Per user, since PostHog owns cohort rollout. The REST layer gates too — this
 		// is the backstop for any other caller.
 		await this.flagGate.assertEnabled(user);
-
-		if (this.globalConfig.executions.mode === 'queue') {
-			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
-		}
 
 		// Backstop for direct callers; the REST path asserts before its own lookups.
 		assertRequiredModulesActive(this.moduleRegistry);
@@ -215,10 +214,6 @@ export class AgentEvalRunnerService {
 		options: { timeoutMs?: number; whatToCheck?: string } = {},
 	): Promise<AgentEvalResult> {
 		await this.flagGate.assertEnabled(user);
-
-		if (this.globalConfig.executions.mode === 'queue') {
-			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
-		}
 
 		assertRequiredModulesActive(this.moduleRegistry);
 
@@ -571,11 +566,13 @@ export class AgentEvalRunnerService {
 	 * module startup; best-effort so it can never block boot.
 	 */
 	async cleanupInterruptedRuns(): Promise<void> {
-		// Runs are only ever created/executed on a single-main (non-queue)
-		// instance — `startRun` refuses queue mode, and n8n multi-main requires it.
-		// So on such an instance every incomplete run at startup is this instance's
-		// own leftover, safe to sweep. Skip entirely in queue mode so bringing up
-		// an additional main never touches runs owned by a different instance.
+		// A run stores its owner in `runningInstanceId`, but outside Docker that ID
+		// is random for each process. After a restart it cannot show which runs the
+		// old process owned. In queue mode another main may own an incomplete run,
+		// so sweeping would error a live run. Skip there: a run that a restart
+		// interrupts stays `running`. A safe sweep needs a heartbeat. On a
+		// single-main instance every incomplete run at startup is this instance's
+		// own leftover.
 		if (this.globalConfig.executions.mode === 'queue') return;
 		try {
 			const result = await this.runRepository.markAllIncompleteAsError();

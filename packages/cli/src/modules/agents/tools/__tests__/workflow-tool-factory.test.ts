@@ -25,6 +25,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import {
@@ -479,6 +480,75 @@ describe('executeWorkflow → eval instrumentation', () => {
 		await executeWorkflow(workflow, triggerNode, {}, context, false, 'Lookup_workflow');
 
 		expect(context.subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(workflow, 'p1');
+	});
+
+	describe('task runner for nodes that run code', () => {
+		const nodeOf = (type: string, parameters: INode['parameters'] = {}): INode => ({
+			id: 'runner-node',
+			name: 'Runner node',
+			type,
+			typeVersion: 1,
+			position: [200, 0],
+			parameters,
+		});
+		const workflowWith = (node: INode) =>
+			({ ...workflow, nodes: [triggerNode, node] }) as WorkflowEntity;
+		const setRunnerStarted = (isStarted: boolean) =>
+			Container.set(TaskRunnerModule, { isStarted } as unknown as TaskRunnerModule);
+		const runInProcess = async (target: WorkflowEntity) =>
+			await executeWorkflow(
+				target,
+				triggerNode,
+				{},
+				buildContext(vi.fn(), { instrumentToolAdditionalData: vi.fn() }),
+				false,
+				'Lookup_workflow',
+			);
+
+		it.each([
+			['a Code node', nodeOf('n8n-nodes-base.code')],
+			['an AI Transform node', nodeOf('n8n-nodes-base.aiTransform')],
+			['a Code tool node', nodeOf('@n8n/n8n-nodes-langchain.toolCode')],
+			['a Sort node that sorts with code', nodeOf('n8n-nodes-base.sort', { type: 'code' })],
+			[
+				'an Item Lists node that sorts with code',
+				nodeOf('n8n-nodes-base.itemLists', { operation: 'sort', type: 'code' }),
+			],
+		])('fails at once for %s when this process runs no task runner', async (_name, node) => {
+			setRunnerStarted(false);
+
+			await expect(runInProcess(workflowWith(node))).rejects.toThrow(
+				/has a node that runs code, such as a Code node, but this instance runs no task runner on the main process/,
+			);
+			expect(subWorkflowExecute).not.toHaveBeenCalled();
+		});
+
+		it('runs a workflow with a Code node when this process runs a task runner', async () => {
+			setRunnerStarted(true);
+
+			await expect(
+				runInProcess(workflowWith(nodeOf('n8n-nodes-base.code'))),
+			).resolves.toMatchObject({ status: 'success' });
+			expect(subWorkflowExecute).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([
+			['a disabled Code node', { ...nodeOf('n8n-nodes-base.code'), disabled: true }],
+			[
+				'a Sort node that does not sort with code',
+				nodeOf('n8n-nodes-base.sort', { type: 'simple' }),
+			],
+			['a Sort node with the default type', nodeOf('n8n-nodes-base.sort')],
+			[
+				'an Item Lists node that limits items',
+				nodeOf('n8n-nodes-base.itemLists', { operation: 'limit' }),
+			],
+			['a node that does not run code', nodeOf('n8n-nodes-base.set')],
+		])('does not need a task runner for %s', async (_name, node) => {
+			setRunnerStarted(false);
+
+			await expect(runInProcess(workflowWith(node))).resolves.toMatchObject({ status: 'success' });
+		});
 	});
 
 	describe('waiting executions', () => {

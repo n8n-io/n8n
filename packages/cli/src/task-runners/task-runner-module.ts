@@ -40,6 +40,13 @@ export class TaskRunnerModule {
 
 	private pyRunnerProcessRestartLoopDetector: TaskRunnerProcessRestartLoopDetector | undefined;
 
+	private started = false;
+
+	/** Whether this process started the task runner module. A main can skip it, for example when it offloads executions to workers. */
+	get isStarted() {
+		return this.started;
+	}
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -62,10 +69,14 @@ export class TaskRunnerModule {
 		});
 
 		if (mode === 'internal') await this.startInternalTaskRunners();
+
+		this.started = true;
 	}
 
 	@OnShutdown()
 	async stop() {
+		this.started = false;
+
 		// Stop the broker server first: its drain lets in-flight tasks finish, so the
 		// runner processes are idle by the time they are stopped and exit within the
 		// short grace before the SIGKILL escalation.
