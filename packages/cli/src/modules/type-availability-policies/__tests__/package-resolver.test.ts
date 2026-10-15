@@ -3,6 +3,7 @@ import type { NodeTypes } from '@/node-types';
 
 import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from '../constants';
 import {
+	installedCheckFor,
 	isCredentialTypeKnown,
 	isPackageInstalled,
 	packageResolverFor,
@@ -166,5 +167,134 @@ describe('isCredentialTypeKnown', () => {
 	it('is false for an unknown type, or one named after an Object.prototype property', () => {
 		expect(isCredentialTypeKnown(registry, 'unknownApi')).toBe(false);
 		expect(isCredentialTypeKnown(registry, 'constructor')).toBe(false);
+	});
+});
+
+describe('installedCheckFor', () => {
+	/** Stands in for `NodeTypes.resolveBaseName`: `slackTool` is a synthetic variant of `slack`. */
+	const nodeTypes = {
+		resolveBaseName: (name: string) => ({
+			baseName: name === 'n8n-nodes-base.slackTool' ? 'n8n-nodes-base.slack' : name,
+			isSyntheticTool: name === 'n8n-nodes-base.slackTool',
+		}),
+	} as unknown as NodeTypes;
+
+	/** A stand-in for `LoadNodesAndCredentials`, built from just the fields this check reads. */
+	function makeFullRegistry(overrides: {
+		loaders?: LoadNodesAndCredentials['loaders'];
+		knownNodes?: LoadNodesAndCredentials['knownNodes'];
+		knownCredentials?: LoadNodesAndCredentials['knownCredentials'];
+	}): LoadNodesAndCredentials {
+		return {
+			loaders: overrides.loaders ?? {},
+			knownNodes: overrides.knownNodes ?? {},
+			knownCredentials: overrides.knownCredentials ?? {},
+		} as unknown as LoadNodesAndCredentials;
+	}
+
+	describe('package selector', () => {
+		it('is true for a package that has a registered loader', () => {
+			const registry = makeFullRegistry({
+				loaders: { 'n8n-nodes-base': {} as LoadNodesAndCredentials['loaders'][string] },
+			});
+			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
+
+			expect(isInstalled({ kind: 'package', value: 'n8n-nodes-base' })).toBe(true);
+		});
+
+		it('is false for a package with no registered loader', () => {
+			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
+
+			expect(isInstalled({ kind: 'package', value: 'n8n-nodes-not-installed' })).toBe(false);
+		});
+
+		it('is false for a package named after an inherited Object.prototype property', () => {
+			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
+
+			expect(isInstalled({ kind: 'package', value: 'constructor' })).toBe(false);
+		});
+	});
+
+	describe('extends selector', () => {
+		it('is true for a known credential type, checked the same way for either kind', () => {
+			const registry = makeFullRegistry({
+				knownCredentials: { oAuth2Api: { className: '', sourcePath: '' } },
+			});
+			const selector = { kind: 'extends', value: 'oAuth2Api' } as const;
+
+			expect(installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry)(selector)).toBe(true);
+			expect(installedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, registry)(selector)).toBe(
+				true,
+			);
+		});
+
+		it('is false for an unknown credential type', () => {
+			const isInstalled = installedCheckFor(
+				CREDENTIAL_TYPES_KIND,
+				{} as NodeTypes,
+				makeFullRegistry({}),
+			);
+
+			expect(isInstalled({ kind: 'extends', value: 'unknownApi' })).toBe(false);
+		});
+
+		it('is false for a value named after an inherited Object.prototype property', () => {
+			const isInstalled = installedCheckFor(
+				CREDENTIAL_TYPES_KIND,
+				{} as NodeTypes,
+				makeFullRegistry({}),
+			);
+
+			expect(isInstalled({ kind: 'extends', value: 'constructor' })).toBe(false);
+		});
+	});
+
+	describe('name selector, node-types kind', () => {
+		it('is true when the resolved base name is a known node', () => {
+			const registry = makeFullRegistry({ knownNodes: { 'n8n-nodes-base.slack': {} } });
+			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
+
+			expect(isInstalled({ kind: 'name', value: 'n8n-nodes-base.slack' })).toBe(true);
+		});
+
+		it('is false when the resolved base name is not a known node', () => {
+			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
+
+			expect(isInstalled({ kind: 'name', value: 'n8n-nodes-base.slack' })).toBe(false);
+		});
+
+		it('treats a synthetic tool variant as installed when its base node is known', () => {
+			const registry = makeFullRegistry({ knownNodes: { 'n8n-nodes-base.slack': {} } });
+			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
+
+			expect(isInstalled({ kind: 'name', value: 'n8n-nodes-base.slackTool' })).toBe(true);
+		});
+
+		it('is false for a name resolving to an inherited Object.prototype property', () => {
+			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
+
+			expect(isInstalled({ kind: 'name', value: 'constructor' })).toBe(false);
+		});
+	});
+
+	describe('name selector, credential-types kind', () => {
+		it('is true when the value is a known credential type', () => {
+			const registry = makeFullRegistry({
+				knownCredentials: { slackApi: { className: '', sourcePath: '' } },
+			});
+			const isInstalled = installedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, registry);
+
+			expect(isInstalled({ kind: 'name', value: 'slackApi' })).toBe(true);
+		});
+
+		it('is false when the value is not a known credential type', () => {
+			const isInstalled = installedCheckFor(
+				CREDENTIAL_TYPES_KIND,
+				{} as NodeTypes,
+				makeFullRegistry({}),
+			);
+
+			expect(isInstalled({ kind: 'name', value: 'unknownApi' })).toBe(false);
+		});
 	});
 });

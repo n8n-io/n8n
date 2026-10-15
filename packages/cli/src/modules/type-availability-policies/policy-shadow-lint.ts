@@ -10,6 +10,7 @@ import type { PolicyRule, PolicySelector } from './policy-rule.types';
  * appears earlier in the same rule list and matches every type that `ruleId` would match.
  */
 export type ShadowWarning = {
+	readonly kind: 'shadowed';
 	readonly ruleId: string;
 	readonly shadowedByRuleId: string;
 };
@@ -113,7 +114,7 @@ export function lintRulesForShadowing(
 		}
 
 		if (shadowedBy) {
-			warnings.push({ ruleId: rule.id, shadowedByRuleId: shadowedBy.rule.id });
+			warnings.push({ kind: 'shadowed', ruleId: rule.id, shadowedByRuleId: shadowedBy.rule.id });
 		}
 
 		const firstOccurrenceByValue = firstByKind[selector.kind];
