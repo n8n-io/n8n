@@ -100,8 +100,16 @@ function headerValuePlaceholder(pair: { key: string; value: string }): string {
 
 // State-first copy: the row tells the admin whether tracing is live right now,
 // instead of describing what the disabled state would mean hypothetically.
+/*
+ * The control shows a status click at once, while the save runs. A loading
+ * state would resize the button twice: once for the spinner, once for the new label.
+ */
+const pendingStatus = ref<boolean | null>(null);
+const statusSaving = computed(() => pendingStatus.value !== null);
+const displayedEnabled = computed(() => pendingStatus.value ?? otelStore.settings.enabled);
+
 const statusDescription = computed(() =>
-	otelStore.settings.enabled
+	displayedEnabled.value
 		? i18n.baseText('settings.opentelemetry.status.enabledDescription')
 		: i18n.baseText('settings.opentelemetry.status.disabledDescription'),
 );
@@ -147,8 +155,6 @@ function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 		? `${i18n.baseText('settings.opentelemetry.envVarManagedTooltip')}. ${envVariable}`
 		: envVariable;
 }
-
-const statusSaving = ref(false);
 
 // The status save and the form save both send a full PUT. One must wait for the
 // other, or the request that finishes last overwrites the status.
@@ -202,8 +208,8 @@ function discard() {
  * immediately with the saved config. Unsaved field edits stay in the save bar.
  */
 async function onToggleEnabled(enabled: boolean) {
-	if (otelStore.saving) return;
-	statusSaving.value = true;
+	if (otelStore.saving || statusSaving.value) return;
+	pendingStatus.value = enabled;
 	try {
 		await otelStore.saveEnabled(enabled);
 
@@ -226,7 +232,7 @@ async function onToggleEnabled(enabled: boolean) {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.opentelemetry.savedError'));
 	} finally {
-		statusSaving.value = false;
+		pendingStatus.value = null;
 	}
 }
 
@@ -434,9 +440,8 @@ watch(
 					>
 						<template #action>
 							<OtelStatusControl
-								:enabled="otelStore.settings.enabled"
+								:enabled="displayedEnabled"
 								:disabled="isEnvManaged('enabled') || otelStore.saving"
-								:loading="statusSaving"
 								@update:enabled="onToggleEnabled"
 							/>
 						</template>

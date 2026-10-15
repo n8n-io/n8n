@@ -175,6 +175,20 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
 	});
 
+	it('shows the new status at once while the status save is in flight', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockReturnValue(new Promise(() => {}));
+
+		const { getByTestId, getByText, queryByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toHaveTextContent('Enabled'));
+		expect(getByText(/Tracing is on/)).toBeInTheDocument();
+		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
+	});
+
 	it('disables the save bar while the status save is in flight', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
 		updateOtelSettingsMock.mockReturnValue(new Promise(() => {}));
