@@ -608,25 +608,26 @@ watch(
 
 watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
 
-// Content within the last message grew (streaming text, tool calls, thinking).
-// Only follow the stream down if the user is still near the bottom — otherwise
-// we yank them away from whatever they scrolled up to read.
+// Content within the last message grew (streaming text, tool calls, thinking,
+// host events). Only follow the stream down if the user is still near the
+// bottom — otherwise we yank them away from whatever they scrolled up to read.
 watch(
-	() => {
-		const last = props.messages[props.messages.length - 1];
-		if (!last) return '';
-		const thinking = getMessageThinkingSegments(last)
-			.map((segment) => segment.content)
-			.join('');
-		return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
-	},
+	[
+		() => {
+			const last = props.messages[props.messages.length - 1];
+			if (!last) return '';
+			const thinking = getMessageThinkingSegments(last)
+				.map((segment) => segment.content)
+				.join('');
+			return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
+		},
+		// A new host event, or a keyed update of one, sets a new `hostEvents`
+		// array, so the reference changes even when the text does not.
+		() => props.messages.at(-1)?.hostEvents,
+	],
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
-
-// The stream replaces `hostEvents` with a new array on every host event,
-// including a keyed update that keeps the event id.
-watch(() => props.messages.at(-1)?.hostEvents, autoScrollIfSticky, { flush: 'post' });
 </script>
 
 <template>
