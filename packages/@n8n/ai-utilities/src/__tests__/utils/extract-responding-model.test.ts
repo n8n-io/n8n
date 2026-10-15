@@ -1,7 +1,7 @@
 import { AIMessage } from '@langchain/core/messages';
 import type { ChatGeneration, Generation } from '@langchain/core/outputs';
 
-import { extractRespondingModel } from 'src/utils/extract-responding-model';
+import { extractRespondingModel, toRunDataGeneration } from 'src/utils/extract-responding-model';
 
 function createChatGeneration(
 	responseMetadata: Record<string, unknown>,
@@ -85,5 +85,51 @@ describe('extractRespondingModel', () => {
 		);
 
 		expect(extractRespondingModel(generation)).toBe('gpt-4.1-mini');
+	});
+});
+
+describe('toRunDataGeneration', () => {
+	it('keeps only text and generationInfo', () => {
+		const generation = createChatGeneration({}, { finish_reason: 'stop' });
+
+		expect(toRunDataGeneration(generation)).toEqual({
+			text: 'Hello',
+			generationInfo: { finish_reason: 'stop' },
+		});
+	});
+
+	it('writes the resolved name to generationInfo, creating it when missing', () => {
+		const generation = createChatGeneration({ model_name: 'gpt-4.1-mini' });
+
+		expect(toRunDataGeneration(generation)).toEqual({
+			text: 'Hello',
+			generationInfo: { model_name: 'gpt-4.1-mini' },
+		});
+	});
+
+	it('removes an unresolvable model_name and keeps the other generationInfo keys', () => {
+		const result = toRunDataGeneration({
+			text: 'Hello',
+			generationInfo: { finish_reason: 'stop', model_name: '' },
+		});
+
+		expect(result.generationInfo).toEqual({ finish_reason: 'stop' });
+		expect('model_name' in (result.generationInfo ?? {})).toBe(false);
+	});
+
+	it('leaves generationInfo absent when there is none and nothing resolves', () => {
+		const result = toRunDataGeneration(createChatGeneration({}));
+
+		expect('generationInfo' in result).toBe(false);
+	});
+
+	it('does not change the generation it receives', () => {
+		const generationInfo = { finish_reason: 'stop', model_name: '' };
+		const generation = createChatGeneration({ model_name: 'gpt-4.1-mini' }, generationInfo);
+
+		toRunDataGeneration(generation);
+
+		expect(generation.generationInfo).toEqual({ finish_reason: 'stop', model_name: '' });
+		expect(generation.generationInfo).toBe(generationInfo);
 	});
 });

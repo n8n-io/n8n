@@ -8,12 +8,11 @@ import type {
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
 import {
-	extractRespondingModel,
 	logAiEvent,
 	redactHeaderValues,
 	stripNonXHeaders,
+	toRunDataGeneration,
 } from '@n8n/ai-utilities';
-import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
@@ -66,16 +65,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		output.generations = output.generations.map((gen) =>
-			gen.map((g) => {
-				const picked = pick(g, ['text', 'generationInfo']);
-				const model = extractRespondingModel(g);
-
-				return model === undefined
-					? picked
-					: { ...picked, generationInfo: { ...picked.generationInfo, model_name: model } };
-			}),
-		);
+		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
 
 		const tokenUsageEstimate = {
 			completionTokens: 0,

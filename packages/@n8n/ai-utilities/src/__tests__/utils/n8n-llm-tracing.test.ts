@@ -702,6 +702,33 @@ describe('N8nLlmTracing', () => {
 			expect('generationInfo' in withoutInfo).toBe(false);
 		});
 
+		it.each([
+			['blank', ''],
+			['whitespace-only', '   '],
+			['non-string', 42],
+			['null', null],
+			['undefined', undefined],
+		])(
+			'omits an unresolvable %s model_name that is already in generationInfo',
+			async (_, value) => {
+				const persisted = await persistGeneration({
+					text: 'Hello',
+					generationInfo: { finish_reason: 'stop', model_name: value },
+				});
+
+				expect(persisted.generationInfo).toEqual({ finish_reason: 'stop' });
+				expect('model_name' in (persisted.generationInfo ?? {})).toBe(false);
+			},
+		);
+
+		it('replaces an unresolvable model_name with the name from the message', async () => {
+			const persisted = await persistGeneration(
+				createChatGeneration({ model_name: 'gpt-4.1-mini-2025-04-14' }, { model_name: '' }),
+			);
+
+			expect(persisted.generationInfo).toEqual({ model_name: 'gpt-4.1-mini-2025-04-14' });
+		});
+
 		it('never lets the raw model key reach the output', async () => {
 			const persisted = await persistGeneration(
 				createChatGeneration({ model: 'gpt-4.1-minigpt-4.1-mini' }),
