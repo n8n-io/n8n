@@ -64,7 +64,6 @@ vi.mock('@n8n/instance-ai', async () => {
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		),
-		bindRuntimeSkillsToWorkspace: vi.fn((source) => source),
 		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({ registry: { skills: [] } })),
 		setupSandboxWorkspace: vi.fn(),
 		traceSandboxOperation: vi.fn(
@@ -268,7 +267,6 @@ import {
 	createWorkspace,
 	createInstanceAiTraceContext,
 	disabledInstanceAiSkillIds,
-	bindRuntimeSkillsToWorkspace,
 	loadInstanceAiPromptSkills,
 	resumeAgentRun,
 	streamAgentRun,
@@ -805,7 +803,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		);
-		(bindRuntimeSkillsToWorkspace as Mock).mockImplementation((source) => source);
 		(loadInstanceAiPromptSkills as Mock).mockImplementation(() => ({
 			disabledTools: [],
 			source: {
@@ -1087,10 +1084,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
-		expect(bindRuntimeSkillsToWorkspace).toHaveBeenCalledWith(
-			(loadInstanceAiPromptSkills as Mock).mock.results[0]?.value.source,
-			'/home/daytona/workspace',
-		);
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
@@ -1168,7 +1161,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect((setupSandboxWorkspace as Mock).mock.calls[0]?.[0]).toBe(workspace);
 
 		(createLazyRuntimeWorkspace as Mock).mockClear();
-		(bindRuntimeSkillsToWorkspace as Mock).mockClear();
 		(createSandbox as Mock).mockClear();
 		(setupSandboxWorkspace as Mock).mockClear();
 		(loadInstanceAiPromptSkills as Mock).mockClear();
@@ -1187,12 +1179,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
-		// Without a sandbox the skills are used as-is.
 		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
-		expect(bindRuntimeSkillsToWorkspace).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});

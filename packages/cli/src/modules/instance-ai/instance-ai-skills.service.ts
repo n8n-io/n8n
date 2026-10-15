@@ -1,7 +1,6 @@
 import { filterRuntimeSkillSource, type RuntimeSkillSource } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import {
-	bindRuntimeSkillsToWorkspace,
 	disabledInstanceAiSkillIds,
 	loadInstanceAiPromptSkills,
 	type InstanceAiSkillFlags,
@@ -30,10 +29,5 @@ export class InstanceAiSkillsService {
 				disabledSkillIds.length > 0 ? filterRuntimeSkillSource(source, disabledSkillIds) : source,
 			disabledTools,
 		};
-	}
-
-	/** Point the skill text at the sandbox workspace under `workspaceRoot`. */
-	bindToWorkspace(source: RuntimeSkillSource, workspaceRoot: string): RuntimeSkillSource {
-		return bindRuntimeSkillsToWorkspace(source, workspaceRoot);
 	}
 }

@@ -21,41 +21,11 @@ const SKILL_PLACEHOLDER_TEXT: Record<string, string> = {
 	TOP_LEVEL_ITEM_CEILING_PLACEHOLDER: String(TOP_LEVEL_ITEM_CEILING),
 };
 
-const WORKSPACE_DIR_VARIABLE = '$' + '{N8N_WORKSPACE_DIR}';
-
 export function substituteSkillPlaceholders(instructions: string): string {
 	return Object.entries(SKILL_PLACEHOLDER_TEXT).reduce(
 		(content, [placeholder, text]) => content.replaceAll(`{{${placeholder}}}`, text),
 		instructions,
 	);
-}
-
-/**
- * Replace `${N8N_WORKSPACE_DIR}` in the skill text with `workspaceRoot`.
- * Skills use this variable to point at the knowledge base in the sandbox.
- */
-export function bindRuntimeSkillsToWorkspace(
-	source: RuntimeSkillSource,
-	workspaceRoot: string,
-): RuntimeSkillSource {
-	const bind = (content: string) => content.replaceAll(WORKSPACE_DIR_VARIABLE, workspaceRoot);
-	const { loadFile } = source;
-
-	return {
-		...source,
-		loadSkill: async (skillId) => {
-			const skill = await source.loadSkill(skillId);
-			return skill && { ...skill, instructions: bind(skill.instructions) };
-		},
-		...(loadFile
-			? {
-					loadFile: async (skillId: string, filePath: string) => {
-						const file = await loadFile(skillId, filePath);
-						return file && { ...file, content: bind(file.content) };
-					},
-				}
-			: {}),
-	};
 }
 
 /** Every bundled runtime skill. Hide gated skills per run with `disabledInstanceAiSkillIds`. */

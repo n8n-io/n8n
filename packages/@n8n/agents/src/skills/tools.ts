@@ -74,8 +74,6 @@ const skillLoadOutputSchema = z.object({
 	skillId: z.string().optional(),
 	name: z.string().optional(),
 	description: z.string().optional(),
-	path: z.string().optional(),
-	skillDir: z.string().optional(),
 	hash: z.string().optional(),
 	category: z.string().optional(),
 	content: z.string().optional(),
@@ -209,8 +207,6 @@ async function loadSkill(
 			success: true,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
-			path: skillEntry.directory ? `${skillEntry.directory}/${linkedFile.path}` : linkedFile.path,
-			skillDir: skillEntry.directory,
 			hash: skillEntry.hash,
 			category: skillEntry.category,
 			filePath: linkedFile.path,
@@ -349,10 +345,6 @@ function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {
 			? [`[Reference of: ${skill.parents.map(envelopeValue).join(', ')}]`]
 			: []),
 		...(skill.category ? [`[Skill category: ${envelopeValue(skill.category)}]`] : []),
-		...(skill.directory ? [`[Skill directory: ${envelopeValue(skill.directory)}]`] : []),
-		...((skill.path ?? skill.sourcePath)
-			? [`[Skill path: ${envelopeValue(skill.path ?? skill.sourcePath ?? '')}]`]
-			: []),
 		`[Skill hash: ${envelopeValue(skill.hash)}]`,
 	].join('\n');
 }

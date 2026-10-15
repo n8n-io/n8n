@@ -135,8 +135,8 @@ trusted, and setup reads no other bundle file. Each cached sandbox entry keeps
 the result, so later runs do not read the manifest again.
 
 Runtime skills are not stored in the sandbox. `load_skill` serves the skill
-text from memory. It replaces `${N8N_WORKSPACE_DIR}` with the workspace root,
-so the skills can point at the knowledge base.
+text from memory. Skills refer to the knowledge base with paths relative to the
+workspace root, such as `knowledge-base/index.json`.
 
 With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
 

@@ -330,8 +330,6 @@ export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsM
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSourceForBuildMode);
 export const loadInstanceAiPromptSkills: typeof RuntimeSkillsMod.loadInstanceAiPromptSkills =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiPromptSkills);
-export const bindRuntimeSkillsToWorkspace: typeof RuntimeSkillsMod.bindRuntimeSkillsToWorkspace =
-	lazyFunction(() => loadRuntimeSkills().bindRuntimeSkillsToWorkspace);
 export type { PromptProfile } from './prompts/prompt-profiles';
 export const resolvePromptProfile: typeof PromptProfilesMod.resolvePromptProfile = lazyFunction(
 	() => loadPromptProfiles().resolvePromptProfile,

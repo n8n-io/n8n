@@ -2,13 +2,11 @@ import { createRuntimeSkillSource } from '@n8n/agents';
 import type { Mock } from 'vitest';
 
 vi.mock('@n8n/instance-ai', () => ({
-	bindRuntimeSkillsToWorkspace: vi.fn(() => 'bound-source'),
 	disabledInstanceAiSkillIds: vi.fn(() => []),
 	loadInstanceAiPromptSkills: vi.fn(),
 }));
 
 import {
-	bindRuntimeSkillsToWorkspace,
 	disabledInstanceAiSkillIds,
 	loadInstanceAiPromptSkills,
 	type PromptProfile,
@@ -57,18 +55,6 @@ describe('InstanceAiSkillsService', () => {
 			expect(source.registry.skills.map((entry) => entry.id)).toEqual(['workflow-builder']);
 			expect(source.registry.skillsHash).not.toBe(profileSource.registry.skillsHash);
 			await expect(source.loadSkill('evals')).resolves.toBeNull();
-		});
-	});
-
-	describe('bindToWorkspace', () => {
-		it('binds the skills to the workspace root', () => {
-			const bound = service.bindToWorkspace(profileSource, '/home/user/workspace');
-
-			expect(bound).toBe('bound-source');
-			expect(bindRuntimeSkillsToWorkspace).toHaveBeenCalledWith(
-				profileSource,
-				'/home/user/workspace',
-			);
 		});
 	});
 });

@@ -1,14 +1,9 @@
-import {
-	createRuntimeSkillSource,
-	createSkillLoadTool,
-	filterRuntimeSkillSource,
-} from '@n8n/agents';
+import { createSkillLoadTool, filterRuntimeSkillSource } from '@n8n/agents';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import {
-	bindRuntimeSkillsToWorkspace,
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
@@ -665,40 +660,20 @@ describe('Instance AI runtime skills', () => {
 	});
 });
 
-describe('bindRuntimeSkillsToWorkspace', () => {
-	const WORKSPACE_DIR_VARIABLE = '$' + '{N8N_WORKSPACE_DIR}';
-	const root = '/home/daytona/workspace';
-
-	it('points skills and references at the knowledge base under the workspace root', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
-		const bound = bindRuntimeSkillsToWorkspace(source, root);
-
-		expect(bound.registry).toBe(source.registry);
-		for (const skillId of ['workflow-builder', 'post-build-flow']) {
-			expect((await source.loadSkill(skillId))?.instructions).toContain(WORKSPACE_DIR_VARIABLE);
-			const instructions = (await bound.loadSkill(skillId))?.instructions;
-			expect(instructions).toContain(`${root}/knowledge-base/`);
-			expect(instructions).not.toContain(WORKSPACE_DIR_VARIABLE);
+describe('knowledge base paths in skills', () => {
+	it('uses paths relative to the workspace root, with no variables to substitute', () => {
+		for (const file of skillMarkdownFiles()) {
+			const content = readFileSync(join(INSTANCE_AI_SKILLS_DIR, file), 'utf-8');
+			expect({ file, hasVariable: /\$\{[A-Z_]+\}/.test(content) }).toEqual({
+				file,
+				hasVariable: false,
+			});
 		}
-	});
-
-	it('binds linked files and keeps unknown skills unavailable', async () => {
-		const source = createRuntimeSkillSource([
-			{ id: 'notes', name: 'notes', description: 'Use notes.', instructions: 'Read notes.' },
-		]);
-		source.loadFile = async (skillId, filePath) =>
-			await Promise.resolve(
-				filePath === 'guide.md'
-					? { skillId, filePath, content: `See ${WORKSPACE_DIR_VARIABLE}/guide.md.` }
-					: null,
-			);
-		const bound = bindRuntimeSkillsToWorkspace(source, root);
-
-		await expect(bound.loadFile?.('notes', 'guide.md')).resolves.toMatchObject({
-			content: `See ${root}/guide.md.`,
-		});
-		await expect(bound.loadFile?.('notes', 'missing.md')).resolves.toBeNull();
-		await expect(bound.loadSkill('missing')).resolves.toBeNull();
+		const builder = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(builder).toContain('`knowledge-base/index.json`');
 	});
 });
 
