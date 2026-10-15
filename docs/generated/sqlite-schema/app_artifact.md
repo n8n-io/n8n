@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app_artifact" ("id" integer PRIMARY KEY NOT NULL, "storedAt" varchar(2) NOT NULL, "storageKey" text NOT NULL, "sizeBytes" integer NOT NULL, CONSTRAINT "CHK_app_artifact_storedAt" CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')))
+CREATE TABLE "app_artifact" ("id" integer PRIMARY KEY NOT NULL, "storedAt" varchar(2) NOT NULL, "storageKey" text NOT NULL, "sizeBytes" integer NOT NULL, "uploadStatus" varchar(16) NOT NULL DEFAULT ('pending'), CONSTRAINT "CHK_app_artifact_storedAt" CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')), CONSTRAINT "CHK_app_artifact_uploadStatus" CHECK ("uploadStatus" IN ('pending', 'completed')))
 ```
 
 </details>
@@ -19,12 +19,14 @@ CREATE TABLE "app_artifact" ("id" integer PRIMARY KEY NOT NULL, "storedAt" varch
 | sizeBytes | INTEGER |  | false |  |  |  |
 | storageKey | TEXT |  | false |  |  |  |
 | storedAt | varchar(2) |  | false |  |  |  |
+| uploadStatus | varchar(16) | 'pending' | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')) |
+| - | CHECK | CHECK ("uploadStatus" IN ('pending', 'completed')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Relations
@@ -40,6 +42,7 @@ erDiagram
   INTEGER sizeBytes
   TEXT storageKey
   varchar_2_ storedAt
+  varchar_16_ uploadStatus
 }
 "app_version" {
   varchar appId FK

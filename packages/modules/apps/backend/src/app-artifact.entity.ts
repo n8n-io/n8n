@@ -14,4 +14,7 @@ export class AppArtifact extends BaseEntity {
 
 	@Column({ type: 'int' })
 	sizeBytes: number;
+
+	@Column({ type: 'varchar', length: 16, default: 'pending' })
+	uploadStatus: 'pending' | 'completed';
 }
