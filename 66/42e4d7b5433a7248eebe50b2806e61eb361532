@@ -1,0 +1,63 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentBuildingIndicator.vue
+  s_b84ef0cad933cd::t_8b661144f36057 3,8
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_b84ef0cad933cd::t_b9b63aac9352fc 420
+  s_801ccb3dab4a54::t_a96831ac892c0d 87,167-183,186,251-257
+  s_b84ef0cad933cd::t_8b661144f36057 558,562-566,597,613-649,652
+  s_b84ef0cad933cd::t_041e8601ce770b 417-419
+  s_b84ef0cad933cd::t_c05b064fccb8d0 421-423
+  s_b84ef0cad933cd::t_16db5fb8943f65 559-561
+  s_b84ef0cad933cd::t_0778da817bbea5 650-651
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b84ef0cad933cd::t_8b661144f36057 4101,4104-4109,4135-4141
+  s_b84ef0cad933cd::t_87fc32a1794ebe 4142-4144
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_b84ef0cad933cd::t_8b661144f36057 8,73,147,798,808,815-819
+packages/@n8n/api-types/src/agents/dto.ts
+  s_b84ef0cad933cd::t_8b661144f36057 68-72
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_b84ef0cad933cd::t_8b661144f36057 786,1128,1144,1182-1183,1630
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_b84ef0cad933cd::t_8b661144f36057 60-61,257-315
+packages/cli/src/modules/agents/utils/latest-session-activity.ts
+  s_b84ef0cad933cd::t_8b661144f36057 1-32
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_b84ef0cad933cd::t_8b661144f36057 1074
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b84ef0cad933cd::t_8b661144f36057 1609
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_b84ef0cad933cd::t_8b661144f36057 8,36
+packages/frontend/editor-ui/src/features/ai/shared/utils/whimsicalLabel.ts
+  s_b84ef0cad933cd::t_8b661144f36057 1-22
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_b84ef0cad933cd::t_8b661144f36057 1620-1626
+  s_b84ef0cad933cd::t_6ead816d5cdd7e 1627-1629
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_b84ef0cad933cd::t_8b661144f36057 6,261,264,270-271,278-282,284-293
+packages/cli/src/modules/agents/__tests__/latest-session-activity.test.ts
+  s_b84ef0cad933cd::t_8b661144f36057 1-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6642e4d7b5433a7248eebe50b2806e61eb361532",
+  "prompts": {},
+  "sessions": {
+    "s_801ccb3dab4a54": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a14028-deb9-72be-863b-390eabaabf29",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    },
+    "s_b84ef0cad933cd": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a14055-de5e-72be-863b-391e6c460a0f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
