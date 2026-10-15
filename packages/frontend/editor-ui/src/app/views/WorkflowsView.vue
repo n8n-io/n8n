@@ -1070,6 +1070,7 @@ const saveFiltersOnQueryString = () => {
 };
 
 const setFiltersFromQueryString = async () => {
+	const { fullPath } = route;
 	const newQuery: LocationQueryRaw = { ...route.query };
 	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
 
@@ -1139,6 +1140,9 @@ const setFiltersFromQueryString = async () => {
 		delete newQuery.showArchived;
 		filters.value.showArchived = false;
 	}
+
+	// The route changed while the stores loaded. Do not write this query onto the new route.
+	if (route.fullPath !== fullPath) return;
 
 	// A replace cancels any pending navigation, e.g. a tab click made while this view loads.
 	if (!isEqual(newQuery, route.query)) {
