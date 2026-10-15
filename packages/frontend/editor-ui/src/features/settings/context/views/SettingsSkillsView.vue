@@ -2,14 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import {
-	SKILL_NAME_TAKEN_MESSAGE,
-	type AgentSkill,
-	type SkillListItem,
-	type SkillScope,
-} from '@n8n/api-types';
+import type { AgentSkill, SkillListItem, SkillScope } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { ResponseError } from '@n8n/rest-api-client';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
@@ -31,6 +25,7 @@ import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
+import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
 import type {
 	AgentSkillConfirmFailure,
 	AgentSkillModalData,
@@ -221,11 +216,7 @@ function confirmIfHidden(skillId: string, key: 'created' | 'saved') {
  * shows on the name field, any other error in a toast.
  */
 function saveFailed(error: unknown): AgentSkillConfirmFailure {
-	if (
-		error instanceof ResponseError &&
-		error.httpStatusCode === 409 &&
-		error.message === SKILL_NAME_TAKEN_MESSAGE
-	) {
+	if (isSkillNameTakenError(error)) {
 		return { saved: false, nameError: i18n.baseText('settings.context.skills.error.nameTaken') };
 	}
 	showError(error, i18n.baseText('settings.context.skills.error.save'));

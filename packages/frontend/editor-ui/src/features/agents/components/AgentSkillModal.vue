@@ -73,8 +73,9 @@ export type AgentSkillModalData = {
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
 	/**
-	 * Settings only: a default name that no skill in the scope has yet, as new workflows
-	 * get one. Called with the chosen scope value when the user starts a skill by hand.
+	 * A default name that no skill in the scope has yet, as new workflows get one. Called
+	 * when the user starts a skill by hand, with the Settings scope value or, in the agent
+	 * builder, the "available to" value.
 	 */
 	getDefaultName?: (scope: string) => Promise<string>;
 	/** Locks the scope field and explains why in a tooltip. */
@@ -158,13 +159,13 @@ async function refreshDefaultName() {
 	const current = skill.value.name;
 	if (current !== getDefaultSkillName() && current !== serverDefaultName.value) return;
 	const request = ++latestNameRequest;
-	const requestedScope = scope.value;
+	const requestedScope = nameScope.value;
 	defaultNameLoading.value = true;
 	try {
 		const name = await props.data.getDefaultName(requestedScope);
 		// Only the newest answer for the scope still selected counts, and only while the
 		// user has not typed a name of their own.
-		if (request !== latestNameRequest || scope.value !== requestedScope) return;
+		if (request !== latestNameRequest || nameScope.value !== requestedScope) return;
 		if (skill.value.name !== current) return;
 		serverDefaultName.value = name;
 		skill.value = { ...skill.value, name };
@@ -180,10 +181,6 @@ function onAddManually() {
 	void refreshDefaultName();
 }
 
-// A new scope can hold other names, so a default name follows the scope.
-watch(scope, () => {
-	if (step.value === 'manual') void refreshDefaultName();
-});
 const showScope = computed(() => !!props.data.scopeOptions?.length && step.value !== 'preview');
 const canChangeScope = computed(
 	() => showScope.value && !props.data.scopeLockedReason && !props.data.readOnly,
@@ -192,6 +189,15 @@ const selectedScopeIcon = computed(
 	() => props.data.scopeOptions?.find((option) => option.value === scope.value)?.icon,
 );
 const availableTo = ref<AgentSkillAvailability>('project');
+/**
+ * Where the new skill goes, for its default name: the scope field in Settings, or
+ * "available to" in the agent builder. `getDefaultName` gets this value.
+ */
+const nameScope = computed<string>(() => (showScope.value ? scope.value : availableTo.value));
+// A new scope can hold other names, so a default name follows the scope.
+watch(nameScope, () => {
+	if (step.value === 'manual') void refreshDefaultName();
+});
 
 const librarySkills = ref<SkillListItem[]>([]);
 const libraryLoading = ref(false);
