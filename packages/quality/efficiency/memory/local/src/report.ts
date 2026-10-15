@@ -1,70 +1,20 @@
-import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { diffSnapshots, type ObjectGrowth } from './heap-diff.js';
 import { manifestSchema, memoryKeys, observationSchema, type Observation } from './schema.js';
 
 export async function createReport(directory: string) {
 	const manifest = manifestSchema.parse(
 		JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8')),
 	);
-	if (manifest.status === 'recording' || manifest.endedAt === undefined)
-		throw new Error('The run is still recording or has no completion record.');
+	if (manifest.status === 'recording')
+		throw new Error('The run is still recording. Finish or interrupt the capture first.');
 	const lines = (await readFile(join(directory, 'samples.jsonl'), 'utf8')).trim();
 	const observations = lines
 		? lines.split('\n').map((line) => observationSchema.parse(JSON.parse(line)))
 		: [];
-	if (observations.length !== manifest.observationCount)
-		throw new Error('The observation count does not match the manifest.');
-	let previous = manifest.startedAt;
-	for (const [index, observation] of observations.entries()) {
-		if (
-			observation.runId !== manifest.runId ||
-			observation.sequence !== index + 1 ||
-			observation.reading.hostId !== manifest.hostId ||
-			observation.reading.processStartId !== manifest.processStartId ||
-			observation.reading.instanceType !== manifest.instanceType ||
-			observation.time < previous ||
-			observation.time > manifest.endedAt
-		) {
-			throw new Error(
-				'The run contains mixed identities, out-of-order records, or records outside its time window.',
-			);
-		}
-		previous = observation.time;
-	}
 	const checkpoints = observations.filter((observation) => observation.checkpoint !== undefined);
-	if (
-		manifest.status === 'completed' &&
-		(checkpoints[0]?.checkpoint !== 'baseline' || checkpoints.at(-1)?.checkpoint !== 'final')
-	) {
-		throw new Error('A completed run must contain baseline and final checkpoints.');
-	}
-	const snapshotSequences = new Set<number>();
-	const snapshotFiles = new Set<string>();
-	for (const snapshot of manifest.snapshots) {
-		if (snapshotSequences.has(snapshot.sequence) || snapshotFiles.has(snapshot.file))
-			throw new Error('The run contains duplicate snapshot records.');
-		snapshotSequences.add(snapshot.sequence);
-		snapshotFiles.add(snapshot.file);
-		const observation = observations.find((entry) => entry.sequence === snapshot.sequence);
-		if (!observation?.checkpoint || manifest.mode !== 'snapshots')
-			throw new Error('A snapshot has no matching checkpoint.');
-		if ((await stat(join(directory, snapshot.file))).size !== snapshot.sizeBytes)
-			throw new Error(`Snapshot ${snapshot.file} is missing or incomplete.`);
-		const hash = createHash('sha256');
-		for await (const chunk of createReadStream(join(directory, snapshot.file))) hash.update(chunk);
-		if (hash.digest('hex') !== snapshot.sha256)
-			throw new Error(`Snapshot ${snapshot.file} does not match this capture.`);
-	}
-	if (
-		manifest.mode === 'snapshots' &&
-		manifest.status === 'completed' &&
-		manifest.snapshots.length !== checkpoints.length
-	) {
-		throw new Error('A completed snapshot run is missing captures.');
-	}
 	const first = checkpoints[0];
 	const last = checkpoints.at(-1);
 	const delta =
@@ -73,6 +23,21 @@ export async function createReport(directory: string) {
 					memoryKeys.map((key) => [key, last.reading.memory[key] - first.reading.memory[key]]),
 				)
 			: undefined;
+	const firstSnapshot = manifest.snapshots[0];
+	const lastSnapshot = manifest.snapshots.at(-1);
+	let topGrowth: ObjectGrowth[] | undefined;
+	let growthError: string | undefined;
+	if (firstSnapshot && lastSnapshot && firstSnapshot !== lastSnapshot) {
+		try {
+			topGrowth = await diffSnapshots(
+				join(directory, firstSnapshot.file),
+				join(directory, lastSnapshot.file),
+			);
+		} catch (error) {
+			// Very large snapshots exceed the maximum string length for parsing.
+			growthError = error instanceof Error ? error.message : 'Snapshot comparison failed.';
+		}
+	}
 	const report = {
 		version: 1,
 		runId: manifest.runId,
@@ -89,6 +54,7 @@ export async function createReport(directory: string) {
 		})),
 		finalDeltaBytes: delta,
 		snapshots: manifest.snapshots,
+		topGrowth,
 		notes: [
 			manifest.status === 'completed'
 				? 'Capture completed. This is not a leak-free verdict.'
@@ -101,6 +67,12 @@ export async function createReport(directory: string) {
 			manifest.mode === 'snapshots'
 				? 'Snapshots disturb process memory. Use this run for retention inspection, not benchmark comparisons.'
 				: 'Peaks reflect sampling intervals and can miss short allocations.',
+			...(topGrowth
+				? [
+						'Object growth compares shallow sizes between the first and last snapshot. Open both snapshots in Chrome DevTools and check Retainers to see what keeps these objects alive.',
+					]
+				: []),
+			...(growthError ? [`Object growth unavailable: ${growthError}`] : []),
 		],
 	};
 	await writeFile(join(directory, 'report.json'), JSON.stringify(report, null, 2));

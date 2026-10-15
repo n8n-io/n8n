@@ -1,7 +1,8 @@
 import type { ProcessInternals } from '@n8n/api-types';
-import { createHash } from 'node:crypto';
-import { open, rename, rm } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
+import { rename, rm } from 'node:fs/promises';
 import { basename } from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import { z } from 'zod';
 
 import { readingSchema, snapshotResponseSchema } from './schema.js';
@@ -67,7 +68,7 @@ export class DiagnosticsClient {
 			throw new Error('GC is unavailable. Start the n8n Node process with --expose-gc.');
 	}
 
-	async snapshot(destination: string): Promise<{ sizeBytes: number; sha256: string }> {
+	async snapshot(destination: string): Promise<void> {
 		const response = await this.request('heap-snapshot', 'POST', Math.max(this.timeoutMs, 120_000));
 		const result = z.object({ data: snapshotResponseSchema }).parse(await response.json()).data;
 		if (!result.success) throw new Error(`Snapshot capture failed: ${result.message}`);
@@ -80,30 +81,14 @@ export class DiagnosticsClient {
 			Math.max(this.timeoutMs, 120_000),
 		);
 		if (!download.body) throw new Error('The snapshot response has no body.');
+		// Write to a temporary name so an interrupted download never looks complete.
 		const partial = `${destination}.partial`;
-		const file = await open(partial, 'wx');
-		const reader = download.body.getReader();
-		let size = 0;
-		const hash = createHash('sha256');
 		try {
-			while (true) {
-				const chunk = await reader.read();
-				if (chunk.done) break;
-				await file.writeFile(chunk.value);
-				size += chunk.value.byteLength;
-				hash.update(chunk.value);
-			}
-			if (size !== result.sizeBytes) throw new Error('The snapshot download is incomplete.');
-			await file.close();
+			await pipeline(download.body, createWriteStream(partial));
 			await rename(partial, destination);
-			return { sizeBytes: size, sha256: hash.digest('hex') };
 		} catch (error) {
-			await reader.cancel().catch(() => {});
-			await file.close().catch(() => {});
 			await rm(partial, { force: true });
 			throw error;
-		} finally {
-			reader.releaseLock();
 		}
 	}
 }

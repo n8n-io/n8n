@@ -1,64 +1,130 @@
 # Local memory profiling
 
-Capture one running n8n process and inspect its memory timeline. No n8n Docker image build is required.
+Experimental. Record how one local n8n process uses memory while you click around or run tests.
+No Docker or observability stack is required.
+
+## Quickstart
+
+### 1. Start n8n with the memory endpoints
+
+Build if needed, then start n8n:
 
 ```bash
-pnpm memory run --url http://localhost:5689
-pnpm memory run --url http://localhost:5689 -- <workload-command>
-pnpm memory report <run-directory>
+pnpm build > build.log 2>&1
+pnpm memory:start
 ```
 
-The tool attaches to your process. It does not start, reset, or stop n8n.
-It cancels its own foreground workload when collection fails or you interrupt it.
+This starts n8n on `http://localhost:5678` with your normal data in `~/.n8n`.
+It enables the test-only memory endpoints (`E2E_TESTS=true`) and lets the tool request garbage collection (`--expose-gc`).
+Press Ctrl+C to stop it.
 
-- [First capture](docs/first-capture.md): start a disposable local instance and produce a report.
-- [Capture a feature or E2E workload](docs/capture-workload.md): manual checkpoints, test selection, and snapshots.
-- [Understand the results](docs/understand-results.md): measurements, retention, and limits.
+E2E mode skips `.env` loading and fakes license features.
+It also exposes a test-only route that resets the database. Only the Playwright setup in step 2 calls it.
 
-## Requirements
+### 2. Record memory
 
-- Node 24 and the repository's pnpm version.
-- Installed workspace dependencies and built shared utilities.
-- A running backend with `E2E_TESTS=true` and `GET /rest/e2e/internals`.
-- Diagnostics must include `processStartId`, which changes on every process restart.
-- `node --expose-gc` for `--gc` or `--snapshots`.
-- macOS or Linux for foreground workload cancellation through process groups.
+**Option A: click around manually.**
 
-The CLI checks the diagnostics response before it runs a workload.
-Rebuild and restart an older backend from a checkout that contains these diagnostics.
+```bash
+pnpm memory run --url http://localhost:5678 --gc
+```
 
-VictoriaMetrics, VictoriaLogs, and Pyroscope are optional observers.
-Capture and offline reporting do not require them.
-This package collects backend process readings. Browser collection belongs to the Playwright runner.
+1. Use n8n in the browser.
+2. After each action finishes, type a checkpoint name, such as `after-10-executions`.
+3. Type `quit` to save the run.
 
-## Run options
+**Option B: run Playwright tests.**
+
+The tests need the E2E test users, and creating them deletes all instance data.
+Start a separate instance for tests:
+
+```bash
+N8N_USER_FOLDER=~/.n8n-memory-tests pnpm memory:start
+```
+
+Then create the test users once:
+
+```bash
+pnpm --filter n8n-playwright exec playwright install chromium
+
+N8N_BASE_URL=http://localhost:5678 PLAYWRIGHT_SKIP_WEBSERVER=true RESET_E2E_DB=true \
+  pnpm --filter n8n-playwright exec playwright test --project=e2e \
+  tests/e2e/credentials/crud.spec.ts --workers=1
+```
+
+To sign in manually afterward, use the owner in
+`packages/quality/testing/playwright/config/test-users.ts`.
+
+Then record the tests you care about:
+
+```bash
+pnpm memory run --url http://localhost:5678 --gc -- \
+  pnpm --filter n8n-playwright exec playwright test --project=e2e \
+  tests/e2e/credentials/crud.spec.ts --workers=1 --repeat-each=3
+```
+
+The tool runs the command after `--` and passes it `N8N_BASE_URL`.
+It disables Playwright's server startup and database reset, so the tests use your running instance.
+It stops the tests if recording fails or you press Ctrl+C.
+
+### 3. View the results
+
+```bash
+pnpm memory report
+```
+
+This opens the latest run. To view an older run, pass its directory: `pnpm memory report .memory-runs/run-AbC123`.
+
+The report prints heap, RSS, and external memory at each checkpoint.
+It also writes `report.json` and `memory.svg` (a timeline chart) to the run directory.
+Open `memory.svg` in a browser.
+
+**What to look for:** memory that rises during work and falls afterward is normal.
+Settled memory that rises after each equal batch of work needs investigation.
+See [Understand the results](docs/understand-results.md).
+
+## Find what retains memory
+
+Use a separate snapshot run. Snapshots pause n8n and change its memory use.
+
+```bash
+pnpm memory run --url http://localhost:5678 --snapshots
+```
+
+1. Warm up the action first. The tool takes a baseline snapshot when it starts.
+2. Repeat the action you suspect, and let it finish.
+3. Type `quit` to take the final snapshot.
+4. Run `pnpm memory report`.
+
+The report lists the fastest-growing object types between the first and last snapshot:
+
+```text
+Fastest-growing object types (first → last snapshot):
+│ object                 │ added │ size    │
+│ ExecutionContext       │ 1200  │ '18MB'  │
+```
+
+Object types that grow by about the same count as your repeated action are the likely leak.
+To see what keeps them alive, load both `.heapsnapshot` files into the Chrome DevTools Memory panel.
+Select the final snapshot, choose the Comparison view, select one of those objects, and read its Retainers.
+
+## Options
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `--url` | Required | Instance URL, including an optional base path |
-| `--output` | `.memory-runs` | Parent directory for unique runs |
-| `--interval` | `2` seconds | Continuous sampling interval |
-| `--timeout` | `10` seconds | Timeout for a diagnostics request |
-| `--gc` | Off | Request GC before named checkpoints |
-| `--snapshots` | Off | Capture a snapshot at each checkpoint instead of continuous sampling |
+| `--url` | Required | The n8n instance URL |
+| `--gc` | Off | Request garbage collection before each checkpoint |
+| `--snapshots` | Off | Capture a heap snapshot at each checkpoint instead of sampling |
+| `--interval` | `2` seconds | Sampling interval |
+| `--output` | `.memory-runs` | Parent directory for runs |
+| `--timeout` | `10` seconds | Timeout for each request to n8n |
 
-Snapshots can take up to two minutes per request.
-The server also keeps the snapshot file in its working directory.
+## Limits
 
-## Artifacts
-
-Each run has its own directory. Report generation reads only that directory.
-
-| File | Contents |
-| --- | --- |
-| `manifest.json` | Run identity, target identity, mode, completion status, and snapshot paths |
-| `samples.jsonl` | Ordered readings and named checkpoints |
-| `snapshot-*.heapsnapshot` | Downloaded snapshots, when requested |
-| `report.json` | Validated checkpoints, deltas, and interpretation notes |
-| `memory.svg` | Sampled memory timeline for a measurement run |
-
-A failed or interrupted run can produce a partial report. It remains visibly incomplete.
-Reports reject mixed identities, missing observations, and incomplete snapshot files.
+- Records only the process at `--url`. It excludes the browser, task runners, and workers.
+- Never starts, resets, or stops n8n.
+- Command mode (`-- <command>`) requires macOS or Linux.
+- A completed run is evidence, not a verdict that no leak exists.
 
 ## Development
 

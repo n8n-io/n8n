@@ -57,9 +57,7 @@ export const manifestSchema = z.object({
 	snapshots: z.array(
 		z.object({
 			sequence: z.number().int().positive(),
-			file: z.string().regex(/^snapshot-\d+\.heapsnapshot$/),
-			sizeBytes: bytes,
-			sha256: z.string().regex(/^[a-f0-9]{64}$/),
+			file: z.string(),
 		}),
 	),
 });
@@ -68,6 +66,6 @@ export type Observation = z.infer<typeof observationSchema>;
 export type Manifest = z.infer<typeof manifestSchema>;
 
 export const snapshotResponseSchema = z.discriminatedUnion('success', [
-	z.object({ success: z.literal(true), filePath: z.string().min(1), sizeBytes: bytes }),
+	z.object({ success: z.literal(true), filePath: z.string().min(1) }),
 	z.object({ success: z.literal(false), message: z.string() }),
 ]);

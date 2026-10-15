@@ -119,11 +119,8 @@ export async function captureSession(
 				state.observationCount++;
 				if (checkpoint && options.snapshots) {
 					const file = `snapshot-${observation.sequence}.heapsnapshot`;
-					const artifact = await client.snapshot(join(runDirectory, file));
-					state.snapshots.push({ sequence: observation.sequence, file, ...artifact });
-					// Check identity again after the snapshot's blocking capture and download.
-					if ((await client.read()).processStartId !== state.processStartId)
-						throw new Error('The n8n process changed during snapshot capture.');
+					await client.snapshot(join(runDirectory, file));
+					state.snapshots.push({ sequence: observation.sequence, file });
 				}
 				if (checkpoint) {
 					await saveManifest();
