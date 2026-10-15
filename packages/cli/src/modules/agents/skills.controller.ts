@@ -1,4 +1,9 @@
-import { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
+import {
+	CreateSkillDto,
+	ListSkillsQueryDto,
+	SaveSkillDto,
+	SkillNewNameQueryDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -40,6 +45,12 @@ export class SkillsController {
 	@Get('/')
 	async list(req: AuthenticatedRequest, _res: Response, @Query query: ListSkillsQueryDto) {
 		return await this.skillsApi.list(req.user, query);
+	}
+
+	/** Registered before `/:skillId`, which would take `new-name` as an id. */
+	@Get('/new-name')
+	async newName(req: AuthenticatedRequest, _res: Response, @Query query: SkillNewNameQueryDto) {
+		return await this.skillsApi.newName(req.user, query);
 	}
 
 	@Get('/:skillId')

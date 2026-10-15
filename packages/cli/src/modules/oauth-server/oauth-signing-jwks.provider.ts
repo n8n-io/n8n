@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { JWK } from 'jose';
 
-import type { JwksProvider } from '@/jwks/jwks.registry';
+import type { JwksProvider } from '@n8n/backend-services/auth';
 
 import { OAuthSigningKeyService } from './oauth-signing-key.service';
 import { PublicSigningJwkSchema } from './oauth-signing-key.schemas';
