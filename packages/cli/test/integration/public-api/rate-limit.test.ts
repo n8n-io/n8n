@@ -16,13 +16,14 @@ describe('Public API rate limiting', () => {
 		const owner = await createOwnerWithApiKey();
 		const agent = testServer.publicApiAgentFor(owner);
 
-		expect((await agent.get('/tags')).statusCode).toBe(200);
-		expect((await agent.get('/tags')).statusCode).toBe(200);
+		const [response1, response2] = await Promise.all([agent.get('/tags'), agent.get('/tags')]);
+		expect(response1.statusCode).toBe(200);
+		expect(response2.statusCode).toBe(200);
 
-		const response = await agent.get('/tags');
+		const rateLimitedResponse = await agent.get('/tags');
 
-		expect(response.statusCode).toBe(429);
-		expect(response.headers['retry-after']).toBeDefined();
-		expect(response.headers['x-ratelimit-limit']).toBe('2');
+		expect(rateLimitedResponse.statusCode).toBe(429);
+		expect(rateLimitedResponse.headers['retry-after']).toBeDefined();
+		expect(rateLimitedResponse.headers['x-ratelimit-limit']).toBe('2');
 	});
 });
