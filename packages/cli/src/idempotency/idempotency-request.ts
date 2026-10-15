@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
+import { isRecord } from '@n8n/utils/is-record';
 
 const VISIBLE_ASCII = /^[\x21-\x7E]+$/;
 const MAX_KEY_LENGTH = 128;
@@ -66,7 +67,7 @@ export function fingerprintParts(parts: {
 }
 
 export function requestFingerprint(
-	req: IncomingMessage & { body?: unknown; originalUrl?: string },
+	req: IncomingMessage & { body?: unknown; files?: unknown; originalUrl?: string },
 ): string {
 	const target = req.originalUrl || req.url || '';
 	const queryIndex = target.indexOf('?');
@@ -81,7 +82,51 @@ export function requestFingerprint(
 	});
 }
 
-function requestBodyText(req: IncomingMessage & { body?: unknown }): string {
+type UploadedFile = {
+	fieldname: string;
+	originalname: string;
+	size: number;
+	buffer?: Buffer;
+};
+
+function isUploadedFile(value: unknown): value is UploadedFile {
+	if (!isRecord(value)) return false;
+
+	return (
+		typeof value.fieldname === 'string' &&
+		typeof value.originalname === 'string' &&
+		typeof value.size === 'number' &&
+		(value.buffer === undefined || Buffer.isBuffer(value.buffer))
+	);
+}
+
+function listUploadedFiles(files: unknown): UploadedFile[] {
+	if (Array.isArray(files)) return files.filter(isUploadedFile);
+	if (!isRecord(files)) return [];
+
+	const listed: UploadedFile[] = [];
+	for (const value of Object.values(files)) {
+		if (Array.isArray(value)) {
+			listed.push(...value.filter(isUploadedFile));
+		} else if (isUploadedFile(value)) {
+			listed.push(value);
+		}
+	}
+	return listed;
+}
+
+function uploadedFilesText(files: unknown): string {
+	return listUploadedFiles(files)
+		.map((file) => {
+			const content = createHash('sha256')
+				.update(file.buffer ?? Buffer.alloc(0))
+				.digest('hex');
+			return `${file.fieldname}\n${file.originalname}\n${file.size}\n${content}`;
+		})
+		.join('\n');
+}
+
+function requestBodyText(req: IncomingMessage & { body?: unknown; files?: unknown }): string {
 	const remembered = rawBodies.get(req);
 	if (remembered !== undefined) return remembered;
 
@@ -89,9 +134,15 @@ function requestBodyText(req: IncomingMessage & { body?: unknown }): string {
 		return req.rawBody.toString(req.encoding || 'utf8');
 	}
 
-	if (req.body === undefined || req.body === null) return '';
-	if (typeof req.body === 'string') return req.body;
-	if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
+	const text = parsedBodyText(req.body);
+	const files = uploadedFilesText(req.files);
+	return files === '' ? text : `${text}\n${files}`;
+}
 
-	return JSON.stringify(req.body);
+function parsedBodyText(body: unknown): string {
+	if (body === undefined || body === null) return '';
+	if (typeof body === 'string') return body;
+	if (Buffer.isBuffer(body)) return body.toString('utf8');
+
+	return JSON.stringify(body);
 }

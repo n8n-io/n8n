@@ -2,6 +2,7 @@ import {
 	fingerprintParts,
 	honorsIdempotencyKey,
 	parseIdempotencyKey,
+	requestFingerprint,
 } from '@/idempotency/idempotency-request';
 
 describe('parseIdempotencyKey', () => {
@@ -67,5 +68,61 @@ describe('fingerprintParts', () => {
 		expect(fingerprintParts({ ...base, body: '{"name":"Other"}' })).not.toBe(original);
 		expect(fingerprintParts({ ...base, query: '' })).not.toBe(original);
 		expect(fingerprintParts({ ...base, path: '/api/v1/credentials' })).not.toBe(original);
+	});
+});
+
+describe('requestFingerprint', () => {
+	const file = {
+		fieldname: 'package',
+		originalname: 'export.n8np',
+		size: 4,
+		buffer: Buffer.from('aaaa'),
+	};
+
+	function request(files?: unknown) {
+		return {
+			method: 'POST',
+			originalUrl: '/api/v1/n8n-packages/import',
+			body: { projectId: 'p' },
+			files,
+		};
+	}
+
+	it('hashes a JSON body when no file is uploaded', () => {
+		const req = {
+			method: 'POST',
+			originalUrl: '/api/v1/workflows',
+			body: { name: 'Hello' },
+		};
+
+		expect(requestFingerprint(req)).toBe(
+			fingerprintParts({
+				method: 'POST',
+				path: '/api/v1/workflows',
+				query: '',
+				body: JSON.stringify({ name: 'Hello' }),
+			}),
+		);
+	});
+
+	it('changes when an uploaded file has the same name and size but different bytes', () => {
+		const first = requestFingerprint(request([file]));
+		const second = requestFingerprint(request([{ ...file, buffer: Buffer.from('bbbb') }]));
+
+		expect(second).not.toBe(first);
+		expect(requestFingerprint(request([{ ...file }]))).toBe(first);
+	});
+
+	it('changes when only the file name or size changes', () => {
+		const base = requestFingerprint(request([file]));
+
+		expect(requestFingerprint(request([{ ...file, originalname: 'other.n8np' }]))).not.toBe(base);
+		expect(requestFingerprint(request([{ ...file, size: 8 }]))).not.toBe(base);
+	});
+
+	it('includes a file map the same way as a file array', () => {
+		expect(requestFingerprint(request({ package: file }))).toBe(
+			requestFingerprint(request([file])),
+		);
 	});
 });
