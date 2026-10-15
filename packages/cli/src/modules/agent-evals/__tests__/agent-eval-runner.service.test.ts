@@ -249,10 +249,16 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.createRun).not.toHaveBeenCalled();
 		});
 
-		it('refuses in queue mode', async () => {
+		it('runs the cases in queue mode', async () => {
 			globalConfig.executions.mode = 'queue';
-			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow('queue mode');
-			expect(runRepository.createRun).not.toHaveBeenCalled();
+			seedFor([{ id: 'row-1', question: 'Q' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(runRepository.createRun).toHaveBeenCalled();
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
 		});
 
 		it('refuses when a module the run depends on is inactive', async () => {
@@ -1206,11 +1212,16 @@ describe('AgentEvalRunnerService', () => {
 			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 
-		it('refuses in queue mode', async () => {
+		it('reruns the case in queue mode', async () => {
 			globalConfig.executions.mode = 'queue';
-			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
-				'queue mode',
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
 			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(1);
 		});
 
 		it('rejects when the user cannot run agents in the project', async () => {
