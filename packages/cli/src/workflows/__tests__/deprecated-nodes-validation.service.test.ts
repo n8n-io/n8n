@@ -1,13 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
 import type { NodesConfig } from '@n8n/config';
-import type { INode, INodeType } from 'n8n-workflow';
+import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { fail } from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	DeprecatedNodesError,
-	type DeprecatedNodeViolation,
-} from '@/errors/response-errors/deprecated-nodes.error';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { NodeTypes } from '@/node-types';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
@@ -43,13 +40,27 @@ describe('DeprecatedNodesValidationService', () => {
 		validator = new DeprecatedNodesValidationService(logger, nodesConfig, nodeTypes);
 	});
 
-	const expectViolations = (run: () => void, violations: DeprecatedNodeViolation[]) => {
+	type ExpectedViolation = { kind: 'added' | 'edited'; nodeName: string; nodeType: string };
+
+	const policyViolation = ({ kind, nodeName, nodeType }: ExpectedViolation) => ({
+		kind: 'node-type-deprecated',
+		checkId: 'deprecated-nodes',
+		message: expect.stringContaining(
+			`Cannot ${kind === 'added' ? 'use' : 'modify'} a "${nodeType}" node ("${nodeName}")`,
+		),
+		subject: nodeType,
+		subjectType: 'nodeType',
+	});
+
+	const expectViolations = (run: () => void, violations: ExpectedViolation[]) => {
 		try {
 			run();
 			fail('expected to throw');
 		} catch (error) {
 			expect(error).toBeInstanceOf(DeprecatedNodesError);
-			expect((error as DeprecatedNodesError).meta.violations).toEqual(violations);
+			expect((error as DeprecatedNodesError).meta.violations).toEqual(
+				violations.map(policyViolation),
+			);
 		}
 	};
 
@@ -88,8 +99,16 @@ describe('DeprecatedNodesValidationService', () => {
 				expect(error).toBeInstanceOf(DeprecatedNodesError);
 				const typed = error as DeprecatedNodesError;
 				expect(typed.meta.violations).toEqual([
-					{ kind: 'added', nodeName: 'Func A', nodeType: 'n8n-nodes-base.function' },
-					{ kind: 'added', nodeName: 'Func B', nodeType: 'n8n-nodes-base.functionItem' },
+					policyViolation({
+						kind: 'added',
+						nodeName: 'Func A',
+						nodeType: 'n8n-nodes-base.function',
+					}),
+					policyViolation({
+						kind: 'added',
+						nodeName: 'Func B',
+						nodeType: 'n8n-nodes-base.functionItem',
+					}),
 				]);
 				expect(typed.message).toContain('Func A');
 				expect(typed.message).toContain('Func B');
@@ -102,6 +121,47 @@ describe('DeprecatedNodesValidationService', () => {
 			});
 			const nodes = [makeNode({ id: 'a', type: 'community.unknown' })];
 			expect(() => validator.validateOnCreate(nodes)).not.toThrow();
+		});
+
+		it('names the configured replacement node in the error message', () => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+				if (type === 'n8n-nodes-base.function') {
+					return Object.assign(mock<INodeType>(), {
+						description: {
+							name: type,
+							deprecated: true,
+							replacedByNodeType: 'n8n-nodes-base.code',
+						} as INodeTypeDescription,
+					});
+				}
+				if (type === 'n8n-nodes-base.code') {
+					return Object.assign(mock<INodeType>(), {
+						description: { name: type, displayName: 'Code' } as INodeTypeDescription,
+					});
+				}
+				return nodeTypeFor(type, false);
+			});
+
+			const nodes = [makeNode({ id: 'a', type: 'n8n-nodes-base.function' })];
+			expect(() => validator.validateOnCreate(nodes)).toThrow(/Replace it with the Code node/);
+		});
+
+		it("names the replacement configured on the node's own deprecated version", () => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type, version) => {
+				if (type === 'n8n-nodes-base.set') {
+					return Object.assign(mock<INodeType>(), {
+						description: (version === 1
+							? { name: type, deprecated: true, replacedByNodeType: 'n8n-nodes-base.code' }
+							: { name: type }) as INodeTypeDescription,
+					});
+				}
+				return Object.assign(mock<INodeType>(), {
+					description: { name: type, displayName: 'Code' } as INodeTypeDescription,
+				});
+			});
+
+			const nodes = [makeNode({ id: 'a', type: 'n8n-nodes-base.set', typeVersion: 1 })];
+			expect(() => validator.validateOnCreate(nodes)).toThrow(/Replace it with the Code node/);
 		});
 
 		it('is a no-op when the config flag is off', () => {

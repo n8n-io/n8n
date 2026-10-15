@@ -14,7 +14,12 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestWorkflow,
+	defaultNodeDescriptions,
+	mockNodeTypeDescription,
+} from '@/__tests__/mocks';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
@@ -297,6 +302,30 @@ describe('NodeDetailsView', () => {
 			await waitFor(() => {
 				expect(emitted().renameNode).toEqual([['Renamed Trigger']]);
 			});
+		});
+	});
+
+	describe('node rename', () => {
+		beforeEach(() => {
+			const store = setupStore([manualTriggerNode, setNode]);
+			pinia = store.pinia;
+			workflowId = store.workflow.id;
+			workflowDocumentStoreRef = store.workflowDocumentStoreRef;
+		});
+
+		test('should not allow renaming a deprecated node', async () => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: SET_NODE_TYPE, deprecated: true }),
+			]);
+			const { getByTestId } = renderComponent({ activeNodeName: 'Set' });
+
+			await waitFor(() => expect(getByTestId('inline-edit-input')).toHaveAttribute('readonly'));
+		});
+
+		test('should not allow renaming a node when read-only', async () => {
+			const { getByTestId } = renderComponent({ activeNodeName: 'Set', readOnly: true });
+
+			await waitFor(() => expect(getByTestId('inline-edit-input')).toHaveAttribute('readonly'));
 		});
 	});
 

@@ -496,6 +496,19 @@ describe('NodeSettings', () => {
 		});
 	});
 
+	it('ignores a parameter update from the event bus for a deprecated node', async () => {
+		const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+			node: freshHttpNode(),
+			nodeType: { ...httpNodeType, deprecated: true },
+			props: { readOnly: false },
+		});
+		await findByTestId('tab-params');
+
+		ndvEventBus.emit('updateParameterValue', urlUpdate);
+
+		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBeUndefined();
+	});
+
 	describe('a node on a credential the user cannot use', () => {
 		const exposeReadOnlyStubs = {
 			ParameterInputList: {

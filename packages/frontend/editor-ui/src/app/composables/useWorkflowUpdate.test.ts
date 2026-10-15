@@ -649,6 +649,35 @@ describe('useWorkflowUpdate', () => {
 			});
 		});
 
+		describe('deprecated nodes', () => {
+			it('should leave a deprecated node unchanged', async () => {
+				const existingNode = createTestNode({
+					id: 'node-1',
+					name: 'Function',
+					type: 'n8n-nodes-base.function',
+					parameters: { functionCode: 'return items;' },
+				}) as INodeUi;
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
+				nodeTypesStore.isNodeDeprecated = vi.fn(() => true);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+				await updateWorkflow({
+					nodes: [
+						{
+							...existingNode,
+							name: 'Renamed Function',
+							parameters: { functionCode: 'return [];' },
+						},
+					],
+					connections: {},
+				});
+
+				expect(mockCanvasOperations.renameNode).not.toHaveBeenCalled();
+				expect(mockDocumentStore.setNodes).not.toHaveBeenCalled();
+				expect(existingNode.parameters.functionCode).toBe('return items;');
+			});
+		});
+
 		describe('parameter change tracking', () => {
 			it('should mark node as dirty when parameters change', async () => {
 				const existingNode = createTestNode({
