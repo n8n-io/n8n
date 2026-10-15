@@ -285,6 +285,22 @@ describe('sendPublicApiErrorResponse', () => {
 			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
+		it('does not send an error with a warning level to Sentry, but still logs it', () => {
+			const error = Object.assign(new Error('warned'), { level: 'warning' });
+			sendPublicApiErrorResponse(createMockRes(), error);
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('does not send an error whose cause has an info level to Sentry, but still logs it', () => {
+			const cause = Object.assign(new Error('informational'), { level: 'info' });
+			sendPublicApiErrorResponse(createMockRes(), new Error('outer', { cause }));
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
 		it('reports an error when the response has no request', () => {
 			const res = createMockRes();
 			sendPublicApiErrorResponse(res, new Error('plain'));

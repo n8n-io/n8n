@@ -81,8 +81,16 @@ function reportPublicApiError(req: Request | undefined, error: Error): void {
  */
 function shouldReportToSentry(error: Error): boolean {
 	if (isAxiosError(error)) return false;
-	if (!(error instanceof BaseError)) return true;
-	return error.shouldReport && error.level !== 'warning' && error.level !== 'info';
+	if (error instanceof BaseError && !error.shouldReport) return false;
+	if (hasIgnoredLevel(error)) return false;
+	if ('cause' in error && error.cause instanceof Error && hasIgnoredLevel(error.cause))
+		return false;
+	return true;
+}
+
+/** Checks the structural `level` field, which `ErrorReporter.beforeSend` also reads. */
+function hasIgnoredLevel(error: Error): boolean {
+	return 'level' in error && (error.level === 'warning' || error.level === 'info');
 }
 
 /**
