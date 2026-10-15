@@ -8,7 +8,6 @@ import {
 	type User,
 	PROJECT_ADMIN_ROLE,
 	GLOBAL_ADMIN_ROLE,
-	PROJECT_CHAT_USER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
@@ -124,7 +123,7 @@ describe('dataTableAggregate', () => {
 				name: 'dataTable1',
 				columns: [],
 			});
-			projectRelationRepository.find.mockResolvedValueOnce([]);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValueOnce([]);
 
 			// ACT
 			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
@@ -244,7 +243,7 @@ describe('dataTableAggregate', () => {
 			expect([ds1.id, ds2.id, ds3.id]).toContain(result.data[0].id);
 			expect(result.count).toBe(3);
 		});
-		it('should not return data tables for project chat users', async () => {
+		it('should return an empty array when the projectId filter targets a project the user cannot access', async () => {
 			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
 
 			await dataTableService.createDataTable(project1.id, {
@@ -252,18 +251,7 @@ describe('dataTableAggregate', () => {
 				columns: [],
 			});
 
-			projectRelationRepository.find.mockResolvedValueOnce([
-				{
-					userId: currentUser.id,
-					projectId: project1.id,
-					role: PROJECT_CHAT_USER_ROLE,
-					user: currentUser,
-					project: project1,
-					createdAt: new Date(),
-					updatedAt: new Date(),
-					setUpdateDate: vi.fn(),
-				},
-			]);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValueOnce([]);
 
 			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
 				filter: { projectId: project1.id },

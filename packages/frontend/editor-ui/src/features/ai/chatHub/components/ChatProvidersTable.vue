@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import { type TableHeader } from '@n8n/design-system';
 import {
 	N8nEmptyState,
 	N8nActionToggle,
@@ -138,7 +138,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 				<div :class="$style.actions">
 					<N8nTooltip :content="i18n.baseText('settings.chatHub.providers.table.refresh.tooltip')">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							iconOnly
 							size="small"
 							icon="refresh-cw"

@@ -9,7 +9,7 @@
 				"id": "22682295812"
 			},
 			"metrics": {
-				"videoViews": "0",
+				"videoTrueviewViews": "0",
 				"conversions": 0,
 				"costMicros": "0",
 				"impressions": "0",
@@ -22,6 +22,6 @@
 			}
 		}
 	],
-	"fieldMask": "campaign.id,campaign.name,campaignBudget.amountMicros,campaignBudget.period,campaign.status,campaign.optimizationScore,campaign.advertisingChannelType,campaign.advertisingChannelSubType,metrics.impressions,metrics.interactions,metrics.interactionRate,metrics.averageCost,metrics.costMicros,metrics.conversions,metrics.costPerConversion,metrics.conversionsFromInteractionsRate,metrics.videoViews,metrics.averageCpm,metrics.ctr",
+	"fieldMask": "campaign.id,campaign.name,campaignBudget.amountMicros,campaignBudget.period,campaign.status,campaign.optimizationScore,campaign.advertisingChannelType,campaign.advertisingChannelSubType,metrics.impressions,metrics.interactions,metrics.interactionRate,metrics.averageCost,metrics.costMicros,metrics.conversions,metrics.costPerConversion,metrics.conversionsFromInteractionsRate,metrics.videoTrueviewViews,metrics.averageCpm,metrics.ctr",
 	"queryResourceConsumption": "596"
 }

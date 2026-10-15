@@ -5,7 +5,7 @@ import { useTemplateWorkflow } from '@/features/workflows/templates/utils/templa
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -69,6 +69,7 @@ const startWithAi = async () => {
 		i18n.baseText('instanceAi.launch.template.message', {
 			interpolate: { name: template.value.name, id: templateId.value },
 		}),
+		{ kind: 'prefill', prefillType: 'template_adjustment' },
 		{
 			source: 'template-view',
 			origin: 'internal',
@@ -227,6 +228,8 @@ const previewDocumentId = computed(() =>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .notFound {
 	padding-top: var(--spacing--sm);
 }

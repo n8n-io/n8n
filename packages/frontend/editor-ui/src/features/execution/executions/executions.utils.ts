@@ -1,4 +1,5 @@
 import {
+	EVALUATION_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
 	isTrimmedNodeExecutionData,
@@ -59,7 +60,6 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		status: 'all',
 		startDate: '',
 		endDate: '',
-		tags: [],
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
@@ -73,10 +73,6 @@ export const executionFilterToQueryFilter = (
 	const queryFilter: IDataObject = {};
 	if (filter.workflowId !== 'all') {
 		queryFilter.workflowId = filter.workflowId;
-	}
-
-	if (!isEmpty(filter.tags)) {
-		queryFilter.tags = filter.tags;
 	}
 
 	if (!isEmpty(filter.annotationTags)) {
@@ -445,6 +441,11 @@ export function findTriggerNodeToAutoSelect(
 		[MANUAL_TRIGGER_NODE_TYPE]: 6,
 		[WORKFLOW_TRIGGER_NODE_TYPE]: 5,
 		[ERROR_TRIGGER_NODE_TYPE]: 4,
+		// Ranked below the core-node fallback: selecting this trigger runs the whole
+		// evaluation dataset, so it should never win over a trigger the user can run
+		// interactively. Its codex category is "Utility", so without this entry it
+		// would fall through to the 8 reserved for third-party app triggers.
+		[EVALUATION_TRIGGER_NODE_TYPE]: -1,
 	};
 
 	function isCoreNode(node: INodeUi): boolean {

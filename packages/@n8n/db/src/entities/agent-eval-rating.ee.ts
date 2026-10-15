@@ -1,10 +1,13 @@
+import type { AgentEvalVote } from '@n8n/api-types';
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 import type { JsonObject } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import { AgentEvalResult } from './agent-eval-result.ee';
 
-export type AgentEvalVote = 'up' | 'down';
+// The FE/BE contract for this union lives in `@n8n/api-types`; re-exported so
+// existing db-internal consumers keep importing it from the entity.
+export type { AgentEvalVote };
 
 /**
  * A human's rating of an {@link AgentEvalResult}: a 👍/👎 vote plus an optional

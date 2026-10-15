@@ -1,9 +1,8 @@
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
-
-import { EventService } from '@/events/event.service';
 
 import type { PrometheusMetricsCollector } from './base';
 
@@ -59,6 +58,16 @@ export class PrometheusQueueMetricsService implements PrometheusMetricsCollector
 			activeGauge.set(jobCounts.active);
 			completedCounter.inc(jobCounts.completed);
 			failedCounter.inc(jobCounts.failed);
+		});
+
+		const completionMissedCounter = new promClient.Counter({
+			name: `${prefix}scaling_mode_queue_jobs_completion_missed`,
+			help: 'Total number of jobs whose completion event this main missed and settled from the database instead, by execution status found there.',
+			labelNames: ['status'],
+		});
+
+		this.eventService.on('job-completion-missed', ({ status }) => {
+			completionMissedCounter.inc({ status }, 1);
 		});
 	}
 }

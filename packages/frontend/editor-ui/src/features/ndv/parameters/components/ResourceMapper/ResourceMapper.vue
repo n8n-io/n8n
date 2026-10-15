@@ -15,7 +15,11 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, inject, onMounted, reactive, watch } from 'vue';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import {
+	ExpressionLocalResolveContextSymbol,
+	ResourceMapperRefreshEmptySchemaKey,
+	ResourceMapperSchemaAutoRefreshKey,
+} from '@/app/constants';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
@@ -53,6 +57,8 @@ const ndvStore = injectNDVStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const schemaAutoRefreshEnabled = inject(ResourceMapperSchemaAutoRefreshKey, true);
+const refreshEmptySchemaEnabled = inject(ResourceMapperRefreshEmptySchemaKey, false);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -75,9 +81,11 @@ const state = reactive({
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
 		attemptToConvertTypes: false,
-		// This should always be true if `showTypeConversionOptions` is provided
-		// It's used to avoid accepting any value as string without casting it
-		// Which is the legacy behavior without these type options.
+		// The execution engine no longer reads this. It stays in the saved value so an
+		// older instance that still reads it keeps casting instead of falling back to
+		// the legacy uncast passthrough. `onMounted` sets it to `true` when
+		// `showTypeConversionOptions` is set, but the stored node values spread after
+		// that, so a persisted value survives untouched. No control ever writes it.
 		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
@@ -111,7 +119,18 @@ function getDefaultFieldValue(field?: ResourceMapperField): string | number | bo
 watch(
 	() => props.dependentParametersValues,
 	async (currentValue, oldValue) => {
-		if (oldValue !== null && currentValue !== null && oldValue !== currentValue) {
+		const dependencyBecameAvailable =
+			refreshEmptySchemaEnabled &&
+			oldValue === null &&
+			currentValue !== null &&
+			currentValue.length > 0 &&
+			state.paramValue.schema.length === 0;
+
+		if (
+			currentValue !== null &&
+			oldValue !== currentValue &&
+			(oldValue !== null || dependencyBecameAvailable)
+		) {
 			state.paramValue = {
 				...state.paramValue,
 				value: null,
@@ -130,13 +149,22 @@ onDocumentVisible(async () => {
 
 async function checkStaleFields(): Promise<void> {
 	const fetchedFields = await fetchFields();
-	if (fetchedFields) {
-		const isSchemaStale = isResourceMapperFieldListStale(
-			state.paramValue.schema,
-			fetchedFields.fields,
-		);
-		state.hasStaleFields = isSchemaStale;
+	if (!fetchedFields) {
+		return;
 	}
+	const isSchemaStale = isResourceMapperFieldListStale(
+		state.paramValue.schema,
+		fetchedFields.fields,
+	);
+	if (
+		isSchemaStale &&
+		schemaAutoRefreshEnabled &&
+		props.parameter.typeOptions?.resourceMapper?.refreshStaleSchemaOnOpen
+	) {
+		await initFetching(true, fetchedFields);
+		return;
+	}
+	state.hasStaleFields = isSchemaStale;
 }
 
 // Reload fields to map when node is executed
@@ -211,6 +239,7 @@ onMounted(async () => {
 		// Only fetch a schema if it's not already set
 		await initFetching();
 	} else if (
+		schemaAutoRefreshEnabled &&
 		props.parameter.typeOptions?.resourceMapper?.refreshIncompleteSchemaOnOpen &&
 		isResourceMapperSchemaIncomplete(state.paramValue.schema)
 	) {
@@ -315,7 +344,10 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-async function initFetching(inlineLoading = false): Promise<void> {
+async function initFetching(
+	inlineLoading = false,
+	preFetchedFields?: ResourceMapperFields | null,
+): Promise<void> {
 	state.loadingError = false;
 	if (inlineLoading) {
 		state.refreshInProgress = true;
@@ -323,7 +355,7 @@ async function initFetching(inlineLoading = false): Promise<void> {
 		state.loading = true;
 	}
 	try {
-		await loadAndSetFieldsToMap();
+		await loadAndSetFieldsToMap(preFetchedFields);
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
@@ -388,12 +420,14 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 	return fetchedFields;
 }
 
-async function loadAndSetFieldsToMap(): Promise<void> {
+async function loadAndSetFieldsToMap(
+	preFetchedFields?: ResourceMapperFields | null,
+): Promise<void> {
 	if (!props.node) {
 		return;
 	}
 
-	const fetchedFields = await fetchFields();
+	const fetchedFields = preFetchedFields !== undefined ? preFetchedFields : await fetchFields();
 
 	if (fetchedFields !== null) {
 		const newSchema = fetchedFields.fields.map((field) => {
@@ -687,7 +721,7 @@ defineExpose({
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="xsmall"
 					icon="refresh-cw"
 					:loading="state.refreshInProgress"

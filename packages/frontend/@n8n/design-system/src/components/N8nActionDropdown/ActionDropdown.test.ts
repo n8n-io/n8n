@@ -64,7 +64,7 @@ describe('components', () => {
 							id: 'item1',
 							label: 'Action 1',
 							badge: 'Pro',
-							badgeProps: { theme: 'warning', bold: true },
+							badgeProps: { variant: 'warning' },
 							disabled: true,
 						},
 						{
@@ -79,6 +79,46 @@ describe('components', () => {
 			});
 
 			expect(wrapper.html()).toContain('action-dropdown-container');
+		});
+
+		it('shows an item description under its label', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [{ id: 'publish', label: 'Publish', description: 'Goes live for everyone' }],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			expect(await wrapper.findByText('Goes live for everyone')).toBeVisible();
+		});
+
+		it('forwards badge variants over the default variant', async function testBadgeVariants() {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [
+						{ id: 'default', label: 'Default', badge: 'Pro' },
+						{
+							id: 'custom',
+							label: 'Custom',
+							badge: 'Warning',
+							badgeProps: { variant: 'warning' },
+						},
+					],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			await waitFor(function assertBadgeVariants() {
+				const defaultBadge = wrapper.getByText('Pro').closest('.n8n-badge');
+				const customBadge = wrapper.getByText('Warning').closest('.n8n-badge');
+				expect(defaultBadge).toHaveClass('primary');
+				expect(customBadge).toHaveClass('warning');
+				expect(customBadge).not.toHaveClass('primary');
+				expect(customBadge).not.toHaveAttribute('theme');
+				expect(customBadge).not.toHaveAttribute('bold');
+			});
 		});
 
 		it('should support badge-click event for disabled items with badges', () => {
@@ -104,6 +144,27 @@ describe('components', () => {
 
 			// The component template has: @click.stop="item.disabled && $emit('badge-click', item.id)"
 			// This ensures badge-click only emits for disabled items
+		});
+
+		it('should mark destructive items with the destructive class', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [
+						{ id: 'edit', label: 'Edit' },
+						{ id: 'delete', label: 'Delete', variant: 'destructive' as const },
+					],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			await waitFor(() => {
+				const deleteItem = document.querySelector('[data-test-id="action-delete"]');
+				expect(deleteItem?.className).toContain('destructive');
+
+				const editItem = document.querySelector('[data-test-id="action-edit"]');
+				expect(editItem?.className).not.toContain('destructive');
+			});
 		});
 
 		it('should render footer content', async () => {

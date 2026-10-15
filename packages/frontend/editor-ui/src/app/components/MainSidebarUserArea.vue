@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	type IMenuItem,
 	N8nAvatar,
@@ -27,7 +27,7 @@ const userMenuItems = ref<IMenuItem[]>([
 	},
 	{
 		id: 'logout',
-		icon: 'door-open',
+		icon: 'log-out',
 		label: i18n.baseText('auth.signout'),
 	},
 ]);

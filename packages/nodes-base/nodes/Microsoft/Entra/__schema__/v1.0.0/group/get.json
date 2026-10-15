@@ -19,6 +19,32 @@
         "mailNickname": {
             "type": "string"
         },
+        "members": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "@odata.type": {
+                        "type": "string"
+                    },
+                    "accountEnabled": {
+                        "type": "boolean"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "securityIdentifier": {
+                        "type": "string"
+                    },
+                    "userPrincipalName": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "securityEnabled": {
             "type": "boolean"
         },
@@ -26,5 +52,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

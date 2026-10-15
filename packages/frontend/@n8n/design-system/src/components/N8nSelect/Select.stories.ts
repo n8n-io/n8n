@@ -67,7 +67,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const Input = Template.bind({});
+export const Default = Template.bind({});
 
 export const Filterable = Template.bind({});
 Filterable.args = {
@@ -90,7 +90,7 @@ const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nOption,
 		N8nIcon,
 	},
-	template: `<div class="multi-container">${selects}</div>`,
+	template: `<div style="display: flex; flex-direction: column; gap: var(--spacing--xs);">${selects}</div>`,
 	methods,
 	data() {
 		return {
@@ -121,7 +121,7 @@ const ManyTemplateWithIcon: StoryFn = (args, { argTypes }) => ({
 		N8nOption,
 		N8nIcon,
 	},
-	template: `<div class="multi-container">${selectsWithIcon}</div>`,
+	template: `<div style="display: flex; flex-direction: column; gap: var(--spacing--xs);">${selectsWithIcon}</div>`,
 	methods,
 	data() {
 		return {

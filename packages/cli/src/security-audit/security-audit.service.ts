@@ -63,11 +63,10 @@ export class SecurityAuditService {
 			};
 
 			// `@vite-ignore` keeps vite's dynamic-import-vars plugin from analyzing this
-			// runtime-only import: without a static file extension it otherwise errors,
-			// which surfaces fatally during v8 coverage's uncovered-file walk.
+			// runtime-only import, which surfaces fatally during v8 coverage's uncovered-file walk.
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const RiskReporterModule = await import(
-				/* @vite-ignore */ `./risk-reporters/${toFilename[className]}`
+				/* @vite-ignore */ `./risk-reporters/${toFilename[className]}.js`
 			);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

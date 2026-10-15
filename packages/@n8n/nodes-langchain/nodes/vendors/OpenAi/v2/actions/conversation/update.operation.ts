@@ -4,7 +4,9 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions, jsonParse } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
+
+import { parseJsonParameter } from '@utils/helpers';
 
 import { apiRequest } from '../../../transport';
 import { metadataProperty } from '../descriptions';
@@ -33,7 +35,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const conversationId = this.getNodeParameter('conversationId', i, '') as string;
-	const metadata = this.getNodeParameter('metadata', i, '') as string;
+	const metadata = this.getNodeParameter('metadata', i, '');
 
 	if (!conversationId) {
 		throw new Error('Conversation ID is required');
@@ -45,9 +47,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const body: IDataObject = {};
 
-	body.metadata = jsonParse(metadata, {
-		errorMessage: 'Invalid JSON in metadata field',
-	});
+	body.metadata = parseJsonParameter(metadata, 'Invalid JSON in metadata field');
 
 	const response = await apiRequest.call(this, 'POST', `/conversations/${conversationId}`, {
 		body,

@@ -49,6 +49,8 @@ describe('SSEPush', () => {
 			);
 			expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache');
 			expect(res.setHeader).toHaveBeenCalledWith('Connection', 'keep-alive');
+			expect(res.setHeader).toHaveBeenCalledWith('Incremental', '?1');
+			expect(res.setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
 			expect(res.writeHead).toHaveBeenCalledWith(200);
 
 			expect(res.write).toHaveBeenCalledWith(':ok\n\n');
@@ -66,6 +68,14 @@ describe('SSEPush', () => {
 			emitter.emit(event);
 			expect(ssePush.hasPushRef(pushRef)).toBe(false);
 		});
+	});
+
+	it('reports the current connection count after a client disconnects', () => {
+		expect(ssePush.getDiagnosticCounts()).toEqual({ connections: 2 });
+
+		req.emit('close');
+
+		expect(ssePush.getDiagnosticCounts()).toEqual({ connections: 1 });
 	});
 
 	describe('does not remove replaced connection when old connection closes', () => {

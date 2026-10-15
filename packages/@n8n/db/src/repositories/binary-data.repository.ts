@@ -1,8 +1,9 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { BinaryDataFile } from '../entities';
+import type { SourceType } from '../entities';
 import { dbType } from '../entities/abstract-entity';
 
 @Service()
@@ -12,6 +13,28 @@ export class BinaryDataRepository extends Repository<BinaryDataFile> {
 		private readonly databaseConfig: DatabaseConfig,
 	) {
 		super(BinaryDataFile, dataSource.manager);
+	}
+
+	/** Content bytes for a stored file, or null when the row is gone. */
+	async findContentByFileId(fileId: string): Promise<Buffer | null> {
+		const file = await this.findOne({ where: { fileId }, select: ['data'] });
+
+		return file?.data ?? null;
+	}
+
+	/** Source that a stored file belongs to, or null when the row is gone. */
+	async findSourceByFileId(
+		fileId: string,
+	): Promise<{ sourceType: SourceType; sourceId: string } | null> {
+		const file = await this.findOne({ where: { fileId }, select: ['sourceType', 'sourceId'] });
+
+		return file ? { sourceType: file.sourceType, sourceId: file.sourceId } : null;
+	}
+
+	async deleteByFileIds(fileIds: string[]): Promise<void> {
+		if (fileIds.length === 0) return;
+
+		await this.delete({ fileId: In(fileIds) });
 	}
 
 	async copyStoredFile(

@@ -215,7 +215,7 @@ export const disconnectedNodeValidator: ValidatorPlugin = {
 				issues.push({
 					code: 'DISCONNECTED_NODE',
 					message: `${nodeRef} is not connected to any input. It will not receive data.`,
-					severity: 'warning',
+					severity: 'informational',
 					violationLevel: 'major',
 					nodeName: displayName,
 					originalName: origForWarning,

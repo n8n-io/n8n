@@ -7,6 +7,7 @@
 | clientId | varchar |  | false |  | [public.oauth_clients](public.oauth_clients.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | expiresAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
+| resource | varchar |  | false |  |  | RFC 8707 resource indicator the grant was approved for (e.g. https://n8n.example.com/mcp-server/http); the audience of every access token minted from this refresh token. |
 | scope | json | '["tool:listWorkflows","tool:getWorkflowDetails"]'::json | false |  |  | OAuth scopes granted for this refresh token |
 | token | varchar(255) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -22,6 +23,7 @@
 | oauth_refresh_tokens_clientId_not_null | n | NOT NULL "clientId" |
 | oauth_refresh_tokens_createdAt_not_null | n | NOT NULL "createdAt" |
 | oauth_refresh_tokens_expiresAt_not_null | n | NOT NULL "expiresAt" |
+| oauth_refresh_tokens_resource_not_null | n | NOT NULL resource |
 | oauth_refresh_tokens_scope_not_null | n | NOT NULL scope |
 | oauth_refresh_tokens_token_not_null | n | NOT NULL token |
 | oauth_refresh_tokens_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -45,6 +47,7 @@ erDiagram
   varchar clientId FK
   timestamp_3__with_time_zone createdAt
   bigint expiresAt
+  varchar resource
   json scope
   varchar_255_ token
   timestamp_3__with_time_zone updatedAt
@@ -56,6 +59,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   json grantTypes
   varchar id
+  boolean isFirstParty
   varchar_255_ name
   json redirectUris
   varchar_255_ tokenEndpointAuthMethod

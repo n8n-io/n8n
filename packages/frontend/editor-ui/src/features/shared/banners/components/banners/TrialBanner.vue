@@ -1,17 +1,21 @@
 <script lang="ts" setup>
 import BaseBanner from './BaseBanner.vue';
 import { i18n as locale } from '@n8n/i18n';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { TRIAL_INTRO_MODAL_KEY } from '@/app/constants/modals';
+import { VIEWS } from '@/app/constants/navigation';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 import { N8nButton, N8nText, type IconName, type ButtonVariant } from '@n8n/design-system';
 
 const LEGACY_STYLE_TO_VARIANT: Record<string, ButtonVariant> = {
 	success: 'solid',
 	primary: 'solid',
-	secondary: 'subtle',
+	secondary: 'outline',
 	tertiary: 'ghost',
 	danger: 'destructive',
 };
@@ -71,22 +75,49 @@ const LEGACY_STYLE_TO_CSS_VARS: Record<string, Record<string, string>> = {
 };
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
+const WORKFLOW_LIST_VIEWS = new Set<string>([
+	VIEWS.WORKFLOWS,
+	VIEWS.FOLDERS,
+	VIEWS.PROJECTS_WORKFLOWS,
+	VIEWS.PROJECTS_FOLDERS,
+	VIEWS.SHARED_WORKFLOWS,
+]);
 
 const cloudPlanStore = useCloudPlanStore();
+const uiStore = useUIStore();
+const trialIntroModalStore = useTrialIntroModalStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const router = useRouter();
+
+const isTrialIntroModalOpen = computed(() => uiStore.activeModals.includes(TRIAL_INTRO_MODAL_KEY));
+const isWorkflowListView = computed(() => {
+	const routeName = router.currentRoute.value.name;
+	return (
+		(typeof routeName === 'string' && WORKFLOW_LIST_VIEWS.has(routeName)) ||
+		window.location.pathname.endsWith('/workflows')
+	);
+});
+const shouldHideTrialBanner = computed(
+	() =>
+		isTrialIntroModalOpen.value ||
+		(isWorkflowListView.value && trialIntroModalStore.shouldSuppressTrialBackground),
+);
 
 // Banner config from backend
 const bannerTimeLeft = computed(() => cloudPlanStore.bannerTimeLeft);
 const showExecutions = computed(() => cloudPlanStore.showExecutions);
-const bannerCta = computed(() => ({
-	text: cloudPlanStore.bannerCta.text,
-	icon: cloudPlanStore.bannerCta.icon as IconName | undefined,
-	size: cloudPlanStore.bannerCta.size as 'small' | 'medium',
-	style: cloudPlanStore.bannerCta.style,
-	variant: cloudPlanStore.bannerCta.variant as ButtonVariant | undefined,
-	href: cloudPlanStore.bannerCta.href,
-}));
+const bannerCta = computed(() => {
+	const variant = cloudPlanStore.bannerCta.variant;
+	return {
+		text: cloudPlanStore.bannerCta.text,
+		icon: cloudPlanStore.bannerCta.icon as IconName | undefined,
+		size: cloudPlanStore.bannerCta.size as 'small' | 'medium',
+		style: cloudPlanStore.bannerCta.style,
+		// BannerConfig.cta.variant still lists the old button value 'subtle'.
+		variant: variant === 'subtle' ? 'outline' : variant,
+		href: cloudPlanStore.bannerCta.href,
+	};
+});
 const bannerIcon = computed(() => cloudPlanStore.bannerIcon as IconName | undefined);
 
 // If backend sends variant, use it directly. Otherwise, map legacy style to variant.
@@ -169,11 +200,13 @@ function onCtaClick() {
 
 <template>
 	<BaseBanner
+		v-if="!shouldHideTrialBanner"
 		name="TRIAL"
 		theme="custom"
 		:dismissible="cloudPlanStore.bannerDismissible"
 		dismiss-permanently
 		:custom-icon="bannerIcon"
+		:icon-tooltip="locale.baseText('banners.trial.tooltip')"
 	>
 		<template #mainContent>
 			<div :class="$style.content">

@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
 import { VIEWS } from '@/app/constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import type { CompareVersion } from '../../composables/useCompareData';
 import { useEvalCollectionsStore } from '../../evalCollections.store';
@@ -77,7 +77,7 @@ const legend = computed(() =>
 			<div :class="$style.titleGroup">
 				<N8nText tag="h2" size="xlarge" bold>{{ collectionName }}</N8nText>
 				<RunningIndicator v-if="isRunning" :completed="completedCount" :total="versions.length" />
-				<N8nBadge v-else :theme="statusBadge.theme" size="small">{{ statusBadge.label }}</N8nBadge>
+				<N8nBadge v-else :variant="statusBadge.theme">{{ statusBadge.label }}</N8nBadge>
 			</div>
 			<N8nButton
 				v-if="canRerun"

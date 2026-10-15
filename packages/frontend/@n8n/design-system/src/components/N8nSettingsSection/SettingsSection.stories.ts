@@ -8,7 +8,7 @@ import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSwitch from '../N8nSwitch';
 
 const meta = {
-	title: 'Instance Settings/Settings Section',
+	title: 'Areas/Settings/SettingsSection',
 	component: N8nSettingsSection,
 	parameters: {
 		docs: {
@@ -25,7 +25,7 @@ type Story = StoryObj<typeof meta>;
 
 const frame = (inner: string) => `<div style="max-width: 45rem;">${inner}</div>`;
 
-export const WithTitleAndDescription: Story = {
+export const Default: Story = {
 	render: (args) => ({
 		components: { N8nSettingsSection, N8nSettingsRowGroup, N8nSettingsRow, N8nSwitch },
 		setup() {

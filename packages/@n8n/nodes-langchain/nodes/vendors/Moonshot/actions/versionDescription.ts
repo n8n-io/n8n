@@ -11,7 +11,7 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	version: 1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-	description: 'Interact with Moonshot Kimi AI models',
+	description: 'Message Kimi and analyze images with Moonshot models',
 	defaults: {
 		name: 'Moonshot Kimi',
 	},

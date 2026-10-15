@@ -1,3 +1,4 @@
+import { UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
@@ -8,7 +9,7 @@ import { WorkflowAccessError } from '../mcp.errors';
 import { getMcpWorkflow, getSdkReferenceHint } from '../tools/workflow-validation.utils';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
-	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_sdk_reference', displayTitle: 'SDK Ref' },
+	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'get_workflow_sdk_reference', displayTitle: 'SDK Ref' },
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow', displayTitle: 'Validate' },
 }));
 
@@ -19,7 +20,7 @@ describe('getSdkReferenceHint', () => {
 
 		const hint = getSdkReferenceHint(error);
 
-		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('get_workflow_sdk_reference');
 		expect(hint).toContain('Workflow SDK reference');
 		expect(hint).toContain('validate_workflow');
 	});
@@ -29,7 +30,7 @@ describe('getSdkReferenceHint', () => {
 			new SyntaxError('Code must export a workflow built with the workflow() SDK function.'),
 		);
 
-		expect(hint).toContain('get_sdk_reference');
+		expect(hint).toContain('get_workflow_sdk_reference');
 		expect(hint).toContain('required SDK patterns');
 	});
 
@@ -57,6 +58,11 @@ describe('getSdkReferenceHint', () => {
 
 describe('getMcpWorkflow', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
+	beforeEach(() => {
+		mockInstance(UrlService, {
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com/n8n'),
+		});
+	});
 
 	describe('permission checks', () => {
 		test('throws generic error when workflow not found (does not reveal if workflow exists)', async () => {
@@ -205,6 +211,20 @@ describe('getMcpWorkflow', () => {
 			).rejects.toMatchObject({
 				reason: 'not_available_in_mcp',
 			});
+		});
+
+		test('includes a workflow settings link in the not-available error', async () => {
+			const workflow = createWorkflow({
+				id: 'wf / 1',
+				settings: { availableInMCP: false },
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+
+			await expect(
+				getMcpWorkflow('wf / 1', user, ['workflow:read'], workflowFinderService),
+			).rejects.toThrow('https://n8n.example.com/n8n/workflow/wf%20%2F%201?settings=true');
 		});
 	});
 

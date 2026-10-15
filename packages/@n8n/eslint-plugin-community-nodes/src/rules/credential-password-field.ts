@@ -6,7 +6,7 @@ import {
 	findClassProperty,
 	findObjectProperty,
 	getStringLiteralValue,
-	isSensitiveFieldName,
+	isSensitiveName,
 	hasPasswordTypeOption,
 	createRule,
 } from '../utils/index.js';
@@ -69,10 +69,7 @@ export const CredentialPasswordFieldRule = createRule({
 				}
 
 				const propertiesProperty = findClassProperty(node, 'properties');
-				if (
-					!propertiesProperty?.value ||
-					propertiesProperty.value.type !== TSESTree.AST_NODE_TYPES.ArrayExpression
-				) {
+				if (propertiesProperty?.value?.type !== TSESTree.AST_NODE_TYPES.ArrayExpression) {
 					return;
 				}
 
@@ -84,7 +81,7 @@ export const CredentialPasswordFieldRule = createRule({
 					const nameProperty = findObjectProperty(element, 'name');
 					const fieldName = nameProperty ? getStringLiteralValue(nameProperty.value) : null;
 
-					if (!fieldName || !isSensitiveFieldName(fieldName)) {
+					if (!fieldName || !isSensitiveName(fieldName)) {
 						continue;
 					}
 

@@ -5,11 +5,11 @@
 // agent/config-eval handlers can register alongside it.
 // ---------------------------------------------------------------------------
 
+import type { ArtifactHandler } from './types';
 import { ALL_CHECKS } from '../../binaryChecks/checks';
 import type { WorkflowResponse } from '../../clients/n8n-client';
 import { extractWorkflowIdsFromMessages } from '../../outcome/workflow-discovery';
 import { buildWorkflowContextBlock } from '../workflow-context';
-import type { ArtifactHandler } from './types';
 
 export const workflowHandler: ArtifactHandler<WorkflowResponse> = {
 	type: 'workflow',

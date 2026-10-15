@@ -6,7 +6,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -143,7 +143,7 @@ function onCancel() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="onCancel">
+				<N8nButton variant="outline" @click="onCancel">
 					{{ data.cancelLabel ?? i18n.baseText('chatHub.credentials.selector.cancel') }}
 				</N8nButton>
 				<N8nButton variant="solid" :disabled="!selectedCredentialId" @click="onConfirm">

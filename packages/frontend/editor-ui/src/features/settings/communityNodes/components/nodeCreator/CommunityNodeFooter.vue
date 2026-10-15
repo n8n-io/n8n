@@ -10,6 +10,7 @@ import { i18n } from '@n8n/i18n';
 import { N8nLink, N8nText } from '@n8n/design-system';
 export interface Props {
 	packageName: string;
+	nodeTypeName: string | undefined;
 	showManage: boolean;
 }
 const props = defineProps<Props>();
@@ -17,7 +18,9 @@ const props = defineProps<Props>();
 const router = useRouter();
 
 const bugsUrl = ref<string>(`https://registry.npmjs.org/${props.packageName}`);
-const { installedPackage } = useInstalledCommunityPackage(props.packageName);
+const { installedPackage, hasUpdateAvailable } = useInstalledCommunityPackage(
+	() => props.nodeTypeName,
+);
 
 async function openSettingsPage() {
 	await router.push({ name: VIEWS.COMMUNITY_NODES });
@@ -62,7 +65,7 @@ onMounted(async () => {
 		<div :class="$style.container">
 			<N8nText v-if="installedPackage" size="small" color="text-light" style="margin-right: auto">
 				Package version {{ installedPackage.installedVersion }} ({{
-					installedPackage.updateAvailable && !installedPackage.unverifiedUpdate
+					hasUpdateAvailable
 						? i18n.baseText('communityNodeFooter.legacy')
 						: i18n.baseText('nodeSettings.latest')
 				}})

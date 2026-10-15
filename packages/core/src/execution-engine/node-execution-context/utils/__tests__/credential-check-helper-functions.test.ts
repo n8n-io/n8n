@@ -29,9 +29,7 @@ describe('getCredentialCheckHelperFunctions', () => {
 		expect(result.checkCredentialStatus).toBeDefined();
 
 		const status = await result.checkCredentialStatus!('wf-1', {
-			version: 1,
-			establishedAt: Date.now(),
-			source: 'webhook',
+			credentials: 'encrypted-credentials',
 		});
 
 		expect(status).toEqual(mockResult);

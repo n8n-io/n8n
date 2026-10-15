@@ -19,7 +19,7 @@ import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/features/shared/editors/plugins/codemirror/n8nLang';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import {
@@ -408,7 +408,7 @@ describe('Resolution-based completions', () => {
 
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input);
 
-			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY] = { open: true };
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,
@@ -431,7 +431,7 @@ describe('Resolution-based completions', () => {
 
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValue($input);
 
-			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY] = { open: true };
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,

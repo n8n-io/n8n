@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 const renderComponent = createComponentRenderer(VariablesUsageBadge);
 
 const showMessage = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage }),
 }));
 

@@ -64,6 +64,15 @@ function getConditionAndParams(
 		? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
 		: quoteIdentifier(filter.columnName, dbType);
 
+	// Empty/not-empty treat a value as empty when it is NULL or an empty string.
+	// Only string columns expose these conditions, so the `= ''` comparison is safe.
+	switch (filter.condition) {
+		case 'isEmpty':
+			return [`(${columnRef} IS NULL OR ${columnRef} = '')`, {}];
+		case 'isNotEmpty':
+			return [`(${columnRef} IS NOT NULL AND ${columnRef} != '')`, {}];
+	}
+
 	if (filter.value === null) {
 		switch (filter.condition) {
 			case 'eq':
@@ -143,6 +152,7 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			let insertedRows = 0;
 
@@ -212,6 +222,7 @@ export class DataTableRowsRepository {
 		returnType: T,
 		trx?: EntityManager,
 	): Promise<DataTableInsertRowsResult> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const inserted: Array<Pick<DataTableRowReturn, 'id'>> = [];
 			const dbType = this.dataSource.options.type;
@@ -299,6 +310,7 @@ export class DataTableRowsRepository {
 		returnData: boolean = false,
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const dbType = this.dataSource.options.type;
 			const useReturning = dbType === 'postgres';
@@ -414,6 +426,7 @@ export class DataTableRowsRepository {
 		dryRun: boolean = false,
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const dbType = this.dataSource.options.type;
 			const useReturning = !dryRun && dbType === 'postgres';
@@ -475,6 +488,7 @@ export class DataTableRowsRepository {
 	}
 
 	async clearRows(dataTableId: string, trx?: EntityManager): Promise<{ deletedCount: number }> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const result = await em.createQueryBuilder().delete().from(table).execute();
@@ -489,6 +503,7 @@ export class DataTableRowsRepository {
 		idsOnly: T,
 		trx?: EntityManager,
 	): Promise<T extends true ? Array<Pick<DataTableRowReturn, 'id'>> : DataTableRowReturn[]> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const selectColumns = idsOnly ? 'id' : '*';

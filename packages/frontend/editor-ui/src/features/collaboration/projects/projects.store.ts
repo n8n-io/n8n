@@ -8,17 +8,27 @@ import * as workflowsApi from '@/app/api/workflows';
 import * as workflowsEEApi from '@/app/api/workflows.ee';
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
-import { getProjectSecretProviderConnectionsByProjectId } from '@n8n/rest-api-client';
+import {
+	getProjectPoolSettings,
+	getProjectSecretProviderConnectionsByProjectId,
+	updateProjectPoolSettings,
+} from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import { ProjectTypes } from './projects.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { STORES } from '@n8n/stores';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import type { CreateProjectDto, UpdateProjectDto, SecretProviderConnection } from '@n8n/api-types';
+import type {
+	CreateProjectDto,
+	ProjectPoolSettingsResponse,
+	SecretProviderConnection,
+	UpdateProjectDto,
+	UpdateProjectPoolSettingsDto,
+} from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
@@ -41,6 +51,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const myProjects = ref<ProjectListItem[]>([]);
 	const personalProject = ref<Project | null>(null);
 	const currentProject = ref<Project | null>(null);
+	const currentProjectPoolSettings = ref<ProjectPoolSettingsResponse | null>(null);
 	const projectsCount = ref<ProjectsCount>({
 		personal: 0,
 		team: 0,
@@ -189,6 +200,25 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
+	const fetchProjectPoolSettings = async (projectId: string): Promise<void> => {
+		currentProjectPoolSettings.value = null;
+		currentProjectPoolSettings.value = await getProjectPoolSettings(
+			rootStore.restApiContext,
+			projectId,
+		);
+	};
+
+	const updateCurrentProjectPoolSettings = async (
+		projectId: string,
+		dto: UpdateProjectPoolSettingsDto,
+	): Promise<void> => {
+		currentProjectPoolSettings.value = await updateProjectPoolSettings(
+			rootStore.restApiContext,
+			projectId,
+			dto,
+		);
+	};
+
 	const addMember = async (
 		projectId: string,
 		{ userId, role }: { userId: string; role: string },
@@ -327,7 +357,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 				setCurrentProject(null);
 			}
 
-			if (newRoute?.path?.includes('workflow-review-requests')) {
+			if (newRoute?.path?.includes('/reviews')) {
 				projectNavActiveId.value = 'workflow-reviews';
 				setCurrentProject(null);
 			}
@@ -380,6 +410,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		refreshCurrentProject,
 		createProject,
 		updateProject,
+		currentProjectPoolSettings,
+		fetchProjectPoolSettings,
+		updateCurrentProjectPoolSettings,
 		addMember,
 		updateMemberRole,
 		removeMember,

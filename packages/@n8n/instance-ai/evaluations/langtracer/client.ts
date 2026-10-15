@@ -32,13 +32,24 @@ export type LangTracerSuiteSummary = z.infer<typeof suiteSummarySchema>;
 export type ExportedSuite = z.infer<typeof exportedSuiteSchema>;
 export type LangTracerCaseRef = z.infer<typeof caseRefSchema>;
 
+export function findLangTracerSuite(
+	suites: LangTracerSuiteSummary[],
+	requested: string,
+): LangTracerSuiteSummary | undefined {
+	return suites.find((suite) => suite.slug === requested || String(suite.id) === requested);
+}
+
 /** Fields patchable via `PATCH /cases/:id` — a create body minus the create-only
  *  keys (`suiteId`/`synthetic`). `scenarios` are sidecar rows the server reconciles
  *  by name on PATCH (upsert + delete missing); a server predating lang-tracer #48
  *  strips the key silently, leaving the old scenarios in place. */
 export type LangTracerUpdateCaseBody = Partial<
-	Omit<LangTracerCreateCaseBody, 'suiteId' | 'synthetic'>
->;
+	Omit<LangTracerCreateCaseBody, 'suiteId' | 'synthetic' | 'seed'>
+> & {
+	/** Explicit `null` CLEARS a stored seed. An omitted key is a server-side no-op,
+	 *  so a disk case that drops its seed needs the null to take effect. */
+	seed?: LangTracerCreateCaseBody['seed'] | null;
+};
 
 export class LangTracerClient {
 	constructor(private readonly config: LangTracerConfig) {}

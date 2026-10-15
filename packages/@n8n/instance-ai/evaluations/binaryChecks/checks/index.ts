@@ -33,6 +33,7 @@ import { noInvalidFromAi } from './no-invalid-from-ai';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
 import { noUnreachableNodes } from './no-unreachable-nodes';
 import { responseDescribesChangesAccurately } from './response-describes-changes-accurately';
+import { secretsUseCredentialsNotParameters } from './secrets-use-credentials-not-parameters';
 import { switchFallbackOutputEnabled } from './switch-fallback-output-enabled';
 import { toolsHaveParameters } from './tools-have-parameters';
 import { validDataFlow } from './valid-data-flow';
@@ -90,7 +91,11 @@ export const NODES_CRAFTSMANSHIP_CHECKS: BinaryCheck[] = [
 
 export const EFFICIENCY_CHECKS: BinaryCheck[] = [noExcessiveBuildFailures];
 
-export const SECURITY_CHECKS: BinaryCheck[] = [noHardcodedCredentials, inboundTriggerAuthDefaults];
+export const SECURITY_CHECKS: BinaryCheck[] = [
+	noHardcodedCredentials,
+	inboundTriggerAuthDefaults,
+	secretsUseCredentialsNotParameters,
+];
 
 export const ALL_CHECKS: BinaryCheck[] = [
 	...STRUCTURE_CHECKS,

@@ -1,12 +1,14 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
 import { binaryToString, tryParseUrl } from '@n8n/backend-network';
+import { sleep } from '@n8n/utils/sleep';
 import crypto from 'crypto';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import { NodeOperationError, jsonParse, sleep } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import type {
 	IAdditionalCredentialOptions,
 	IDataObject,
@@ -93,7 +95,7 @@ export async function requestWithAuthenticationPaginated(
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$request: sanitizedRequest ?? requestOptions,
-		$response: {} as IN8nHttpFullResponse,
+		$response: {},
 		$version: node.typeVersion,
 		$pageCount: 0,
 	};
@@ -117,7 +119,7 @@ export async function requestWithAuthenticationPaginated(
 			executeData,
 			additionalKeys,
 			false,
-		) as object as PaginationOptions['request'];
+		) as object;
 
 		const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
 
@@ -153,7 +155,7 @@ export async function requestWithAuthenticationPaginated(
 
 		if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
 			// Keep the original string version that we can use it to hash if needed
-			contentBody = await binaryToString(newResponse.body as Buffer | Readable);
+			contentBody = await binaryToString(newResponse.body);
 
 			const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
 			if (responseContentType.includes('application/json')) {
@@ -259,7 +261,7 @@ export async function requestWithAuthenticationPaginated(
 				// now an error manually if the response code is not a success one.
 				let data = tempResponseData.body;
 				if (data instanceof Readable && paginationOptions.binaryResult !== true) {
-					data = await binaryToString(data as Buffer | Readable);
+					data = await binaryToString(data);
 				} else if (typeof data === 'object') {
 					data = JSON.stringify(data);
 				}

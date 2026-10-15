@@ -1,10 +1,12 @@
 import { buildSchemaContexts, findOutputParserTargets } from './context';
 import { buildDateAnchors } from './date-anchors';
+import { describeDataTableRead, readDataTableReadParameters } from './data-table-read';
 import { workflowToMermaid } from './mermaid';
 import { parsePinDataResponse, repairStructuredOutput } from './parse';
 import { buildNodeSchemaSection, buildPinDataUserPrompt } from './prompt';
-import type { OutputSchemaLookup } from './types';
-import type { WorkflowJSON } from '../types/base';
+import type { NodeSchemaContext, OutputSchemaLookup } from './types';
+import { buildFieldViolationRetryMessage, collectPinFieldViolations } from './validate';
+import type { NodeJSON, WorkflowJSON } from '../types/base';
 
 const workflow = {
 	nodes: [
@@ -86,6 +88,7 @@ describe('buildSchemaContexts', () => {
 			resource: 'row',
 			operation: 'get',
 			hasOutputParser: false,
+			parameters: workflow.nodes[0].parameters,
 		});
 		expect(contexts[0].schema).toEqual({ type: 'object', properties: { id: {} } });
 	});
@@ -107,6 +110,114 @@ describe('buildSchemaContexts', () => {
 			operation: 'get',
 			schema: undefined,
 		});
+	});
+});
+
+describe('Data Table read parameters', () => {
+	const lookup = {
+		name: 'Zone Lookup',
+		type: 'n8n-nodes-base.dataTable',
+		typeVersion: 1.1,
+		parameters: {
+			resource: 'row',
+			operation: 'get',
+			matchType: 'allConditions',
+			filters: {
+				conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			},
+			returnAll: false,
+			limit: 1,
+		},
+	} as unknown as NodeJSON;
+
+	it('derives the filter, match type and limit of a get node into its context', () => {
+		expect(buildSchemaContexts([lookup])[0].dataTableRead).toEqual({
+			matchType: 'allConditions',
+			conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			returnAll: false,
+			limit: 1,
+		});
+	});
+
+	it('leaves other nodes and Data Table writes without read parameters', () => {
+		const insert = { ...lookup, parameters: { resource: 'row', operation: 'insert' } };
+		expect(buildSchemaContexts([insert])[0].dataTableRead).toBeUndefined();
+		expect(buildSchemaContexts([workflow.nodes[3]])[0].dataTableRead).toBeUndefined();
+	});
+
+	it('tells the generator to pin the rows the node returns, resolving expression values', () => {
+		const prompt = buildPinDataUserPrompt(
+			{ nodes: [lookup], connections: {} } as unknown as WorkflowJSON,
+			buildSchemaContexts([lookup]),
+			{ dateAnchors: 'anchors' },
+		);
+
+		expect(prompt).toContain(
+			'OUTPUTS only the table rows its filter selects — `country` eq "={{ $json.country }}"; at most 1 row(s)',
+		);
+		expect(prompt).toContain('resolve it from the Test Scenario');
+		expect(prompt).toContain('never the whole table');
+	});
+
+	it('reads an expression-filled match type, returnAll or limit as the widest setting', () => {
+		const dynamic = {
+			...lookup,
+			parameters: {
+				...lookup.parameters,
+				matchType: '={{ $json.mode }}',
+				returnAll: '={{ $json.all }}',
+				limit: '={{ $json.n }}',
+			},
+		};
+
+		expect(readDataTableReadParameters(dynamic)).toEqual({
+			matchType: 'anyCondition',
+			conditions: [{ keyName: 'country', condition: 'eq', keyValue: '={{ $json.country }}' }],
+			returnAll: true,
+		});
+	});
+
+	it('reads the order the node applies and leaves an expression-filled limit open', () => {
+		const ordered = {
+			...lookup,
+			parameters: {
+				...lookup.parameters,
+				orderBy: true,
+				orderByColumn: 'employees',
+				limit: '={{ $json.n }}',
+			},
+		};
+
+		expect(readDataTableReadParameters(ordered)).toMatchObject({ sortBy: ['employees', 'DESC'] });
+		expect(readDataTableReadParameters(ordered)?.limit).toBeUndefined();
+		expect(
+			describeDataTableRead({
+				matchType: 'anyCondition',
+				conditions: [],
+				returnAll: false,
+				sortBy: ['createdAt', 'DESC'],
+			}),
+		).toBe('no filter (every row); ordered by `createdAt` DESC; the row limit is an expression');
+	});
+
+	it('keeps the read description when the real table columns are known', () => {
+		const section = buildNodeSchemaSection({
+			nodeName: 'Zone Lookup',
+			nodeType: 'n8n-nodes-base.dataTable',
+			typeVersion: 1.1,
+			dataTableColumns: [{ name: 'country', type: 'string' }],
+			dataTableRead: {
+				matchType: 'allConditions',
+				conditions: [{ keyName: 'country', condition: 'eq', keyValue: 'FR' }],
+				returnAll: false,
+				limit: 1,
+			},
+		}).join('\n');
+
+		expect(section).toContain(
+			'OUTPUTS only the table rows its filter selects — `country` eq "FR"; at most 1 row(s)',
+		);
+		expect(section).toContain('REAL Data Table columns');
 	});
 });
 
@@ -171,6 +282,26 @@ describe('parsePinDataResponse', () => {
 	it('returns {} for non-JSON responses and skips unrequested nodes', () => {
 		expect(parsePinDataResponse('sorry', ['Get Rows'])).toEqual({});
 		expect(parsePinDataResponse(JSON.stringify({ Other: [{}] }), ['Get Rows'])).toEqual({});
+	});
+
+	it('drops phantom empty items so a zero-item premise pins as []', () => {
+		expect(parsePinDataResponse(JSON.stringify({ 'Get Rows': [{}] }), ['Get Rows'])).toEqual({
+			'Get Rows': [],
+		});
+		expect(
+			parsePinDataResponse(JSON.stringify({ 'Get Rows': [{ json: {} }] }), ['Get Rows']),
+		).toEqual({ 'Get Rows': [] });
+	});
+
+	it('keeps real items when dropping empty ones, and items with non-json payloads', () => {
+		expect(
+			parsePinDataResponse(JSON.stringify({ 'Get Rows': [{}, { id: 1 }] }), ['Get Rows']),
+		).toEqual({ 'Get Rows': [{ json: { id: 1 } }] });
+		expect(
+			parsePinDataResponse(JSON.stringify({ 'Get Rows': [{ json: {}, binary: { data: {} } }] }), [
+				'Get Rows',
+			]),
+		).toEqual({ 'Get Rows': [{ json: {}, binary: { data: {} } }] });
 	});
 });
 
@@ -313,6 +444,255 @@ describe('repairStructuredOutput', () => {
 	});
 });
 
+describe('information extractor own-schema enrichment', () => {
+	const extractorNode = {
+		name: 'Extract Invoice Details',
+		type: '@n8n/n8n-nodes-langchain.informationExtractor',
+		typeVersion: 1.2,
+		parameters: {
+			schemaType: 'fromAttributes',
+			attributes: {
+				attributes: [
+					{ name: 'invoice_number', type: 'string', description: 'The invoice id', required: true },
+					{ name: 'total_amount', type: 'number', required: false },
+				],
+			},
+		},
+	} as unknown as NodeJSON;
+	const extractorWorkflow = {
+		nodes: [extractorNode],
+		connections: {},
+	} as unknown as WorkflowJSON;
+
+	it('surfaces the declared attributes as a schema and a field contract', () => {
+		const [ctx] = buildSchemaContexts([extractorNode]);
+
+		expect(ctx.outputParser?.schemaIsExample).toBe(false);
+		expect(ctx.outputParser?.schemaText).toContain('"invoice_number"');
+		expect(ctx.outputParser?.schemaText).toContain('"total_amount"');
+		expect(ctx.outputParser?.schemaText).toContain('"required": [\n    "invoice_number"\n  ]');
+		expect(ctx.declaredFields).toEqual({
+			keys: ['invoice_number', 'total_amount'],
+			envelopeKey: 'output',
+			exact: false,
+			source: 'declared-schema',
+		});
+	});
+
+	it('embeds the attribute names in the prompt schema section', () => {
+		const [ctx] = buildSchemaContexts([extractorNode]);
+		const section = buildNodeSchemaSection(ctx).join('\n');
+
+		expect(section).toContain('total_amount');
+		expect(section).toContain('use its exact field names');
+	});
+
+	it('reads fromJson examples and manual schemas off the extractor parameters', () => {
+		const fromJson = {
+			...extractorNode,
+			parameters: { schemaType: 'fromJson', jsonSchemaExample: '{"po_number": "PO-1"}' },
+		};
+		expect(buildSchemaContexts([fromJson])[0].declaredFields).toMatchObject({
+			keys: ['po_number'],
+			envelopeKey: 'output',
+		});
+
+		const manual = {
+			...extractorNode,
+			parameters: {
+				schemaType: 'manual',
+				inputSchema: '{"type":"object","properties":{"po_number":{}}}',
+			},
+		};
+		expect(buildSchemaContexts([manual])[0].declaredFields).toMatchObject({
+			keys: ['po_number'],
+		});
+	});
+
+	it('reads schema declarations stored as raw objects (eval-builder quirk)', () => {
+		const rawObjectExample = {
+			...extractorNode,
+			parameters: {
+				schemaType: 'fromJson',
+				jsonSchemaExample: { amount: 4750, po_number: 'PO-1' },
+			},
+		};
+		expect(buildSchemaContexts([rawObjectExample])[0].declaredFields).toMatchObject({
+			keys: ['amount', 'po_number'],
+			envelopeKey: 'output',
+		});
+
+		const parserWorkflow = {
+			nodes: [
+				{
+					name: 'Invoice Schema',
+					type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+					typeVersion: 1.2,
+					parameters: { schemaType: 'fromJson', jsonSchemaExample: { amount: 1 } },
+				},
+			],
+			connections: {
+				'Invoice Schema': {
+					ai_outputParser: [[{ node: 'AI Root', type: 'ai_outputParser', index: 0 }]],
+				},
+			},
+		} as unknown as WorkflowJSON;
+		expect(findOutputParserTargets(parserWorkflow).get('AI Root')).toEqual({
+			schemaText: '{"amount":1}',
+			schemaIsExample: true,
+		});
+	});
+
+	it('repairs flat extractor pins into the output envelope without a parser connection', () => {
+		const flat = { 'Extract Invoice Details': [{ json: { invoice_number: 'INV-1' } }] };
+
+		expect(
+			repairStructuredOutput(flat, extractorWorkflow, buildSchemaContexts([extractorNode]))[
+				'Extract Invoice Details'
+			][0],
+		).toEqual({ json: { output: { invoice_number: 'INV-1' } } });
+	});
+});
+
+describe('data table column contracts', () => {
+	const dataTableNode = workflow.nodes[0]; // Get Rows
+
+	it('builds an exact contract including the system columns', () => {
+		const [ctx] = buildSchemaContexts([dataTableNode], undefined, undefined, {
+			'Get Rows': [
+				{ name: 'contact_email', type: 'string' },
+				{ name: 'contact_name', type: 'string' },
+			],
+		});
+
+		expect(ctx.declaredFields).toEqual({
+			keys: ['id', 'createdAt', 'updatedAt', 'contact_email', 'contact_name'],
+			exact: true,
+			source: 'data-table-columns',
+		});
+	});
+
+	it('renders the real columns as the authoritative row shape in the prompt', () => {
+		const [ctx] = buildSchemaContexts(
+			[dataTableNode],
+			() => ({ type: 'object', properties: { id: {} } }),
+			undefined,
+			{ 'Get Rows': [{ name: 'contact_email', type: 'string' }] },
+		);
+		const section = buildNodeSchemaSection(ctx).join('\n');
+
+		expect(section).toContain('REAL Data Table columns');
+		expect(section).toContain('contact_email (string)');
+		// The static `__schema__` (system columns only) is superseded, not embedded.
+		expect(section).not.toContain('Output JSON Schema');
+	});
+});
+
+describe('collectPinFieldViolations', () => {
+	const contexts = [
+		{
+			nodeName: 'Get Rows',
+			nodeType: 'n8n-nodes-base.dataTable',
+			typeVersion: 1,
+			declaredFields: {
+				keys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				exact: true,
+				source: 'data-table-columns',
+			},
+		},
+		{
+			nodeName: 'Extract',
+			nodeType: '@n8n/n8n-nodes-langchain.informationExtractor',
+			typeVersion: 1.2,
+			declaredFields: {
+				keys: ['total_amount', 'po_number'],
+				envelopeKey: 'output',
+				exact: false,
+				source: 'declared-schema',
+			},
+		},
+	] satisfies NodeSchemaContext[];
+
+	it('flags renamed and missing keys on exact contracts', () => {
+		const violations = collectPinFieldViolations(
+			{
+				'Get Rows': [{ json: { id: 1, createdAt: 'x', updatedAt: 'x', email: 'a@example.com' } }],
+			},
+			contexts,
+		);
+
+		expect(violations).toEqual([
+			{
+				nodeName: 'Get Rows',
+				unknownKeys: ['email'],
+				missingKeys: ['contact_email'],
+				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				envelopeKey: undefined,
+			},
+		]);
+	});
+
+	it('checks fields inside the declared envelope and allows subsets there', () => {
+		const drifted = { Extract: [{ json: { output: { invoice_amount: 5 } } }] };
+		expect(collectPinFieldViolations(drifted, contexts)).toMatchObject([
+			{ nodeName: 'Extract', unknownKeys: ['invoice_amount'], missingKeys: [] },
+		]);
+
+		const subset = { Extract: [{ json: { output: { total_amount: 5 } } }] };
+		expect(collectPinFieldViolations(subset, contexts)).toEqual([]);
+	});
+
+	it.each([
+		['a non-object json payload', 'not a row'],
+		['an array json payload', [] as unknown],
+	])('flags %s under an exact contract as missing every declared key', (_label, json) => {
+		// Skipping malformed items let the pin pass with rows no downstream column
+		// expression can resolve — it must take the correction/failure path instead.
+		expect(collectPinFieldViolations({ 'Get Rows': [{ json }] }, contexts)).toEqual([
+			{
+				nodeName: 'Get Rows',
+				unknownKeys: [],
+				missingKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				declaredKeys: ['id', 'createdAt', 'updatedAt', 'contact_email'],
+				envelopeKey: undefined,
+			},
+		]);
+	});
+
+	it('leaves malformed items alone when the contract is not exact', () => {
+		// A plain-text agent answer is a legitimate non-object payload.
+		expect(collectPinFieldViolations({ Extract: [{ json: 'plain answer' }] }, contexts)).toEqual(
+			[],
+		);
+	});
+
+	it('accepts empty pins, conforming rows, and nodes without contracts', () => {
+		const pinData = {
+			'Get Rows': [],
+			Extract: [{ json: { output: { total_amount: 5, po_number: 'PO-1' } } }],
+			Unrelated: [{ json: { whatever: true } }],
+		};
+
+		expect(collectPinFieldViolations(pinData, contexts)).toEqual([]);
+	});
+
+	it('builds an actionable retry message', () => {
+		const message = buildFieldViolationRetryMessage([
+			{
+				nodeName: 'Get Rows',
+				unknownKeys: ['email'],
+				missingKeys: ['contact_email'],
+				declaredKeys: ['id', 'contact_email'],
+				envelopeKey: undefined,
+			},
+		]);
+
+		expect(message).toContain('Get Rows');
+		expect(message).toContain('remove/rename these unknown fields: email');
+		expect(message).toContain('every item must also carry: contact_email');
+	});
+});
+
 describe('workflowToMermaid', () => {
 	it('renders nodes with resource/operation labels and connections', () => {
 		const mermaid = workflowToMermaid(workflow);
@@ -366,6 +746,38 @@ describe('ai-root shapes', () => {
 		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.textClassifier')).toContain(
 			'passed through',
 		);
+	});
+
+	it('describes the classifier by what its options ask for', async () => {
+		const { describeAiRootShape } = await import('./ai-root-shapes.js');
+		const classifier = '@n8n/n8n-nodes-langchain.textClassifier';
+
+		const on = describeAiRootShape(classifier, { classifierReportsConfidence: true });
+		const off = describeAiRootShape(classifier, { classifierReportsConfidence: false });
+
+		expect(on).not.toBe(off);
+		expect(off).toBe(describeAiRootShape(classifier));
+		expect(on).toContain('`classification` object');
+		expect(off).toContain('no classification wrapper key');
+	});
+
+	it('carries the classifier option into the rendered prompt section', async () => {
+		const { buildSchemaContexts } = await import('./context.js');
+		const { buildNodeSchemaSection } = await import('./prompt.js');
+		const node = (options: Record<string, unknown>) => ({
+			id: 'classifier-1',
+			name: 'Classifier',
+			type: '@n8n/n8n-nodes-langchain.textClassifier',
+			typeVersion: 1.1,
+			position: [0, 0] as [number, number],
+			parameters: { options },
+		});
+
+		const [on] = buildSchemaContexts([node({ includeConfidenceScores: true })]);
+		const [off] = buildSchemaContexts([node({})]);
+
+		expect(buildNodeSchemaSection(on).join('\n')).toContain('`classification` object');
+		expect(buildNodeSchemaSection(off).join('\n')).toContain('no classification wrapper key');
 	});
 
 	it('derives the structured envelope key from a with-parser schema', async () => {

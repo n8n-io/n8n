@@ -33,9 +33,9 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import Banner from '@/app/components/Banner.vue';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
@@ -70,6 +70,7 @@ const settingsStore = useSettingsStore();
 // Constants
 const LABEL_SIZE: IParameterLabel = { size: 'medium' };
 const internalActiveTab = ref(props.data?.activeTab ?? 'connection');
+const contentArea = ref<HTMLElement>();
 
 // Modal state
 const providerTypes = computed(() => props.data.providerTypes ?? []);
@@ -182,6 +183,7 @@ function handleSettingChange(update: IUpdateInformation) {
 
 async function handleSave() {
 	await modal.saveConnection();
+	if (contentArea.value) contentArea.value.scrollTop = 0;
 }
 
 function handleDelete() {
@@ -314,7 +316,7 @@ onMounted(async () => {
 					/>
 				</nav>
 
-				<div :class="$style.contentArea">
+				<div ref="contentArea" :class="$style.contentArea">
 					<div v-if="modal.connection.isLoading.value">
 						<N8nLoading variant="p" :rows="4" />
 					</div>

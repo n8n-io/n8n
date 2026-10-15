@@ -6,6 +6,8 @@
  * recognition, and a guardrail check_fn for runtime enforcement.
  */
 
+import { safeRegex } from 'n8n-workflow';
+
 import type { CreateCheckFn, GuardrailResult } from '../types';
 
 export type SecretKeysConfig = {
@@ -13,27 +15,11 @@ export type SecretKeysConfig = {
 	customRegex?: string[];
 };
 
-/**
- * Common key prefixes used in secret keys.
- */
-const COMMON_KEY_PREFIXES = [
-	'key-',
-	'sk-',
-	'sk_',
-	'pk_',
-	'pk-',
-	'ghp_',
-	'AKIA',
-	'xox',
-	'SG.',
-	'hf_',
-	'api-',
-	'apikey-',
-	'token-',
-	'secret-',
-	'SHA:',
-	'Bearer ',
-];
+// Vendor prefixes stay detected even with a file suffix. Generic prefixes
+// remain allowlisted so filenames like api-client.ts are not flagged.
+const VENDOR_KEY_PREFIXES = ['sk-', 'sk_', 'pk_', 'pk-', 'ghp_', 'AKIA', 'xox', 'SG.', 'hf_'];
+const GENERIC_KEY_PREFIXES = ['key-', 'api-', 'apikey-', 'token-', 'secret-', 'SHA:', 'Bearer '];
+const COMMON_KEY_PREFIXES = [...VENDOR_KEY_PREFIXES, ...GENERIC_KEY_PREFIXES];
 
 /**
  * File extensions to ignore when strict_mode is False.
@@ -175,11 +161,18 @@ function containsAllowedPattern(text: string): boolean {
 	}
 
 	// Regex for allowed file extensions - must end with the extension
+	// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 	const extPattern = new RegExp(
 		`^[^\\s]*(${ALLOWED_EXTENSIONS.map((ext) => ext.replace('.', '\\.')).join('|')})$`,
 		'i',
 	);
-	return extPattern.test(text);
+	if (!extPattern.test(text)) {
+		return false;
+	}
+	if (VENDOR_KEY_PREFIXES.some((prefix) => text.startsWith(prefix))) {
+		return false;
+	}
+	return true;
 }
 
 /**
@@ -194,8 +187,7 @@ function isSecretCandidate(
 	if (customRegex) {
 		for (const pattern of customRegex) {
 			try {
-				const regex = new RegExp(pattern);
-				if (regex.test(s)) {
+				if (safeRegex.test(pattern, s)) {
 					return true;
 				}
 			} catch {

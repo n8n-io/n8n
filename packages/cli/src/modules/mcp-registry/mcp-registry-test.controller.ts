@@ -1,6 +1,6 @@
 import { Post, RestController } from '@n8n/decorators';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 import { McpRegistryServerEntity } from './registry/mcp-registry-server.entity';
 import { McpRegistryServerRepository } from './registry/mcp-registry-server.repository';
@@ -10,7 +10,7 @@ import { notionMockServer, linearMockServer } from './registry/mock-servers';
 
 /**
  * Test-only endpoints for seeding MCP registry data in E2E tests.
- * Only registered when E2E_TESTS is set.
+ * Only registered when E2E_TESTS is set; callers must be authenticated.
  */
 @RestController('/mcp-registry')
 export class McpRegistryTestController {
@@ -19,7 +19,7 @@ export class McpRegistryTestController {
 		private readonly service: McpRegistryService,
 	) {}
 
-	@Post('/test/seed', { skipAuth: true })
+	@Post('/test/seed')
 	async seed() {
 		this.assertE2ETestsEnabled();
 

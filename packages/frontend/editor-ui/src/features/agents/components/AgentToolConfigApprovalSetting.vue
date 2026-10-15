@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	modelValue: boolean;
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -25,6 +26,7 @@ const i18n = useI18n();
 		</div>
 		<N8nSwitch2
 			:model-value="modelValue"
+			:disabled="disabled"
 			data-test-id="agent-tool-approval-toggle"
 			@update:model-value="emit('update:modelValue', $event)"
 		/>
@@ -38,7 +40,6 @@ const i18n = useI18n();
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--2xs);
-	margin-right: var(--spacing--lg);
 }
 
 .approvalText {

@@ -23,7 +23,7 @@ import type {
 	INodePropertyOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, safeRegex } from 'n8n-workflow';
 
 export async function koBoToolboxApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -106,8 +106,7 @@ export function parseStringList(value: string): string[] {
 }
 
 const matchWildcard = (value: string, pattern: string): boolean => {
-	const regex = new RegExp(`^${escapeRegExp(pattern).replace('\\*', '.*')}$`);
-	return regex.test(value);
+	return safeRegex.test(`^${escapeRegExp(pattern).replace('\\*', '.*')}$`, value);
 };
 
 const formatValue = (value: any, format: string): any => {

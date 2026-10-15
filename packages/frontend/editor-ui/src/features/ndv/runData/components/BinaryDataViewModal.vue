@@ -27,25 +27,33 @@ let currentBlobUrl: string | null = null;
 
 const binaryData = computed(() => {
 	const { id, mimeType, fileName } = props.data.binaryData;
-	let fileType = props.data.binaryData.fileType;
+
+	// The renderer choice always comes from mimeType. fileType is supplied by
+	// the item's producer and does not steer it. An unrecognised, empty or
+	// absent mimeType gives `other`, which has no renderer.
+	let fileType = 'other';
 
 	if (mimeType) {
-		if (mimeType.startsWith('image/')) fileType = 'image';
-		else if (mimeType.startsWith('audio/')) fileType = 'audio';
-		else if (mimeType.startsWith('video/')) fileType = 'video';
-		else if (mimeType === 'application/pdf') fileType = 'pdf';
-		else if (mimeType === 'application/json' || mimeType === 'text/json') fileType = 'json';
-		else if (mimeType === 'text/html') fileType = 'html';
-		else if (mimeType === 'text/markdown' || mimeType.includes('markdown')) fileType = 'markdown';
-		else if (mimeType === 'text/plain') fileType = 'text';
-		else if (fileType === undefined) fileType = 'other';
+		// Match on the base type, so a parameter such as `; charset=utf-8` does not
+		// stop a type matching. Each single type is compared whole, so a longer name
+		// such as `application/pdfx` does not match a shorter one.
+		const baseType = mimeType.split(';')[0].trim();
+
+		if (baseType.startsWith('image/')) fileType = 'image';
+		else if (baseType.startsWith('audio/')) fileType = 'audio';
+		else if (baseType.startsWith('video/')) fileType = 'video';
+		else if (baseType === 'application/pdf') fileType = 'pdf';
+		else if (baseType === 'application/json' || baseType === 'text/json') fileType = 'json';
+		else if (baseType === 'text/html') fileType = 'html';
+		else if (baseType === 'text/markdown' || baseType.includes('markdown')) fileType = 'markdown';
+		else if (baseType.startsWith('text/')) fileType = 'text';
 	}
 
 	return {
 		id,
 		mimeType,
 		fileName,
-		fileType: fileType || 'other',
+		fileType,
 	};
 });
 
@@ -87,7 +95,9 @@ async function loadBinaryData() {
 
 			case 'pdf': {
 				const fetched = await fetch(binaryUrl, { credentials: 'include' });
-				const blob = await fetched.blob();
+				// The blob type is fixed to application/pdf, not taken from the fetched
+				// response, so the iframe always renders it as a PDF.
+				const blob = new Blob([await fetched.blob()], { type: 'application/pdf' });
 
 				currentBlobUrl = URL.createObjectURL(blob);
 				embedSource.value = currentBlobUrl;
@@ -175,11 +185,12 @@ onBeforeUnmount(() => {
 					>
 
 					<!-- PDF -->
-					<embed
+					<!-- An iframe, not an embed: an `object-src 'none'` CSP refuses embeds -->
+					<iframe
 						v-else-if="binaryData.fileType === 'pdf'"
 						:src="embedSource"
 						class="binary-data"
-						type="application/pdf"
+						:title="binaryData.fileName || i18n.baseText('binaryDataDisplay.filePreview')"
 					/>
 
 					<!-- UNKNOWN -->
@@ -234,6 +245,7 @@ onBeforeUnmount(() => {
 	.binary-data {
 		height: 100%;
 		width: 100%;
+		border: 0;
 	}
 
 	.text-content {

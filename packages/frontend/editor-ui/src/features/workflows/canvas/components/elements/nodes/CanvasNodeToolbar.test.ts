@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
@@ -11,9 +11,9 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
-import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
+import { EditorEnabledFeaturesKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -297,6 +297,76 @@ describe('CanvasNodeToolbar', () => {
 		await userEvent.hover(toolbar);
 
 		expect(toolbar).toHaveClass('forceVisible');
+	});
+
+	describe('when the workflow uses a credential the user cannot use', () => {
+		const renderWithCredentials = (currentUserCanUse: boolean, sharingEnabled = true) => {
+			const testingPinia = createTestingPinia({ stubActions: false });
+			setActivePinia(testingPinia);
+			useSettingsStore().settings.granularCredentialSharing = sharingEnabled;
+
+			const documentStore = {
+				usedCredentials: {
+					'cred-1': {
+						id: 'cred-1',
+						name: "Alice's Gmail",
+						credentialType: 'gmailOAuth2',
+						currentUserCanUse,
+						homeProject: { id: 'p1', name: 'Alice Chen <alice@n8n.io>', type: 'personal' },
+					},
+				},
+				allNodes: [
+					{ name: 'Gmail', credentials: { gmailOAuth2: { id: 'cred-1', name: "Alice's Gmail" } } },
+				],
+				getNodeByName: () => undefined,
+			};
+
+			return renderComponent({
+				pinia: testingPinia,
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: shallowRef(documentStore),
+						...createCanvasNodeProvide(),
+						...createCanvasProvide(),
+					},
+				},
+			});
+		};
+
+		it('should disable the execute node button', () => {
+			const { getByTestId } = renderWithCredentials(false);
+
+			expect(getByTestId('execute-node-button')).toBeDisabled();
+		});
+
+		it('should show the reason in the execute node tooltip', async () => {
+			const { getByTestId } = renderWithCredentials(false);
+
+			await hoverTooltipTrigger(getByTestId('execute-node-button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent(/Alice's Gmail/));
+			expect(getTooltip()).not.toHaveTextContent('Execute step');
+		});
+
+		it('should keep the execute node button enabled when the user can use the credential', () => {
+			const { getByTestId } = renderWithCredentials(true);
+
+			expect(getByTestId('execute-node-button')).toBeEnabled();
+		});
+
+		it('should keep the execute node button enabled when credential sharing is off', () => {
+			const { getByTestId } = renderWithCredentials(false, false);
+
+			expect(getByTestId('execute-node-button')).toBeEnabled();
+		});
+
+		it('should not emit "run" when the disabled button is clicked', async () => {
+			const { getByTestId, emitted } = renderWithCredentials(false);
+
+			await userEvent.click(getByTestId('execute-node-button'));
+
+			expect(emitted('run')).toBeUndefined();
+		});
 	});
 
 	describe('Add to AI button', () => {

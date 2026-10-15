@@ -1,7 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatAnthropic } from '@langchain/anthropic';
-import { N8nLlmTracing, makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	N8nLlmTracing,
+	makeN8nLlmFailedAttemptHandler,
+	getProxyAgent,
+	proxyFetch,
+	aiClientFetch,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -17,6 +23,7 @@ const MockedChatAnthropic = vi.mocked(ChatAnthropic);
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 describe('LmChatAnthropic', () => {
 	let lmChatAnthropic: LmChatAnthropic;
@@ -67,7 +74,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -111,6 +118,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -145,6 +153,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -179,6 +188,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -214,6 +224,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -255,6 +266,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -298,6 +310,7 @@ describe('LmChatAnthropic', () => {
 						temperature: undefined,
 					},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -363,6 +376,7 @@ describe('LmChatAnthropic', () => {
 			expect(MockedChatAnthropic).toHaveBeenCalledWith(
 				expect.objectContaining({
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -404,6 +418,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -421,14 +436,22 @@ describe('LmChatAnthropic', () => {
 			let mockLoadContext: ILoadOptionsFunctions;
 			let mockGetCredentials: Mock;
 			let fetchSpy: Mock;
+			let egressFilter: { createSecureLookup: Mock };
+			const secureLookup = vi.fn();
 
 			beforeEach(() => {
 				mockGetCredentials = vi.fn();
 				fetchSpy = vi.fn();
-				vi.stubGlobal('fetch', fetchSpy);
+				egressFilter = { createSecureLookup: vi.fn().mockReturnValue(secureLookup) };
+				vi.mocked(proxyFetch).mockImplementation(
+					fetchSpy as unknown as typeof import('@n8n/ai-utilities')['proxyFetch'],
+				);
 
 				mockLoadContext = {
 					getCredentials: mockGetCredentials,
+					helpers: {
+						getSecureEgressFilter: vi.fn().mockReturnValue(egressFilter),
+					},
 				} as unknown as ILoadOptionsFunctions;
 			});
 
@@ -474,12 +497,15 @@ describe('LmChatAnthropic', () => {
 				const result = await searchModels.call(mockLoadContext);
 
 				expect(fetchSpy).toHaveBeenCalledWith(
-					'https://api.anthropic.com/v1/models',
 					expect.objectContaining({
-						headers: expect.objectContaining({
-							'x-api-key': 'test-api-key',
-							'anthropic-version': '2023-06-01',
+						input: 'https://api.anthropic.com/v1/models',
+						init: expect.objectContaining({
+							headers: expect.objectContaining({
+								'x-api-key': 'test-api-key',
+								'anthropic-version': '2023-06-01',
+							}),
 						}),
+						egressFilter,
 					}),
 				);
 
@@ -555,7 +581,9 @@ describe('LmChatAnthropic', () => {
 				const { searchModels } = lmChatAnthropic.methods.listSearch;
 				await searchModels.call(mockLoadContext);
 
-				expect(fetchSpy).toHaveBeenCalledWith(`${customURL}/v1/models`, expect.anything());
+				expect(fetchSpy).toHaveBeenCalledWith(
+					expect.objectContaining({ input: `${customURL}/v1/models` }),
+				);
 			});
 
 			it('should handle empty model list', async () => {

@@ -1,10 +1,9 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
-
-import type { EventService } from '@/events/event.service';
 
 import { DURATION_BUCKETS_SECONDS } from '../constant';
 import { PrometheusWorkflowExecutionDurationMetricsService } from '../workflow-execution-duration-metrics.service';

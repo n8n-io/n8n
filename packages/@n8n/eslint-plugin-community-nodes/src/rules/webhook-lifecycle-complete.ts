@@ -4,6 +4,7 @@ import {
 	createRule,
 	findClassProperty,
 	findObjectProperty,
+	getPropertyKeyName,
 	isNodeTypeClass,
 	WEBHOOK_LIFECYCLE_METHODS,
 	type WebhookLifecycleMethod,
@@ -80,12 +81,7 @@ function declaresKey(
 	name: string,
 ): property is TSESTree.Property {
 	if (property.type !== AST_NODE_TYPES.Property) return false;
-	if (property.computed) return false;
-
-	return (
-		(property.key.type === AST_NODE_TYPES.Identifier && property.key.name === name) ||
-		(property.key.type === AST_NODE_TYPES.Literal && property.key.value === name)
-	);
+	return getPropertyKeyName(property) === name;
 }
 
 /** Returns true when the property supplies a method named `name`. */
@@ -114,9 +110,9 @@ function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleM
 	const [properties, spreads] = conclusiveProperties(group);
 
 	return WEBHOOK_LIFECYCLE_METHODS.filter((method) => {
-		const declared = [...properties].reverse().find((property): property is TSESTree.Property =>
-			declaresKey(property, method),
-		);
+		const declared = [...properties]
+			.reverse()
+			.find((property): property is TSESTree.Property => declaresKey(property, method));
 
 		// A key stated last says what the method really is, `delete: undefined`
 		// included. Otherwise a spread leaves it open, and its absence proves
@@ -187,12 +183,7 @@ export const WebhookLifecycleCompleteRule = createRule({
 					const group = asObjectExpression(groupProperty.value);
 					if (!group) continue;
 
-					const groupName =
-						groupProperty.key.type === AST_NODE_TYPES.Identifier
-							? groupProperty.key.name
-							: groupProperty.key.type === AST_NODE_TYPES.Literal
-								? String(groupProperty.key.value)
-								: 'default';
+					const groupName = getPropertyKeyName(groupProperty) ?? 'default';
 
 					const missing = findMissingMethods(group);
 					if (missing.length === 0) continue;

@@ -21,7 +21,7 @@ import {
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 

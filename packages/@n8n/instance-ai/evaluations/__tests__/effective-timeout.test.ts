@@ -1,4 +1,4 @@
-import { effectiveTimeoutMs } from '../harness/runner';
+import { effectiveTimeoutMs } from '../harness/cleanup';
 
 describe('effectiveTimeoutMs', () => {
 	it('gives complex cases 1.5x the base budget', () => {

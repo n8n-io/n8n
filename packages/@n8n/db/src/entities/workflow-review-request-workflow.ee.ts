@@ -20,4 +20,7 @@ export class WorkflowReviewRequestWorkflow extends WithStringId {
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowVersionId: string | null;
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	baselineVersionId: string | null;
 }

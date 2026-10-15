@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
 import { createPinia } from 'pinia';
+import { waitFor } from '@testing-library/vue';
+import { onClickOutside } from '@vueuse/core';
+import { OVERLAY_LAYER_SELECTOR } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
+import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import NodeCreator from './NodeCreator.vue';
 
 const mockFetchConfig = vi.fn();
@@ -49,7 +54,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: vi.fn(() => ({ headerHeight: 0 })),
+	useUIStore: vi.fn(() => ({ headerHeight: 65 })),
 }));
 
 vi.mock('@/features/shared/banners/banners.store', () => ({
@@ -60,7 +65,7 @@ vi.mock('@/features/ai/assistant/chatPanel.store', () => ({
 	useChatPanelStore: vi.fn(() => ({ isOpen: false, width: 0 })),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ isCanvasOnly: false })),
 }));
 
@@ -68,7 +73,8 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: vi.fn(() => ({})),
 }));
 
-vi.mock('@vueuse/core', () => ({
+vi.mock('@vueuse/core', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@vueuse/core')>()),
 	onClickOutside: vi.fn(),
 }));
 
@@ -79,7 +85,7 @@ vi.mock('vue-router', () => ({
 }));
 
 const renderComponent = createComponentRenderer(NodeCreator, {
-	global: { plugins: [createPinia()] },
+	global: { plugins: [createPinia()], stubs: { NodesListPanel: true } },
 });
 
 describe('NodeCreator', () => {
@@ -91,5 +97,33 @@ describe('NodeCreator', () => {
 		renderComponent();
 
 		expect(mockFetchConfig).toHaveBeenCalledOnce();
+	});
+
+	it('does not close on clicks inside Element Plus modals or reka overlays', () => {
+		renderComponent();
+
+		expect(vi.mocked(onClickOutside)).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.any(Function),
+			{ ignore: expect.arrayContaining(['.el-overlay-dialog', OVERLAY_LAYER_SELECTOR]) },
+		);
+	});
+
+	it('places the panel below the main header', () => {
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator')).toHaveStyle({ top: '65px' });
+	});
+
+	it('places the panel at the top of the embedded canvas', async () => {
+		const canvas = document.createElement('div');
+		canvas.getBoundingClientRect = () => new DOMRect(0, 120, 800, 600);
+
+		const { getByTestId } = renderComponent({
+			props: { active: true },
+			global: { provide: { [EmbeddedCanvasElementKey]: ref(canvas) } },
+		});
+
+		await waitFor(() => expect(getByTestId('node-creator')).toHaveStyle({ top: '120px' }));
 	});
 });

@@ -3,7 +3,7 @@ import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
-import { LIST_SIMPLIFY_SELECT } from '../../../v2/helpers/utils';
+import { LIST_SIMPLIFY_SELECT } from '../../../helpers/utils';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 
 // microsoftApiRequestAllItems calls microsoftApiRequest as a same-module
@@ -11,7 +11,8 @@ import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 // wouldn't intercept that internal call. Stubbing the network helper one
 // layer down instead (as transport/index.test.ts does) keeps both
 // microsoftApiRequest and microsoftApiRequestAllItems real and end-to-end.
-const SITE_ID = 'contoso.sharepoint.com,g1,g2';
+const SITE_ID =
+	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const GRAPH_BASE_URL = 'https://graph.microsoft.com';
 

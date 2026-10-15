@@ -4,8 +4,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import type { ResponseWithJobReference } from '../../helpers/interfaces';

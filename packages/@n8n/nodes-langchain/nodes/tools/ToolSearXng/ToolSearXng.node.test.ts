@@ -1,4 +1,4 @@
-import { SearxngSearch } from '@langchain/community/tools/searxng_search';
+import { DynamicTool } from '@langchain/core/tools';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -9,142 +9,239 @@ import { mock } from 'vitest-mock-extended';
 
 import { ToolSearXng } from './ToolSearXng.node';
 
-describe('ToolSearXng', () => {
-	describe('supplyData', () => {
-		beforeEach(() => {
-			vi.resetAllMocks();
-		});
+const SEARXNG_RESPONSE = {
+	results: [
+		{
+			title: 'First result',
+			url: 'https://example.com/1',
+			content: 'First snippet',
+		},
+		{
+			title: 'Second result',
+			url: 'https://example.com/2',
+			content: 'Second snippet',
+		},
+	],
+};
 
-		it('should return SearXNG tool instance', async () => {
+function createContext(
+	overrides: {
+		apiUrl?: string;
+		options?: Record<string, unknown>;
+		httpResponse?: unknown;
+		inputData?: INodeExecutionData[];
+	} = {},
+) {
+	const httpRequest = vi.fn().mockResolvedValue(overrides.httpResponse ?? SEARXNG_RESPONSE);
+	const ctx = mock<IExecuteFunctions>({
+		getInputData: vi.fn(() => overrides.inputData ?? [{ json: { input: 'test' } }]),
+		getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
+		getCredentials: vi
+			.fn()
+			.mockResolvedValue({ apiUrl: overrides.apiUrl ?? 'https://searx.example.com' }),
+		getNodeParameter: vi.fn().mockReturnValue(overrides.options ?? {}),
+		addInputData: vi.fn().mockReturnValue({ index: 0 }),
+		addOutputData: vi.fn(),
+	});
+	ctx.helpers.httpRequest = httpRequest;
+	return { ctx, httpRequest };
+}
+
+describe('ToolSearXng', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	describe('supplyData', () => {
+		it('should return a search tool that requests through the node request helper', async () => {
 			const node = new ToolSearXng();
+			const { ctx, httpRequest } = createContext();
 
 			const supplyDataResult = await node.supplyData.call(
-				mock<ISupplyDataFunctions>({
-					getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
-					getCredentials: vi.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
-					getNodeParameter: vi.fn().mockReturnValue({}),
-				}),
+				ctx as unknown as ISupplyDataFunctions,
 				0,
 			);
 
-			expect(supplyDataResult.response).toBeInstanceOf(SearxngSearch);
+			const tool = supplyDataResult.response as DynamicTool;
+			expect(tool).toBeInstanceOf(DynamicTool);
+			expect(tool.name).toBe('searxng-search');
+
+			await tool.invoke('current events');
+
+			expect(httpRequest).toHaveBeenCalledWith({
+				method: 'POST',
+				url: 'https://searx.example.com/search',
+				qs: {
+					q: 'current events',
+					format: 'json',
+					pageno: 1,
+					safesearch: 0,
+				},
+				headers: { Accept: 'application/json' },
+				json: true,
+				timeout: 15_000,
+			});
+		});
+
+		it('should apply configured options as query parameters', async () => {
+			const node = new ToolSearXng();
+			const { ctx, httpRequest } = createContext({
+				options: { numResults: 1, pageNumber: 3, language: 'fr', safesearch: 2 },
+			});
+
+			const supplyDataResult = await node.supplyData.call(
+				ctx as unknown as ISupplyDataFunctions,
+				0,
+			);
+			const tool = supplyDataResult.response as DynamicTool;
+			const response = await tool.invoke('test');
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: {
+						q: 'test',
+						format: 'json',
+						pageno: 3,
+						language: 'fr',
+						safesearch: 2,
+					},
+				}),
+			);
+			// numResults slices client-side
+			expect(response).toBe(
+				JSON.stringify({
+					title: 'First result',
+					link: 'https://example.com/1',
+					snippet: 'First snippet',
+				}),
+			);
+		});
+
+		it('should trim trailing slashes from the configured API URL', async () => {
+			const node = new ToolSearXng();
+			const { ctx, httpRequest } = createContext({ apiUrl: 'https://searx.example.com//' });
+
+			const supplyDataResult = await node.supplyData.call(
+				ctx as unknown as ISupplyDataFunctions,
+				0,
+			);
+			await (supplyDataResult.response as DynamicTool).invoke('test');
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ url: 'https://searx.example.com/search' }),
+			);
+		});
+
+		it('should map results to comma-joined JSON strings', async () => {
+			const node = new ToolSearXng();
+			const { ctx } = createContext();
+
+			const supplyDataResult = await node.supplyData.call(
+				ctx as unknown as ISupplyDataFunctions,
+				0,
+			);
+			const response = await (supplyDataResult.response as DynamicTool).invoke('test');
+
+			expect(response).toBe(
+				[
+					JSON.stringify({
+						title: 'First result',
+						link: 'https://example.com/1',
+						snippet: 'First snippet',
+					}),
+					JSON.stringify({
+						title: 'Second result',
+						link: 'https://example.com/2',
+						snippet: 'Second snippet',
+					}),
+				].join(','),
+			);
+		});
+
+		it('should fall back to answers, infoboxes and suggestions', async () => {
+			const node = new ToolSearXng();
+
+			const cases: Array<{ httpResponse: unknown; expected: string }> = [
+				{ httpResponse: { results: [], answers: ['42'] }, expected: '42' },
+				{
+					httpResponse: { results: [], answers: [], infoboxes: [{ content: '<b>info</b> box' }] },
+					expected: 'info box',
+				},
+				{
+					httpResponse: { results: [], answers: [], infoboxes: [], suggestions: ['a', 'b'] },
+					expected: 'Suggestions: a, b',
+				},
+				{ httpResponse: {}, expected: 'No good results found.' },
+			];
+
+			for (const { httpResponse, expected } of cases) {
+				const { ctx } = createContext({ httpResponse });
+				const supplyDataResult = await node.supplyData.call(
+					ctx as unknown as ISupplyDataFunctions,
+					0,
+				);
+				const response = await (supplyDataResult.response as DynamicTool).invoke('test');
+				expect(response).toBe(expected);
+			}
 		});
 	});
 
 	describe('execute', () => {
-		beforeEach(() => {
-			vi.resetAllMocks();
-		});
-
-		it('should execute SearXNG search and return result', async () => {
+		it('should execute a search per input item and return results', async () => {
 			const node = new ToolSearXng();
-			const inputData: INodeExecutionData[] = [
-				{
-					json: { query: 'artificial intelligence' },
-				},
-			];
-
-			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: vi.fn(() => inputData),
-				getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
-				getCredentials: vi.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
-				getNodeParameter: vi.fn().mockReturnValue({}),
+			const { ctx, httpRequest } = createContext({
+				inputData: [{ json: { input: 'machine learning' } }, { json: { input: 'deep learning' } }],
 			});
 
-			// Mock the SearxngSearch.invoke method
-			const mockResult = 'Search results for artificial intelligence...';
-			SearxngSearch.prototype.invoke = vi.fn().mockResolvedValue(mockResult);
+			const result = await node.execute.call(ctx);
 
-			const result = await node.execute.call(mockExecute);
+			expect(httpRequest).toHaveBeenCalledTimes(2);
+			expect(httpRequest).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ qs: expect.objectContaining({ q: 'machine learning' }) }),
+			);
+			expect(httpRequest).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ qs: expect.objectContaining({ q: 'deep learning' }) }),
+			);
+
+			const expectedResponse = [
+				JSON.stringify({
+					title: 'First result',
+					link: 'https://example.com/1',
+					snippet: 'First snippet',
+				}),
+				JSON.stringify({
+					title: 'Second result',
+					link: 'https://example.com/2',
+					snippet: 'Second snippet',
+				}),
+			].join(',');
 
 			expect(result).toEqual([
 				[
-					{
-						json: {
-							response: mockResult,
-						},
-						pairedItem: {
-							item: 0,
-						},
-					},
+					{ json: { response: expectedResponse }, pairedItem: { item: 0 } },
+					{ json: { response: expectedResponse }, pairedItem: { item: 1 } },
 				],
 			]);
-			expect(SearxngSearch.prototype.invoke).toHaveBeenCalledWith({
-				query: 'artificial intelligence',
-			});
 		});
 
-		it('should handle multiple input items', async () => {
+		it('should throw when an input item has no query', async () => {
 			const node = new ToolSearXng();
-			const inputData: INodeExecutionData[] = [
-				{
-					json: { query: 'machine learning' },
-				},
-				{
-					json: { query: 'deep learning' },
-				},
-			];
+			const { ctx, httpRequest } = createContext({ inputData: [{ json: {} }] });
 
-			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: vi.fn(() => inputData),
-				getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
-				getCredentials: vi.fn().mockResolvedValue({ apiUrl: 'https://searx.example.com' }),
-				getNodeParameter: vi.fn().mockReturnValue({}),
-			});
-
-			// Mock the SearxngSearch.invoke method
-			SearxngSearch.prototype.invoke = vi
-				.fn()
-				.mockResolvedValueOnce('Machine learning search results')
-				.mockResolvedValueOnce('Deep learning search results');
-
-			const result = await node.execute.call(mockExecute);
-
-			expect(result).toEqual([
-				[
-					{
-						json: {
-							response: 'Machine learning search results',
-						},
-						pairedItem: {
-							item: 0,
-						},
-					},
-					{
-						json: {
-							response: 'Deep learning search results',
-						},
-						pairedItem: {
-							item: 1,
-						},
-					},
-				],
-			]);
-			expect(SearxngSearch.prototype.invoke).toHaveBeenCalledTimes(2);
+			await expect(node.execute.call(ctx)).rejects.toThrow('Input item is missing');
+			expect(httpRequest).not.toHaveBeenCalled();
 		});
 
-		it('should handle credentials and options correctly', async () => {
+		it('should read credentials and options per item', async () => {
 			const node = new ToolSearXng();
-			const inputData: INodeExecutionData[] = [
-				{
-					json: { query: 'test query' },
-				},
-			];
+			const { ctx } = createContext({ inputData: [{ json: { input: 'test query' } }] });
 
-			const testOptions = { engines: ['google'], safesearch: 1 };
-			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: vi.fn(() => inputData),
-				getNode: vi.fn(() => mock<INode>({ name: 'test searxng' })),
-				getCredentials: vi.fn().mockResolvedValue({ apiUrl: 'https://searx.test.com' }),
-				getNodeParameter: vi.fn().mockReturnValue(testOptions),
-			});
+			await node.execute.call(ctx);
 
-			SearxngSearch.prototype.invoke = vi.fn().mockResolvedValue('test result');
-
-			await node.execute.call(mockExecute);
-
-			expect(mockExecute.getCredentials).toHaveBeenCalledWith('searXngApi');
-			expect(mockExecute.getNodeParameter).toHaveBeenCalledWith('options', 0);
+			expect(ctx.getCredentials).toHaveBeenCalledWith('searXngApi');
+			expect(ctx.getNodeParameter).toHaveBeenCalledWith('options', 0);
 		});
 	});
 });

@@ -9,20 +9,31 @@ import { McpExecutionTimeoutError } from '../mcp.errors';
 
 export const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 
+/** Default execution timeout, in seconds, exposed to MCP callers. */
+export const WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS =
+	WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds;
+
+/** Upper bound for a caller-provided execution timeout, in seconds. */
+export const WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS = 60 * Time.minutes.toSeconds;
+
 /**
  * Wait for a workflow execution to complete, with timeout and queue mode support.
  * Shared between execute_workflow and test_workflow tools.
+ *
+ * @param timeoutMs - How long to wait before timing out. Defaults to
+ * `WORKFLOW_EXECUTION_TIMEOUT_MS` (5 minutes).
  */
 export const waitForExecutionResult = async (
 	executionId: string,
 	activeExecutions: ActiveExecutions,
 	mcpService: McpService,
+	timeoutMs: number = WORKFLOW_EXECUTION_TIMEOUT_MS,
 ): Promise<IRun> => {
 	let timeoutId: NodeJS.Timeout | undefined;
 	const timeoutPromise = new Promise<never>((_, reject) => {
 		timeoutId = setTimeout(() => {
-			reject(new McpExecutionTimeoutError(executionId, WORKFLOW_EXECUTION_TIMEOUT_MS));
-		}, WORKFLOW_EXECUTION_TIMEOUT_MS);
+			reject(new McpExecutionTimeoutError(executionId, timeoutMs));
+		}, timeoutMs);
 	});
 
 	const resultPromise = mcpService.isQueueMode

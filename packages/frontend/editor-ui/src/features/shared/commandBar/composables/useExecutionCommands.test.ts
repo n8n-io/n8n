@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useExecutionCommands } from './useExecutionCommands';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { getResourcePermissions } from '@n8n/permissions';
 import { setActivePinia } from 'pinia';
@@ -41,7 +41,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 const mockToastShowMessage = vi.fn();
 const mockToastShowError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockToastShowMessage,
 		showError: mockToastShowError,
@@ -56,17 +56,21 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: vi.fn(() => ({
 		workflow: {
 			update: true,
 			execute: true,
+		},
+		execution: {
+			delete: true,
 		},
 	})),
 }));
@@ -157,6 +161,9 @@ describe('useExecutionCommands', () => {
 				update: true,
 				execute: true,
 			},
+			execution: {
+				delete: true,
+			},
 		});
 
 		vi.clearAllMocks();
@@ -213,6 +220,9 @@ describe('useExecutionCommands', () => {
 				workflow: {
 					update: false,
 					execute: true,
+				},
+				execution: {
+					delete: true,
 				},
 			});
 
@@ -384,6 +394,9 @@ describe('useExecutionCommands', () => {
 					update: true,
 					execute: false,
 				},
+				execution: {
+					delete: true,
+				},
 			});
 
 			mockExecutionsStore.activeExecution = createMockExecution('exec-1', 'running');
@@ -511,11 +524,14 @@ describe('useExecutionCommands', () => {
 			expect(deleteCommand?.title).toBe('executionDetails.deleteExecution');
 		});
 
-		it('should not include delete command when user has no update permission', () => {
+		it('should not include delete command when user cannot delete executions, even with workflow edit rights', () => {
 			mockGetResourcePermissions.mockReturnValue({
 				workflow: {
-					update: false,
+					update: true,
 					execute: true,
+				},
+				execution: {
+					delete: false,
 				},
 			});
 

@@ -16,7 +16,7 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 defineProps<{
 	isCollapsed: boolean;
@@ -149,7 +149,7 @@ const {
 						size="xsmall"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-else
 						:size="'mini'"
 						:class="$style.upgradeButton"
@@ -161,6 +161,7 @@ const {
 			</template>
 		</N8nNavigationDropdown>
 		<KeyboardShortcutTooltip
+			v-if="!settingsStore.isCanvasOnly"
 			:placement="isCollapsed ? 'right' : 'bottom'"
 			:show-after="500"
 			:label="i18n.baseText('nodeView.openCommandBar')"
@@ -201,6 +202,8 @@ const {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus' as focus;
+
 .header {
 	display: flex;
 	align-items: center;
@@ -223,6 +226,11 @@ const {
 
 .logo {
 	margin-right: auto;
+	padding-inline-start: var(--spacing--3xs);
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 .readOnlyEnvironmentIcon {

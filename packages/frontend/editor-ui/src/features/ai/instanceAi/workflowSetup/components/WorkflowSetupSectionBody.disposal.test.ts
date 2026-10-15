@@ -33,6 +33,14 @@ vi.mock('../composables/useWorkflowSetupContext', () => ({
 	useWorkflowSetupContext: () => mockContext,
 }));
 
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		isNodeTypeVersionSupported: () => false,
+		isCredentialTypeSupported: () => false,
+	}),
+}));
+
 // Import after the mock is registered.
 import WorkflowSetupSectionBody from './WorkflowSetupSectionBody.vue';
 

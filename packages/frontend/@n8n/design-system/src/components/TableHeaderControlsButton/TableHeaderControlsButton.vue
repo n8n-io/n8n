@@ -2,29 +2,15 @@
 import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import type { ButtonSize, IconSize } from '../../types';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import N8nPopover from '../N8nPopover';
+import type {
+	ColumnHeader,
+	TableHeaderControlsButtonProps,
+} from './TableHeaderControlsButton.types';
 
-export type ColumnHeader =
-	| {
-			key: string;
-			label: string;
-			visible: boolean;
-			disabled: false;
-	  }
-	// Disabled state ensures current sort order is not lost if user resorts teh columns
-	// even if some columns are disabled / not available in the current run
-	| { key: string; disabled: true };
-
-interface Props {
-	columns: ColumnType[];
-	buttonSize?: ButtonSize;
-	iconSize?: IconSize;
-}
-
-const props = defineProps<Props>();
+const props = defineProps<TableHeaderControlsButtonProps<ColumnType>>();
 
 const visibleColumns = computed(() =>
 	props.columns.filter(
@@ -132,7 +118,7 @@ const handleDragEnd = () => {
 	<N8nPopover :class="$style.container" width="260px" max-height="300px" scroll-type="auto">
 		<template #trigger>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				icon="sliders-horizontal"
 				:icon-size="iconSize"
 				:size="buttonSize"
@@ -229,7 +215,7 @@ const handleDragEnd = () => {
 <style lang="scss" module>
 .header {
 	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-bottom: var(--spacing--xs);
 }
 

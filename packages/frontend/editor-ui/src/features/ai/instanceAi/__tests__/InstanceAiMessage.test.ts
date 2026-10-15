@@ -1,8 +1,32 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createThreadComponentRenderer } from './createThreadComponentRenderer';
+import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useInstanceAiStore } from '../instanceAi.store';
 import InstanceAiMessageComponent from '../components/InstanceAiMessage.vue';
-import type { InstanceAiMessage, InstanceAiAgentNode } from '@n8n/api-types';
+import { createThreadComponentRenderer } from './createThreadComponentRenderer';
+
+const { copySpy } = vi.hoisted(function createChatActionMocks() {
+	return { copySpy: vi.fn() };
+});
+
+vi.mock('@vueuse/core', async function mockVueUse(importOriginal) {
+	const original = await importOriginal<typeof import('@vueuse/core')>();
+	return {
+		...original,
+		useClipboard: function useClipboard() {
+			return { copy: copySpy };
+		},
+		useSpeechSynthesis: function useSpeechSynthesis() {
+			return {
+				isSupported: { value: true },
+				isPlaying: { value: false, __v_isRef: true },
+				status: { value: 'init' },
+				speak: vi.fn(),
+				stop: vi.fn(),
+			};
+		},
+	};
+});
 
 vi.mock('@/features/ai/chatHub/components/ChatMarkdownChunk.vue', () => ({
 	default: {
@@ -15,7 +39,8 @@ const renderComponent = createThreadComponentRenderer(InstanceAiMessageComponent
 	global: {
 		stubs: {
 			AgentActivityTree: {
-				template: '<div data-test-id="agent-activity-tree" />',
+				template:
+					'<div data-test-id="agent-activity-tree" :data-entries="agentNode.timeline.length" />',
 				props: ['agentNode', 'isRoot'],
 			},
 		},
@@ -49,8 +74,9 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 }
 
 describe('InstanceAiMessage', () => {
-	beforeEach(() => {
+	beforeEach(function setUpPinia() {
 		createTestingPinia({ stubActions: false });
+		vi.clearAllMocks();
 	});
 
 	it('should render user message with user bubble', () => {
@@ -73,6 +99,66 @@ describe('InstanceAiMessage', () => {
 
 		expect(getByTestId('instance-ai-assistant-message')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-user-message')).not.toBeInTheDocument();
+	});
+
+	it('should render copy and read-aloud actions for settled assistant text', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				message: makeMessage({ content: 'Copy and read this response' }),
+			},
+		});
+
+		getByRole('button', { name: 'Copy' }).click();
+		expect(copySpy).toHaveBeenCalledWith('Copy and read this response');
+		expect(getByRole('button', { name: 'Read aloud' })).toHaveAttribute('aria-pressed', 'false');
+	});
+
+	it('should not render message actions for user, empty, or streaming messages', () => {
+		const userResult = renderComponent({
+			props: {
+				message: makeMessage({ role: 'user', content: 'User message' }),
+			},
+		});
+		expect(userResult.queryByRole('group', { name: 'Message actions' })).not.toBeInTheDocument();
+		userResult.unmount();
+
+		const emptyResult = renderComponent({
+			props: {
+				message: makeMessage({ content: '' }),
+			},
+		});
+		expect(emptyResult.queryByRole('group', { name: 'Message actions' })).not.toBeInTheDocument();
+		emptyResult.unmount();
+
+		const streamingResult = renderComponent({
+			props: {
+				message: makeMessage({ content: 'Partial response', isStreaming: true }),
+			},
+		});
+		expect(
+			streamingResult.queryByRole('group', { name: 'Message actions' }),
+		).not.toBeInTheDocument();
+	});
+
+	it('should render the debug toggle as a custom action with pressed state', async () => {
+		const store = useInstanceAiStore();
+		store.debugMode = true;
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				message: makeMessage({ content: '' }),
+			},
+		});
+
+		const button = getByTestId('instance-ai-message-debug');
+		expect(button).toHaveAttribute('aria-label', 'Show debug information');
+		expect(button).toHaveAttribute('aria-pressed', 'false');
+
+		button.click();
+		await vi.waitFor(function waitForDebugState() {
+			expect(button).toHaveAttribute('aria-label', 'Hide debug information');
+			expect(button).toHaveAttribute('aria-pressed', 'true');
+			expect(getByText(/"id": "msg-1"/)).toBeInTheDocument();
+		});
 	});
 
 	it('should show error callout when agentTree has error status and error text', () => {
@@ -294,5 +380,79 @@ describe('InstanceAiMessage', () => {
 		});
 
 		expect(queryByTestId('instance-ai-run-cancelled')).not.toBeInTheDocument();
+	});
+
+	describe('answered questions', () => {
+		const answeredCall = {
+			toolCallId: 'tc-1',
+			toolName: 'ask-user',
+			args: {},
+			isLoading: false,
+			confirmation: {
+				requestId: 'req-1',
+				severity: 'info',
+				message: '',
+				inputType: 'questions',
+				questions: [{ id: 'apps', question: 'Which apps?', type: 'multi' }],
+			},
+			result: { answered: true, answers: [{ questionId: 'apps', selectedOptions: ['HubSpot'] }] },
+		} as InstanceAiAgentNode['toolCalls'][number];
+		const greeting = { type: 'text', content: 'Hi' } as const;
+		const answer = { type: 'tool-call', toolCallId: 'tc-1' } as const;
+
+		it('should render answers that end the timeline below the message actions', () => {
+			const { getByRole, getByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({ toolCalls: [answeredCall], timeline: [greeting, answer] }),
+					}),
+				},
+			});
+
+			const copy = getByRole('button', { name: 'Copy' });
+			const bubble = getByTestId('instance-ai-answered-questions');
+			expect(bubble).toHaveTextContent('HubSpot');
+			expect(copy.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '1');
+		});
+
+		it('should leave answers in the timeline when text follows them', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({
+							toolCalls: [answeredCall],
+							timeline: [greeting, answer, { type: 'text', content: 'Thanks' }],
+						}),
+					}),
+				},
+			});
+
+			expect(queryByTestId('instance-ai-answered-questions')).not.toBeInTheDocument();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '3');
+		});
+
+		it.each([
+			{ name: 'a pending card', status: 'completed', isLoading: true },
+			{ name: 'an answer while the run is active', status: 'active', isLoading: false },
+		] as const)('should leave $name in the timeline', ({ status, isLoading }) => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({
+							status,
+							toolCalls: [{ ...answeredCall, isLoading }],
+							timeline: [greeting, answer],
+						}),
+					}),
+				},
+			});
+
+			expect(queryByTestId('instance-ai-answered-questions')).not.toBeInTheDocument();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '2');
+		});
 	});
 });

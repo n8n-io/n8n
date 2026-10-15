@@ -11,7 +11,7 @@ import type { INodeUi } from '@/Interface';
 import { VIEWS } from '@/app/constants';
 import { createWorkflowFromTemplate } from './utils/templateActions';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialSetupState } from './composables/useCredentialSetupState';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';

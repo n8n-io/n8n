@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
@@ -11,9 +13,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
 
@@ -42,6 +42,31 @@ export class OAuth2CredentialController {
 		try {
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
+				// An administrator approving an app for a whole organisation is sent back
+				// to the same reply URL, and never with a code: that grant lands on the
+				// tenant, not on a credential. Without this it reads as a failed sign-in,
+				// although it succeeded.
+				if (req.query.admin_consent) {
+					// `False` is the refusal, and it does not always carry an `error`.
+					if (req.query.admin_consent === 'False' || req.query.error) {
+						this.logger.error('Administrator consent was refused', {
+							error: req.query.error,
+							errorDescription: req.query.error_description,
+						});
+						// The description arrives in the URL, so it stays out of the page.
+						return this.oauthService.renderCallbackError(
+							res,
+							'The administrator did not approve the requested permissions.',
+						);
+					}
+					// Its own page, and a silent one. `oauth-callback` announces success
+					// on a channel every credential sign-in listens to, and this route
+					// is unauthenticated and carries no state to tie the grant to a
+					// credential -- so rendering it would report whichever sign-in
+					// happened to be open as connected.
+					return res.render('admin-consent-callback');
+				}
+
 				return this.oauthService.renderCallbackError(
 					res,
 					'Insufficient parameters for OAuth2 callback.',
@@ -84,7 +109,12 @@ export class OAuth2CredentialController {
 
 			await this.externalHooks.run('oauth2.callback', [oAuthOptions]);
 
-			const oAuthObj = new ClientOAuth2(oAuthOptions);
+			// The bridge is attached here rather than in the options object so it stays out of
+			// the payload handed to external hooks.
+			const oAuthObj = new ClientOAuth2({
+				...oAuthOptions,
+				ssrfBridge: this.oauthService.getSsrfBridge(),
+			});
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 

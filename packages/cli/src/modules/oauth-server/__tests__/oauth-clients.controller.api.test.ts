@@ -28,6 +28,17 @@ afterEach(async () => {
 });
 
 describe('GET /rest/mcp/oauth-clients', () => {
+	test('returns the resolved scope tools in the client list', async () => {
+		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.scopeTools).toEqual(
+			expect.objectContaining({
+				'workflow:read': expect.arrayContaining(['search_workflows']),
+			}),
+		);
+	});
+
 	test('should return only the requesting user clients', async () => {
 		const ownerClient = await oauthClientRepository.save({
 			id: 'owner-list-client',
@@ -104,6 +115,45 @@ describe('GET /rest/mcp/oauth-clients', () => {
 
 		expect(memberResponse.statusCode).toBe(200);
 		expect(memberResponse.body.data.totals).toEqual({ mine: 1 });
+	});
+
+	test('should exclude first-party (internal) clients from the list and the totals', async () => {
+		const normalClient = await oauthClientRepository.save({
+			id: 'normal-client',
+			name: 'Normal Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+		const firstPartyClient = await oauthClientRepository.save({
+			id: 'https://n8n.example.com/form/abc',
+			name: 'My Form',
+			redirectUris: ['https://n8n.example.com/form/abc'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+			isFirstParty: true,
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: normalClient.id,
+			grantedAt: Date.now(),
+			scope: [],
+		});
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: firstPartyClient.id,
+			grantedAt: Date.now(),
+			scope: [],
+		});
+
+		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(1);
+		expect(response.body.data.data).toHaveLength(1);
+		expect(response.body.data.data[0].id).toBe(normalClient.id);
+		expect(response.body.data.totals).toEqual({ mine: 1, all: 1 });
 	});
 });
 

@@ -8,9 +8,9 @@ import {
 } from '../memory/title-generation';
 
 type GenerateTextCall = {
-	system?: string;
+	instructions?: string;
 	messages: Array<{ role: string; content: string }>;
-	experimental_telemetry?: Record<string, unknown>;
+	telemetry?: Record<string, unknown>;
 };
 
 type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
@@ -23,8 +23,10 @@ vi.mock('ai', async () => {
 	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
-		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
-			await mockGenerateText(call),
+		generateText: async (call: GenerateTextCall) => {
+			const result = await mockGenerateText(call);
+			return { ...result, finalStep: { providerMetadata: undefined } };
+		},
 	};
 });
 
@@ -117,8 +119,8 @@ describe('generateTitleFromMessage', () => {
 		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
 		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow');
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.system).toContain('markdown');
-		expect(call.system).toContain('sentence case');
+		expect(call.instructions).toContain('markdown');
+		expect(call.instructions).toContain('sentence case');
 	});
 
 	it('accepts custom instructions', async () => {
@@ -127,7 +129,7 @@ describe('generateTitleFromMessage', () => {
 			instructions: 'Custom system prompt',
 		});
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.system).toBe('Custom system prompt');
+		expect(call.instructions).toBe('Custom system prompt');
 	});
 
 	it('passes generic telemetry to the title LLM call', async () => {
@@ -147,13 +149,11 @@ describe('generateTitleFromMessage', () => {
 		});
 
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.experimental_telemetry).toEqual({
+		expect(call.telemetry).toEqual({
 			isEnabled: true,
 			functionId: 'instance-ai.thread-title',
-			metadata: { thread_id: 'thread-1' },
 			recordInputs: true,
 			recordOutputs: false,
-			tracer: undefined,
 			integrations: undefined,
 		});
 	});

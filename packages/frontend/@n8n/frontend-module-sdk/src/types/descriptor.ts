@@ -1,15 +1,38 @@
+import type { FrontendSettings } from '@n8n/api-types';
 import type { IMenuItem } from '@n8n/design-system';
+import type { Component } from 'vue';
 import type { RouteRecordRaw } from 'vue-router';
 
 import type { ModuleBanner } from './banner';
 import type { CommandBarEntry } from './command';
 import type { ModuleLocaleMessages } from './locale';
 import type { ModalDefinition } from './modal';
+import type { ParameterInputContribution } from './parameterInput';
 import type { ModulePushHandlers } from './push';
 import type { ResourceMetadata } from './resource';
 import type { ModuleSetupContext } from './setup';
 import type { ModuleShortcut } from './shortcut';
 import type { DynamicTabOptions } from './tabs';
+
+/** A key of `settings.enterprise`, e.g. `'logStreaming'`. */
+export type ModuleLicenseFlag = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
+
+/** A page, e.g. a paywall, shown instead of the module's routes when it isn't licensed. */
+export type ModulePlaceholderPage = {
+	/** Show the page only when this feature is off. */
+	licenseFlag: ModuleLicenseFlag;
+	component: () => Promise<Component>;
+};
+
+/** A link in the settings sidebar. Shell and modules both use it. */
+export type IMenuSettingItem = IMenuItem & {
+	/**
+	 * @description Sort position, low to high. Shell links use 10, 20, 30, ... so pick a number
+	 * between two of them to land between them. No `order` means last. Equal values
+	 * keep registration order.
+	 */
+	order?: number;
+};
 
 /**
  * The declarative contract a frontend module exposes to the editor-ui shell.
@@ -31,18 +54,34 @@ export type FrontendModuleDescription = {
 	};
 	resources?: ResourceMetadata[];
 	modals?: ModalDefinition[];
-	settingsPages?: IMenuItem[];
+	/**
+	 * Prefixes for modal keys minted at runtime instead of registered. Declared
+	 * here so they arrive on the same path as `modals`, not by import side effect.
+	 */
+	adHocModalKeyPrefixes?: string[];
+	settingsPages?: IMenuSettingItem[];
+	/**
+	 * Shown when the module is inactive and not licensed. Its settings links stay visible.
+	 * A licensed module that is inactive (e.g. disabled) stays hidden.
+	 */
+	placeholderPage?: ModulePlaceholderPage;
 
 	// --- descriptor v2 (all optional, additive) ---
 
 	/** Per-module i18n messages, merged into the active locale by the shell. */
 	locales?: ModuleLocaleMessages;
-	/** Push-message handlers, keyed by message type. */
+	/** Push-message handlers, keyed by message type. See `ModulePushHandlers`. */
 	pushHandlers?: ModulePushHandlers;
 	/** Command-bar contributions. */
 	commands?: CommandBarEntry[];
 	/** Global keyboard shortcuts. */
 	shortcuts?: ModuleShortcut[];
+	/**
+	 * Custom parameter input components, resolved by `parameter.type` in the NDV
+	 * parameter render path. One owner per type; an unclaimed type keeps the
+	 * shell's built-in branch.
+	 */
+	parameterInputs?: ParameterInputContribution[];
 	/** Banners the module can contribute to the banner stack. */
 	banners?: ModuleBanner[];
 	/** Runs post-login, after the module is confirmed active. */

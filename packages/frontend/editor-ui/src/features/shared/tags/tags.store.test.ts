@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { useTagsStore } from './tags.store';
+import { useAnnotationTagsStore, useTagsStore } from './tags.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
@@ -29,6 +29,85 @@ vi.mock('./tags.api', () => ({
 }));
 
 const mockTag: ITag = { id: '1', name: 'test-tag', usageCount: 0, createdAt: '', updatedAt: '' };
+
+describe.each([
+	['useTagsStore', useTagsStore],
+	['useAnnotationTagsStore', useAnnotationTagsStore],
+])('%s — fetchAll loading state', (_, useStore) => {
+	let tagsStore: ReturnType<typeof useTagsStore>;
+
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+		vi.clearAllMocks();
+		mockApi.getTags.mockReset();
+		hasPermission.mockReturnValue(true);
+		const rootStore = mockedStore(useRootStore);
+		rootStore.restApiContext = { baseUrl: 'http://localhost', pushRef: '' };
+		tagsStore = useStore();
+	});
+
+	it('sets loading while the request is pending and clears it after success', async () => {
+		const request = Promise.withResolvers<ITag[]>();
+		mockApi.getTags.mockReturnValueOnce(request.promise);
+
+		expect(tagsStore.isLoading).toBe(false);
+
+		const result = tagsStore.fetchAll();
+
+		expect(tagsStore.isLoading).toBe(true);
+
+		request.resolve([mockTag]);
+
+		await expect(result).resolves.toEqual([mockTag]);
+		expect(tagsStore.isLoading).toBe(false);
+		expect(tagsStore.allTags).toEqual([mockTag]);
+	});
+
+	it('clears loading after a failed request and allows a successful retry', async () => {
+		const request = Promise.withResolvers<ITag[]>();
+		const error = new Error('Could not load tags');
+		mockApi.getTags.mockReturnValueOnce(request.promise);
+
+		const result = tagsStore.fetchAll();
+		const rejection = expect(result).rejects.toBe(error);
+
+		expect(tagsStore.isLoading).toBe(true);
+
+		request.reject(error);
+
+		await rejection;
+		expect(tagsStore.isLoading).toBe(false);
+
+		const retryRequest = Promise.withResolvers<ITag[]>();
+		mockApi.getTags.mockReturnValueOnce(retryRequest.promise);
+
+		const retry = tagsStore.fetchAll();
+
+		expect(tagsStore.isLoading).toBe(true);
+
+		retryRequest.resolve([mockTag]);
+
+		await expect(retry).resolves.toEqual([mockTag]);
+		expect(tagsStore.isLoading).toBe(false);
+		expect(tagsStore.allTags).toEqual([mockTag]);
+		expect(mockApi.getTags).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps cached tags and clears loading after a failed forced refresh', async () => {
+		mockApi.getTags.mockResolvedValueOnce([mockTag]);
+		await tagsStore.fetchAll();
+
+		const error = new Error('Could not refresh tags');
+		mockApi.getTags.mockRejectedValueOnce(error);
+
+		await expect(tagsStore.fetchAll({ force: true })).rejects.toBe(error);
+
+		expect(tagsStore.isLoading).toBe(false);
+		expect(tagsStore.allTags).toEqual([mockTag]);
+		await expect(tagsStore.fetchAll()).resolves.toEqual([mockTag]);
+		expect(mockApi.getTags).toHaveBeenCalledTimes(2);
+	});
+});
 
 describe('useTagsStore — permission guards', () => {
 	let tagsStore: ReturnType<typeof useTagsStore>;

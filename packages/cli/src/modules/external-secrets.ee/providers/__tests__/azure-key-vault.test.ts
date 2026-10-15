@@ -1,4 +1,4 @@
-import { AuthenticationError } from '@azure/identity';
+import { AuthenticationError, ClientSecretCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
 import type { KeyVaultSecret } from '@azure/keyvault-secrets';
 import type { Logger } from '@n8n/backend-common';
@@ -11,6 +11,17 @@ import type { AzureKeyVaultContext } from '../azure-key-vault/types';
 
 vi.mock('@azure/identity');
 vi.mock('@azure/keyvault-secrets');
+
+const baseSettings: AzureKeyVaultContext['settings'] = {
+	vaultName: 'my-vault',
+	tenantId: 'my-tenant-id',
+	clientId: 'my-client-id',
+	clientSecret: 'my-client-secret',
+};
+
+function createSettingsContext(settings: AzureKeyVaultContext['settings']): AzureKeyVaultContext {
+	return { connected: false, connectedAt: null, settings };
+}
 
 function createRestErrorLike(
 	message: string,
@@ -86,17 +97,124 @@ describe('AzureKeyVault', () => {
 		});
 	});
 
+	describe('endpoint resolution', () => {
+		const ClientSecretCredentialMock = ClientSecretCredential as unknown as Mock;
+		const SecretClientMock = SecretClient as unknown as Mock;
+
+		it('should use commercial endpoints when no environment is set', async () => {
+			await azureKeyVault.init(createSettingsContext(baseSettings));
+			await azureKeyVault.connect();
+
+			expect(ClientSecretCredentialMock).toHaveBeenCalledWith(
+				'my-tenant-id',
+				'my-client-id',
+				'my-client-secret',
+				{ authorityHost: 'https://login.microsoftonline.com' },
+			);
+			expect(SecretClientMock).toHaveBeenCalledWith(
+				'https://my-vault.vault.azure.net/',
+				expect.anything(),
+			);
+		});
+
+		it('should use commercial endpoints for the public environment', async () => {
+			await azureKeyVault.init(createSettingsContext({ ...baseSettings, environment: 'public' }));
+			await azureKeyVault.connect();
+
+			expect(ClientSecretCredentialMock).toHaveBeenCalledWith(
+				'my-tenant-id',
+				'my-client-id',
+				'my-client-secret',
+				{ authorityHost: 'https://login.microsoftonline.com' },
+			);
+			expect(SecretClientMock).toHaveBeenCalledWith(
+				'https://my-vault.vault.azure.net/',
+				expect.anything(),
+			);
+		});
+
+		it('should use US Government endpoints for the usGovernment environment', async () => {
+			await azureKeyVault.init(
+				createSettingsContext({ ...baseSettings, environment: 'usGovernment' }),
+			);
+			await azureKeyVault.connect();
+
+			expect(ClientSecretCredentialMock).toHaveBeenCalledWith(
+				'my-tenant-id',
+				'my-client-id',
+				'my-client-secret',
+				{ authorityHost: 'https://login.microsoftonline.us' },
+			);
+			expect(SecretClientMock).toHaveBeenCalledWith(
+				'https://my-vault.vault.usgovcloudapi.net/',
+				expect.anything(),
+			);
+		});
+
+		it('should use China endpoints for the china environment', async () => {
+			await azureKeyVault.init(createSettingsContext({ ...baseSettings, environment: 'china' }));
+			await azureKeyVault.connect();
+
+			expect(ClientSecretCredentialMock).toHaveBeenCalledWith(
+				'my-tenant-id',
+				'my-client-id',
+				'my-client-secret',
+				{ authorityHost: 'https://login.partner.microsoftonline.cn' },
+			);
+			expect(SecretClientMock).toHaveBeenCalledWith(
+				'https://my-vault.vault.azure.cn/',
+				expect.anything(),
+			);
+		});
+
+		it('should use the provided vault URL and authority host for the custom environment', async () => {
+			await azureKeyVault.init(
+				createSettingsContext({
+					...baseSettings,
+					environment: 'custom',
+					vaultUrl: 'https://my-vault.keyvault.internal.example.com ',
+					authorityHost: ' https://login.internal.example.com',
+				}),
+			);
+			await azureKeyVault.connect();
+
+			expect(ClientSecretCredentialMock).toHaveBeenCalledWith(
+				'my-tenant-id',
+				'my-client-id',
+				'my-client-secret',
+				{ authorityHost: 'https://login.internal.example.com' },
+			);
+			expect(SecretClientMock).toHaveBeenCalledWith(
+				'https://my-vault.keyvault.internal.example.com',
+				expect.anything(),
+			);
+		});
+
+		it('should fall back to the commercial authority host when the custom environment has none', async () => {
+			await azureKeyVault.init(
+				createSettingsContext({
+					...baseSettings,
+					environment: 'custom',
+					vaultUrl: 'https://my-vault.keyvault.internal.example.com',
+				}),
+			);
+			await azureKeyVault.connect();
+
+			expect(ClientSecretCredentialMock).toHaveBeenCalledWith(
+				'my-tenant-id',
+				'my-client-id',
+				'my-client-secret',
+				{ authorityHost: 'https://login.microsoftonline.com' },
+			);
+			expect(SecretClientMock).toHaveBeenCalledWith(
+				'https://my-vault.keyvault.internal.example.com',
+				expect.anything(),
+			);
+		});
+	});
+
 	it('should log failed client setup while preserving error state', async () => {
-		await azureKeyVault.init(
-			mock<AzureKeyVaultContext>({
-				settings: {
-					vaultName: 'my-vault',
-					tenantId: 'my-tenant-id',
-					clientId: 'my-client-id',
-					clientSecret: 'my-client-secret',
-				},
-			}),
-		);
+		await azureKeyVault.init(createSettingsContext(baseSettings));
 
 		const setupError = new Error('Invalid configuration');
 		const SecretClientMock = SecretClient as unknown as Mock;
@@ -121,16 +239,7 @@ describe('AzureKeyVault', () => {
 	});
 
 	it('should log test failures with Azure error context', async () => {
-		await azureKeyVault.init(
-			mock<AzureKeyVaultContext>({
-				settings: {
-					vaultName: 'my-vault',
-					tenantId: 'my-tenant-id',
-					clientId: 'my-client-id',
-					clientSecret: 'my-client-secret',
-				},
-			}),
-		);
+		await azureKeyVault.init(createSettingsContext(baseSettings));
 
 		await azureKeyVault.connect();
 
@@ -165,16 +274,7 @@ describe('AzureKeyVault', () => {
 		/**
 		 * Arrange
 		 */
-		await azureKeyVault.init(
-			mock<AzureKeyVaultContext>({
-				settings: {
-					vaultName: 'my-vault',
-					tenantId: 'my-tenant-id',
-					clientId: 'my-client-id',
-					clientSecret: 'my-client-secret',
-				},
-			}),
-		);
+		await azureKeyVault.init(createSettingsContext(baseSettings));
 
 		const listSpy = vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
 			() =>
@@ -213,16 +313,7 @@ describe('AzureKeyVault', () => {
 	});
 
 	it('should skip disabled secrets without calling getSecret', async () => {
-		await azureKeyVault.init(
-			mock<AzureKeyVaultContext>({
-				settings: {
-					vaultName: 'my-vault',
-					tenantId: 'my-tenant-id',
-					clientId: 'my-client-id',
-					clientSecret: 'my-client-secret',
-				},
-			}),
-		);
+		await azureKeyVault.init(createSettingsContext(baseSettings));
 
 		const listSpy = vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
 			() =>
@@ -249,16 +340,7 @@ describe('AzureKeyVault', () => {
 	});
 
 	it('should still load other secrets when one getSecret fails', async () => {
-		await azureKeyVault.init(
-			mock<AzureKeyVaultContext>({
-				settings: {
-					vaultName: 'my-vault',
-					tenantId: 'my-tenant-id',
-					clientId: 'my-client-id',
-					clientSecret: 'my-client-secret',
-				},
-			}),
-		);
+		await azureKeyVault.init(createSettingsContext(baseSettings));
 
 		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
 			() =>
@@ -304,16 +386,7 @@ describe('AzureKeyVault', () => {
 	});
 
 	it('should throw when every getSecret fails and leave the previous cache unchanged', async () => {
-		await azureKeyVault.init(
-			mock<AzureKeyVaultContext>({
-				settings: {
-					vaultName: 'my-vault',
-					tenantId: 'my-tenant-id',
-					clientId: 'my-client-id',
-					clientSecret: 'my-client-secret',
-				},
-			}),
-		);
+		await azureKeyVault.init(createSettingsContext(baseSettings));
 
 		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
 			() =>

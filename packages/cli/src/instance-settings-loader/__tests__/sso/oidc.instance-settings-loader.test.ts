@@ -18,6 +18,8 @@ describe('OidcInstanceSettingsLoader', () => {
 		oidcLoginEnabled: false,
 		oidcPrompt: 'select_account',
 		oidcAcrValues: '',
+		oidcAdditionalScopes: '',
+		oidcRpInitiatedLogoutEnabled: false,
 	};
 
 	const validConfig: Partial<InstanceSettingsLoaderConfig> = {
@@ -81,6 +83,20 @@ describe('OidcInstanceSettingsLoader', () => {
 
 			const parsed = getUpsertedValue();
 			expect(parsed.authenticationContextClassReference).toEqual(['mfa', 'phrh']);
+		});
+
+		it('should persist additionalScopes and rpInitiatedLogoutEnabled', async () => {
+			const loader = createLoader({
+				...validConfig,
+				oidcAdditionalScopes: 'offline_access',
+				oidcRpInitiatedLogoutEnabled: true,
+			});
+
+			await loader.apply();
+
+			const parsed = getUpsertedValue();
+			expect(parsed.additionalScopes).toBe('offline_access');
+			expect(parsed.rpInitiatedLogoutEnabled).toBe(true);
 		});
 	});
 

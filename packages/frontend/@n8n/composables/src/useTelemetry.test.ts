@@ -1,7 +1,8 @@
 import { render } from '@testing-library/vue';
 import { defineComponent, h } from 'vue';
 
-import { setTelemetry, TelemetryKey, useTelemetry, type Telemetry } from './useTelemetry';
+import { setTelemetry, TelemetryKey, type Telemetry } from './registries/telemetryRegistry';
+import { useTelemetry } from './useTelemetry';
 
 function createTelemetry(): Telemetry {
 	return {

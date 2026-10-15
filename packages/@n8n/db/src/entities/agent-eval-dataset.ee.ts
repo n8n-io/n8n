@@ -1,19 +1,11 @@
-import type { DatasetRef } from '@n8n/api-types';
+import type { AgentEvalColumnMapping, DatasetRef } from '@n8n/api-types';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
 import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 
-/**
- * Maps the roles an agent eval needs onto columns of the referenced dataset
- * (a Data Table or Google Sheet). Only `input` is required; a run without a
- * `expectedOutput`/`criteria` column simply has no reference answer or
- * per-case check to judge against.
- */
-export interface AgentEvalColumnMapping {
-	input: string;
-	expectedOutput?: string;
-	criteria?: string;
-}
+// The FE/BE contract for this shape lives in `@n8n/api-types`; re-exported so
+// existing db-internal consumers keep importing it from the entity.
+export type { AgentEvalColumnMapping };
 
 /**
  * A named, reusable eval setup for a single agent: which dataset to run and how

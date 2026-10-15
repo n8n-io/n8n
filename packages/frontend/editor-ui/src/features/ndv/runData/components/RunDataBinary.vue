@@ -4,6 +4,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
+import { getBinaryDataFileName } from '@/app/utils/fileUtils';
 import { ViewableMimeTypes } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { IBinaryKeyData } from 'n8n-workflow';
@@ -44,16 +45,18 @@ function isDownloadable(index: number, key: string | number): boolean {
 }
 
 async function downloadBinaryData(index: number, key: string | number) {
-	const { id, data, fileName, fileExtension, mimeType } = binaryData[index][key];
+	const entry = binaryData[index][key];
+	const { id, data, fileName, mimeType } = entry;
+	const name = getBinaryDataFileName(entry);
 
 	if (id) {
 		const url = workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-		saveAs(url, [fileName, fileExtension].join('.'));
+		saveAs(url, name);
 		return;
 	} else {
 		const bufferString = 'data:' + mimeType + ';base64,' + data;
 		const blob = await fetch(bufferString).then(async (d) => await d.blob());
-		saveAs(blob, fileName);
+		saveAs(blob, name);
 	}
 }
 
@@ -142,7 +145,7 @@ function openWorkflowSettings() {
 								@click="emit('preview', index, key)"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								v-if="isDownloadable(index, key)"
 								size="small"
 								:label="i18n.baseText('runData.downloadBinaryData')"
@@ -158,6 +161,8 @@ function openWorkflowSettings() {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .component {
 	position: absolute;
 	top: 0;
@@ -183,7 +188,7 @@ function openWorkflowSettings() {
 		border-radius: var(--radius);
 		text-align: center;
 		background-color: var(--color--foreground--shade-2);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--tint-3);
 	}
 }
@@ -207,7 +212,7 @@ function openWorkflowSettings() {
 
 .binaryHeader {
 	color: $color-primary;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: 1.2em;
 	padding-bottom: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);

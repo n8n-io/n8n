@@ -1,10 +1,10 @@
 import { authenticatedMiddleware } from '@/app/utils/rbac/middleware/authenticated';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { VIEWS } from '@/app/constants';
 import type { RouteLocationNormalized } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
@@ -20,7 +20,7 @@ describe('Middleware', () => {
 			>);
 
 			const nextMock = vi.fn();
-			const toMock = { query: {} } as RouteLocationNormalized;
+			const toMock = { query: {}, fullPath: '/' } as RouteLocationNormalized;
 			const fromMock = {} as RouteLocationNormalized;
 
 			await authenticatedMiddleware(toMock, fromMock, nextMock, {});
@@ -54,7 +54,7 @@ describe('Middleware', () => {
 			>);
 
 			const nextMock = vi.fn();
-			const toMock = { query: {} } as RouteLocationNormalized;
+			const toMock = { query: {}, fullPath: '/' } as RouteLocationNormalized;
 			const fromMock = {} as RouteLocationNormalized;
 
 			await authenticatedMiddleware(toMock, fromMock, nextMock, {});

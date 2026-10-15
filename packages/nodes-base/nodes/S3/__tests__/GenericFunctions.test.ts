@@ -78,6 +78,86 @@ describe('S3 Node Generic Functions', () => {
 				expect.any(Object),
 			);
 		});
+
+		it.each([
+			{
+				forcePathStyle: true,
+				signedPathPrefix: '/test-bucket',
+				uriPrefix: 'https://s3.amazonaws.com/test-bucket',
+			},
+			{
+				forcePathStyle: false,
+				signedPathPrefix: '',
+				uriPrefix: 'https://test-bucket.s3.amazonaws.com',
+			},
+		])(
+			'should encode plus signs when forcePathStyle is $forcePathStyle',
+			async ({ forcePathStyle, signedPathPrefix, uriPrefix }) => {
+				for (const fileKey of ['has+plus.txt', 'has%2Bplus.txt']) {
+					mockContext.getCredentials.mockResolvedValueOnce({
+						endpoint: 'https://s3.amazonaws.com',
+						forcePathStyle,
+					});
+					mockContext.helpers.request.mockResolvedValueOnce('success');
+
+					await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', `/${fileKey}`);
+
+					expect(sign).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							path: `${signedPathPrefix}/has%2Bplus.txt?`,
+						}),
+						expect.any(Object),
+					);
+					expect(mockContext.helpers.request).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							uri: `${uriPrefix}/has%2Bplus.txt`,
+						}),
+					);
+				}
+			},
+		);
+
+		it.each([
+			{
+				forcePathStyle: true,
+				signedPathPrefix: '/test-bucket',
+				uriPrefix: 'https://s3.amazonaws.com/test-bucket',
+			},
+			{
+				forcePathStyle: false,
+				signedPathPrefix: '',
+				uriPrefix: 'https://test-bucket.s3.amazonaws.com',
+			},
+		])(
+			'should preserve encoded slashes when forcePathStyle is $forcePathStyle',
+			async ({ forcePathStyle, signedPathPrefix, uriPrefix }) => {
+				for (const fileKey of [
+					'folder%2Ffile.txt',
+					'folder%2F..%2Fsecret.txt',
+					'folder%252Ffile.txt',
+				]) {
+					mockContext.getCredentials.mockResolvedValueOnce({
+						endpoint: 'https://s3.amazonaws.com',
+						forcePathStyle,
+					});
+					mockContext.helpers.request.mockResolvedValueOnce('success');
+
+					await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', `/${fileKey}`);
+
+					expect(sign).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							path: `${signedPathPrefix}/${fileKey}?`,
+						}),
+						expect.any(Object),
+					);
+					expect(mockContext.helpers.request).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							uri: `${uriPrefix}/${fileKey}`,
+						}),
+					);
+				}
+			},
+		);
 	});
 
 	describe('s3ApiRequestREST', () => {

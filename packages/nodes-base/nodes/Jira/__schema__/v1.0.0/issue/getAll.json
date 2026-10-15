@@ -516,6 +516,23 @@
                         "name": {
                             "type": "string"
                         },
+                        "projectCategory": {
+                            "type": "object",
+                            "properties": {
+                                "description": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "self": {
+                                    "type": "string"
+                                }
+                            }
+                        },
                         "projectTypeKey": {
                             "type": "string"
                         },
@@ -799,5 +816,5 @@
             "type": "string"
         }
     },
-    "version": 10
+    "version": 11
 }

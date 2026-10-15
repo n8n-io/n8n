@@ -1,7 +1,18 @@
 import { mock } from 'vitest-mock-extended';
 
 import { backoff } from '../../executor/backoff';
-import { reap, type ExpiredLeaseRow, type ReaperTaskStore } from '../reap';
+import {
+	reap,
+	type ExpiredLeaseRow,
+	type ReaperTaskStore,
+	type RetireMissedResult,
+	type RetiredTask,
+} from '../reap';
+
+const retired = (
+	count: number,
+	heldByConcurrencyLimit: RetiredTask[] = [],
+): RetireMissedResult => ({ retired: count, heldByConcurrencyLimit });
 
 const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({
 	id: '1',
@@ -13,6 +24,7 @@ const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow 
 	status: 'running',
 	attempts: 0,
 	maxAttempts: 3,
+	timeoutSeconds: 300,
 	leaseEpoch: 1,
 	// Pre-dispatch by default; post-dispatch tests set a concrete `dispatchedAt`.
 	dispatchedAt: null,
@@ -28,6 +40,7 @@ const setup = () => {
 	store.reclaimExpired.mockResolvedValue(1);
 	store.deadLetterExpired.mockResolvedValue(1);
 	store.completeExpired.mockResolvedValue(1);
+	store.retireMissedPending.mockResolvedValue(retired(0));
 	const run = async () =>
 		await reap(store, { batchSize: 100 }, { onRowError, onDeadLetter, onCompletedAfterDispatch });
 	return { store, onRowError, onDeadLetter, onCompletedAfterDispatch, run };
@@ -40,9 +53,32 @@ describe('reap', () => {
 
 		const result = await run();
 
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
 		expect(store.deadLetterExpired).not.toHaveBeenCalled();
+	});
+
+	it('retires the pending occurrences past their deadline, bounded by the batch size', async () => {
+		const { store, run } = setup();
+		store.findExpiredLeases.mockResolvedValue([]);
+		store.retireMissedPending.mockResolvedValue(retired(4));
+
+		const result = await run();
+
+		expect(store.retireMissedPending).toHaveBeenCalledWith(100);
+		expect(result.missed).toBe(4);
+	});
+
+	it('retires stale occurrences even when there are leases to recover', async () => {
+		const { store, run } = setup();
+		store.findExpiredLeases.mockResolvedValue([
+			expiredTask({ attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
+		]);
+		store.retireMissedPending.mockResolvedValue(retired(2));
+
+		const result = await run();
+
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 2 });
 	});
 
 	it('reclaims a task with attempts left: backoff on the next attempt, epoch passed through', async () => {
@@ -59,7 +95,7 @@ describe('reap', () => {
 			expect.any(String),
 		);
 		expect(store.deadLetterExpired).not.toHaveBeenCalled();
-		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 	});
 
 	it('uses the next attempt number for the backoff on a middle attempt', async () => {
@@ -89,7 +125,7 @@ describe('reap', () => {
 			expect.any(String),
 		);
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1, missed: 0 });
 		// The terminal failure is reported with the lost attempt already counted.
 		expect(onDeadLetter).toHaveBeenCalledWith({ taskId: task.id, attempts: 1, maxAttempts: 1 });
 	});
@@ -109,7 +145,7 @@ describe('reap', () => {
 		);
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
 		expect(store.completeExpired).not.toHaveBeenCalled();
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1, missed: 0 });
 		expect(onDeadLetter).toHaveBeenCalledWith({ taskId: task.id, attempts: 1, maxAttempts: 1 });
 	});
 
@@ -133,7 +169,7 @@ describe('reap', () => {
 		expect(onDeadLetter).not.toHaveBeenCalled();
 		expect(onCompletedAfterDispatch).toHaveBeenCalledWith({ taskId: task.id });
 		// A success: reported via the hook, not counted as dead-lettered.
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 	});
 
 	it('completes a post-dispatch expired lease even with attempts left, never reclaiming it', async () => {
@@ -152,7 +188,7 @@ describe('reap', () => {
 		});
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
 		expect(onCompletedAfterDispatch).toHaveBeenCalledWith({ taskId: task.id });
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 	});
 
 	it('dead-letters when the next attempt reaches maxAttempts', async () => {
@@ -180,7 +216,7 @@ describe('reap', () => {
 
 		const result = await run();
 
-		expect(result).toEqual({ reclaimed: 2, deadLettered: 1 });
+		expect(result).toEqual({ reclaimed: 2, deadLettered: 1, missed: 0 });
 	});
 
 	it('skips a row that throws and still processes the rest of the batch', async () => {
@@ -196,7 +232,7 @@ describe('reap', () => {
 
 		const result = await run();
 
-		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		expect(store.reclaimExpired).toHaveBeenCalledWith(
 			{ id: 'ok', claimedEpoch: 1 },
 			backoff(1),
@@ -221,7 +257,7 @@ describe('reap', () => {
 
 		const result = await run();
 
-		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		expect(onRowError).toHaveBeenCalledWith('poison', failure);
 	});
 
@@ -233,7 +269,7 @@ describe('reap', () => {
 
 		const result = await run();
 
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 	});
 
 	it('does not report a dead-letter for a reclaim or a lost dead-letter race', async () => {
@@ -247,7 +283,7 @@ describe('reap', () => {
 
 		const result = await run();
 
-		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		expect(onDeadLetter).not.toHaveBeenCalled();
 	});
 
@@ -264,7 +300,7 @@ describe('reap', () => {
 		const result = await run();
 
 		// The row was decided before the reporter ran: counted, and the sweep goes on.
-		expect(result).toEqual({ reclaimed: 1, deadLettered: 1 });
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 1, missed: 0 });
 	});
 
 	it('cancelled mid-sweep, it keeps what it recovered and leaves the rest to the next sweep', async () => {
@@ -282,7 +318,7 @@ describe('reap', () => {
 
 		const result = await reap(store, { batchSize: 100 }, {}, controller.signal);
 
-		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		expect(store.reclaimExpired).toHaveBeenCalledTimes(1);
 	});
 
@@ -294,8 +330,61 @@ describe('reap', () => {
 
 		const result = await reap(store, { batchSize: 100 }, {}, controller.signal);
 
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
 		expect(store.deadLetterExpired).not.toHaveBeenCalled();
+		expect(store.retireMissedPending).not.toHaveBeenCalled();
+	});
+
+	it('reports the occurrences a concurrency limit held back until their deadline', async () => {
+		const store = mock<ReaperTaskStore>();
+		const onHeldByConcurrencyLimit = vi.fn();
+		const held = [{ id: '7', jobId: 3, taskType: 'system:pruning' }];
+		store.retireMissedPending.mockResolvedValue(retired(2, held));
+		store.findExpiredLeases.mockResolvedValue([]);
+
+		const result = await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+
+		expect(result.missed).toBe(2);
+		expect(onHeldByConcurrencyLimit).toHaveBeenCalledWith(held);
+	});
+
+	it('does not report an empty held-back list', async () => {
+		const store = mock<ReaperTaskStore>();
+		const onHeldByConcurrencyLimit = vi.fn();
+		store.retireMissedPending.mockResolvedValue(retired(2));
+		store.findExpiredLeases.mockResolvedValue([]);
+
+		await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+
+		expect(onHeldByConcurrencyLimit).not.toHaveBeenCalled();
+	});
+
+	it('still reports the sweep when the held-back reporter throws', async () => {
+		const store = mock<ReaperTaskStore>();
+		const onHeldByConcurrencyLimit = vi.fn(() => {
+			throw new Error('reporter down');
+		});
+		store.retireMissedPending.mockResolvedValue(
+			retired(1, [{ id: '7', jobId: 3, taskType: 'system:pruning' }]),
+		);
+		store.findExpiredLeases.mockResolvedValue([]);
+
+		const result = await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 1 });
+	});
+
+	it('recovers stranded rows even when retiring stale occurrences fails', async () => {
+		const store = mock<ReaperTaskStore>();
+		const onRetireError = vi.fn();
+		store.reclaimExpired.mockResolvedValue(1);
+		store.retireMissedPending.mockRejectedValue(new Error('statement timeout'));
+		store.findExpiredLeases.mockResolvedValue([expiredTask()]);
+
+		const result = await reap(store, { batchSize: 100 }, { onRetireError });
+
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
+		expect(onRetireError).toHaveBeenCalledWith(new Error('statement timeout'));
 	});
 });

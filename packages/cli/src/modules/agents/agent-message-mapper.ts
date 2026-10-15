@@ -1,4 +1,4 @@
-import type { AgentDbMessage, MessageContent } from '@n8n/agents';
+import { getCreatedAt, type AgentDbMessage, type MessageContent } from '@n8n/agents';
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
 
 export function contentPartToDto(part: MessageContent): AgentPersistedMessageContentPart {
@@ -12,15 +12,29 @@ export function contentPartToDto(part: MessageContent): AgentPersistedMessageCon
 	if ('state' in part && typeof part.state === 'string') dto.state = part.state;
 	if ('output' in part) dto.output = part.output;
 	if ('error' in part && typeof part.error === 'string') dto.error = part.error;
+	// File parts expose reference metadata only — never bytes. Parts without a
+	// fileRef (e.g. model-generated files) have nothing fetchable to expose.
+	if (part.type === 'file' && part.fileRef) {
+		dto.fileId = part.fileRef.id;
+		if (part.fileRef.fileName !== undefined) dto.fileName = part.fileRef.fileName;
+		if (part.mediaType !== undefined) dto.mimeType = part.mediaType;
+		if (part.fileRef.sizeBytes !== undefined) dto.sizeBytes = part.fileRef.sizeBytes;
+	}
 	return dto;
 }
 
 export function messageToDto(msg: AgentDbMessage): AgentPersistedMessageDto | null {
 	if (!('role' in msg) || !Array.isArray(msg.content)) return null;
+	// Checkpoint state is JSON-parsed, so `createdAt` reaches us as an ISO string
+	// and can be absent in older states, although the type says `Date`.
+	// ponytail: normalise here, because the parse boundary keeps the lie. The
+	// deeper fix is a revive step in `parseSuspendedState` (n8n-checkpoint-storage).
+	const createdAt = getCreatedAt(msg);
 	return {
 		id: msg.id,
 		role: msg.role,
 		content: msg.content.map(contentPartToDto),
+		...(createdAt ? { createdAt: createdAt.toISOString() } : {}),
 	};
 }
 

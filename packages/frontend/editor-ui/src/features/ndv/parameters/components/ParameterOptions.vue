@@ -18,13 +18,14 @@ import {
 	N8nActionToggle,
 	N8nIcon,
 	N8nIconButton,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nText,
 } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	isReadOnly: boolean;
 	value: NodeParameterValueType;
+	inputMode?: 'ai' | 'fixed' | 'expression';
 	showOptions?: boolean;
 	showExpressionSelector?: boolean;
 	showFocusPanel?: boolean;
@@ -60,7 +61,10 @@ const ndvStore = injectNDVStoreIfProvided();
 
 const activeNode = computed(() => ndvStore.value?.activeNode ?? null);
 const isDefault = computed(() => props.parameter.default === props.value);
-const isValueAnExpression = computed(() => isValueExpression(props.parameter, props.value));
+const isValueAnExpression = computed(() => {
+	if (props.inputMode !== undefined) return props.inputMode === 'expression';
+	return isValueExpression(props.parameter, props.value);
+});
 const editor = computed(() => getParameterTypeOption(props.parameter, 'editor'));
 const isChatHubToolContext = inject(ChatHubToolContextKey, false);
 
@@ -194,7 +198,7 @@ const onViewSelected = (selected: string) => {
 			<N8nIconButton
 				variant="ghost"
 				v-if="canBeOpenedInFocusPanel"
-				size="small"
+				size="xsmall"
 				icon-size="large"
 				icon="panel-right"
 				:class="$style.focusButton"
@@ -207,7 +211,7 @@ const onViewSelected = (selected: string) => {
 				<N8nActionToggle
 					v-if="shouldShowOptions"
 					placement="bottom-end"
-					size="small"
+					size="xsmall"
 					theme="dark"
 					icon-size="large"
 					:actions="actions"
@@ -217,9 +221,9 @@ const onViewSelected = (selected: string) => {
 				/>
 			</div>
 
-			<N8nRadioButtons
+			<N8nSegmentControl
 				v-if="shouldShowExpressionSelector"
-				size="small"
+				size="mini"
 				:class="$style.expressionSwitch"
 				:model-value="selectedView"
 				:disabled="isReadOnly"
@@ -233,7 +237,7 @@ const onViewSelected = (selected: string) => {
 			<N8nIconButton
 				variant="ghost"
 				v-if="showDelete && onDelete"
-				size="small"
+				size="xsmall"
 				icon-size="large"
 				icon="trash-2"
 				:class="$style.deleteButton"
@@ -248,8 +252,8 @@ const onViewSelected = (selected: string) => {
 <style lang="scss" module>
 .container {
 	display: flex;
-	min-height: var(--parameter-input-options--height, 22px);
-	max-height: var(--parameter-input-options--height, 22px);
+	min-height: var(--parameter-input-options--height, 24px);
+	max-height: var(--parameter-input-options--height, 24px);
 	overflow: hidden;
 }
 
@@ -267,6 +271,7 @@ const onViewSelected = (selected: string) => {
 }
 
 .expressionSwitch {
+	--n8n-segment-control--height: 24px;
 	margin-right: var(--spacing--4xs);
 }
 

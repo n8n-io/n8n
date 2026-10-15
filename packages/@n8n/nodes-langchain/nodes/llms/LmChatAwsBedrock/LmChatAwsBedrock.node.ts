@@ -6,7 +6,6 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import type { DocumentType } from '@smithy/types';
-import { assertSupportedAwsRegion } from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
 	jsonParse,
@@ -20,6 +19,10 @@ import {
 
 import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+import { resolveBedrockRegion } from '@utils/aws/resolveBedrockRegion';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
+import { listInferenceProfiles, listModels } from './methods/listModels';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +31,7 @@ export class LmChatAwsBedrock implements INodeType {
 		name: 'lmChatAwsBedrock',
 		icon: 'file:bedrock.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Language Model AWS Bedrock',
 		defaults: {
 			name: 'AWS Bedrock Chat Model',
@@ -64,9 +67,10 @@ export class LmChatAwsBedrock implements INodeType {
 				displayName: 'Model Source',
 				name: 'modelSource',
 				type: 'options',
+				// From 1.2 the Model dropdown lists on-demand models and inference profiles together
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.1 } }],
+						'@version': [{ _cnd: { eq: 1.1 } }],
 					},
 				},
 				options: [
@@ -93,6 +97,9 @@ export class LmChatAwsBedrock implements INodeType {
 				description:
 					'The model which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
 				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.2 } }],
+					},
 					hide: {
 						modelSource: ['inferenceProfile'],
 					},
@@ -141,56 +148,29 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 				builderHint: {
 					propertyHint:
-						'Default to the latest Claude Sonnet on Bedrock (anthropic.claude-sonnet-4-6 family). For Claude Sonnet 4+, switch Model Source to Inference Profiles. Avoid claude-sonnet-4-5, claude-3.x, and non-Claude legacy models unless requested.',
+						'If the chosen model requires an inference profile, use the Inference Profiles picker on a node version that supports it. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
+				// Keeps the field exactly as the legacy declarative picker rendered it
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				allowArbitraryValues: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
 					'The inference profile which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-use.html">Learn more</a>.',
 				displayOptions: {
 					show: {
+						'@version': [{ _cnd: { lt: 1.2 } }],
 						modelSource: ['inferenceProfile'],
 					},
 				},
 				typeOptions: {
-					loadOptionsDependsOn: ['modelSource'],
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/inference-profiles?maxResults=1000',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'inferenceProfileSummaries',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.inferenceProfileName}}',
-											description:
-												'={{$responseItem.description || $responseItem.inferenceProfileArn}}',
-											value: '={{$responseItem.inferenceProfileId}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
+					loadOptionsDependsOn: ['modelSource', 'authentication'],
+					loadOptionsMethod: 'listInferenceProfiles',
 				},
 				routing: {
 					send: {
@@ -201,7 +181,40 @@ export class LmChatAwsBedrock implements INodeType {
 				default: '',
 				builderHint: {
 					propertyHint:
-						'Default to the latest Claude Sonnet inference profile (anthropic.claude-sonnet-4-6 family). Avoid claude-sonnet-4-5 and claude-3.x profiles unless specifically requested.',
+						'Use an available inference profile for the chosen model. Copy the exact ID returned by the list. ' +
+						MODEL_SELECTION_HINT,
+				},
+			},
+			{
+				// Keeps the same field naming as the pre-1.2 pickers
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Model',
+				name: 'model',
+				type: 'options',
+				allowArbitraryValues: true, // Hide issues when model name is specified in the expression and does not match any of the options
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description:
+					'The model or inference profile which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html">Learn more</a>.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				typeOptions: {
+					loadOptionsDependsOn: ['authentication'],
+					loadOptionsMethod: 'listModels',
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: '',
+				builderHint: {
+					propertyHint:
+						'Use the exact model or inference profile ID returned by the list. Profile IDs can have a global or regional prefix. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
@@ -320,6 +333,13 @@ export class LmChatAwsBedrock implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			listInferenceProfiles,
+			listModels,
+		},
+	};
+
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const {
 			region: credentialRegion,
@@ -344,17 +364,7 @@ export class LmChatAwsBedrock implements INodeType {
 			};
 		};
 
-		// If the model is specified as a full ARN, extract the region from it
-		// ARN format: arn:<partition>:bedrock:<region>:<account-id>:inference-profile/<profile-id>
-		// Partition covers commercial (aws), China (aws-cn) and GovCloud (aws-us-gov).
-		let region = credentialRegion;
-		const arnMatch = modelName.match(/^arn:(?:aws|aws-cn|aws-us-gov):bedrock:([a-z0-9-]+):/);
-		if (arnMatch) {
-			const arnRegion = arnMatch[1];
-			// Validate before the region is interpolated into the bedrock-runtime endpoint URL below.
-			assertSupportedAwsRegion(arnRegion);
-			region = arnRegion;
-		}
+		const region = resolveBedrockRegion(modelName, credentialRegion);
 
 		const client = createBedrockRuntimeClient({
 			region,

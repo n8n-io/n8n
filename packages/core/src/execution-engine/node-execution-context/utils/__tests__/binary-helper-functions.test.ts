@@ -24,6 +24,7 @@ import {
 	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
+	getNodeBinaryHelperFunctions,
 	prepareBinaryData,
 	setBinaryDataBuffer,
 } from '../binary-helper-functions';
@@ -1158,6 +1159,27 @@ describe('copyBinaryFile', () => {
 		vi.resetAllMocks();
 		Container.set(BinaryDataService, binaryDataService);
 		binaryDataService.copyBinaryFile.mockResolvedValueOnce(binaryData);
+	});
+
+	it('should read the workflow and execution IDs when the node helper runs', async () => {
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const { copyBinaryFile: copy } = getNodeBinaryHelperFunctions(
+			{ id: workflowId },
+			additionalData,
+		);
+		additionalData.executionId = executionId;
+
+		await expect(copy(filePath, fileName, 'application/octet-stream')).resolves.toBe(binaryData);
+		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
+			{ type: 'execution', workflowId, executionId },
+			{
+				...binaryData,
+				fileExtension: 'bin',
+				fileType: undefined,
+				mimeType: 'application/octet-stream',
+			},
+			filePath,
+		);
 	});
 
 	it('should handle files without explicit mime type', async () => {

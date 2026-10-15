@@ -44,7 +44,8 @@ vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
 	}),
 }));
 
-vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
+vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', async (importOriginal) => ({
+	...(await importOriginal()),
 	StreamableHTTPClientTransport: vi.fn(function (url: URL, options: unknown) {
 		streamableHttpCtor(url, options);
 		return { type: 'streamableHttp', url, options };
@@ -64,7 +65,8 @@ describe('McpConnection — custom fetch forwarding', () => {
 		sseCtor.mockClear();
 		streamableHttpCtor.mockClear();
 		stdioCtor.mockClear();
-		clientConnect.mockClear();
+		clientConnect.mockReset().mockResolvedValue(undefined);
+		clientClose.mockReset().mockResolvedValue(undefined);
 		clientListTools.mockClear();
 	});
 
@@ -82,6 +84,55 @@ describe('McpConnection — custom fetch forwarding', () => {
 		expect(streamableHttpCtor).toHaveBeenCalledTimes(1);
 		const [, options] = streamableHttpCtor.mock.calls[0] as [URL, { fetch?: typeof fetch }];
 		expect(options.fetch).toBe(customFetch);
+	});
+
+	it('uses Streamable HTTP for an unconfigured URL', async () => {
+		const conn = new McpConnection({ name: 'default', url: 'https://example.test/mcp' });
+		await conn.connect();
+		expect(streamableHttpCtor).toHaveBeenCalledTimes(1);
+		expect(sseCtor).not.toHaveBeenCalled();
+	});
+
+	it('retries a legacy SSE endpoint when Streamable HTTP is unsupported', async () => {
+		const { StreamableHTTPError } = await import(
+			'@modelcontextprotocol/sdk/client/streamableHttp.js'
+		);
+		clientConnect.mockRejectedValueOnce(new StreamableHTTPError(404, 'Not found'));
+		const conn = new McpConnection({ name: 'legacy', url: 'https://example.test/sse' });
+		await conn.connect();
+		expect(streamableHttpCtor).toHaveBeenCalledTimes(1);
+		expect(sseCtor).toHaveBeenCalledTimes(1);
+		expect(clientClose).toHaveBeenCalled();
+	});
+
+	it('shares the connection timeout with the SSE retry', async () => {
+		const { StreamableHTTPError } = await import(
+			'@modelcontextprotocol/sdk/client/streamableHttp.js'
+		);
+		vi.useFakeTimers();
+		try {
+			clientConnect
+				.mockImplementationOnce(async () => {
+					await new Promise((resolve) => setTimeout(resolve, 90));
+					throw new StreamableHTTPError(404, 'Not found');
+				})
+				.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+			const conn = new McpConnection({
+				name: 'legacy',
+				url: 'https://example.test/sse',
+				connectionTimeoutMs: 100,
+			});
+
+			const connecting = conn.connect();
+			await vi.advanceTimersByTimeAsync(90);
+			expect(sseCtor).toHaveBeenCalledTimes(1);
+			const timedOut = expect(connecting).rejects.toThrow('connection timed out after 100ms');
+			await vi.advanceTimersByTimeAsync(10);
+			await timedOut;
+			expect(clientConnect).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('forwards `fetch` to SSEClientTransport and to its eventSourceInit when provided', async () => {
@@ -123,14 +174,14 @@ describe('McpConnection — custom fetch forwarding', () => {
 	});
 });
 
-describe('McpClient — connection error formatting', () => {
+describe('McpClient — connection failure handling', () => {
 	beforeEach(() => {
 		clientConnect.mockReset();
 		clientListTools.mockReset();
 		clientClose.mockReset();
 	});
 
-	it('includes nested fetch causes in the aggregated connection error', async () => {
+	it('skips a failing server, records the failure, and keeps the run going', async () => {
 		clientConnect.mockRejectedValueOnce(
 			new TypeError('fetch failed', {
 				cause: new Error('The request was blocked because it resolves to a restricted IP address'),
@@ -145,9 +196,115 @@ describe('McpClient — connection error formatting', () => {
 			},
 		]);
 
-		await expect(client.listTools()).rejects.toThrow(
-			'MCP connection failed:\n\tcustom_mcp: fetch failed. The request was blocked because it resolves to a restricted IP address',
-		);
+		// The run is NOT aborted — listTools resolves with an empty tool list
+		// (the failing server contributed nothing).
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+
+		// The failure is recorded with the nested cause flattened in.
+		expect(client.getConnectionFailures()).toEqual([
+			{
+				server: 'custom_mcp',
+				error:
+					'fetch failed. The request was blocked because it resolves to a restricted IP address',
+			},
+		]);
+	});
+
+	it('invokes onConnectionFailed for each failing server', async () => {
+		clientConnect.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('boom'));
+
+		clientListTools.mockResolvedValueOnce({
+			tools: [{ name: 'echo', description: '', inputSchema: { type: 'object' } }],
+		});
+
+		const onConnectionFailed = vi.fn();
+		const client = new McpClient([
+			{
+				name: 'ok_server',
+				url: 'https://example.test/mcp',
+				transport: 'streamableHttp',
+				onConnectionFailed,
+			},
+			{
+				name: 'bad_server',
+				url: 'https://example.test/mcp',
+				transport: 'streamableHttp',
+				onConnectionFailed,
+			},
+		]);
+
+		const tools = await client.listTools();
+
+		// Tools from the healthy server survive.
+		expect(tools.map((t) => t.name)).toEqual(['ok_server_echo']);
+		expect(onConnectionFailed).toHaveBeenCalledTimes(1);
+		expect(onConnectionFailed).toHaveBeenCalledWith({
+			server: 'bad_server',
+			error: 'boom',
+		});
+		expect(client.getConnectionFailures()).toEqual([{ server: 'bad_server', error: 'boom' }]);
+	});
+
+	it('swallows a throwing onConnectionFailed observer', async () => {
+		clientConnect.mockRejectedValueOnce(new Error('boom'));
+		const onConnectionFailed = vi.fn().mockImplementation(() => {
+			throw new Error('observer blew up');
+		});
+
+		const client = new McpClient([
+			{
+				name: 'custom_mcp',
+				url: 'http://localhost:5678/mcp/my-mcp-server',
+				transport: 'streamableHttp',
+				onConnectionFailed,
+			},
+		]);
+
+		// A faulty observer must not break the run.
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+		expect(client.getConnectionFailures()).toHaveLength(1);
+	});
+
+	it('disconnects a connection that connects but fails to list tools', async () => {
+		// connect() succeeds, but listTools() throws. The connection opened a
+		// transport, so it must be torn down rather than leaked for the run.
+		clientConnect.mockResolvedValueOnce(undefined);
+		clientListTools.mockRejectedValueOnce(new Error('listTools blew up'));
+
+		const client = new McpClient([
+			{ name: 'flaky', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+		]);
+
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+		expect(client.getConnectionFailures()).toEqual([
+			{ server: 'flaky', error: 'listTools blew up' },
+		]);
+		// The transport that opened before listTools threw was closed.
+		expect(clientClose).toHaveBeenCalledTimes(1);
+	});
+
+	it('retries a failed server on the next tool-list request', async () => {
+		clientConnect
+			.mockRejectedValueOnce(new Error('temporary failure'))
+			.mockResolvedValue(undefined);
+		clientListTools.mockResolvedValue({
+			tools: [{ name: 'echo', description: '', inputSchema: { type: 'object' } }],
+		});
+		clientClose.mockResolvedValue(undefined);
+
+		const client = new McpClient([
+			{ name: 'flaky', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+		]);
+
+		expect(await client.listTools()).toEqual([]);
+		const tools = await client.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual(['flaky_echo']);
+		expect(clientConnect).toHaveBeenCalledTimes(2);
+		expect(client.getConnectionFailures()).toEqual([]);
 	});
 });
 
@@ -214,6 +371,44 @@ describe('McpConnection - tool call settled callback', () => {
 		await expect(conn.callTool('echo', { message: 'bad' })).rejects.toThrow('boom');
 
 		expect(onToolCallSettled).toHaveBeenCalledWith({ toolName: 'echo', success: false });
+	});
+
+	it('passes resetTimeoutOnProgress: true to the SDK client so stalled calls die at the idle deadline', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+		await conn.connect();
+		clientCallTool.mockResolvedValueOnce({ content: [] });
+
+		await conn.callTool('echo', { message: 'ok' });
+
+		expect(clientCallTool).toHaveBeenCalledTimes(1);
+		const callArgs = clientCallTool.mock.calls[0];
+		// callTool(request, resultSchema, options)
+		const options = callArgs[2] as { resetTimeoutOnProgress?: boolean };
+		expect(options.resetTimeoutOnProgress).toBe(true);
+	});
+
+	it('forwards abortSignal alongside resetTimeoutOnProgress when provided', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+		await conn.connect();
+		clientCallTool.mockResolvedValueOnce({ content: [] });
+
+		const controller = new AbortController();
+		await conn.callTool('echo', { message: 'ok' }, { abortSignal: controller.signal });
+
+		const options = clientCallTool.mock.calls[0][2] as {
+			signal?: AbortSignal;
+			resetTimeoutOnProgress?: boolean;
+		};
+		expect(options.signal).toBe(controller.signal);
+		expect(options.resetTimeoutOnProgress).toBe(true);
 	});
 });
 
@@ -390,5 +585,77 @@ describe('McpConnection — tool filtering', () => {
 		const excludeTools = await excludeConn.listTools();
 
 		expect(excludeTools.map((tool) => tool.name)).toEqual(['s2_echo', 's2_add', 's2_subtract']);
+	});
+});
+
+describe('McpConnection — reconnect after disconnect', () => {
+	beforeEach(() => {
+		clientConnect.mockClear();
+		clientClose.mockClear().mockResolvedValue(undefined);
+	});
+
+	it('tears down the new client when reconnected after a disconnect', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+
+		await conn.connect();
+		await conn.disconnect();
+		// First disconnect closes the first client.
+		expect(clientClose).toHaveBeenCalledTimes(1);
+
+		// A retry (listTools() clears its cache on a hard error and re-runs)
+		// creates a new client. The second disconnect must close THAT client,
+		// not no-op because `closed` was left true by the first disconnect.
+		await conn.connect();
+		await conn.disconnect();
+		expect(clientClose).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('McpConnection — approval declaration', () => {
+	it('declares approval when tool configuration is resolved after discovery', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({ requireApproval: [] }),
+		});
+
+		expect(conn.declaresApproval()).toBe(true);
+	});
+
+	it('does not declare approval for non-interrupting tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({ toolFilter: { mode: 'exclude', tools: ['x'] } }),
+			configureToolsNonInterrupting: true,
+		});
+
+		expect(conn.declaresApproval()).toBe(false);
+	});
+
+	it('ignores the non-interrupting flag when there is no tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureToolsNonInterrupting: true,
+		});
+
+		expect(conn.declaresApproval()).toBe(false);
+	});
+
+	it('still declares approval for a static requireApproval with non-interrupting tool configuration', () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			configureTools: () => ({}),
+			configureToolsNonInterrupting: true,
+			requireApproval: ['delete'],
+		});
+
+		expect(conn.declaresApproval()).toBe(true);
 	});
 });

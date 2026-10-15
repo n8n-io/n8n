@@ -3,7 +3,7 @@ import { N8nBadge, N8nButton, N8nIcon, N8nPagination, N8nText } from '@n8n/desig
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import CollectionCard from '../components/EvalCollectionsListView/CollectionCard.vue';
 import SetupCollectionWizard from '../components/SetupCollectionWizard/SetupCollectionWizard.vue';
@@ -160,7 +160,7 @@ onBeforeUnmount(() => {
 					<N8nText tag="h3" size="medium" bold>
 						{{ i18n.baseText('evaluation.collections.section.collections') }}
 					</N8nText>
-					<N8nBadge theme="tertiary" size="small">{{ collections.length }}</N8nBadge>
+					<N8nBadge variant="outline">{{ collections.length }}</N8nBadge>
 				</div>
 
 				<div v-if="collections.length === 0" :class="$style.emptyHint">
@@ -187,11 +187,11 @@ onBeforeUnmount(() => {
 				<N8nPagination
 					v-if="showCollectionsPagination"
 					:class="$style.pagination"
-					layout="prev, pager, next"
-					:current-page="collectionsPage"
-					:page-size="pageSize"
+					v-model:page="collectionsPage"
+					:items-per-page="pageSize"
 					:total="collections.length"
-					@update:current-page="collectionsPage = $event"
+					:show-total="false"
+					:show-sizes="false"
 				/>
 			</section>
 
@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
 					<N8nText tag="h3" size="medium" bold>
 						{{ i18n.baseText('evaluation.collections.section.ungrouped') }}
 					</N8nText>
-					<N8nBadge theme="tertiary" size="small">{{ ungroupedRuns.length }}</N8nBadge>
+					<N8nBadge variant="outline">{{ ungroupedRuns.length }}</N8nBadge>
 					<N8nText :class="$style.ungroupedHelper" size="xsmall" color="text-light">
 						{{ i18n.baseText('evaluation.collections.section.ungrouped.helper') }}
 					</N8nText>

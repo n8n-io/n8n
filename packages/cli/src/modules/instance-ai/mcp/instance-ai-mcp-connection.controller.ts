@@ -1,6 +1,6 @@
 import type {
 	InstanceAiMcpConnectionResponse,
-	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 } from '@n8n/api-types';
 import {
 	InstanceAiMcpCreateConnectionRequestDto,
@@ -19,8 +19,8 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CredentialsFinderService } from '@n8n/backend-services';
+import { NotFoundError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 
@@ -96,13 +96,19 @@ export class InstanceAiMcpConnectionController {
 		);
 	}
 
+	@Get('/tools')
+	@GlobalScope('instanceAi:message')
+	async listAllTools(req: AuthenticatedRequest): Promise<InstanceAiMcpConnectionToolsResponse[]> {
+		return await this.service.listAllConnectionTools(req.user);
+	}
+
 	@Get('/:id/tools')
 	@GlobalScope('instanceAi:message')
 	async listTools(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
-	): Promise<InstanceAiMcpConnectionToolResponse[]> {
+	): Promise<InstanceAiMcpConnectionToolsResponse> {
 		return await this.service.listConnectionTools(req.user, id);
 	}
 
@@ -153,7 +159,7 @@ function toResponse(
 		credentialId: connection.credentialId,
 		credentialName,
 		credentialType,
-		toolFilter: connection.toolFilter,
+		toolPermissions: connection.toolPermissions,
 		createdAt: connection.createdAt.toISOString(),
 		updatedAt: connection.updatedAt.toISOString(),
 	};

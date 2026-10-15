@@ -11,6 +11,19 @@ describe('N8nSettingsPageHeader', () => {
 		expect(title.tagName).toBe('H1');
 	});
 
+	it('renders the titleTrailing slot alongside the title', () => {
+		render(N8nSettingsPageHeader, {
+			props: { title: 'This instance', showDocsLink: false },
+			slots: { titleTrailing: '<span data-test-id="trailing">Preview</span>' },
+		});
+
+		const title = screen.getByText('This instance');
+		const trailing = screen.getByTestId('trailing');
+		expect(title).toBeInTheDocument();
+		expect(trailing).toHaveTextContent('Preview');
+		expect(title.parentElement).toBe(trailing.parentElement);
+	});
+
 	it('renders the title with the requested heading tag', () => {
 		render(N8nSettingsPageHeader, {
 			props: { title: 'This instance', headingTag: 'h2', showDocsLink: false },

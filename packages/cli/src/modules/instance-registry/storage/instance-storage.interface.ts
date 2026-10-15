@@ -44,14 +44,14 @@ export interface InstanceStorage {
 	getRegistration(instanceKey: string): Promise<InstanceRegistration | null>;
 
 	/**
-	 * Get leader's last known state (for diff computation)
+	 * Get the reconciliation baseline (for diff computation)
 	 * Redis: GET state key
 	 * Memory: Return in-memory map
 	 */
 	getLastKnownState(): Promise<Map<string, InstanceRegistration>>;
 
 	/**
-	 * Save leader's state (for leadership handoffs)
+	 * Save the reconciliation baseline
 	 * Redis: SET state key with TTL
 	 * Memory: Update in-memory map
 	 */

@@ -10,7 +10,7 @@ import { arrayExtensions } from './array-extensions';
 import { booleanExtensions } from './boolean-extensions';
 import { dateExtensions } from './date-extensions';
 import { joinExpression, splitExpression } from './expression-parser';
-import type { ExpressionChunk, ExpressionCode } from './expression-parser';
+import type { ExpressionChunk } from './expression-parser';
 import type { ExtensionMap } from './extensions';
 import { numberExtensions } from './number-extensions';
 import { objectExtensions } from './object-extensions';
@@ -56,7 +56,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(genericExtensions),
 	]),
 );
-
+// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 const EXPRESSION_EXTENSION_REGEX = new RegExp(
 	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')})\\s*(\\?\\.)?)\\s*\\(`,
 );
@@ -420,11 +420,11 @@ export const extendTransform = (expression: string): { code: string } | undefine
 					path.replace(
 						types.builders.conditionalExpression(
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							test as any,
+							test,
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							consequent as any,
+							consequent,
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							alternative as any,
+							alternative,
 						),
 					);
 				}
@@ -574,7 +574,7 @@ export function extendOptional(
 	};
 }
 
-const EXTENDED_SYNTAX_CACHE: Record<string, string> = {};
+const EXTENDED_SYNTAX_CACHE = new Map<string, string>();
 
 export function extendSyntax(bracketedExpression: string, forceExtend = false): string {
 	const chunks = splitExpression(bracketedExpression);
@@ -591,8 +591,9 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 	}
 
 	// If we've seen this expression before grab it from the cache
-	if (bracketedExpression in EXTENDED_SYNTAX_CACHE) {
-		return EXTENDED_SYNTAX_CACHE[bracketedExpression];
+	const cachedExpression = EXTENDED_SYNTAX_CACHE.get(bracketedExpression);
+	if (cachedExpression !== undefined) {
+		return cachedExpression;
 	}
 
 	const extendedChunks = chunks.map((chunk): ExpressionChunk => {
@@ -621,13 +622,13 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 			return {
 				...chunk,
 				text,
-			} as ExpressionCode;
+			};
 		}
 		return chunk;
 	});
 
 	const expression = joinExpression(extendedChunks);
 	// Cache the expression so we don't have to do this transform again
-	EXTENDED_SYNTAX_CACHE[bracketedExpression] = expression;
+	EXTENDED_SYNTAX_CACHE.set(bracketedExpression, expression);
 	return expression;
 }

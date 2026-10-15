@@ -7,6 +7,7 @@ import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IUserSettings,
 	AnnotationVote,
@@ -18,6 +19,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { OperationContext } from '../services/transaction';
 import type { CredentialUsageScope, CredentialsEntity } from './credentials-entity';
 import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
@@ -65,7 +67,12 @@ export interface IExecutionBase {
 	 * correlated across queue-mode boundaries.
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
-	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	tracingContext?: {
+		traceparent: string;
+		tracestate?: string;
+		identity?: Record<string, string>;
+	} | null;
+	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
 	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
@@ -99,6 +106,7 @@ export interface IWorkflowDb extends IWorkflowBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
+	description?: string | null;
 	shared?: SharedCredentials[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
@@ -142,6 +150,7 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
+	featureFlagPayloads?: FeatureFlagPayloads;
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
 	isManagedByEnv?: boolean;
@@ -155,7 +164,7 @@ export interface CredentialUsedByWorkflow {
 	id: string;
 	name: string;
 	type?: string;
-	currentUserHasAccess: boolean;
+	currentUserCanUse: boolean;
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 }
@@ -209,14 +218,9 @@ export namespace ExecutionSummaries {
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
 	export type FilterFields = Partial<{
-		id: string;
-		finished: boolean;
 		mode: WorkflowExecuteMode;
-		retryOf: string;
-		retrySuccessId: string;
 		status: ExecutionStatus[];
 		workflowId: string;
-		waitTill: boolean;
 		metadata: Array<{ key: string; value: string; exactMatch?: boolean }>;
 		startedAfter: string;
 		startedBefore: string;
@@ -245,8 +249,8 @@ export namespace ExecutionSummaries {
 	type RangeFields = {
 		range: {
 			limit: number;
-			firstId?: string;
-			lastId?: string;
+			/** ID of the last row of the previous page. The page continues below it. */
+			beforeId?: string;
 		};
 	};
 
@@ -341,7 +345,7 @@ export function isAuthProviderType(value: string): value is AuthProviderType {
 }
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
-	workflowCount?: boolean;
+	workflowCount?: number;
 	subFolderCount?: number;
 };
 
@@ -455,6 +459,7 @@ export type AuthenticationInformation = {
 export interface TokenGrant {
 	scopes: string[];
 	apiKeyScopes?: string[];
+	apiKeyId?: string;
 	actor?: User;
 	subject: User;
 }
@@ -472,6 +477,8 @@ export type AuthenticatedRequest<
 		'push-ref': string;
 	};
 	tokenGrant?: TokenGrant;
+	/** Set by the authentication edge; controllers thread it into services as `ctx`. */
+	ctx?: OperationContext;
 };
 
 export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {

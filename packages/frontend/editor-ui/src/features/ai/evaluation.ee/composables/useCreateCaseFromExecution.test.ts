@@ -12,7 +12,7 @@ const mockTrack = vi.fn();
 vi.mock('@/features/execution/executions/executions.store', () => ({
 	useExecutionsStore: () => ({
 		fetchExecution: mockFetchExecution,
-		fetchExecutions: mockFetchExecutions,
+		fetchExecutionsPage: mockFetchExecutions,
 	}),
 }));
 
@@ -20,7 +20,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({ value: { workflowId: 'wf-1' } }),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mockTrack }),
 }));
 

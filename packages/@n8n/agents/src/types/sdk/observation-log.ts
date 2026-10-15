@@ -68,9 +68,12 @@ export interface ObservationLogReflectionResult {
 	inserted: ObservationLogEntry[];
 }
 
-export type TokenCounter = (text: string) => number;
-
-export const estimateObservationTokens: TokenCounter = (text) => Math.ceil(text.length / 4);
+export function getStoredObservationTokenCount(
+	entry: Pick<ObservationLogEntry, 'text' | 'tokenCount'>,
+): number {
+	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
+	return Buffer.byteLength(entry.text, 'utf8');
+}
 
 export interface ObservationLogObserverInput {
 	observationScopeId: string;
@@ -84,7 +87,23 @@ export interface ObservationLogObserverInput {
 	telemetry?: BuiltTelemetry;
 }
 
-export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
+/** Return observation bullets, or exactly NO_OBSERVATIONS when the batch has no new facts. */
+export interface ObservationLogObserveResult {
+	text: string;
+	/** Normalized token usage from the observer LLM call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the result. */
+	model: string;
+}
+
+/**
+ * Observe the transcript delta. Returns the observation markdown, or a
+ * `{ text, usage, model }` result that also carries token usage for the host
+ * to price. String returns are accepted for backward compatibility.
+ */
+export type ObservationLogObserveFn = (
+	input: ObservationLogObserverInput,
+) => Promise<string | ObservationLogObserveResult>;
 
 export interface ObservationLogReflectorInput {
 	observationScopeId: string;
@@ -97,7 +116,23 @@ export interface ObservationLogReflectorInput {
 	telemetry?: BuiltTelemetry;
 }
 
-export type ObservationLogReflectFn = (input: ObservationLogReflectorInput) => Promise<string>;
+export interface ObservationLogReflectResult {
+	/** JSON string with `drop` and `merge` arrays, using the references supplied in the input. */
+	text: string;
+	/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the result. */
+	model: string;
+}
+
+/**
+ * Reflect the active observation log. Returns the reflection JSON, or a
+ * `{ text, usage, model }` result that also carries token usage for the host
+ * to price. String returns are accepted for backward compatibility.
+ */
+export type ObservationLogReflectFn = (
+	input: ObservationLogReflectorInput,
+) => Promise<string | ObservationLogReflectResult>;
 
 /** Reported after an observation-log observer/reflector LLM call completes, for hosts that meter usage. */
 export interface MemoryTaskUsageReport {

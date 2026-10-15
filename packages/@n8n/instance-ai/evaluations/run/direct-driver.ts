@@ -16,7 +16,7 @@ import { type RowSink } from './persist';
 import { reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
 import { BUILD_ONLY_SCENARIO_NAME, roundRobinCaseRows } from './rows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { runWithConcurrency } from '../harness/runner';
+import { runWithConcurrency } from '../harness/cleanup';
 import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 export interface DirectRunConfig extends Omit<EvalSessionConfig, 'wrap'> {
@@ -92,6 +92,7 @@ export async function runDirect(config: DirectRunConfig): Promise<{
 			sideBand.buildExpectations,
 			lanes[0]?.baseUrl,
 			sideBand.runDebug,
+			sideBand.harnessUsage,
 		);
 		for (const iterationResults of allRunResults) {
 			partialResults?.push(iterationResults);

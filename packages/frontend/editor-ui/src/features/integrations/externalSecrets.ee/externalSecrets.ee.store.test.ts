@@ -74,7 +74,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 }));
 
 // Mock settings store
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isEnterpriseFeatureEnabled: {
 			[EnterpriseEditionFeature.ExternalSecrets]: true,
@@ -232,6 +232,26 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('secretsAsObject', () => {
+		it.each(['secrets', 'projectSecrets'] as const)(
+			'should expose masked 1Password fields from %s for preview and autocomplete',
+			(scope) => {
+				setModuleSettings({ forProjects: true });
+				const store = useExternalSecretsStore();
+				store.state[scope] = {
+					onePassword: ['testing.credential', 'testing.username'],
+				};
+
+				expect(store.secretsAsObject).toEqual({
+					onePassword: {
+						testing: {
+							credential: '*********',
+							username: '*********',
+						},
+					},
+				});
+			},
+		);
+
 		it('should only contain the global secrets if forProjects is disabled', () => {
 			setLegacyMode();
 			const store = useExternalSecretsStore();

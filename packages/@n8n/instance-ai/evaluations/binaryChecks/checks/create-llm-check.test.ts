@@ -36,4 +36,30 @@ describe('createLlmCheck', () => {
 			comment: 'LLM check "slow_check" timed out after 1ms',
 		});
 	});
+
+	it('marks an unparseable verdict as errored, not failed', async () => {
+		// Observed live: the judge answered with a markdown analysis that ticked the
+		// requirements off as satisfied, but carried no parseable verdict. Scoring
+		// that as a failure reports a defect in the workflow that isn't there.
+		mocks.generate.mockResolvedValue({
+			text: '## Analysis\n**Requirement 1** — satisfied ✓\n**Requirement 2** — satisfied ✓',
+		});
+
+		const check = createLlmCheck({
+			name: 'chatty_check',
+			description: 'chatty check',
+			dimension: 'intent_match',
+			systemPrompt: 'Judge the workflow.',
+			humanTemplate: 'Workflow: {generatedWorkflow}',
+		});
+
+		const result = await check.run({} as WorkflowResponse, {
+			prompt: 'Build a workflow',
+			modelId: 'anthropic/test',
+		});
+
+		expect(result.pass).toBe(false);
+		expect(result.errored).toBe(true);
+		expect(result.comment).toContain('Failed to parse LLM response');
+	});
 });

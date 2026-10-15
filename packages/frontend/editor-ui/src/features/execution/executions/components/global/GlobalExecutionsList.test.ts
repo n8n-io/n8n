@@ -16,7 +16,7 @@ import {
 } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useExecutionsStore } from '../../executions.store';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 
@@ -32,10 +32,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
 		displayTimer: (timer: number) => timer,
-		baseText: (key: string, options: { interpolate: { count: string } }) => {
-			if (key === 'generic.list.selected') {
-				return `${options.interpolate.count} executions selected`;
-			} else if (key === 'executionsList.retryOf') {
+		baseText: (key: string) => {
+			if (key === 'executionsList.retryOf') {
 				return 'Retry of';
 			} else if (key === 'executionsList.successRetry') {
 				return 'Success retry';

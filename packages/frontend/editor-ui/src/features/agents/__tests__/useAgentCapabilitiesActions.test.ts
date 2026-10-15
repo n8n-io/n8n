@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { computed, ref } from 'vue';
+import { flushPromises } from '@vue/test-utils';
+import { computed, ref, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -10,6 +11,7 @@ import { createAgentSkill } from '../composables/useAgentApi';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
+	AgentJsonToolConfig,
 	AgentResource,
 	AgentSkill,
 } from '../types';
@@ -22,9 +24,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
 }));
 
-const { showMessageSpy } = vi.hoisted(() => ({ showMessageSpy: vi.fn() }));
-vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: showMessageSpy }),
+const { showErrorSpy, showMessageSpy } = vi.hoisted(() => ({
+	showErrorSpy: vi.fn(),
+	showMessageSpy: vi.fn(),
+}));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
 }));
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -42,25 +47,37 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	};
 }
 
-function setup(overrides: { supportsToolApproval?: boolean } = {}) {
+function setup(
+	overrides: {
+		supportsToolApproval?: boolean;
+		ensureAgentPersisted?: () => Promise<void>;
+		beforeAgentMutation?: () => Promise<void>;
+		refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
+		agent?: Ref<AgentResource | null>;
+		agentId?: Ref<string>;
+		projectId?: Ref<string>;
+	} = {},
+) {
 	setActivePinia(createTestingPinia({ stubActions: false }));
 	const uiStore = useUIStore();
 
 	const localConfig = ref<AgentJsonConfig | null>(makeConfig());
 	const scheduleConfigUpdate = vi.fn();
+	const agentId = overrides.agentId ?? ref('inline:node-1');
+	const projectId = overrides.projectId ?? ref('project-1');
 
 	const actions = useAgentCapabilitiesActions({
 		localConfig,
 		agent: ref<AgentResource | null>(null),
-		projectId: computed(() => 'project-1'),
-		agentId: computed(() => 'inline:node-1'),
+		projectId: computed(() => projectId.value),
+		agentId: computed(() => agentId.value),
 		connectedTriggers: ref([]),
 		scheduleConfigUpdate,
 		scheduleSkillSave: vi.fn(),
 		...overrides,
 	});
 
-	return { uiStore, actions, scheduleConfigUpdate, localConfig };
+	return { uiStore, actions, scheduleConfigUpdate, localConfig, agentId, projectId };
 }
 
 type ToolsModalData = {
@@ -87,6 +104,9 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 			url: 'https://mcp.example.com',
 			transport: 'streamableHttp',
 			authentication: 'none',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'require_approval' },
+			},
 		};
 		modalData.onConfirm({ tools: [], mcpServers: [mcpServer] });
 
@@ -147,6 +167,8 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 			hostId?: ReturnType<typeof ref<string>>;
 			skillRefs?: AgentJsonConfig['skills'];
 			bodies?: Record<string, AgentSkill>;
+			tools?: AgentJsonConfig['tools'];
+			mcpServers?: AgentJsonConfig['mcpServers'];
 		} = {},
 	) {
 		setActivePinia(createTestingPinia({ stubActions: false }));
@@ -154,7 +176,11 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		const hostId = options.hostId ?? ref('inline:node-1');
 
 		const localConfig = ref<AgentJsonConfig | null>(
-			makeConfig({ skills: options.skillRefs ?? [{ type: 'skill', id: 'skill_triage' }] }),
+			makeConfig({
+				skills: options.skillRefs ?? [{ type: 'skill', id: 'skill_triage' }],
+				...(options.tools ? { tools: options.tools } : {}),
+				...(options.mcpServers ? { mcpServers: options.mcpServers } : {}),
+			}),
 		);
 		const scheduleConfigUpdate = vi.fn();
 		const createSkill = vi.fn();
@@ -182,6 +208,198 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		vi.clearAllMocks();
 	});
 
+	it('waits for the unsaved agent to be persisted before creating the skill', async () => {
+		let releasePersist: () => void = () => {};
+		const persisted = new Promise<void>((resolve) => {
+			releasePersist = resolve;
+		});
+		const { uiStore, actions } = setup({ ensureAgentPersisted: async () => await persisted });
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		// The agent does not exist yet, so the skill endpoint would 404.
+		expect(createAgentSkill).not.toHaveBeenCalled();
+
+		releasePersist();
+		await flushPromises();
+
+		expect(createAgentSkill).toHaveBeenCalled();
+	});
+
+	it('records the created skill hash so a follow-up edit is checked against it', async () => {
+		const agent = ref<AgentResource | null>({
+			id: 'inline:node-1',
+			skills: {},
+			skillHashes: {},
+		} as unknown as AgentResource);
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
+		});
+		const { uiStore, actions } = setup({ agent });
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		expect(agent.value?.skillHashes).toEqual({ skill_new: 'hash-new' });
+	});
+
+	it('flushes pending edits and refreshes the config before applying a created skill ref', async () => {
+		const agent = ref<AgentResource | null>({
+			id: 'inline:node-1',
+			skills: {},
+			skillHashes: {},
+		} as unknown as AgentResource);
+		const beforeAgentMutation = vi.fn().mockResolvedValue(undefined);
+		const refreshAgentAfterMutation = vi.fn().mockResolvedValue(true);
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
+		});
+		const { uiStore, actions, localConfig, scheduleConfigUpdate } = setup({
+			agent,
+			beforeAgentMutation,
+			refreshAgentAfterMutation,
+		});
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		expect(beforeAgentMutation).toHaveBeenCalledOnce();
+		expect(beforeAgentMutation.mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(createAgentSkill).mock.invocationCallOrder[0],
+		);
+		expect(refreshAgentAfterMutation).toHaveBeenCalledWith('project-1', 'inline:node-1');
+		expect(localConfig.value?.skills).toEqual([{ type: 'skill', id: 'skill_new' }]);
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+		expect(showMessageSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not apply a created skill ref after the active agent changes during refresh', async () => {
+		let releaseRefresh: (refreshed: boolean) => void = () => {};
+		const refresh = new Promise<boolean>((resolve) => {
+			releaseRefresh = resolve;
+		});
+		const agentId = ref('inline:node-1');
+		const agent = ref<AgentResource | null>({
+			id: 'inline:node-1',
+			skills: {},
+			skillHashes: {},
+		} as unknown as AgentResource);
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
+		});
+		const { uiStore, actions, localConfig } = setup({
+			agent,
+			agentId,
+			refreshAgentAfterMutation: async () => await refresh,
+		});
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+		agentId.value = 'inline:node-2';
+		agent.value = { id: 'inline:node-2', skills: {} } as unknown as AgentResource;
+		localConfig.value = makeConfig();
+		releaseRefresh(true);
+		await flushPromises();
+
+		expect(localConfig.value.skills).toBeUndefined();
+		expect(agent.value.skills).toEqual({});
+	});
+
+	it('does not apply a created skill ref after the active project changes during refresh', async () => {
+		let releaseRefresh: (refreshed: boolean) => void = () => {};
+		const refresh = new Promise<boolean>((resolve) => {
+			releaseRefresh = resolve;
+		});
+		const projectId = ref('project-1');
+		const agent = ref<AgentResource | null>({
+			id: 'inline:node-1',
+			skills: {},
+			skillHashes: {},
+		} as unknown as AgentResource);
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
+		});
+		const { uiStore, actions, localConfig } = setup({
+			agent,
+			projectId,
+			refreshAgentAfterMutation: async () => await refresh,
+		});
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+		projectId.value = 'project-2';
+		agent.value = { id: 'inline:node-1', skills: {} } as unknown as AgentResource;
+		localConfig.value = makeConfig();
+		releaseRefresh(true);
+		await flushPromises();
+
+		expect(localConfig.value.skills).toBeUndefined();
+		expect(agent.value.skills).toEqual({});
+	});
+
+	it('reports a refresh failure without applying a created skill ref to stale config', async () => {
+		const agent = ref<AgentResource | null>({
+			id: 'inline:node-1',
+			skills: {},
+			skillHashes: {},
+		} as unknown as AgentResource);
+		const refreshError = new Error('refresh failed');
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'skill_new',
+			skill: { ...triage, name: 'New Skill' },
+			skillHash: 'hash-new',
+			versionId: 'v2',
+		});
+		const { uiStore, actions, localConfig } = setup({
+			agent,
+			refreshAgentAfterMutation: async () => await Promise.reject(refreshError),
+		});
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		expect(showErrorSpy).toHaveBeenCalledWith(refreshError, 'agents.builder.loadError');
+		expect(localConfig.value?.skills).toBeUndefined();
+	});
+
+	it('does not create the skill when persisting the agent fails', async () => {
+		const { uiStore, actions } = setup({
+			ensureAgentPersisted: async () => await Promise.reject(new Error('create failed')),
+		});
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		expect(createAgentSkill).not.toHaveBeenCalled();
+	});
+
 	it('joins applied skills against the seam bodies instead of the agent entity', () => {
 		const { actions } = setupLocal();
 
@@ -199,13 +417,16 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		expect(createAgentSkill).not.toHaveBeenCalled();
 	});
 
-	it('filters allowedTools to configured tool names before persisting', () => {
-		const { uiStore, actions, createSkill } = setupLocal();
+	it('drops allowedTools before persisting and offers no tool list', () => {
+		const { uiStore, actions, createSkill } = setupLocal({
+			tools: [{ type: 'node', name: 'darwin' } as AgentJsonToolConfig],
+		});
 
 		actions.onOpenAddSkillModal();
 		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData).not.toHaveProperty('availableTools');
 		modalData.onConfirm({
-			skill: { ...triage, name: 'Second Skill', allowedTools: ['not_a_configured_tool'] },
+			skill: { ...triage, name: 'Second Skill', allowedTools: ['darwin'] },
 		});
 
 		expect(createSkill).toHaveBeenCalledWith(

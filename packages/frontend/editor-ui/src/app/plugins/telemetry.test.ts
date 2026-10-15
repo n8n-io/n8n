@@ -1,6 +1,6 @@
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { TelemetryService } from '@/app/plugins/telemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defineTelemetryEvents } from '@n8n/telemetry';
 import merge from 'lodash/merge';
 import { createPinia, setActivePinia } from 'pinia';

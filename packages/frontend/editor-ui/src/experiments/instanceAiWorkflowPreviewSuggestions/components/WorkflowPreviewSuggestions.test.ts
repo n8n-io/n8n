@@ -6,7 +6,7 @@ import WorkflowPreviewSuggestions from './WorkflowPreviewSuggestions.vue';
 
 const telemetryTrack = vi.fn();
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
@@ -42,6 +42,7 @@ describe('WorkflowPreviewSuggestions', () => {
 					promptKey: suggestion.promptKey,
 					suggestionId: suggestion.id,
 					suggestionKind: 'prompt',
+					prefillType: 'suggestion_catalog',
 					position: 2,
 				},
 			],
@@ -54,10 +55,33 @@ describe('WorkflowPreviewSuggestions', () => {
 		});
 	});
 
+	it('omits the assistant label by default and shows it when requested', async () => {
+		const { queryByTestId, rerender } = renderComponent();
+		const labelTestId = 'instance-ai-workflow-preview-suggestions-assistant-label';
+
+		expect(queryByTestId(labelTestId)).not.toBeInTheDocument();
+
+		await rerender({ suggestions, disabled: false, label: 'Try asking n8n Assistant' });
+
+		expect(queryByTestId(labelTestId)).toHaveTextContent('Try asking n8n Assistant');
+	});
+
 	it('links "see all" to the templates website URL with instance parameters', () => {
 		const { container } = renderComponent();
 
 		const link = container.querySelector('a');
 		expect(link).toHaveAttribute('href', websiteTemplateRepositoryURL);
+	});
+
+	it('tracks a telemetry event when "see all" is clicked', async () => {
+		const { container } = renderComponent();
+
+		const link = container.querySelector('a');
+		expect(link).not.toBeNull();
+		if (!link) throw new Error('Missing see-all link');
+
+		await fireEvent.click(link);
+
+		expect(telemetryTrack).toHaveBeenCalledWith('AI Assistant examples see all button clicked');
 	});
 });

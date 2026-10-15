@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "completed": {
+            "type": "string"
+        },
         "due": {
             "type": "string"
         },
@@ -52,5 +55,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

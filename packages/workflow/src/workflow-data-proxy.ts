@@ -7,7 +7,7 @@ import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
-import { UnexpectedError } from './errors';
+import { UnexpectedError, UserError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { isExpression } from './expressions/expression-helpers';
 import { getGlobalState } from './global-state';
@@ -31,12 +31,20 @@ import type {
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import { IS_FRONTEND } from './runtime-environment';
+import { safeRegex } from './safe-regex';
 import { isResourceLocatorValue } from './type-guards';
-import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
+import {
+	containsUnsafeObjectPropertyToken,
+	deepCopy,
+	isObjectEmpty,
+	isSafeObjectProperty,
+} from './utils';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
 import { getPinDataIfManualExecution } from './workflow-data-proxy-helpers';
+import { PairedItemMemo } from './workflow-data-proxy-paired-item-memo';
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);
@@ -60,6 +68,14 @@ type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_MET
  * This is a process-wide invariant, so we probe once and cache the result.
  */
 let codeGenerationAllowed: boolean | undefined;
+// Reads a key from a placeholder source only when it is the source's own
+// property, so a lookup can never resolve to a value reached through the
+// prototype chain (e.g. `constructor` / `__proto__`).
+const readOwnKey = (source: unknown, key: string): unknown => {
+	if (source === null || typeof source !== 'object') return undefined;
+	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
+};
+
 const isCodeGenerationAllowed = (): boolean => {
 	if (codeGenerationAllowed === undefined) {
 		try {
@@ -376,8 +392,7 @@ export class WorkflowDataProxy {
 
 				if (isResourceLocatorValue(returnValue)) {
 					if (returnValue.__regex && typeof returnValue.value === 'string') {
-						const expr = new RegExp(returnValue.__regex);
-						const extracted = expr.exec(returnValue.value);
+						const extracted = safeRegex.exec(returnValue.__regex, returnValue.value);
 						if (extracted && extracted.length >= 2) {
 							returnValue = extracted[1];
 						} else {
@@ -918,6 +933,19 @@ export class WorkflowDataProxy {
 			});
 		};
 
+		// The node is upstream on the canvas, but the current item came through a
+		// different branch, e.g. the other input of an appending Merge.
+		const createNotOnBranchError = (nodeCause: string) => {
+			return createExpressionError('Invalid expression', {
+				messageTemplate: "Referenced node is not on this item's branch",
+				functionality: 'pairedItem',
+				descriptionKey: 'pairedItemNotOnBranch',
+				type: 'paired_item_not_on_branch',
+				moreInfoLink: true,
+				nodeCause,
+			});
+		};
+
 		function createBranchNotFoundError(node: string, item: number, cause?: string) {
 			return createExpressionError('Branch not found', {
 				messageTemplate: 'Paired item references non-existent branch',
@@ -1021,7 +1049,26 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
-			nodeBeforeLast?: string,
+		): INodeExecutionData =>
+			resolvePairedItem(
+				destinationNodeName,
+				incomingSourceData,
+				initialPairedItem,
+				usedMethodName,
+				undefined,
+				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
+				// Aggregate output pairing to all its inputs), so without memoization
+				// the walk revisits the same item exponentially often.
+				new PairedItemMemo(),
+			);
+
+		const resolvePairedItem = (
+			destinationNodeName: string,
+			incomingSourceData: ISourceData | null,
+			initialPairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
@@ -1030,6 +1077,26 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
+			return memo.resolve(sourceData, pairedItem, () =>
+				resolvePairedItemUncached(
+					destinationNodeName,
+					sourceData,
+					pairedItem,
+					usedMethodName,
+					nodeBeforeLast,
+					memo,
+				),
+			);
+		};
+
+		const resolvePairedItemUncached = (
+			destinationNodeName: string,
+			sourceData: ISourceData,
+			pairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
+		): INodeExecutionData => {
 			const taskData = getTaskData(sourceData);
 			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
 			const item = outputData[pairedItem.item];
@@ -1061,12 +1128,13 @@ export class WorkflowDataProxy {
 
 				try {
 					return createResultOk(
-						getPairedItem(
+						resolvePairedItem(
 							destinationNodeName,
 							nextSource,
 							{ ...nextPairedItem, input: inputIndex },
 							usedMethodName,
 							sourceData.previousNode,
+							memo,
 						),
 					);
 				} catch (error) {
@@ -1074,15 +1142,25 @@ export class WorkflowDataProxy {
 				}
 			});
 
-			if (results.every((result) => !result.ok)) {
+			if (results.length > 0 && results.every((result) => !result.ok)) {
 				throw results[0].error;
 			}
 
 			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
 
+			// No paired item leads to an input of this node. The graph check before the
+			// walk already found the node upstream, so it is on a different branch.
 			if (matchedItems.length === 0) {
-				if (sourceArray.length === 0) throw createNoConnectionError(destinationNodeName);
-				throw createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
+				const error =
+					sourceArray.length === 0
+						? createNotOnBranchError(destinationNodeName)
+						: createBranchNotFoundError(sourceData.previousNode, pairedItem.item, nodeBeforeLast);
+
+				// An expression error here would fail executions that resolve this case
+				// to null today. The expression engines swallow other errors, so the
+				// backend throws a UserError and only the editor shows the error.
+				if (IS_FRONTEND) throw error;
+				throw new UserError(error.message);
 			}
 
 			const [first, ...rest] = matchedItems;
@@ -1116,6 +1194,15 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
+			// Reserved keys resolve to inherited members (e.g. the object's
+			// constructor or prototype) rather than a placeholder value, so they
+			// are never valid placeholder names.
+			if (!isSafeObjectProperty(name)) {
+				throw new ExpressionError('Invalid parameter key', {
+					runIndex,
+					itemIndex,
+				});
+			}
 
 			const resultData =
 				that.runExecutionData?.resultData?.runData?.[that.activeNodeName]?.[runIndex];
@@ -1138,10 +1225,12 @@ export class WorkflowDataProxy {
 					type: 'no_execution_data',
 				});
 			}
+			// Resolve only own placeholder keys, never values reached through the
+			// prototype chain of the input data — including the `query` container
+			// itself, which is read as an own key for the same reason.
 			return (
-				// TS does not know that the key exists, we need to address this in refactor
-				(placeholdersDataInputData?.query as Record<string, unknown>)?.[name] ??
-				placeholdersDataInputData?.[name] ??
+				readOwnKey(readOwnKey(placeholdersDataInputData, 'query'), name) ??
+				readOwnKey(placeholdersDataInputData, name) ??
 				defaultValue
 			);
 		};

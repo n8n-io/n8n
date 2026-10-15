@@ -5,7 +5,7 @@ import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { ElCollapseTransition } from 'element-plus';
 
 import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { WebhookDisplayData } from '@/features/setupPanel/composables/useWebhookUrls';
 
 defineProps<{
@@ -110,7 +110,7 @@ function copyUrl(url: string) {
 	background-color: var(--color--foreground--shade-2);
 	color: var(--color--foreground--tint-2);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-radius: var(--radius--sm);
 	padding: 0 var(--spacing--4xs);
 	line-height: var(--spacing--sm);

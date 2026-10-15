@@ -15,6 +15,30 @@ export class BreakingChangesModule implements ModuleInterface {
 		const { BreakingChangeService } = await import('./breaking-changes.service.js');
 		Container.get(BreakingChangeService).registerRules();
 
+		// Register the node migrations keyed by rule id
+		const { MigrationRegistry } = await import('./breaking-changes.migration-registry.service.js');
+		Container.get(MigrationRegistry).registerAll();
+
 		await import('./breaking-changes.controller.js');
+
+		// Keep the finding table current between full scans.
+		const { MigrationFindingSyncListener } = await import(
+			'./sync/migration-finding-sync.listener.js'
+		);
+		Container.get(MigrationFindingSyncListener).init();
+	}
+
+	// Registered even when `init()` skips: the tables exist regardless of the
+	// target version, and TypeORM needs the entities to map them.
+	async entities() {
+		const { MigrationFinding } = await import('./database/entities/migration-finding.entity.js');
+		const { MigrationFindingSync } = await import(
+			'./database/entities/migration-finding-sync.entity.js'
+		);
+		const { MigrationWorkflowOwner } = await import(
+			'./database/entities/migration-workflow-owner.entity.js'
+		);
+
+		return [MigrationFinding, MigrationFindingSync, MigrationWorkflowOwner];
 	}
 }

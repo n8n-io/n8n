@@ -5,7 +5,7 @@ import { useAgentEvalsFlag } from './useAgentEvalsFlag';
 const settingsState = { agentEvalsEnabled: false };
 const posthogState = { enabled: false };
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		settings: { evaluation: { agentEvalsEnabled: settingsState.agentEvalsEnabled } },
 	}),

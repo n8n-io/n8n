@@ -5,3 +5,4 @@ export { createAddDataTableColumnTool } from './add-data-table-column.tool';
 export { createDeleteDataTableColumnTool } from './delete-data-table-column.tool';
 export { createRenameDataTableColumnTool } from './rename-data-table-column.tool';
 export { createAddDataTableRowsTool } from './add-data-table-rows.tool';
+export { createGetDataTableRowsTool } from './get-data-table-rows.tool';

@@ -23,6 +23,8 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { logAiEvent, redactSecrets } from '@n8n/ai-utilities';
+
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -112,6 +114,19 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		};
 	}
 
+	if (genericType === 'httpTemplatedCustomAuth') {
+		const templatedAuth = await ctx.getCredentials('httpTemplatedCustomAuth', itemIndex);
+
+		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, templatedAuth, options);
+			return await ctx.helpers.httpRequestWithAuthentication.call(
+				ctx,
+				'httpTemplatedCustomAuth',
+				options,
+			);
+		};
+	}
+
 	if (genericType === 'oAuth1Api') {
 		const oAuth1 = await ctx.getCredentials('oAuth1Api', itemIndex);
 		return async (options: IHttpRequestOptions) => {
@@ -177,6 +192,57 @@ const defaultOptimizer = <T>(response: T) => {
 	}
 
 	return String(response);
+};
+
+/** Error payloads are appended to the tool output, so they must not flood the model's context. */
+const MAX_ERROR_BODY_LENGTH = 2000;
+
+type FailedRequest = {
+	error?: unknown;
+	response?: { status?: number; data?: unknown };
+	// A tool using a predefined credential goes through `httpRequestWithAuthentication`, which
+	// rejects with a `NodeApiError`. That has no `response`, and its `cause` is not retained, but
+	// it copies an object payload onto `context.data`.
+	context?: { data?: unknown };
+};
+
+/**
+ * Reads the status and payload a failed request came back with. The error is either the one the
+ * HTTP client rejected with, or a `NodeApiError` wrapping it. The current client reports the
+ * payload as `response.data`, the legacy one as `error`.
+ */
+const getFailedRequest = (error: unknown): { status?: number; body?: unknown } => {
+	for (const candidate of [error, (error as { cause?: unknown })?.cause]) {
+		const failed = candidate as FailedRequest | undefined;
+		const body = failed?.response?.data ?? failed?.error ?? failed?.context?.data;
+		const status = failed?.response?.status;
+
+		if (body !== undefined || status !== undefined) {
+			return { status, body };
+		}
+	}
+
+	return {};
+};
+
+/**
+ * Turns an error payload into something safe to hand to the model: skips empty and binary bodies,
+ * and never throws, since this runs while we are already handling a failed request.
+ */
+const serializeErrorBody = (body: unknown): string | undefined => {
+	if (body === undefined || body === null || body === '' || isBinary(body)) {
+		return undefined;
+	}
+
+	let serialized: string;
+
+	try {
+		serialized = defaultOptimizer(body);
+	} catch {
+		return undefined;
+	}
+
+	return serialized.trim() ? redactSecrets(serialized) : undefined;
 };
 
 function isBinary(data: unknown) {
@@ -789,8 +855,21 @@ export const configureToolFunction = (
 			try {
 				fullResponse = await httpRequest(options);
 			} catch (error) {
-				const httpCode = (error as NodeApiError).httpCode;
-				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+				const { status, body } = getFailedRequest(error);
+				const httpCode = (error as NodeApiError).httpCode ?? status;
+				// Some clients fold the response body into the message, so it needs the same masking
+				// as the body itself — and the dedupe check below only holds if both sides are redacted.
+				const message = redactSecrets(error.message);
+				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${message}"`;
+
+				// The API's own error payload is what tells the model why the call was rejected. Without
+				// it the model only sees a status code and tends to invent a reason for the failure.
+				const errorBody = serializeErrorBody(body);
+				if (errorBody !== undefined && !message.includes(errorBody)) {
+					response += `\nResponse body: ${errorBody.slice(0, MAX_ERROR_BODY_LENGTH)}${
+						errorBody.length > MAX_ERROR_BODY_LENGTH ? '... [truncated]' : ''
+					}`;
+				}
 			}
 
 			if (!response) {
@@ -819,6 +898,8 @@ export const configureToolFunction = (
 		} else {
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
+
+		logAiEvent(ctx, 'ai-tool-called', { query, response });
 
 		return response;
 	};

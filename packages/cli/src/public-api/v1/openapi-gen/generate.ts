@@ -1,0 +1,265 @@
+import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
+import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
+import { UnexpectedError } from 'n8n-workflow';
+import fs from 'node:fs';
+import path from 'node:path';
+import { stringify } from 'yaml';
+import type { z } from 'zod';
+
+import {
+	getDecoratorGeneratedOperations,
+	getSharedResponseSchemas,
+	type NamedResponseDto,
+	type SchemaResolver,
+} from './decorator-routes';
+import { applySchemaModifiers } from './schema-modifiers';
+
+const COMPONENT_SCHEMA_REF = /^#\/components\/schemas\/(.+)$/;
+const SHARED_SCHEMA_DIR = 'shared/spec/schemas';
+const YAML_OPTS = { aliasDuplicateObjects: false, singleQuote: true, lineWidth: 0 } as const;
+
+// Generated root that registers every operation. It sits next to `openapi.yml`, so its `$ref`s to
+// the fragment files resolve from the same directory. The build bundles it and assembles it into
+// the envelope (see `assembleSpec`).
+export const DECORATOR_ROOT_FILENAME = 'openapi.decorator-routes.generated.yml';
+
+/** The subset of an OpenAPI document this module reads or assembles. Everything else passes through. */
+export interface OpenApiDocument {
+	paths?: Record<string, Record<string, unknown>>;
+	components?: Record<string, Record<string, unknown>>;
+	[key: string]: unknown;
+}
+
+export interface GeneratedArtifact {
+	/** Where to write the fragment, relative to the `v1` directory. */
+	outputPath: string;
+	content: string;
+}
+
+/**
+ * Lower-cases the first character of the component name, e.g. `Tag` becomes `tag.generated.yml`.
+ */
+function schemaFileName(componentName: string): string {
+	return `${componentName[0].toLowerCase()}${componentName.slice(1)}.generated.yml`;
+}
+
+/**
+ * Rewrites every `$ref: '#/components/schemas/<Name>'` in an already-generated document node to a
+ * file path, in place.
+ */
+function rewriteComponentRefs(node: unknown, toRef: (componentName: string) => string): void {
+	if (Array.isArray(node)) {
+		node.forEach((item) => rewriteComponentRefs(item, toRef));
+		return;
+	}
+
+	if (node === null || typeof node !== 'object') {
+		return;
+	}
+
+	const record = node as Record<string, unknown>;
+	Object.entries(record).forEach(([key, value]) => {
+		const match = key === '$ref' && typeof value === 'string' && COMPONENT_SCHEMA_REF.exec(value);
+		if (match) {
+			record[key] = toRef(match[1]);
+		} else {
+			rewriteComponentRefs(value, toRef);
+		}
+	});
+}
+
+interface OperationTarget {
+	outputPath: string;
+	pathKey: string;
+	method: RouteConfig['method'];
+}
+
+/**
+ * Generates the whole document from one registry (holding every operation and every shared schema)
+ * and slices it back into the committed fragment files: one per operation, plus one per shared
+ * component schema under {@link SHARED_SCHEMA_DIR}.
+ */
+export function buildArtifactsFromRegistry(
+	registry: OpenAPIRegistry,
+	operations: OperationTarget[],
+): GeneratedArtifact[] {
+	const document = new OpenApiGeneratorV3(registry.definitions).generateDocument({
+		openapi: '3.0.0',
+		info: { title: 'throwaway', version: '0.0.0' },
+	});
+
+	applySchemaModifiers(document);
+
+	const artifacts: GeneratedArtifact[] = [];
+
+	// One file per shared component schema. A shared schema referencing another resolves to a
+	// sibling file in the same directory, hence the bare filename.
+	Object.entries(document.components?.schemas ?? {}).forEach(([componentName, schema]) => {
+		rewriteComponentRefs(schema, schemaFileName);
+		artifacts.push({
+			outputPath: `${SHARED_SCHEMA_DIR}/${schemaFileName(componentName)}`,
+			content: stringify(schema, YAML_OPTS),
+		});
+	});
+
+	// One file per operation, with its shared-schema refs pointed at the files above.
+	operations.forEach(({ outputPath, pathKey, method }) => {
+		const operation = document.paths?.[pathKey]?.[method];
+		rewriteComponentRefs(operation, (componentName) =>
+			path.posix.relative(
+				path.posix.dirname(outputPath),
+				`${SHARED_SCHEMA_DIR}/${schemaFileName(componentName)}`,
+			),
+		);
+		artifacts.push({ outputPath, content: stringify(operation, YAML_OPTS) });
+	});
+
+	return artifacts;
+}
+
+/**
+ * Registers every shared response DTO as a named component on `registry`, keyed by DTO class
+ * identity (see `getSharedResponseSchemas`) so a schema is only ever "the same" as another when
+ * it's the exact same class.
+ */
+export function registerSharedSchemas(
+	registry: OpenAPIRegistry,
+	sharedResponseSchemas: Map<NamedResponseDto, z.ZodTypeAny>,
+): Map<NamedResponseDto, z.ZodTypeAny> {
+	const sharedZodSchemas = new Map<NamedResponseDto, z.ZodTypeAny>();
+	const dtoByComponentName = new Map<string, NamedResponseDto>();
+
+	sharedResponseSchemas.forEach((schema, dto) => {
+		const clashing = dtoByComponentName.get(dto.name);
+		if (clashing && clashing !== dto) {
+			throw new UnexpectedError(
+				`Two different shared response DTOs are both named '${dto.name}' - their generated ` +
+					'OpenAPI component names would collide. Rename one of the DTO classes.',
+			);
+		}
+		dtoByComponentName.set(dto.name, dto);
+
+		sharedZodSchemas.set(dto, registry.register(dto.name, schema));
+	});
+
+	return sharedZodSchemas;
+}
+
+/**
+ * The generated root: `paths` `$ref`ing each operation fragment by its file path. Bundling this
+ * (see build.mjs) yields a resolved document, which `assembleSpec` puts into the envelope.
+ */
+function buildDecoratorRootDocument(
+	operations: Array<{ pathKey: string; method: string; outputPath: string }>,
+): OpenApiDocument {
+	const paths: Record<string, Record<string, unknown>> = {};
+	operations.forEach(({ pathKey, method, outputPath }) => {
+		const pathItem = (paths[pathKey] ??= {});
+		if (pathItem[method]) {
+			throw new UnexpectedError(
+				`Two @PublicApiController routes both map to ${method.toUpperCase()} ${pathKey}.`,
+			);
+		}
+		// `./<outputPath>` — the root sits at the v1 dir root and outputPath is relative to that dir.
+		pathItem[method] = { $ref: `./${outputPath}` };
+	});
+	assertConsistentPathParameterNames(paths);
+	return { openapi: '3.0.0', info: { title: 'decorator-routes', version: '0.0.0' }, paths };
+}
+
+export function getGeneratedArtifacts(): GeneratedArtifact[] {
+	const registry = new OpenAPIRegistry();
+	const sharedZodSchemas = registerSharedSchemas(registry, getSharedResponseSchemas());
+
+	// Look up an already-registered schema instead of re-registering it avoiding inlining the same schema
+	const resolveSchema: SchemaResolver = (dto, schema) => sharedZodSchemas.get(dto) ?? schema;
+
+	const operations = getDecoratorGeneratedOperations(resolveSchema);
+	operations.forEach(({ config }) => registry.registerPath(config));
+
+	const artifacts = buildArtifactsFromRegistry(
+		registry,
+		operations.map(({ outputPath, pathKey, method }) => ({ outputPath, pathKey, method })),
+	);
+
+	// The root that wires the fragments into the bundle — committed and drift-checked like the rest.
+	artifacts.push({
+		outputPath: DECORATOR_ROOT_FILENAME,
+		content: stringify(buildDecoratorRootDocument(operations), YAML_OPTS),
+	});
+
+	return artifacts;
+}
+
+/**
+ * Regenerates every generated fragment and writes it under `v1Dir`. Creates parent directories
+ * as needed — a decorator-routed operation may target a resource whose `spec/` folder doesn't
+ * exist yet (a brand-new endpoint, never hand-written).
+ */
+export function generateDocs(v1Dir: string): void {
+	const artifacts = getGeneratedArtifacts();
+
+	artifacts.forEach(({ outputPath, content }) => {
+		const fullPath = path.join(v1Dir, outputPath);
+		fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+		fs.writeFileSync(fullPath, content);
+	});
+}
+
+function assertConsistentPathParameterNames(paths: OpenApiDocument['paths']): void {
+	// Matches path parameters such as '{credentialId}'.
+	const PATH_PARAMETER_REGEX = /\{([^}]+)\}/g;
+	const pathByShape = new Map<string, string>();
+
+	for (const pathKey of Object.keys(paths ?? {})) {
+		const pathShape = pathKey.replace(PATH_PARAMETER_REGEX, '{}');
+		const equivalentPath = pathByShape.get(pathShape);
+		if (equivalentPath && equivalentPath !== pathKey) {
+			throw new UnexpectedError(
+				`Equivalent OpenAPI paths use different parameter names: '${equivalentPath}' and ` +
+					`'${pathKey}'. Use the same parameter name in both paths.`,
+			);
+		}
+		pathByShape.set(pathShape, pathKey);
+	}
+}
+
+/**
+ * Builds the published spec: the hand-written envelope (`openapi.yml`) with the paths and
+ * components of the bundled generated root.
+ */
+export function assembleSpec(
+	envelope: OpenApiDocument,
+	generated: OpenApiDocument,
+): OpenApiDocument {
+	// Ensure the envelope itself does not declare any paths.
+	const envelopePaths = Object.keys(envelope.paths ?? {});
+	if (envelopePaths.length > 0) {
+		throw new UnexpectedError(
+			`openapi.yml still declares paths (${envelopePaths.join(', ')}). Paths come from the generated spec.`,
+		);
+	}
+
+	// Ensure the generated root has at least one path.
+	const generatedPaths = generated.paths ?? {};
+	if (Object.keys(generatedPaths).length === 0) {
+		throw new UnexpectedError('The bundled generated spec has no paths.');
+	}
+
+	const components: Record<string, Record<string, unknown>> = { ...generated.components };
+
+	for (const [section, items] of Object.entries(envelope.components ?? {})) {
+		const target = { ...(components[section] ?? {}) };
+		for (const name of Object.keys(items)) {
+			if (name in target) {
+				throw new UnexpectedError(
+					`OpenAPI component components.${section}.${name} is defined by both the envelope and a ` +
+						'generated route. Remove one of them.',
+				);
+			}
+		}
+		components[section] = { ...target, ...items };
+	}
+
+	return { ...envelope, paths: generatedPaths, components };
+}

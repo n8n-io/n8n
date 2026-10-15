@@ -96,12 +96,18 @@
                                     },
                                     "op": {
                                         "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "integer"
                                     }
                                 }
                             }
                         },
                         "match": {
                             "type": "string"
+                        },
+                        "saved_segment_id": {
+                            "type": "integer"
                         }
                     }
                 },
@@ -113,6 +119,9 @@
         "report_summary": {
             "type": "object",
             "properties": {
+                "click_rate": {
+                    "type": "number"
+                },
                 "clicks": {
                     "type": "integer"
                 },
@@ -121,8 +130,17 @@
                     "properties": {
                         "total_orders": {
                             "type": "integer"
+                        },
+                        "total_revenue": {
+                            "type": "integer"
+                        },
+                        "total_spent": {
+                            "type": "integer"
                         }
                     }
+                },
+                "open_rate": {
+                    "type": "number"
                 },
                 "opens": {
                     "type": "integer"
@@ -227,5 +245,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 4
 }

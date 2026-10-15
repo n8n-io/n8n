@@ -2,6 +2,7 @@ import { defineComponent } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import { vi } from 'vitest';
 import { type FrontendSettings, type Role, ROLE, type UsersList } from '@n8n/api-types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -11,11 +12,12 @@ import SettingsUsersView from './SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { useUsersStore } from '../users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import * as permissions from '@/app/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
 
@@ -59,7 +61,7 @@ const mockPageRedirectionHelper = {
 	goToUpgrade: vi.fn(),
 };
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 
@@ -134,6 +136,12 @@ describe('SettingsUsersView', () => {
 		// Reset mock to default state before each test
 		mockIsVariantEnabled.mockReset();
 		mockIsVariantEnabled.mockReturnValue(false);
+
+		// Mimic useClipboard.copy resolving a promise-returning value, so a
+		// rejected invite-link fetch surfaces to the handler's try/catch.
+		mockClipboard.copy.mockImplementation(async (value: string | (() => Promise<string>)) => {
+			if (typeof value === 'function') await value();
+		});
 
 		renderComponent = createComponentRenderer(SettingsUsersView, {
 			pinia: createTestingPinia(),
@@ -467,6 +475,29 @@ describe('SettingsUsersView', () => {
 	});
 
 	describe('component lifecycle', () => {
+		// IAM-1513: Unlicensed instances do not register the provisioning endpoint.
+		it('should not fetch provisioning config when provisioning is not licensed', async () => {
+			settingsStore.settings.enterprise = {} as FrontendSettings['enterprise'];
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Provisioning] = false;
+			const provisioningStore = mockedStore(useUserRoleProvisioningStore);
+
+			renderComponent();
+			await flushPromises();
+
+			expect(screen.getByTestId('settings-users-table')).toBeInTheDocument();
+			expect(provisioningStore.getProvisioningConfig).not.toHaveBeenCalled();
+		});
+
+		it('should fetch provisioning config when provisioning is licensed', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Provisioning] = true;
+			const provisioningStore = mockedStore(useUserRoleProvisioningStore);
+
+			renderComponent();
+			await flushPromises();
+
+			expect(provisioningStore.getProvisioningConfig).toHaveBeenCalledTimes(1);
+		});
+
 		it('should not load users data when showing UM setup warning', async () => {
 			usersStore.currentUser = { isDefaultUser: true } as IUser;
 			renderComponent();
@@ -555,10 +586,10 @@ describe('SettingsUsersView', () => {
 			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
 
 			expect(usersStore.generateInviteLink).toHaveBeenCalledWith({ id: '3' });
-			await waitFor(() => {
-				expect(mockClipboard.copy).toHaveBeenCalledWith(
-					'https://example.com/signup?token=generated-token',
-				);
+			await waitFor(async () => {
+				expect(mockClipboard.copy).toHaveBeenCalledWith(expect.any(Function));
+				const getLink = mockClipboard.copy.mock.calls.at(-1)![0];
+				await expect(getLink()).resolves.toBe('https://example.com/signup?token=generated-token');
 				expect(mockToast.showToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: expect.any(String),

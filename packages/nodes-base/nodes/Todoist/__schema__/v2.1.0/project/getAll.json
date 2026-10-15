@@ -1,0 +1,42 @@
+{
+    "type": "object",
+    "properties": {
+        "color": {
+            "type": "string"
+        },
+        "comment_count": {
+            "type": "integer"
+        },
+        "description": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_favorite": {
+            "type": "boolean"
+        },
+        "is_inbox_project": {
+            "type": "boolean"
+        },
+        "is_shared": {
+            "type": "boolean"
+        },
+        "is_team_inbox": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "order": {
+            "type": "integer"
+        },
+        "url": {
+            "type": "string"
+        },
+        "view_style": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,4 +1,4 @@
-import type { SerializableAgentState } from '@n8n/instance-ai';
+import type { SerializableAgentState } from '@n8n/agents';
 import { LessThan } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -110,6 +110,14 @@ describe('TypeORMAgentCheckpointStore', () => {
 		const loaded = await store.load('checkpoint:run-1');
 
 		expect(loaded).toBeUndefined();
+	});
+
+	it('passes the loaded snapshot to the atomic resume claim', async () => {
+		const state = makeState();
+		checkpointRepo.claimSuspendedForResume.mockResolvedValueOnce(true);
+
+		await expect(store.claimForResume('checkpoint:run-1', state)).resolves.toBe(true);
+		expect(checkpointRepo.claimSuspendedForResume).toHaveBeenCalledWith('checkpoint:run-1', state);
 	});
 
 	it('throws a UserError when loading an expired tombstone', async () => {

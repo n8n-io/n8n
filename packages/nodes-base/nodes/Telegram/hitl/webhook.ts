@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'crypto';
-import { parseHitlCallbackReference } from 'n8n-core';
+import { isTelegramInteractionRequest, parseHitlCallbackReference } from 'n8n-core';
 import type { IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 
 import type { TelegramChatApprovalOptions } from './descriptions';
@@ -82,7 +82,8 @@ async function applyPostDecisionEdit(
  * verification, approver allow-list, acknowledgement, message edit); any
  * other request (link-button GET, freeText/customForm POST) delegates to the
  * shared `sendAndWaitWebhook` unchanged, so flag/section-off behavior and
- * degraded (link-button) mode are untouched.
+ * degraded (link-button) mode are untouched. Requests on the fixed interaction
+ * route are the exception: that route serves the chat-approval branch only.
  */
 export async function telegramSendAndWaitWebhook(
 	this: IWebhookFunctions,
@@ -94,6 +95,12 @@ export async function telegramSendAndWaitWebhook(
 	const chatApproval = this.getNodeParameter('chatApproval', false) as boolean;
 
 	if (!bodyData.callback_query || !chatApproval) {
+		// The fixed interaction route serves the chat-approval branch below and nothing else.
+		if (isTelegramInteractionRequest(this.getRequestObject())) {
+			// Fail closed: the execution stays waiting.
+			this.getResponseObject().status(403).send('');
+			return { noWebhookResponse: true };
+		}
 		return await sendAndWaitWebhook.call(this);
 	}
 
@@ -118,11 +125,10 @@ export async function telegramSendAndWaitWebhook(
 	}
 
 	// --- authorization: reject a tap from outside the approver allow-list ---
-	const options = this.getNodeParameter('chatApprovalOptions', {}) as TelegramChatApprovalOptions;
 	const from = callbackQuery.from;
 	const callbackQueryId = callbackQuery.id ?? '';
 
-	const approverIds = (options.approverIds ?? '')
+	const approverIds = (this.getNodeParameter('approverIds', '') as string)
 		.split(',')
 		.map((id) => id.trim())
 		.filter(Boolean);
@@ -132,7 +138,10 @@ export async function telegramSendAndWaitWebhook(
 		try {
 			await apiRequest.call(this, 'POST', 'answerCallbackQuery', {
 				callback_query_id: callbackQueryId,
-				text: options.unauthorizedReplyText ?? 'You are not authorized to respond to this request.',
+				text: this.getNodeParameter(
+					'unauthorizedReplyText',
+					'You are not authorized to respond to this request.',
+				) as string,
 				show_alert: true,
 			});
 		} catch {
@@ -158,7 +167,10 @@ export async function telegramSendAndWaitWebhook(
 	const messageId = callbackQuery.message?.message_id;
 	const approved = parsed.decision === 'a';
 	this.logHitlResponse({ approved, authorized: true });
-	const postDecisionBehavior = options.postDecisionBehavior ?? 'showOutcome';
+	const postDecisionBehavior = this.getNodeParameter(
+		'postDecisionBehavior',
+		'showOutcome',
+	) as TelegramChatApprovalOptions['postDecisionBehavior'];
 
 	if (chatId !== undefined && messageId !== undefined) {
 		await applyPostDecisionEdit(this, {

@@ -38,10 +38,6 @@ describe('useRoleMappingRules', () => {
 		expect(composable.isDirty.value).toBe(false);
 	});
 
-	it('should initialize fallbackInstanceRole to global:member', () => {
-		expect(composable.fallbackInstanceRole.value).toBe('global:member');
-	});
-
 	describe('addRule', () => {
 		it('should add an instance rule with default values', () => {
 			composable.addRule('instance');

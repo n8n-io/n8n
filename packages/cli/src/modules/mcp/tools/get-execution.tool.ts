@@ -1,7 +1,7 @@
 import { type ExecutionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { IPinData, IRunData, IRunExecutionData, ITaskDataConnections } from 'n8n-workflow';
 import { jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
@@ -11,6 +11,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -67,15 +68,16 @@ export const createGetExecutionTool = (
 	executionRepository: ExecutionRepository,
 	workflowFinderService: WorkflowFinderService,
 	telemetry: Telemetry,
+	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 ): ToolDefinition<typeof inputSchema.shape> => ({
-	name: 'get_execution',
+	name: 'get_workflow_execution',
 	config: {
 		description:
-			'Get execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
+			'Get workflow execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
-			title: 'Get Execution',
+			title: 'Get Workflow Execution',
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -91,12 +93,17 @@ export const createGetExecutionTool = (
 	}: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'get_execution',
+			tool_name: 'get_workflow_execution',
 			parameters: { workflowId, executionId, includeData, nodeNames, truncateData },
 		};
 
 		try {
-			await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
+			await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:read', 'execution:read'],
+				workflowFinderService,
+			);
 
 			// Use lightweight metadata query when data isn't needed;
 			// split into branches so TypeScript can narrow each return type.
@@ -107,6 +114,12 @@ export const createGetExecutionTool = (
 					executionId,
 					[workflowId],
 				);
+
+				if (fullExecution) {
+					// Redacts in place, modifying fullExecution internally
+					await executionRedactionServiceProxy.processExecution(fullExecution, { user });
+				}
+
 				execution = fullExecution;
 				executionData = fullExecution?.data ?? null;
 			} else {

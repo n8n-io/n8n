@@ -135,6 +135,88 @@ describe('useModelCatalog', () => {
 		);
 	});
 
+	it('lists models with a priority first and the rest by name', async () => {
+		mocks.getModelCatalog.mockResolvedValue({});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'google',
+			verified: true,
+			models: [
+				model('gemini-2.5-pro', 'Gemini 2.5 Pro'),
+				{ ...model('gemini-featured', 'Gemini Featured'), priority: 10 },
+				model('gemini-2.5-flash', 'Gemini 2.5 Flash'),
+			],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { google: 'google-credential-id' };
+
+		getModelsForPicker(credentials);
+		await flushAsync();
+
+		expect(modelIds(getModelsForPicker(credentials).google?.models ?? [])).toEqual([
+			'gemini-featured',
+			'gemini-2.5-flash',
+			'gemini-2.5-pro',
+		]);
+	});
+
+	it('returns a verified provider default only when it remains in the picker list', async () => {
+		mocks.getModelCatalog.mockResolvedValue({
+			anthropic: provider('anthropic', {
+				'claude-sonnet-4-6': model('claude-sonnet-4-6', 'Claude Sonnet 4.6'),
+			}),
+		});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'anthropic',
+			verified: true,
+			defaultModelId: 'claude-sonnet-4-6',
+			models: [model('claude-sonnet-4-6', 'Claude Sonnet 4.6')],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getDefaultModelForPicker } = useModelCatalog();
+		const credentials = { anthropic: 'anthropic-credential-id' };
+		await ensureLoaded('project-1');
+
+		expect(getDefaultModelForPicker(credentials, 'anthropic')).toBeNull();
+		await flushAsync();
+		expect(getDefaultModelForPicker(credentials, 'anthropic')).toMatchObject({
+			model: 'claude-sonnet-4-6',
+		});
+	});
+
+	it('returns null when the verified default is missing from the picker list', async () => {
+		mocks.getModelCatalog.mockResolvedValue({
+			anthropic: provider('anthropic', {
+				'claude-sonnet-4-6': model('claude-sonnet-4-6', 'Claude Sonnet 4.6'),
+			}),
+		});
+		// The default points at a model absent from both the verified list and
+		// the static catalog, so the picker filter must reject it.
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'anthropic',
+			verified: true,
+			defaultModelId: 'claude-opus-4-0',
+			models: [model('claude-sonnet-4-6', 'Claude Sonnet 4.6')],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getDefaultModelForPicker, getModelsForPicker } = useModelCatalog();
+		const credentials = { anthropic: 'anthropic-credential-id' };
+		await ensureLoaded('project-1');
+
+		getDefaultModelForPicker(credentials, 'anthropic');
+		await flushAsync();
+
+		// The cached default is set, but it is not in the picker list.
+		expect(modelIds(getModelsForPicker(credentials).anthropic?.models ?? [])).toEqual([
+			'claude-sonnet-4-6',
+		]);
+		expect(getDefaultModelForPicker(credentials, 'anthropic')).toBeNull();
+	});
+
 	it('fetches the verified list only once per provider and credential', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
 			anthropic: provider('anthropic', {

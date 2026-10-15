@@ -2,6 +2,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 
@@ -37,6 +38,7 @@ const {
 		deleteGroup: vi.fn(),
 	},
 	mockNodeTypesStore: {
+		isNodeTypeUnavailable: vi.fn(),
 		getNodeType: vi.fn().mockReturnValue({
 			displayName: 'Set',
 			name: 'n8n-nodes-base.set',
@@ -97,14 +99,14 @@ vi.mock('@/app/stores/history.store', () => ({
 	useHistoryStore: vi.fn().mockReturnValue(mockHistoryStore),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue(mockTelemetry),
 }));
 
@@ -186,6 +188,7 @@ describe('useWorkflowExtraction', () => {
 		mockWorkflowDocumentStore.addNodesToGroup.mockReset();
 		mockWorkflowDocumentStore.deleteGroup.mockReset();
 		mockNodeTypesStore.getNodeType.mockClear();
+		mockNodeTypesStore.isNodeTypeUnavailable.mockReset().mockReturnValue(false);
 		mockHistoryStore.startRecordingUndo.mockClear();
 		mockHistoryStore.stopRecordingUndo.mockClear();
 		mockHistoryStore.pushCommandToUndo.mockClear();
@@ -202,6 +205,19 @@ describe('useWorkflowExtraction', () => {
 
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
 		});
+
+		it.each([EXECUTE_WORKFLOW_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE])(
+			'does not start extraction when %s is not loaded',
+			(missingType) => {
+				mockNodeTypesStore.isNodeTypeUnavailable.mockImplementation((type) => type === missingType);
+
+				const { extractWorkflow } = useWorkflowExtraction();
+				extractWorkflow(['id-A']);
+
+				expect(mockTelemetry.track).not.toHaveBeenCalled();
+				expect(mockUIStore.openModalWithData).not.toHaveBeenCalled();
+			},
+		);
 
 		it('includes attached sub-nodes when starting extraction', () => {
 			const nodeA = makeNode('A', [0, 0]);

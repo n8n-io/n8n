@@ -7,13 +7,17 @@ export const DAYTONA_WORKSPACE_ROOT = `${DAYTONA_HOME}/${WORKSPACE_DIR}`;
 export const N8N_SANDBOX_HOME = '/home/user';
 export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
 
-export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
+export function getSandboxHome(provider: SandboxProvider): string {
 	switch (provider) {
 		case 'daytona':
-			return DAYTONA_WORKSPACE_ROOT;
+			return DAYTONA_HOME;
 		case 'n8n-sandbox':
-			return N8N_SANDBOX_WORKSPACE_ROOT;
+			return N8N_SANDBOX_HOME;
 	}
+}
+
+export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
+	return `${getSandboxHome(provider)}/${WORKSPACE_DIR}`;
 }
 
 export interface SandboxWorkspace extends SandboxCommandTarget {
@@ -45,15 +49,8 @@ async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<vo
 }
 
 function getFallbackHome(workspace: SandboxWorkspace): string {
-	switch (workspace.sandbox?.provider) {
-		case 'n8n-sandbox':
-			return N8N_SANDBOX_HOME;
-		case 'daytona':
-			return DAYTONA_HOME;
-		case undefined:
-		default:
-			return DAYTONA_HOME;
-	}
+	const provider = workspace.sandbox?.provider;
+	return getSandboxHome(provider === 'n8n-sandbox' ? provider : 'daytona');
 }
 
 export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {

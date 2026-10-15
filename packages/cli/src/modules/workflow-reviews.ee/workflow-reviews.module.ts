@@ -1,14 +1,26 @@
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
-import { isWorkflowReviewsEnvFeatureFlagEnabled } from '@/constants/workflow-reviews';
+import { WorkflowMutationHooksProxy, WorkflowPublishGuardProxy } from '@n8n/backend-services';
 
 @BackendModule({ name: 'workflow-reviews', licenseFlag: LICENSE_FEATURES.WORKFLOW_REVIEWS })
 export class WorkflowReviewsModule implements ModuleInterface {
 	async init() {
-		if (!isWorkflowReviewsEnvFeatureFlagEnabled()) return;
-
 		await import('./workflow-review-requests.controller.js');
+		const { WorkflowReviewPublishGuard } = await import(
+			'./workflow-review-publish-guard.service.js'
+		);
+		Container.get(WorkflowPublishGuardProxy).registerProvider(
+			Container.get(WorkflowReviewPublishGuard),
+		);
+
+		const { WorkflowReviewLifecycleService } = await import(
+			'./workflow-review-lifecycle.service.js'
+		);
+		Container.get(WorkflowMutationHooksProxy).registerProvider(
+			Container.get(WorkflowReviewLifecycleService),
+		);
 	}
 }

@@ -4,7 +4,7 @@ import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
@@ -14,7 +14,7 @@ import {
 	getUpdatedTextareaValue,
 	getTextareaCursorPosition,
 } from '../../utils/buttonParameter.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
 import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
@@ -263,7 +263,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			<N8nTooltip :disabled="isSubmitEnabled">
 				<div>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:disabled="!isSubmitEnabled"
 						size="small"
 						:loading="isLoading"
@@ -305,7 +305,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 }
 
 .intro {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 	padding: var(--spacing--2xs) 0 0;

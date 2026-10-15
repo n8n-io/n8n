@@ -186,4 +186,50 @@ describe('SubagentStepTimeline', () => {
 		);
 		expect(triggerButton).toBeTruthy();
 	});
+
+	it('renders a reasoning entry labelled with its first sentence', () => {
+		const { getByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					timeline: [
+						{
+							type: 'reasoning',
+							content: 'Checking the node schema. More detail.',
+						},
+					],
+				}),
+			},
+		});
+
+		expect(getByText('Checking the node schema.')).toBeInTheDocument();
+	});
+
+	it('streams the trailing reasoning entry on an active node', () => {
+		const { getByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					status: 'active',
+					timeline: [{ type: 'reasoning', content: 'Still thinking about tools.' }],
+				}),
+			},
+		});
+
+		expect(getByText('Still thinking about tools.').className).toContain('shimmer');
+	});
+
+	it('does not stream a settled reasoning entry when later timeline content follows', () => {
+		const { getByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					status: 'active',
+					timeline: [
+						{ type: 'reasoning', content: 'Finished this thought.' },
+						{ type: 'text', content: 'Next step' },
+					],
+				}),
+			},
+		});
+
+		expect(getByText('Finished this thought.').className).not.toContain('shimmer');
+	});
 });

@@ -5,9 +5,8 @@ import { randomUUID } from 'crypto';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ApiKeyAudience } from 'n8n-workflow';
 
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { JwtService } from '@/services/jwt.service';
-import { UserWithContext } from '@/services/oauth-token-verifier-proxy.service';
+import { AuthStrategyRegistry, UserWithContext } from '@n8n/backend-services/auth';
+import { JwtService } from '@n8n/backend-services';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -30,10 +29,9 @@ export class McpServerApiKeyService {
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
 		const manager = trx ?? this.apiKeyRepository.manager;
 
-		const apiKey = this.jwtService.sign({
+		const apiKey = this.jwtService.sign('mcpApiKey', {
 			sub: user.id,
 			iss: API_KEY_ISSUER,
-			aud: API_KEY_AUDIENCE,
 			jti: randomUUID(),
 		});
 
@@ -75,7 +73,10 @@ export class McpServerApiKeyService {
 				return {
 					user: tokenGrant.actor ?? tokenGrant.subject,
 					actor: tokenGrant.actor,
-					authType: 'api_key',
+					// Every non-OAuth bearer token the strategy chain admits is reported
+					// as `api_key`, token-exchange scoped JWTs included. The distinction
+					// between them is not surfaced to telemetry or log streaming.
+					caller: { authType: 'api_key' },
 				};
 			}
 

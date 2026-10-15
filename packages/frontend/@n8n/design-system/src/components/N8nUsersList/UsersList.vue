@@ -2,21 +2,14 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import type { IUser, UserAction } from '../../types';
+import type { IUser } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nUserInfo from '../N8nUserInfo';
+import type { UsersListProps } from './UsersList.types';
 
-interface UsersListProps {
-	users: UserType[];
-	readonly?: boolean;
-	currentUserId?: string | null;
-	actions?: Array<UserAction<UserType>>;
-	isSamlLoginEnabled?: boolean;
-}
-
-const props = withDefaults(defineProps<UsersListProps>(), {
+const props = withDefaults(defineProps<UsersListProps<UserType>>(), {
 	readonly: false,
 	currentUserId: '',
 	users: () => [],
@@ -102,7 +95,7 @@ const onUserAction = (user: UserType, action: string) =>
 				:is-saml-login-enabled="isSamlLoginEnabled"
 			/>
 			<div :class="$style.badgeContainer">
-				<N8nBadge v-if="user.isOwner" theme="tertiary" bold>
+				<N8nBadge v-if="user.isOwner" variant="outline">
 					{{ t('nds.auth.roles.owner') }}
 				</N8nBadge>
 				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />

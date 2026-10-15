@@ -1,5 +1,4 @@
 import type { McpUiResourceMeta } from '@modelcontextprotocol/ext-apps';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import {
 	RESOURCE_MIME_TYPE,
@@ -12,6 +11,27 @@ import {
 	RUDDERSTACK_CDN_ORIGIN,
 	type McpAppTelemetryConfig,
 } from '../telemetry-config';
+
+/**
+ * Minimal server surface this helper needs. Both MCP SDK generations satisfy
+ * it structurally (`registerResource` exists on the 1.x and the v2 McpServer),
+ * so the helper does not tie its caller to either SDK's type identity.
+ */
+export interface McpAppResourceServer {
+	registerResource(
+		name: string,
+		uri: string,
+		metadata: { description?: string; mimeType?: string; _meta?: Record<string, unknown> },
+		readCallback: () => Promise<{
+			contents: Array<{
+				uri: string;
+				mimeType: string;
+				text: string;
+				_meta?: Record<string, unknown>;
+			}>;
+		}>,
+	): unknown;
+}
 
 export interface RegisterWorkflowPreviewAppOptions {
 	/** Origin allowed for telemetry egress via CSP `connect-src`. */
@@ -34,13 +54,13 @@ function getWorkflowPreviewUiMeta(instanceOrigin?: string): McpUiResourceMeta {
 }
 
 export function registerWorkflowPreviewApp(
-	server: Pick<McpServer, 'resource'>,
+	server: McpAppResourceServer,
 	options: RegisterWorkflowPreviewAppOptions,
 ): void {
 	const { instanceOrigin, telemetry, onResourceRead } = options;
 	const uiMeta = getWorkflowPreviewUiMeta(instanceOrigin);
 
-	server.resource(
+	server.registerResource(
 		'workflow-preview',
 		WORKFLOW_PREVIEW_APP_URI,
 		{

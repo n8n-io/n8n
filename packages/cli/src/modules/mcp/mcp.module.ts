@@ -18,7 +18,7 @@ export class McpModule implements ModuleInterface {
 		// Register the instance MCP server as a protected resource of the shared
 		// OAuth server, so its tokens are minted and verified with the right
 		// audiences and its discovery metadata is served.
-		const { ProtectedResourceRegistry } = await import('@/services/protected-resource.registry.js');
+		const { ProtectedResourceRegistry } = await import('@n8n/backend-services/auth');
 		const { McpProtectedResource } = await import('./mcp-protected-resource.js');
 		Container.get(ProtectedResourceRegistry).register(Container.get(McpProtectedResource));
 	}
@@ -27,17 +27,19 @@ export class McpModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
 	 * The response shape will be
-	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string } }`.
+	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string, autoExposeNewWorkflows: boolean } }`.
 	 */
 	async settings() {
 		const { McpSettingsService } = await import('./mcp.settings.service.js');
 		const { McpProtectedResource } = await import('./mcp-protected-resource.js');
-		const mcpAccessEnabled = await Container.get(McpSettingsService).getEnabled();
+		const mcpSettingsService = Container.get(McpSettingsService);
+		const mcpAccessEnabled = await mcpSettingsService.getEnabled();
+		const autoExposeNewWorkflows = await mcpSettingsService.getAutoExposeNewWorkflows();
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
 		// Canonical resource URL, so the UI shows the URL clients must actually
 		// use when a dedicated MCP base URL is configured.
 		const serverUrl = Container.get(McpProtectedResource).getResourceUrl();
-		return { mcpAccessEnabled, mcpManagedByEnv, serverUrl };
+		return { mcpAccessEnabled, mcpManagedByEnv, serverUrl, autoExposeNewWorkflows };
 	}
 
 	@OnShutdown()

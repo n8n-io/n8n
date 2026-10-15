@@ -2,14 +2,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import DataTableDetailsView from '@/features/core/dataTable/DataTableDetailsView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRouter } from 'vue-router';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 
-vi.mock('@/app/composables/useToast');
+vi.mock('@n8n/composables/useToast');
 vi.mock('vue-router');
 vi.mock('@/app/api/workflow-dependencies', () => ({
 	getResourceDependencyCounts: vi.fn().mockResolvedValue({}),
@@ -83,6 +83,18 @@ describe('DataTableDetailsView', () => {
 	});
 
 	describe('Loading states', () => {
+		it('shows the loading layout on the first render when opening a data table', () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockImplementation(
+				async () => await new Promise(() => {}),
+			);
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			expect(getByTestId('data-table-details-loading')).toBeInTheDocument();
+		});
+
 		it('should show loading state initially', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			const dataTableStore = useDataTableStore();

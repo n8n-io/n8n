@@ -39,7 +39,7 @@ import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
 const meta = {
-	title: 'Instance Settings/Examples',
+	title: 'Areas/Settings/Examples',
 	component: N8nSettingsLayout,
 	parameters: {
 		docs: {
@@ -534,7 +534,7 @@ const BrandButton = defineComponent({
 			:href="href"
 			target="_blank"
 			rel="noopener noreferrer"
-			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
+			style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); width: fit-content; padding: var(--spacing--2xs) var(--spacing--sm); border-radius: var(--radius); font-size: var(--font-size--sm); font-weight: var(--font-weight--medium); line-height: var(--line-height--lg); text-decoration: none; cursor: pointer;"
 		>
 			<span class="mcp-brand-button__leading">
 				<slot name="leading" />
@@ -665,13 +665,8 @@ const components = {
 
 // Wrapper style shared by every full-page story so each reads as a real, full-height scrollable
 // settings page (no windowed box). It deliberately paints no background of its own, so wrapped
-// stories sit on the same theme background as the unwrapped ones. The flex column is part of the
-// floating save bar contract: the bar (last child, `margin-top: auto`) gets pushed to the bottom
-// of the scrollport even when the page content is shorter than the viewport, where its sticky
-// offset gives the usual 24px gap; on long pages the auto margin has no free space to absorb, so
-// scrolling behavior is unchanged.
-const fullPageViewportStyle =
-	'height: 100vh; overflow-y: auto; display: flex; flex-direction: column;';
+// stories sit on the same theme background as the unwrapped ones.
+const fullPageViewportStyle = 'height: 100vh; overflow-y: auto;';
 
 // Bordered, rounded metrics card mirroring the Settings Row `Custom` story: three equal columns
 // (tiles) separated by vertical dividers, built from DS border/radius/spacing tokens. Each tile
@@ -1014,12 +1009,14 @@ export const ExampleSettingsPage: Story = {
 		},
 		// A full-height scrollable viewport hosts the realistic page so the whole settings page is
 		// visible and scrolls naturally (rather than being clipped inside a short windowed box). The
-		// floating save bar is a sibling of the layout so it can sit 744px wide (12px proud of the
-		// 720px content column) and stick to the bottom of the viewport; the layout gets 64px
-		// (--spacing--3xl) of bottom scroll padding so the last row can clear the floating bar.
+		// floating save bar is the last child of the layout's content column: it spans the column
+		// plus its own side padding (12px proud of the 720px column, inner edges aligned with the
+		// settings rows), floats above the bottom of the viewport while there is more content below
+		// the fold, and docks after the last row at the end of the page — where it sheds its
+		// surface/border/shadow and reads as part of the page.
 		template: `
 			<div style="${fullPageViewportStyle}">
-				<N8nSettingsLayout style="padding-block-end: var(--spacing--3xl);">
+				<N8nSettingsLayout>
 					<N8nSettingsPageHeader
 						title="General"
 						description="Instance-wide defaults for naming, scheduling, email, and logging."
@@ -1073,15 +1070,15 @@ export const ExampleSettingsPage: Story = {
 							</N8nSettingsRow>
 						</N8nSettingsRowGroup>
 					</N8nSettingsSection>
-				</N8nSettingsLayout>
 
-				<N8nSettingsSaveBar
-					floating
-					:visible="dirty"
-					:saving="saving"
-					@save="onSave"
-					@discard="onDiscard"
-				/>
+					<N8nSettingsSaveBar
+						floating
+						:visible="dirty"
+						:saving="saving"
+						@save="onSave"
+						@discard="onDiscard"
+					/>
+				</N8nSettingsLayout>
 			</div>
 		`,
 	}),
@@ -1091,7 +1088,7 @@ export const ExampleSettingsPage: Story = {
 		docs: {
 			description: {
 				story:
-					'A realistic General settings page built from the `N8nSettings*` family inside a full-height scrollable viewport. Editing any high-impact field (instance name/URL, timezone, sender email, log level) flips a dirty flag that slides the floating `N8nSettingsSaveBar` up — a 744px gently rounded bar (the 720px content column plus 12px on each side) with the prominent `--shadow--xl`, resting 24px above the bottom, its Save action on the far right. Discard reverts the draft and hides the bar; Save shows the loading state, commits, hides the bar, and confirms through the existing app notification (the bottom-right `ElNotification` that `useToast()` shows in the app). The low-impact telemetry toggle saves instantly through the same notification. The page carries 64px (`--spacing--3xl`) of bottom scroll padding so the last row clears the floating bar.',
+					'A realistic General settings page built from the `N8nSettings*` family inside a full-height scrollable viewport. Editing any high-impact field (instance name/URL, timezone, sender email, log level) flips a dirty flag that slides the floating `N8nSettingsSaveBar` up — a gently rounded bar spanning the 720px content column plus its own 12px side padding (so its inner edges align with the settings rows) with the prominent `--shadow--xl`, floating 24px above the bottom while there is more content below the fold and docking after the last row at the end of the page — where its surface, border, and shadow dissolve so it reads as part of the page — its Save action on the far right. Discard reverts the draft and hides the bar; Save shows the loading state, commits, hides the bar, and confirms through the existing app notification (the bottom-right `ElNotification` that `useToast()` shows in the app). The low-impact telemetry toggle saves instantly through the same notification.',
 			},
 		},
 	},
@@ -1362,7 +1359,7 @@ const ClientDetailsDialog = defineComponent({
 				'.mcp-client-details__access { display: flex; flex-direction: column; gap: var(--spacing--xs); min-width: 0; }' +
 				'.mcp-client-details__group { display: flex; flex-direction: column; gap: var(--spacing--5xs); }' +
 				// Same uppercase mini-heading treatment as the Connect picker's category headers.
-				'.mcp-client-details__group-title { font-size: var(--font-size--3xs); font-weight: var(--font-weight--bold); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle); }';
+				'.mcp-client-details__group-title { font-size: var(--font-size--3xs); font-weight: var(--font-weight--medium); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle); }';
 			document.head.appendChild(style);
 		}
 
@@ -1430,7 +1427,7 @@ const mcpWorkflowProjectCount = 4;
 // ---------------------------------------------------------------------------
 const mcpServerUrl = 'https://acme.app.n8n.cloud/mcp/9f3a2b';
 const mcpAuthToken = 'n8n_mcp_••••••••••••3f9a';
-const mcpDocsUrl = 'https://docs.n8n.io/manage-cloud/mcp-access/';
+const mcpDocsUrl = 'https://docs.n8n.io/connect/connect-to-n8n-mcp-server';
 
 // Config snippets, computed once from the server URL. Most clients take the common `mcpServers`
 // JSON shape; Codex reads TOML, VS Code uses its `servers` map, Gemini an `httpUrl`, Windsurf a
@@ -1603,13 +1600,13 @@ export const ModelContextProtocol: Story = {
 				confirmSaved('MCP access enabled');
 				showExposeAllDialog.value = true;
 			};
-			// "Expose all workflows" from the follow-up dialog. In the app/prototype this flips every
+			// "Enable MCP access" from the follow-up dialog. In the app/prototype this flips every
 			// workflow's exposure (and the auto-expose-new flag) in the shared store so the Workflows
 			// available page reflects it; here the main page and that page are separate story instances,
 			// so this just closes + confirms to keep the UX demonstrable.
 			const onExposeAll = () => {
 				showExposeAllDialog.value = false;
-				confirmSaved('All workflows exposed to MCP');
+				confirmSaved('MCP access enabled for workflows');
 			};
 			const onConfirmDisable = () => {
 				enabled.value = false;
@@ -1821,7 +1818,7 @@ export const ModelContextProtocol: Story = {
 					<N8nSettingsPageHeader
 						title="Instance level MCP"
 						description="Let AI assistants and IDEs connect to this instance over the Model Context Protocol (MCP), then control which tools and workflows they can use."
-						docs-url="https://docs.n8n.io/manage-cloud/mcp-access/"
+						docs-url="${mcpDocsUrl}"
 					/>
 
 					<!-- Only shown when MCP is ENABLED. While disabled the whole top section (status row +
@@ -1981,14 +1978,14 @@ export const ModelContextProtocol: Story = {
 				<N8nDialog
 					v-model:open="showExposeAllDialog"
 					size="small"
-					header="Expose all workflows to MCP?"
-					description="This lets connected clients reach every workflow on this instance right away. You can hide any workflow or revoke access at any time."
+					header="Enable MCP access for all workflows?"
+					description="This lets connected clients reach every workflow on this instance right away. You can disable MCP access for individual workflows at any time."
 				>
 					<N8nDialogFooter>
 						<N8nDialogClose as-child>
 							<N8nButton variant="outline" label="Not now" />
 						</N8nDialogClose>
-						<N8nButton variant="solid" label="Expose all workflows" @click="onExposeAll" />
+						<N8nButton variant="solid" label="Enable MCP access" @click="onExposeAll" />
 					</N8nDialogFooter>
 				</N8nDialog>
 
@@ -2055,7 +2052,7 @@ export const ModelContextProtocol: Story = {
 										<template #item-label="{ item }">
 											<span
 												v-if="item.data.kind === 'header'"
-												style="display: block; padding-block: var(--spacing--5xs); font-size: var(--font-size--3xs); font-weight: var(--font-weight--bold); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle);"
+												style="display: block; padding-block: var(--spacing--5xs); font-size: var(--font-size--3xs); font-weight: var(--font-weight--medium); letter-spacing: var(--letter-spacing--wider); text-transform: uppercase; color: var(--text-color--subtle);"
 											>{{ item.label }}</span>
 											<N8nText v-else size="medium" color="text-dark">{{ item.label }}</N8nText>
 										</template>

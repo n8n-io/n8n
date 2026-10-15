@@ -1,6 +1,7 @@
-import type { OnStepFinishEvent, OnStepStartEvent } from 'ai';
+import type { GenerateTextStepEndEvent, GenerateTextStepStartEvent } from 'ai';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import type { Logger } from '../../logger';
 import {
@@ -12,7 +13,7 @@ import {
 } from '../run-debug-buffer';
 import { sanitizeDebugSnapshotValue } from '../sanitize-debug-snapshot';
 
-function makeFinishEvent(text: string): OnStepFinishEvent {
+function makeStepEndEvent(text: string): GenerateTextStepEndEvent {
 	return {
 		stepNumber: 0,
 		text,
@@ -24,10 +25,10 @@ function makeFinishEvent(text: string): OnStepFinishEvent {
 			timestamp: new Date('2026-01-01T00:00:00.000Z'),
 			messages: [{ role: 'assistant', content: text }],
 		},
-	} as unknown as OnStepFinishEvent;
+	} as unknown as GenerateTextStepEndEvent;
 }
 
-function makeStartEvent(): OnStepStartEvent {
+function makeStepStartEvent(): GenerateTextStepStartEvent {
 	return {
 		stepNumber: 0,
 		system: 'You are helpful',
@@ -36,7 +37,7 @@ function makeStartEvent(): OnStepStartEvent {
 		toolChoice: 'auto',
 		activeTools: ['search'],
 		abortSignal: new AbortController().signal,
-	} as unknown as OnStepStartEvent;
+	} as unknown as GenerateTextStepStartEvent;
 }
 
 describe('RunDebugBuffer', () => {
@@ -44,8 +45,8 @@ describe('RunDebugBuffer', () => {
 		const buffer = new RunDebugBuffer();
 		buffer.ensure('run-1', 'thread-1');
 
-		buffer.recordStepStart('run-1', 0, makeStartEvent());
-		buffer.recordStepFinish('run-1', 0, makeFinishEvent('done'));
+		buffer.recordStepStart('run-1', 0, makeStepStartEvent());
+		buffer.recordStepFinish('run-1', 0, makeStepEndEvent('done'));
 
 		const record = buffer.get('run-1');
 		expect(record?.steps).toHaveLength(1);
@@ -60,8 +61,8 @@ describe('RunDebugBuffer', () => {
 		const hooks = createRunDebugStepHooks(buffer, { runId: 'run-1', threadId: 'thread-1' });
 
 		for (const label of ['first', 'second', 'third']) {
-			hooks.onStepStart(makeStartEvent());
-			hooks.onStepFinish(makeFinishEvent(label));
+			hooks.onStepStart(makeStepStartEvent());
+			hooks.onStepEnd(makeStepEndEvent(label));
 		}
 
 		const record = buffer.get('run-1');
@@ -75,12 +76,12 @@ describe('RunDebugBuffer', () => {
 		buffer.ensure('run-1', 'thread-1');
 
 		const firstPass = createRunDebugStepHooks(buffer, { runId: 'run-1', threadId: 'thread-1' });
-		firstPass.onStepStart(makeStartEvent());
-		firstPass.onStepFinish(makeFinishEvent('before suspend'));
+		firstPass.onStepStart(makeStepStartEvent());
+		firstPass.onStepEnd(makeStepEndEvent('before suspend'));
 
 		const resumePass = createRunDebugStepHooks(buffer, { runId: 'run-1', threadId: 'thread-1' });
-		resumePass.onStepStart(makeStartEvent());
-		resumePass.onStepFinish(makeFinishEvent('after resume'));
+		resumePass.onStepStart(makeStepStartEvent());
+		resumePass.onStepEnd(makeStepEndEvent('after resume'));
 
 		const record = buffer.get('run-1');
 		expect(record?.steps).toHaveLength(2);
@@ -100,7 +101,7 @@ describe('RunDebugBuffer', () => {
 				toolChoice: 'auto',
 				activeTools: ['search'],
 				abortSignal: new AbortController().signal,
-			} as unknown as OnStepStartEvent,
+			} as unknown as GenerateTextStepStartEvent,
 			4,
 		);
 
@@ -111,6 +112,57 @@ describe('RunDebugBuffer', () => {
 			search: { description: 'search', inputSchema: { type: 'object', properties: { q: {} } } },
 		});
 		expect(sanitized).not.toHaveProperty('abortSignal');
+	});
+
+	it('drops step-start data that repeats other captured fields', () => {
+		const stepTools = [{ type: 'function', name: 'search', inputSchema: { type: 'object' } }];
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				instructions: 'system prompt',
+				messages: [{ role: 'user', content: 'hello' }],
+				tools: { search: { description: 'search', inputSchema: z.object({ q: z.string() }) } },
+				stepTools,
+				promptMessages: [{ role: 'system', content: 'system prompt' }],
+				steps: [{ stepNumber: 0, text: 'earlier step' }],
+				modelId: 'claude',
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized.stepTools).toEqual(stepTools);
+		expect(sanitized.modelId).toBe('claude');
+		for (const key of ['tools', 'promptMessages', 'steps']) {
+			expect(sanitized).not.toHaveProperty(key);
+		}
+	});
+
+	it('drops empty step-start containers and keeps populated ones', () => {
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				runtimeContext: {},
+				toolsContext: { search: { region: 'eu' } },
+				activeTools: [],
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized).not.toHaveProperty('runtimeContext');
+		expect(sanitized).not.toHaveProperty('activeTools');
+		expect(sanitized.toolsContext).toEqual({ search: { region: 'eu' } });
+	});
+
+	it('keeps tool descriptions without Zod internals when stepTools is missing', () => {
+		const sanitized = sanitizeStepStart(
+			{
+				stepNumber: 0,
+				tools: { search: { description: 'search', inputSchema: z.object({ q: z.string() }) } },
+			} as unknown as GenerateTextStepStartEvent,
+			0,
+		);
+
+		expect(sanitized.tools).toEqual({ search: { description: 'search' } });
 	});
 
 	it('does not truncate long captured strings', () => {
@@ -146,7 +198,7 @@ describe('RunDebugBuffer', () => {
 					messages: [{ role: 'assistant', content: '' }],
 					body: { secret: 'raw-provider-body' },
 				},
-			} as unknown as OnStepFinishEvent,
+			} as unknown as GenerateTextStepEndEvent,
 			0,
 		);
 
@@ -177,7 +229,7 @@ describe('RunDebugBuffer', () => {
 			buffer.recordStepStart(runId, 0, {
 				stepNumber: 0,
 				messages: [],
-			} as unknown as OnStepStartEvent);
+			} as unknown as GenerateTextStepStartEvent);
 		}
 
 		expect(buffer.get('run-0')).toBeUndefined();
@@ -193,10 +245,18 @@ describe('RunDebugBuffer', () => {
 		hooks.onStepStart({
 			stepNumber: 2,
 			messages: [{ role: 'user', content: 'ping' }],
-		} as unknown as OnStepStartEvent);
+		} as unknown as GenerateTextStepStartEvent);
 
 		expect(buffer.get('run-1')?.steps[0]?.stepNumber).toBe(0);
 		expect(buffer.get('run-1')?.steps[0]?.input?.sdkStepNumber).toBe(2);
+	});
+
+	it('exposes onStepEnd and keeps onStepFinish as a compatibility alias', () => {
+		const buffer = new RunDebugBuffer();
+		const hooks = createRunDebugStepHooks(buffer, { runId: 'run-1', threadId: 'thread-1' });
+
+		expect(typeof hooks.onStepEnd).toBe('function');
+		expect(hooks.onStepFinish).toBe(hooks.onStepEnd);
 	});
 
 	it('stores a run label on first ensure', () => {

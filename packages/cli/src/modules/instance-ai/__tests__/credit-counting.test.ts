@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+import type { Thread } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
 
@@ -6,8 +7,7 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 // Skip the real backoff sleeps so retry tests run instantly.
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -40,9 +40,23 @@ function claimedRunIds(service: InstanceAiCreditService) {
 function createMockThreadRepo(
 	thread?: { id: string; metadata: Record<string, unknown> | null } | null,
 ) {
+	let current: Thread | null = thread
+		? {
+				id: thread.id,
+				resourceId: 'user-1',
+				metadata: thread.metadata ?? undefined,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			}
+		: null;
 	return {
-		findOneBy: vi.fn().mockResolvedValue(thread ?? null),
-		save: vi.fn().mockImplementation(async (entity: unknown) => entity),
+		updateThread: vi.fn<InstanceAiThreadRepository['updateThread']>(async ({ update }) => {
+			if (!current) return null;
+			const patch = update(structuredClone(current));
+			if (patch) current = { ...current, ...patch };
+			return await Promise.resolve(current);
+		}),
+		getCurrent: () => current,
 	};
 }
 
@@ -138,7 +152,7 @@ describe('claimRunUsage', () => {
 			{ Authorization: 'Bearer ia-tok' },
 			{ dedupeId: 'run-1', usage, threadId: 't1' },
 		);
-		expect(threadRepo.save).toHaveBeenCalledWith(
+		expect(threadRepo.getCurrent()).toEqual(
 			expect.objectContaining({ metadata: expect.objectContaining({ creditsUsed: 2.5 }) }),
 		);
 		expect(push.sendToUsers).toHaveBeenCalledWith(
@@ -278,7 +292,7 @@ describe('claimRunUsage', () => {
 
 	it('keeps the claim successful when persisting the thread total fails', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
-		threadRepo.save = vi.fn().mockRejectedValue(new Error('db down'));
+		threadRepo.updateThread.mockRejectedValueOnce(new Error('db down'));
 		const ai = createMockAiService({
 			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
 		});
@@ -338,6 +352,23 @@ describe('claimRunUsage', () => {
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 	});
 
+	it('does not charge an errored segment with no billable usage', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { usage: [], status: 'errored' });
+
+		expect(ai.getClient).not.toHaveBeenCalled();
+		expect(ai.__getInstanceAiApiProxyToken).not.toHaveBeenCalled();
+		expect(ai.__markInstanceAiTokenUsage).not.toHaveBeenCalled();
+		expect(threadRepo.updateThread).not.toHaveBeenCalled();
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
 	it('does nothing when the proxy is disabled', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ proxyEnabled: false });
@@ -359,7 +390,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const result = await callClaim(service);
 
-		expect(threadRepo.save).not.toHaveBeenCalled();
+		expect(threadRepo.updateThread).not.toHaveBeenCalled();
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 		expect(result).toBeUndefined();
 	});
@@ -381,6 +412,71 @@ describe('claimRunUsage', () => {
 				instance_id: 'inst-1',
 				user_id: 'user-1',
 			});
+		});
+
+		it('notifies listeners once when usage crosses quota', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			const ai = createMockAiService({
+				claimResult: { delta: 0.5, creditsClaimed: 100, creditsQuota: 100 },
+			});
+			const push = { sendToUsers: vi.fn() };
+			const telemetry = { track: vi.fn() };
+			const onExhausted = vi.fn();
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			service.onQuotaExhausted(onExhausted);
+			await callClaim(service);
+
+			expect(onExhausted).toHaveBeenCalledTimes(1);
+			expect(onExhausted).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' }));
+		});
+
+		it('does not notify listeners when the balance was already exhausted', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			const ai = createMockAiService({
+				claimResult: { delta: 0.5, creditsClaimed: 120, creditsQuota: 100 },
+			});
+			const push = { sendToUsers: vi.fn() };
+			const telemetry = { track: vi.fn() };
+			const onExhausted = vi.fn();
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			service.onQuotaExhausted(onExhausted);
+			await callClaim(service);
+
+			expect(onExhausted).not.toHaveBeenCalled();
+		});
+
+		it('does not notify listeners when the balance stays under quota', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			const ai = createMockAiService({
+				claimResult: { delta: 0.5, creditsClaimed: 10, creditsQuota: 100 },
+			});
+			const push = { sendToUsers: vi.fn() };
+			const telemetry = { track: vi.fn() };
+			const onExhausted = vi.fn();
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			service.onQuotaExhausted(onExhausted);
+			await callClaim(service);
+
+			expect(onExhausted).not.toHaveBeenCalled();
+		});
+
+		it('still records the claim when a listener throws', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			const ai = createMockAiService({
+				claimResult: { delta: 0.5, creditsClaimed: 100, creditsQuota: 100 },
+			});
+			const push = { sendToUsers: vi.fn() };
+			const telemetry = { track: vi.fn() };
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			service.onQuotaExhausted(() => {
+				throw new Error('stop failed');
+			});
+
+			await expect(callClaim(service)).resolves.toBe(0.5);
 		});
 
 		it('does not fire when already over quota before this claim', async () => {

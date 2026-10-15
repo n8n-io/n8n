@@ -1,10 +1,13 @@
 ---
 name: planning
+dependencies:
+  tools:
+    - create-tasks
 description: >-
   ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
   shared data-table schema/migration across tasks, or the user explicitly asked
-  to review a plan first. Load create-tasks via load_tool before calling it
-  (search "create tasks" if not visible). Do NOT use for new one-off workflows,
+  to review a plan first. If create-tasks is not visible, load it via load_tool
+  (search "create tasks"). Do NOT use for new one-off workflows,
   single-workflow edits, verification-only requests, or standalone data-table
   ops — use workflow-builder or data-table-manager instead.
 recommended_tools:
@@ -24,8 +27,8 @@ Use this skill to design a dependency-aware task graph in the orchestrator and
 submit it with `create-tasks`. Do not spawn another agent and do not use
 incremental plan item tools.
 
-Before calling `create-tasks`, load it via `load_tool` (search "create tasks" if
-it is not visible).
+If `create-tasks` is not visible, load it via `load_tool` (search "create tasks")
+before you call it.
 
 ## When NOT to use this skill
 
@@ -58,11 +61,13 @@ with direct `data-tables` and `parse-file` calls.
 
 ## Knowledge Base
 
-**Consult the knowledge base before planning.** Read the relevant `.md` guides
-and templates for each technique the request involves (`knowledge-base/index.json`,
-`knowledge-base/best-practices/index.json`, and linked files). Use
-`workspace_execute_command` with `rg` or `find` under `knowledge-base/templates/`
-to locate matching SDK examples — never load `templates/index.json` wholesale.
+**Consult the knowledge base before planning.** It lives at the workspace root.
+Read the relevant `.md` guides and templates for each technique the request
+involves (`${N8N_WORKSPACE_DIR}/knowledge-base/index.json`,
+`${N8N_WORKSPACE_DIR}/knowledge-base/best-practices/index.json`, and linked
+files). Use `workspace_execute_command` with `rg` or `find` under
+`${N8N_WORKSPACE_DIR}/knowledge-base/templates/` to locate matching SDK
+examples — never load `templates/index.json` wholesale.
 Skip only for trivial mechanical edits you have already reviewed in this thread.
 
 ## Method

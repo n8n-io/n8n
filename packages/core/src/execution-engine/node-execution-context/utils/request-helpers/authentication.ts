@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { httpRequest, removeEmptyBody } from '@n8n/backend-network';
+import { OutboundHttp, removeEmptyBody } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -12,12 +13,45 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { ExecutionBaseError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	ExecutionBaseError,
+	hasPolicyRefusalMarker,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { proxyRequestToAxios } from './legacy-request-adapter';
-import { requestOAuth1, requestOAuth2 } from './oauth';
+import {
+	hasSingleUseBody,
+	isTokenExpiryInFuture,
+	isTokenExpiredStatusCode,
+	requestOAuth1,
+	requestOAuth2,
+} from './oauth';
+
+/**
+ * Whether a failed request earns the generic `preAuthentication` refresh-and-resend. Only the
+ * statuses in `preAuthenticationRetryStatusCode` (default 401) do; an explicit list replaces the
+ * default. A 401 means the server rejected the token, so it skips the expiry gate. Any other
+ * configured status can be ambiguous (a gateway that answers 404 both for an expired token and for
+ * a resource that does not exist), so `skipPreAuthenticationRetryWhileTokenIsFresh` lets a caller
+ * gate those on the expiry the credential stored in `n8n_expires_at`, instead of paying a token
+ * exchange and a credential write per missing resource. An absent or unparsable expiry still
+ * retries.
+ */
+function shouldRetryAfterPreAuthentication(
+	status: unknown,
+	credentials: ICredentialDataDecryptedObject,
+	options?: IAdditionalCredentialOptions,
+): boolean {
+	if (!isTokenExpiredStatusCode(status, options?.preAuthenticationRetryStatusCode ?? 401)) {
+		return false;
+	}
+	if (status === 401 || options?.skipPreAuthenticationRetryWhileTokenIsFresh !== true) return true;
+	return !isTokenExpiryInFuture(credentials.n8n_expires_at);
+}
 
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
@@ -36,6 +70,7 @@ export async function httpRequestWithAuthentication(
 	}
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+	let requestSent = false;
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing
 	if (additionalData.evalLlmMockHandler) {
@@ -52,9 +87,11 @@ export async function httpRequestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (parentTypes.includes('oAuth1Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
 		if (parentTypes.includes('oAuth2Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,
@@ -102,41 +139,57 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequest(requestOptions, additionalData.ssrfBridge);
+		requestSent = true;
+		return await Container.get(OutboundHttp).requests().request(requestOptions);
 	} catch (error) {
+		// Keep the policy reason visible instead of reporting it as a failed API call.
+		if (hasPolicyRefusalMarker(error)) throw error;
+
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
 		if (
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			error.response?.status === 401 &&
-			additionalData.credentialsHelper.preAuthentication !== undefined
+			additionalData.credentialsHelper.preAuthentication !== undefined &&
+			// OAuth 401s are already retried inside requestOAuth1/2 and leave
+			// credentialsDecrypted unset; with nothing refreshed, resending the same
+			// request (possibly with a consumed single-use body) could only fail again
+			credentialsDecrypted !== undefined &&
+			shouldRetryAfterPreAuthentication(
+				error.response?.status,
+				credentialsDecrypted,
+				additionalCredentialOptions,
+			)
 		) {
 			try {
-				if (credentialsDecrypted !== undefined) {
-					// try to refresh the credentials
-					const data = await additionalData.credentialsHelper.preAuthentication(
-						{ helpers: this.helpers },
-						credentialsDecrypted,
-						credentialsType,
-						node,
-						true,
-					);
+				// try to refresh the credentials
+				const data = await additionalData.credentialsHelper.preAuthentication(
+					{ helpers: this.helpers },
+					credentialsDecrypted,
+					credentialsType,
+					node,
+					true,
+				);
 
-					if (data) {
-						// make the updated property in the credentials
-						// available to the authenticate method
-						Object.assign(credentialsDecrypted, data);
-					}
-
-					requestOptions = await additionalData.credentialsHelper.authenticate(
-						credentialsDecrypted,
-						credentialsType,
-						requestOptions,
-						workflow,
-						node,
-					);
+				if (data) {
+					// make the updated property in the credentials
+					// available to the authenticate method
+					Object.assign(credentialsDecrypted, data);
 				}
-				return await httpRequest(requestOptions, additionalData.ssrfBridge);
+
+				if (requestSent && hasSingleUseBody(requestOptions)) {
+					this.logger.warn(
+						`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
+					);
+					throw new NodeApiError(this.getNode(), error);
+				}
+
+				requestOptions = await additionalData.credentialsHelper.authenticate(
+					credentialsDecrypted,
+					credentialsType,
+					requestOptions,
+					workflow,
+					node,
+				);
+				return await Container.get(OutboundHttp).requests().request(requestOptions);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -150,6 +203,7 @@ export async function httpRequestWithAuthentication(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestOptions: IRequestOptions,
 	workflow: Workflow,
 	node: INode,
@@ -160,6 +214,7 @@ export async function requestWithAuthentication(
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+	let requestSent = false;
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
 	if (additionalData.evalLlmMockHandler) {
@@ -177,9 +232,11 @@ export async function requestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (credentialsType === 'oAuth1Api' || parentTypes.includes('oAuth1Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
 		}
 		if (credentialsType === 'oAuth2Api' || parentTypes.includes('oAuth2Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,
@@ -222,13 +279,15 @@ export async function requestWithAuthentication(
 			Object.assign(credentialsDecrypted, data);
 		}
 
-		requestOptions = (await additionalData.credentialsHelper.authenticate(
+		requestOptions = await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
 			requestOptions as IHttpRequestOptions,
 			workflow,
 			node,
-		)) as IRequestOptions;
+		);
+		requestSent = true;
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
 		try {
@@ -246,19 +305,26 @@ export async function requestWithAuthentication(
 					// make the updated property in the credentials
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);
-					requestOptions = (await additionalData.credentialsHelper.authenticate(
+					if (requestSent && hasSingleUseBody(requestOptions)) {
+						this.logger.warn(
+							`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original error instead.`,
+						);
+						throw error;
+					}
+					requestOptions = await additionalData.credentialsHelper.authenticate(
 						credentialsDecrypted,
 						credentialsType,
 						requestOptions as IHttpRequestOptions,
 						workflow,
 						node,
-					)) as IRequestOptions;
+					);
+					// oxlint-disable-next-line typescript/no-deprecated
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}
 			throw error;
 		} catch (error) {
-			if (error instanceof ExecutionBaseError) throw error;
+			if (error instanceof ExecutionBaseError || hasPolicyRefusalMarker(error)) throw error;
 
 			throw new NodeApiError(this.getNode(), error);
 		}

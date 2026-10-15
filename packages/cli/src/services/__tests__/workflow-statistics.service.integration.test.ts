@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import {
 	getPersonalProject,
@@ -16,6 +17,7 @@ import {
 	type EntityManager,
 	type EntityMetadata,
 } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { mock } from 'vitest-mock-extended';
 import {
@@ -27,7 +29,6 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -670,6 +671,67 @@ describe('WorkflowStatisticsService', () => {
 				workflowId: teamWorkflow.id,
 				workflowName: teamWorkflow.name,
 				userId: instanceOwner.id,
+			});
+		});
+
+		describe('concurrent first occurrences', () => {
+			const makeService = () => {
+				const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
+				(
+					workflowRepositoryNoErrorWorkflows as unknown as {
+						hasAnyWorkflowsWithErrorWorkflow: Mock;
+					}
+				).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
+				return new WorkflowStatisticsService(
+					mock(),
+					workflowStatisticsRepository,
+					Container.get(OwnershipService),
+					userService,
+					Container.get(EventService),
+					Container.get(SettingsRepository),
+					workflowRepositoryNoErrorWorkflows,
+					Container.get(DatabaseConfig),
+				);
+			};
+
+			test('emits instance-first-production-workflow-failed once for concurrent first failures', async () => {
+				const service = makeService();
+				const otherWorkflow = await createWorkflow({}, user);
+				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+				const settingsRepository = Container.get(SettingsRepository);
+				const findByKey = settingsRepository.findByKey.bind(settingsRepository);
+				const bothReadsCompleted = createDeferredPromise();
+				let completedReads = 0;
+
+				// Both calls must read the missing setting before either call can write it.
+				const readBeforeWrite: SettingsRepository['findByKey'] = async (...args) => {
+					const setting = await findByKey(...args);
+					if (++completedReads === 2) {
+						bothReadsCompleted.resolve();
+					}
+					await bothReadsCompleted.promise;
+					return setting;
+				};
+				vi.spyOn(settingsRepository, 'findByKey')
+					.mockImplementationOnce(readBeforeWrite)
+					.mockImplementationOnce(readBeforeWrite);
+
+				await Promise.all(
+					[workflow, otherWorkflow].map(
+						async (wf) =>
+							await service.emitFirstOccurrenceEvent(
+								StatisticsNames.productionError,
+								wf.id,
+								wf.name,
+								Date.now(),
+							),
+					),
+				);
+
+				const failureEvents = emitSpy.mock.calls.filter(
+					([eventName]) => eventName === 'instance-first-production-workflow-failed',
+				);
+				expect(failureEvents).toHaveLength(1);
 			});
 		});
 

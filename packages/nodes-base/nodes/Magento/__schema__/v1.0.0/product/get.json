@@ -21,6 +21,20 @@
         "extension_attributes": {
             "type": "object",
             "properties": {
+                "category_links": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "category_id": {
+                                "type": "string"
+                            },
+                            "position": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
                 "stock_item": {
                     "type": "object",
                     "properties": {
@@ -144,6 +158,64 @@
         "name": {
             "type": "string"
         },
+        "options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "image_size_x": {
+                        "type": "integer"
+                    },
+                    "image_size_y": {
+                        "type": "integer"
+                    },
+                    "is_require": {
+                        "type": "boolean"
+                    },
+                    "max_characters": {
+                        "type": "integer"
+                    },
+                    "option_id": {
+                        "type": "integer"
+                    },
+                    "product_sku": {
+                        "type": "string"
+                    },
+                    "sort_order": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "option_type_id": {
+                                    "type": "integer"
+                                },
+                                "price": {
+                                    "type": "integer"
+                                },
+                                "price_type": {
+                                    "type": "string"
+                                },
+                                "sort_order": {
+                                    "type": "integer"
+                                },
+                                "title": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "product_links": {
             "type": "array",
             "items": {
@@ -185,7 +257,7 @@
                         "type": "object",
                         "properties": {
                             "percentage_value": {
-                                "type": "integer"
+                                "type": "number"
                             },
                             "website_id": {
                                 "type": "integer"
@@ -211,5 +283,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

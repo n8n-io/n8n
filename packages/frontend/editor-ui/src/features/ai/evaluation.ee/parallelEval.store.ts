@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { computed } from 'vue';
 
 import { LOCAL_STORAGE_PARALLEL_EVAL_BY_WORKFLOW } from '@/app/constants/localStorage';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 // Sentinel used for workflows that haven't been saved yet (no id assigned).
 // Mirrors the per-workflow localStorage pattern used elsewhere in the editor.

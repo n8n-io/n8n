@@ -84,7 +84,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 			return result;
 		} catch (e) {
 			const isEmptyOutput =
-				(typeof text === 'string' && text.trim() === '{}') ||
+				(typeof text === 'string' && ['', '{}'].includes(text.trim())) ||
 				(e instanceof z.ZodError &&
 					e.issues?.[0] &&
 					e.issues?.[0].code === 'invalid_type' &&

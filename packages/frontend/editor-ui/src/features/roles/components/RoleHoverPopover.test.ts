@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import type { Role } from '@n8n/permissions';
 import RoleHoverPopover from './RoleHoverPopover.vue';
 import { VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { TOTAL_PROJECT_PERMISSIONS } from '@/features/roles/project/projectRoleScopes';
 

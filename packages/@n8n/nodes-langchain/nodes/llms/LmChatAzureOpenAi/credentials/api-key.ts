@@ -1,5 +1,7 @@
 import { NodeOperationError, OperationalError, type ISupplyDataFunctions } from 'n8n-workflow';
 
+import { normalizeEndpoint } from './normalizeEndpoint';
+import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import type { AzureOpenAIApiKeyModelConfig } from '../types';
 
 /**
@@ -13,25 +15,48 @@ export async function setupApiKeyAuthentication(
 		// Get Azure OpenAI Config (Endpoint, Version, etc.)
 		const configCredentials = await this.getCredentials<{
 			apiKey?: string;
-			resourceName: string;
-			apiVersion: string;
+			resourceName?: string;
+			apiVersion?: string;
 			endpoint?: string;
+			endpointType?: 'classic' | 'foundry';
+			foundryEndpoint?: string;
 		}>(credentialName);
 
 		if (!configCredentials.apiKey) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'API Key is missing in the selected Azure OpenAI API credential. Please configure the API Key or choose Entra ID authentication.',
+				'API Key is missing in the selected Microsoft Foundry (API Key) credential. Please configure the API Key or choose Entra ID authentication.',
 			);
 		}
 
 		this.logger.info('Using API Key authentication for Azure OpenAI.');
 
+		if (configCredentials.endpointType === 'foundry') {
+			const foundryEndpoint = requireFoundryEndpoint(
+				this.getNode(),
+				configCredentials.foundryEndpoint,
+			);
+			return {
+				azureOpenAIApiKey: configCredentials.apiKey,
+				azureOpenAIApiInstanceName: '',
+				azureOpenAIApiVersion: '',
+				azureOpenAIEndpoint: foundryEndpoint,
+				azureFoundryBaseURL: foundryEndpoint,
+			};
+		}
+
+		if (!configCredentials.resourceName?.trim() || !configCredentials.apiVersion?.trim()) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Resource Name and API Version are required for a classic Azure OpenAI credential.',
+			);
+		}
+
 		return {
 			azureOpenAIApiKey: configCredentials.apiKey,
 			azureOpenAIApiInstanceName: configCredentials.resourceName,
 			azureOpenAIApiVersion: configCredentials.apiVersion,
-			azureOpenAIEndpoint: configCredentials.endpoint,
+			azureOpenAIEndpoint: normalizeEndpoint(configCredentials.endpoint),
 		};
 	} catch (error) {
 		if (error instanceof OperationalError) {

@@ -10,6 +10,8 @@ export interface ReapResult {
 	reclaimed: number;
 	/** Tasks failed terminally (no attempts left). */
 	deadLettered: number;
+	/** Tasks retired as `missed`: past their deadline, never claimed. */
+	missed: number;
 }
 
 /** Identifies the row and the epoch read during the sweep, for a guarded reaper update. */
@@ -21,11 +23,30 @@ export interface ExpiredLeaseRef {
 /**
  * One expired-lease row the sweep decides on. It carries the full claimed-task
  * shape plus `dispatchedAt`, the effect-boundary marker: `null` means the owner
- * was lost before dispatch, so the occurrence's effect never happened. The storage
+ * was lost before dispatch, so the task's effect never happened. The storage
  * layer's full task row has these and more, so it fits without adapting.
  */
 export interface ExpiredLeaseRow extends ClaimedTask {
 	dispatchedAt: Date | null;
+}
+
+/** A task that the reaper set to `missed`. */
+export interface RetiredTask {
+	id: string;
+	jobId: number;
+	taskType: string;
+}
+
+/** Result of the reaper's retire step. */
+export interface RetireMissedResult {
+	/** Number of tasks set to `missed`. */
+	retired: number;
+	/**
+	 * The retired tasks whose job had at least its concurrency limit of runs in
+	 * progress at the task's deadline. This is an estimate. It uses the job's current
+	 * limit, and it does not count a claimed task that has not started yet.
+	 */
+	heldByConcurrencyLimit: RetiredTask[];
 }
 
 /**
@@ -42,6 +63,11 @@ export interface ReaperTaskStore {
 	 * already happened, so it must not be recorded failed nor dispatched again.
 	 */
 	completeExpired(ref: ExpiredLeaseRef): Promise<number>;
+	/**
+	 * Retire up to `limit` `pending` tasks past their `missedAfter` as `missed`.
+	 * One statement rather than a row at a time: there is no per-row decision to make.
+	 */
+	retireMissedPending(limit: number): Promise<RetireMissedResult>;
 }
 
 /** Knobs of one reaper sweep. */
@@ -58,6 +84,13 @@ export const DEFAULT_REAPER_OPTIONS: ReaperOptions = {
 export interface ReaperHooks {
 	/** Notified when recovering one expired-lease row fails, after the row is skipped. */
 	onRowError?: (taskId: string, error: unknown) => void;
+	/** Notified when retiring stale `pending` rows fails; the rest of the sweep still runs. */
+	onRetireError?: (error: unknown) => void;
+	/**
+	 * Called once per reaper run with {@link RetireMissedResult.heldByConcurrencyLimit}.
+	 * Not called when that list is empty.
+	 */
+	onHeldByConcurrencyLimit?: (tasks: RetiredTask[]) => void;
 	/** Notified when a task is failed terminally: the lease of its last attempt expired. */
 	onDeadLetter?: (task: { taskId: string; attempts: number; maxAttempts: number }) => void;
 	/**
@@ -65,6 +98,38 @@ export interface ReaperHooks {
 	 * completed as succeeded (its effect had already happened) instead of failed.
 	 */
 	onCompletedAfterDispatch?: (task: { taskId: string }) => void;
+}
+
+/**
+ * Retires the stale `pending` rows for one sweep. Reports a failure through
+ * `hooks.onRetireError` rather than throwing, so the rest of the sweep still runs;
+ * returns 0 when aborted or when retiring failed.
+ */
+async function retireStale(
+	store: ReaperTaskStore,
+	options: ReaperOptions,
+	hooks: ReaperHooks,
+	signal?: AbortSignal,
+): Promise<number> {
+	if (signal?.aborted === true) return 0;
+	try {
+		const { retired, heldByConcurrencyLimit } = await store.retireMissedPending(options.batchSize);
+		if (heldByConcurrencyLimit.length > 0) {
+			try {
+				hooks.onHeldByConcurrencyLimit?.(heldByConcurrencyLimit);
+			} catch {
+				// A host-supplied reporter must not break the sweep it observes.
+			}
+		}
+		return retired;
+	} catch (error) {
+		try {
+			hooks.onRetireError?.(error);
+		} catch {
+			// A host-supplied reporter must not break the sweep it observes.
+		}
+		return 0;
+	}
 }
 
 /**
@@ -85,6 +150,9 @@ export interface ReaperHooks {
  * reapers on every main are safe. A row that throws is skipped (reported via
  * `hooks.onRowError`), not allowed to abort the rest of the pass.
  *
+ * A pass also retires up to `batchSize` `pending` tasks past their
+ * `missedAfter`, so they reach a terminal status and fall to retention.
+ *
  * One pass resolves up to `batchSize` expired-lease tasks, splitting first on the
  * effect boundary: a task the owner already dispatched is completed as succeeded
  * (its effect happened, so it is never redelivered), whatever its attempts. A
@@ -100,10 +168,12 @@ export async function reap(
 	hooks: ReaperHooks = {},
 	signal?: AbortSignal,
 ): Promise<ReapResult> {
+	const missed = await retireStale(store, options, hooks, signal);
+
 	const expired = await store.findExpiredLeases(options.batchSize);
 	// Stryker disable next-line ConditionalExpression: pure early-return optimisation;
 	// without it the loop below is simply empty for an empty array, same result.
-	if (expired.length === 0) return { reclaimed: 0, deadLettered: 0 };
+	if (expired.length === 0) return { reclaimed: 0, deadLettered: 0, missed };
 
 	let reclaimed = 0;
 	let deadLettered = 0;
@@ -142,7 +212,7 @@ export async function reap(
 				// remain, so record the terminal failure. Guarded and epoch-fenced, and fenced
 				// on `dispatchedAt` still being null: a marker that landed during the sweep
 				// turns this into a benign no-op (the next sweep then completes the row) instead
-				// of failing a dispatched occurrence. A lost race (0 rows) likewise means
+				// of failing a dispatched task. A lost race (0 rows) likewise means
 				// another actor already resolved it.
 				const affected = await store.deadLetterExpired(ref, LEASE_EXPIRED_MESSAGE);
 				deadLettered += affected;
@@ -173,5 +243,5 @@ export async function reap(
 		}
 	}
 
-	return { reclaimed, deadLettered };
+	return { reclaimed, deadLettered, missed };
 }

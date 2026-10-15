@@ -7,7 +7,7 @@ import type {
 	MainPanelDimensions,
 	MainPanelType,
 } from './ndv.types';
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 import {
 	LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED,
 	LOCAL_STORAGE_MAPPING_IS_ONBOARDED,

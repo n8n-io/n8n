@@ -1,0 +1,566 @@
+/**
+ * Source-level lint for workflow SDK TypeScript (builder code only).
+ *
+ * Does not inspect jsCode / pythonCode embedded in Code node configs — those
+ * are linted separately by code-node/js and code-node/python.
+ */
+
+import type { CallExpression, MemberExpression, Node, Program } from 'estree';
+import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
+
+import {
+	FORBIDDEN_NODE_TYPES,
+	DANGEROUS_GLOBALS,
+	getSafeJSONMethod,
+	parseSDKCode,
+} from '../../ast-interpreter';
+import { dedupeSourceLintIssues, walkAst } from '../ast-walk';
+import { isEmbeddedCodePropertyValue } from '../code-node/extract-snippets';
+import { lintIssue, type SourceLintIssue } from '../types';
+
+const NATIVE_ARRAY_METHODS = new Set([
+	'map',
+	'join',
+	'filter',
+	'reduce',
+	'forEach',
+	'flatMap',
+	'find',
+	'some',
+	'every',
+]);
+
+const SDK_FLUENT_METHODS = new Set([
+	'to',
+	'add',
+	'onTrue',
+	'onFalse',
+	'onCase',
+	'onDone',
+	'onEachBatch',
+	'onError',
+	'input',
+	'output',
+	'settings',
+	'update',
+	'then',
+	'group',
+]);
+
+/** An `as const` occurrence in prepared source (1-based line, 0-based column). */
+export interface AsConstMatch {
+	line: number;
+	column: number;
+}
+
+/**
+ * Strip imports and common TS-only syntax so acorn can parse agent source.
+ * Replacements preserve line count (and roughly column positions) so AST
+ * `loc` values still match the original file.
+ *
+ * `as const` matches are collected after the strips above run, so their
+ * coordinates share the AST's coordinate space — this lets callers tell a
+ * real assertion apart from text inside a string/template (jsCode, sticky).
+ */
+export function prepareSourceForLint(source: string): {
+	code: string;
+	asConstMatches: AsConstMatch[];
+} {
+	let code = source;
+	const blankSameLines = (match: string): string => '\n'.repeat((match.match(/\n/g) ?? []).length);
+	const spaces = (match: string): string => ' '.repeat(match.length);
+
+	code = code.replace(/^\s*import\s[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, blankSameLines);
+	code = code.replace(/^\s*import\s+type\s[\s\S]*?;?\s*$/gm, blankSameLines);
+	// Narrower than a blanket `: Type` strip — avoids mangling ternaries (`a ? b : c`).
+	// These two are the only non-length-preserving strips; everything below them
+	// shares coordinates with the collected matches and the parsed AST.
+	code = code.replace(
+		/\b((?:const|let|var)\s+[A-Za-z_$][\w$]*)\s*:\s*[A-Za-z_$][\w$.|<>[\]\s,&?]*(?=\s*=)/g,
+		'$1',
+	);
+	code = code.replace(
+		/([,(]\s*[A-Za-z_$][\w$]*)\s*:\s*[A-Za-z_$][\w$.|<>[\]\s,&?]*(?=\s*[,)=])/g,
+		'$1',
+	);
+
+	const asConstMatches: AsConstMatch[] = [];
+	const asConstPattern = /\bas\s+const\b/g;
+	const lines = code.split(/\r?\n/);
+	for (let i = 0; i < lines.length; i++) {
+		asConstPattern.lastIndex = 0;
+		let match: RegExpExecArray | null;
+		while ((match = asConstPattern.exec(lines[i] ?? '')) !== null) {
+			asConstMatches.push({ line: i + 1, column: match.index });
+		}
+	}
+
+	code = code.replace(/\bas\s+const\b/g, spaces);
+	code = code.replace(/\bas\s+[A-Za-z_$][\w$.<>,\s|&[\]?]*/g, spaces);
+	code = code.replace(/\bsatisfies\s+[A-Za-z_$][\w$.|<>[\]\s,&?]*/g, spaces);
+
+	return { code, asConstMatches };
+}
+
+/** 1-based line/column from an ESTree loc (Acorn columns are 0-based). */
+function locationOf(node: Node): { line?: number; column?: number } {
+	if (!node.loc) return {};
+	return { line: node.loc.start.line, column: node.loc.start.column + 1 };
+}
+
+function isPlaceholderCall(node: CallExpression): boolean {
+	return node.callee.type === 'Identifier' && node.callee.name === 'placeholder';
+}
+
+function isExprCall(node: CallExpression): boolean {
+	return node.callee.type === 'Identifier' && node.callee.name === 'expr';
+}
+
+/**
+ * Direct receiver of a method call when it is a simple identifier
+ * (`branch.onTrue(...)`). Fluent chains on `workflow()` are ignored — those
+ * do not overwrite a previous branch target on the same IF node.
+ */
+function directReceiverName(member: MemberExpression): string | undefined {
+	if (member.object.type === 'Identifier') {
+		return member.object.name;
+	}
+	return undefined;
+}
+
+interface SourceRange {
+	startLine: number;
+	startColumn: number;
+	endLine: number;
+	endColumn: number;
+}
+
+/**
+ * Ranges covered by string literals and template literals. An `as const`
+ * match inside one is string content (jsCode snippets, sticky text), not the
+ * TS assertion SDK_AS_CONST targets.
+ */
+function stringContentRanges(ast: Program): SourceRange[] {
+	const ranges: SourceRange[] = [];
+	walkAst(ast, (node) => {
+		const isString =
+			node.type === 'TemplateLiteral' ||
+			(node.type === 'Literal' && typeof node.value === 'string');
+		if (!isString || !node.loc) return;
+		ranges.push({
+			startLine: node.loc.start.line,
+			startColumn: node.loc.start.column,
+			endLine: node.loc.end.line,
+			endColumn: node.loc.end.column,
+		});
+	});
+	return ranges;
+}
+
+function rangeContains(range: SourceRange, line: number, column: number): boolean {
+	if (line < range.startLine || line > range.endLine) return false;
+	if (line === range.startLine && column < range.startColumn) return false;
+	if (line === range.endLine && column >= range.endColumn) return false;
+	return true;
+}
+
+/** Builders that put a box on the canvas: `ifElse`, `merge` and `switchCase` each
+ *  call `node()` under the hood, so they draw one of their own. */
+export const CANVAS_BOX_BUILDERS = new Set(['node', 'trigger', 'ifElse', 'merge', 'switchCase']);
+
+/** Builders that draw a box only when they build the node themselves:
+ *  `splitInBatches({ version, config }, …)` does, `splitInBatches(handle, …)`
+ *  wraps a node the source already declared and counted. */
+export const CONFIG_OR_NODE_BUILDERS = new Set(['splitInBatches']);
+
+/**
+ * Everything else builder source may call, kept explicit so a new entry in
+ * `ALLOWED_SDK_FUNCTIONS` has to be classified rather than silently counting as
+ * nothing. Sub-node builders ride with their parent; `nextBatch` wraps a node
+ * the source already declared.
+ */
+export const NON_CANVAS_SDK_FUNCTIONS = new Set([
+	'workflow',
+	'sticky',
+	'placeholder',
+	'newCredential',
+	'nextBatch',
+	'languageModel',
+	'memory',
+	'tool',
+	'outputParser',
+	'embedding',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'documentLoader',
+	'textSplitter',
+	'reranker',
+	'fromAi',
+	'nodeJson',
+]);
+
+/** Whether this call puts a box on the canvas, so the source draws one for it. */
+function drawsCanvasBox(call: CallExpression): boolean {
+	if (call.callee.type !== 'Identifier') {
+		return false;
+	}
+
+	if (CANVAS_BOX_BUILDERS.has(call.callee.name)) {
+		return true;
+	}
+
+	return (
+		CONFIG_OR_NODE_BUILDERS.has(call.callee.name) && call.arguments[0]?.type === 'ObjectExpression'
+	);
+}
+
+/**
+ * Counts the boxes the source will draw — each `.group()` plus every node not
+ * listed in one — and warns when they run past the ceiling. Agents skip the
+ * count they are asked to run after saving, so it is raised here instead, while
+ * the source is still theirs to edit.
+ */
+function ungroupedCanvasIssue(ast: Program): SourceLintIssue | undefined {
+	// A handle declared and never mentioned again never reaches the canvas, so
+	// declarations and references are collected apart.
+	const declaredBoxes = new Map<string, Node>();
+	const declaratorIds = new Set<Node>();
+	const boxCalls = new Set<Node>();
+	const declaredInits = new Set<Node>();
+	const references = new Set<string>();
+	const groupedHandles = new Set<string>();
+	let groupCount = 0;
+	// A member list the parser cannot read statically — a variable or a spread —
+	// would look like nothing is grouped, so the count is abandoned instead.
+	let unreadableMembers = false;
+
+	walkAst(ast, (node) => {
+		if (node.type === 'VariableDeclarator') {
+			declaratorIds.add(node.id);
+			if (
+				node.id.type === 'Identifier' &&
+				node.init?.type === 'CallExpression' &&
+				drawsCanvasBox(node.init)
+			) {
+				declaredBoxes.set(node.id.name, node.init);
+				declaredInits.add(node.init);
+			}
+			return;
+		}
+
+		if (node.type === 'Identifier' && !declaratorIds.has(node)) {
+			references.add(node.name);
+			return;
+		}
+
+		if (node.type !== 'CallExpression') {
+			return;
+		}
+
+		if (drawsCanvasBox(node)) {
+			boxCalls.add(node);
+			return;
+		}
+
+		const { callee } = node;
+
+		if (
+			callee.type !== 'MemberExpression' ||
+			callee.computed ||
+			callee.property.type !== 'Identifier' ||
+			callee.property.name !== 'group'
+		) {
+			return;
+		}
+
+		groupCount++;
+		const members = node.arguments[1];
+		if (members?.type !== 'ArrayExpression') {
+			unreadableMembers = true;
+			return;
+		}
+
+		for (const member of members.elements) {
+			if (member?.type === 'Identifier') {
+				groupedHandles.add(member.name);
+			} else {
+				unreadableMembers = true;
+			}
+		}
+	});
+
+	if (unreadableMembers) {
+		return undefined;
+	}
+
+	let ungrouped = 0;
+	for (const [handle] of declaredBoxes) {
+		if (references.has(handle) && !groupedHandles.has(handle)) {
+			ungrouped++;
+		}
+	}
+
+	// Inline `.add(node({…}))` has no handle, so it can never join a group.
+	for (const call of boxCalls) {
+		if (!declaredInits.has(call)) {
+			ungrouped++;
+		}
+	}
+
+	const boxes = groupCount + ungrouped;
+	if (boxes <= TOP_LEVEL_ITEM_CEILING) {
+		return undefined;
+	}
+
+	const exportDefault = ast.body.find((stmt) => stmt.type === 'ExportDefaultDeclaration');
+	return lintIssue({
+		code: 'SDK_UNGROUPED_CANVAS',
+		message:
+			`This source draws ${boxes} boxes on the canvas (${groupCount} group(s) and ${ungrouped} ` +
+			`ungrouped node(s)), past the ${TOP_LEVEL_ITEM_CEILING} a reader can take in. If you are ` +
+			'building this workflow, wrap each stage in `.group(name, members, { description })` now, while ' +
+			'the source is open — grouping cannot be added after the build, and a node stays out only when ' +
+			'no valid group can hold it. If you are editing a workflow that was already laid out this way, ' +
+			'leave it alone unless the user asked about grouping.',
+		line: exportDefault?.loc?.start.line ?? 1,
+		column: (exportDefault?.loc?.start.column ?? 0) + 1,
+		lintTarget: 'sdk',
+	});
+}
+
+/** Lint a prepared, parsed SDK AST (imports/TS already stripped). */
+export function lintWorkflowSdkAst(
+	ast: Program,
+	asConstMatches: AsConstMatch[] = [],
+): SourceLintIssue[] {
+	const issues: SourceLintIssue[] = [];
+
+	const stringRanges = stringContentRanges(ast);
+	for (const match of asConstMatches) {
+		if (stringRanges.some((range) => rangeContains(range, match.line, match.column))) continue;
+		issues.push(
+			lintIssue({
+				code: 'SDK_AS_CONST',
+				message:
+					'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
+				line: match.line,
+				column: match.column + 1,
+				lintTarget: 'sdk',
+			}),
+		);
+	}
+
+	const exportIndex = ast.body.findIndex((stmt) => stmt.type === 'ExportDefaultDeclaration');
+	if (exportIndex >= 0) {
+		for (let i = exportIndex + 1; i < ast.body.length; i++) {
+			const stmt = ast.body[i];
+			if (!stmt || stmt.type === 'EmptyStatement') continue;
+			issues.push(
+				lintIssue({
+					code: 'SDK_CODE_AFTER_EXPORT_DEFAULT',
+					message:
+						'Statement after `export default workflow(...)` never reaches the builder — nodes/wiring here are dropped. ' +
+						'Compose all `.to()` / `.onTrue()` / `.onFalse()` / `.onCase()` inside the export default chain.',
+					...locationOf(stmt),
+					lintTarget: 'sdk',
+				}),
+			);
+		}
+	}
+
+	const branchCounts = new Map<string, { count: number; line?: number; column?: number }>();
+
+	walkAst(
+		ast,
+		(node, parent) => {
+			if (node.type === 'ImportDeclaration') return;
+
+			const forbidden = FORBIDDEN_NODE_TYPES[node.type];
+			if (forbidden) {
+				issues.push(
+					lintIssue({
+						code: 'SDK_FORBIDDEN_CONSTRUCT',
+						message: forbidden,
+						...locationOf(node),
+						lintTarget: 'sdk',
+					}),
+				);
+			}
+
+			if (node.type === 'Identifier' && DANGEROUS_GLOBALS.has(node.name)) {
+				const isPropertyName =
+					parent?.type === 'MemberExpression' && parent.property === node && !parent.computed;
+				const isObjectKey = parent?.type === 'Property' && parent.key === node;
+				// Mirrors the interpreter: safe global methods (e.g. JSON.stringify) are allowed.
+				const isSafeMethodObject =
+					parent?.type === 'MemberExpression' &&
+					parent.object === node &&
+					!parent.computed &&
+					parent.property.type === 'Identifier' &&
+					getSafeJSONMethod(node.name, parent.property.name) !== undefined;
+				if (!isPropertyName && !isObjectKey && !isSafeMethodObject) {
+					issues.push(
+						lintIssue({
+							code: 'SDK_FORBIDDEN_CONSTRUCT',
+							message: `Global '${node.name}' is unavailable in SDK builder code. Move runtime logic to a Code node or expr().`,
+							...locationOf(node),
+							lintTarget: 'sdk',
+						}),
+					);
+				}
+			}
+
+			if (node.type !== 'CallExpression') return;
+			const call = node;
+
+			if (call.callee.type === 'Identifier' && call.callee.name === 'sticky') {
+				issues.push(
+					lintIssue({
+						code: 'SDK_UNSOLICITED_STICKY',
+						message:
+							'Do not add sticky() / stickyNote nodes unless the user explicitly asked for canvas notes. ' +
+							'Put explanations in the chat reply instead. This applies to sticky notes only: node groups ' +
+							'are not optional decoration, so keep the grouping decision the guidance requires.',
+						...locationOf(call),
+						lintTarget: 'sdk',
+					}),
+				);
+			}
+
+			if (
+				call.callee.type === 'MemberExpression' &&
+				!call.callee.computed &&
+				call.callee.property.type === 'Identifier'
+			) {
+				const method = call.callee.property.name;
+
+				if (method === 'onTrue' || method === 'onFalse') {
+					// Only count direct `ifNode.onTrue(...)` / `ifNode.onFalse(...)`.
+					// Fluent `workflow().to(if1).onTrue(...).to(if2).onTrue(...)` is fine.
+					const receiver = directReceiverName(call.callee);
+					if (receiver) {
+						const key = `${receiver}.${method}`;
+						const prev = branchCounts.get(key);
+						if (prev) {
+							prev.count += 1;
+						} else {
+							branchCounts.set(key, { count: 1, ...locationOf(call) });
+						}
+					}
+				}
+
+				if (!SDK_FLUENT_METHODS.has(method) && NATIVE_ARRAY_METHODS.has(method)) {
+					issues.push(
+						lintIssue({
+							code: 'SDK_FORBIDDEN_CONSTRUCT',
+							message:
+								`'.${method}()' is not available on SDK builder objects. Build strings with template ` +
+								'literals, or do transforms in a Code node / expr().',
+							...locationOf(call),
+							lintTarget: 'sdk',
+						}),
+					);
+				}
+			}
+
+			if (isExprCall(call)) {
+				for (const arg of call.arguments) {
+					if (arg.type === 'SpreadElement') continue;
+					if (arg.type === 'CallExpression' && isPlaceholderCall(arg)) {
+						issues.push(
+							lintIssue({
+								code: 'SDK_PLACEHOLDER_WRAPPED',
+								message:
+									"Do not wrap placeholder() in expr(). Use placeholder('hint') directly as the parameter value.",
+								...locationOf(call),
+								lintTarget: 'sdk',
+							}),
+						);
+					}
+					if (arg.type === 'TemplateLiteral') {
+						for (const expr of arg.expressions) {
+							if (expr.type === 'CallExpression' && isPlaceholderCall(expr)) {
+								issues.push(
+									lintIssue({
+										code: 'SDK_PLACEHOLDER_WRAPPED',
+										message:
+											'Do not embed placeholder() inside expr()/template strings. Use placeholder() as the direct parameter value.',
+										...locationOf(call),
+										lintTarget: 'sdk',
+									}),
+								);
+							}
+						}
+					}
+					if (arg.type === 'ArrayExpression') {
+						for (const el of arg.elements) {
+							if (el?.type === 'CallExpression' && isPlaceholderCall(el)) {
+								issues.push(
+									lintIssue({
+										code: 'SDK_PLACEHOLDER_WRAPPED',
+										message:
+											'Do not wrap placeholder() in an array unless the node definition expects an array and placeholder is a direct element value with no expr() wrapper.',
+										...locationOf(call),
+										lintTarget: 'sdk',
+									}),
+								);
+							}
+						}
+					}
+				}
+			}
+		},
+		{ skipChildren: isEmbeddedCodePropertyValue },
+	);
+
+	for (const [key, info] of branchCounts) {
+		if (info.count < 2) continue;
+		const [, method] = key.split('.');
+		issues.push(
+			lintIssue({
+				code: 'SDK_REPEATED_BRANCH_WIRING',
+				message:
+					`Repeated \`.${method}()\` (${info.count} times) — each call overwrites the previous target. ` +
+					'Wire once on the workflow builder chain.',
+				line: info.line,
+				column: info.column,
+				lintTarget: 'sdk',
+			}),
+		);
+	}
+
+	const ungroupedCanvas = ungroupedCanvasIssue(ast);
+	if (ungroupedCanvas) {
+		issues.push(ungroupedCanvas);
+	}
+
+	return dedupeSourceLintIssues(issues);
+}
+
+/**
+ * Lint workflow SDK builder source. Skips jsCode / pythonCode property values.
+ */
+export function lintWorkflowSdkSource(source: string): SourceLintIssue[] {
+	const { code, asConstMatches } = prepareSourceForLint(source);
+
+	let ast: Program;
+	try {
+		ast = parseSDKCode(code);
+	} catch {
+		return dedupeSourceLintIssues(
+			asConstMatches.map((match) =>
+				lintIssue({
+					code: 'SDK_AS_CONST',
+					message:
+						'`as const` is TypeScript-only and the workflow parser cannot interpret it. Remove the assertion.',
+					line: match.line,
+					column: match.column + 1,
+					lintTarget: 'sdk' as const,
+				}),
+			),
+		);
+	}
+
+	return lintWorkflowSdkAst(ast, asConstMatches);
+}

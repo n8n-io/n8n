@@ -29,7 +29,8 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
-import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { LOG_STREAM_MODAL_KEY } from '../modals';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
@@ -39,7 +40,7 @@ import { destinationToFakeINodeUi, isDestinationComplete } from '../logStreaming
 import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
@@ -414,7 +415,7 @@ const { width } = useElementSize(defNameRef);
 					</div>
 					<div :class="$style.destinationActions">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
 							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
@@ -429,7 +430,7 @@ const { width } = useElementSize(defNameRef);
 						/>
 						<template v-if="canManageLogStreaming">
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash-2"
@@ -599,7 +600,7 @@ const { width } = useElementSize(defNameRef);
 
 .cardTitle {
 	font-size: 14px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .header {

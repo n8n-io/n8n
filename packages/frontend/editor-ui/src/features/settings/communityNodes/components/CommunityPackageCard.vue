@@ -4,12 +4,15 @@ import type { IUser, PublicInstalledPackage } from 'n8n-workflow';
 import { COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../communityNodes.constants';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { UserAction } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { computed, ref, watch } from 'vue';
-import semver from 'semver';
+import {
+	findVettedCommunityNodeAttributes,
+	isCommunityPackageUpdateAvailable,
+} from '../communityNodes.utils';
 
 import {
 	N8nActionToggle,
@@ -38,26 +41,20 @@ const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const latestVerifiedVersion = ref<string>();
-const currVersion = computed(() => props.communityPackage?.installedVersion || '');
-
 const isManagedByEnv = computed(
 	(): boolean => settingsStore.settings.communityNodesManagedByEnv ?? false,
 );
+const hasUpdateAvailable = computed(() => {
+	if (!props.communityPackage) return false;
 
-const hasUnverifiedPackagesUpdate = computed(() => {
-	return (
-		!isManagedByEnv.value &&
-		settingsStore.isUnverifiedPackagesEnabled &&
-		props.communityPackage?.updateAvailable
-	);
-});
-
-const hasVerifiedPackageUpdate = computed(() => {
-	if (isManagedByEnv.value) return false;
-	const canUpdate =
-		latestVerifiedVersion.value && semver.gt(latestVerifiedVersion.value || '', currVersion.value);
-
-	return settingsStore.isCommunityNodesFeatureEnabled && canUpdate;
+	return isCommunityPackageUpdateAvailable({
+		installedVersion: props.communityPackage.installedVersion,
+		updateAvailable: props.communityPackage.updateAvailable,
+		latestVerifiedVersion: latestVerifiedVersion.value,
+		isCommunityNodesFeatureEnabled: settingsStore.isCommunityNodesFeatureEnabled,
+		isUnverifiedPackagesEnabled: settingsStore.isUnverifiedPackagesEnabled,
+		isManagedByEnv: isManagedByEnv.value,
+	});
 });
 
 const packageActions = computed<Array<UserAction<IUser>>>(() => {
@@ -101,19 +98,13 @@ function onUpdateClick() {
 }
 
 watch(
-	() => props.communityPackage?.packageName,
-	async (packageName) => {
-		if (packageName) {
-			await nodeTypesStore.loadNodeTypesIfNotLoaded();
-			const nodeType = nodeTypesStore.visibleNodeTypes.find((node) =>
-				node.name.includes(packageName),
-			);
-
-			const attributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name || '');
-			if (attributes?.npmVersion) {
-				latestVerifiedVersion.value = attributes.npmVersion;
-			}
-		}
+	() => props.communityPackage?.installedNodes.map((node) => node.type) ?? [],
+	async (nodeTypes) => {
+		const attributes = await findVettedCommunityNodeAttributes(
+			nodeTypes,
+			nodeTypesStore.getCommunityNodeAttributes,
+		);
+		latestVerifiedVersion.value = attributes?.npmVersion;
 	},
 	{ immediate: true },
 );
@@ -158,10 +149,7 @@ watch(
 					</template>
 					<N8nIcon icon="triangle-alert" color="danger" size="large" />
 				</N8nTooltip>
-				<N8nTooltip
-					v-else-if="hasUnverifiedPackagesUpdate || hasVerifiedPackageUpdate"
-					placement="top"
-				>
+				<N8nTooltip v-else-if="hasUpdateAvailable" placement="top">
 					<template #content>
 						<div>
 							{{ i18n.baseText('settings.communityNodes.updateAvailable.tooltip') }}

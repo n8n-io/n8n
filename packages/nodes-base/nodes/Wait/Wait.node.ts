@@ -531,7 +531,7 @@ export class Wait extends Webhook {
 			const returnData = await this.configureAndPutToWait(context);
 
 			if (resume === 'form' && hasFormTrigger) {
-				context.sendResponse({
+				await context.sendResponse({
 					headers: {
 						location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
 					},
@@ -591,22 +591,8 @@ export class Wait extends Webhook {
 			}
 		}
 
-		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);
-
-		if (waitValue < 65000) {
-			// If wait time is shorter than 65 seconds leave execution active because
-			// we just check the database every 60 seconds.
-			return await new Promise((resolve, _reject) => {
-				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
-				context.onExecutionCancellation(() => {
-					clearTimeout(timer);
-					resolve([context.getInputData()]);
-				});
-			});
-		}
-
-		// If longer than 65 seconds put execution to wait
-		return await this.putToWait(context, waitTill);
+		// "After Time Interval" and "At Specified Time" give the user no resume URL.
+		return await this.putToWait(context, waitTill, { acceptsResumeRequest: false });
 	}
 
 	private async configureAndPutToWait(context: IExecuteFunctions) {
@@ -637,11 +623,16 @@ export class Wait extends Webhook {
 			}
 		}
 
-		return await this.putToWait(context, waitTill);
+		// A request on the resume URL can end these modes before the deadline.
+		return await this.putToWait(context, waitTill, { acceptsResumeRequest: true });
 	}
 
-	private async putToWait(context: IExecuteFunctions, waitTill: Date) {
-		await context.putExecutionToWait(waitTill);
+	private async putToWait(
+		context: IExecuteFunctions,
+		waitTill: Date,
+		options: { acceptsResumeRequest: boolean },
+	) {
+		await context.putExecutionToWait(waitTill, options);
 		return [context.getInputData()];
 	}
 }

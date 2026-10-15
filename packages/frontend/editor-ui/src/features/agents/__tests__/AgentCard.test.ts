@@ -27,7 +27,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string) => (key === 'agents.new.defaultName' ? 'Untitled' : key),
+	}),
 }));
 
 const favoritesStoreMock = {
@@ -39,6 +41,40 @@ const favoritesStoreMock = {
 vi.mock('@/app/stores/favorites.store', () => ({
 	useFavoritesStore: () => favoritesStoreMock,
 }));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: vi.fn() }),
+}));
+
+// MCP inactive by default so the pre-existing action-list assertions are
+// unaffected; MCP-specific tests flip these.
+const settingsStoreMock = {
+	isModuleActive: vi.fn(() => false),
+	moduleSettings: { mcp: { mcpAccessEnabled: false } } as {
+		mcp: { mcpAccessEnabled: boolean };
+	},
+};
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => settingsStoreMock,
+}));
+
+const mcpStoreMock = {
+	toggleAgentMcpAccess: vi.fn().mockResolvedValue({ updatedCount: 1 }),
+};
+
+const trackMcpAccessEnabledForAgentMock = vi.fn();
+
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
+	useMCPStore: () => mcpStoreMock,
+	useMcp: () => ({ trackMcpAccessEnabledForAgent: trackMcpAccessEnabledForAgentMock }),
+}));
+
+function enableMcp() {
+	settingsStoreMock.isModuleActive.mockReturnValue(true);
+	settingsStoreMock.moduleSettings.mcp.mcpAccessEnabled = true;
+}
 
 const agentPermissionsMock = {
 	canCreate: ref(true),
@@ -65,6 +101,10 @@ const STUBS = {
 	N8nBadge: {
 		template: '<span :data-test-id="$attrs[\'data-test-id\']"><slot /></span>',
 		props: ['theme', 'bold'],
+	},
+	PublicationIndicator: {
+		template: '<span :data-variant="variant">{{ label }}</span>',
+		props: ['label', 'variant'],
 	},
 	N8nActionToggle: {
 		name: 'N8nActionToggle',
@@ -120,6 +160,25 @@ describe('AgentCard', () => {
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
 		deleteAgentMock.mockClear();
 		openAgentConfirmationModalMock.mockClear();
+		settingsStoreMock.isModuleActive.mockReturnValue(false);
+		settingsStoreMock.moduleSettings.mcp.mcpAccessEnabled = false;
+		mcpStoreMock.toggleAgentMcpAccess.mockClear();
+		trackMcpAccessEnabledForAgentMock.mockClear();
+	});
+
+	it('styles the default Untitled name as a placeholder', async () => {
+		const wrapper = await renderComponent(createAgent({ name: 'Untitled' }));
+		const name = wrapper.find('[data-test-id="agent-card-name"]');
+
+		expect(name.text()).toContain('Untitled');
+		expect(name.classes().some((className) => className.includes('untitledName'))).toBe(true);
+	});
+
+	it('keeps a named agent title in the normal heading style', async () => {
+		const wrapper = await renderComponent(createAgent({ name: 'My Agent' }));
+		const name = wrapper.find('[data-test-id="agent-card-name"]');
+
+		expect(name.classes().some((className) => className.includes('untitledName'))).toBe(false);
 	});
 
 	it('hides the read-only badge when canUpdate is true', async () => {
@@ -134,6 +193,15 @@ describe('AgentCard', () => {
 		const badge = wrapper.find('[data-test-id="agent-card-readonly-badge"]');
 		expect(badge.exists()).toBe(true);
 		expect(badge.text()).toBe('agents.list.readonly');
+	});
+
+	it('starts a new chat from the dedicated button', async () => {
+		const wrapper = await renderComponent();
+
+		expect(wrapper.find('[data-action="newChat"]').exists()).toBe(false);
+		await wrapper.find('[data-test-id="agent-card-new-chat"]').trigger('click');
+
+		expect(wrapper.emitted('new-chat')).toEqual([['agent-1', 'project-1']]);
 	});
 
 	it('shows only the favorite toggle when no scopes grant publish or delete', async () => {
@@ -220,5 +288,110 @@ describe('AgentCard', () => {
 		expect(deleteAgentMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(favoritesStoreMock.removeFavoriteLocally).toHaveBeenCalledWith('agent-1', 'agent');
 		expect(wrapper.emitted('deleted')).toEqual([['agent-1']]);
+	});
+
+	it('hides the MCP action when instance MCP access is disabled', async () => {
+		const wrapper = await renderComponent();
+
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').exists()).toBe(false);
+	});
+
+	it('offers to enable MCP access on an unexposed agent when MCP is on', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ availableInMCP: false }));
+
+		const action = wrapper.find('[data-action="toggleMCPAccess"]');
+		expect(action.exists()).toBe(true);
+		expect(action.text()).toBe('agents.list.actions.enableMCPAccess');
+	});
+
+	it('offers to disable MCP access on an available agent', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ availableInMCP: true }));
+
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').text()).toBe(
+			'agents.list.actions.disableMCPAccess',
+		);
+	});
+
+	it('hides the MCP action without agent update permission', async () => {
+		enableMcp();
+		agentPermissionsMock.canUpdate.value = false;
+		const wrapper = await renderComponent();
+
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').exists()).toBe(false);
+	});
+
+	it('toggles agent MCP access via the store and tracks the enablement', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ availableInMCP: false }));
+
+		await wrapper.find('[data-action="toggleMCPAccess"]').trigger('click');
+
+		expect(mcpStoreMock.toggleAgentMcpAccess).toHaveBeenCalledWith('agent-1', true);
+		expect(trackMcpAccessEnabledForAgentMock).toHaveBeenCalledWith('agent-1');
+	});
+
+	it('uses refreshed MCP availability after an optimistic toggle', async () => {
+		enableMcp();
+		const wrapper = await renderComponent(createAgent({ availableInMCP: true }));
+
+		await wrapper.find('[data-action="toggleMCPAccess"]').trigger('click');
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').text()).toBe(
+			'agents.list.actions.enableMCPAccess',
+		);
+
+		await wrapper.setProps({ agent: createAgent({ availableInMCP: true }) });
+
+		expect(wrapper.find('[data-action="toggleMCPAccess"]').text()).toBe(
+			'agents.list.actions.disableMCPAccess',
+		);
+	});
+
+	describe('publication indicator', () => {
+		const findIndicator = (wrapper: Awaited<ReturnType<typeof renderComponent>>) =>
+			wrapper.find('[data-test-id="agent-card-publish-indicator"]');
+
+		it('is hidden on an unpublished agent', async () => {
+			const wrapper = await renderComponent(createAgent({ activeVersionId: null }));
+
+			expect(findIndicator(wrapper).exists()).toBe(false);
+		});
+
+		it('shows Published with a success dot when the draft matches the published version', async () => {
+			const wrapper = await renderComponent(
+				createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion }),
+			);
+
+			const indicator = findIndicator(wrapper);
+			expect(indicator.text()).toBe('agents.list.published');
+			expect(indicator.attributes('data-state')).toBe('published');
+			expect(indicator.attributes('data-variant')).toBe('success');
+		});
+
+		it('shows Changes to publish with a warning dot when the draft differs from the published version', async () => {
+			const wrapper = await renderComponent(
+				createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
+			);
+
+			const indicator = findIndicator(wrapper);
+			expect(indicator.text()).toBe('agents.list.changesToPublish');
+			expect(indicator.attributes('data-state')).toBe('changes-to-publish');
+			expect(indicator.attributes('data-variant')).toBe('warning');
+		});
+
+		it('returns to Published after the agent is republished', async () => {
+			const wrapper = await renderComponent(
+				createAgent({ versionId: 'v2', activeVersionId: 'v1', activeVersion }),
+			);
+
+			await wrapper.setProps({
+				agent: createAgent({ versionId: 'v2', activeVersionId: 'v2', activeVersion }),
+			});
+
+			const indicator = findIndicator(wrapper);
+			expect(indicator.text()).toBe('agents.list.published');
+			expect(indicator.attributes('data-variant')).toBe('success');
+		});
 	});
 });

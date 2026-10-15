@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import DataTableCard from '@/features/core/dataTable/components/DataTableCard.vue';
@@ -14,14 +13,15 @@ import {
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import debounce from 'lodash/debounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTableResource } from '@/features/core/dataTable/types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
@@ -170,6 +170,11 @@ const onSearchUpdated = async (search: string) => {
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('dataTable.dataTables'));
+	promotionEventBus.on('applied', fetchDataTables);
+});
+
+onBeforeUnmount(() => {
+	promotionEventBus.off('applied', fetchDataTables);
 });
 
 watch(

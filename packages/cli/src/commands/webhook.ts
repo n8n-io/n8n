@@ -11,7 +11,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
@@ -24,6 +24,10 @@ export class Webhook extends BaseCommand {
 	protected server = Container.get(WebhookServer);
 
 	override needsCommunityPackages = true;
+
+	override needsExpressionEngine = true;
+
+	override seedsInstanceIdentity = true;
 
 	/**
 	 * Stops n8n in a graceful way.
@@ -70,7 +74,6 @@ export class Webhook extends BaseCommand {
 		await super.init();
 		Container.get(DeprecationService).warn();
 
-		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 
@@ -93,6 +96,10 @@ export class Webhook extends BaseCommand {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		// Re-register pubsub event handlers after modules have been initialized
+		// As modules can add new event handlers we need to make sure they are registered
+		Container.get(PubSubRegistry).init();
+
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
@@ -101,6 +108,8 @@ export class Webhook extends BaseCommand {
 		const { ScalingService } = await import('@/scaling/scaling.service.js');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
+		// After the server started, so the metrics collector is subscribed before the tasks are routed.
+		await this.initSystemTasks();
 		this.server.markAsReady();
 		this.logger.info('Webhook listener waiting for requests.');
 

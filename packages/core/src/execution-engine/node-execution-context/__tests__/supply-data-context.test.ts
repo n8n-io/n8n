@@ -21,6 +21,7 @@ import {
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -262,6 +263,73 @@ describe('SupplyDataContext', () => {
 			expect(sendMessageSpy.mock.calls[0][2]).toBe(stringArg);
 
 			sendMessageSpy.mockRestore();
+		});
+	});
+
+	describe('production stdout gating', () => {
+		let logSpy: ReturnType<typeof vi.spyOn>;
+
+		const runDataWith = (production: boolean, manual: boolean) =>
+			({
+				executionData: {
+					runtimeData: { redaction: { version: 2, production, manual } },
+				},
+			}) as unknown as IRunExecutionData;
+
+		beforeEach(() => {
+			process.env.CODE_ENABLE_STDOUT = 'true';
+			logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			delete process.env.CODE_ENABLE_STDOUT;
+			logSpy.mockRestore();
+		});
+
+		it('replaces production console output with the marker when the production channel redacts', () => {
+			const context = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				'trigger',
+				runDataWith(true, false),
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			context.logNodeOutput('secret-payload');
+
+			expect(logSpy).toHaveBeenCalledWith(
+				expect.stringContaining('[Workflow'),
+				CONSOLE_OUTPUT_REDACTED_MESSAGE,
+			);
+			expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), 'secret-payload');
+		});
+
+		it('passes production console output through unchanged when no channel redacts', () => {
+			const context = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				'trigger',
+				runDataWith(false, false),
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			context.logNodeOutput('hello');
+
+			expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[Workflow'), 'hello');
 		});
 	});
 
@@ -642,6 +710,7 @@ describe('SupplyDataContext', () => {
 			testAdditionalData.currentNodeUsedDynamicCredentials = false;
 			testAdditionalData.currentNodeAttemptedDynamicCredentials = false;
 			testAdditionalData.dynamicCredentialsResolvedUserId = undefined;
+			testAdditionalData.currentNodeUsedCredentialIds = undefined;
 
 			const testRunExecutionData = createRunExecutionData({
 				resultData: {
@@ -766,6 +835,45 @@ describe('SupplyDataContext', () => {
 			expect(taskData.usedDynamicCredentials).toBeUndefined();
 			expect(taskData.attemptedDynamicCredentials).toBeUndefined();
 			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBeUndefined();
+		});
+
+		it('stamps the credential ids a sub-workflow reported during this run', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred'];
+
+			const { index } = testContext.addInputData(NodeConnectionTypes.AiTool, [
+				[{ json: { query: 'test' } }],
+			]);
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred', 'child-cred'];
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				index,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][index];
+			expect(taskData.usedCredentialIds).toEqual(['child-cred']);
+		});
+
+		it('does not stamp credential ids that were already reported before this run started', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred'];
+
+			const { index } = testContext.addInputData(NodeConnectionTypes.AiTool, [
+				[{ json: { query: 'test' } }],
+			]);
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				index,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][index];
+			expect(taskData.usedCredentialIds).toBeUndefined();
 		});
 	});
 

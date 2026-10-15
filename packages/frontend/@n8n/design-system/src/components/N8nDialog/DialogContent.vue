@@ -47,6 +47,10 @@ export interface DialogContentProps {
 	 * Accessible description for the dialog (used when DialogDescription is not provided)
 	 */
 	ariaDescription?: string;
+	/**
+	 * Render above another open dialog
+	 */
+	stacked?: boolean;
 }
 
 export interface DialogContentEmits {
@@ -106,7 +110,7 @@ function handleInteractOutside(e: Event) {
 		:force-mount="forceMount"
 		:trap-focus="trapFocus"
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
-		:class="[$style.content, sizeClass]"
+		:class="[$style.content, sizeClass, stacked && $style.stacked]"
 		@escape-key-down="emit('escapeKeyDown', $event)"
 		@interact-outside="handleInteractOutside"
 		@open-auto-focus="emit('openAutoFocus', $event)"
@@ -129,6 +133,8 @@ function handleInteractOutside(e: Event) {
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/motion';
+
 @keyframes dialogFadeIn {
 	from {
 		opacity: 0;
@@ -157,12 +163,12 @@ function handleInteractOutside(e: Event) {
 	left: 50%;
 	transform: translate(-50%, -50%);
 	width: 100%;
-	padding: var(--spacing--lg);
+	padding: var(--n8n-dialog-content--padding, var(--spacing--lg));
 	border-radius: var(--radius--lg);
-	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-800));
+	background-color: light-dark(var(--background--surface), var(--background--subtle));
+	outline: 1px solid var(--border-color);
 	box-shadow:
-		inset 0 1.5px 0 light-dark(transparent, var(--border-color)),
-		0 0 0 0.5px light-dark(var(--border-color), var(--color--black-alpha-300)),
+		0 0 0 0.5px light-dark(transparent, var(--color--black-alpha-500)),
 		0 8px 8px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
 		0 32px 32px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
 		0 64px 64px light-dark(rgba(0, 0, 0, 0.06), var(--color--black-alpha-100));
@@ -174,12 +180,20 @@ function handleInteractOutside(e: Event) {
 	}
 }
 
+.stacked {
+	z-index: 1952; // Higher than default .content z-index to ensure the dialog is always on top.
+}
+
 .content[data-state='open'] {
 	animation: dialogFadeIn var(--animation--duration--snappy) ease-out;
+
+	@include motion.reduced-motion;
 }
 
 .content[data-state='closed'] {
 	animation: dialogFadeOut var(--animation--duration--snappy) ease-out;
+
+	@include motion.reduced-motion;
 }
 
 .small {

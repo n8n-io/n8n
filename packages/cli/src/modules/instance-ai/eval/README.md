@@ -9,7 +9,7 @@ Mocks the **raw HTTP response a service sends over the wire**. The node then
 executes for real: its routing, pagination, response parsing, and
 post-processing (e.g. `simplify` options) all run against the mocked body.
 
-- Shape source: fetched API documentation (`api-docs.ts`) + endpoint quirks.
+- Shape source: the LLM's own knowledge of the API + endpoint quirks.
 - Used when a node executes against intercepted HTTP.
 
 ## Node-output level — pin data / simulation fixtures
@@ -26,6 +26,54 @@ executes; the data is pinned onto it.
   simulated verification (`@n8n/instance-ai`
   `generate-simulation-fixtures.service.ts`).
 
+## Credential connection tests — a separate, opt-in surface
+
+A credential's connection test is neither of the two layers above: it is issued
+by the credential type's own `test` block, not by a node executing, so nothing
+in `mock-handler.ts` or the pin-data path sees it. Eval credentials carry
+placeholder tokens, so those tests fail for real — and the product refuses to
+apply a workflow setup card whose credential failed one
+(`isCredentialComplete` → `isCredentialTestedOk` in the frontend). That makes
+"the simulated user completed the setup card" unreachable without help.
+
+`bypassCredentialTest` on `POST /eval/thread-credential-allowlist` names
+credential ids whose test the credential adapter resolves as successful without
+contacting the provider (`instance-ai.adapter.service.ts`, `test()`). Two
+properties are deliberate:
+
+- **Only `test()` is synthesized, never `isTestable()`** — the product still
+  runs its real test-invocation path; only the network result is substituted.
+  Faking testability would skip the code we want covered.
+- **The result is indistinguishable from a real pass.** No marker reaches the
+  agent: a hint that a test was bypassed makes it hedge about the credential,
+  which is the behaviour the cases using this exist to rule out. The harness
+  records the bypass on its own side (`credential-test-bypassed` proxy decision
+  stat) so a case can assert it deterministically.
+
+The bypass is queried per test rather than snapshotted into the adapter: the
+harness registers ids mid-run, when the simulated user creates a credential on
+a card, long after the run's context was built.
+
+## Agents a workflow calls
+
+A Message an Agent node, or its tool version, runs another agent in-process, so
+no HTTP mock reaches it by itself. In an eval run the workflow eval gives that
+agent the Agent eval's seams (`prepareCalledAgent` in `execution.service.ts`):
+its node and workflow tools, streamable-HTTP MCP servers and fallback web search
+are mocked, and each mocked call is recorded under the calling node. The agent's
+own model call stays real, so its model needs a credential with a real key. The
+eval runs the agent's draft and turns off its memory, vector stores, SSE MCP
+servers and chat integrations. A sub-agent keeps only the MCP servers its calling
+agent also has; the eval turns off the others and adds a warning.
+
+## Agent model catalogs
+
+The eval credential allowlist also marks Agent Builder sessions as evaluations.
+Model catalog requests return one deterministic fake model for each provider.
+The lookup still checks that the user can use the stored credential in the project.
+It does not decrypt the placeholder credential or contact the model provider.
+Production sessions continue to use live model catalogs.
+
 ## The rule
 
 `__schema__` describes a node's **output**, not the service's wire format —
@@ -34,3 +82,5 @@ emitting items. Therefore:
 
 - Never feed `__schema__` into wire-level mock generation.
 - Never let API docs override an available `__schema__` for node-output mocks.
+- Never reach for a credential bypass to make a *node execution* succeed — that
+  is the wire level's job. The bypass only answers the credential's own test.

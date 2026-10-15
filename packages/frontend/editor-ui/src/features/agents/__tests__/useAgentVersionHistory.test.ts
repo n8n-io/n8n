@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
 	publishAgent: vi.fn(),
 	revertAgentToVersion: vi.fn(),
 	openAgentConfirmationModal: vi.fn(),
+	showAgentPublishedConfirmation: vi.fn(),
 	showMessage: vi.fn(),
 	showError: vi.fn(),
 }));
@@ -17,13 +18,17 @@ vi.mock('../composables/useAgentApi', () => ({
 	revertAgentToVersion: mocks.revertAgentToVersion,
 }));
 
+vi.mock('../composables/useAgentPublish', () => ({
+	showAgentPublishedConfirmation: mocks.showAgentPublishedConfirmation,
+}));
+
 vi.mock('../composables/useAgentConfirmationModal', () => ({
 	useAgentConfirmationModal: () => ({
 		openAgentConfirmationModal: mocks.openAgentConfirmationModal,
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mocks.showMessage,
 		showError: mocks.showError,
@@ -250,6 +255,7 @@ describe('useAgentVersionHistory', () => {
 					type: 'success',
 				}),
 			);
+			expect(mocks.showAgentPublishedConfirmation).toHaveBeenCalledWith('agent-1');
 			expect(result).toBe(updatedAgent);
 		});
 
@@ -263,6 +269,7 @@ describe('useAgentVersionHistory', () => {
 				expect.any(Error),
 				'agents.versionHistory.publish.error',
 			);
+			expect(mocks.showAgentPublishedConfirmation).not.toHaveBeenCalled();
 			expect(result).toBeNull();
 		});
 	});

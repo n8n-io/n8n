@@ -1,11 +1,14 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { CommunityPackagesConfig } from '../../../../community-packages/community-packages.config';
-import { UnverifiedPackagesRule } from '../unverified-packages.rule';
+import {
+	type CommunityPackagesEnabledConfig,
+	UnverifiedPackagesRule,
+} from '../unverified-packages.rule';
 
 describe('UnverifiedPackagesRule', () => {
 	let rule: UnverifiedPackagesRule;
-	const communityPackagesConfig: CommunityPackagesConfig = mock<CommunityPackagesConfig>();
+	const communityPackagesConfig: CommunityPackagesEnabledConfig =
+		mock<CommunityPackagesEnabledConfig>();
 	const originalEnv = process.env;
 
 	beforeEach(() => {
@@ -51,6 +54,12 @@ describe('UnverifiedPackagesRule', () => {
 			const result = await rule.detect();
 
 			expect(result.isAffected).toBe(false);
+		});
+	});
+
+	describe('getMetadata()', () => {
+		it('should report a behaviorChanges impact', () => {
+			expect(rule.getMetadata().impact).toBe('behaviorChanges');
 		});
 	});
 });

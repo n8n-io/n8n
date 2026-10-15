@@ -11,8 +11,9 @@ import {
 	type NumericLicenseFeature,
 } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
@@ -23,6 +24,9 @@ import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
 
 const LICENSE_RENEWAL_DISABLED_WARNING =
 	'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!';
+
+/** The license server rejects device fingerprints shorter than this. */
+const MIN_DEVICE_FINGERPRINT_LENGTH = 32;
 
 export type FeatureReturnType = Partial<
 	{
@@ -39,6 +43,8 @@ export class License implements LicenseProvider {
 	private isShuttingDown = false;
 
 	private refreshCallbacks: LicenseRefreshCallback[] = [];
+
+	private hasWarnedShortDeviceFingerprint = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -101,15 +107,17 @@ export class License implements LicenseProvider {
 				server,
 				tenantId: this.globalConfig.license.tenantId,
 				productIdentifier: `n8n-${N8N_VERSION}`,
-				autoRenewEnabled: shouldRenew,
+				autoRenewEnabled: autoRenewalEnabled,
+				autoRenewTimer: false,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
-				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
+				detachFloatingOnShutdown:
+					this.globalConfig.license.detachFloatingOnShutdown && !this.instanceSettings.isMultiMain,
 				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => await this.loadCertStr(),
 				saveCertStr,
-				deviceFingerprint: () => this.instanceSettings.instanceId,
+				deviceFingerprint: () => this.deviceFingerprint(),
 				collectUsageMetrics,
 				collectPassthroughData,
 				onFeatureChange,
@@ -128,6 +136,27 @@ export class License implements LicenseProvider {
 		}
 	}
 
+	/**
+	 * `instanceId` can be pinned to an arbitrary value via `N8N_INSTANCE_ID` or
+	 * the `instance.id` deployment-key row, but the license server rejects
+	 * fingerprints shorter than 32 characters. Fall back to the
+	 * encryption-key-derived id — the fingerprint every instance used before
+	 * pinning existed — so activation and renewal keep working.
+	 */
+	private deviceFingerprint(): string {
+		const { instanceId, derivedInstanceId } = this.instanceSettings;
+		if (instanceId.length >= MIN_DEVICE_FINGERPRINT_LENGTH) return instanceId;
+
+		if (!this.hasWarnedShortDeviceFingerprint) {
+			this.hasWarnedShortDeviceFingerprint = true;
+			this.logger.warn(
+				`Instance ID is shorter than ${MIN_DEVICE_FINGERPRINT_LENGTH} characters, so it cannot be used as the license device fingerprint. Falling back to the encryption-key-derived ID. Check the N8N_INSTANCE_ID env var and the 'instance.id' deployment key.`,
+			);
+		}
+
+		return derivedInstanceId;
+	}
+
 	async loadCertStr(): Promise<TLicenseBlock> {
 		// if we have an ephemeral license, we don't want to load it from the database
 		const ephemeralLicense = this.globalConfig.license.cert;
@@ -144,7 +173,12 @@ export class License implements LicenseProvider {
 	}
 
 	private async onFeatureChange() {
-		void this.broadcastReloadLicenseCommand();
+		// The entitlement timer fires on every main at once, so without this check each main publishes the same reload.
+		// `onLicenseRenewed` has no check, because the renewal runs on any main and only that main stored the new cert.
+		// TODO(leaderless): Remove this publish. Each process already updates its own features on this timer.
+		if (this.instanceSettings.isLeader) {
+			void this.broadcastReloadLicenseCommand();
+		}
 		await this.notifyRefreshCallbacks();
 	}
 
@@ -154,7 +188,7 @@ export class License implements LicenseProvider {
 	}
 
 	private async broadcastReloadLicenseCommand() {
-		if (this.globalConfig.executions.mode === 'queue' && this.instanceSettings.isLeader) {
+		if (this.globalConfig.executions.mode === 'queue') {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
@@ -209,14 +243,27 @@ export class License implements LicenseProvider {
 		this.logger.debug('License activated');
 	}
 
+	/** Loads the cert another instance stored. Never renews. */
 	@OnPubSubEvent('reload-license')
 	async reload(): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
-		await this.manager.reload();
+		try {
+			await this.manager.reloadStoredCert();
+		} catch (error: unknown) {
+			this.logger.warn('Failed to reload the stored license cert', {
+				error: ensureError(error).message,
+			});
+			return;
+		}
 		await this.notifyRefreshCallbacks();
 		this.logger.debug('License reloaded');
+	}
+
+	/** Runs one auto-renewal pass. */
+	async renewIfDue(): Promise<void> {
+		await this.manager?.renewIfDue();
 	}
 
 	async renew() {
@@ -512,17 +559,8 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	isWithinUsersLimit() {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
-	}
-
-	@OnLeaderTakeover()
-	enableAutoRenewals() {
-		this.manager?.enableAutoRenewals();
-	}
-
-	@OnLeaderStepdown()
-	disableAutoRenewals() {
-		this.manager?.disableAutoRenewals();
 	}
 
 	private onExpirySoon() {

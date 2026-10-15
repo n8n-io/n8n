@@ -1,5 +1,5 @@
 import type { BinaryCheck } from '../types';
-import { HTTP_REQUEST_TYPE, SET_NODE_TYPE } from '../utils';
+import { SET_NODE_TYPE } from '../utils';
 
 const CREDENTIAL_FIELD_PATTERNS = [
 	/api[_-]?key/i,
@@ -16,65 +16,12 @@ const CREDENTIAL_FIELD_PATTERNS = [
 	/^auth$/i,
 ];
 
-const SENSITIVE_HEADERS = new Set([
-	'authorization',
-	'x-api-key',
-	'x-auth-token',
-	'x-access-token',
-	'api-key',
-	'apikey',
-]);
-
 function isCredentialLikeName(name: string): boolean {
 	return CREDENTIAL_FIELD_PATTERNS.some((p) => p.test(name));
 }
 
 function isHardcodedValue(value: unknown): boolean {
 	return typeof value === 'string' && value.length > 0 && !value.startsWith('=');
-}
-
-function checkHttpRequestNode(
-	nodeName: string,
-	params: Record<string, unknown>,
-	issues: string[],
-): void {
-	// Check headers
-	const sendHeaders = params.sendHeaders as boolean | undefined;
-	if (sendHeaders) {
-		const headerParams = params.headerParameters as
-			| { parameters?: Array<{ name?: string; value?: unknown }> }
-			| undefined;
-		if (Array.isArray(headerParams?.parameters)) {
-			for (const header of headerParams.parameters) {
-				if (
-					typeof header.name === 'string' &&
-					SENSITIVE_HEADERS.has(header.name.toLowerCase()) &&
-					isHardcodedValue(header.value)
-				) {
-					issues.push(`"${nodeName}" has hardcoded credential in header "${header.name}"`);
-				}
-			}
-		}
-	}
-
-	// Check query parameters
-	const sendQuery = params.sendQuery as boolean | undefined;
-	if (sendQuery) {
-		const queryParams = params.queryParameters as
-			| { parameters?: Array<{ name?: string; value?: unknown }> }
-			| undefined;
-		if (Array.isArray(queryParams?.parameters)) {
-			for (const qp of queryParams.parameters) {
-				if (
-					typeof qp.name === 'string' &&
-					isCredentialLikeName(qp.name) &&
-					isHardcodedValue(qp.value)
-				) {
-					issues.push(`"${nodeName}" has hardcoded credential in query param "${qp.name}"`);
-				}
-			}
-		}
-	}
 }
 
 function checkSetNode(nodeName: string, params: Record<string, unknown>, issues: string[]): void {
@@ -94,26 +41,26 @@ function checkSetNode(nodeName: string, params: Record<string, unknown>, issues:
 	}
 }
 
+/**
+ * Set-node scope only. HTTP nodes are covered by
+ * `secrets_use_credentials_not_parameters`, which handles every HTTP variant and
+ * both the keypair and raw-JSON parameter forms. Splitting them means one
+ * mistake costs one check rather than two, and keeps this metric's history
+ * comparable.
+ */
 export const noHardcodedCredentials: BinaryCheck = {
 	name: 'no_hardcoded_credentials',
-	description: 'No hardcoded credentials in HTTP Request headers or Set node fields',
+	description: 'No hardcoded credentials in Set node fields',
 	kind: 'deterministic',
 	dimension: 'security',
 	run(workflow) {
-		const candidates = (workflow.nodes ?? []).filter(
-			(n) => n.type === HTTP_REQUEST_TYPE || n.type === SET_NODE_TYPE,
-		);
+		const candidates = (workflow.nodes ?? []).filter((n) => n.type === SET_NODE_TYPE);
 		if (candidates.length === 0) return { pass: true, applicable: false };
 
 		const issues: string[] = [];
 		for (const node of candidates) {
 			if (!node.parameters) continue;
-
-			if (node.type === HTTP_REQUEST_TYPE) {
-				checkHttpRequestNode(node.name, node.parameters, issues);
-			} else {
-				checkSetNode(node.name, node.parameters, issues);
-			}
+			checkSetNode(node.name, node.parameters, issues);
 		}
 
 		return {

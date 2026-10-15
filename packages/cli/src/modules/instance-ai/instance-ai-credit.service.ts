@@ -2,8 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { BuilderUsageItem, TraceStatus } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import { sleep, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { Push } from '@/push';
@@ -11,10 +13,6 @@ import { AiService } from '@/services/ai.service';
 import { Telemetry } from '@/telemetry';
 
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * Owns Instance AI credit accounting: claims decimal, token-based credits per
@@ -39,11 +37,22 @@ export class InstanceAiCreditService {
 	 */
 	private readonly claimedRunIds = new Set<string>();
 
+	/** Called once when a claim moves a user from under quota to exhausted. */
+	private readonly quotaExhaustedHandlers = new Set<(user: User) => void>();
+
 	/** Max retained run-segment ids in {@link claimedRunIds}; oldest evicted first. */
 	static readonly CLAIM_DEDUPE_CACHE_SIZE = 1000;
 
 	/** Max attempts for the idempotent token-usage claim before giving up. */
 	private static readonly CLAIM_MAX_ATTEMPTS = 3;
+
+	/**
+	 * Register a handler for the moment a claim crosses quota. A handler failure
+	 * must not fail the claim: the usage is already recorded.
+	 */
+	onQuotaExhausted(handler: (user: User) => void): void {
+		this.quotaExhaustedHandlers.add(handler);
+	}
 
 	constructor(
 		logger: Logger,
@@ -185,8 +194,9 @@ export class InstanceAiCreditService {
 			credits_quota: creditsQuota,
 		});
 
-		// Fire the exhaustion event once, at the moment usage crosses quota. The
-		// crossing message still finishes; the next proxy-token request is what 403s.
+		// Fire once, at the crossing. Live runs are stopped so they cannot take
+		// another model step on a cached proxy token. The claim itself still
+		// records this segment's usage.
 		if (delta > 0) {
 			const wasUnder = creditsClaimed - delta < creditsQuota;
 			const nowExhausted = creditsClaimed >= creditsQuota;
@@ -195,10 +205,28 @@ export class InstanceAiCreditService {
 					instance_id: this.instanceSettings.instanceId,
 					user_id: user.id,
 				});
+				this.notifyQuotaExhausted(user);
 			}
 		}
 
 		return delta;
+	}
+
+	/**
+	 * Tell listeners the user just crossed quota. A listener must not fail the
+	 * claim: the usage is already recorded.
+	 */
+	private notifyQuotaExhausted(user: User): void {
+		for (const handler of this.quotaExhaustedHandlers) {
+			try {
+				handler(user);
+			} catch (error) {
+				this.logger.warn('Assistant quota exhaustion handler failed', {
+					userId: user.id,
+					error: getErrorMessage(error),
+				});
+			}
+		}
 	}
 
 	/**
@@ -277,14 +305,19 @@ export class InstanceAiCreditService {
 		delta: number,
 	): Promise<number | undefined> {
 		try {
-			const thread = await this.threadRepo.findOneBy({ id: threadId });
-			if (!thread) return undefined;
-			const prev =
-				typeof thread.metadata?.creditsUsed === 'number' ? thread.metadata.creditsUsed : 0;
-			const creditsUsed = prev + delta;
-			thread.metadata = { ...thread.metadata, creditsUsed };
-			await this.threadRepo.save(thread);
-			return creditsUsed;
+			const thread = await this.threadRepo.updateThread({
+				threadId,
+				update: ({ metadata }) => ({
+					metadata: {
+						...metadata,
+						creditsUsed:
+							(typeof metadata?.creditsUsed === 'number' ? metadata.creditsUsed : 0) + delta,
+					},
+				}),
+			});
+			return typeof thread?.metadata?.creditsUsed === 'number'
+				? thread.metadata.creditsUsed
+				: undefined;
 		} catch (error) {
 			this.logger.warn('Failed to persist Instance AI thread credit total', {
 				error: getErrorMessage(error),

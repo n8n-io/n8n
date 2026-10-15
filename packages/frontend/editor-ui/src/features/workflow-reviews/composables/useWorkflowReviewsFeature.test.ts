@@ -1,27 +1,17 @@
 import { createPinia, setActivePinia } from 'pinia';
 
 import { createMockEnterpriseSettings } from '@/__tests__/mocks';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowReviewsFeature } from './useWorkflowReviewsFeature';
-
-const { checkEnvFeatureFlag } = vi.hoisted(() => ({
-	checkEnvFeatureFlag: vi.fn(),
-}));
-
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: () => ({ check: { value: checkEnvFeatureFlag } }),
-}));
 
 describe('useWorkflowReviewsFeature', () => {
 	const setGates = ({
 		licensed,
-		environmentEnabled,
 		instanceEnabled,
 	}: {
 		licensed: boolean;
-		environmentEnabled: boolean;
 		instanceEnabled?: boolean;
 	}) => {
 		const settingsStore = useSettingsStore();
@@ -34,32 +24,25 @@ describe('useWorkflowReviewsFeature', () => {
 				? { workflowReviews: undefined }
 				: { workflowReviews: { enabled: instanceEnabled } }),
 		};
-		checkEnvFeatureFlag.mockReturnValue(environmentEnabled);
 	};
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		checkEnvFeatureFlag.mockReset();
 	});
 
 	it.each([
-		{ licensed: false, environmentEnabled: false, expected: false },
-		{ licensed: true, environmentEnabled: false, expected: false },
-		{ licensed: false, environmentEnabled: true, expected: false },
-		{ licensed: true, environmentEnabled: true, expected: true },
-	])(
-		'sets availability to $expected when licensed=$licensed and environmentEnabled=$environmentEnabled',
-		({ licensed, environmentEnabled, expected }) => {
-			setGates({ licensed, environmentEnabled, instanceEnabled: false });
+		{ licensed: false, expected: false },
+		{ licensed: true, expected: true },
+	])('sets availability to $expected when licensed=$licensed', ({ licensed, expected }) => {
+		setGates({ licensed, instanceEnabled: false });
 
-			const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
+		const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 
-			expect(isWorkflowReviewsAvailable.value).toBe(expected);
-		},
-	);
+		expect(isWorkflowReviewsAvailable.value).toBe(expected);
+	});
 
 	it('is enabled when availability and the instance switch are enabled', () => {
-		setGates({ licensed: true, environmentEnabled: true, instanceEnabled: true });
+		setGates({ licensed: true, instanceEnabled: true });
 
 		const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
 
@@ -67,7 +50,7 @@ describe('useWorkflowReviewsFeature', () => {
 	});
 
 	it('reacts to instance policy changes at runtime', () => {
-		setGates({ licensed: true, environmentEnabled: true, instanceEnabled: true });
+		setGates({ licensed: true, instanceEnabled: true });
 		const settingsStore = useSettingsStore();
 		const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
 
@@ -82,10 +65,9 @@ describe('useWorkflowReviewsFeature', () => {
 	});
 
 	it.each([
-		{ licensed: false, environmentEnabled: true, instanceEnabled: true },
-		{ licensed: true, environmentEnabled: false, instanceEnabled: true },
-		{ licensed: true, environmentEnabled: true, instanceEnabled: false },
-		{ licensed: true, environmentEnabled: true, instanceEnabled: undefined },
+		{ licensed: false, instanceEnabled: true },
+		{ licensed: true, instanceEnabled: false },
+		{ licensed: true, instanceEnabled: undefined },
 	])('fails closed when an enabled gate is false or missing', (gates) => {
 		setGates(gates);
 

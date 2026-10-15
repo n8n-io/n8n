@@ -3,7 +3,7 @@ import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { formatDebugJson } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
 import InstanceAiDebugWorkflowCodeSnapshot from './InstanceAiDebugWorkflowCodeSnapshot.vue';
@@ -460,7 +460,7 @@ onMounted(() => {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .headerActions {
@@ -511,7 +511,7 @@ onMounted(() => {
 
 .tabActive {
 	color: var(--color--primary);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-bottom-color: var(--color--primary);
 }
 
@@ -552,7 +552,7 @@ onMounted(() => {
 
 .timingTitle {
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
@@ -671,7 +671,7 @@ onMounted(() => {
 
 .sectionLabel {
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;

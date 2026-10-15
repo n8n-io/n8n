@@ -434,6 +434,27 @@ describe('ExportService', () => {
 			expect(queryCount).toBe(3);
 		});
 
+		it('should name row files with the prefix the import service routes by', async () => {
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				if (query.startsWith('SELECT id FROM') && query.includes('data_table')) {
+					return [{ id: 'abc' }];
+				}
+				if (query.includes('data_table_user_') && query.includes('WHERE "id" > 0')) {
+					return [{ id: 1, val: 0 }];
+				}
+				return [];
+			});
+
+			// @ts-expect-error accessing private method for testing
+			await exportService.exportDataTableUserTables('/test/output');
+
+			expect(appendFile).toHaveBeenCalledWith(
+				'/test/output/data_table_user_abc.jsonl',
+				expect.any(String),
+				'utf8',
+			);
+		});
+
 		it('should handle a missing dynamic table gracefully without aborting', async () => {
 			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.startsWith('SELECT id FROM') && query.includes('data_table')) {

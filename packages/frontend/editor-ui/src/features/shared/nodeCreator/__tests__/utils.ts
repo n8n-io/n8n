@@ -9,6 +9,7 @@ import type {
 	ViewCreateElement,
 	LabelCreateElement,
 	ActionCreateElement,
+	CommandCreateElement,
 	SectionCreateElement,
 } from '@/Interface';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,7 +38,7 @@ export const mockSimplifiedNodeType = (
 	...overrides,
 });
 
-export const mockActionTypeDescription = (
+const mockActionTypeDescription = (
 	overrides?: Partial<ActionTypeDescription>,
 ): ActionTypeDescription => ({
 	...mockSimplifiedNodeType(),
@@ -113,6 +114,16 @@ export const mockViewCreateElement = (
 	uuid: uuidv4(),
 	key: uuidv4(),
 	type: 'view',
+	properties: mockViewItemProps(),
+	...overrides,
+});
+
+export const mockCommandCreateElement = (
+	overrides?: Partial<CommandCreateElement>,
+): CommandCreateElement => ({
+	uuid: uuidv4(),
+	key: uuidv4(),
+	type: 'command',
 	properties: mockViewItemProps(),
 	...overrides,
 });

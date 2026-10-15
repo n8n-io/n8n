@@ -391,7 +391,7 @@ export class RabbitMQ implements INodeType {
 			const items = this.getInputData();
 			const operation = this.getNodeParameter('operation', 0);
 			if (operation === 'deleteMessage') {
-				this.sendResponse(items[0].json);
+				await this.sendResponse(items[0].json);
 				return [items];
 			}
 			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
@@ -438,6 +438,7 @@ export class RabbitMQ implements INodeType {
 					);
 				}
 
+				// eslint-disable-next-line @typescript-eslint/await-thenable -- sendToQueue/publish return a boolean, so nothing here is thenable
 				const promisesResponses = await Promise.allSettled(queuePromises);
 
 				// @ts-ignore
@@ -512,6 +513,7 @@ export class RabbitMQ implements INodeType {
 					);
 				}
 
+				// eslint-disable-next-line @typescript-eslint/await-thenable -- sendToQueue/publish return a boolean, so nothing here is thenable
 				const promisesResponses = await Promise.allSettled(exchangePromises);
 
 				// @ts-ignore

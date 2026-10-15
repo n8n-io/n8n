@@ -48,11 +48,34 @@ export const agentConfigValidationIssueSchema = z.object({
 	/** Config dot-path, or a legacy `skill:<id>` token for backward compatibility. */
 	path: z.string(),
 	capability: agentConfigValidationCapabilityRefSchema,
+	/**
+	 * Stable, machine-readable sub-reason for `incompatible_reference` issues
+	 * (e.g. `'incompatible_nodes'`, `'no_supported_trigger'`, `'not_published'`
+	 * for workflow tools). Absent when the code itself is specific enough.
+	 * Frontends map this to a reason-specific i18n key; never display it raw.
+	 */
+	reason: z.string().optional(),
 });
 export type AgentConfigValidationIssue = z.infer<typeof agentConfigValidationIssueSchema>;
+
+/** Stable, i18n-free code for a validation warning. A warning does not make a config invalid. */
+export const agentConfigValidationWarningCodeSchema = z.enum(['similar_skill_names']);
+export type AgentConfigValidationWarningCode = z.infer<
+	typeof agentConfigValidationWarningCodeSchema
+>;
+
+export const agentConfigValidationWarningSchema = z.object({
+	code: agentConfigValidationWarningCodeSchema,
+	capability: agentConfigValidationCapabilityRefSchema,
+	/** For `similar_skill_names`: the skill names that are hard to tell apart, at least two. */
+	names: z.array(z.string().min(1)).min(2),
+});
+export type AgentConfigValidationWarning = z.infer<typeof agentConfigValidationWarningSchema>;
 
 export const agentConfigValidationResponseSchema = z.object({
 	status: z.enum(['valid', 'invalid']),
 	issues: z.array(agentConfigValidationIssueSchema),
+	/** Absent when there are no warnings. */
+	warnings: z.array(agentConfigValidationWarningSchema).optional(),
 });
 export type AgentConfigValidationResponse = z.infer<typeof agentConfigValidationResponseSchema>;

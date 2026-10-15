@@ -10,7 +10,7 @@ import {
 import SuggestionList from './SuggestionList.vue';
 
 const telemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
@@ -104,6 +104,7 @@ describe('SuggestionList', () => {
 					promptKey: example.promptKey,
 					suggestionId: example.id,
 					suggestionKind: 'quick_example',
+					prefillType: 'suggestion_catalog',
 					position: 2,
 				},
 			],
@@ -122,6 +123,7 @@ describe('SuggestionList', () => {
 					promptKey: example.promptKey,
 					suggestionId: example.id,
 					suggestionKind: 'quick_example',
+					prefillType: 'suggestion_catalog',
 					position: 2,
 				},
 			],
