@@ -1,5 +1,6 @@
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 
+import { CHAT_MESSAGE_ROLE } from './constants';
 import { appendHostEventSources, type AgentsChatHostEventSource } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import { getMessageInteractives } from './messageMappers';
@@ -80,7 +81,11 @@ export type TurnDisplayGroup = Exclude<
 >;
 
 export function isGroupable(message: AgentsChatMessage): boolean {
-	return message.role === 'assistant' && !!message.toolCalls?.length && !message.content.trim();
+	return (
+		message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
+		!!message.toolCalls?.length &&
+		!message.content.trim()
+	);
 }
 
 type ToolRunGroup = Extract<DisplayGroup, { kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN }>;
@@ -88,7 +93,8 @@ type ToolRunGroup = Extract<DisplayGroup, { kind: typeof DISPLAY_GROUP_KIND.TOOL
 export function isAssistantGroup(group: DisplayGroup): group is TurnDisplayGroup {
 	return (
 		group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ||
-		(group.kind === DISPLAY_GROUP_KIND.MESSAGE && group.message.role === 'assistant')
+		(group.kind === DISPLAY_GROUP_KIND.MESSAGE &&
+			group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT)
 	);
 }
 
@@ -230,7 +236,7 @@ function appendInteractivePayloads(
 export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const message of messages) {
-		if (message.role === 'assistant' && message.backgroundJobSignal) {
+		if (message.role === CHAT_MESSAGE_ROLE.ASSISTANT && message.backgroundJobSignal) {
 			// Keep the signal key stable when the same turn gains text or tool calls.
 			groups.push({
 				kind: DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL,
@@ -279,7 +285,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 			continue;
 		}
 
-		if (message.role === 'assistant') {
+		if (message.role === CHAT_MESSAGE_ROLE.ASSISTANT) {
 			const last = groups[groups.length - 1];
 			if (last?.kind === DISPLAY_GROUP_KIND.TOOL_RUN && canAppendToToolRun(last, message)) {
 				last.finalMessage = message;
@@ -304,7 +310,8 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 			kind: DISPLAY_GROUP_KIND.MESSAGE,
 			id: message.id,
 			message,
-			thinkingSegments: message.role === 'assistant' ? getMessageThinkingSegments(message) : [],
+			thinkingSegments:
+				message.role === CHAT_MESSAGE_ROLE.ASSISTANT ? getMessageThinkingSegments(message) : [],
 		});
 	}
 	moveThinkingToRunTail(groups);

@@ -9,12 +9,13 @@ import {
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
 import type {
+	ChatMessageRole,
 	ChatMessageStatus,
 	INTERACTION_EXTENSION_TOOL_NAME,
 	ToolCallState,
 } from './constants';
 
-export type { ChatMessageStatus, ToolCallState };
+export type { ChatMessageRole, ChatMessageStatus, ToolCallState };
 
 export interface ThinkingSegment {
 	id: string;
@@ -156,7 +157,7 @@ export interface AgentsChatHostEvent {
 export interface AgentsChatMessage {
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	id: string;
-	role: 'user' | 'assistant';
+	role: ChatMessageRole;
 	content: string;
 	/** Chat platform user who wrote a user turn in a shared integration thread. */
 	author?: AgentMessageAuthor;

@@ -1,3 +1,10 @@
+/** Author of a chat message: the person who chats, or the agent. */
+export const CHAT_MESSAGE_ROLE = {
+	USER: 'user',
+	ASSISTANT: 'assistant',
+} as const;
+export type ChatMessageRole = (typeof CHAT_MESSAGE_ROLE)[keyof typeof CHAT_MESSAGE_ROLE];
+
 /**
  * Status of an assistant message during/after streaming.
  * Used by `useAgentChatStream`, `agentChatMessages`, and templates.

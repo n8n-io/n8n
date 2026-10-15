@@ -48,7 +48,7 @@ import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
 import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
 import { isRetryableChatError } from '../utils/errors';
 import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -206,7 +206,7 @@ const visibleMessages = computed(() => {
 			message.status === CHAT_MESSAGE_STATUS.STREAMING ||
 			message.status === CHAT_MESSAGE_STATUS.AWAITING_USER;
 		const hostEvents =
-			message.role === 'assistant'
+			message.role === CHAT_MESSAGE_ROLE.ASSISTANT
 				? message.hostEvents.filter((event) => {
 						const placement = findHostEventRenderer(event, extensions)?.placement;
 						return placement === 'transient' ? live : placement !== undefined;
@@ -310,7 +310,8 @@ const dividerLabels = computed(() => {
 	const labels = new Map<string, string>();
 	let previousUserCreatedAt: number | undefined;
 	for (const group of displayGroups.value) {
-		if (group.kind !== DISPLAY_GROUP_KIND.MESSAGE || group.message.role !== 'user') continue;
+		if (group.kind !== DISPLAY_GROUP_KIND.MESSAGE || group.message.role !== CHAT_MESSAGE_ROLE.USER)
+			continue;
 		const createdAt = group.message.createdAt;
 		if (createdAt === undefined) continue;
 		// A new local day always earns a divider, even inside the window: without
@@ -348,7 +349,7 @@ const changeRequestGroupId = computed(() =>
 		? displayGroups.value.findLast(
 				(group) =>
 					group.kind === DISPLAY_GROUP_KIND.MESSAGE &&
-					group.message.role === 'user' &&
+					group.message.role === CHAT_MESSAGE_ROLE.USER &&
 					looksLikeAgentChangeRequest(group.message.content),
 			)?.id
 		: undefined,
@@ -371,7 +372,7 @@ function getAssistantGroupContent(group: DisplayGroup): string {
 		return group.finalMessage?.content ?? '';
 	}
 
-	return group.message.role === 'assistant' ? group.message.content : '';
+	return group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT ? group.message.content : '';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -450,7 +451,7 @@ function isCompletedAssistantGroup(group: DisplayGroup): boolean {
 	}
 
 	return (
-		group.message.role === 'assistant' &&
+		group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 		group.message.status !== CHAT_MESSAGE_STATUS.STREAMING &&
 		group.message.status !== CHAT_MESSAGE_STATUS.AWAITING_USER
 	);
@@ -569,7 +570,7 @@ watch(
 	(newLen, oldLen) => {
 		if ((oldLen ?? 0) < newLen) {
 			const last = props.messages[newLen - 1];
-			if (last?.role === 'user') {
+			if (last?.role === CHAT_MESSAGE_ROLE.USER) {
 				scrollToBottom();
 				return;
 			}
@@ -746,7 +747,10 @@ watch(() => props.messages.at(-1)?.hostEvents, autoScrollIfSticky, { flush: 'pos
 			</div>
 			<div
 				v-else
-				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
+				:class="[
+					$style.message,
+					group.message.role === CHAT_MESSAGE_ROLE.USER ? $style.user : $style.assistant,
+				]"
 			>
 				<div :class="$style.content">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
@@ -789,7 +793,7 @@ watch(() => props.messages.at(-1)?.hostEvents, autoScrollIfSticky, { flush: 'pos
 						:agent-id="agentId"
 					/>
 					<N8nText
-						v-if="group.message.role === 'user' && group.message.author"
+						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
 						size="xsmall"
 						color="text-light"
 						:class="$style.author"
@@ -798,7 +802,7 @@ watch(() => props.messages.at(-1)?.hostEvents, autoScrollIfSticky, { flush: 'pos
 						{{ group.message.author.name }}
 					</N8nText>
 					<div
-						v-if="group.message.role === 'user' && group.message.content"
+						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
 					>
 						{{ group.message.content }}
@@ -922,7 +926,7 @@ watch(() => props.messages.at(-1)?.hostEvents, autoScrollIfSticky, { flush: 'pos
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.message.role === 'assistant' &&
+							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
 							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.message.content &&
 							!group.message.toolCalls?.length &&
