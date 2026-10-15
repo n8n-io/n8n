@@ -12,7 +12,7 @@ describe('MessageFormatter', () => {
 		describe('MCP content array pass-through', () => {
 			it('should pass through single text content block', () => {
 				const result = [{ type: 'text', text: 'Hello world' }];
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: [{ type: 'text', text: 'Hello world' }],
 				});
 			});
@@ -22,14 +22,14 @@ describe('MessageFormatter', () => {
 					{ type: 'text', text: 'Image description' },
 					{ type: 'image', data: 'base64data', mimeType: 'image/png' },
 				];
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: result,
 				});
 			});
 
 			it('should pass through with isError=true', () => {
 				const result = [{ type: 'text', text: 'Error occurred' }];
-				expect(MessageFormatter.formatToolResult(result, true)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, true, true)).toEqual({
 					isError: true,
 					content: [{ type: 'text', text: 'Error occurred' }],
 				});
@@ -37,7 +37,7 @@ describe('MessageFormatter', () => {
 
 			it('should pass through audio content block', () => {
 				const result = [{ type: 'audio', data: 'base64audio', mimeType: 'audio/mpeg' }];
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: result,
 				});
 			});
@@ -46,7 +46,7 @@ describe('MessageFormatter', () => {
 				const result = [
 					{ type: 'resource', resource: { uri: 'file:///test.txt', text: 'content' } },
 				];
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: result,
 				});
 			});
@@ -55,7 +55,7 @@ describe('MessageFormatter', () => {
 				const result = [
 					{ type: 'resource', resource: { uri: 'file:///test.bin', blob: 'base64data' } },
 				];
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: result,
 				});
 			});
@@ -67,7 +67,7 @@ describe('MessageFormatter', () => {
 						resource: { uri: 'file:///test.txt', text: 'content', blob: 'base64data' },
 					},
 				];
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: result,
 				});
 			});
@@ -80,8 +80,41 @@ describe('MessageFormatter', () => {
 						name: 'Example resource',
 					},
 				];
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: result,
+				});
+			});
+		});
+
+		describe('MCP content array gating', () => {
+			it('should wrap an MCP content array when isFromMcpTool is false (default)', () => {
+				const result = [{ type: 'text', text: 'Hello world' }];
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: JSON.stringify(result) }],
+				});
+			});
+
+			it('should wrap an MCP content array when isFromMcpTool is explicitly false', () => {
+				const result = [{ type: 'text', text: 'Hello world' }];
+				expect(MessageFormatter.formatToolResult(result, false, false)).toEqual({
+					content: [{ type: 'text', text: JSON.stringify(result) }],
+				});
+			});
+
+			it('should wrap an MCP content array from a non-MCP tool even with mixed blocks', () => {
+				const result = [
+					{ type: 'text', text: 'Image description' },
+					{ type: 'image', data: 'base64data', mimeType: 'image/png' },
+				];
+				expect(MessageFormatter.formatToolResult(result, false, false)).toEqual({
+					content: [{ type: 'text', text: JSON.stringify(result) }],
+				});
+			});
+
+			it('should pass through an MCP content array when isFromMcpTool is true', () => {
+				const result = [{ type: 'text', text: 'Hello world' }];
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
+					content: [{ type: 'text', text: 'Hello world' }],
 				});
 			});
 		});

@@ -173,9 +173,6 @@ export class McpServer {
 			if (tool?.metadata?.sourceNodeName && typeof tool.metadata.sourceNodeName === 'string') {
 				toolCallInfo = { ...toolCallInfo, sourceNodeName: tool.metadata.sourceNodeName };
 			}
-			if (tool?.metadata?.isFromToolkit) {
-				toolCallInfo = { ...toolCallInfo, isFromToolkit: true };
-			}
 		}
 
 		if (sessionId && !transport && req.headers['mcp-session-id'] && serverName) {
@@ -326,12 +323,7 @@ export class McpServer {
 		return this.getTransport(sessionId) !== undefined;
 	}
 
-	handleWorkerResponse(
-		sessionId: string,
-		messageId: string,
-		result: unknown,
-		isFromToolkit = false,
-	): void {
+	handleWorkerResponse(sessionId: string, messageId: string, result: unknown): void {
 		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
 		const pending = this.pendingResponses[callId];
 
@@ -372,7 +364,6 @@ export class McpServer {
 					const formattedResult = MessageFormatter.formatToolResult(
 						result,
 						MessageFormatter.isErrorResult(result),
-						isFromToolkit,
 					);
 					const response: JSONRPCMessage = {
 						jsonrpc: '2.0',

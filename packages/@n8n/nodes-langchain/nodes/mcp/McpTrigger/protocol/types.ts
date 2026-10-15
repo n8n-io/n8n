@@ -6,7 +6,6 @@ export interface McpToolCallInfo {
 	toolName: string;
 	arguments: Record<string, unknown>;
 	sourceNodeName?: string;
-	isFromToolkit?: boolean;
 }
 
 export interface McpToolResult {

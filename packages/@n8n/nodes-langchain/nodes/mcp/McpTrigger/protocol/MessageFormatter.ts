@@ -39,7 +39,7 @@ export class MessageFormatter {
 	static formatToolResult(result: unknown, isError = false, isFromMcpTool = false): McpToolResult {
 		let content: McpContentBlock[];
 
-		if (isMcpContentArray(result)) {
+		if (isFromMcpTool && isMcpContentArray(result)) {
 			content = result; // pass-through
 		} else if (typeof result === 'object' && result !== null) {
 			content = [{ type: 'text' as const, text: JSON.stringify(result) }];

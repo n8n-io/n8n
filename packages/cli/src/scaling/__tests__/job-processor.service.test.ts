@@ -1769,7 +1769,6 @@ describe('JobProcessor', () => {
 							new DynamicStructuredTool({
 								name: `Remote_Tools_${index === 0 ? 'first' : 'second'}`,
 								description: 'Search remote data',
-								metadata: index === 0 ? { isFromToolkit: true } : undefined,
 								schema: z.object({ query: z.string() }),
 								func,
 							}),
@@ -1841,26 +1840,6 @@ describe('JobProcessor', () => {
 					expect.objectContaining({ kind: 'mcp-response', response: 'second result' }),
 				);
 				expect(closeFunction).toHaveBeenCalledTimes(1);
-			});
-
-			it('should not mark an unmarked toolkit member as an MCP proxy', async () => {
-				const { jobProcessor, job } = setupToolkitJob('Remote_Tools_second');
-
-				await jobProcessor.processJob(job);
-
-				expect(job.progress).toHaveBeenCalledWith(
-					expect.objectContaining({ kind: 'mcp-response', isFromToolkit: false }),
-				);
-			});
-
-			it('should mark a marked toolkit member as an MCP proxy', async () => {
-				const { jobProcessor, job } = setupToolkitJob('Remote_Tools_first');
-
-				await jobProcessor.processJob(job);
-
-				expect(job.progress).toHaveBeenCalledWith(
-					expect.objectContaining({ kind: 'mcp-response', isFromToolkit: true }),
-				);
 			});
 
 			it('should report an unknown member and close the connection without invoking a tool', async () => {

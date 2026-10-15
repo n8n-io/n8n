@@ -674,7 +674,6 @@ export class ScalingService {
 						msg.sessionId,
 						msg.messageId,
 						msg.response,
-						msg.isFromToolkit,
 					);
 					break;
 				default:
@@ -712,7 +711,6 @@ export class ScalingService {
 		sessionId: string,
 		messageId: string,
 		response: unknown,
-		isFromToolkit?: boolean,
 	): Promise<void> {
 		try {
 			if (mcpType === 'service') {
@@ -761,7 +759,7 @@ export class ScalingService {
 						context: { executionId },
 					});
 
-					mcpServer.handleWorkerResponse(sessionId, messageId, toolResult, isFromToolkit);
+					mcpServer.handleWorkerResponse(sessionId, messageId, toolResult);
 				}
 			}
 		} catch (error) {
