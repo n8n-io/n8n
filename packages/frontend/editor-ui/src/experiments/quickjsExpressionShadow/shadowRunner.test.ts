@@ -128,6 +128,23 @@ describe('QuickJsExpressionShadow', () => {
 		});
 	});
 
+	it('counts an expression once against the budget, also when it first had no input data', () => {
+		let calls = 0;
+		const shadow = new QuickJsExpressionShadow({
+			evaluator: { evaluate: () => (++calls <= 2500 ? ok(undefined) : ok(1)) },
+			sampleRate: 1,
+			random: () => 0,
+			now: () => 0,
+		});
+
+		for (let index = 0; index < 2500; index++) {
+			run(shadow, `{{ ${index} }}`, missingInput('no_execution_data'));
+		}
+		for (let index = 0; index < 5000; index++) run(shadow, `{{ ${index} }}`, ok(1));
+
+		expect(shadow.takeReport()).toMatchObject({ legacy_missing_input: 2500, same: 5000 });
+	});
+
 	it('sends a report that holds only missing-input runs', () => {
 		const { shadow } = createShadow(ok(undefined));
 

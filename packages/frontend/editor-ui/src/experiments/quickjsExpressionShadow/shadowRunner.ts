@@ -143,6 +143,10 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 	// its input data arrives in the same report window.
 	private countedMissingInput = new Set<string>();
 
+	// Every distinct expression in either set. The budget counts an expression
+	// once, also when it first had no input data and then was compared.
+	private tracked = new Set<string>();
+
 	private legacyLatency = emptyBuckets();
 
 	private quickjsLatency = emptyBuckets();
@@ -196,6 +200,7 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 		this.runs = 0;
 		this.counted = new Set();
 		this.countedMissingInput = new Set();
+		this.tracked = new Set();
 		this.legacyLatency = emptyBuckets();
 		this.quickjsLatency = emptyBuckets();
 		this.mismatches = new Map();
@@ -213,12 +218,13 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 		// A timeout depends on the run, so every run counts.
 		if (!quickjs.ok && quickjs.errorClass === 'timeout') this.timeouts += 1;
 
-		const tracked = this.counted.size + this.countedMissingInput.size;
+		const overBudget = !this.tracked.has(source) && this.tracked.size >= MAX_TRACKED_EXPRESSIONS;
 		if (isMissingInput(legacyResult, quickjs)) {
 			// Not compared, so it stays out of the latency buckets too: the legacy
 			// engine fails at once, which would make it look faster.
-			if (this.countedMissingInput.has(source) || tracked >= MAX_TRACKED_EXPRESSIONS) return;
+			if (this.countedMissingInput.has(source) || overBudget) return;
 			this.countedMissingInput.add(source);
+			this.tracked.add(source);
 			this.counts.legacy_missing_input += 1;
 			return;
 		}
@@ -227,8 +233,9 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 		this.legacyLatency[bucketIndex(legacyMs)] += 1;
 		this.quickjsLatency[bucketIndex(quickjsMs)] += 1;
 
-		if (this.counted.has(source) || tracked >= MAX_TRACKED_EXPRESSIONS) return;
+		if (this.counted.has(source) || overBudget) return;
 		this.counted.add(source);
+		this.tracked.add(source);
 
 		// A function result reaches the user as an error ("please add ()"), and
 		// QuickJS cannot return a function, so it counts as an error on both sides.
