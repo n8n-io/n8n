@@ -3,7 +3,12 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RuntimeCredentialProxyService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
@@ -54,9 +59,9 @@ import {
 import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
 import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
-import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 import { ActiveExecutions } from '@/active-executions';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
@@ -78,7 +83,6 @@ import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -606,6 +610,12 @@ async function startExecution(
 
 	const startTime = Date.now();
 
+	// Reported to the caller so its redaction covers this run's output: the parent's own
+	// nodes do not reference these credentials.
+	const workflowCredentialIds = isCredSharingEnabled()
+		? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(workflowData.nodes)
+		: [];
+
 	let data;
 	try {
 		// The original mode of the whole run tree: a sub-workflow's own
@@ -756,7 +766,7 @@ async function startExecution(
 				},
 				workflow,
 			),
-			summarizeDynamicCredentialsUsage(runData.executionData),
+			summarizeDynamicCredentialsUsage(runData.executionData, workflowCredentialIds),
 		);
 	}
 
@@ -774,7 +784,7 @@ async function startExecution(
 				: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
-			...summarizeDynamicCredentialsUsage(data.data),
+			...summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
@@ -795,7 +805,7 @@ async function startExecution(
 			},
 			workflow,
 		),
-		summarizeDynamicCredentialsUsage(data.data),
+		summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
 	);
 }
 

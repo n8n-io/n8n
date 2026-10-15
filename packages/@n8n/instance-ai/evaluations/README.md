@@ -598,12 +598,15 @@ format that LangTracer exports. The tags give the expected route:
 
 - `routing` marks the file as a routing case.
 - `bucket:<route>` is the main expected route. The summary groups cases by it.
+- `clarity:<level>` is optional: `clear`, `hidden` or `vague`. The summary
+  gives a score for each level under each bucket.
 - `accepts:<token>` is another route that passes. A case can have more than
   one. The bucket always passes, except `bucket:clarify`: a clarify case must
   list the questions that pass, for example `accepts:clarify:open`. A token
   can add a steer: `<route>:agent` passes a steer toward an Agent, and
   `<route>:open` passes any steer except workflow only. This works for
-  `clarify` and `answer`.
+  `clarify` and `answer`. `clarify:workflow` passes a question that steers
+  toward a workflow.
 
 A case can add a second user turn with only `[stage directions]`: the facts
 that a user proxy uses to answer a question, for example
@@ -645,6 +648,11 @@ before the turn:
 The stub instance cannot replay a LangSmith thread, sign in to a browser, or
 hold folders or projects. The runner skips cases that need them and prints
 their ids.
+
+`--output-dir <dir>` writes `eval-results.json` in the format that LangTracer
+reads. Each case has one expectation: the routes that it accepts. Each trial
+is one verdict. A trial with no route, for example after a timeout, is not
+graded.
 
 ## Pairwise evals
 

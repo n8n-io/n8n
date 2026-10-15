@@ -655,6 +655,9 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(loaded?.instructions).toContain('unreconstructable-context');
 		expect(loaded?.instructions).toContain('do this unprompted');
+		expect(loaded?.instructions).toContain('## Before you name a cause');
+		expect(loaded?.instructions).toContain('credentials(action="test")');
+		expect(skill?.description).toContain('a live run you started');
 	});
 });
 

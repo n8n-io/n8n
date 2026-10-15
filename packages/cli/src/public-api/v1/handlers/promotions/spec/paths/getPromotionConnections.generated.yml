@@ -22,9 +22,6 @@ parameters:
     required: false
     name: providerId
     in: query
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.
@@ -59,6 +56,9 @@ responses:
                       remoteUrl:
                         type: string
                         minLength: 1
+                      repositoryPath:
+                        type: string
+                        description: The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
                     required:
                       - schemaVersion
                       - remoteUrl

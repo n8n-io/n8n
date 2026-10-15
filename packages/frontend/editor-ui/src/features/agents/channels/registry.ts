@@ -13,6 +13,7 @@ import AgentChannelSlackSetupKindSelector from './slack/AgentChannelSlackSetupKi
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
 import AgentChannelTeamsEditView from './teams/AgentChannelTeamsEditView.vue';
+import AgentChannelTeamsRemoveConfirmation from './teams/AgentChannelTeamsRemoveConfirmation.vue';
 import AgentChannelTeamsSetupKindSelector from './teams/AgentChannelTeamsSetupKindSelector.vue';
 import AgentChannelTeamsSetupView from './teams/AgentChannelTeamsSetupView.vue';
 import { useTeamsChannelRuntime } from './teams/useTeamsChannelRuntime';
@@ -138,6 +139,8 @@ const platforms = {
 		headerContent: {
 			setupModal: AgentChannelTeamsSetupKindSelector,
 		},
+		disconnectConfirmationComponent: AgentChannelTeamsRemoveConfirmation,
+		shouldConfirmDisconnect: () => true,
 		createRuntime: useTeamsChannelRuntime,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 		presentDisconnectWarning: (warning, { text }) => {

@@ -4,10 +4,11 @@
 	"scripts": {
 		"test:all": "playwright test",
 		"test:images": "playwright test --project='image-efficiency:*'",
+		"test:memory": "playwright test --project=memory-baselines",
 		"report": "playwright show-report",
-		"lint": "oxlint --quiet playwright.config.ts images",
+		"lint": "oxlint --quiet playwright.config.ts images memory/idle",
 		"typecheck": "tsc --noEmit",
-		"format:check": "biome ci playwright.config.ts images"
+		"format:check": "biome ci playwright.config.ts images memory/idle"
 	},
 	"peerDependencies": {
 		"zod": "catalog:"

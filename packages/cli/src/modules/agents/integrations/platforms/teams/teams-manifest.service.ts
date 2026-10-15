@@ -6,6 +6,7 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { zipSync } from 'fflate';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { v5 as uuidv5 } from 'uuid';
@@ -61,9 +62,10 @@ export interface BuildTeamsManifestOptions {
 const RSC_RESOURCE = 'https://RscBasedStoreApp';
 
 /**
- * Teams delivers only @mentions in a shared conversation unless the app asks to
- * read everything there. Each name is paired with the scope it depends on, so a
- * permission cannot be emitted without its surface. `conversationType` is the
+ * Each surface asks to read its messages, because Teams leaves files out of a
+ * shared conversation's activity and they are read through Graph instead. The
+ * permission also makes Teams deliver every message there, not only @mentions;
+ * `setting` decides whether the agent acts on them. `conversationType` is the
  * surface as Teams reports it on an activity.
  */
 export const READ_PERMISSIONS = [
@@ -126,13 +128,25 @@ export class TeamsManifestService {
 					botId: options.botId,
 					scopes: this.buildScopes(options.settings),
 					isNotificationOnly: false,
-					supportsFiles: false,
+					supportsFiles: true,
 				},
 			],
 			permissions: ['identity', 'messageTeamMembers'],
 			validDomains: [],
 			...this.buildReadPermissions(options.botId, options.settings),
 		};
+	}
+
+	/**
+	 * What Teams would show from this manifest, so two builds can be compared.
+	 * The version is left out: it moves on every build without changing the app.
+	 * The agent's icon is included ahead of the package carrying it.
+	 */
+	fingerprint(manifest: TeamsAgentAppManifest, icon?: unknown): string {
+		const { version: _version, ...content } = manifest;
+		return createHash('sha256')
+			.update(JSON.stringify({ content, icon: icon ?? null }))
+			.digest('hex');
 	}
 
 	/**
@@ -177,7 +191,7 @@ export class TeamsManifestService {
 		availability: BuildTeamsManifestOptions['settings'],
 	): Partial<TeamsAgentAppManifest> {
 		const resourceSpecific = READ_PERMISSIONS.filter(
-			({ setting, requires }) => availability?.[setting] && availability?.[requires],
+			({ requires }) => availability?.[requires],
 		).map(({ name }) => ({ name, type: 'Application' as const }));
 
 		if (resourceSpecific.length === 0) return {};
