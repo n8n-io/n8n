@@ -96,4 +96,79 @@ describe('findForeignWorkflowReads', () => {
 
 		expect(reads).toEqual(['other']);
 	});
+
+	describe('n8n MCP tools', () => {
+		const mcpResult = (toolName: string, payload: unknown) => ({
+			type: 'content',
+			value: [
+				{
+					type: 'text',
+					text: `<untrusted_data source="tool:${toolName}">\n${JSON.stringify(payload)}\n</untrusted_data>`,
+				},
+			],
+		});
+
+		const mcpCreated = call(
+			'create_workflow_from_code',
+			{ code: 'export default workflow(...)', name: 'Notion Chat' },
+			{
+				result: mcpResult('create_workflow_from_code', { workflowId: 'mine', name: 'Notion Chat' }),
+			},
+		);
+
+		it('ignores the workflow the build created, and later reads of it', () => {
+			const reads = findForeignWorkflowReads(
+				[
+					mcpCreated,
+					call('workflows', { action: 'validate', workflowId: 'mine' }, { result: undefined }),
+					call(
+						'get_workflow_details',
+						{ workflowId: 'mine' },
+						{ result: mcpResult('get_workflow_details', { workflow: { id: 'mine' } }) },
+					),
+				],
+				[],
+			);
+
+			expect(reads).toEqual([]);
+		});
+
+		it("flags another build's workflows in a search result", () => {
+			const reads = findForeignWorkflowReads(
+				[
+					mcpCreated,
+					call(
+						'search_workflows',
+						{ query: 'digest' },
+						{ result: mcpResult('search_workflows', { data: [{ id: 'mine' }, { id: 'other' }] }) },
+					),
+				],
+				[],
+			);
+
+			expect(reads).toEqual(['other']);
+		});
+
+		it('ignores MCP calls that returned an error', () => {
+			const reads = findForeignWorkflowReads(
+				[
+					call(
+						'get_workflow_details',
+						{ workflowId: 'ghost' },
+						{ result: mcpResult('get_workflow_details', { error: 'Workflow not found' }) },
+					),
+					call(
+						'update_workflow',
+						{ workflowId: 'ghost-2' },
+						{
+							result: { type: 'content', value: [{ type: 'text', text: 'Access denied by user' }] },
+						},
+					),
+				],
+				[],
+			);
+
+			expect(reads).toEqual([]);
+		});
+	});
 });

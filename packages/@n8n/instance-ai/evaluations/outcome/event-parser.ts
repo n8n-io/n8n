@@ -2,8 +2,6 @@
 // Event parsing: extract outcome and metrics from captured SSE events
 // ---------------------------------------------------------------------------
 
-import { isRecord } from '@n8n/utils/is-record';
-
 import {
 	DATA_TABLES_TOOL_ID,
 	DOMAIN_TOOL_IDS,
@@ -20,6 +18,12 @@ import type {
 	TranscriptTurn,
 	TurnCounter,
 } from '../types';
+import {
+	N8N_MCP_CREATE_DATA_TABLE_TOOL,
+	N8N_MCP_EXECUTION_TOOLS,
+	N8N_MCP_WORKFLOW_TOOLS,
+	toToolResultRecord,
+} from './tool-result';
 import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
@@ -27,7 +31,12 @@ import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 // ---------------------------------------------------------------------------
 
 /** Tools that save a workflow; their results carry its id. */
-export const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
+export const WORKFLOW_TOOLS: ReadonlySet<string> = new Set([
+	'build-workflow',
+	'submit-workflow',
+	'patch-workflow',
+	...N8N_MCP_WORKFLOW_TOOLS,
+]);
 
 // Retired standalone tool names, kept so captures from older backends still parse.
 const EXECUTION_TOOL_LEGACY = 'run-workflow';
@@ -233,7 +242,7 @@ function captureConfigEvalRef(
 	out: Map<string, ArtifactRef>,
 ): void {
 	if (toolName !== EVAL_CONFIG_TOOL_ID || getString(args, 'action') !== 'create') return;
-	const record = toResultRecord(result);
+	const record = toToolResultRecord(result);
 	const workflowId = getString(args, 'workflowId');
 	const created = record?.config !== undefined && record.config !== null;
 	if (workflowId && created) {
@@ -575,13 +584,14 @@ function extractResourceIds(
 
 	if (
 		toolName === EXECUTION_TOOL_LEGACY ||
+		N8N_MCP_EXECUTION_TOOLS.has(toolName) ||
 		(toolName === DOMAIN_TOOL_IDS.EXECUTIONS && action === 'run')
 	) {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
 	}
 
-	if (toolName === DATA_TABLE_TOOL_LEGACY) {
+	if (toolName === DATA_TABLE_TOOL_LEGACY || toolName === N8N_MCP_CREATE_DATA_TABLE_TOOL) {
 		const id = extractIdFromResult(result, 'dataTableId', 'id');
 		if (id) dataTableIds.push(id);
 	}
@@ -589,29 +599,15 @@ function extractResourceIds(
 	// create-only: other actions (e.g. schema) return ids of EXISTING tables,
 	// and tracking those would let cleanup delete tables the agent only inspected.
 	if (toolName === DATA_TABLES_TOOL_ID && action === 'create') {
-		const record = toResultRecord(result);
+		const record = toToolResultRecord(result);
 		const table = record ? getRecord(record, 'table') : undefined;
 		const id = table ? extractIdFromRecord(table, ['id']) : undefined;
 		if (id) dataTableIds.push(id);
 	}
 }
 
-/** Normalize a tool result (object or stringified JSON) to a record. */
-function toResultRecord(result: unknown): Record<string, unknown> | undefined {
-	if (isRecord(result)) return result;
-	if (typeof result === 'string') {
-		try {
-			const parsed: unknown = JSON.parse(result);
-			if (isRecord(parsed)) return parsed;
-		} catch {
-			return undefined;
-		}
-	}
-	return undefined;
-}
-
 function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {
-	const record = toResultRecord(result);
+	const record = toToolResultRecord(result);
 	return record ? extractIdFromRecord(record, keys) : undefined;
 }
 
@@ -637,12 +633,18 @@ export function savedWorkflowsFromEvents(
 	const names = new Map<string, string>();
 	return extractOutcomeFromEvents(events).toolCalls.flatMap((call) => {
 		if (!WORKFLOW_TOOLS.has(call.toolName)) return [];
-		const result = toResultRecord(call.result);
-		if (result?.success !== true) return [];
+		const result = toToolResultRecord(call.result);
+		if (!result) return [];
+		// MCP results have no `success` flag: a failed call returns `{ error }`.
+		const saved = N8N_MCP_WORKFLOW_TOOLS.has(call.toolName)
+			? call.error === undefined && result.error === undefined
+			: result.success === true;
+		if (!saved) return [];
 		const id = extractIdFromResult(result, 'workflowId', 'id');
 		if (!id) return [];
-		if (typeof result.workflowName === 'string' && result.workflowName.trim()) {
-			names.set(id, result.workflowName);
+		const name = N8N_MCP_WORKFLOW_TOOLS.has(call.toolName) ? result.name : result.workflowName;
+		if (typeof name === 'string' && name.trim()) {
+			names.set(id, name);
 		}
 		return [{ id, name: names.get(id) ?? id }];
 	});

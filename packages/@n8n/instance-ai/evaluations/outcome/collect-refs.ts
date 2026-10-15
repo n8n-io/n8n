@@ -9,7 +9,8 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils/is-record';
+
+import { toToolResultRecord } from './tool-result';
 
 export interface ArtifactRefSpec {
 	/** targetResource.type to match on an agent-tree node. */
@@ -19,7 +20,7 @@ export interface ArtifactRefSpec {
 	 * uses this today — the assistant does not yet emit tool results with agent/config-eval
 	 * ids, so those handlers rely on `targetResource` alone and omit it.
 	 */
-	toolNames?: Set<string>;
+	toolNames?: ReadonlySet<string>;
 	/** Keys to read the id from a tool result (in priority order). Paired with `toolNames`. */
 	resultKeys?: string[];
 }
@@ -64,20 +65,8 @@ function collectFromNode(node: InstanceAiAgentNode, spec: ArtifactRefSpec, ids: 
 }
 
 function extractIdFromResult(result: unknown, keys: string[]): string | undefined {
-	if (!isRecord(result)) {
-		if (typeof result === 'string') {
-			try {
-				const parsed: unknown = JSON.parse(result);
-				if (isRecord(parsed)) {
-					return extractIdFromRecord(parsed, keys);
-				}
-			} catch {
-				return undefined;
-			}
-		}
-		return undefined;
-	}
-	return extractIdFromRecord(result, keys);
+	const record = toToolResultRecord(result);
+	return record ? extractIdFromRecord(record, keys) : undefined;
 }
 
 function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): string | undefined {

@@ -1,22 +1,19 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 import { WORKFLOW_TOOLS } from './event-parser';
+import { isMcpToolResult, N8N_MCP_SEARCH_WORKFLOWS_TOOL, toToolResultRecord } from './tool-result';
 import type { CapturedToolCall } from '../types';
 
-function toRecord(result: unknown): Record<string, unknown> | undefined {
-	if (isRecord(result)) return result;
-	if (typeof result !== 'string') return undefined;
-	try {
-		const parsed: unknown = JSON.parse(result);
-		return isRecord(parsed) ? parsed : undefined;
-	} catch {
-		return undefined;
-	}
+function succeeded(call: CapturedToolCall): boolean {
+	const result = toToolResultRecord(call.result);
+	// A failed MCP call can return plain error text, which parses to no record.
+	if (result === undefined && isMcpToolResult(call.result)) return false;
+	return call.error === undefined && result?.success !== false && typeof result?.error !== 'string';
 }
 
-function succeeded(call: CapturedToolCall): boolean {
-	const result = toRecord(call.result);
-	return call.error === undefined && result?.success !== false && typeof result?.error !== 'string';
+function listedWorkflows(call: CapturedToolCall): unknown {
+	const result = toToolResultRecord(call.result);
+	return call.toolName === N8N_MCP_SEARCH_WORKFLOWS_TOOL ? result?.data : result?.workflows;
 }
 
 /** Workflow ids the agent successfully read or changed that this build neither created
@@ -30,14 +27,14 @@ export function findForeignWorkflowReads(
 	for (const call of calls) {
 		// A save without a target workflow creates one.
 		if (!WORKFLOW_TOOLS.has(call.toolName) || call.args.workflowId !== undefined) continue;
-		const result = toRecord(call.result);
+		const result = toToolResultRecord(call.result);
 		const id = result?.workflowId ?? result?.id;
 		if (typeof id === 'string') own.add(id);
 	}
 
 	const seen = calls.flatMap((call) => {
 		const target = typeof call.args.workflowId === 'string' ? [call.args.workflowId] : [];
-		const listed = toRecord(call.result)?.workflows;
+		const listed = listedWorkflows(call);
 		const listedIds = Array.isArray(listed)
 			? listed.flatMap((workflow) =>
 					isRecord(workflow) && typeof workflow.id === 'string' ? [workflow.id] : [],

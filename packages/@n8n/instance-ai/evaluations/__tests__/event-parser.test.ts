@@ -500,6 +500,84 @@ describe('extractOutcomeFromEvents', () => {
 		const result = extractOutcomeFromEvents(events);
 		expect(result.workflowIds).toEqual(['wf-1']);
 	});
+
+	describe('n8n MCP tools', () => {
+		function mcpCall(
+			id: string,
+			toolName: string,
+			args: Record<string, unknown>,
+			payload: unknown,
+		): CapturedEvent[] {
+			const text = `<untrusted_data source="tool:${toolName}">\n${JSON.stringify(payload)}\n</untrusted_data>`;
+			return [
+				{
+					timestamp: 1000,
+					type: 'tool-call',
+					data: { type: 'tool-call', payload: { toolCallId: id, toolName, args } },
+				},
+				{
+					timestamp: 1100,
+					type: 'tool-result',
+					data: {
+						type: 'tool-result',
+						payload: {
+							toolCallId: id,
+							result: { type: 'content', value: [{ type: 'text', text }] },
+						},
+					},
+				},
+			];
+		}
+
+		const events = [
+			...mcpCall(
+				'tc-1',
+				'create_workflow_from_code',
+				{ code: '…' },
+				{ workflowId: 'wf-1', name: 'Digest' },
+			),
+			...mcpCall('tc-2', 'update_workflow', { workflowId: 'wf-1' }, { workflowId: 'wf-1' }),
+			...mcpCall(
+				'tc-3',
+				'test_workflow',
+				{ workflowId: 'wf-1' },
+				{ executionId: 'ex-1', status: 'success' },
+			),
+			...mcpCall(
+				'tc-4',
+				'execute_workflow',
+				{ workflowId: 'wf-1' },
+				{ executionId: 'ex-2', status: 'started' },
+			),
+			...mcpCall('tc-5', 'create_data_table', { name: 'Leads' }, { id: 'dt-1', name: 'Leads' }),
+		];
+
+		it('extracts workflow, execution, and data table ids from MCP results', () => {
+			const result = extractOutcomeFromEvents(events);
+
+			expect(result.workflowIds).toEqual(['wf-1']);
+			expect(result.executionIds).toEqual(['ex-1', 'ex-2']);
+			expect(result.dataTableIds).toEqual(['dt-1']);
+		});
+
+		it('treats successful MCP saves as saved workflows', () => {
+			expect(savedWorkflowsFromEvents(events)).toEqual([
+				{ id: 'wf-1', name: 'Digest' },
+				{ id: 'wf-1', name: 'Digest' },
+			]);
+		});
+
+		it('ignores MCP saves that returned an error', () => {
+			const failed = mcpCall(
+				'tc-1',
+				'update_workflow',
+				{ workflowId: 'wf-1' },
+				{ workflowId: 'wf-1', error: 'Validation failed' },
+			);
+
+			expect(savedWorkflowsFromEvents(failed)).toEqual([]);
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
