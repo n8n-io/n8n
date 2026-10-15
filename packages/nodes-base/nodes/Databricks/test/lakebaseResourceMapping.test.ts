@@ -90,8 +90,29 @@ describe('Lakebase -> column mapping', () => {
 		const { fields } = await getLakebaseMappingColumns.call(setup());
 
 		expect(fields).toEqual([
-			expect.objectContaining({ id: 'sku', displayName: 'sku', display: true, type: 'string' }),
+			expect.objectContaining({
+				id: 'sku',
+				displayName: 'sku (string)',
+				display: true,
+				type: 'string',
+			}),
 		]);
+	});
+
+	it.each([
+		['a required column', { format: 'text', isRequired: true }, 'sku (text) *'],
+		[
+			'a column the database fills in',
+			{ format: 'text', isRequired: true, hasDefault: true },
+			'sku (text)',
+		],
+		['a column with no type in the document', { type: undefined }, 'sku'],
+	])('labels %s with its Postgres type and a required marker', async (_name, overrides, label) => {
+		vi.mocked(fetchLakebaseColumns).mockResolvedValue([column(overrides)]);
+
+		const { fields } = await getLakebaseMappingColumns.call(setup());
+
+		expect(fields[0].displayName).toBe(label);
 	});
 
 	it.each([
@@ -222,7 +243,7 @@ describe('Lakebase -> function arguments', () => {
 		expect(fields).toEqual([
 			{
 				id: 'a',
-				displayName: 'a',
+				displayName: 'a (integer)',
 				required: false,
 				display: true,
 				defaultMatch: false,
@@ -233,14 +254,15 @@ describe('Lakebase -> function arguments', () => {
 	});
 
 	it.each([
-		['a required argument', { isRequired: true }, true],
-		['an argument with a default', { isRequired: false }, false],
-	])('marks %s required=%s', async (_name, overrides, expected) => {
+		['a required argument', { isRequired: true }, true, 'a (integer) *'],
+		['an argument with a default', { isRequired: false }, false, 'a (integer)'],
+	])('marks %s required=%s', async (_name, overrides, expected, label) => {
 		vi.mocked(fetchLakebaseFunctionArguments).mockResolvedValue([argument(overrides)]);
 
 		const { fields } = await getLakebaseFunctionArguments.call(setup());
 
 		expect(fields[0].required).toBe(expected);
+		expect(fields[0].displayName).toBe(label);
 	});
 
 	it.each([

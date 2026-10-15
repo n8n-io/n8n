@@ -43,6 +43,12 @@ function fieldTypeOf(column: LakebaseColumn): FieldType {
 	}
 }
 
+/** The form shows no type or required marker of its own, so the label carries both: `quantity (integer) *` */
+function labelOf(column: LakebaseColumn, required: boolean): string {
+	const type = column.format ?? column.type;
+	return `${column.name}${type ? ` (${type})` : ''}${required ? ' *' : ''}`;
+}
+
 /** Lists a table's columns for the Columns form. */
 export async function getLakebaseMappingColumns(
 	this: ILoadOptionsFunctions,
@@ -59,19 +65,22 @@ export async function getLakebaseMappingColumns(
 	}
 
 	return {
-		fields: columns.map((column) => ({
-			id: column.name,
-			displayName: column.name,
-			// The document marks every NOT NULL column required, including ones the
-			// database fills in, so asking for those would demand a value twice.
-			required: column.isRequired && !column.hasDefault && !column.isReadOnly,
-			display: true,
-			defaultMatch: false,
-			canBeUsedToMatch: false,
-			readOnly: column.isReadOnly,
-			type: fieldTypeOf(column),
-			options: column.enum?.map((value) => ({ name: String(value), value: value as string })),
-		})),
+		// The document marks every NOT NULL column required, including ones the
+		// database fills in, so asking for those would demand a value twice.
+		fields: columns.map((column) => {
+			const required = column.isRequired && !column.hasDefault && !column.isReadOnly;
+			return {
+				id: column.name,
+				displayName: labelOf(column, required),
+				required,
+				display: true,
+				defaultMatch: false,
+				canBeUsedToMatch: false,
+				readOnly: column.isReadOnly,
+				type: fieldTypeOf(column),
+				options: column.enum?.map((value) => ({ name: String(value), value: value as string })),
+			};
+		}),
 	};
 }
 
@@ -96,7 +105,7 @@ export async function getLakebaseFunctionArguments(
 	return {
 		fields: args.map((arg) => ({
 			id: arg.name,
-			displayName: arg.name,
+			displayName: labelOf(arg, arg.isRequired),
 			required: arg.isRequired,
 			display: true,
 			defaultMatch: false,
