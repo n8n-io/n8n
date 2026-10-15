@@ -222,8 +222,37 @@ function maybeLoadMore() {
 	}
 }
 
+function moveInputCaret(input: HTMLInputElement, event: KeyboardEvent) {
+	const start = input.selectionStart ?? 0;
+	const end = input.selectionEnd ?? start;
+	const isBackward = input.selectionDirection === 'backward';
+	const anchor = isBackward ? end : start;
+	const caret = isBackward ? start : end;
+	const isLeft = event.key === 'ArrowLeft';
+	const boundaries = [
+		...Array.from(new Intl.Segmenter().segment(input.value), ({ index }) => index),
+		input.value.length,
+	];
+	if (isLeft) boundaries.reverse();
+	const nextCaret =
+		boundaries.find((position) => (isLeft ? position < caret : position > caret)) ??
+		(isLeft ? 0 : input.value.length);
+
+	if (event.shiftKey) {
+		input.setSelectionRange(
+			Math.min(anchor, nextCaret),
+			Math.max(anchor, nextCaret),
+			nextCaret < anchor ? 'backward' : 'forward',
+		);
+	} else {
+		const position = start === end ? nextCaret : isLeft ? start : end;
+		input.setSelectionRange(position, position);
+	}
+}
+
 function onGlobalKeydown(event: KeyboardEvent) {
-	if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+	const isAltGraph = event.getModifierState('AltGraph');
+	if (!isAltGraph && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
 		event.preventDefault();
 		isOpen.value = !isOpen.value;
 		return;
@@ -237,8 +266,7 @@ function onGlobalKeydown(event: KeyboardEvent) {
 		event.defaultPrevented ||
 		event.isComposing ||
 		event.metaKey ||
-		event.ctrlKey ||
-		event.altKey
+		((event.ctrlKey || event.altKey) && !isAltGraph)
 	) {
 		return;
 	}
@@ -260,6 +288,9 @@ function onGlobalKeydown(event: KeyboardEvent) {
 			'end',
 		);
 		query.value = input.value;
+	} else if (!event.defaultPrevented && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+		event.preventDefault();
+		moveInputCaret(input, event);
 	}
 }
 
