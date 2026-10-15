@@ -49,6 +49,7 @@ export function planMessage(output: unknown, overrides: Partial<ToolCall> = {}):
 export function planSnapshot(plan: AgentPlanView): AgentPlanSnapshotDto {
 	return {
 		...plan,
+		readiness: { ready: [], blocked: [] },
 		startedAt: plan.startedAt ?? null,
 		closedAt: plan.closedAt ?? null,
 		document: {

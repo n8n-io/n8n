@@ -36,6 +36,7 @@ const planSchema = z.object({
 	revision: z.number().int().positive(),
 	closed: z.boolean(),
 	startedAt: z.string().datetime().nullable().optional(),
+	finishedAt: z.string().datetime().nullable().optional(),
 	closedAt: z.string().datetime().nullable().optional(),
 	document: z.object({
 		title: z.string().min(1),
