@@ -1,4 +1,9 @@
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
@@ -689,12 +694,20 @@ describe('SkillRepository', () => {
 
 	describe('findProjects', () => {
 		it('maps project ids to names and types', async () => {
-			const projects = await skills.findProjects([project.id, project.id, otherProject.id]);
+			const personal = await getPersonalProject(user);
+
+			const projects = await skills.findProjects([
+				project.id,
+				project.id,
+				otherProject.id,
+				personal.id,
+			]);
 
 			expect(projects).toEqual(
 				new Map([
 					[project.id, { name: 'Team', type: 'team' }],
 					[otherProject.id, { name: 'Other team', type: 'team' }],
+					[personal.id, { name: personal.name, type: 'personal' }],
 				]),
 			);
 		});
