@@ -437,6 +437,39 @@ describe('Agent skills in the skills hub', () => {
 		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
 	});
 
+	it('renames and moves a skill in one save to a name that only the old scope holds', async () => {
+		const agent = await createAgent([]);
+		const context = { user: editor, modifiedBy: 'user' as const };
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Summarize'),
+			context,
+		);
+		const update = async (updates: Partial<AgentSkill>, availableTo: 'project' | 'agent') =>
+			await agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				created.id,
+				updates,
+				context,
+				undefined,
+				undefined,
+				availableTo,
+			);
+		await update({}, 'agent');
+		await createSkill(body('summarize'));
+
+		await update({ name: 'Condense' }, 'project');
+
+		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
+			projectId: project.id,
+			agentId: null,
+		});
+		const { skills } = await skillRefs.readDraft(await reload(agent), {});
+		expect(skills[created.id]?.name).toBe('Condense');
+	});
+
 	it('shares the skills of a duplicated agent', async () => {
 		const skill = await createSkill(body('Shared'));
 		const original = await createAgent([skill]);

@@ -277,7 +277,14 @@ export class AgentSkillsService {
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			if (nextAvailability) {
-				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx);
+				// The move checks the name the skill has after the save, not the old one.
+				await this.agentSkillRefs.setAvailability(
+					entity,
+					skillId,
+					nextAvailability,
+					ctx,
+					updated.name,
+				);
 			}
 			if (pinned) {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);

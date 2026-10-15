@@ -136,6 +136,9 @@ export class SkillNewNameQueryDto extends Z.class({
 
 export type SkillNewNameResponse = { name: string };
 
+/** The 409 message for a skill name that its scope already holds. The editor matches it. */
+export const SKILL_NAME_TAKEN_MESSAGE = 'That name is taken, choose another';
+
 export class CreateSkillDto extends Z.class({
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */

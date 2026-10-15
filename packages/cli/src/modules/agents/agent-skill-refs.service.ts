@@ -447,8 +447,16 @@ export class AgentSkillRefsService {
 		skillId: string,
 		availableTo: AgentSkillAvailability,
 		ctx: OperationContext,
+		/** The name the skill has after this request, when the same request renames it. */
+		nameAfterMove?: string,
 	): Promise<void> {
-		await this.skillService.changeTarget(skillId, targetFor(agent, availableTo), agent.id, ctx);
+		await this.skillService.changeTarget(
+			skillId,
+			targetFor(agent, availableTo),
+			agent.id,
+			ctx,
+			nameAfterMove,
+		);
 	}
 
 	private async writeLegacyDraft(

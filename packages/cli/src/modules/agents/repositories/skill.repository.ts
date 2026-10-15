@@ -212,19 +212,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 		target: SkillTarget,
 		ctx: OperationContext = {},
 	): Promise<Array<{ skillId: string; name: string }>> {
-		const query = this.managerFor(ctx)
-			.createQueryBuilder(SkillVersion, 'version')
+		const query = highestVersionsQuery(this.managerFor(ctx))
 			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
-			.select(['version.skillId', 'version.name'])
-			.where((qb) => {
-				const highest = qb
-					.subQuery()
-					.select('MAX(later.version)')
-					.from(SkillVersion, 'later')
-					.where('later.skillId = version.skillId')
-					.getQuery();
-				return `version.version = ${highest}`;
-			});
+			.select(['version.skillId', 'version.name']);
 		if (target.agentId) {
 			query.andWhere('skill.agentId = :agentId', { agentId: target.agentId });
 		} else if (target.projectId) {
@@ -692,20 +682,24 @@ async function inChunks<T>(ids: string[], read: (chunk: string[]) => Promise<T[]
 	return results;
 }
 
+/** The version rows that have the highest number of their skill. */
+function highestVersionsQuery(manager: EntityManager) {
+	return manager.createQueryBuilder(SkillVersion, 'version').where((qb) => {
+		const highest = qb
+			.subQuery()
+			.select('MAX(later.version)')
+			.from(SkillVersion, 'later')
+			.where('later.skillId = version.skillId')
+			.getQuery();
+		return `version.version = ${highest}`;
+	});
+}
+
 /** The version rows of these skills that have the highest number of their skill. */
 function latestVersionsQuery(manager: EntityManager, skillIds: string[]) {
-	return manager
-		.createQueryBuilder(SkillVersion, 'version')
-		.where('version.skillId IN (:...skillIds)', { skillIds })
-		.andWhere((qb) => {
-			const highest = qb
-				.subQuery()
-				.select('MAX(later.version)')
-				.from(SkillVersion, 'later')
-				.where('later.skillId = version.skillId')
-				.getQuery();
-			return `version.version = ${highest}`;
-		});
+	return highestVersionsQuery(manager).andWhere('version.skillId IN (:...skillIds)', {
+		skillIds,
+	});
 }
 
 async function insertVersion(

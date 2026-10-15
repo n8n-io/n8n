@@ -227,7 +227,9 @@ export class SkillService {
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
 				return { saved: result, following: [] };
 			}
-			if (skill.name !== latest.version.name) {
+			// A rename that only changes case or separators keeps the name key, so it can
+			// clash with nothing new. The legacy rule skipped it too.
+			if (skillNameKey(skill.name) !== skillNameKey(latest.version.name)) {
 				await this.assertNameFree(skill.name, latest.skill, skillId, txCtx);
 				await this.assertRenameKeepsNamesApart(skillId, latest.version.name, skill.name, txCtx);
 			}

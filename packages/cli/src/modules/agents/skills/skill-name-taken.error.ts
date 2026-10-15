@@ -1,7 +1,5 @@
+import { SKILL_NAME_TAKEN_MESSAGE } from '@n8n/api-types';
 import { ConflictError } from '@n8n/errors';
-
-/** What a user sees when a skill name is taken in its scope. */
-export const SKILL_NAME_TAKEN_MESSAGE = 'That name is taken, choose another';
 
 /**
  * A skill name is taken in its scope. It is a conflict like a stale save, but AI tools

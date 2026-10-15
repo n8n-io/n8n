@@ -7,8 +7,10 @@ import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-h
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
+import { SkillService } from '@/modules/agents/skills/skill.service';
 
-import { createMember, createOwner } from '../shared/db/users';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import { createMember, createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -417,6 +419,29 @@ describe('SkillsController', () => {
 			await create(owner, { scope: 'instance', skill: { ...body, name: 'brand-voice' } });
 		});
 
+		it('allows the same name in two team projects', async () => {
+			const other = await createTeamProject('Other team');
+
+			await create(owner, { scope: 'project', projectId: project.id, skill: body });
+			await create(owner, { scope: 'project', projectId: other.id, skill: body });
+		});
+
+		it('allows a rename that only changes case, even when another skill shares the name', async () => {
+			// The startup copy can leave two skills with one name key in a scope.
+			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
+			await Container.get(SkillService).create({
+				target: { projectId: null, agentId: null },
+				skill: { ...body, name: 'brand voice' },
+				source: 'ui',
+				createdById: ownerUser.id,
+			});
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ name: 'BRAND VOICE', baseSkillHash: skillHash })
+				.expect(200);
+		});
+
 		it('renames and moves a skill to a name that only the old scope holds', async () => {
 			await create(owner, { scope: 'project', projectId: project.id, skill: body });
 			const { id, skillHash } = await create(owner, {
@@ -505,9 +530,33 @@ describe('SkillsController', () => {
 			expect(free).toEqual({ name: 'New skill' });
 		});
 
+		it('ignores the names of another project', async () => {
+			const other = await createTeamProject('Other team');
+			await create(owner, {
+				scope: 'project',
+				projectId: other.id,
+				skill: { ...body, name: 'New skill' },
+			});
+
+			const free = await newName(editor, {
+				scope: 'project',
+				projectId: project.id,
+				name: 'New skill',
+			});
+
+			expect(free).toEqual({ name: 'New skill' });
+		});
+
 		it('needs the create permission in that scope', async () => {
 			await newName(viewer, { scope: 'project', projectId: project.id, name: 'New skill' }, 403);
 			await newName(member, { scope: 'instance', name: 'New skill' }, 403);
+		});
+
+		it('refuses a user outside the project, for a project and for an agent', async () => {
+			const agent = await newAgent('Support bot', project.id);
+
+			await newName(outsider, { scope: 'project', projectId: project.id, name: 'New skill' }, 403);
+			await newName(outsider, { scope: 'agent', agentId: agent.id, name: 'New skill' }, 403);
 		});
 	});
 
@@ -561,6 +610,49 @@ describe('SkillsController', () => {
 			const read = await editor.get(`/skills/${id}`).expect(200);
 
 			expect(read.body.data).toMatchObject({ scope: 'project', projectId: project.id });
+		});
+
+		it('needs a role in the team project where the skill goes', async () => {
+			const other = await createTeamProject('Other team');
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			await editor
+				.patch(`/skills/${id}`)
+				.send({ scope: 'project', projectId: other.id, baseSkillHash: skillHash })
+				.expect(403);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(read.body.data).toMatchObject({ scope: 'project', projectId: project.id });
+		});
+
+		it('needs the delete permission where the skill comes from', async () => {
+			// A custom role that may create and edit skills everywhere but delete none.
+			const role = await createCustomRoleWithScopeSlugs(
+				[
+					'skill:create',
+					'skill:read',
+					'skill:update',
+					'projectSkill:create',
+					'projectSkill:read',
+					'projectSkill:update',
+				],
+				{ roleType: 'global' },
+			);
+			const noDelete = server.authAgentFor(await createUser({ role }));
+			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
+
+			await noDelete
+				.patch(`/skills/${id}`)
+				.send({ scope: 'project', projectId: project.id, baseSkillHash: skillHash })
+				.expect(403);
+			await noDelete
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(200);
 		});
 
 		it('answers 409 while an agent uses the skill and saves nothing', async () => {
