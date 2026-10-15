@@ -540,92 +540,110 @@ describe('complete against a registered source', () => {
 		body,
 	});
 
+	/** A form trigger that signs in at the IdP, with the owner bound to the IdP subject by default. */
+	const triggerAtIdp = async ({
+		source: sourceOverrides,
+		bind = 'owner',
+	}: {
+		source?: Parameters<typeof createIdpSource>[0];
+		bind?: 'owner' | 'member' | 'none';
+	} = {}) => {
+		const source = await createIdpSource(sourceOverrides);
+		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
+		if (bind !== 'none') await bindIdpSubject(source.id, (bind === 'owner' ? owner : member).id);
+		return { source, resourceUrl };
+	};
+
 	/** Begins the flow at the external source and hands back what its callback carries. */
 	const beginAtIdp = async (service: OAuth2FlowService, resourceUrl: string) => {
 		const url = new URL(await service.begin(resourceUrl));
 		return { state: url.searchParams.get('state')!, code: 'idp-code' };
 	};
 
-	test('exchanges the code at the token endpoint and verifies the token through the pipeline', async () => {
-		const source = await createIdpSource();
-		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
-		await bindIdpSubject(source.id, owner.id);
-		const accessToken = await signIdpToken(resourceUrl);
-		const { service, httpRequest } = flowWithTokenEndpoint([
-			tokenRoute({
-				access_token: accessToken,
-				token_type: 'Bearer',
-				expires_in: 1800,
-				refresh_token: 'idp-refresh',
-			}),
-		]);
-		const { code, state } = await beginAtIdp(service, resourceUrl);
+	type ClientCase = {
+		kind: string;
+		client?: { kind: 'registered'; clientId: string; clientSecret?: string };
+		expectClientAuth: (headers: Record<string, unknown>, body: URLSearchParams) => void;
+	};
 
-		const result = await service.complete(code, state, {
-			method: 'GET',
-			url: `/form/x?code=${code}&state=${state}`,
-			ip: '203.0.113.7',
-		});
-
-		expect(result).toEqual({
-			valid: true,
-			token: accessToken,
-			refreshToken: 'idp-refresh',
-			expiresIn: 1800,
-			user: {
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
+	// RFC 6749 §2.3.1: a secret goes in a Basic header; a public client names itself in the body.
+	test.each<ClientCase>([
+		{
+			kind: 'confidential',
+			expectClientAuth: (headers, body) => {
+				expect(headers.authorization).toBe(
+					`Basic ${Buffer.from('n8n-client:s3cret').toString('base64')}`,
+				);
+				expect(body.has('client_id')).toBe(false);
 			},
-			metadata: undefined,
-		});
-
-		// RFC 6749 §4.1.3 with PKCE and the RFC 8707 resource, as a confidential client.
-		expect(httpRequest).toHaveBeenCalledTimes(1);
-		const [request] = httpRequest.mock.calls[0];
-		expect(request).toMatchObject({
-			url: `${IDP_ISSUER}/token`,
-			method: 'POST',
-			headers: {
-				'content-type': 'application/x-www-form-urlencoded',
-				authorization: `Basic ${Buffer.from('n8n-client:s3cret').toString('base64')}`,
+		},
+		{
+			kind: 'public',
+			client: { kind: 'registered', clientId: 'public-client' },
+			expectClientAuth: (headers, body) => {
+				expect(headers).not.toHaveProperty('authorization');
+				expect(body.get('client_id')).toBe('public-client');
 			},
-		});
-		const body = new URLSearchParams(request.body as string);
-		expect(Object.fromEntries(body)).toMatchObject({
-			grant_type: 'authorization_code',
-			code,
-			redirect_uri: resourceUrl,
-			resource: resourceUrl,
-		});
-		expect(body.get('code_verifier')).toBeTruthy();
-		expect(body.has('client_id')).toBe(false);
-	});
+		},
+	])(
+		'exchanges the code at the token endpoint as a $kind client and verifies the token through the pipeline',
+		async ({ client, expectClientAuth }) => {
+			const { resourceUrl } = await triggerAtIdp({
+				source: client && { authentication: { client } },
+			});
+			const accessToken = await signIdpToken(resourceUrl);
+			const { service, httpRequest } = flowWithTokenEndpoint([
+				tokenRoute({
+					access_token: accessToken,
+					token_type: 'Bearer',
+					expires_in: 1800,
+					refresh_token: 'idp-refresh',
+				}),
+			]);
+			const { code, state } = await beginAtIdp(service, resourceUrl);
 
-	test('names a public client in the body instead of a Basic header', async () => {
-		const source = await createIdpSource({
-			authentication: { client: { kind: 'registered', clientId: 'public-client' } },
-		});
-		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
-		await bindIdpSubject(source.id, owner.id);
-		const { service, httpRequest } = flowWithTokenEndpoint([
-			tokenRoute({ access_token: await signIdpToken(resourceUrl), expires_in: 60 }),
-		]);
-		const { code, state } = await beginAtIdp(service, resourceUrl);
+			const result = await service.complete(code, state, {
+				method: 'GET',
+				url: `/form/x?code=${code}&state=${state}`,
+				ip: '203.0.113.7',
+			});
 
-		const result = await service.complete(code, state);
+			expect(result).toEqual({
+				valid: true,
+				token: accessToken,
+				refreshToken: 'idp-refresh',
+				expiresIn: 1800,
+				user: {
+					id: owner.id,
+					email: owner.email,
+					firstName: owner.firstName,
+					lastName: owner.lastName,
+				},
+				metadata: undefined,
+			});
 
-		expect(result).toMatchObject({ valid: true, user: { id: owner.id } });
-		const [request] = httpRequest.mock.calls[0];
-		expect(request.headers).not.toHaveProperty('authorization');
-		expect(new URLSearchParams(request.body as string).get('client_id')).toBe('public-client');
-	});
+			// RFC 6749 §4.1.3 with PKCE and the RFC 8707 resource.
+			expect(httpRequest).toHaveBeenCalledTimes(1);
+			const [request] = httpRequest.mock.calls[0];
+			expect(request).toMatchObject({
+				url: `${IDP_ISSUER}/token`,
+				method: 'POST',
+				headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			});
+			const body = new URLSearchParams(request.body as string);
+			expect(Object.fromEntries(body)).toMatchObject({
+				grant_type: 'authorization_code',
+				code,
+				redirect_uri: resourceUrl,
+				resource: resourceUrl,
+			});
+			expect(body.get('code_verifier')).toBeTruthy();
+			expectClientAuth(request.headers as Record<string, unknown>, body);
+		},
+	);
 
 	test('takes the lifetime from the token when the issuer omits expires_in', async () => {
-		const source = await createIdpSource();
-		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
-		await bindIdpSubject(source.id, owner.id);
+		const { resourceUrl } = await triggerAtIdp();
 		const { service } = flowWithTokenEndpoint([
 			tokenRoute({ access_token: await signIdpToken(resourceUrl) }),
 		]);
@@ -641,80 +659,50 @@ describe('complete against a registered source', () => {
 		}
 	});
 
-	test('never exchanges at a registered source the trigger did not select', async () => {
-		// The node keeps its default, so the resource accepts the instance's own server only:
-		// the flow begins there and completes there, whatever sources exist.
-		const resourceUrl = await createProtectedFormWorkflow();
-		const source = await createIdpSource();
-		await bindIdpSubject(source.id, owner.id);
-		const { service, httpRequest } = flowWithTokenEndpoint([
-			tokenRoute({ access_token: await signIdpToken(resourceUrl), expires_in: 60 }),
-		]);
+	type RefusalCase = {
+		name: string;
+		bind?: 'owner' | 'member' | 'none';
+		audience?: string;
+		route?: Route;
+		reason: string;
+	};
 
-		const url = new URL(await service.begin(resourceUrl));
-		const result = await service.complete('idp-code', url.searchParams.get('state')!);
-
-		expect(`${url.origin}${url.pathname}`).toBe(`${instanceBaseUrl}/mcp-oauth/authorize`);
-		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
-		expect(httpRequest).not.toHaveBeenCalled();
-	});
-
-	test('refuses a token the issuer minted for another audience', async () => {
-		const source = await createIdpSource();
-		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
-		await bindIdpSubject(source.id, owner.id);
+	// The pipeline and the resource decide; the flow passes their reason through.
+	test.each<RefusalCase>([
+		{
+			name: 'a token the issuer minted for another audience',
+			audience: 'https://elsewhere.example',
+			reason: 'audience-mismatch',
+		},
+		{
+			// No binding, no email to link by, and provisioning is off by default.
+			name: 'a subject the source has no binding for and may not provision',
+			bind: 'none',
+			reason: 'provision-refused',
+		},
+		{
+			name: 'a bound user without execute access on the workflow',
+			bind: 'member',
+			reason: 'insufficient_scope',
+		},
+		{
+			name: 'a token endpoint error response',
+			route: tokenRoute({ error: 'invalid_grant' }, 400),
+			reason: 'invalid_grant',
+		},
+	])('refuses $name with $reason', async ({ bind, audience, route, reason }) => {
+		const { resourceUrl } = await triggerAtIdp({ bind });
 		const { service } = flowWithTokenEndpoint([
-			tokenRoute({ access_token: await signIdpToken('https://elsewhere.example'), expires_in: 60 }),
+			route ??
+				tokenRoute({ access_token: await signIdpToken(audience ?? resourceUrl), expires_in: 60 }),
 		]);
 		const { code, state } = await beginAtIdp(service, resourceUrl);
 
-		const result = await service.complete(code, state);
-
-		expect(result).toEqual({ valid: false, reason: 'audience-mismatch' });
-	});
-
-	test('refuses a subject the source has no binding for and may not provision', async () => {
-		const source = await createIdpSource();
-		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
-		const { service } = flowWithTokenEndpoint([
-			tokenRoute({ access_token: await signIdpToken(resourceUrl), expires_in: 60 }),
-		]);
-		const { code, state } = await beginAtIdp(service, resourceUrl);
-
-		const result = await service.complete(code, state);
-
-		// No binding, no email to link by, and provisioning is off by default.
-		expect(result).toEqual({ valid: false, reason: 'provision-refused' });
-	});
-
-	test('refuses a bound user without execute access on the workflow', async () => {
-		const source = await createIdpSource();
-		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
-		await bindIdpSubject(source.id, member.id);
-		const { service } = flowWithTokenEndpoint([
-			tokenRoute({ access_token: await signIdpToken(resourceUrl), expires_in: 60 }),
-		]);
-		const { code, state } = await beginAtIdp(service, resourceUrl);
-
-		const result = await service.complete(code, state);
-
-		expect(result).toEqual({ valid: false, reason: 'insufficient_scope' });
-	});
-
-	test('maps a token endpoint error response to invalid_grant', async () => {
-		const source = await createIdpSource();
-		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
-		const { service } = flowWithTokenEndpoint([tokenRoute({ error: 'invalid_grant' }, 400)]);
-		const { code, state } = await beginAtIdp(service, resourceUrl);
-
-		const result = await service.complete(code, state);
-
-		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
+		expect(await service.complete(code, state)).toEqual({ valid: false, reason });
 	});
 
 	test('refuses a source that lost its redirect-login capability since the flow began', async () => {
-		const source = await createIdpSource();
-		const resourceUrl = await createProtectedFormWorkflow(owner, source.id);
+		const { source, resourceUrl } = await triggerAtIdp({ bind: 'none' });
 		const { service, httpRequest } = flowWithTokenEndpoint([]);
 		const { code, state } = await beginAtIdp(service, resourceUrl);
 		await store.update(source.id, {
