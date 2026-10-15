@@ -87,7 +87,7 @@ function sectionTitle(key: 'waiting' | 'authored') {
 				<N8nText size="small">{{ i18n.baseText('inbox.partial') }}</N8nText>
 				<N8nButton
 					size="mini"
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('generic.retry')"
 					@click="emit('refreshSection')"
 				/>
@@ -96,7 +96,7 @@ function sectionTitle(key: 'waiting' | 'authored') {
 				<N8nText color="danger" size="small">{{ i18n.baseText('inbox.loadError') }}</N8nText>
 				<N8nButton
 					size="mini"
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('generic.retry')"
 					@click="emit('retry')"
 				/>
@@ -105,7 +105,7 @@ function sectionTitle(key: 'waiting' | 'authored') {
 				v-if="section.key !== 'closed' && section.hasMore"
 				:class="$style.loadMore"
 				size="small"
-				variant="subtle"
+				variant="outline"
 				:loading="section.loadingMore"
 				:disabled="section.loading"
 				:label="i18n.baseText('inbox.loadMore')"

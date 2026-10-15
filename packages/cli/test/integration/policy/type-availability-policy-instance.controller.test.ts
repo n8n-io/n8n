@@ -7,6 +7,7 @@ import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -103,7 +104,7 @@ describe('node type availability policy instance controller RBAC', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.put('/node-type-policies/scopes/does-not-exist/attachments')
-			.send({ attachments: [] });
+			.send({ attachments: [], version: 0 });
 
 		expect(response.statusCode).toBe(403);
 	});
@@ -192,6 +193,85 @@ describe('node type availability policy instance controller admin happy path', (
 			'node-type-policy-document-updated',
 			expect.objectContaining({ updatedBy: owner.id }),
 		);
+	});
+
+	test('each accepted PUT /instance moves the version by exactly one', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const rule = (id: string, value: string) => ({
+			id,
+			action: 'deny' as const,
+			selector: { kind: 'name' as const, value },
+		});
+
+		const unwritten = await agent.get('/node-type-policies/instance');
+		expect(unwritten.body.data.version).toBe(0);
+
+		// Each write sends the version the previous response reported. A client that tracks the
+		// version this way must never see a gap, or its next write looks stale to it.
+		const created = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [rule('r1', 'a.b')], defaultAction: 'allow', version: 0 });
+		expect(created.statusCode).toBe(200);
+		expect(created.body.data.version).toBe(1);
+
+		const rulesOnly = await agent.put('/node-type-policies/instance').send({
+			rules: [rule('r2', 'c.d')],
+			defaultAction: 'allow',
+			version: created.body.data.version,
+		});
+		expect(rulesOnly.statusCode).toBe(200);
+		expect(rulesOnly.body.data.version).toBe(2);
+
+		const actionOnly = await agent.put('/node-type-policies/instance').send({
+			rules: [rule('r2', 'c.d')],
+			defaultAction: 'deny',
+			version: rulesOnly.body.data.version,
+		});
+		expect(actionOnly.statusCode).toBe(200);
+		expect(actionOnly.body.data.version).toBe(3);
+
+		const persisted = await agent.get('/node-type-policies/instance');
+		expect(persisted.body.data.version).toBe(3);
+		expect(persisted.body.data.defaultAction).toBe('deny');
+		expect(persisted.body.data.rules).toEqual([rule('r2', 'c.d')]);
+	});
+
+	test('a PUT /instance that changes the rules and the default action together moves the version by one', async () => {
+		const agent = testServer.authAgentFor(owner);
+
+		const first = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		expect(first.statusCode).toBe(200);
+
+		const both = await agent.put('/node-type-policies/instance').send({
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } }],
+			defaultAction: 'deny',
+			version: first.body.data.version,
+		});
+
+		expect(both.statusCode).toBe(200);
+		expect(both.body.data.version).toBe(first.body.data.version + 1);
+	});
+
+	test('a PUT /instance that changes nothing still moves the version by one', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const body = {
+			rules: [
+				{ id: 'r1', action: 'deny' as const, selector: { kind: 'name' as const, value: 'a.b' } },
+			],
+			defaultAction: 'allow' as const,
+		};
+
+		const first = await agent.put('/node-type-policies/instance').send({ ...body, version: 0 });
+		expect(first.statusCode).toBe(200);
+
+		const repeat = await agent
+			.put('/node-type-policies/instance')
+			.send({ ...body, version: first.body.data.version });
+
+		expect(repeat.statusCode).toBe(200);
+		expect(repeat.body.data.version).toBe(first.body.data.version + 1);
 	});
 
 	test('PUT /instance with a stale version returns 409', async () => {
@@ -283,7 +363,10 @@ describe('node type availability policy instance controller admin happy path', (
 
 		const response = await agent
 			.put(`/node-type-policies/scopes/${instance.body.data.scopeId}/attachments`)
-			.send({ attachments: [{ policyId: other.id, priority: 0, isFloor: false }] });
+			.send({
+				attachments: [{ policyId: other.id, priority: 0, isFloor: false }],
+				version: instance.body.data.version,
+			});
 
 		expect(response.statusCode).toBe(400);
 	});
@@ -305,7 +388,7 @@ describe('node type availability policy instance controller admin happy path', (
 		const response = await testServer
 			.authAgentFor(owner)
 			.put(`/node-type-policies/scopes/${otherScope.id}/attachments`)
-			.send({ attachments: [] });
+			.send({ attachments: [], version: otherScope.version });
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -413,13 +496,57 @@ describe('node type availability policy instance controller admin happy path', (
 		await testServer
 			.authAgentFor(owner)
 			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
-			.send({ attachments: [{ policyId, priority: 5, isFloor: false }] });
+			.send({
+				attachments: [{ policyId, priority: 5, isFloor: false }],
+				version: instancePut.body.data.version,
+			});
 
 		const response = await testServer
 			.authAgentFor(owner)
 			.delete(`/node-type-policies/policies/${policyId}`);
 
 		expect(response.statusCode).toBe(409);
+	});
+
+	test('PUT /scopes/:scopeId/attachments with a stale version returns 409 and writes nothing', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const instance = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		expect(instance.statusCode).toBe(200);
+
+		const read = await agent.get('/node-type-policies/instance');
+		expect(read.statusCode).toBe(200);
+		const { scopeId, version } = read.body.data;
+		const rule = {
+			id: 'r1',
+			action: 'deny',
+			selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
+		};
+		const policy = await agent.post('/node-type-policies/policies').send({ rules: [rule] });
+		expect(policy.statusCode).toBe(200);
+		const attachment = { policyId: policy.body.data.policy.id, priority: 0, isFloor: false };
+
+		const first = await agent
+			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
+			.send({ attachments: [attachment], version });
+		expect(first.statusCode).toBe(200);
+		expect(first.body.data.version).toBe(version + 1);
+		expect(first.body.data.attachments).toEqual([{ ...attachment, rules: [rule] }]);
+
+		const stale = await agent
+			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
+			.send({ attachments: [], version });
+
+		expect(stale.statusCode).toBe(409);
+		const persisted = await agent.get('/node-type-policies/instance');
+		expect(persisted.statusCode).toBe(200);
+		expect(persisted.body.data.version).toBe(first.body.data.version);
+		expect(persisted.body.data.rules).toEqual([rule]);
+		const attachments = await Container.get(
+			TypeAvailabilityPolicyAttachmentRepository,
+		).listAttachmentsForScope(scopeId, {});
+		expect(attachments).toEqual([{ ...attachment, rules: [rule] }]);
 	});
 
 	test('PUT /scopes/:scopeId/attachments persists and fires an audit event', async () => {
@@ -442,7 +569,10 @@ describe('node type availability policy instance controller admin happy path', (
 		const response = await testServer
 			.authAgentFor(owner)
 			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
-			.send({ attachments: [{ policyId, priority: 1, isFloor: false }] });
+			.send({
+				attachments: [{ policyId, priority: 1, isFloor: false }],
+				version: instancePut.body.data.version,
+			});
 
 		expect(response.statusCode).toBe(200);
 		expect(emitSpy).toHaveBeenCalledWith(

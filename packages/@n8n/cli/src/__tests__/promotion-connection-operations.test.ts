@@ -215,7 +215,34 @@ describe('promotion-connection apply command', () => {
 		const message = logToStderr.mock.calls[0][0];
 		expect(message).toContain(
 			`n8n-cli promotion-connection apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}\n` +
-				'To also apply data table changes that remove, rename, or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
+				'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
+		);
+		expect(exit).toHaveBeenCalledWith(4);
+	});
+
+	it('exits 4 and lists the projects that a confirmed Apply deletes', async () => {
+		const { run, logToStderr, exit } = runApply({
+			...BLOCKED_RESULT,
+			preflight: {
+				...BLOCKED_RESULT.preflight,
+				conflicts: [
+					{
+						kind: 'project',
+						code: 'project-deletion',
+						project: { id: 'proj-2', name: 'Sales' },
+					},
+				],
+			},
+		});
+
+		await run();
+
+		const message = logToStderr.mock.calls[0][0];
+		expect(message).toContain(
+			'Apply deletes these projects with everything in them:\n' + '  Sales (proj-2)',
+		);
+		expect(message).toContain(
+			"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});

@@ -97,6 +97,7 @@ describe('useSettingsItems', () => {
 			vi.mocked(hasPermission).mockReturnValue(true);
 			// Module items in registration order, with the orders the real modules set.
 			settingsSidebarItems.value = [
+				{ id: 'settings-log-streaming', available: true, order: 170 },
 				{ id: 'settings-mcp', available: true, order: 200 },
 				{ id: 'settings-chat-hub', available: true, order: 220 },
 				{ id: 'settings-instance-ai', available: true, order: 230 },

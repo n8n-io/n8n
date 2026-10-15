@@ -4,9 +4,6 @@ tags:
 summary: Stop multiple executions
 description: Stop multiple executions from your instance based on filter criteria.
 x-required-scope: execution:stop
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

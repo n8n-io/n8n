@@ -79,6 +79,7 @@ import {
 } from '../integrations/integration-message-context';
 import type { ToolRegistry } from '../tool-registry';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const aiConfigMock = mock<AiConfig>({
 	modelStreamIdleTimeoutMs: 90_000,
@@ -294,6 +295,7 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobRepository,
 		backgroundJobs,
 		settingsService,
+		createAgentSkillRefsService(),
 	);
 
 	return {
@@ -1900,6 +1902,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			integrationMessageContextService,
 			agentRunTracingService,
 			externalHooks,
+			telemetry,
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
@@ -1956,6 +1959,23 @@ describe('AgentExecutionOrchestratorService', () => {
 				modelId: 'anthropic/claude-sonnet-4-5',
 			}),
 		);
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		options.executionCounter?.incrementMessageCount();
+		options.executionCounter?.incrementToolCallCount();
+		expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
+			agent_id: agentId,
+			user_id: userId,
+			run_type: 'test',
+			source: 'instance-ai',
+			message_count: 1,
+		});
+		expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
+			agent_id: agentId,
+			user_id: userId,
+			run_type: 'test',
+			source: 'instance-ai',
+			tool_call_count: 1,
+		});
 	});
 
 	it.each(['chat', 'wake', 'approval'] as const)(
@@ -3911,47 +3931,62 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('recovers the original run source from the latest suspended execution when resuming', async () => {
-		const {
-			service,
-			checkpointStorage,
-			runtimeCacheService,
-			executionService,
-			agentRunTracingService,
-		} = makeService();
-		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+	it.each([true, false])(
+		'recovers the original resume source with tracing enabled: %s',
+		async (tracingEnabled) => {
+			const {
+				service,
+				checkpointStorage,
+				runtimeCacheService,
+				executionService,
+				agentRunTracingService,
+				telemetry,
+			} = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
-		checkpointStorage.getStatus.mockResolvedValueOnce({
-			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
-		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
-		executionService.findLatestSuspendedRun.mockResolvedValueOnce({ source: 'telegram' } as never);
+			Object.defineProperty(agentRunTracingService, 'enabled', { value: tracingEnabled });
+			checkpointStorage.getStatus.mockResolvedValueOnce({
+				status: 'active',
+				checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			} as never);
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			executionService.findLatestSuspendedRun.mockResolvedValueOnce({
+				source: 'telegram',
+			} as never);
 
-		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'telegram',
-			}),
-		);
+			await collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { value: 'yes' },
+					integrationType: 'telegram',
+				}),
+			);
 
-		expect(executionService.findLatestSuspendedRun).toHaveBeenCalledWith('thread-1');
-		expect(agentRunTracingService.build).toHaveBeenCalledWith(
-			expect.objectContaining({ source: 'telegram' }),
-		);
-		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
-			expect.objectContaining({ source: 'telegram' }),
-			expect.any(Date),
-		);
-		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
-			'execution-1',
-			expect.objectContaining({ source: 'telegram' }),
-		);
-	});
+			expect(executionService.findLatestSuspendedRun).toHaveBeenCalledWith('thread-1');
+			expect(agentRunTracingService.build).toHaveBeenCalledWith(
+				expect.objectContaining({ source: 'telegram' }),
+			);
+			expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({ source: 'telegram' }),
+				expect.any(Date),
+			);
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({ source: 'telegram' }),
+			);
+			const options = runtime.agent.resume.mock.calls[0][2] as ExecutionOptions;
+			options.executionCounter?.incrementTokenCount(15);
+			expect(telemetry.trackAgentExecution).toHaveBeenCalledExactlyOnceWith({
+				agent_id: agentId,
+				run_type: 'production',
+				source: 'telegram',
+				token_count: 15,
+			});
+		},
+	);
 
 	it('falls back to source "unknown" when no suspended execution is found on resume', async () => {
 		const {
@@ -4038,40 +4073,6 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'n8n_chat_production' }),
 			expect.any(Date),
-		);
-	});
-
-	it('skips the suspended-run lookup on resume when tracing is disabled', async () => {
-		const {
-			service,
-			checkpointStorage,
-			runtimeCacheService,
-			executionService,
-			agentRunTracingService,
-		} = makeService();
-		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
-
-		Object.defineProperty(agentRunTracingService, 'enabled', { value: false });
-		checkpointStorage.getStatus.mockResolvedValueOnce({
-			status: 'active',
-			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
-		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
-
-		await collect(
-			service.resumeForChat({
-				agentId,
-				projectId,
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				resumeData: { value: 'yes' },
-				integrationType: 'slack',
-			}),
-		);
-
-		expect(executionService.findLatestSuspendedRun).not.toHaveBeenCalled();
-		expect(agentRunTracingService.build).toHaveBeenCalledWith(
-			expect.objectContaining({ source: 'unknown' }),
 		);
 	});
 

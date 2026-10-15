@@ -3,7 +3,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
+import { RestrictedNodeTypesProviderProxy } from '@n8n/backend-services';
 
 /**
  * The module-level `licenseFlag` skips `init()` on an unlicensed instance, so neither the

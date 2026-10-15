@@ -78,6 +78,7 @@ export default {
 	'codeBlock.expand': 'Expand code',
 	'codeBlock.collapse': 'Collapse code',
 	'previewBadge.preview': 'Preview',
+	'spinner.loading': 'Loading…',
 	'askAssistantButton.askAssistant': 'n8n AI',
 	'assistantChat.builder.name': 'AI Builder',
 	'assistantChat.builder.generatingFinalWorkflow': 'Generating final workflow...',

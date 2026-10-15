@@ -36,6 +36,20 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 		headers: z.record(z.string(), z.string()).optional(),
 	}),
 	google: apiKeyCreds,
+	'google-vertex': z.object({
+		sdk: z.string().optional(),
+		project: z.string().trim().min(1, 'Google Cloud project ID is required'),
+		location: z
+			.string()
+			.trim()
+			.min(1, 'Google Cloud region is required')
+			.regex(
+				/^(?:global|eu|us|[a-z]+-[a-z]+\d+)$/,
+				'Use a Google Cloud region such as us-central1, global, eu, or us',
+			),
+		clientEmail: z.string().trim().min(1, 'Service account email is required'),
+		privateKey: z.string().trim().min(1, 'Service account private key is required'),
+	}),
 	xai: apiKeyCreds,
 	groq: apiKeyCreds,
 	deepseek: apiKeyCreds,
@@ -61,9 +75,10 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 			 */
 			endpointType: z.enum(['classic', 'foundry']).optional(),
 			/**
-			 * User-defined Azure deployment name for classic endpoints. The catalog
-			 * model id is not the deployment id, so the agent flow must carry this
-			 * separately. Only used by the classic branch.
+			 * User-defined Azure deployment name. The catalog model id is not the
+			 * deployment id, so the agent flow must carry this separately. Used by
+			 * both the classic and Foundry branches; on Foundry it overrides the
+			 * model id in the request path.
 			 */
 			deploymentName: z.string().optional(),
 			/**

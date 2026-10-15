@@ -62,6 +62,30 @@ describe('AgentChatMessageDto', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it('accepts an object client context and keeps it in the parsed payload', () => {
+		const clientContext = { timeZone: 'Europe/Helsinki', nested: { ids: ['a', 'b'] }, flag: null };
+		const payload = { message: 'hello', clientContext };
+		expect(AgentChatMessageDto.parse(payload)).toEqual(payload);
+		expect(AgentChatMessageDto.safeParse({ message: 'hello', clientContext: {} }).success).toBe(
+			true,
+		);
+	});
+
+	it('accepts a payload without a client context', () => {
+		const parsed = AgentChatMessageDto.parse({ message: 'hello' });
+		expect(parsed).not.toHaveProperty('clientContext');
+	});
+
+	it.each([
+		['null', null],
+		['an array', [{ timeZone: 'UTC' }]],
+		['a string', 'UTC'],
+		['a number', 1],
+		['a boolean', true],
+	])('rejects a client context that is %s', (_label, clientContext) => {
+		expect(AgentChatMessageDto.safeParse({ message: 'hello', clientContext }).success).toBe(false);
+	});
+
 	it('rejects attachments with empty fileName or mimeType', () => {
 		expect(
 			AgentChatMessageDto.safeParse({

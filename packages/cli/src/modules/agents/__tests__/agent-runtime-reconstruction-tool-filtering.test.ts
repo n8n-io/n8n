@@ -3,6 +3,7 @@ import type { CredentialProvider } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	type AgentJsonConfig,
+	type AgentJsonSkillConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -25,6 +26,7 @@ import type { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiService } from '@/services/ai.service';
 import { WorkflowRunner } from '@/workflow-runner';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -33,6 +35,8 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
+import { resolveAgentRunSource, type AgentRunSource } from '../utils/agent-published-snapshot';
+import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -114,25 +118,27 @@ vi.mock('../json-config/from-json-config', async () => {
 	};
 });
 
-function makeAgentEntity(tools: AgentJsonToolConfig[]): Agent {
+function makeAgentEntity(tools: AgentJsonToolConfig[]): AgentRunSource {
 	const schema: AgentJsonConfig = {
 		name: 'Test Agent',
 		model: 'anthropic/claude-sonnet-4-5',
 		instructions: 'Be helpful',
 		tools,
 	};
-	return {
+	const agent = {
 		id: 'agent-1',
 		projectId,
 		schema,
 		tools: { custom_tool: { descriptor: { name: 'custom_tool' }, code: '' } },
 	} as unknown as Agent;
+	return { agent, skillRefs: undefined, skills: {} };
 }
 
 function makeService(overrides: {
 	credentialsFinderService?: ReturnType<typeof mock<CredentialsFinderService>>;
 	workflowFinderService?: ReturnType<typeof mock<WorkflowFinderService>>;
 	workflowRepository?: ReturnType<typeof mock<WorkflowRepository>>;
+	credentialsService?: ReturnType<typeof mock<CredentialsService>>;
 }) {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
@@ -145,6 +151,7 @@ function makeService(overrides: {
 		overrides.credentialsFinderService ?? mock<CredentialsFinderService>();
 	const workflowFinderService = overrides.workflowFinderService ?? mock<WorkflowFinderService>();
 	const workflowRepository = overrides.workflowRepository ?? mock<WorkflowRepository>();
+	const credentialsService = overrides.credentialsService ?? mock<CredentialsService>();
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -166,6 +173,7 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
+		credentialsService,
 	);
 
 	return {
@@ -173,6 +181,7 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		workflowRepository,
+		credentialsService,
 	};
 }
 
@@ -216,6 +225,53 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	afterEach(() => {
 		Container.reset();
 	});
+
+	it.each([
+		{ run: 'draft', usePublishedVersion: false },
+		{ run: 'published', usePublishedVersion: true },
+	])(
+		'builds a $run runtime with the skill refs of the same $run',
+		async ({ usePublishedVersion }) => {
+			const { service } = makeService({});
+			const draftRefs: AgentJsonSkillConfig[] = [
+				{ type: 'skill', id: 'zeta' },
+				{ type: 'skill', id: 'alpha', versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f' },
+			];
+			const publishedRefs: AgentJsonSkillConfig[] = [
+				{ type: 'skill', id: 'mid' },
+				{ type: 'skill', id: 'zeta' },
+			];
+			const baseConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = {
+				id: 'agent-1',
+				projectId,
+				schema: storedAgentConfig({ ...baseConfig, skills: draftRefs }),
+				tools: {},
+				skills: {},
+				activeVersion: {
+					versionId: 'version-1',
+					schema: storedAgentConfig({ ...baseConfig, skills: publishedRefs }),
+					tools: {},
+					skills: {},
+				},
+			} as unknown as Agent;
+
+			const runSource = await resolveAgentRunSource(
+				agent,
+				usePublishedVersion,
+				createAgentSkillRefsService(),
+				{},
+			);
+			await service.reconstructFromAgentEntity(runSource, mock<CredentialProvider>(), 'test');
+
+			const [config] = buildFromJsonMock.mock.calls.at(-1) as [AgentJsonConfig];
+			expect(config.skills).toEqual(usePublishedVersion ? publishedRefs : draftRefs);
+		},
+	);
 
 	it('does not filter tools when no user is supplied (published/integration runs)', async () => {
 		const { service } = makeService({});
@@ -320,6 +376,133 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			['credential:read'],
 		);
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
+	});
+
+	describe('with personal credentials not supported by agents', () => {
+		beforeEach(() => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+		});
+
+		afterEach(() => {
+			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+		});
+
+		function makeReadableCredentialFinder() {
+			const credentialsFinderService = mock<CredentialsFinderService>();
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'cred-1' }),
+			);
+			return credentialsFinderService;
+		}
+
+		it('drops a node tool whose credential the project list leaves out', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const { service } = makeService({
+				credentialsFinderService: makeReadableCredentialFinder(),
+				credentialsService,
+			});
+			const entity = makeAgentEntity([nodeToolWithCredential, nodeToolWithoutCredential]);
+
+			const result = await service.reconstructFromAgentEntity(
+				entity,
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				testUser,
+				{ projectId, excludePersonalRoute: true },
+			);
+			expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
+			expect(result.userToolAccessSnapshot?.credentialIds).toEqual([]);
+		});
+
+		it('keeps a node tool whose credential is in the project list', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({
+				credentialsFinderService: makeReadableCredentialFinder(),
+				credentialsService,
+			});
+			const entity = makeAgentEntity([nodeToolWithCredential, nodeToolWithoutCredential]);
+
+			await service.reconstructFromAgentEntity(
+				entity,
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+			);
+
+			expect(toolNamesPassedToBuildFromJson()).toEqual(['Send Slack message', 'Get date']);
+		});
+
+		it('refuses a cached runtime whose credential the project list now leaves out', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const { service } = makeService({
+				credentialsFinderService: makeReadableCredentialFinder(),
+				credentialsService,
+			});
+
+			await expect(
+				service.userStillHasToolAccess(
+					{ credentialIds: ['cred-1'], workflowIds: [] },
+					projectId,
+					testUser,
+				),
+			).resolves.toBe(false);
+		});
+
+		it('accepts a cached runtime whose credential is in the project list', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({
+				credentialsFinderService: makeReadableCredentialFinder(),
+				credentialsService,
+			});
+
+			await expect(
+				service.userStillHasToolAccess(
+					{ credentialIds: ['cred-1'], workflowIds: [] },
+					projectId,
+					testUser,
+				),
+			).resolves.toBe(true);
+		});
+	});
+
+	it('does not ask for the project credential list when the flag is off', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			mock<CredentialsEntity>({ id: 'cred-1' }),
+		);
+		const credentialsService = mock<CredentialsService>();
+		const { service } = makeService({ credentialsFinderService, credentialsService });
+		const entity = makeAgentEntity([nodeToolWithCredential]);
+
+		await service.reconstructFromAgentEntity(
+			entity,
+			mock<CredentialProvider>(),
+			'production',
+			undefined,
+			testUser,
+		);
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+		expect(toolNamesPassedToBuildFromJson()).toEqual(['Send Slack message']);
 	});
 
 	it('skips disabled tools before looking up user access', async () => {

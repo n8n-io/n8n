@@ -66,17 +66,43 @@ describe('SharedWorkflowRepository', () => {
 		it('finds workflow IDs accessible through project and workflow roles', async () => {
 			entityManager.find.mockResolvedValue(rows);
 
-			const result = await sharedWorkflowRepository.findWorkflowIdsAccessibleToUser(
-				'user-1',
-				['workflow:owner'],
-				['project:viewer'],
-			);
+			const result = await sharedWorkflowRepository.findWorkflowIdsAccessibleToUser({
+				userId: 'user-1',
+				workflowRoleSlugs: ['workflow:owner'],
+				projectRoleSlugs: ['project:viewer'],
+			});
 
 			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
 				select: ['workflowId'],
 				where: {
 					role: In(['workflow:owner']),
 					project: {
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: In(['project:viewer']) },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('limits workflow IDs accessible to a user to a project', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsAccessibleToUser({
+				userId: 'user-1',
+				workflowRoleSlugs: ['workflow:owner'],
+				projectRoleSlugs: ['project:viewer'],
+				projectId: 'project-1',
+			});
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: {
+					role: In(['workflow:owner']),
+					project: {
+						id: 'project-1',
 						projectRelations: {
 							userId: 'user-1',
 							role: { slug: In(['project:viewer']) },

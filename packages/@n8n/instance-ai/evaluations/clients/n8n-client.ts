@@ -32,6 +32,8 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
+import { recordEvalUsage } from '../../src/utils/eval-usage';
+
 // Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
 // AbortSignal is the real bound. This is process-global: only ever imported by the
 // eval CLI harness — never import into the n8n server or shared runtime code.
@@ -998,6 +1000,17 @@ export class N8nClient {
 		});
 	}
 
+	/** Send the thread's connection tests for one credential type to a provider stand-in. */
+	async setThreadCredentialTestTarget(
+		threadId: string,
+		target: { credentialType: string; baseUrl: string; urlField: string },
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-test-target', {
+			method: 'POST',
+			body: { threadId, ...target },
+		});
+	}
+
 	/**
 	 * Seed an existing thread with a previously exported conversation: the
 	 * referenced workflows are recreated (node credentials stripped server-side),
@@ -1350,6 +1363,7 @@ export class N8nClient {
 			body,
 			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
 		return result.data;
 	}
 
@@ -1377,6 +1391,7 @@ export class N8nClient {
 				timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 			},
 		)) as { data: InstanceAiEvalAgentExecutionResult };
+		recordEvalUsage(result.data.llmUsage);
 		return result.data;
 	}
 

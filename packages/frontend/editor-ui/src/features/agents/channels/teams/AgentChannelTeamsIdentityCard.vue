@@ -13,8 +13,10 @@ withDefaults(
 		tooltip?: string;
 		ready: boolean;
 		loading?: boolean;
+		/** Teams holds an older version of what this card shows. */
+		outdated?: boolean;
 	}>(),
-	{ personalisation: null, tooltip: '', loading: false },
+	{ personalisation: null, tooltip: '', loading: false, outdated: false },
 );
 
 const emit = defineEmits<{ download: [] }>();
@@ -24,7 +26,11 @@ const i18n = useI18n();
 
 <template>
 	<div
-		:class="[$style.identity, ready ? $style.identityReady : $style.locked]"
+		:class="[
+			$style.identity,
+			ready ? $style.identityReady : $style.locked,
+			{ [$style.outdated]: outdated },
+		]"
 		data-testid="teams-identity"
 	>
 		<AgentPersonalisationIcon :personalisation="personalisation" :size="36" />
@@ -44,17 +50,20 @@ const i18n = useI18n();
 				{{ description }}
 			</N8nText>
 		</div>
-		<N8nButton
-			variant="outline"
-			size="medium"
-			:disabled="!ready || loading"
-			:loading="loading"
-			data-testid="teams-download-package"
-			@click="emit('download')"
-		>
-			{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-			<N8nIcon icon="download" size="medium" />
-		</N8nButton>
+		<!-- The recommended setup offers a menu here instead of the download. -->
+		<slot name="action">
+			<N8nButton
+				variant="outline"
+				size="medium"
+				:disabled="!ready || loading"
+				:loading="loading"
+				data-testid="teams-download-package"
+				@click="emit('download')"
+			>
+				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
+				<N8nIcon icon="download" size="medium" />
+			</N8nButton>
+		</slot>
 	</div>
 </template>
 
@@ -78,6 +87,11 @@ const i18n = useI18n();
 	background: light-dark(var(--color--neutral-50), var(--color--white-alpha-50));
 	/* The dark fill matches the subtle border, which would hide it. */
 	border-color: light-dark(var(--border-color--subtle), var(--border-color));
+}
+
+.outdated.outdated {
+	background: var(--callout--color--background--warning);
+	border-color: var(--callout--border-color--warning);
 }
 
 .locked {

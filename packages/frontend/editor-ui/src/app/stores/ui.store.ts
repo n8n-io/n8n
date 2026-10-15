@@ -33,8 +33,13 @@ import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
-import { modalRegistry, type IMenuSettingItem } from '@n8n/frontend-module-sdk';
+import {
+	modalRegistry,
+	type IMenuSettingItem,
+	type ModuleLicenseFlag,
+} from '@n8n/frontend-module-sdk';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { showsPlaceholderPage } from '@/app/moduleInitializer/placeholderPage';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -173,6 +178,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * when the corresponding module is active.
 	 */
 	const registeredSettingsPages = ref<Record<string, IMenuSettingItem[]>>({});
+	// Module id → license flag, for modules with a placeholder page
+	const placeholderLicenseFlags = ref<Record<string, ModuleLicenseFlag>>({});
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -285,7 +292,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsSidebarItems = computed<IMenuSettingItem[]>(() => {
 		const items: IMenuSettingItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
-			if (settingsStore.isModuleActive(moduleName)) {
+			if (
+				settingsStore.isModuleActive(moduleName) ||
+				showsPlaceholderPage(placeholderLicenseFlags.value[moduleName])
+			) {
 				items.push(...moduleItems.map((item) => ({ available: true, ...item })));
 			}
 		});
@@ -444,6 +454,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			workflowId?: string;
 			contextNode?: INodeUi;
+			initialTab?: NewCredentialsModal['initialTab'];
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
@@ -463,6 +474,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
+			initialTab: options.initialTab,
 		} as Partial<NewCredentialsModal>);
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -508,6 +520,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 			usageScope: options.usageScope,
 			credentialSetupHint: options.credentialSetupHint,
+			initialTab: undefined,
 			notice: options.notice,
 			initialName: options.initialName,
 			initialData: options.initialData,
@@ -599,8 +612,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
-	const registerSettingsPages = (moduleName: string, items: IMenuSettingItem[]) => {
+	const registerSettingsPages = (
+		moduleName: string,
+		items: IMenuSettingItem[],
+		placeholderLicenseFlag?: ModuleLicenseFlag,
+	) => {
 		registeredSettingsPages.value[moduleName] = items;
+		if (placeholderLicenseFlag) placeholderLicenseFlags.value[moduleName] = placeholderLicenseFlag;
 	};
 
 	/**

@@ -84,6 +84,7 @@ export class ModuleRegistry {
 		'inbox',
 		'instance-ai',
 		'agents',
+		'agent-evals',
 		'scim',
 	];
 

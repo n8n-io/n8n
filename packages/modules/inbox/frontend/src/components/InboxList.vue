@@ -109,7 +109,7 @@ function onListBackgroundClick() {
 			>
 				<N8nText color="danger" size="small">{{ i18n.baseText('inbox.loadError') }}</N8nText>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="mini"
 					:label="i18n.baseText('generic.retry')"
 					@click="emit('retryActiveTab')"

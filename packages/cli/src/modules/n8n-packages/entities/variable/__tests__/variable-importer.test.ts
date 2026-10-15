@@ -47,8 +47,8 @@ afterEach(() => {
 describe('VariableImporter.apply', () => {
 	const projectCreationPlan: VariableImportPlan = {
 		matched: [],
-		missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
-		creations: [{ name: 'API_KEY', projectId: 'proj-target', usedByWorkflows: ['wf-1'] }],
+		missing: [{ name: 'API_KEY' }],
+		creations: [{ name: 'API_KEY', projectId: 'proj-target' }],
 		conflicts: [],
 		overwrites: [],
 	};
