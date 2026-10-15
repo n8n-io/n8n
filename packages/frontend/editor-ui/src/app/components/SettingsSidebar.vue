@@ -17,7 +17,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 
-const { settingsItems, handleSettingsItemSelect } = useSettingsItems();
+const { settingsSections, handleSettingsItemSelect } = useSettingsItems();
 const { fetchWallet, isEnabled } = useAiGateway();
 
 onMounted(() => {
@@ -34,12 +34,29 @@ onMounted(() => {
 			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
 		<div :class="$style.items">
-			<N8nMenuItem
-				v-for="item in settingsItems"
-				:key="item.id"
-				:item="item"
-				@click="handleSettingsItemSelect(item.id)"
-			/>
+			<div
+				v-for="section in settingsSections"
+				:key="section.id"
+				:class="$style.section"
+				:data-test-id="`settings-section-${section.id}`"
+			>
+				<N8nText
+					v-if="section.title"
+					tag="div"
+					size="small"
+					bold
+					color="text-light"
+					:class="$style.sectionTitle"
+				>
+					{{ section.title }}
+				</N8nText>
+				<N8nMenuItem
+					v-for="item in section.items"
+					:key="item.id"
+					:item="item"
+					@click="handleSettingsItemSelect(item.id)"
+				/>
+			</div>
 		</div>
 		<div :class="$style.versionContainer">
 			<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
@@ -85,6 +102,20 @@ onMounted(() => {
 	flex-direction: column;
 
 	padding: 0 var(--spacing--3xs);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+
+	& + & {
+		margin-top: var(--spacing--xs);
+	}
+}
+
+.sectionTitle {
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .versionContainer {

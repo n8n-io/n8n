@@ -1,4 +1,5 @@
 import { reactive } from 'vue';
+import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -252,6 +253,28 @@ describe('MainSidebar', () => {
 			creditsItem.click();
 
 			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });
+		});
+
+		it('should list the settings links under their section headings', async () => {
+			settingsStore.settings = {
+				...defaultSettings,
+				aiGateway: {
+					enabled: true,
+					budget: 0,
+					cloudUbbEnabled: true,
+				},
+			};
+
+			const { getByText, findByTestId } = renderComponent();
+
+			getByText('Settings').click();
+			const aiSection = await findByTestId('main-sidebar-settings-section-ai');
+			const generalSection = await findByTestId('main-sidebar-settings-section-general');
+
+			// Routed links render through the mocked RouterLink, so only the credits link has text.
+			expect(within(aiSection).getByText('AI')).toBeInTheDocument();
+			expect(within(aiSection).getByText('Gateway credits')).toBeInTheDocument();
+			expect(within(generalSection).queryByText('General')).not.toBeInTheDocument();
 		});
 	});
 });

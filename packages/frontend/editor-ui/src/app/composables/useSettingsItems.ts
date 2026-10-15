@@ -3,7 +3,7 @@ import { useUserHelpers } from './useUserHelpers';
 import { useAiGateway } from './useAiGateway';
 import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 import { computed } from 'vue';
-import type { IMenuSettingItem } from '@n8n/frontend-module-sdk';
+import type { IMenuSettingItem, SettingsSectionId } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
@@ -16,6 +16,30 @@ import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotions
 
 type ShellSettingsItem = IMenuSettingItem & { order: number };
 
+/**
+ * Links without a `section` form the `general` group: it has no heading and is listed first.
+ * The other groups follow in the order of `SETTINGS_SECTION_ORDER`.
+ */
+export type SettingsSectionGroupId = SettingsSectionId | 'general';
+
+export type SettingsSectionGroup = {
+	id: SettingsSectionGroupId;
+	/** No title for the `general` group. */
+	title?: string;
+	items: IMenuSettingItem[];
+};
+
+const SETTINGS_SECTION_ORDER: SettingsSectionGroupId[] = [
+	'general',
+	'people',
+	'ai',
+	'integrations',
+	'security',
+	'operations',
+];
+
+const sectionOf = (item: IMenuSettingItem): SettingsSectionGroupId => item.section ?? 'general';
+
 export function useSettingsItems() {
 	const router = useRouter();
 	const i18n = useI18n();
@@ -27,7 +51,9 @@ export function useSettingsItems() {
 	const { openTopUp } = useAiGatewayTopUp();
 
 	const settingsItems = computed<IMenuSettingItem[]>(() => {
+		// `order` is the position inside the section: hundreds pick the section, tens the row.
 		const shellItems: ShellSettingsItem[] = [
+			// General: the pages every user has, listed without a heading.
 			{
 				id: 'settings-usage-and-plan',
 				order: 10,
@@ -46,9 +72,11 @@ export function useSettingsItems() {
 				available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
 				route: { to: { name: VIEWS.PERSONAL_SETTINGS } },
 			},
+			// People & access
 			{
 				id: 'settings-users',
-				order: 30,
+				order: 110,
+				section: 'people',
 				icon: 'users',
 				label: i18n.baseText('settings.users'),
 				position: 'top',
@@ -56,8 +84,41 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.USERS_SETTINGS } },
 			},
 			{
+				id: 'settings-roles',
+				order: 120,
+				section: 'people',
+				icon: 'users',
+				label: i18n.baseText('settings.roles'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
+				route: { to: { name: VIEWS.ROLES_SETTINGS } },
+				new: true,
+			},
+			{
+				id: 'settings-sso',
+				order: 130,
+				section: 'people',
+				icon: 'lock',
+				label: i18n.baseText('settings.sso'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
+				route: { to: { name: VIEWS.SSO_SETTINGS } },
+			},
+			{
+				id: 'settings-ldap',
+				order: 140,
+				section: 'people',
+				icon: 'network',
+				label: i18n.baseText('settings.ldap'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
+				route: { to: { name: VIEWS.LDAP_SETTINGS } },
+			},
+			// AI (modules add MCP at 210, Chat at 220, Assistant at 250 and Agents at 260)
+			{
 				id: 'settings-ai',
-				order: 40,
+				order: 230,
+				section: 'ai',
 				icon: 'sparkles',
 				label: i18n.baseText('settings.ai'),
 				position: 'top',
@@ -67,7 +128,8 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-n8n-connect',
-				order: 50,
+				order: 240,
+				section: 'ai',
 				icon: 'plug-zap',
 				label: i18n.baseText(
 					settingsStore.isAiGatewayCloudUbbEnabled ? 'settings.n8nCredits' : 'settings.n8nConnect',
@@ -88,18 +150,23 @@ export function useSettingsItems() {
 						: undefined,
 			},
 			{
-				id: 'settings-roles',
-				order: 60,
-				icon: 'users',
-				label: i18n.baseText('settings.roles'),
+				// The flag is read here because the middleware check does not run route guards.
+				id: 'settings-context',
+				order: 270,
+				section: 'ai',
+				icon: 'brain',
+				label: i18n.baseText('settings.context.title'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
-				route: { to: { name: VIEWS.ROLES_SETTINGS } },
-				new: true,
+				available:
+					isContextPreferencesEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+				route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
+				preview: true,
 			},
+			// Integrations
 			{
 				id: 'settings-api',
-				order: 70,
+				order: 310,
+				section: 'integrations',
 				icon: 'plug',
 				label: i18n.baseText('settings.n8napi'),
 				position: 'top',
@@ -107,8 +174,30 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.API_SETTINGS } },
 			},
 			{
+				id: 'settings-community-nodes',
+				order: 320,
+				section: 'integrations',
+				icon: 'box',
+				label: i18n.baseText('settings.communityNodes'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
+				route: { to: { name: VIEWS.COMMUNITY_NODES } },
+			},
+			// Security
+			{
+				id: 'settings-security',
+				order: 410,
+				section: 'security',
+				icon: 'shield',
+				label: i18n.baseText('settings.security'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.SECURITY_SETTINGS),
+				route: { to: { name: VIEWS.SECURITY_SETTINGS } },
+			},
+			{
 				id: 'settings-external-secrets',
-				order: 80,
+				order: 420,
+				section: 'security',
 				icon: 'vault',
 				label: i18n.baseText('settings.externalSecrets.title'),
 				position: 'top',
@@ -117,7 +206,8 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-credential-resolvers',
-				order: 90,
+				order: 430,
+				section: 'security',
 				icon: 'key-round',
 				label: i18n.baseText('credentialResolver.view.title'),
 				position: 'top',
@@ -125,36 +215,9 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.RESOLVERS } },
 			},
 			{
-				id: 'settings-source-control',
-				order: 100,
-				icon: 'git-branch',
-				label: i18n.baseText('settings.sourceControl.title'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
-				route: { to: { name: VIEWS.SOURCE_CONTROL } },
-			},
-			{
-				id: 'settings-promotions',
-				order: 110,
-				icon: 'git-branch',
-				label: i18n.baseText('settings.promotions.title'),
-				position: 'top',
-				available: isPromotionsEnabled.value && canUserAccessRouteByName(PROMOTIONS_SETTINGS_VIEW),
-				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
-				preview: true,
-			},
-			{
-				id: 'settings-sso',
-				order: 120,
-				icon: 'lock',
-				label: i18n.baseText('settings.sso'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
-				route: { to: { name: VIEWS.SSO_SETTINGS } },
-			},
-			{
 				id: 'settings-encryption-keys',
-				order: 130,
+				order: 440,
+				section: 'security',
 				icon: 'key-round',
 				label: i18n.baseText('settings.encryptionKeys'),
 				position: 'top',
@@ -163,27 +226,32 @@ export function useSettingsItems() {
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
+			// Operations (modules add Log streaming at 540 and OpenTelemetry at 550)
 			{
-				id: 'settings-security',
-				order: 140,
-				icon: 'shield',
-				label: i18n.baseText('settings.security'),
+				id: 'settings-source-control',
+				order: 510,
+				section: 'operations',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.sourceControl.title'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.SECURITY_SETTINGS),
-				route: { to: { name: VIEWS.SECURITY_SETTINGS } },
+				available: canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
+				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
-				id: 'settings-ldap',
-				order: 150,
-				icon: 'network',
-				label: i18n.baseText('settings.ldap'),
+				id: 'settings-promotions',
+				order: 520,
+				section: 'operations',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.promotions.title'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
-				route: { to: { name: VIEWS.LDAP_SETTINGS } },
+				available: isPromotionsEnabled.value && canUserAccessRouteByName(PROMOTIONS_SETTINGS_VIEW),
+				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
+				preview: true,
 			},
 			{
 				id: 'settings-workersview',
-				order: 160,
+				order: 530,
+				section: 'operations',
 				icon: 'wrench',
 				label: i18n.baseText('mainSidebar.workersView'),
 				position: 'top',
@@ -193,17 +261,9 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.WORKER_VIEW } },
 			},
 			{
-				id: 'settings-community-nodes',
-				order: 180,
-				icon: 'box',
-				label: i18n.baseText('settings.communityNodes'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
-				route: { to: { name: VIEWS.COMMUNITY_NODES } },
-			},
-			{
 				id: 'settings-migration-report',
-				order: 190,
+				order: 560,
+				section: 'operations',
 				icon: 'clipboard',
 				label: i18n.baseText('settings.migrationReport'),
 				position: 'top',
@@ -211,30 +271,40 @@ export function useSettingsItems() {
 					!!MIGRATION_REPORT_TARGET_VERSION && canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
 				route: { to: { name: VIEWS.MIGRATION_REPORT } },
 			},
-			{
-				// The flag is read here because the middleware check does not run route guards.
-				id: 'settings-context',
-				order: 210,
-				icon: 'brain',
-				label: i18n.baseText('settings.context.title'),
-				position: 'top',
-				available:
-					isContextPreferencesEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
-				route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
-				preview: true,
-			},
 		];
 
 		const moduleItems = uiStore.settingsSidebarItems.filter(
 			(item) => !shellItems.some((shellItem) => shellItem.id === item.id),
 		);
 
+		// Stable sort: section first, then `order`, then registration order.
 		return [...shellItems, ...moduleItems].sort(
-			(a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER),
+			(a, b) =>
+				SETTINGS_SECTION_ORDER.indexOf(sectionOf(a)) -
+					SETTINGS_SECTION_ORDER.indexOf(sectionOf(b)) ||
+				(a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER),
 		);
 	});
 
 	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));
+
+	/** Visible items grouped under their headings. Empty groups are left out. */
+	const settingsSections = computed<SettingsSectionGroup[]>(() => {
+		const titles: Record<SettingsSectionGroupId, string | undefined> = {
+			general: undefined,
+			people: i18n.baseText('settings.sections.people'),
+			ai: i18n.baseText('settings.sections.ai'),
+			integrations: i18n.baseText('settings.sections.integrations'),
+			security: i18n.baseText('settings.sections.security'),
+			operations: i18n.baseText('settings.sections.operations'),
+		};
+
+		return SETTINGS_SECTION_ORDER.map((id) => ({
+			id,
+			title: titles[id],
+			items: visibleSettingsItems.value.filter((item) => sectionOf(item) === id),
+		})).filter((section) => section.items.length > 0);
+	});
 
 	const handleSettingsItemSelect = async (itemId: string) => {
 		if (itemId === 'settings-n8n-connect' && settingsStore.isAiGatewayCloudUbbEnabled) {
@@ -242,5 +312,5 @@ export function useSettingsItems() {
 		}
 	};
 
-	return { settingsItems: visibleSettingsItems, handleSettingsItemSelect };
+	return { settingsItems: visibleSettingsItems, settingsSections, handleSettingsItemSelect };
 }

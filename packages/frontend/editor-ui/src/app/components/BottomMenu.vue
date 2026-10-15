@@ -12,13 +12,19 @@ import { CHANGELOG_URL } from '@/app/constants';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import VersionUpdateCTA from '@/app/components/VersionUpdateCTA.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
+import type { SettingsSectionGroup } from '@/app/composables/useSettingsItems';
 
 import { useI18n } from '@n8n/i18n';
 
-defineProps<{
-	items: IMenuItem[];
-	isCollapsed: boolean;
-}>();
+withDefaults(
+	defineProps<{
+		items: IMenuItem[];
+		isCollapsed: boolean;
+		/** Settings links grouped under their headings. Without it the `settings` item's children are listed flat. */
+		settingsSections?: SettingsSectionGroup[];
+	}>(),
+	{ settingsSections: undefined },
+);
 
 const emit = defineEmits<{
 	select: [key: string];
@@ -142,16 +148,43 @@ function onLogout() {
 					side="right"
 					align="end"
 					:side-offset="12"
+					max-height="var(--reka-popover-content-available-height)"
 				>
 					<template #content>
 						<div :class="$style.popover">
-							<template v-for="child in item.children" :key="child.id">
-								<component
-									:is="child.component"
-									v-if="isCustomMenuItem(child)"
-									v-bind="child.props"
-								/>
-								<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
+							<template v-if="settingsSections">
+								<div
+									v-for="section in settingsSections"
+									:key="section.id"
+									:data-test-id="`main-sidebar-settings-section-${section.id}`"
+								>
+									<N8nText
+										v-if="section.title"
+										tag="div"
+										bold
+										size="small"
+										color="text-light"
+										:class="$style.popoverTitle"
+									>
+										{{ section.title }}
+									</N8nText>
+									<N8nMenuItem
+										v-for="child in section.items"
+										:key="child.id"
+										:item="child"
+										@click="() => handleSelect(child.id)"
+									/>
+								</div>
+							</template>
+							<template v-else>
+								<template v-for="child in item.children" :key="child.id">
+									<component
+										:is="child.component"
+										v-if="isCustomMenuItem(child)"
+										v-bind="child.props"
+									/>
+									<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
+								</template>
 							</template>
 							<span :class="$style.divider" />
 							<N8nMenuItem

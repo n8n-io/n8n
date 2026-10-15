@@ -8,6 +8,7 @@ const handleSettingsItemSelectMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/composables/useSettingsItems', () => ({
 	useSettingsItems: () => ({
 		settingsItems: ref([]),
+		settingsSections: ref([]),
 		handleSettingsItemSelect: handleSettingsItemSelectMock,
 	}),
 }));

@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue';
+import type { SettingsSectionId } from '@n8n/frontend-module-sdk';
 
 import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { useSettingsItems } from './useSettingsItems';
@@ -13,7 +14,9 @@ const isQueueModeEnabled = ref(false);
 const balance = ref<number>();
 const moduleSettings = ref<Record<string, unknown>>({});
 // `ui.store` stamps `available: true` onto every module item before exposing it.
-const settingsSidebarItems = ref<Array<{ id: string; available: boolean; order?: number }>>([]);
+const settingsSidebarItems = ref<
+	Array<{ id: string; available: boolean; order?: number; section?: SettingsSectionId }>
+>([]);
 const activeModules = ref<string[]>([]);
 const promotionsFlag = ref('false');
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
@@ -86,24 +89,30 @@ describe('useSettingsItems', () => {
 		contextPreferencesEnabled.value = true;
 	});
 
+	// Module items in registration order, with the orders and sections the real modules set.
+	const realModuleItems = () => [
+		{ id: 'settings-log-streaming', available: true, order: 540, section: 'operations' as const },
+		{ id: 'settings-mcp', available: true, order: 210, section: 'ai' as const },
+		{ id: 'settings-chat-hub', available: true, order: 220, section: 'ai' as const },
+		{ id: 'settings-instance-ai', available: true, order: 250, section: 'ai' as const },
+		{ id: 'settings-agents', available: true, order: 260, section: 'ai' as const },
+		{ id: 'settings-opentelemetry', available: true, order: 550, section: 'operations' as const },
+	];
+
+	const makeEverythingAvailable = () => {
+		isAiAssistantEnabled.value = true;
+		isPublicApiEnabled.value = true;
+		isQueueModeEnabled.value = true;
+		moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
+		activeModules.value = ['promotions'];
+		promotionsFlag.value = 'true';
+		vi.mocked(hasPermission).mockReturnValue(true);
+		settingsSidebarItems.value = realModuleItems();
+	};
+
 	describe('sidebar order', () => {
 		it('lists every link in the established order when all are available', () => {
-			isAiAssistantEnabled.value = true;
-			isPublicApiEnabled.value = true;
-			isQueueModeEnabled.value = true;
-			moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
-			activeModules.value = ['promotions'];
-			promotionsFlag.value = 'true';
-			vi.mocked(hasPermission).mockReturnValue(true);
-			// Module items in registration order, with the orders the real modules set.
-			settingsSidebarItems.value = [
-				{ id: 'settings-log-streaming', available: true, order: 170 },
-				{ id: 'settings-mcp', available: true, order: 200 },
-				{ id: 'settings-chat-hub', available: true, order: 220 },
-				{ id: 'settings-instance-ai', available: true, order: 230 },
-				{ id: 'settings-agents', available: true, order: 240 },
-				{ id: 'settings-opentelemetry', available: true },
-			];
+			makeEverythingAvailable();
 
 			const ids = useSettingsItems().settingsItems.value.map(({ id }) => id);
 
@@ -111,28 +120,116 @@ describe('useSettingsItems', () => {
 				'settings-usage-and-plan',
 				'settings-personal',
 				'settings-users',
+				'settings-roles',
+				'settings-sso',
+				'settings-ldap',
+				'settings-mcp',
+				'settings-chat-hub',
 				'settings-ai',
 				'settings-n8n-connect',
-				'settings-roles',
-				'settings-api',
-				'settings-external-secrets',
-				'settings-credential-resolvers',
-				'settings-source-control',
-				'settings-promotions',
-				'settings-sso',
-				'settings-encryption-keys',
-				'settings-security',
-				'settings-ldap',
-				'settings-workersview',
-				'settings-log-streaming',
-				'settings-community-nodes',
-				'settings-migration-report',
-				'settings-mcp',
-				'settings-context',
-				'settings-chat-hub',
 				'settings-instance-ai',
 				'settings-agents',
+				'settings-context',
+				'settings-api',
+				'settings-community-nodes',
+				'settings-security',
+				'settings-external-secrets',
+				'settings-credential-resolvers',
+				'settings-encryption-keys',
+				'settings-source-control',
+				'settings-promotions',
+				'settings-workersview',
+				'settings-log-streaming',
 				'settings-opentelemetry',
+				'settings-migration-report',
+			]);
+		});
+	});
+
+	describe('sections', () => {
+		const sectionsOf = () =>
+			useSettingsItems().settingsSections.value.map(({ id, title, items }) => ({
+				id,
+				title,
+				items: items.map((item) => item.id),
+			}));
+
+		it('groups every link under its heading, in the established order', () => {
+			makeEverythingAvailable();
+
+			expect(sectionsOf()).toEqual([
+				{
+					id: 'general',
+					title: undefined,
+					items: ['settings-usage-and-plan', 'settings-personal'],
+				},
+				{
+					id: 'people',
+					title: 'settings.sections.people',
+					items: ['settings-users', 'settings-roles', 'settings-sso', 'settings-ldap'],
+				},
+				{
+					id: 'ai',
+					title: 'settings.sections.ai',
+					items: [
+						'settings-mcp',
+						'settings-chat-hub',
+						'settings-ai',
+						'settings-n8n-connect',
+						'settings-instance-ai',
+						'settings-agents',
+						'settings-context',
+					],
+				},
+				{
+					id: 'integrations',
+					title: 'settings.sections.integrations',
+					items: ['settings-api', 'settings-community-nodes'],
+				},
+				{
+					id: 'security',
+					title: 'settings.sections.security',
+					items: [
+						'settings-security',
+						'settings-external-secrets',
+						'settings-credential-resolvers',
+						'settings-encryption-keys',
+					],
+				},
+				{
+					id: 'operations',
+					title: 'settings.sections.operations',
+					items: [
+						'settings-source-control',
+						'settings-promotions',
+						'settings-workersview',
+						'settings-log-streaming',
+						'settings-opentelemetry',
+						'settings-migration-report',
+					],
+				},
+			]);
+		});
+
+		it('leaves out a section with no visible link', () => {
+			isPublicApiEnabled.value = false;
+			canUserAccessRouteByName.mockImplementation((name) => name !== VIEWS.COMMUNITY_NODES);
+
+			expect(sectionsOf().map(({ id }) => id)).not.toContain('integrations');
+		});
+
+		it('lists the general links before the first heading, for a member with no admin pages', () => {
+			canUserAccessRouteByName.mockImplementation(
+				(name) => name === VIEWS.USAGE || name === VIEWS.PERSONAL_SETTINGS,
+			);
+			isAiGatewayEnabled.value = false;
+
+			expect(sectionsOf()).toEqual([
+				{
+					id: 'general',
+					title: undefined,
+					items: ['settings-usage-and-plan', 'settings-personal'],
+				},
 			]);
 		});
 	});
@@ -140,19 +237,37 @@ describe('useSettingsItems', () => {
 	describe('module item order', () => {
 		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
 
-		it('places a module item between the shell items with the nearest orders', () => {
-			settingsSidebarItems.value = [{ id: 'settings-module', available: true, order: 25 }];
+		it('places a module item between the shell items with the nearest orders in its section', () => {
+			settingsSidebarItems.value = [
+				{ id: 'settings-module', available: true, order: 415, section: 'security' },
+			];
 
 			const ids = idsOf();
 
-			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-personal') + 1);
-			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-users') - 1);
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-security') + 1);
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-external-secrets') - 1);
 		});
 
-		it('places a module item without order last', () => {
+		it('places a module item without order last in its section', () => {
+			settingsSidebarItems.value = [
+				{ id: 'settings-module', available: true, section: 'security' },
+			];
+
+			const ids = idsOf();
+
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-credential-resolvers') + 1);
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-source-control') - 1);
+		});
+
+		it('places a module item without section before the first heading', () => {
 			settingsSidebarItems.value = [{ id: 'settings-module', available: true }];
 
-			expect(idsOf().at(-1)).toBe('settings-module');
+			const ids = idsOf();
+			const sections = useSettingsItems().settingsSections.value;
+
+			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-personal') + 1);
+			expect(sections[0]).toMatchObject({ id: 'general', title: undefined });
+			expect(sections[0].items.map(({ id }) => id)).toContain('settings-module');
 		});
 
 		it('keeps registration order for equal orders', () => {
@@ -173,28 +288,22 @@ describe('useSettingsItems', () => {
 	describe('the Context item', () => {
 		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
 
-		it('sorts between module items with a lower and a higher order', () => {
+		it('is the last AI link, after the module items', () => {
 			settingsSidebarItems.value = [
-				{ id: 'settings-mcp', available: true, order: 200 },
-				{ id: 'settings-chat-hub', available: true, order: 220 },
+				{ id: 'settings-mcp', available: true, order: 210, section: 'ai' },
+				{ id: 'settings-agents', available: true, order: 260, section: 'ai' },
 			];
 
 			const ids = idsOf();
 
-			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-mcp') + 1);
-			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-chat-hub') - 1);
+			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-agents') + 1);
+			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-community-nodes') - 1);
 		});
 
 		it('is hidden when the flag is off, because the route guard does not run here', () => {
 			contextPreferencesEnabled.value = false;
 
 			expect(idsOf()).not.toContain('settings-context');
-		});
-
-		it('is last when no module item is registered', () => {
-			settingsSidebarItems.value = [];
-
-			expect(idsOf().at(-1)).toBe('settings-context');
 		});
 
 		it('carries the preview label', () => {
