@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_7efeb91309a84b::t_285e2d9a1f6d4d 40-41,43,46-50,104-112,114-128,130-137,140-141,144-147,152,613,669,678-682,684-687,690-694,696-706,709-713,718
+  s_7efeb91309a84b::t_5ad5fde7c71d1b 707-708,715
+  s_7efeb91309a84b::t_2eb1e192af1fb7 628-629,633,689,714
+  s_fb9114fd633a36::t_ec1028f9c5fad5 148-151
+  s_7efeb91309a84b::t_acb2daf9314849 449,451,453-454,461,471-474,477-481,489-492,494-495,497-499,501-506,508-509,514-517,522,531,537,542,547,550,552,554,558-560,567,570
+  s_7efeb91309a84b::t_af645900128203 465-470,475-476,482-488,500
+  s_7efeb91309a84b::t_a6ac16ec2b4f56 37-39,42,44-45,113,129,138,142-143,155
+  s_7efeb91309a84b::t_10fb04bbb7880e 51-52,139,153-154
+  s_7efeb91309a84b::t_2f24e47ed7cb18 626-627,630,664,683,688
+  s_7efeb91309a84b::t_44483cd6d6bb10 493
+  s_7efeb91309a84b::t_7df7d18154f31e 156
+  s_7efeb91309a84b::t_039b78e2bd3ace 614-615
+  s_7efeb91309a84b::t_8f92dd315e9438 695
+  s_7efeb91309a84b::t_7a7c3228027132 716
+  s_fb9114fd633a36::t_fdf7a347133511 273,545,564,754
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_7efeb91309a84b::t_e08545e58a30fc 475
+  s_7efeb91309a84b::t_66e655d9aace0e 500-595,597-690
+  s_fb9114fd633a36::t_c42b3a454873ab 596
+  s_7efeb91309a84b::t_ce7b894c0c6a55 94
+  s_7efeb91309a84b::t_baf792910f0995 499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "095b95d39c835d91881e47ccf2eca30a86da7457",
+  "prompts": {},
+  "sessions": {
+    "s_7efeb91309a84b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1406a-07ce-72be-863b-39297447152b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fb9114fd633a36": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1408a-667f-72be-863b-392a9eeeb1f7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
