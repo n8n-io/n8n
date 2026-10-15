@@ -573,8 +573,8 @@ catalogs:
       specifier: 9.29.0
       version: 9.29.0
     eslint-plugin-n8n-nodes-base:
-      specifier: ^1.16.7
-      version: 1.16.7
+      specifier: ^2.0.0
+      version: 2.0.0
     eslint-plugin-oxlint:
       specifier: 1.78.0
       version: 1.78.0
@@ -723,8 +723,8 @@ catalogs:
       specifier: ^1.98.0
       version: 1.98.0
     simple-git:
-      specifier: 3.36.0
-      version: 3.36.0
+      specifier: 4.0.2
+      version: 4.0.2
     source-map-support:
       specifier: 0.5.21
       version: 0.5.21
@@ -1064,6 +1064,7 @@ overrides:
   prosemirror-view@<1.42.3: 1.42.3
   pdf-parse>@napi-rs/canvas: ^1.0.0
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
+  toml@<4.2.0: 4.2.0
 
 patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
@@ -1870,6 +1871,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../errors
+      '@n8n/inbound-auth':
+        specifier: workspace:*
+        version: link:../inbound-auth
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -1882,6 +1886,9 @@ importers:
       ioredis:
         specifier: 5.3.2
         version: 5.3.2(supports-color@8.1.1)
+      jose:
+        specifier: ^6.2.9
+        version: 6.2.9
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
@@ -2829,7 +2836,7 @@ importers:
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
-        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+        version: 2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
     devDependencies:
       '@eslint/js':
         specifier: ^9.29.0
@@ -3636,7 +3643,7 @@ importers:
         version: 4.15.2(@typescript-eslint/utils@8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint-import-resolver-node@0.3.9(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
-        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+        version: 2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -4163,7 +4170,7 @@ importers:
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
-        version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+        version: 2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -4828,6 +4835,9 @@ importers:
       '@n8n/backend-module-quick-connect':
         specifier: workspace:*
         version: link:../modules/quick-connect/backend
+      '@n8n/backend-module-workflow-builder':
+        specifier: workspace:*
+        version: link:../modules/workflow-builder/backend
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../@n8n/backend-network
@@ -5169,7 +5179,7 @@ importers:
         version: 0.8.5
       simple-git:
         specifier: 'catalog:'
-        version: 3.36.0(supports-color@8.1.1)
+        version: 4.0.2(supports-color@8.1.1)
       source-map-support:
         specifier: 'catalog:'
         version: 0.5.21
@@ -7712,6 +7722,64 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
+  packages/modules/workflow-builder/backend:
+    dependencies:
+      '@n8n/ai-workflow-builder':
+        specifier: workspace:*
+        version: link:../../../@n8n/ai-workflow-builder.ee
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../../../@n8n/db
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../../../@n8n/typeorm
+    devDependencies:
+      '@langchain/core':
+        specifier: 'catalog:'
+        version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-test-utils
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../../quality/environments/containers
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
   packages/node-dev:
     dependencies:
       '@n8n/di':
@@ -7993,7 +8061,7 @@ importers:
         version: 2.1.0
       simple-git:
         specifier: 'catalog:'
-        version: 3.36.0(supports-color@8.1.1)
+        version: 4.0.2(supports-color@8.1.1)
       snowflake-sdk:
         specifier: 3.3.0
         version: 3.3.0(asn1.js@5.4.1)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -13975,11 +14043,11 @@ packages:
       pinia:
         optional: true
 
-  '@simple-git/args-pathspec@1.0.3':
-    resolution: {integrity: sha512-ngJMaHlsWDTfjyq9F3VIQ8b7NXbBLq5j9i5bJ6XLYtD6qlDXT7fdKY2KscWWUF8t18xx052Y/PUO1K1TRc9yKA==}
+  '@simple-git/args-pathspec@1.0.4':
+    resolution: {integrity: sha512-EtMX6XjRWSastG2SdkmSQByPtJ9dx/NIjnHbpQPCYt62j4RmSx5rgLTGpw0YCjF5h191gZOmBfheOT23cRSFdw==}
 
-  '@simple-git/argv-parser@1.1.1':
-    resolution: {integrity: sha512-Q9lBcfQ+VQCpQqGJFHe5yooOS5hGdLFFbJ5R+R5aDsnkPCahtn1hSkMcORX65J2Z5lxSkD0lQorMsncuBQxYUw==}
+  '@simple-git/argv-parser@2.0.1':
+    resolution: {integrity: sha512-M++IaVWrN+vYalilOHfwvT2IL3wYZtVEBQpmX6DLSOJLtxbZ+SUeIDE3IiPogzhPACLajwtxfa5rp+ZX1FczzQ==}
 
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
@@ -18312,15 +18380,20 @@ packages:
       '@typescript-eslint/parser':
         optional: true
 
+  eslint-plugin-local@1.0.0:
+    resolution: {integrity: sha512-bcwcQnKL/Iw5Vi/F2lG1he5oKD2OGjhsLmrcctkWrWq5TujgiaYb0cj3pZgr3XI54inNVnneOFdAx1daLoYLJQ==}
+
   eslint-plugin-lodash@8.0.0:
     resolution: {integrity: sha512-7DA8485FolmWRzh+8t4S8Pzin2TTuWfb0ZW3j/2fYElgk82ZanFz8vDcvc4BBPceYdX1p/za+tkbO68maDBGGw==}
     engines: {node: '>=10'}
     peerDependencies:
       eslint: '>=9.0.0'
 
-  eslint-plugin-n8n-nodes-base@1.16.7:
-    resolution: {integrity: sha512-lKo+stn4t2jXX/ZdmJv2ClUQnRZLwSOyqfqsYgD6I/wYwy9bqA6mna4CEzdQNFVg5f3/RODpd/JQMiITARY92g==}
+  eslint-plugin-n8n-nodes-base@2.0.0:
+    resolution: {integrity: sha512-S9ot1KzqSEN6bYyHjVE+8MrzxvnAxZRL2zEcM+ubtht2wv5OO2rQURwJ1f6vetOgMjOTPVv+B9Z5deHfe8CADw==}
     engines: {node: '>=20.15', pnpm: '>=9.6'}
+    peerDependencies:
+      eslint: '>=8.40'
 
   eslint-plugin-oxlint@1.78.0:
     resolution: {integrity: sha512-kTyevY8wGGOvmOuEoWsP+MN1PEUaAbjka3MqPIcjqp3ZW3lXiu8OX/HyNFhTG8qCZi0qWYqnvgMYOUFAsu/Diw==}
@@ -23299,8 +23372,8 @@ packages:
   simple-get@4.0.1:
     resolution: {integrity: sha512-brv7p5WgH0jmQJr1ZDDfKDOSeWWg+OVypG99A/5vYGPqJ6pxiaHLy8nxtFjBA7oMa01ebA9gfh1uMCFqOuXxvA==}
 
-  simple-git@3.36.0:
-    resolution: {integrity: sha512-cGQjLjK8bxJw4QuYT7gxHw3/IouVESbhahSsHrX97MzCL1gu2u7oy38W6L2ZIGECEfIBG4BabsWDPjBxJENv9Q==}
+  simple-git@4.0.2:
+    resolution: {integrity: sha512-l0sIsv9VrPwovKELFDBOj/lhmIcbMvxBk2B+hRhsMM4/VL3gKtuZvYnBNixVo+N/0HnqQx2cBdLvxnAbygHpqA==}
 
   simple-lru-cache@0.0.2:
     resolution: {integrity: sha512-uEv/AFO0ADI7d99OHDmh1QfYzQk/izT1vCmu/riQfh7qjBVUUgRT87E5s5h7CxWCA/+YoZerykpEthzVrW3LIw==}
@@ -23934,8 +24007,9 @@ packages:
     resolution: {integrity: sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww==}
     engines: {node: '>=14.16'}
 
-  toml@3.0.0:
-    resolution: {integrity: sha512-y/mWCZinnvxjTKYhJ+pYxwD0mRLVvOtdS2Awbgxln6iEnt4rk0yBxeSBHkGJcPucRiG0e55mwWp+g/05rsrd6w==}
+  toml@4.2.0:
+    resolution: {integrity: sha512-TvAJjbHZlYmI323+srtqHQFyJsoWy6mI09ppkuj9+iRsqsVKG9fvTcOP7FHF2UCb0QSYtjEavffrKzdd0XgClg==}
+    engines: {node: '>=20'}
 
   toposort@2.0.2:
     resolution: {integrity: sha512-0a5EOkAUp8D4moMi2W8ZF8jcga7BgZd91O/yabJCFY8az+XSzeGyTKs0Aoo897iV1Nj6guFq8orWDS96z91oGg==}
@@ -31863,11 +31937,11 @@ snapshots:
     optionalDependencies:
       pinia: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
 
-  '@simple-git/args-pathspec@1.0.3': {}
+  '@simple-git/args-pathspec@1.0.4': {}
 
-  '@simple-git/argv-parser@1.1.1':
+  '@simple-git/argv-parser@2.0.1':
     dependencies:
-      '@simple-git/args-pathspec': 1.0.3
+      '@simple-git/args-pathspec': 1.0.4
 
   '@sinclair/typebox@0.27.8': {}
 
@@ -37050,22 +37124,25 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
+  eslint-plugin-local@1.0.0: {}
+
   eslint-plugin-lodash@8.0.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1)):
     dependencies:
       eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
 
-  eslint-plugin-n8n-nodes-base@1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1):
+  eslint-plugin-n8n-nodes-base@2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
       '@typescript-eslint/utils': 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       camel-case: 4.1.2
+      eslint: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
+      eslint-plugin-local: 1.0.0
       indefinite: 2.5.1
       pascal-case: 3.1.2
       pluralize: 8.0.0
       sentence-case: 3.0.4
       title-case: 3.0.3
     transitivePeerDependencies:
-      - eslint
       - supports-color
       - typescript
 
@@ -43222,12 +43299,12 @@ snapshots:
       once: 1.4.0
       simple-concat: 1.0.1
 
-  simple-git@3.36.0(supports-color@8.1.1):
+  simple-git@4.0.2(supports-color@8.1.1):
     dependencies:
       '@kwsites/file-exists': 1.1.1(supports-color@8.1.1)
       '@kwsites/promise-deferred': 1.1.1
-      '@simple-git/args-pathspec': 1.0.3
-      '@simple-git/argv-parser': 1.1.1
+      '@simple-git/args-pathspec': 1.0.4
+      '@simple-git/argv-parser': 2.0.1
       debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
@@ -43338,7 +43415,7 @@ snapshots:
       oauth4webapi: 3.8.6
       open: 7.4.2
       simple-lru-cache: 0.0.2
-      toml: 3.0.0
+      toml: 4.2.0
       winston: 3.14.2
     transitivePeerDependencies:
       - debug
@@ -44150,7 +44227,7 @@ snapshots:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
-  toml@3.0.0: {}
+  toml@4.2.0: {}
 
   toposort@2.0.2: {}
 
