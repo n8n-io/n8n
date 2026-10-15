@@ -19,7 +19,7 @@ import type { AgentsService } from '../agents.service';
 import { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { AgentThreadEntity } from '../entities/agent-thread.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import {
 	INSTANCE_AI_BUILDER_ADDENDUM,
 	InstanceAiBuilderDelegateAdapterService,
@@ -615,7 +615,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			const { delegate, agentsService, agentValidation, agentSkillRefs, credentialProvider } =
 				setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			const agent = { id: 'agent-1', schema: CONFIG, integrations: [] } as unknown as Agent;
+			const agent = { id: 'agent-1', schema: CONFIG, integrations: [] } as unknown as ProjectAgent;
 			const skillRefs = [{ type: 'skill' as const, id: 'skill-1' }];
 			agentsService.findById.mockResolvedValue(agent);
 			agentSkillRefs.refsForDraft.mockResolvedValue(skillRefs);
@@ -666,7 +666,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			const { delegate, agentsService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsService.createOrAdopt.mockResolvedValue({
-				agent: mock<Agent>({ id: 'agent-9', name: 'New agent' }),
+				agent: mock<ProjectAgent>({ id: 'agent-9', name: 'New agent' }),
 				adopted: false,
 			});
 
@@ -687,7 +687,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			const { delegate, agentsService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsService.createOrAdopt.mockResolvedValue({
-				agent: mock<Agent>({ id: 'aBcDeFgHiJkLmNoP', name: 'New agent' }),
+				agent: mock<ProjectAgent>({ id: 'aBcDeFgHiJkLmNoP', name: 'New agent' }),
 				adopted: false,
 			});
 
@@ -715,7 +715,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			const { delegate, agentsService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsService.createOrAdopt.mockResolvedValue({
-				agent: mock<Agent>({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' }),
+				agent: mock<ProjectAgent>({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' }),
 				adopted: true,
 			});
 
@@ -752,7 +752,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		it('returns the agent display name', async () => {
 			const { delegate, agentsService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			agentsService.findById.mockResolvedValue(mock<Agent>({ id: 'agent-1', name: 'Support Bot' }));
+			agentsService.findById.mockResolvedValue(
+				mock<ProjectAgent>({ id: 'agent-1', name: 'Support Bot' }),
+			);
 
 			await expect(delegate.resolveAgentName('agent-1')).resolves.toBe('Support Bot');
 			expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');

@@ -7,7 +7,7 @@ import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChannelRef } from '../../utils/agent-channel';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentChannelStatus } from '../../entities/agent-channel-status.entity';
 import type { AgentChannelStatusRepository } from '../../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
@@ -45,8 +45,8 @@ class FakeIntegration extends AgentChatIntegration {
 const slack: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
 const telegram: AgentIntegrationConfig = { type: 'telegram', credentialId: 'cred-telegram' };
 
-function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): Agent {
-	return { id, projectId: 'project-1', integrations } as unknown as Agent;
+function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): ProjectAgent {
+	return { id, projectId: 'project-1', integrations } as unknown as ProjectAgent;
 }
 
 function refOf(integration: AgentIntegrationConfig, agentId = 'agent-1'): AgentChannelRef {
