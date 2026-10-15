@@ -9,6 +9,7 @@
 | closedAt | timestamp(3) with time zone |  | true |  |  | Mirrored from the host. |
 | connectionId | varchar(36) |  | true |  | [public.promotion_connection](public.promotion_connection.md) | The connection that remoteReviewId resolves through. NULL after the connection is deleted. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| createdById | uuid |  | true |  | [public.user](public.user.md) | The n8n user whose Promote opened this review. NULL after that user is deleted. |
 | id | varchar(36) |  | false | [public.promotion_run](public.promotion_run.md) |  |  |
 | mergedAt | timestamp(3) with time zone |  | true |  |  | Mirrored from the host. |
 | remoteReviewId | varchar(255) |  | true |  |  | Host reference for type. GitLab stores "\<projectId\>!\<iid\>". NULL when the review lives in n8n. |
@@ -22,6 +23,7 @@
 | CHK_promotion_review_state | CHECK | CHECK (((state)::text = ANY ((ARRAY['open'::character varying, 'changes_requested'::character varying, 'merged'::character varying, 'closed'::character varying])::text[]))) |
 | FK_promotion_review_approvedById | FOREIGN KEY | FOREIGN KEY ("approvedById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_promotion_review_connectionId | FOREIGN KEY | FOREIGN KEY ("connectionId") REFERENCES promotion_connection(id) ON DELETE SET NULL |
+| FK_promotion_review_createdById | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | PK_fe93e2f1add228dc14d3330c8e5 | PRIMARY KEY | PRIMARY KEY (id) |
 | promotion_review_createdAt_not_null | n | NOT NULL "createdAt" |
 | promotion_review_id_not_null | n | NOT NULL id |
@@ -44,6 +46,7 @@ erDiagram
 
 "public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;approvedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.promotion_review" }o--o| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE SET NULL"
+"public.promotion_review" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.promotion_run" }o--o| "public.promotion_review" : "FOREIGN KEY (#quot;reviewId#quot;) REFERENCES promotion_review(id) ON DELETE SET NULL"
 
 "public.promotion_review" {
@@ -52,6 +55,7 @@ erDiagram
   timestamp_3__with_time_zone closedAt
   varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
+  uuid createdById FK
   varchar_36_ id
   timestamp_3__with_time_zone mergedAt
   varchar_255_ remoteReviewId

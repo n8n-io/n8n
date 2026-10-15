@@ -49,6 +49,9 @@ export class CreatePromotionReviewTable1792072949221 implements ReversibleMigrat
 					),
 				column('mergedAt').timestampTimezone().comment('Mirrored from the host.'),
 				column('closedAt').timestampTimezone().comment('Mirrored from the host.'),
+				column('createdById').uuid.comment(
+					'The n8n user whose Promote opened this review. NULL after that user is deleted.',
+				),
 				column('approvedById').uuid.comment(
 					'The one n8n user who approved the review in n8n. NULL until then. n8n does not copy an approver from the host.',
 				),
@@ -59,6 +62,12 @@ export class CreatePromotionReviewTable1792072949221 implements ReversibleMigrat
 				columnName: 'id',
 				onDelete: 'SET NULL',
 				name: `FK_${tablePrefix}promotion_review_connectionId`,
+			})
+			.withForeignKey('createdById', {
+				tableName: userTable,
+				columnName: 'id',
+				onDelete: 'SET NULL',
+				name: `FK_${tablePrefix}promotion_review_createdById`,
 			})
 			.withForeignKey('approvedById', {
 				tableName: userTable,

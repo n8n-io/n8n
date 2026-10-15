@@ -79,6 +79,7 @@ async function insertReview(over: { id?: string; remoteReviewId?: string } = {})
 		connectionId,
 		type: 'gitlab',
 		remoteReviewId: over.remoteReviewId ?? `7!${reviewCount}`,
+		createdById: owner.id,
 	});
 	const run = await runRepository.insertRun({
 		configId,
@@ -110,7 +111,9 @@ describe('PromotionReviewRepository', () => {
 			closedAt: null,
 			approvedById: null,
 			approvedAt: null,
+			createdById: owner.id,
 		});
+		expect(found?.createdBy?.id).toBe(owner.id);
 		expect(found?.connection?.id).toBe(connectionId);
 		expect(found?.runs).toHaveLength(1);
 		expect(found?.runs[0]).toMatchObject({
@@ -130,6 +133,7 @@ describe('PromotionReviewRepository', () => {
 			connectionId,
 			type: 'gitlab',
 			remoteReviewId: '9!1',
+			createdById: owner.id,
 		});
 		const run = await runRepository.insertRun({
 			configId,
@@ -180,6 +184,8 @@ describe('PromotionReviewRepository', () => {
 		await Container.get(UserRepository).delete({ id: owner.id });
 
 		const found = await reviewRepository.findByIdWithRelations(review.id);
+		expect(found).toMatchObject({ createdById: null });
+		expect(found?.createdBy).toBeNull();
 		expect(found?.runs[0]?.createdById).toBeNull();
 		expect(found?.runs[0]?.createdBy).toBeNull();
 	});
@@ -207,6 +213,7 @@ describe('PromotionReviewRepository', () => {
 
 		const open = await reviewRepository.listReviews({ tab: 'open', offset: 0, limit: 10 });
 		expect(open.data.map((r) => r.id)).toEqual([first.id]);
+		expect(open.data[0]?.createdBy?.id).toBe(owner.id);
 
 		const done = await reviewRepository.listReviews({ tab: 'closed', offset: 0, limit: 10 });
 		expect(done.count).toBe(2);
@@ -251,6 +258,7 @@ describe('PromotionReviewRepository', () => {
 			connectionId: other.id,
 			type: 'gitlab',
 			remoteReviewId: '7!1',
+			createdById: owner.id,
 		});
 
 		expect(review.remoteReviewId).toBe('7!1');
@@ -262,12 +270,14 @@ describe('PromotionReviewRepository', () => {
 			connectionId,
 			type: 'gitlab',
 			remoteReviewId: null,
+			createdById: owner.id,
 		});
 		await reviewRepository.insertReview({
 			id: 'local-b',
 			connectionId,
 			type: 'gitlab',
 			remoteReviewId: null,
+			createdById: owner.id,
 		});
 
 		const listed = await reviewRepository.listReviews({ offset: 0, limit: 10 });

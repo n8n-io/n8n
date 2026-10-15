@@ -59,6 +59,10 @@ export class PromotionReview extends WithCreatedAt {
 	@DateTimeColumn({ nullable: true })
 	closedAt: Date | null;
 
+	/** The n8n user whose Promote opened this review. NULL after that user is deleted. */
+	@Column({ type: 'uuid', nullable: true })
+	createdById: string | null;
+
 	/** The one n8n user who approved in n8n. NULL until then. Not copied from the host. */
 	@Column({ type: 'uuid', nullable: true })
 	approvedById: string | null;
@@ -69,6 +73,10 @@ export class PromotionReview extends WithCreatedAt {
 	@ManyToOne(() => PromotionConnection, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'connectionId' })
 	connection: Relation<PromotionConnection> | null;
+
+	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'createdById' })
+	createdBy: Relation<User> | null;
 
 	@ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'approvedById' })

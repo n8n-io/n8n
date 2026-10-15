@@ -86,6 +86,7 @@ erDiagram
   timestamp_3__with_time_zone closedAt
   varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
+  uuid createdById FK
   varchar_36_ id
   timestamp_3__with_time_zone mergedAt
   varchar_255_ remoteReviewId

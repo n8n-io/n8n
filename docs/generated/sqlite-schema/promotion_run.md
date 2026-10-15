@@ -94,6 +94,7 @@ erDiagram
   datetime_3_ closedAt
   varchar_36_ connectionId FK
   datetime_3_ createdAt
+  varchar createdById FK
   varchar_36_ id PK
   datetime_3_ mergedAt
   varchar_255_ remoteReviewId
