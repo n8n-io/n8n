@@ -6,15 +6,12 @@ import { type IconName } from '../components/N8nIcon/icons';
 const BUTTON_VARIANT = ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'] as const;
 export type ButtonVariant = (typeof BUTTON_VARIANT)[number];
 
-/** @deprecated Use 'brand' for 'subtle'. Use 'ghost' for 'highlight' or 'highlight-fill'. */
-export type LegacyButtonVariant = 'highlight' | 'highlight-fill' | 'subtle';
-
 const BUTTON_SIZE = ['mini', 'xmini', 'small', 'medium', 'large', 'xlarge', 'xsmall'] as const;
 export type ButtonSize = (typeof BUTTON_SIZE)[number];
 
 export interface ButtonProps {
 	/** Determines the visual style of the button */
-	variant?: ButtonVariant | LegacyButtonVariant;
+	variant?: ButtonVariant;
 	/** Determines the size of the button */
 	size?: ButtonSize;
 	/** If passed, the button will be rendered as a link */

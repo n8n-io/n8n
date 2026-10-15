@@ -94,6 +94,16 @@ describe('wrapLangChainParserError', () => {
 			}
 		});
 
+		it("keeps the error's own description instead of the class-name fallback", () => {
+			const original = Object.assign(new Error('rate limited'), { description: 'hint' });
+
+			const wrapped = wrapLangChainParserError(original, node, undefined, {
+				enrichNonParserErrors: true,
+			});
+
+			expect((wrapped as NodeOperationError).description).toBe('hint');
+		});
+
 		it('preserves the underlying class name in the description', () => {
 			const original = new TypeError('not a function');
 

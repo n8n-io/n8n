@@ -115,6 +115,61 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 	});
 
+	it('shows a read-only skill as text, without form fields', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: 'Check the SLA first.',
+				references: [{ path: 'references/labels.md', content: 'Use needs-repro.' }],
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-skill-description-text"]').text()).toBe(
+			'Use for triage',
+		);
+		expect(wrapper.find('[data-testid="agent-skill-instructions-text"]').text()).toContain(
+			'Check the SLA first.',
+		);
+		expect(wrapper.find('[data-testid="agent-skill-description-input"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-skill-instructions-editor"]').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('characters');
+	});
+
+	it('shows the task lists of a read-only skill as disabled checkboxes', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '- [ ] Check the SLA',
+			},
+		});
+
+		const checkbox = wrapper.find('[data-testid="agent-skill-instructions-text"] input');
+		expect(checkbox.attributes('type')).toBe('checkbox');
+		expect(checkbox.attributes('disabled')).toBeDefined();
+	});
+
+	it('shows a read-only reference as text', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			selectedPath: 'references/labels.md',
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: 'Check the SLA first.',
+				references: [{ path: 'references/labels.md', content: 'Use needs-repro.' }],
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-skill-reference-text"]').text()).toContain(
+			'Use needs-repro.',
+		);
+		expect(wrapper.find('[data-testid="agent-skill-reference-name-input"]').exists()).toBe(false);
+	});
+
 	it('shows the instructions character count, not their byte size', () => {
 		const wrapper = mountViewer({
 			skill: {

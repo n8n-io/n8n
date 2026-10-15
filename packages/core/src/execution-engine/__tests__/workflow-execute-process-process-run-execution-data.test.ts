@@ -358,6 +358,55 @@ describe('processRunExecutionData', () => {
 			expect(taskData.metadata?.dynamicCredentialsUsage).toBeUndefined();
 		});
 
+		test('stamps the credential ids a sub-execution reported on the task, for that node only', async () => {
+			// ARRANGE
+			// Credential usability redaction reads these ids from the calling node's task,
+			// since the sub-workflow's credentials are not on this workflow's nodes.
+			const waitingNode = createNodeData({ name: 'waitingNode', type: types.passThrough });
+			const nextNode = createNodeData({ name: 'nextNode', type: types.passThrough });
+			const workflow = new DirectedGraph()
+				.addNodes(waitingNode, nextNode)
+				.addConnections({ from: waitingNode, to: nextNode })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const data: IDataObject = { foo: 1 };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: waitingNode.name, sourceData: null }] },
+				resultData: {
+					runData: {
+						waitingNode: [toITaskData([{ data }], { executionStatus: 'waiting' })],
+					},
+					lastNodeExecuted: 'waitingNode',
+				},
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: data }]] },
+							node: waitingNode,
+							source: null,
+							metadata: {
+								dynamicCredentialsUsage: { usedCredentialIds: ['child-cred'] },
+							},
+						},
+					],
+					runtimeData: { version: 1, establishedAt: 0, source: 'trigger' },
+				},
+				waitTill: new Date('2024-01-01'),
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const [waitingTask] = result.data.resultData.runData.waitingNode;
+			expect(waitingTask.usedCredentialIds).toEqual(['child-cred']);
+			// Reset before each node, so the next node does not inherit them.
+			const [nextTask] = result.data.resultData.runData.nextNode;
+			expect(nextTask.usedCredentialIds).toBeUndefined();
+		});
+
 		test('restores an attempted-only stash without recording a resolved user', async () => {
 			// ARRANGE
 			const node = createNodeData({ name: 'waitingNode', type: types.passThrough });

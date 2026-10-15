@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { defineComponent } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -7,19 +8,33 @@ import { createTestingPinia } from '@pinia/testing';
 import ToolRow from '../ToolRow.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	TOOL_ICON_AVATAR_RENDERER_KEY,
+	type AgentConnectionItem,
 	type McpServerConnectionItem,
 	type NodeConnectionItem,
 	type ServiceConnectionItem,
+	type SkillConnectionItem,
 	type WorkflowConnectionItem,
 } from '../types';
 
 const renderRow = createComponentRenderer(ToolRow);
 
+/** Stand-in for the consumer-injected avatar tile — proves the socket without coupling. */
+const AvatarRendererStub = defineComponent({
+	props: {
+		personalisation: { type: Object, required: true },
+		size: { type: Number, required: true },
+	},
+	template: `<div data-test-id="avatar-stub">{{ personalisation.icon }}</div>`,
+});
+
 function render(
 	item:
+		| AgentConnectionItem
 		| McpServerConnectionItem
 		| NodeConnectionItem
 		| ServiceConnectionItem
+		| SkillConnectionItem
 		| WorkflowConnectionItem,
 ) {
 	return renderRow({ props: { item }, pinia: createTestingPinia() });
@@ -86,6 +101,28 @@ const baseService: ServiceConnectionItem = {
 };
 
 describe('ToolRow', () => {
+	it('switches a detached skill on and an attached skill off', async () => {
+		const skill: SkillConnectionItem = {
+			id: 'skill:tone',
+			kind: 'skill',
+			skillId: 'tone',
+			title: 'Support tone',
+			status: 'none',
+			attached: false,
+		};
+		const detached = render(skill);
+		expect(detached.getByText('Detached')).toBeInTheDocument();
+		await userEvent.click(detached.getByTestId('tools-connection-row-attach'));
+		expect(detached.emitted('connect')).toEqual([[skill]]);
+		detached.unmount();
+
+		const attachedSkill = { ...skill, attached: true };
+		const attached = render(attachedSkill);
+		expect(attached.getByText('Attached')).toBeInTheDocument();
+		await userEvent.click(attached.getByTestId('tools-connection-row-attach'));
+		expect(attached.emitted('disconnect')).toEqual([[attachedSkill]]);
+	});
+
 	it('shows a Connect button for an available mcp-server and emits connect on click', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
@@ -241,6 +278,55 @@ describe('ToolRow', () => {
 		expect(img).toBeNull();
 	});
 
+	it('renders the injected avatar renderer when an agent row carries an avatar iconSource', () => {
+		const item: AgentConnectionItem = {
+			id: 'agent-1',
+			kind: 'agent',
+			agentId: 'agent-1',
+			title: 'Researcher',
+			status: 'none',
+			iconSource: {
+				type: 'avatar',
+				personalisation: {
+					icon: 'rocket',
+					gradient: { from: '#FF1500', to: '#FF6900', angle: 135, fromStop: 0, toStop: 100 },
+				},
+			},
+		};
+		const { getByTestId } = renderRow({
+			props: { item },
+			pinia: createTestingPinia(),
+			global: {
+				// Mirrors the agents feature providing its personalisation tile.
+				provide: { [TOOL_ICON_AVATAR_RENDERER_KEY as symbol]: AvatarRendererStub },
+			},
+		});
+
+		expect(getByTestId('avatar-stub')).toHaveTextContent('rocket');
+	});
+
+	it('degrades to the fallback icon when no avatar renderer is injected', () => {
+		const item: AgentConnectionItem = {
+			id: 'agent-1',
+			kind: 'agent',
+			agentId: 'agent-1',
+			title: 'Researcher',
+			status: 'none',
+			iconSource: {
+				type: 'avatar',
+				personalisation: {
+					icon: 'rocket',
+					gradient: { from: '#FF1500', to: '#FF6900', angle: 135, fromStop: 0, toStop: 100 },
+				},
+			},
+		};
+		const { getByTestId, queryByTestId, container } = render(item);
+
+		expect(queryByTestId('avatar-stub')).toBeNull();
+		expect(getByTestId('tools-connection-row-main')).toHaveTextContent('Researcher');
+		expect(container.querySelector('img')).toBeNull();
+	});
+
 	it('renders the placeholder icon when iconSource is absent', () => {
 		const { container } = render(baseNode);
 		const img = container.querySelector('img');
@@ -312,6 +398,28 @@ describe('ToolRow', () => {
 			disabled: true,
 			disabledReason: "Contains nodes that aren't supported as agent tools (Wait, Form)",
 		};
+
+		it('shows the disabled reason as plain text', () => {
+			const { getByTestId } = renderRow({
+				props: {
+					item: { ...disabledWorkflow, disabledReason: 'Rename <img src=x>_tag first' },
+				},
+				pinia: createTestingPinia(),
+				global: {
+					stubs: {
+						N8nTooltip: {
+							props: ['content'],
+							template:
+								'<span><slot /><span data-test-id="stub-tooltip-content"><span v-html="content" /><slot name="content" /></span></span>',
+						},
+					},
+				},
+			});
+
+			const content = getByTestId('stub-tooltip-content');
+			expect(content.querySelector('img')).toBeNull();
+			expect(content).toHaveTextContent('Rename <img src=x>_tag first');
+		});
 
 		it('renders a disabled marker instead of a connect/install action', () => {
 			const { getByTestId, queryByTestId } = render(disabledWorkflow);

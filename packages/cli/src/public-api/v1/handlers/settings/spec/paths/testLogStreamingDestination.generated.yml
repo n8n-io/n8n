@@ -4,9 +4,6 @@ tags:
 summary: Send a test message to a log streaming destination
 description: Send a test message to the destination to verify it is reachable and configured correctly. Requires the `eventBusDestination:test` scope and the Log Streaming feature to be licensed.
 x-required-scope: eventBusDestination:test
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
