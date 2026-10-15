@@ -189,17 +189,24 @@ describe('AgentEvalRunnerService (integration)', () => {
 			await results.markAsCompleted(result.id, { output: {} });
 			const oldCounts = await results.countByStatus(run.id);
 			const connection = Container.get(DataSource);
-			const blocker = connection.createQueryRunner();
+			if (connection.options.type !== 'postgres') throw new Error('Postgres is required');
+			// Keep the blocker and observer outside the two-connection application
+			// pool so both repository transactions can acquire a connection.
+			const control = await new DataSource({
+				...connection.options,
+				poolSize: 2,
+			}).initialize();
+			const blocker = control.createQueryRunner();
 			const pending: Array<Promise<unknown>> = [];
-			await blocker.startTransaction();
 			try {
+				await blocker.startTransaction();
 				await blocker.manager.update(AgentEvalRun, { id: run.id }, { id: run.id });
 				const claim = results.claimForRerun(result.id, run.id);
 				pending.push(claim);
 				const waitForLocks = async (count: number) => {
 					await vi.waitFor(
 						async () => {
-							const [row] = await connection.query(`SELECT count(*)::int AS count
+							const [row] = await control.query(`SELECT count(*)::int AS count
 							FROM pg_stat_activity WHERE datname = current_database()
 							AND wait_event_type = 'Lock' AND query LIKE 'UPDATE %agent_eval_run%'`);
 							expect(row.count).toBe(count);
@@ -223,6 +230,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 				if (blocker.isTransactionActive) await blocker.rollbackTransaction();
 				await blocker.release();
 				await Promise.allSettled(pending);
+				await control.destroy();
 			}
 		},
 	);
