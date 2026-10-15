@@ -23,22 +23,18 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 	const i18n = useI18n();
 	const options = ref<DiscoveryOption[]>([]);
 	const search = ref('');
-	const nextCursor = ref<string | null>(null);
 	const loading = ref(false);
 	const error = ref<string>();
 	let generation = 0;
-	let failedCursor: string | undefined;
 
-	async function load(requestGeneration: number, cursor?: string) {
+	async function load(requestGeneration: number) {
 		const repositoryId = context.repositoryId;
 		if (requestGeneration !== generation || (context.kind === 'branch' && !repositoryId)) return;
 		loading.value = true;
 		error.value = undefined;
-		failedCursor = cursor;
 		try {
-			const query = { search: search.value || undefined, cursor, limit: 25 };
+			const query = { search: search.value || undefined, limit: 25 };
 			let pageOptions: DiscoveryOption[];
-			let continuation: string | null;
 			if (context.kind === 'repository') {
 				const page = await fetchPromotionRepositories(
 					rootStore.publicApiContext,
@@ -50,7 +46,6 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 					label: repository.fullPath,
 					repository,
 				}));
-				continuation = page.nextCursor;
 			} else if (repositoryId) {
 				const page = await fetchPromotionBranches(
 					rootStore.publicApiContext,
@@ -59,12 +54,9 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 					query,
 				);
 				pageOptions = page.data.map((branch) => ({ value: branch.name, label: branch.name }));
-				continuation = page.nextCursor;
 			} else return;
 			if (requestGeneration !== generation) return;
-			const combined = cursor ? [...options.value, ...pageOptions] : pageOptions;
-			options.value = [...new Map(combined.map((option) => [option.value, option])).values()];
-			nextCursor.value = continuation;
+			options.value = pageOptions;
 		} catch (cause) {
 			if (requestGeneration !== generation) return;
 			error.value =
@@ -83,7 +75,6 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 		if (query === search.value) return;
 		search.value = query;
 		options.value = [];
-		nextCursor.value = null;
 		error.value = undefined;
 		loading.value = true;
 		void debouncedLoad(++generation);
@@ -101,7 +92,6 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 			cancel();
 			search.value = '';
 			options.value = [];
-			nextCursor.value = null;
 			void load(generation);
 		},
 		{ immediate: true },
@@ -114,14 +104,10 @@ export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 	return {
 		options,
 		search,
-		nextCursor,
 		loading,
 		error,
 		onSearch,
 		cancel,
-		retry: async () => await load(generation, failedCursor),
-		loadMore: async () => {
-			if (nextCursor.value) await load(generation, nextCursor.value);
-		},
+		retry: async () => await load(generation),
 	};
 }

@@ -79,7 +79,7 @@ it('keeps a saved selection outside discovery results and clears empty-search fe
 	expect(api.fetchPromotionRepositories).toHaveBeenCalledExactlyOnceWith(
 		expect.anything(),
 		'gitlab-1',
-		{ search: undefined, cursor: undefined, limit: 25 },
+		{ search: undefined, limit: 25 },
 	);
 	expect(emitted('selected')).toBeUndefined();
 	expect(emitted('update:modelValue')).toBeUndefined();
@@ -107,13 +107,14 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 			attrs: { onClick },
 		});
 
-	it('keeps search, pagination, and selection through retries', async () => {
+	it('loads up to 25 matches and keeps search and selection through a retry', async () => {
 		api.fetchPromotionRepositories
 			.mockResolvedValueOnce({ data: [repository], nextCursor: 'unfiltered-next' })
 			.mockRejectedValueOnce(new Error('GitLab is unavailable.'))
-			.mockResolvedValueOnce({ data: [repository], nextCursor: 'filtered-next' })
-			.mockRejectedValueOnce(new Error('GitLab is unavailable.'))
-			.mockResolvedValueOnce({ data: [repository, otherRepository], nextCursor: null });
+			.mockResolvedValueOnce({
+				data: [repository, otherRepository],
+				nextCursor: 'filtered-next',
+			});
 		api.fetchPromotionBranches
 			.mockResolvedValueOnce({
 				data: [{ name: 'main', isDefault: true }],
@@ -121,37 +122,34 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 			})
 			.mockRejectedValueOnce(new Error('GitLab is unavailable.'))
 			.mockResolvedValueOnce({
-				data: [{ name: 'team/main', isDefault: false }],
-				nextCursor: 'filtered-next',
-			})
-			.mockRejectedValueOnce(new Error('GitLab is unavailable.'))
-			.mockResolvedValueOnce({
 				data: [
 					{ name: 'team/main', isDefault: false },
 					{ name: 'team/other', isDefault: false },
 				],
-				nextCursor: null,
+				nextCursor: 'filtered-next',
 			});
 		const onClick = vi.fn();
 		const { emitted } = renderPicker(onClick);
 		await waitFor(() => expect(requests()).toHaveLength(1));
-		await userEvent.type(screen.getByRole('combobox'), 'team');
+		const input = screen.getByRole('combobox');
+		expect(input).toHaveAttribute(
+			'placeholder',
+			kind === 'repository' ? 'Search or select a repository' : 'Search or select a branch',
+		);
+		expect(requests()[0]).toEqual({ search: undefined, limit: 25 });
+		await userEvent.type(input, 'team');
 		await waitFor(() => expect(requests()).toHaveLength(2));
 		onClick.mockClear();
 		await userEvent.click(await screen.findByRole('button', { name: 'Retry' }));
 		await waitFor(() => expect(requests()).toHaveLength(3));
-		expect(requests()[1]).toEqual({ search: 'team', cursor: undefined, limit: 25 });
+		expect(requests()[1]).toEqual({ search: 'team', limit: 25 });
 		expect(requests()[2]).toEqual(requests()[1]);
-		await userEvent.click(await screen.findByRole('button', { name: 'Load more' }));
-		await waitFor(() => expect(requests()).toHaveLength(4));
-		expect(requests()[3]).toEqual({ search: 'team', cursor: 'filtered-next', limit: 25 });
-		await userEvent.click(await screen.findByRole('button', { name: 'Retry' }));
-		await waitFor(() => expect(requests()).toHaveLength(5));
-		expect(requests()[4]).toEqual(requests()[3]);
+		expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
 		expect(onClick).not.toHaveBeenCalled();
 		expect(screen.getByRole('combobox')).toHaveValue('');
 		expect(screen.getByText('Results for “team”')).toBeVisible();
 		await userEvent.click(screen.getByRole('combobox'));
+		expect(requests()).toHaveLength(3);
 		expect(
 			screen.getAllByRole('option', {
 				name: kind === 'repository' ? 'team/workflows' : 'team/main',
@@ -166,24 +164,15 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 	});
 });
 
-it('uses native Tab order for pagination and leaving the picker', async () => {
-	api.fetchPromotionRepositories
-		.mockResolvedValueOnce({ data: [repository], nextCursor: 'next' })
-		.mockResolvedValueOnce({ data: [otherRepository], nextCursor: null });
+it('uses native Tab order to leave the picker without a pagination action', async () => {
+	api.fetchPromotionRepositories.mockResolvedValue({ data: [repository], nextCursor: 'next' });
 	const { container } = renderSelect();
 	container.insertAdjacentHTML('beforeend', '<button type="button">After picker</button>');
+	await flushPromises();
 	await userEvent.click(screen.getByRole('combobox'));
-	const loadMore = await screen.findByRole('button', { name: 'Load more' });
-	await userEvent.tab();
-	expect(loadMore).toHaveFocus();
-	await userEvent.keyboard('{Enter}');
-	await waitFor(() => expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(2));
-	await waitFor(() =>
-		expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument(),
-	);
-	screen.getByRole('combobox').focus();
 	await userEvent.tab();
 	expect(screen.getByRole('button', { name: 'After picker' })).toHaveFocus();
+	expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(1);
 });
 
 it('shows one retry action for an initial failure and then an empty result', async () => {

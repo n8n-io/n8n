@@ -23,7 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { options, search, nextCursor, loading, error, onSearch, cancel, retry, loadMore } =
+const { options, search, loading, error, onSearch, cancel, retry } =
 	usePromotionGitHostDiscovery(props);
 const selectedRepository = ref<PromotionRepository>();
 watch(
@@ -69,7 +69,7 @@ function select(value: string) {
 }
 
 function onInput(event: Event) {
-	// Dropdown close events must not clear the search used by pagination or retry.
+	// Dropdown close events must not clear the search used by retry.
 	if (event.target instanceof HTMLInputElement) onSearch(event.target.value);
 }
 </script>
@@ -107,14 +107,7 @@ function onInput(event: Event) {
 			{{ i18n.baseText('settings.promotions.discovery.searchHint', { interpolate: { search } }) }}
 		</N8nText>
 		<N8nText
-			v-if="
-				!loading &&
-				!error &&
-				!unavailable &&
-				options.length === 0 &&
-				!nextCursor &&
-				(!modelValue || search)
-			"
+			v-if="!loading && !error && !unavailable && options.length === 0 && (!modelValue || search)"
 			size="small"
 			color="text-light"
 			role="status"
@@ -132,16 +125,6 @@ function onInput(event: Event) {
 				{{ i18n.baseText('generic.retry') }}
 			</N8nButton>
 		</N8nNotice>
-		<N8nButton
-			v-else-if="nextCursor"
-			type="button"
-			variant="outline"
-			:disabled="unavailable || loading"
-			:loading="loading"
-			@click.stop="loadMore"
-		>
-			{{ i18n.baseText('settings.promotions.discovery.loadMore') }}
-		</N8nButton>
 	</div>
 </template>
 
