@@ -8,7 +8,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { selfHealingOutputSchema } from '@n8n/instance-ai';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { randomUUID } from 'node:crypto';
@@ -19,14 +19,14 @@ import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 import { WorkflowSuggestionRepository } from '../workflow-suggestions/database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
-import type {
-	SelfHealingInvestigation,
-	PendingSelfHealingResult,
-} from './database/self-healing-investigation.entity';
+import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import type { SelfHealingRunResult } from './self-healing-agent.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
-import { SelfHealingResultService } from './self-healing-result.service';
+import {
+	SelfHealingResultService,
+	type SelfHealingResultInput,
+} from './self-healing-result.service';
 
 type StartInvestigation = {
 	workflowId: string;
@@ -130,8 +130,7 @@ export class SelfHealingInvestigationService {
 				},
 			);
 		} catch (error) {
-			// The pending result survives a failed transaction and needs no workspace on retry.
-			await this.investigations.finishIfNoPendingResult(investigation.id);
+			await this.investigations.finishWithoutResult(investigation.id);
 			throw error;
 		}
 	}
@@ -142,11 +141,11 @@ export class SelfHealingInvestigationService {
 		signal: AbortSignal,
 	) {
 		if (run.status !== 'completed' || run.finishReason !== 'stop' || !run.output) {
-			await this.investigations.finishIfNoPendingResult(investigation.id);
+			await this.investigations.finishWithoutResult(investigation.id);
 			return;
 		}
 		const output = run.output;
-		const pendingResult: PendingSelfHealingResult = {
+		const result: SelfHealingResultInput = {
 			output,
 			usage: run.usage,
 			completedAt: new Date().toISOString(),
@@ -164,7 +163,7 @@ export class SelfHealingInvestigationService {
 				const missingCredentials = Object.entries(
 					candidate.credentialResolution.mockedCredentialsByNode,
 				).map(([node, types]) => `${node}: ${types.join(', ')}`);
-				pendingResult.output = {
+				result.output = {
 					...output,
 					outcome: 'needs_you',
 					summary: 'Connect the missing credentials to complete this repair.',
@@ -174,38 +173,25 @@ export class SelfHealingInvestigationService {
 						'Continue in chat to connect the credentials and verify the repair.',
 				};
 			}
-			pendingResult.candidate = {
+			result.candidate = {
 				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
 			};
 		}
 		const outputFields = selfHealingOutputSchema.innerType().shape;
-		pendingResult.output = {
-			...pendingResult.output,
-			summary: scrubSecretsInText(pendingResult.output.summary).slice(
+		result.output = {
+			...result.output,
+			summary: scrubSecretsInText(result.output.summary).slice(
 				0,
 				outputFields.summary.maxLength ?? undefined,
 			),
-			report: scrubSecretsInText(pendingResult.output.report).slice(
+			report: scrubSecretsInText(result.output.report).slice(
 				0,
 				outputFields.report.maxLength ?? undefined,
 			),
 		};
 		await this.suggestions.requireCurrentBaseline(investigation.baseline);
 		signal.throwIfAborted();
-		await this.investigations.storePendingResult(investigation.id, pendingResult);
-		await this.finalize(investigation.id);
-	}
-
-	/** Retry persistence only. This method never starts or resumes a model run. */
-	async finalize(investigationId: string) {
-		try {
-			return await this.results.complete({ investigationId });
-		} catch (error) {
-			if (error instanceof ConflictError || error instanceof ForbiddenError) {
-				await this.investigations.rejectPendingResult(investigationId);
-			}
-			throw error;
-		}
+		await this.results.complete({ investigationId: investigation.id, ...result });
 	}
 
 	async reconcile(signal?: AbortSignal) {
@@ -223,10 +209,6 @@ export class SelfHealingInvestigationService {
 	}
 
 	private async reconcileInvestigation(investigation: SelfHealingInvestigation) {
-		if (investigation.pendingResult) {
-			await this.finalize(investigation.id);
-			return;
-		}
 		const { threadId, runId } = investigation;
 		if (this.runtime.isRunLive(threadId, runId)) return;
 		// Allow another main to finish admission before its first run event is saved.
@@ -234,13 +216,13 @@ export class SelfHealingInvestigationService {
 			return;
 		}
 		if (!(await this.events.lastFactAt(threadId, runId))) {
-			await this.investigations.finishIfNoPendingResult(investigation.id);
+			await this.investigations.finishWithoutResult(investigation.id);
 			return;
 		}
 		await this.sweeper.sweepRun(threadId, runId);
 		await this.eventLog.flush(threadId);
 		if (await this.events.getRunFinish(threadId, runId)) {
-			await this.investigations.finishIfNoPendingResult(investigation.id);
+			await this.investigations.finishWithoutResult(investigation.id);
 		}
 	}
 

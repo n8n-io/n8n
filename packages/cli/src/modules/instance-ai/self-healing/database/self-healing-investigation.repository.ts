@@ -2,12 +2,9 @@ import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
-import { DataSource, IsNull, Not } from '@n8n/typeorm';
+import { DataSource, IsNull } from '@n8n/typeorm';
 
-import {
-	SelfHealingInvestigation,
-	type PendingSelfHealingResult,
-} from './self-healing-investigation.entity';
+import { SelfHealingInvestigation } from './self-healing-investigation.entity';
 
 @Service()
 export class SelfHealingInvestigationRepository extends BaseRepository<SelfHealingInvestigation> {
@@ -51,29 +48,16 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 				workflowId: input.baseline.workflowId,
 				projectId: input.baseline.projectId,
 				backgroundUserId: input.baseline.backgroundUserId,
-				pendingResult: null,
 				resultId: null,
 				finishedAt: null,
 			}),
 		);
 	}
 
-	async storePendingResult(
-		id: string,
-		pendingResult: PendingSelfHealingResult,
-		ctx: OperationContext = {},
-	) {
+	async finishWithoutResult(id: string, ctx: OperationContext = {}) {
 		await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
-			{ id, finishedAt: IsNull(), pendingResult: IsNull() },
-			{ pendingResult },
-		);
-	}
-
-	async finishIfNoPendingResult(id: string, ctx: OperationContext = {}) {
-		await this.managerFor(ctx).update(
-			SelfHealingInvestigation,
-			{ id, finishedAt: IsNull(), pendingResult: IsNull() },
+			{ id, finishedAt: IsNull() },
 			{ finishedAt: new Date() },
 		);
 	}
@@ -81,20 +65,12 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 	async completeWithResult(id: string, resultId: string, ctx: OperationContext) {
 		const updated = await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
-			{ id, finishedAt: IsNull(), resultId: IsNull(), pendingResult: Not(IsNull()) },
-			{ resultId, finishedAt: new Date(), pendingResult: null },
+			{ id, finishedAt: IsNull(), resultId: IsNull() },
+			{ resultId, finishedAt: new Date() },
 		);
 		if (updated.affected !== 1) {
 			throw new ConflictError('The self-healing investigation has already finished.');
 		}
-	}
-
-	async rejectPendingResult(id: string, ctx: OperationContext = {}) {
-		await this.managerFor(ctx).update(
-			SelfHealingInvestigation,
-			{ id, finishedAt: IsNull(), resultId: IsNull(), pendingResult: Not(IsNull()) },
-			{ finishedAt: new Date() },
-		);
 	}
 
 	async listUnfinished() {

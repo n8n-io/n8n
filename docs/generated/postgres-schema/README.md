@@ -129,7 +129,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.scheduled_task](public.scheduled_task.md) | 19 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
-| [public.self_healing_investigation](public.self_healing_investigation.md) | 13 |  | BASE TABLE |
+| [public.self_healing_investigation](public.self_healing_investigation.md) | 12 |  | BASE TABLE |
 | [public.self_healing_result](public.self_healing_result.md) | 15 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
@@ -1656,7 +1656,6 @@ erDiagram
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
-  json pendingResult
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   uuid runId

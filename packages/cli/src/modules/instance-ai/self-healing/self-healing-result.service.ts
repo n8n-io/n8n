@@ -1,4 +1,6 @@
 import {
+	type SelfHealingResultUsage,
+	type WorkflowSuggestionGraph,
 	selfHealingResultContentSchema,
 	type SelfHealingExecutionReference,
 	type SelfHealingResultDetail,
@@ -13,6 +15,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import isEqual from 'lodash/isEqual';
 
@@ -23,6 +26,15 @@ import type { SelfHealingInvestigation } from './database/self-healing-investiga
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
+
+export type SelfHealingResultInput = {
+	output: SelfHealingOutput;
+	usage: SelfHealingResultUsage;
+	candidate?: {
+		graph: WorkflowSuggestionGraph;
+	};
+	completedAt: string;
+};
 
 export function getSelfHealingReviewState(
 	result: Pick<SelfHealingResult, 'dismissedAt'>,
@@ -43,7 +55,10 @@ export class SelfHealingResultService {
 		private readonly investigations: SelfHealingInvestigationRepository,
 	) {}
 
-	async complete({ investigationId }: { investigationId: string }) {
+	async complete({
+		investigationId,
+		...input
+	}: SelfHealingResultInput & { investigationId: string }) {
 		const investigation = await this.investigations.get(investigationId);
 		if (investigation.resultId) {
 			return await this.results.getResult(investigation.resultId, investigation);
@@ -52,7 +67,7 @@ export class SelfHealingResultService {
 			content,
 			completedAt,
 			suggestion: prepared,
-		} = await this.prepareInvestigation(investigation);
+		} = await this.prepareInvestigation(investigation, input);
 		return await this.txRunner.run({}, async (ctx) => {
 			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
 			const current = await this.investigations.get(investigationId, ctx);
@@ -81,17 +96,20 @@ export class SelfHealingResultService {
 		});
 	}
 
-	private async prepareInvestigation(investigation: SelfHealingInvestigation) {
-		if (investigation.finishedAt || !investigation.pendingResult) {
-			throw new ConflictError('The investigation has no pending result to complete.');
+	private async prepareInvestigation(
+		investigation: SelfHealingInvestigation,
+		input: SelfHealingResultInput,
+	) {
+		if (investigation.finishedAt) {
+			throw new ConflictError('The self-healing investigation has already finished.');
 		}
-		const { baseline, pendingResult } = investigation;
-		const { output, candidate } = pendingResult;
+		const { baseline } = investigation;
+		const { output, candidate } = input;
 		const content = selfHealingResultContentSchema.parse({
 			outcome: output.outcome,
 			summary: output.summary,
 			report: output.report,
-			usage: pendingResult.usage,
+			usage: input.usage,
 		});
 		const needsYouWithoutChanges =
 			output.outcome === 'needs_you' &&
@@ -115,7 +133,7 @@ export class SelfHealingResultService {
 			investigation.workflowId,
 			investigation.executionId,
 		);
-		return { content, completedAt: new Date(pendingResult.completedAt), suggestion };
+		return { content, completedAt: new Date(input.completedAt), suggestion };
 	}
 
 	async getDetail(

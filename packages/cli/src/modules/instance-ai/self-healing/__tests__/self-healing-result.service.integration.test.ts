@@ -47,7 +47,10 @@ import { SelfHealingInvestigationRepository } from '../database/self-healing-inv
 import type { SelfHealingRunResult } from '../self-healing-agent.service';
 import { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import { SelfHealingInvestigationService } from '../self-healing-investigation.service';
-import { SelfHealingResultService } from '../self-healing-result.service';
+import {
+	SelfHealingResultService,
+	type SelfHealingResultInput,
+} from '../self-healing-result.service';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
@@ -146,7 +149,10 @@ async function prepareFixture(outcome: Outcome = 'needs_you') {
 
 async function fixture(outcome: Outcome = 'needs_you', withSuggestion = false) {
 	const prepared = await prepareInvestigation(outcome, withSuggestion);
-	const result = await service.complete({ investigationId: prepared.investigation.id });
+	const result = await service.complete({
+		investigationId: prepared.investigation.id,
+		...prepared.completion,
+	});
 	const { user, project, original } = prepared;
 	const url = `/projects/${project.id}/workflows/${original.id}/self-healing-results/${result.id}`;
 	const getDetail = async () => await service.getDetail(user, project.id, original.id, result.id);
@@ -172,7 +178,7 @@ async function prepareInvestigation(
 			ctx,
 		);
 	});
-	await investigations.storePendingResult(investigation.id, {
+	const completion: SelfHealingResultInput = {
 		output: {
 			outcome,
 			summary: input.summary,
@@ -182,8 +188,8 @@ async function prepareInvestigation(
 		usage: input.usage,
 		completedAt: new Date().toISOString(),
 		...(withSuggestion ? { candidate: { graph } } : {}),
-	});
-	return { ...fixture, graph, input, investigation };
+	};
+	return { ...fixture, graph, input, investigation, completion };
 }
 
 it.each(['same', 'different'] as const)(
@@ -247,11 +253,13 @@ it.each(['same', 'different'] as const)(
 );
 
 it('returns committed completion without repeating access or execution checks', async () => {
-	const { investigation, user } = await prepareInvestigation();
-	const result = await service.complete({ investigationId: investigation.id });
+	const { investigation, user, completion } = await prepareInvestigation();
+	const result = await service.complete({ investigationId: investigation.id, ...completion });
 	await Container.get(UserRepository).update(user.id, { disabled: true });
 	await Container.get(ExecutionRepository).delete(investigation.executionId);
-	expect(await service.complete({ investigationId: investigation.id })).toMatchObject({
+	expect(
+		await service.complete({ investigationId: investigation.id, ...completion }),
+	).toMatchObject({
 		id: result.id,
 	});
 	expect(await results.count()).toBe(1);
@@ -259,10 +267,10 @@ it('returns committed completion without repeating access or execution checks', 
 });
 
 it('commits concurrent finalization only once', async () => {
-	const { investigation } = await prepareInvestigation();
+	const { investigation, completion } = await prepareInvestigation();
 	const completed = await Promise.all([
-		service.complete({ investigationId: investigation.id }),
-		service.complete({ investigationId: investigation.id }),
+		service.complete({ investigationId: investigation.id, ...completion }),
+		service.complete({ investigationId: investigation.id, ...completion }),
 	]);
 	expect(completed[0].id).toBe(completed[1].id);
 	expect(await results.count()).toBe(1);
@@ -270,8 +278,8 @@ it('commits concurrent finalization only once', async () => {
 	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(1);
 });
 
-it('rolls back all completion writes and retries from accepted data', async () => {
-	const { input, original, graph, user, project } = await prepareFixture('fix_ready');
+it('rolls back all completion writes and releases the claim on failure', async () => {
+	const { input, original, graph } = await prepareFixture('fix_ready');
 	const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
 	let completedRun: Promise<SelfHealingRunResult> | undefined;
 	runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
@@ -319,54 +327,31 @@ it('rolls back all completion writes and retries from accepted data', async () =
 	expect(await results.count()).toBe(0);
 	expect(await suggestions.count()).toBe(0);
 	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(0);
-	const content = {
-		summary: 'Updated the request using [REDACTED].',
-		report: 'Check the HTTP Request node. Authorization: [REDACTED]',
-	};
-	expect(investigation).toMatchObject({
-		resultId: null,
-		finishedAt: null,
-		pendingResult: { output: content },
-	});
-	const result = await service.complete({ investigationId: investigation.id });
-	expect(await investigations.get(investigation.id)).toMatchObject({
-		resultId: result.id,
-		pendingResult: null,
-	});
-	const url = `/projects/${project.id}/workflows/${original.id}/self-healing-results/${result.id}`;
-	const response = await testServer.authAgentFor(user).get(url).expect(200);
-	expect(response.body.data).toMatchObject({
-		...content,
-		suggestion: { payload: { explanation: content.summary } },
+	await vi.waitFor(async () => {
+		expect(await investigations.get(investigation.id)).toMatchObject({
+			resultId: null,
+			finishedAt: expect.any(Date),
+		});
 	});
 	expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
 });
 
-it('rejects a changed baseline when finalizing an accepted report', async () => {
-	const { investigation, original } = await prepareInvestigation('needs_you', false);
-	await workflows.update(original.id, { name: 'Changed after acceptance' });
-	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow('baseline');
+it('rejects a changed baseline when saving a completed report', async () => {
+	const { investigation, original, completion } = await prepareInvestigation('needs_you', false);
+	await workflows.update(original.id, { name: 'Changed before completion' });
+	await expect(
+		service.complete({ investigationId: investigation.id, ...completion }),
+	).rejects.toThrow('baseline');
 	expect(await results.count()).toBe(0);
 	expect((await investigations.get(investigation.id)).finishedAt).toBeNull();
 });
 
-it('keeps the first pending result and protects it from technical cleanup', async () => {
-	const { investigation } = await prepareInvestigation('could_not_fix', false);
-	const first = await investigations.get(investigation.id);
-	await investigations.storePendingResult(investigation.id, {
-		output: { outcome: 'could_not_fix', summary: 'Changed', report: 'Changed' },
-		usage: { credits: null, turns: null, durationSeconds: null },
-		completedAt: new Date().toISOString(),
-	});
-	await investigations.finishIfNoPendingResult(investigation.id);
-	expect(await investigations.get(investigation.id)).toMatchObject({
-		pendingResult: first.pendingResult,
-		finishedAt: null,
-	});
-	await investigations.rejectPendingResult(investigation.id);
-	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
-		'no pending result',
-	);
+it('rejects completion after interrupted-run cleanup', async () => {
+	const { investigation, completion } = await prepareInvestigation('could_not_fix', false);
+	await investigations.finishWithoutResult(investigation.id);
+	await expect(
+		service.complete({ investigationId: investigation.id, ...completion }),
+	).rejects.toThrow('already finished');
 	expect(await results.count()).toBe(0);
 });
 
@@ -387,7 +372,6 @@ it.each([
 		expect(await investigations.get(investigation.id)).toMatchObject({
 			resultId: result.id,
 			finishedAt: expect.any(Date),
-			pendingResult: null,
 		});
 		expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
 		const response = await testServer.authAgentFor(user).get(url);
@@ -414,11 +398,11 @@ it.each([
 );
 
 it('preserves a needs_you report when the candidate has no changes', async () => {
-	const { investigation, input, user, project, original } = await prepareInvestigation(
+	const { investigation, input, user, project, original, completion } = await prepareInvestigation(
 		'needs_you',
 		'unchanged',
 	);
-	const result = await service.complete({ investigationId: investigation.id });
+	const result = await service.complete({ investigationId: investigation.id, ...completion });
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
 	expect(detail).toMatchObject({
 		outcome: 'needs_you',
@@ -431,30 +415,29 @@ it('preserves a needs_you report when the candidate has no changes', async () =>
 	expect(await investigations.get(investigation.id)).toMatchObject({
 		resultId: result.id,
 		finishedAt: expect.any(Date),
-		pendingResult: null,
 	});
 });
 
 it('rejects a fix_ready candidate with no changes', async () => {
-	const { investigation } = await prepareInvestigation('fix_ready', 'unchanged');
-	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
-		'no workflow changes',
-	);
+	const { investigation, completion } = await prepareInvestigation('fix_ready', 'unchanged');
+	await expect(
+		service.complete({ investigationId: investigation.id, ...completion }),
+	).rejects.toThrow('no workflow changes');
 	expect(await results.count()).toBe(0);
 	expect(await suggestions.count()).toBe(0);
 });
 
 it('rechecks the background user after execution validation', async () => {
-	const { investigation, user } = await prepareInvestigation();
+	const { investigation, user, completion } = await prepareInvestigation();
 	const references = Container.get(SelfHealingExecutionReferenceService);
 	const validateReference = references.validateReference.bind(references);
 	vi.spyOn(references, 'validateReference').mockImplementationOnce(async (...args) => {
 		await validateReference(...args);
 		await Container.get(UserRepository).update(user.id, { disabled: true });
 	});
-	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
-		'edit access',
-	);
+	await expect(
+		service.complete({ investigationId: investigation.id, ...completion }),
+	).rejects.toThrow('edit access');
 	expect(await results.count()).toBe(0);
 	expect(await suggestions.count()).toBe(0);
 });
@@ -466,7 +449,7 @@ it.each([0, null])('preserves report text and measured usage with credits=%s', a
 		turns: 1,
 		durationSeconds: null,
 	};
-	const { investigation, user, project, original } = await prepareInvestigation(
+	const { investigation, user, project, original, completion } = await prepareInvestigation(
 		'needs_you',
 		false,
 		{
@@ -474,7 +457,7 @@ it.each([0, null])('preserves report text and measured usage with credits=%s', a
 			usage,
 		},
 	);
-	const result = await service.complete({ investigationId: investigation.id });
+	const result = await service.complete({ investigationId: investigation.id, ...completion });
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
 	expect(detail.report).toBe(report);
 	expect(detail.usage).toEqual(usage);
@@ -500,12 +483,12 @@ it('keeps the report and unknown usage after the execution is removed', async ()
 		turns: 2,
 		durationSeconds: null,
 	};
-	const { user, project, original, input, investigation } = await prepareInvestigation(
+	const { user, project, original, input, investigation, completion } = await prepareInvestigation(
 		'needs_you',
 		false,
 		{ usage },
 	);
-	const result = await service.complete({ investigationId: investigation.id });
+	const result = await service.complete({ investigationId: investigation.id, ...completion });
 	await Container.get(ExecutionRepository).delete(input.executionId);
 	expect((await results.findOneByOrFail({ id: result.id })).executionId).toBe(input.executionId);
 	const detail = await service.getDetail(user, project.id, original.id, result.id);

@@ -129,7 +129,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
-| [self_healing_investigation](self_healing_investigation.md) | 13 |  | table |
+| [self_healing_investigation](self_healing_investigation.md) | 12 |  | table |
 | [self_healing_result](self_healing_result.md) | 15 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
@@ -1642,7 +1642,6 @@ erDiagram
   varchar_36_ executionId
   datetime_3_ finishedAt
   varchar_36_ id PK
-  TEXT pendingResult
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   varchar runId

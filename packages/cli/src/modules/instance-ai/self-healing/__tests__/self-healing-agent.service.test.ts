@@ -301,7 +301,7 @@ describe('SelfHealingAgentService', () => {
 		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('node-id');
 	});
 
-	it('waits for pending result storage with final usage and the original candidate context', async () => {
+	it('waits for result storage with final usage and the original candidate context', async () => {
 		const entered = createDeferredPromise();
 		const persisted = createDeferredPromise();
 		const candidate: CandidateWorkflowResult = {
@@ -339,7 +339,7 @@ describe('SelfHealingAgentService', () => {
 		expect(options.onFinish).toHaveBeenCalledTimes(1);
 	});
 
-	it('preserves runtime completion when pending result storage fails', async () => {
+	it('preserves runtime completion when result storage fails', async () => {
 		options.onComplete = vi.fn().mockRejectedValue(new Error('Storage unavailable'));
 		await expect(service.execute(input, options)).rejects.toThrow('Storage unavailable');
 		expect(options.onFinish).toHaveBeenCalledWith(

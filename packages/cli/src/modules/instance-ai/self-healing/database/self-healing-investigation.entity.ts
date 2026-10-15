@@ -1,8 +1,4 @@
-import type {
-	SelfHealingResultUsage,
-	WorkflowSuggestionBaseline,
-	WorkflowSuggestionGraph,
-} from '@n8n/api-types';
+import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import {
 	DateTimeColumn,
 	JsonColumn,
@@ -11,19 +7,9 @@ import {
 	WorkflowEntity,
 	WithTimestampsAndStringId,
 } from '@n8n/db';
-import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { SelfHealingResult } from './self-healing-result.entity';
-
-export type PendingSelfHealingResult = {
-	output: SelfHealingOutput;
-	usage: SelfHealingResultUsage;
-	candidate?: {
-		graph: WorkflowSuggestionGraph;
-	};
-	completedAt: string;
-};
 
 @Entity('self_healing_investigation')
 @Index(['workflowId', 'executionId'], { unique: true })
@@ -64,9 +50,6 @@ export class SelfHealingInvestigation extends WithTimestampsAndStringId {
 
 	@JsonColumn()
 	baseline: WorkflowSuggestionBaseline;
-
-	@JsonColumn({ nullable: true })
-	pendingResult: PendingSelfHealingResult | null;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	resultId: string | null;

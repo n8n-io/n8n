@@ -68,7 +68,7 @@ The host uses its existing admission limits, run registry, sandbox, tracing, and
 An unexpected suspension stops the invocation.
 A crashed invocation becomes `crash_interrupted`. It cannot resume as ordinary chat.
 Workspace retention follows the existing sandbox lifecycle.
-The awaited completion hook persists the pending result before the host releases the run.
+The awaited completion hook saves the result before the host releases the run.
 
 `SelfHealingInvestigationService` owns admission, final candidate compilation, and acceptance.
 When parameter sharing is disabled, candidate source omits node parameters and verification is unavailable.
@@ -108,21 +108,20 @@ No suggestion row is created by verification.
 The runtime validates final output. The producer compiles the named workspace file.
 It applies the shared text filter to the final summary and report before storage.
 It keeps both fields within their output limits after replacement.
-It stores the report, runtime usage, and compiled graph in the investigation’s `pendingResult` field.
+It passes the report, runtime usage, and compiled graph directly to the result service.
 A credit-claim failure leaves unknown credits and does not discard valid output.
 
-`SelfHealingResultService.complete({ investigationId })` prepares the optional suggestion through
+`SelfHealingResultService.complete(...)` prepares the optional suggestion through
 `WorkflowSuggestionService`. It rechecks access and the captured baseline, then saves the result,
 suggestion, submission activity, and investigation completion in one transaction.
-A repeated completion returns the saved result. A failed transaction leaves the pending result for retry.
-Successful completion clears the temporary pending result.
-Retries use the stored graph and report. They do not need the workspace or another model run.
+A repeated completion returns the saved result.
+A failed transaction releases the investigation claim. The report is not saved for retry.
 Changed baselines and lost access stop completion without creating a result.
 
-Startup retries pending results and reconciles interrupted claims after the interrupted-run sweep.
-A separate scheduled task retries this work at the configured prune interval.
-Recovery failures do not block Assistant data pruning or temporary workflow cleanup.
-Recovery remains available when new investigations are disabled.
+Startup releases interrupted claims after the interrupted-run sweep.
+A separate scheduled task checks unfinished claims at the configured prune interval.
+Investigation cleanup failures do not block Assistant data pruning or temporary workflow cleanup.
+Investigation cleanup remains available when new investigations are disabled.
 Technical status and termination reasons stay in the existing Assistant run events.
 Completion releases the investigation claim. A pending suggestion then prevents new investigations.
 Apply, discard, dismissal, and outdated reconciliation use the existing suggestion lifecycle.

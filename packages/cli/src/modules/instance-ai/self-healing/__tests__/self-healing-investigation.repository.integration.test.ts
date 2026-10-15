@@ -72,7 +72,7 @@ it('allows one concurrent investigation claim per workflow', async () => {
 
 it('releases technical failures while retaining the original execution identity', async () => {
 	const first = await createInvestigation();
-	await investigations.finishIfNoPendingResult(first.id);
+	await investigations.finishWithoutResult(first.id);
 	expect(await investigations.getUnfinishedForWorkflow(baseline.workflowId)).toBeNull();
 	expect(await investigations.getForExecution(baseline.workflowId, first.executionId)).toEqual({
 		id: first.id,
@@ -84,17 +84,6 @@ it('releases technical failures while retaining the original execution identity'
 	await expect(createInvestigation()).rejects.toThrow();
 	const next = await createInvestigation('execution-2');
 	expect(next.id).not.toBe(first.id);
-});
-
-it('does not accept late output after technical cleanup released a claim', async () => {
-	const first = await createInvestigation();
-	await investigations.finishIfNoPendingResult(first.id);
-	await investigations.storePendingResult(first.id, {
-		output: { outcome: 'could_not_fix', summary: 'Stopped', report: 'The run stopped.' },
-		usage: { credits: null, turns: null, durationSeconds: null },
-		completedAt: new Date().toISOString(),
-	});
-	expect((await investigations.get(first.id)).pendingResult).toBeNull();
 });
 
 it('removes investigations when their workflow is deleted', async () => {
@@ -125,7 +114,6 @@ it('reverts and reapplies the investigation schema', async () => {
 	const investigation = await createInvestigation();
 	expect(await investigations.get(investigation.id)).toMatchObject({
 		baseline,
-		pendingResult: null,
 		resultId: null,
 		finishedAt: null,
 	});
