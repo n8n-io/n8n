@@ -128,7 +128,6 @@ export class DatabricksAiAgent implements INodeType {
 		// 2.2: the minimum version where the shared executor streams (execute.ts)
 		// and `getToolsAgentProperties` shows the streaming toggle (description.ts).
 		version: [2.2],
-		hidden: true,
 		description: 'An AI agent that exports its runs to MLflow Tracing in Databricks',
 		defaults: {
 			name: 'Databricks AI Agent',
@@ -137,6 +136,13 @@ export class DatabricksAiAgent implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents', 'Root Nodes'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.databricksaiagent/',
+					},
+				],
 			},
 		},
 		inputs: `={{
