@@ -108,9 +108,11 @@ describe('backend recording', () => {
 			for (let index = 0; index < 3; index++) await fetch(`${target.url}/allocate`);
 			const report = await waitFor(async () => {
 				const value = await buildReport(join(output, 'session.json'));
-				return value.requests.completed === 2 && value;
+				return value.requests.completed === 2 && value.requests.counts.completed === 3 && value;
 			});
 			expect(report.requests.recent.map((call) => call.id)).toEqual([2, 3]);
+			expect(report.requests.counts).toMatchObject({ scope: 'session', completed: 3 });
+			expect(report.requests.recent[0]).toMatchObject({ endpointCount: 3, payloadCount: 3 });
 			expect(report.requests.recent[0].request.body.text).toContain('sample-request');
 			expect(report.requests.recent[0]).not.toHaveProperty('response');
 			await controlSession(output, 'configure', {
@@ -127,9 +129,16 @@ describe('backend recording', () => {
 			await observer.stopRequests();
 			observer.close();
 			await controlSession(output, 'stop');
+			await recording;
 		}
 		const report = await recording;
 		expect(report.requests.historyLimit).toBe(1);
+		expect(report.requests.counts).toMatchObject({ scope: 'session', completed: 4 });
+		expect(report.requests.recent[0]).toMatchObject({ endpointCount: 4, payloadCount: null });
+		const savedCounts = JSON.parse(await readFile(join(output, 'request-counts.json'), 'utf8'));
+		expect(savedCounts.endpoints[0].count).toBe(4);
+		expect(savedCounts.payloads[0].count).toBe(3);
+		expect(JSON.stringify(savedCounts)).not.toContain('sample-request');
 		expect(report.requests.recent).toHaveLength(1);
 		expect(report.requests.recent[0]).not.toHaveProperty('request');
 		expect(report.requests.recent[0].response.body.text).toBe('ok');
@@ -227,6 +236,8 @@ describe('backend recording', () => {
 		}
 		const report = await recording;
 		expect(report.requests.completed).toBe(2);
+		expect(report.requests.counts).toMatchObject({ scope: 'session', completed: 2 });
+		expect(report.requests.recent[0].endpointCount).toBe(2);
 		expect(report.session.captureChanges).toHaveLength(3);
 		expect(report.session.recordingIntervals).toHaveLength(4);
 		expect(report.session.recordingIntervals[1].capture).toMatchObject({
@@ -484,14 +495,38 @@ describe('backend recording', () => {
 		const recording = record(
 			settings(output, target, {
 				inspector: `http://127.0.0.1:${inspectorPort}`,
-				durationMs: 1500,
+				durationMs: 60_000,
+				allocations: false,
+				requestDetails: true,
 			}),
 		);
-		await waitFor(async () => (await controlSession(output, 'status')).ready);
-		target.child.kill('SIGKILL');
-		await once(target.child, 'exit');
-		const replacement = await backend({ port: Number(new URL(target.url).port), inspectorPort });
+		let replacement;
+		try {
+			await waitFor(async () => (await controlSession(output, 'status')).ready);
+			await fetch(`${target.url}/allocate`);
+			await waitFor(
+				async () =>
+					(await buildReport(join(output, 'session.json'))).requests.counts.completed === 1,
+			);
+			target.child.kill('SIGKILL');
+			await once(target.child, 'exit');
+			replacement = await backend({ port: Number(new URL(target.url).port), inspectorPort });
+			await waitFor(async () => {
+				const status = await controlSession(output, 'status');
+				return status.pid === replacement.child.pid && status.ready;
+			});
+			await fetch(`${replacement.url}/allocate`);
+			await waitFor(
+				async () =>
+					(await buildReport(join(output, 'session.json'))).requests.counts.completed === 2,
+			);
+		} finally {
+			await controlSession(output, 'stop');
+			await recording;
+		}
 		const report = await recording;
+		expect(report.requests.counts.completed).toBe(2);
+		expect(report.requests.recent.map((request) => request.payloadCount)).toEqual([2, 2]);
 		expect(report.session.segments.map((segment) => segment.pid)).toEqual([
 			target.child.pid,
 			replacement.child.pid,

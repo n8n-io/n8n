@@ -9,6 +9,7 @@ const t = (key) => strings[key] ?? key;
 const element = (id) => document.getElementById(id);
 const mib = (bytes) =>
 	(bytes / 1024 / 1024).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const callCount = (count) => count?.toLocaleString() ?? '—';
 const seconds = (ms) => (ms / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 });
 let report;
 let selectedRequest;
@@ -128,6 +129,8 @@ function showRequestDetails(request) {
 	element('request-details-panel').hidden = !request;
 	if (!request) return;
 	element('request-detail-identity').textContent = `${request.method} ${request.route}`;
+	element('request-detail-counts').textContent =
+		`${t('endpointCalls')}: ${callCount(request.endpointCount)} · ${t('samePayload')}: ${callCount(request.payloadCount)}`;
 	const payload = (value) => {
 		if (value?.omitted) return t(`payloadOmitted.${value.omitted}`);
 		if (typeof value?.text !== 'string') return t('payloadNotCaptured');
@@ -195,6 +198,14 @@ function showRequests() {
 				? 'requestHistory'
 				: 'requestCaptureUnavailable',
 	).replace('{limit}', String(requests?.historyLimit ?? 500));
+	const counts = requests?.counts;
+	element('request-counts-status').textContent = [
+		t(counts?.scope === 'session' ? 'requestCountsSession' : 'requestCountsSaved'),
+		t('requestCountsHelp'),
+		counts?.untrackedEndpointCalls || counts?.untrackedPayloadCalls ? t('requestCountsLimit') : '',
+	]
+		.filter(Boolean)
+		.join(' ');
 	showRequestDetails(requests?.recent.find((request) => requestKey(request) === selectedRequest));
 	table(
 		'requests',
@@ -205,6 +216,8 @@ function showRequests() {
 			t('requestMethod'),
 			t('requestRoute'),
 			t('requestStatus'),
+			t('endpointCalls'),
+			t('samePayload'),
 			t('requestDuration'),
 		],
 		(requests?.recent ?? [])
@@ -230,6 +243,8 @@ function showRequests() {
 					request.method,
 					request.route,
 					request.aborted ? t('requestAborted') : (request.statusCode ?? t('requestUnfinished')),
+					callCount(request.endpointCount),
+					callCount(request.payloadCount),
 					Number.isFinite(request.durationMs)
 						? Math.round(request.durationMs).toLocaleString()
 						: '—',
@@ -387,6 +402,7 @@ async function refresh() {
 				'session.json',
 				report.session.timeline,
 				...(report.session.requests ? [report.session.requests] : []),
+				...(report.session.requestCounts ? [report.session.requestCounts] : []),
 				...report.session.profiles.map((profile) => profile.file),
 				...report.session.snapshots.map((snapshot) => snapshot.file),
 			]

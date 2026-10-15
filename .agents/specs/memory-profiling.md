@@ -142,7 +142,18 @@ Expose a live history limit from 1 to 5,000 calls. Save it in capture settings.
 Evict older calls and their payloads. A lower limit also trims paused sessions.
 Increasing the limit cannot restore old calls.
 Write the retained events atomically outside the backend. Save new events on
-the next recorder update and final shutdown. Counts describe the saved window.
+the next recorder update and final shutdown. Duration statistics describe the saved window.
+Keep completed-call counts for the full session in `request-counts.json`.
+Count each API type, method, and route template. Count matching captured request
+bodies after redaction. Ignore JSON object key order. Preserve array order.
+Match other bodies by exact text. Exclude URL, query values, headers, and response
+data from body identity. Do not count unavailable or omitted bodies as a match.
+Store SHA-256 digests instead of extra body copies. Bound counts to 1,000 endpoint
+groups and 10,000 payload groups. Keep tracked counts exact after either limit.
+Show unavailable counts and limit warnings. Preserve totals across history eviction,
+limit changes, pauses, and process restarts. Count only captured completions.
+Show both counts in the API table and selected-call details. Include them in reports.
+State the scope for old recordings that can only count saved request events.
 Show request spans on the memory timeline. Let the developer select a request
 to focus nearby samples and an allocation checkpoint. Explain that time overlap
 does not prove allocation ownership. Detach subscriptions when recording ends.
@@ -175,6 +186,7 @@ continues the implementation and reports the missing measurement.
 - [x] Inspector sampling and native profile checkpoints.
 - [x] Independent live capture controls, metric intervals, and settings history.
 - [x] Rolling API history and separate request and response detail opt-ins.
+- [x] Bounded session endpoint totals and captured request-body counts.
 - [x] Raw scrapes and streamed timeline.
 - [x] Attach mode, restart segments, and process ownership.
 - [x] Local live/replay viewer and standalone V8 summaries.

@@ -121,6 +121,7 @@ export async function record(options) {
 		endedAtMs: null,
 		timeline: 'timeline.ndjson',
 		requests: 'requests.ndjson',
+		requestCounts: 'request-counts.json',
 		settings: {
 			durationMs: options.durationMs,
 			warmupMs: options.warmupMs,
@@ -201,6 +202,7 @@ export async function record(options) {
 	let metricsUrl;
 	let startupDeadline;
 	let requestHistory;
+	let writtenRequestCount = -1;
 	const requestLeaseMs = () => Math.max(180_000, capture.intervalMs * 3);
 	const controller = new AbortController();
 	const stop = () => {
@@ -220,6 +222,11 @@ export async function record(options) {
 	};
 	const persist = async () => {
 		await requestHistory?.flush();
+		if (requestHistory && requestHistory.counts.completed !== writtenRequestCount) {
+			const counts = requestHistory.counts.snapshot();
+			await writeJson(join(directory, session.requestCounts), counts);
+			writtenRequestCount = counts.completed;
+		}
 		await writeJson(manifest, session);
 		await writeJson(join(directory, 'status.json'), status);
 	};

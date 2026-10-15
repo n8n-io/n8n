@@ -2,6 +2,7 @@ import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { open, rename, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { RequestCounts } from './request-counts.mjs';
 
 export const DEFAULT_REQUEST_LIMIT = 500;
 export const MAX_REQUEST_LIMIT = 5000;
@@ -20,6 +21,7 @@ export class RequestHistory {
 
 	constructor(filename, limit = DEFAULT_REQUEST_LIMIT) {
 		this.filename = filename;
+		this.counts = new RequestCounts();
 		this.limit = requestLimit(limit);
 	}
 
@@ -36,6 +38,7 @@ export class RequestHistory {
 	}
 
 	add(event) {
+		this.counts.add(event);
 		const key = `${event.segmentId}:${event.id}`;
 		if (event.event === 'start') this.#recent.set(key, { start: event });
 		else {
@@ -75,7 +78,8 @@ export class RequestHistory {
 	}
 }
 
-export async function requestReport(filename, enabled, limit = DEFAULT_REQUEST_LIMIT) {
+export async function requestReport(filename, enabled, limit = DEFAULT_REQUEST_LIMIT, counts) {
+	const savedCounts = new RequestCounts();
 	const recent = new Map();
 	const endpoints = new Map();
 	let started = 0;
@@ -112,6 +116,7 @@ export async function requestReport(filename, enabled, limit = DEFAULT_REQUEST_L
 			if (recent.size > limit) recent.delete(recent.keys().next().value);
 			if (request.event === 'start') started++;
 			else {
+				if (!counts) savedCounts.add(request);
 				completed++;
 				if (request.aborted) aborted++;
 				const route = JSON.stringify([request.api, request.method, request.route]);
@@ -133,15 +138,17 @@ export async function requestReport(filename, enabled, limit = DEFAULT_REQUEST_L
 			}
 		}
 	}
+	const totals = counts ?? savedCounts;
 	return {
 		enabled,
+		counts: totals.summary(counts ? 'session' : 'saved-history'),
 		started,
 		completed,
 		aborted,
 		unfinished: Math.max(0, started - completed),
 		invalidEvents,
 		historyLimit: limit,
-		recent: [...recent.values()],
+		recent: [...recent.values()].map((request) => ({ ...request, ...totals.forRequest(request) })),
 		endpoints: [...endpoints.values()]
 			.sort((a, b) => b.totalDurationMs - a.totalDurationMs)
 			.slice(0, 50),

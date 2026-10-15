@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { requestReport, RequestHistory, requestLimit } from '../requests.mjs';
+import { RequestCounts } from '../request-counts.mjs';
 
 const directories = [];
 afterEach(async () => {
@@ -38,6 +39,7 @@ it('keeps 500 calls by default and saves a bounded rolling artifact', async () =
 			statusCode: 200,
 			durationMs: 5,
 			response: { body: { text: String(id) } },
+			request: { body: { text: '{"value":1}' } },
 		});
 	}
 	await history.flush();
@@ -45,12 +47,25 @@ it('keeps 500 calls by default and saves a bounded rolling artifact', async () =
 	expect(report.recent).toHaveLength(500);
 	expect(report.recent[0].id).toBe(5);
 	expect(report.completed).toBe(500);
+	expect(report.counts.scope).toBe('saved-history');
+	const sessionReport = await requestReport(
+		filename,
+		true,
+		500,
+		RequestCounts.fromSnapshot(history.counts.snapshot()),
+	);
+	expect(sessionReport.counts).toMatchObject({ scope: 'session', completed: 505 });
+	expect(sessionReport.recent[0]).toMatchObject({ endpointCount: 505, payloadCount: 505 });
 	history.setLimit(2);
 	await history.flush();
 	expect((await readFile(filename, 'utf8')).trim().split('\n')).toHaveLength(4);
 	history.setLimit(4);
 	await history.flush();
-	expect((await requestReport(filename, true, 4)).recent).toHaveLength(2);
+	expect((await requestReport(filename, true, 4, history.counts)).recent).toHaveLength(2);
+	expect((await requestReport(filename, true, 4, history.counts)).recent[0]).toMatchObject({
+		endpointCount: 505,
+		payloadCount: 505,
+	});
 });
 
 it('does not restore an evicted in-flight call when it completes', async () => {
@@ -61,6 +76,8 @@ it('does not restore an evicted in-flight call when it completes', async () => {
 	history.add({ ...event, event: 'finish', statusCode: 200, durationMs: 5 });
 	await Promise.all([history.flush(), history.flush()]);
 	expect((await requestReport(filename, true)).recent.map((call) => call.id)).toEqual([2]);
+	expect(history.counts.summary('session').completed).toBe(1);
+	expect(history.counts.forRequest(event).endpointCount).toBe(1);
 	for (const value of [0, -1, 5001, 1.5, null, '500']) expect(() => requestLimit(value)).toThrow();
 });
 

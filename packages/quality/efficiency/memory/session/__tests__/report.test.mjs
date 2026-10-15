@@ -79,6 +79,37 @@ describe('recording reports', () => {
 		);
 		return { input, session };
 	}
+	it('keeps saved request counts when the session count artifact is missing or invalid', async () => {
+		const { input, session } = await fixture();
+		session.requests = 'requests.ndjson';
+		session.requestCounts = 'request-counts.json';
+		session.settings.requestTracking = true;
+		await writeFile(input, JSON.stringify(session));
+		await writeFile(
+			join(input, '..', session.requests),
+			JSON.stringify({
+				id: 1,
+				segmentId: 'process-1',
+				event: 'finish',
+				api: 'internal',
+				method: 'POST',
+				route: '/rest/example',
+				elapsedMs: 100,
+				durationMs: 10,
+				statusCode: 200,
+				request: { body: { text: '{}' } },
+			}),
+		);
+		for (const content of [undefined, '{}', '{']) {
+			if (content !== undefined) await writeFile(join(input, '..', session.requestCounts), content);
+			const report = await buildReport(input);
+			expect(report.requests.counts).toMatchObject({ scope: 'saved-history', completed: 1 });
+			expect(report.requests.recent[0]).toMatchObject({ endpointCount: 1, payloadCount: 1 });
+			expect(report.comparison.issues).toContain(
+				'Session request counts are unavailable. Counts cover saved request events.',
+			);
+		}
+	});
 	it('excludes warm-up and keeps the endpoint windows separate', async () => {
 		const { input } = await fixture();
 		const report = await buildReport(input);

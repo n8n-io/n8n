@@ -266,6 +266,26 @@ Use the same options from the CLI:
 pnpm dev:profile --request-limit 500 --request-details --response-details
 ```
 
+The table shows **Endpoint calls** for each API type, method, and route template.
+It shows **Same payload** when a captured request body is available. Both counts
+include completed calls across the full session. They include errors and
+aborted calls. They survive history eviction, limit changes, pauses, and backend
+restarts. Calls made while capture is off do not count.
+
+Payload groups use the captured body after redaction. JSON object key order and
+formatting do not affect the group. Array order matters. Non-JSON bodies match
+by exact text. URL, query values, headers, and response data do not affect the
+group. Bodies that differ only in redacted values can match. Uncaptured or omitted
+bodies show `—`. Enabling request details cannot count earlier payloads.
+
+The recorder stores these counts in `request-counts.json`. It keeps SHA-256
+body digests instead of extra body copies. It tracks up to 1,000 endpoint groups
+and 10,000 payload groups. At the limit, existing groups continue to count calls.
+New groups show `—`. The viewer shows when the limit is reached. These counters
+run outside the measured backend. They do not enable detail capture.
+Old recordings without this artifact count their saved request events only.
+The viewer states the count scope. JSON reports expose it as `requests.counts.scope`.
+
 Reports summarize up to 1,000 endpoint patterns from the saved window. They return
 the 50 patterns with the most total request time. JSON reports include started,
 completed, aborted, unfinished, and invalid event counts for the saved events.
@@ -341,6 +361,7 @@ detailed comparisons. Each viewer uses a separate available port.
 | `session.json` | Versioned metadata, process segments, recording intervals, pauses, markers, gaps, and artifact references |
 | `status.json` | Recording phase, recording state and ID, readiness, backend URL, control URL, process ID, and capabilities |
 | `timeline.ndjson` | Timestamped metric samples with phase, recording ID, and process identity |
+| `request-counts.json` | Session endpoint totals and captured request-body digest counts |
 | `requests.ndjson` | Request start and completion events with route templates, recording ID, and process identity |
 | `raw/*.prom` | Original Prometheus scrapes |
 | `profiles/*.heapprofile` | Native V8 sampling profiles |

@@ -194,6 +194,7 @@ export async function serveViewer({ input, controls, getStatus }) {
 								'summary.md',
 								report.session.timeline,
 								...(report.session.requests ? [report.session.requests] : []),
+								...(report.session.requestCounts ? [report.session.requestCounts] : []),
 								...report.session.profiles.map((profile) => profile.file),
 								...report.session.profiles.map((profile) => profile.locationsFile).filter(Boolean),
 								...report.session.snapshots.map((snapshot) => snapshot.file),

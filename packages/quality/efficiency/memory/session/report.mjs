@@ -6,6 +6,7 @@ import { dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { SourceMap } from 'node:module';
 import { requestReport } from './requests.mjs';
+import { RequestCounts } from './request-counts.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const MEMORY_METRICS = {
@@ -220,6 +221,16 @@ export async function buildReport(input, { timeline = false, verifyArtifacts = t
 		!session.profiles.length
 	)
 		issues.push('Allocation profiles are missing');
+	let counts;
+	if (session.requestCounts) {
+		try {
+			counts = RequestCounts.fromSnapshot(
+				JSON.parse(await readFile(artifactPath(directory, session.requestCounts), 'utf8')),
+			);
+		} catch {
+			issues.push('Session request counts are unavailable. Counts cover saved request events.');
+		}
+	}
 	let requests;
 	try {
 		requests = await requestReport(
@@ -227,11 +238,12 @@ export async function buildReport(input, { timeline = false, verifyArtifacts = t
 			Boolean(session.settings.requestTracking),
 			session.captureChanges?.at(-1)?.capture.requestLimit ??
 				session.settings.capture?.requestLimit,
+			counts,
 		);
 		if (requests.invalidEvents) issues.push(`Invalid request events: ${requests.invalidEvents}`);
 	} catch {
 		issues.push('Request data is unavailable');
-		requests = await requestReport(undefined, false);
+		requests = await requestReport(undefined, false, undefined, counts);
 	}
 	const lastProfile = session.profiles.at(-1);
 	let sites = lastProfile?.allocationSites ?? [];

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { test, expect } from 'n8n-playwright/test';
 
 import { serveViewer } from '../viewer.mjs';
+import { RequestHistory } from '../requests.mjs';
 
 test('shows 500 API calls by default and uses the saved history limit', async ({ page }) => {
 	const directory = await mkdtemp(join(tmpdir(), 'n8n-memory-viewer-limit-'));
@@ -47,6 +48,7 @@ test('shows 500 API calls by default and uses the saved history limit', async ({
 		await page.goto(viewer.url);
 		await expect(page.locator('#requests tbody tr')).toHaveCount(500);
 		await expect(page.locator('#requests-status')).toContainText('latest 500 calls');
+		await expect(page.locator('#request-counts-status')).toContainText('saved request events only');
 		session.settings.capture.requestLimit = 600;
 		await writeFile(input, JSON.stringify(session));
 		await page.reload();
@@ -207,7 +209,7 @@ test('edits a persistent dashboard and controls recording', async ({ page }) => 
 			['get', 3, 'GET'],
 			['WORKFLOWS', 4, 'workflows'],
 			['200', 5, '200'],
-			['124', 6, '124'],
+			['124', 8, '124'],
 		]) {
 			await search.fill(query);
 			await expect(page.locator('#requests tbody tr')).toHaveCount(1);
@@ -443,6 +445,105 @@ test('edits a persistent dashboard and controls recording', async ({ page }) => 
 		expect(errors).toEqual([]);
 	} finally {
 		await replay?.close();
+		await viewer?.close();
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
+test('shows session endpoint and payload counts after history eviction', async ({ page }) => {
+	const directory = await mkdtemp(join(tmpdir(), 'n8n-memory-viewer-counts-'));
+	let viewer;
+	try {
+		const input = join(directory, 'session.json');
+		await writeFile(
+			input,
+			JSON.stringify({
+				schemaVersion: 1,
+				kind: 'n8n-memory-session',
+				status: 'complete',
+				timeline: 'timeline.ndjson',
+				requests: 'requests.ndjson',
+				requestCounts: 'request-counts.json',
+				settings: { requestTracking: true, capture: { requestLimit: 4 } },
+				metadata: {},
+				segments: [],
+				profiles: [],
+				snapshots: [],
+				markers: [],
+				gaps: [],
+				errors: [],
+			}),
+		);
+		await writeFile(join(directory, 'timeline.ndjson'), '');
+		const history = new RequestHistory(join(directory, 'requests.ndjson'), 4);
+		for (let id = 1; id <= 6; id++) {
+			const identity = {
+				id,
+				segmentId: 'process-1',
+				api: id === 4 ? 'public' : 'internal',
+				method: 'POST',
+				route: '/rest/items',
+				elapsedMs: 1000,
+			};
+			history.add({ ...identity, event: 'start' });
+			history.add({
+				...identity,
+				event: 'finish',
+				durationMs: 10,
+				statusCode: 200,
+				...(id === 5
+					? {}
+					: {
+							request: {
+								body: {
+									text:
+										id === 3
+											? '{"value":2}'
+											: id === 2
+												? '{"value":1,"name":"sample"}'
+												: '{"name":"sample","value":1}',
+								},
+							},
+						}),
+			});
+		}
+		await history.flush();
+		await writeFile(
+			join(directory, 'request-counts.json'),
+			JSON.stringify(history.counts.snapshot()),
+		);
+		viewer = await serveViewer({ input });
+		await page.setViewportSize({ width: 1440, height: 1000 });
+		await page.goto(viewer.url);
+		const rows = page.locator('#requests tbody tr');
+		await expect(rows).toHaveCount(4);
+		await expect(
+			page.getByRole('columnheader', { name: 'Endpoint calls', exact: true }),
+		).toBeVisible();
+		await expect(
+			page.getByRole('columnheader', { name: 'Same payload', exact: true }),
+		).toBeVisible();
+		await expect(rows.first().locator('td').nth(6)).toHaveText('5');
+		await expect(rows.first().locator('td').nth(7)).toHaveText('3');
+		await expect(rows.nth(1).locator('td').nth(7)).toHaveText('—');
+		await expect(rows.nth(2).locator('td').nth(6)).toHaveText('1');
+		await expect(rows.nth(2).locator('td').nth(7)).toHaveText('1');
+		await expect(page.locator('#request-counts-status')).toContainText(
+			'all completed calls in this session',
+		);
+		await page.locator('#request-search').fill('3');
+		await expect(rows).toHaveCount(1);
+		await expect(rows.first().locator('td').nth(7).locator('mark')).toHaveText('3');
+		await rows.first().locator('.request-start').click();
+		await expect(page.locator('#request-detail-counts')).toHaveText(
+			'Endpoint calls: 5 · Same payload: 3',
+		);
+		const artifact = await page.request.get(`${viewer.url}artifact/request-counts.json`);
+		expect(artifact.ok()).toBe(true);
+		expect((await artifact.json()).completed).toBe(6);
+		await page.reload();
+		await expect(rows.first().locator('td').nth(7)).toHaveText('3');
+	} finally {
 		await viewer?.close();
 		await rm(directory, { recursive: true, force: true });
 	}
