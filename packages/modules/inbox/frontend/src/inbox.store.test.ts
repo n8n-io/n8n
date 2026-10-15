@@ -338,10 +338,12 @@ it('loads the counts when an approved review is not in a loaded page', async () 
 		disabledSources: [],
 	});
 	const store = useInboxStore();
-	store.openCount = 1;
-	store.closedCount = 2;
+	store.openCount = 4;
+	store.closedCount = 7;
 	store.reconcileItemChange({ type: 'workflow_review', id: 'review', state: 'closed' });
-	await vi.waitFor(() => expect(api.fetchInboxSummary).toHaveBeenCalledOnce());
-	expect(store.openCount).toBe(1);
-	expect(store.closedCount).toBe(2);
+	await vi.waitFor(() => {
+		expect(api.fetchInboxSummary).toHaveBeenCalledOnce();
+		expect(store.openCount).toBe(1);
+		expect(store.closedCount).toBe(2);
+	});
 });
