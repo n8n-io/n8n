@@ -140,6 +140,7 @@ describe('executeWorkflow → execution classification', () => {
 			{ ...buildContext(vi.fn().mockResolvedValue('exec-1')), abortSignal: controller.signal },
 		);
 		controller.abort();
+		await vi.dynamicImportSettled();
 		expect(stop).not.toHaveBeenCalled();
 	});
 
@@ -1001,6 +1002,35 @@ describe('workflow tool → background job handoff', () => {
 		expect(suspend).not.toHaveBeenCalled();
 		// One recheck read; the inline wait polling stays off.
 		expect(findSingleExecution).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops the workflow when the foreground run is aborted during registration', async () => {
+		setPersistence({ status: 'canceled' });
+		const jobService = setJobService();
+		const controller = new AbortController();
+		const registering = createDeferredPromise<undefined>();
+		const registered = createDeferredPromise<{ status: 'started'; jobId: string }>();
+		jobService.registerWorkflowJob.mockImplementation(async () => {
+			registering.resolve(undefined);
+			return await registered.promise;
+		});
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+		const pending = tool.handler?.({}, {
+			...(ctx as object),
+			abortSignal: controller.signal,
+		} as never);
+		await registering.promise;
+
+		controller.abort(new Error('Response stopped'));
+		await expect(pending).rejects.toThrow('Response stopped');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+
+		registered.resolve({ status: 'started', jobId: 'job-1' });
+		await vi.dynamicImportSettled();
+		expect(suspend).not.toHaveBeenCalled();
 	});
 
 	it('polls a wait due soon to completion instead of backgrounding it', async () => {

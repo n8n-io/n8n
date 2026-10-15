@@ -33,6 +33,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	OperationalError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -601,7 +602,7 @@ async function withWorkflowCancellation<T>(
 				const id =
 					workflowId ??
 					(await Container.get(ExecutionPersistence).findSingleExecution(executionId))?.workflowId;
-				if (!id) throw new Error('The workflow execution is no longer available');
+				if (!id) throw new OperationalError('The workflow execution is no longer available');
 				await Container.get(ExecutionService).stop(executionId, [id]);
 				aborted.reject(signal.reason);
 			} catch (error) {
@@ -1176,34 +1177,37 @@ function assembleWorkflowTool(
 
 			// A wait due within the poll window resolves inline. Only a wait the poll
 			// did not settle is handed to the background.
-			if (result.status === 'waiting') {
-				const waiting = result;
-				result = await withWorkflowCancellation(
-					waiting.executionId,
-					reference.workflowId,
-					ctx.abortSignal,
-					async () => await pollIfDueSoon(waiting, allOutputs, ctx.abortSignal),
-				);
-				ctx.abortSignal?.throwIfAborted();
-			}
+			if (result.status !== 'waiting') return withoutWaitState(result);
 
-			if (result.status === 'waiting' && context.backgroundTasksEnabled) {
-				const backgrounded = await backgroundWaitingExecution(
-					result,
-					context,
-					ctx,
-					reference,
-					allOutputs,
-				);
-				if (backgrounded) return backgrounded;
-			}
+			const waiting = result;
+			return await withWorkflowCancellation(
+				waiting.executionId,
+				reference.workflowId,
+				ctx.abortSignal,
+				async () => {
+					result = await pollIfDueSoon(waiting, allOutputs, ctx.abortSignal);
+					ctx.abortSignal?.throwIfAborted();
+					if (result.status === 'waiting' && context.backgroundTasksEnabled) {
+						const backgrounded = await backgroundWaitingExecution(
+							result,
+							context,
+							ctx,
+							reference,
+							allOutputs,
+						);
+						ctx.abortSignal?.throwIfAborted();
+						if (backgrounded) return backgrounded;
+					}
 
-			if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
+					if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
 
-			current ??= await loadCurrentWorkflow(context, reference);
-			return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
-				continuation: { executionId: result.executionId },
-			});
+					current ??= await loadCurrentWorkflow(context, reference);
+					ctx.abortSignal?.throwIfAborted();
+					return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
+						continuation: { executionId: result.executionId },
+					});
+				},
+			);
 		});
 
 	const built = builder.build();
