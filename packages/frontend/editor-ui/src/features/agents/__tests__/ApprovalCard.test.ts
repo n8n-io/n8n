@@ -64,6 +64,14 @@ describe('ApprovalCard', () => {
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: true, scope: 'session' }]]);
 	});
 
+	it('shows a risk badge when the backend marks the tool as high-risk', () => {
+		const input = parseApprovalInput({ ...approvalInput, riskLevel: 'high' });
+		const wrapper = mountCard(input!);
+
+		expect(wrapper.text()).toContain('Risk: High');
+		expect(wrapper.get('[data-test-id="approval-card-risk"]').text()).toContain('Risk: High');
+	});
+
 	it('shows call arguments inline and emits approved resume data', async () => {
 		const input = parseApprovalInput({
 			...approvalInput,
