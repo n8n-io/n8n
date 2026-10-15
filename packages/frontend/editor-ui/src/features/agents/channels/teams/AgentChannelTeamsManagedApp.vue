@@ -213,7 +213,7 @@ watch(
 
 <template>
 	<div :class="$style.field" data-testid="teams-managed-app">
-		<N8nText size="small" bold>
+		<N8nText step="sm" bold>
 			{{ i18n.baseText('agents.channels.teams.settings.identityLabel') }}
 		</N8nText>
 

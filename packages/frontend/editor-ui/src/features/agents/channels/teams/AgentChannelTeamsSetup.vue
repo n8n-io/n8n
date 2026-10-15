@@ -880,7 +880,7 @@ defineExpose({
 
 		<div v-else :class="$style.formContent">
 			<div :class="$style.field" data-testid="teams-availability-field">
-				<N8nText size="small" bold>
+				<N8nText step="sm" bold>
 					{{ i18n.baseText('agents.channels.teams.settings.availabilityLabel') }}
 				</N8nText>
 				<AgentChannelTeamsAvailability
@@ -923,7 +923,7 @@ defineExpose({
 			/>
 			<template v-else>
 				<div :class="$style.field" data-testid="teams-identity-field">
-					<N8nText size="small" bold>
+					<N8nText step="sm" bold>
 						{{ i18n.baseText('agents.channels.teams.settings.identityLabel') }}
 					</N8nText>
 					<AgentChannelTeamsIdentityCard
@@ -961,7 +961,6 @@ defineExpose({
 					:href="AZURE_BOTS_URL"
 					target="_blank"
 					rel="noopener noreferrer"
-					size="small"
 					:class="$style.azureLink"
 					data-testid="teams-azure-bot-link"
 				>
