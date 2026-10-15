@@ -3859,6 +3859,7 @@ export interface IWorkflowExecutionDataProcess {
 		toolName: string;
 		arguments: Record<string, unknown>;
 		sourceNodeName?: string;
+		isFromToolkit?: boolean;
 	};
 	/** The MCP request as node input, so the worker gives the tool node the same `$json` as direct mode. */
 	mcpToolInput?: IDataObject;

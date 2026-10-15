@@ -36,7 +36,7 @@ export interface CredentialGateElicitationOutcome {
 }
 
 export class MessageFormatter {
-	static formatToolResult(result: unknown, isError = false): McpToolResult {
+	static formatToolResult(result: unknown, isError = false, isFromMcpTool = false): McpToolResult {
 		let content: McpContentBlock[];
 
 		if (isMcpContentArray(result)) {
@@ -47,7 +47,7 @@ export class MessageFormatter {
 			// Proxy mode hands us a JSON string, so parse before wrapping. A failed
 			// parse or a non-MCP value falls back to the original string, never the
 			// parsed value.
-			const parsedContent = parseMcpContentArrayString(result);
+			const parsedContent = isFromMcpTool ? parseMcpContentArrayString(result) : null;
 			content = parsedContent ?? [{ type: 'text' as const, text: result }];
 		} else if (result === null || result === undefined) {
 			content = [{ type: 'text' as const, text: String(result) }];

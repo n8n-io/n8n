@@ -171,6 +171,7 @@ interface McpToolCallPayload {
 	toolName: string;
 	arguments: Record<string, unknown>;
 	sourceNodeName?: string;
+	isFromToolkit?: boolean;
 }
 
 function isMcpToolCall(value: unknown): value is McpToolCallPayload {

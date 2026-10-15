@@ -86,17 +86,51 @@ describe('MessageFormatter', () => {
 			});
 		});
 
+		describe('stringified MCP content array gating', () => {
+			it('should wrap a stringified MCP content array when isFromMcpTool is false (default)', () => {
+				const result = '[{"type":"text","text":"{\\"success\\":true}"}]';
+				expect(MessageFormatter.formatToolResult(result)).toEqual({
+					content: [{ type: 'text', text: result }],
+				});
+			});
+
+			it('should wrap a stringified MCP content array when isFromMcpTool is explicitly false', () => {
+				const result = '[{"type":"text","text":"{\\"success\\":true}"}]';
+				expect(MessageFormatter.formatToolResult(result, false, false)).toEqual({
+					content: [{ type: 'text', text: result }],
+				});
+			});
+
+			it('should wrap a stringified MCP content array from a non-MCP tool even with mixed blocks', () => {
+				const parsedContent = [
+					{ type: 'text', text: 'Image description' },
+					{ type: 'image', data: 'base64data', mimeType: 'image/png' },
+				];
+				const raw = JSON.stringify(parsedContent);
+				expect(MessageFormatter.formatToolResult(raw, false, false)).toEqual({
+					content: [{ type: 'text', text: raw }],
+				});
+			});
+
+			it('should pass through a stringified MCP content array when isFromMcpTool is true', () => {
+				const result = '[{"type":"text","text":"{\\"success\\":true}"}]';
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
+					content: [{ type: 'text', text: '{"success":true}' }],
+				});
+			});
+		});
+
 		describe('stringified MCP content array pass-through', () => {
 			it('should pass through a JSON string containing a single text content block', () => {
 				const result = JSON.stringify([{ type: 'text', text: 'Hello world' }]);
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: [{ type: 'text', text: 'Hello world' }],
 				});
 			});
 
 			it('should pass through the exact payload from the reviewer manual test', () => {
 				const result = '[{"type":"text","text":"{\\"success\\":true}"}]';
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: [{ type: 'text', text: '{"success":true}' }],
 				});
 			});
@@ -106,25 +140,27 @@ describe('MessageFormatter', () => {
 					{ type: 'text', text: 'Image description' },
 					{ type: 'image', data: 'base64data', mimeType: 'image/png' },
 				];
-				expect(MessageFormatter.formatToolResult(JSON.stringify(parsedContent))).toEqual({
+				expect(
+					MessageFormatter.formatToolResult(JSON.stringify(parsedContent), false, true),
+				).toEqual({
 					content: parsedContent,
 				});
 			});
 
 			it('should wrap the original string when it is not valid JSON', () => {
-				expect(MessageFormatter.formatToolResult('not json')).toEqual({
+				expect(MessageFormatter.formatToolResult('not json', false, true)).toEqual({
 					content: [{ type: 'text', text: 'not json' }],
 				});
 			});
 
 			it('should wrap the original string when valid JSON is not an MCP content array', () => {
-				expect(MessageFormatter.formatToolResult('[1,2,3]')).toEqual({
+				expect(MessageFormatter.formatToolResult('[1,2,3]', false, true)).toEqual({
 					content: [{ type: 'text', text: '[1,2,3]' }],
 				});
 			});
 
 			it('should wrap the original string when valid JSON is a plain object', () => {
-				expect(MessageFormatter.formatToolResult('{"a":1}')).toEqual({
+				expect(MessageFormatter.formatToolResult('{"a":1}', false, true)).toEqual({
 					content: [{ type: 'text', text: '{"a":1}' }],
 				});
 			});
@@ -134,14 +170,14 @@ describe('MessageFormatter', () => {
 					{ type: 'text', text: 'valid' },
 					{ type: 'invalid', text: 'not valid' },
 				]);
-				expect(MessageFormatter.formatToolResult(result)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, false, true)).toEqual({
 					content: [{ type: 'text', text: result }],
 				});
 			});
 
 			it('should preserve isError alongside a stringified MCP content array', () => {
 				const result = '[{"type":"text","text":"Error occurred"}]';
-				expect(MessageFormatter.formatToolResult(result, true)).toEqual({
+				expect(MessageFormatter.formatToolResult(result, true, true)).toEqual({
 					isError: true,
 					content: [{ type: 'text', text: 'Error occurred' }],
 				});

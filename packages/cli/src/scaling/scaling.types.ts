@@ -47,6 +47,7 @@ export type JobData = {
 		arguments: Record<string, unknown>;
 		/** The n8n node name that provides this tool. */
 		sourceNodeName?: string;
+		isFromToolkit?: boolean;
 	};
 	/** The MCP request as node input, so the worker gives the tool node the same `$json` as direct mode. */
 	mcpToolInput?: IDataObject;
@@ -131,6 +132,7 @@ export type McpResponseMessage = {
 	messageId: string;
 	response: unknown;
 	workerId: string;
+	isFromToolkit?: boolean;
 };
 
 /** Message sent by worker to main to report a job has failed. */

@@ -458,11 +458,12 @@ export class JobProcessor {
 			const { toolName, arguments: toolArgs, sourceNodeName } = job.data.mcpToolCall;
 
 			let toolResult: unknown;
+			let isFromToolkit = job.data.mcpToolCall?.isFromToolkit === true;
 			try {
 				// The execution's isolate window closed when the run finished, but the
 				// tool's parameters may still contain expressions (e.g. $fromAI), so
 				// the tool call needs its own isolate window.
-				toolResult = await withExpressionIsolate(
+				const invocation = await withExpressionIsolate(
 					workflow,
 					async () =>
 						await this.invokeTool({
@@ -479,6 +480,10 @@ export class JobProcessor {
 							executionContext: execution.data?.executionData?.runtimeData,
 						}),
 				);
+				toolResult = invocation.result;
+				if (invocation.isFromToolkit) {
+					isFromToolkit = true;
+				}
 
 				// A tool result is not a response, so it has no offload path: this limit
 				// is all that keeps it from travelling through the queue unbounded.
@@ -536,6 +541,7 @@ export class JobProcessor {
 				messageId: job.data.mcpMessageId ?? '',
 				response: toolResult, // Actual tool result
 				workerId: this.instanceSettings.hostId,
+				isFromToolkit,
 			};
 
 			await job.progress(mcpMsg);
@@ -678,7 +684,7 @@ export class JobProcessor {
 		additionalData: Awaited<ReturnType<typeof WorkflowExecuteAdditionalData.getBase>>;
 		runExecutionData: IRunExecutionData;
 		executionContext?: IExecutionContext;
-	}): Promise<unknown> {
+	}): Promise<{ result: unknown; isFromToolkit: boolean }> {
 		const toolNode = workflow.getNode(sourceNodeName);
 		if (!toolNode) {
 			throw new UnexpectedError(`Tool node "${sourceNodeName}" not found in workflow`);
@@ -749,7 +755,9 @@ export class JobProcessor {
 				}
 
 				let tool = supplyDataResult.response;
+				let isFromToolkit = false;
 				if (tool instanceof StructuredToolkit) {
+					isFromToolkit = true;
 					tool = tool.tools.find((member) => member.name === toolName);
 					if (!tool) {
 						throw new UnexpectedError(
@@ -762,7 +770,12 @@ export class JobProcessor {
 					throw new UnexpectedError(`Tool node "${sourceNodeName}" did not return a valid Tool`);
 				}
 
-				return await tool.invoke(validatedToolArgs);
+				if ((tool as Tool).metadata?.isFromToolkit) {
+					isFromToolkit = true;
+				}
+
+				const result = await tool.invoke(validatedToolArgs);
+				return { result, isFromToolkit };
 			}
 
 			if (nodeType.execute && nodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
@@ -811,7 +824,7 @@ export class JobProcessor {
 
 				await recordToolData('output', [[{ json: { response } }]]);
 
-				return response;
+				return { result: response, isFromToolkit: false };
 			}
 
 			throw new UnexpectedError(
