@@ -178,8 +178,6 @@ digests or reports, non-trivial branching, or Code nodes, read
 `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-builder-guardrails.md`
 before writing code. Use it as the build checklist for source preservation,
 fan-out/fan-in, effect-specific gating, and list itemization.
-Read its source-data and list sections when repairing existing connections or
-item references, including in small workflows.
 
 When mapping downstream fields from an OpenAI node, read
 `${N8N_WORKSPACE_DIR}/knowledge-base/reference/open-ai-output-shape.md`
