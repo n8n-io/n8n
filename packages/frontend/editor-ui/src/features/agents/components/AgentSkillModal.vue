@@ -32,6 +32,10 @@ export type AgentSkillModalScopeOption = { value: string; label: string; icon: I
 /** What a failed `onConfirm` returns. The modal stays open and shows `nameError` on the name. */
 export type AgentSkillConfirmFailure = { saved: false; nameError?: string };
 
+function isConfirmFailure(value: unknown): value is AgentSkillConfirmFailure {
+	return typeof value === 'object' && value !== null && 'saved' in value && value.saved === false;
+}
+
 export type AgentSkillModalData = {
 	/** Set when opened from an agent. Absent when opened from Settings > Context > Skills. */
 	projectId?: string;
@@ -60,13 +64,9 @@ export type AgentSkillModalData = {
 	readOnly?: boolean;
 	/**
 	 * Called on Save. A promise keeps the modal open until it settles. It closes unless the
-	 * promise resolves to a failure, so a refused save keeps what the user typed.
+	 * result is an `AgentSkillConfirmFailure`, so a refused save keeps what the user typed.
 	 */
-	onConfirm: (payload: {
-		id?: string;
-		skill: AgentSkill;
-		scope?: string;
-	}) => void | Promise<void | AgentSkillConfirmFailure>;
+	onConfirm: (payload: { id?: string; skill: AgentSkill; scope?: string }) => unknown;
 	onRemove?: (id: string) => void;
 };
 
@@ -319,7 +319,7 @@ async function onSave() {
 	});
 
 	isSaving.value = true;
-	let result: void | AgentSkillConfirmFailure;
+	let result: unknown;
 	try {
 		result = await props.data.onConfirm({
 			id: props.data.skillId,
@@ -332,7 +332,7 @@ async function onSave() {
 	} finally {
 		isSaving.value = false;
 	}
-	if (result?.saved === false) {
+	if (isConfirmFailure(result)) {
 		if (result.nameError) {
 			serverNameError.value = result.nameError;
 			await focusName();
