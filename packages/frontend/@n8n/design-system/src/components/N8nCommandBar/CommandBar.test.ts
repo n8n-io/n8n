@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
 
 import N8nCommandBar from './CommandBar.vue';
@@ -103,6 +104,85 @@ describe('N8nCommandBar', () => {
 
 		await fireEvent.keyDown(input, { key: 'Enter' });
 		expect(wrapper.emitted('select')).toEqual([[workflowItem, { newTab: false }]]);
+	});
+
+	it('updates the query when typing in the focused search input', async () => {
+		const user = userEvent.setup();
+		const wrapper = await renderCommandBar();
+		const input = getInput();
+		await waitFor(() => expect(input).toHaveFocus());
+
+		await user.keyboard('s');
+
+		expect(input).toHaveValue('s');
+		expect(wrapper.emitted('update:query')).toEqual([['s']]);
+	});
+
+	// AI-2833: Clicking inside the open command bar must not stop keyboard input.
+	it.each(['s', '?'])(
+		'recovers focus and keeps the printable character %s after blur',
+		async (key) => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar();
+			const input = getInput();
+			await waitFor(() => expect(input).toHaveFocus());
+
+			await user.click(screen.getByText('Recent'));
+			expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+			expect(input).not.toHaveFocus();
+
+			await user.keyboard(key);
+
+			expect(input).toHaveFocus();
+			expect(input).toHaveValue(key);
+			expect(wrapper.emitted('update:query')).toEqual([[key]]);
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		},
+	);
+
+	it.each([
+		{ key: 'ArrowDown', initialKeys: '', selectedTitle: 'Archive invoices' },
+		{ key: 'ArrowUp', initialKeys: '{ArrowDown}{ArrowDown}', selectedTitle: 'Archive invoices' },
+	])(
+		'recovers focus and moves the selection once with $key after blur',
+		async ({ key, initialKeys, selectedTitle }) => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar();
+			const input = getInput();
+			await waitFor(() => expect(input).toHaveFocus());
+			if (initialKeys) await user.keyboard(initialKeys);
+
+			await user.click(screen.getByText('Recent'));
+			expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+			expect(input).not.toHaveFocus();
+
+			await user.keyboard(`{${key}}`);
+
+			expect(input).toHaveFocus();
+			expect(getSelectedTitle()).toContain(selectedTitle);
+			expect(wrapper.emitted('select')).toBeUndefined();
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		},
+	);
+
+	it.each([
+		{ key: 'ArrowLeft', activeTab: 'actions' },
+		{ key: 'ArrowRight', activeTab: 'workflows' },
+	])('recovers focus and switches tabs once with $key after blur', async ({ key, activeTab }) => {
+		const user = userEvent.setup();
+		const wrapper = await renderCommandBar();
+		const input = getInput();
+		await waitFor(() => expect(input).toHaveFocus());
+
+		await user.click(screen.getByText('Recent'));
+		expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+		expect(input).not.toHaveFocus();
+
+		await user.keyboard(`{${key}}`);
+
+		expect(input).toHaveFocus();
+		expect(wrapper.emitted('update:activeTab')).toEqual([[activeTab]]);
+		expect(wrapper.emitted('update:open')).toBeUndefined();
 	});
 
 	it('selects with a new tab on Cmd+Enter', async () => {
