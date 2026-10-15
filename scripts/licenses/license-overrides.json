@@ -64,6 +64,14 @@
     "@getzep/zep-cloud": {
       "license": "Apache-2.0",
       "source": "https://github.com/getzep/zep-js/blob/main/LICENSE — 'Apache License, Version 2.0, January 2004'. The published package carries no license field (the npm registry reports null) and ships no LICENSE file."
+    },
+    "fnv": {
+      "license": "MIT",
+      "source": "https://crates.io/crates/fnv — dual-licensed Apache-2.0 OR MIT. The Canvas nested SBOM declares the non-SPDX expression 'Apache-2.0 / MIT'; n8n elects MIT. Version-agnostic because the crate license is stable across releases."
+    },
+    "siphasher": {
+      "license": "MIT",
+      "source": "https://crates.io/crates/siphasher — dual-licensed MIT OR Apache-2.0. The Canvas nested SBOM declares the non-SPDX expression 'MIT/Apache-2.0'; n8n elects MIT. Version-agnostic because the crate license is stable across releases."
     }
   },
   "elections": {
