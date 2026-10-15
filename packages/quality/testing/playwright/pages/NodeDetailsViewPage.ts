@@ -256,6 +256,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName).locator('.el-input-group__prepend').locator('..');
 	}
 
+	getParameterCodeEditorBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.cm-editor');
+	}
+
 	getFromAiOverrideButton(parameterName: string) {
 		return this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
 	}
