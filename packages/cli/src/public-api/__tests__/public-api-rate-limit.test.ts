@@ -233,14 +233,26 @@ describe('Public API rate limiting', () => {
 		}
 	});
 
-	it('reports the all-endpoints limit in the headers of a successful request', async () => {
-		const app = activate({ globalReadLimit: 10, endpointReadLimit: 5 });
+	it('reports the per-endpoint limit when it has fewer requests left', async () => {
+		const app = activate({ globalReadLimit: 10, endpointReadLimit: 2 });
 
 		const response = await send(app, 'get', '/widgets');
 
 		expect(response.status).toBe(200);
-		expect(response.headers['x-ratelimit-limit']).toBe('10');
-		expect(response.headers['x-ratelimit-remaining']).toBe('9');
+		expect(response.headers['x-ratelimit-limit']).toBe('2');
+		expect(response.headers['x-ratelimit-remaining']).toBe('1');
+		expect(response.headers['x-ratelimit-reset']).toBeDefined();
+	});
+
+	it('reports the all-endpoints limit when it has fewer requests left', async () => {
+		const app = activate({ globalReadLimit: 5, endpointReadLimit: 10 });
+
+		await sendTimes(app, 3, 'get', '/widgets/other');
+		const response = await send(app, 'get', '/widgets');
+
+		expect(response.status).toBe(200);
+		expect(response.headers['x-ratelimit-limit']).toBe('5');
+		expect(response.headers['x-ratelimit-remaining']).toBe('1');
 	});
 
 	it('does not count a HEAD request, which the registry rejects with 405', async () => {

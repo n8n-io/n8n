@@ -4,8 +4,9 @@ import { AuthenticatedRequest } from '@n8n/db';
 import type { RateLimiterLimits, UserKeyedRateLimiterConfig } from '@n8n/decorators';
 import { BodyKeyedRateLimiterConfig } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { Request, RequestHandler } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
+import type { AugmentedRequest, RateLimitInfo } from 'express-rate-limit';
 import assert from 'node:assert';
 import type { ZodTypeAny } from 'zod';
 
@@ -13,6 +14,27 @@ const defaultLimits: Required<RateLimiterLimits> = {
 	limit: 5,
 	windowMs: 5 * Time.minutes.toMilliseconds,
 };
+
+const API_KEY_RATE_LIMIT_PROPERTY = 'apiKeyRateLimit';
+
+const secondsUntil = (date: Date) =>
+	Math.max(0, Math.ceil((date.getTime() - Date.now()) / Time.seconds.toMilliseconds));
+
+const setRateLimitHeaders = (res: Response, info: RateLimitInfo) => {
+	res.setHeader('X-RateLimit-Limit', info.limit.toString());
+	res.setHeader('X-RateLimit-Remaining', info.remaining.toString());
+	if (info.resetTime) {
+		res.setHeader(
+			'X-RateLimit-Reset',
+			Math.ceil(info.resetTime.getTime() / Time.seconds.toMilliseconds).toString(),
+		);
+	}
+};
+
+const isTighter = (info: RateLimitInfo, shown: RateLimitInfo) =>
+	info.remaining < shown.remaining ||
+	(info.remaining === shown.remaining &&
+		(info.resetTime?.getTime() ?? 0) > (shown.resetTime?.getTime() ?? 0));
 
 /**
  * Service for creating rate limiters for endpoints. We use a 2 layered approach
@@ -74,17 +96,22 @@ export class RateLimitService {
 		});
 	}
 
+	/** The rate limit that each response reports in its headers. */
+	private readonly shownApiKeyRateLimits = new WeakMap<Response, RateLimitInfo>();
+
 	/**
 	 * Creates a rate limit middleware keyed by API key.
 	 * Runs AFTER authentication. Requests without an API key are not counted.
+	 * When several of these limiters pass a request, the headers show the one with the fewest
+	 * requests left. When one blocks a request, the headers show that one.
 	 */
 	createApiKeyRateLimitMiddleware(limits: Required<RateLimiterLimits>): RequestHandler {
-		return expressRateLimit({
+		const limiter = expressRateLimit({
 			limit: limits.limit,
 			windowMs: limits.windowMs,
-			legacyHeaders: true,
+			legacyHeaders: false,
 			standardHeaders: false,
-			message: { message: 'Too many requests' },
+			requestPropertyName: API_KEY_RATE_LIMIT_PROPERTY,
 			passOnStoreError: true,
 			// Only a 429 is uncounted, so a request one limiter blocks uses no quota of another limiter.
 			// Other error responses still count.
@@ -92,7 +119,37 @@ export class RateLimitService {
 			requestWasSuccessful: (_req, res) => res.statusCode !== 429,
 			skip: (req: AuthenticatedRequest): boolean => req.tokenGrant?.apiKeyId === undefined,
 			keyGenerator: (req: AuthenticatedRequest) => `apiKey:${req.tokenGrant?.apiKeyId}`,
+			handler: (req: AugmentedRequest, res: Response) => {
+				const info = req[API_KEY_RATE_LIMIT_PROPERTY];
+				setRateLimitHeaders(res, info);
+				res.setHeader(
+					'Retry-After',
+					(info.resetTime
+						? secondsUntil(info.resetTime)
+						: Math.ceil(limits.windowMs / Time.seconds.toMilliseconds)
+					).toString(),
+				);
+				res.status(429).json({ message: 'Too many requests' });
+			},
 		});
+
+		return async (req: AugmentedRequest, res, next) => {
+			await limiter(req, res, (error?: unknown) => {
+				if (error === undefined) this.showTightestApiKeyRateLimit(req, res);
+				next(error);
+			});
+		};
+	}
+
+	private showTightestApiKeyRateLimit(req: AugmentedRequest, res: Response) {
+		const info: RateLimitInfo | undefined = req[API_KEY_RATE_LIMIT_PROPERTY];
+		if (!info) return;
+
+		const shown = this.shownApiKeyRateLimits.get(res);
+		if (shown && !isTighter(info, shown)) return;
+
+		this.shownApiKeyRateLimits.set(res, info);
+		setRateLimitHeaders(res, info);
 	}
 
 	private extractBodyIdentifier(body: unknown, fieldName: string, fieldSchema: ZodTypeAny): string {

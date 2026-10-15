@@ -35,7 +35,6 @@ export class PublicApiRateLimitService {
 
 		const access = resolveAccess(method);
 
-		// The all-endpoints limiter runs last, so its headers are the ones a client sees when both pass.
 		return [this.createPerEndpointLimiter(access), this.getAllEndpointsLimiter(access)].filter(
 			(limiter) => limiter !== undefined,
 		);
