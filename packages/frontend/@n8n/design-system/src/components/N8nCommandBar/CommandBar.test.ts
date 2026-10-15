@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
 
 import N8nCommandBar from './CommandBar.vue';
@@ -57,6 +58,35 @@ describe('N8nCommandBar', () => {
 		await waitFor(() => expect(screen.getByTestId('command-bar')).toBeInTheDocument());
 		expect(wrapper.emitted('update:open')).toEqual([[true]]);
 	});
+
+	it('focuses the search input when opened', async () => {
+		await renderCommandBar();
+
+		await waitFor(() => expect(getInput()).toHaveFocus());
+	});
+
+	// CONTEXT-317: Keyboard input must restore focus after a click inside the open dialog.
+	it.each(['s', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'])(
+		'restores search focus on %s after clicking away from the input',
+		async (key) => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar();
+			const input = getInput();
+			await waitFor(() => expect(input).toHaveFocus());
+
+			await user.click(screen.getByText('Recent'));
+
+			expect(input).not.toHaveFocus();
+			expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+
+			await user.keyboard(key.length === 1 ? key : `{${key}}`);
+
+			await waitFor(() => expect(input).toHaveFocus());
+			expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		},
+	);
 
 	it('requests to close on Escape', async () => {
 		const wrapper = await renderCommandBar();
