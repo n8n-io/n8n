@@ -101,6 +101,77 @@ describe('CustomDirectoryLoader dependencies', () => {
 	});
 
 	describe.each(['loose', 'package'])('%s custom files', (layout) => {
+		it.each(['single-version', 'versioned'])(
+			'skips a %s node with an invalid description without registering it',
+			async (kind) => {
+				const root =
+					layout === 'loose' ? customDir : path.join(customDir, 'node_modules/n8n-nodes-foo');
+				const files = writeCustomFiles(root);
+				const brokenPath = writeFile(
+					root,
+					'AaaBroken.node.js',
+					`module.exports.AaaBroken = class AaaBroken {
+						constructor() {
+							this.description = {
+								displayName: 'Broken',
+								name: 'broken',
+								group: ['transform'],
+								version: 1,
+								description: 'Test node',
+								defaults: { name: 'Broken' },
+								inputs: ['main'],
+								outputs: ['main'],
+								credentials: [{ name: 'brokenApi', required: true }],
+								properties: [{
+									displayName: 'Operation',
+									name: 'operation',
+									type: 'options',
+									default: 'test',
+									options: [{ name: 'Test', value: 'test' }],
+									builderHint: { searchHint: 'Test hint' },
+								}],
+							};
+							if (${kind === 'versioned'}) {
+								this.currentVersion = 2;
+								this.nodeVersions = {
+									1: { description: this.description },
+									2: { description: { ...this.description, version: 2, properties: [] } },
+								};
+							}
+						}
+					};`,
+				);
+				if (layout === 'package') {
+					writeFile(
+						root,
+						'package.json',
+						JSON.stringify({
+							name: 'n8n-nodes-foo',
+							n8n: {
+								nodes: ['AaaBroken.node.js', 'nodes/Foo.node.js'],
+								credentials: ['credentials/FooApi.credentials.js'],
+							},
+						}),
+					);
+				}
+
+				await expect(loader.loadAll()).resolves.toBeUndefined();
+
+				expectCustomFilesLoaded(files);
+				expect(Object.keys(loader.known.nodes)).toEqual(['foo']);
+				expect(loader.loadedNodes).toEqual([{ name: 'foo', version: 1 }]);
+				expect(loader.types.nodes.map(({ name }) => name)).toEqual(['foo']);
+				expect(loader.nodesByCredential).toEqual({ fooApi: ['foo'] });
+				expect(() => loader.getNode('broken')).toThrow();
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(brokenPath), {
+					error: expect.objectContaining({
+						message: expect.stringContaining('has a builderHint on the "operation" discriminator'),
+					}),
+				});
+			},
+		);
+
 		describe.each(['node', 'credentials'])('*.%s.js', (suffix) => {
 			it.each([
 				{
