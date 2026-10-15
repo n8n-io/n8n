@@ -755,6 +755,25 @@ export class WorkflowService {
 			}
 		}
 
+		// redactCallerExecutions is on when it is not set. Turning it off lowers redaction and
+		// turning it on raises it, so strip a change the license or the user's scopes do not allow.
+		if (workflowUpdateData.settings?.redactCallerExecutions !== undefined) {
+			const turnsOn = workflowUpdateData.settings.redactCallerExecutions;
+			const wasOn = workflow.settings?.redactCallerExecutions !== false;
+			const canUpdate =
+				turnsOn === wasOn ||
+				(this.licenseState.isDataRedactionLicensed() &&
+					(await userHasScopes(
+						user,
+						[turnsOn ? 'workflow:enableRedaction' : 'workflow:disableRedaction'],
+						false,
+						{ projectId: ownerProject.id },
+					)));
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactCallerExecutions;
+			}
+		}
+
 		// Merge settings to support partial updates
 		if (workflowUpdateData.settings && workflow.settings) {
 			workflowUpdateData.settings = {

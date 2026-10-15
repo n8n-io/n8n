@@ -4122,6 +4122,12 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	/**
+	 * Whether this workflow, when it runs as a sub-workflow, makes the calling
+	 * execution redact the channels it redacts. The caller keeps a copy of its
+	 * output. When the setting is not set, it is on.
+	 */
+	redactCallerExecutions?: boolean;
 	customTelemetryTags?: ICustomTelemetryTag[];
 }
 
