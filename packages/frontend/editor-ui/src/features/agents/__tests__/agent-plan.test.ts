@@ -159,6 +159,73 @@ describe('buildAgentPlanDisplayGroups', () => {
 		},
 	);
 
+	it.each(['pending', 'running', 'done'] as const)(
+		'hides a partial progress update while %s without changing the card',
+		(state) => {
+			const call = update(undefined, {
+				state,
+				output: undefined,
+				input: {
+					planId: initial.planId,
+					expectedRevision: 1,
+					document: { items: [{ id: planTask(1).id, status: 'done' }] },
+				},
+			});
+			const messages = [planMessage(initial), call];
+			expect(visibleCalls(messages)).toEqual([initialCallId]);
+			expect(selectLatestAgentPlan(messages)?.revision).toBe(1);
+			call.toolCalls![0].state = 'done';
+			call.toolCalls![0].output = { error: 'invalid_plan' };
+			expect(visibleCalls(messages)).toEqual([initialCallId, 'update']);
+		},
+	);
+
+	it('hides partial presentation and child progress updates', () => {
+		const group = { ...planTask(10), kind: 'group' as const, tasks: initial.document.items };
+		const previous = planMessage({ ...initial, document: { ...initial.document, items: [group] } });
+		for (const document of [
+			{ presentation: { detail: 'Reviewed research' } },
+			{ presentation: null },
+			{
+				items: [
+					{ id: group.id, tasks: [{ id: planTask(1).id, status: 'done', resultSummary: null }] },
+				],
+			},
+		]) {
+			expect(
+				visibleCalls([
+					previous,
+					update(undefined, {
+						state: 'running',
+						output: undefined,
+						input: { planId: initial.planId, expectedRevision: 1, document },
+					}),
+				]),
+			).toEqual([initialCallId]);
+		}
+	});
+
+	it.each([
+		{ document: { items: [{ id: planTask(1).id, description: 'Changed scope' }] } },
+		{ document: { items: [{ id: planTask(2).id, dependsOn: [] }] } },
+		{ document: { items: [{ id: planTask(3).id, status: 'done' }] } },
+		{ document: { items: [{ id: planTask(1).id, kind: 'group', tasks: [] }] } },
+		{ document: { items: [{ id: 'new:task', title: 'New task' }] } },
+		{ document: { items: [{ id: planTask(1).id, futureRule: true }] } },
+		{ document: progress, removeItemIds: [planTask(2).id] },
+	])('keeps partial scope changes and unknown items visible: %j', (input) => {
+		expect(
+			visibleCalls([
+				planMessage(initial),
+				update(undefined, {
+					state: 'running',
+					output: undefined,
+					input: { planId: initial.planId, expectedRevision: 1, ...input },
+				}),
+			]),
+		).toEqual([initialCallId, 'update']);
+	});
+
 	it.each([
 		['progress', { ...initial, revision: 2, document: progress }, false],
 		[
