@@ -11,7 +11,7 @@ test.describe(
 		}) => {
 			// ~10 full canvas reloads of a large workflow. Under CI load each reload can take
 			// 5-15s, so the default 60s budget times out at whichever step is running.
-			test.setTimeout(120_000);
+			test.setTimeout(180_000);
 
 			await n8n.api.enableFeature('debugInEditor');
 			await n8n.api.enableFeature('workflowHistory');
