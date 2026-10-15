@@ -4,9 +4,6 @@ tags:
 summary: Create a promotion connection
 description: Creates a connection on an existing provider, with up to one initial configuration for each direction. Only one instance connection can exist.
 x-required-scope: gitConnection:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

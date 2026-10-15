@@ -1,7 +1,12 @@
-import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentIntegrationDisconnectWarning,
+	RichCardComponentType,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import type { Attachment, Message, Thread } from 'chat';
 import { UserError } from 'n8n-workflow';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -11,6 +16,7 @@ import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
+	type AgentIntegrationRemovalContext,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -21,7 +27,9 @@ import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import type { ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
+import { TeamsCleanupService } from './teams-cleanup.service';
 import { READ_PERMISSIONS } from './teams-manifest.service';
+import { fetchTeamsMessageFiles, graphHttpOf } from './teams-message-files';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
@@ -96,16 +104,32 @@ const TENANT_ID_DOMAIN =
  * In a channel that subscription covers the one thread, because the thread id
  * carries the root message id. In a group chat it covers the whole chat.
  *
- * Reading messages without a mention is a setup choice for each surface. The
- * manifest carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat` only
- * when `readAllChannelMessages` and `readAllGroupMessages` are on. Teams grants
+ * The manifest carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat`
+ * for each surface that is on, so files can be read through Graph. Teams grants
  * them when the app is added to a team or a chat, and they make Teams deliver
- * every message instead of mentions alone. Each such message runs the agent
- * with an optional reply, so the agent decides whether to speak.
+ * every message instead of mentions alone. Acting on a message without a
+ * mention is a setup choice for each surface: `readAllChannelMessages` and
+ * `readAllGroupMessages`. Each such message runs the agent with an optional
+ * reply, so the agent decides whether to speak.
  */
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
 	readonly type = 'teams';
+
+	/**
+	 * Deletes nothing. The app registration, the bot and the catalogued Teams app
+	 * depend on each other, and colleagues may already have the app installed, so
+	 * the user is told what is left rather than having it removed for them.
+	 */
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
+		return await Container.get(TeamsCleanupService).describeLeftovers({
+			user: ctx.user,
+			projectId: ctx.projectId,
+			credentialId: ctx.credentialId,
+		});
+	}
 
 	readonly credentialTypes = ['microsoftEntraServicePrincipalApi'];
 
@@ -215,6 +239,17 @@ export class TeamsIntegration extends AgentChatIntegration {
 	}): ReplyExpectation {
 		if (isNewMention || message.isMention === true) return 'required';
 		return conversationTypeOf(message.raw) === 'personal' ? 'required' : 'optional';
+	}
+
+	async fetchInboundAttachments({
+		thread,
+		message,
+	}: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): Promise<Attachment[]> {
+		const http = graphHttpOf(thread.adapter);
+		return http ? await fetchTeamsMessageFiles(http, message.raw) : [];
 	}
 
 	constructor(

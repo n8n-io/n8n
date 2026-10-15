@@ -82,7 +82,7 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
-	 * The overview: one entry per workflow rule with its open and won't fix finding counts,
+	 * The overview: one entry per workflow rule with its unresolved (open or notified) and won't fix finding counts,
 	 * plus live instance results.
 	 */
 	async getLightReport(
@@ -102,9 +102,9 @@ export class MigrationFindingQueryService {
 			totalWorkflows,
 			instanceResults,
 		] = await Promise.all([
-			this.findingRepository.countOpenByRule(targetVersion, filter, {}),
+			this.findingRepository.countUnresolvedByRule(targetVersion, filter, {}),
 			this.findingRepository.countWontFixByRule(targetVersion, filter, {}),
-			this.findingRepository.countDistinctOpenWorkflows(targetVersion, filter, {}),
+			this.findingRepository.countDistinctUnresolvedWorkflows(targetVersion, filter, {}),
 			this.syncRepository.getForVersion(targetVersion, {}),
 			scope.kind === 'instance' ? this.workflowRepository.count() : scope.workflowIds.length,
 			// Instance rules read config and environment, not workflows, so they stay live.
@@ -148,7 +148,7 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
-	 * The detail of one workflow rule: every open and won't fix finding in scope
+	 * The detail of one workflow rule: every open, notified and won't fix finding in scope
 	 * with its status, workflow, statistics and issues.
 	 */
 	async getRuleFindings(
@@ -192,6 +192,7 @@ export class MigrationFindingQueryService {
 				// A workflow the rule no longer flags stays listed, without issues, until the next sync.
 				issues: issuesByWorkflow.get(finding.workflowId) ?? [],
 				status: finding.status,
+				notifiedAt: finding.notifiedAt ?? undefined,
 				owner: ownersByWorkflow.get(finding.workflowId),
 				homeProjectId: projectsByWorkflow.get(finding.workflowId)?.id,
 			});

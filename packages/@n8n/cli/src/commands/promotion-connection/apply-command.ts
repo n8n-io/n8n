@@ -1,5 +1,9 @@
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
-import type { ApplyPackageResult, PromotionBindingPreflight } from '../../client';
+import type {
+	ApplyPackageResult,
+	PromotionBindingPreflight,
+	PromotionProjectDeletion,
+} from '../../client';
 
 type ReportFlags = { quiet?: boolean; format?: string; json?: boolean; jq?: string };
 
@@ -65,6 +69,7 @@ function blockedMessage(
 ): string {
 	const bindings = (kind: 'credential' | 'variable') =>
 		preflight.missingBindings.filter((binding) => binding.kind === kind).length;
+	const projectDeletions = preflight.conflicts.filter(isProjectDeletion);
 
 	return [
 		'Apply is blocked. Nothing was imported.',
@@ -73,6 +78,12 @@ function blockedMessage(
 		`  Missing variables:   ${bindings('variable')}`,
 		`  Access requirements: ${preflight.accessRequirements.length}`,
 		`  Conflicts:           ${preflight.conflicts.length}`,
+		...(projectDeletions.length > 0
+			? [
+					'Apply deletes these projects with everything in them:',
+					...projectDeletions.map(({ project }) => `  ${project.name} (${project.id})`),
+				]
+			: []),
 		'Run with --json for the details. After you resolve them, run:',
 		`  ${continueCommand(result)}`,
 		...(preflight.conflicts.some(({ code }) => code === 'destructive-change')
@@ -80,7 +91,18 @@ function blockedMessage(
 					'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
 				]
 			: []),
+		...(projectDeletions.length > 0
+			? [
+					"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
+				]
+			: []),
 	].join('\n');
+}
+
+function isProjectDeletion(
+	conflict: Record<string, unknown>,
+): conflict is PromotionProjectDeletion {
+	return conflict.code === 'project-deletion';
 }
 
 /** The `--expected-*` flags that pin a Continue run to the source a blocked Apply reported. */

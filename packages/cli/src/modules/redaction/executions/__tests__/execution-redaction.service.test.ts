@@ -1050,6 +1050,59 @@ describe('ExecutionRedactionService', () => {
 			expect(context.userCanReveal).toBe(false);
 		});
 
+		it('passes on only the credentials of this execution that the viewer cannot use', async () => {
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [nodeWithCredential('cred-1'), nodeWithCredential('cred-2')],
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.inaccessibleCredentialIds).toEqual(['cred-1']);
+		});
+
+		describe('a sub-workflow credential', () => {
+			// The parent's own nodes reference no credential; its Execute Workflow task
+			// carries the credentials the sub-workflow run reported.
+			const parentCallingSubWorkflow = () => {
+				const execution = makeExecution({ policy: 'none', mode: 'manual', nodes: [] });
+				execution.data.resultData.runData = {
+					'Execute Workflow': [
+						{ startTime: 0, executionTime: 0, usedCredentialIds: ['cred-1'] } as ITaskData,
+					],
+				};
+				return execution;
+			};
+
+			it('force-redacts the parent when the viewer cannot use it', async () => {
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+					'cred-1',
+				]);
+
+				await service.processExecution(parentCallingSubWorkflow(), { user: mockUser });
+
+				expect(
+					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+				).toHaveBeenCalledWith(mockUser, ['cred-1'], { ignoreGlobalUseScope: true });
+				const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+				expect(context.enforceCredentialUsabilityRedaction).toBe(true);
+				expect(context.userCanReveal).toBe(false);
+			});
+
+			it('does not redact the parent for a viewer who can use it', async () => {
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([]);
+
+				await service.processExecution(parentCallingSubWorkflow(), { user: mockUser });
+
+				expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+			});
+		});
+
 		it('does not force-redact when the viewer can use every referenced credential', async () => {
 			const execution = makeExecution({
 				policy: 'none',

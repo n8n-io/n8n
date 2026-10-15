@@ -4,9 +4,6 @@ tags:
 summary: Push local source control changes
 description: Commits and pushes the selected files to the connected Git branch. Each entry in `fileNames` is resolved against a fresh preview of the pending changes.
 x-required-scope: sourceControl:push
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:
@@ -173,6 +170,10 @@ responses:
                               type: string
                             matchedRuleId:
                               type: string
+                            projectId:
+                              type: string
+                            optInAvailable:
+                              type: boolean
                           required:
                             - kind
                             - checkId
@@ -337,6 +338,10 @@ responses:
                               type: string
                             matchedRuleId:
                               type: string
+                            projectId:
+                              type: string
+                            optInAvailable:
+                              type: boolean
                           required:
                             - kind
                             - checkId

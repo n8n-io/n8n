@@ -58,6 +58,28 @@ export class SlackApi implements ICredentialType {
 			type: 'hidden',
 			default: '',
 		},
+<<<<<<< HEAD
+=======
+		{
+			// Base URL of the connection test only, so an eval can aim the test at a stand-in. Node requests ignore it
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: 'https://slack.com',
+		},
+		{
+			displayName:
+				'We strongly recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					signatureSecret: [''],
+				},
+			},
+		},
+>>>>>>> e2529a849432bdb3082615c04b1702df61cb91d5
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -71,7 +93,7 @@ export class SlackApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://slack.com',
+			baseURL: '={{$credentials.url}}',
 			url: '/api/users.profile.get',
 		},
 		rules: [

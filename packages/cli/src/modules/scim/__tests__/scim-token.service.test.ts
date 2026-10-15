@@ -2,8 +2,7 @@ import type { ApiKey, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { JwtService, UrlService } from '@n8n/backend-services';
 
 import type { ScimApiKeyRepository } from '../database/scim-api-key.repository';
 import { ScimTokenService } from '../scim-token.service';

@@ -56,6 +56,7 @@ describe('progressive workflow skill variants', () => {
 		const excluded = disabledInstanceAiSkillIds({
 			configEvalsEnabled: true,
 			instanceContextEnabled: true,
+			agentBuildingEnabled: true,
 		});
 		const control = filterRuntimeSkillSource(
 			await loadInstanceAiRuntimeSkillSourceForBuildMode('default'),

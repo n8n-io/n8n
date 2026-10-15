@@ -1,7 +1,11 @@
 {
   "name": "n8n",
+<<<<<<< HEAD
   "version": "2.43.0",
   "private": true,
+=======
+  "version": "2.44.0",
+>>>>>>> e2529a849432bdb3082615c04b1702df61cb91d5
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -134,7 +138,6 @@
     "@1password/connect": "1.4.2",
     "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
-    "@apidevtools/json-schema-ref-parser": "12.0.2",
     "@asteasolutions/zod-to-openapi": "catalog:",
     "@aws-sdk/client-secrets-manager": "3.808.0",
     "@azure/identity": "catalog:",
@@ -161,6 +164,7 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-module-insights": "workspace:*",
+    "@n8n/backend-module-quick-connect": "workspace:*",
     "@n8n/backend-network": "workspace:*",
     "@n8n/backend-services": "workspace:*",
     "@n8n/blob-storage": "workspace:*",
@@ -221,7 +225,6 @@
     "dotenv": "catalog:",
     "express": "catalog:",
     "express-handlebars": "8.0.1",
-    "express-openapi-validator": "5.5.3",
     "express-prom-bundle": "8.0.0",
     "express-rate-limit": "7.5.0",
     "fast-glob": "catalog:",

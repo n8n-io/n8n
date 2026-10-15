@@ -3,7 +3,7 @@ import { test, expect } from '../../../../fixtures/base';
 test.describe(
 	'Import workflow',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test.describe('From File', () => {

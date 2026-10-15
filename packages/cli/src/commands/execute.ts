@@ -90,7 +90,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 		);
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
-			startNodes: [{ name: startingNode.name, sourceData: null }],
+			triggerToStartFrom: { name: startingNode.name },
 			workflowData,
 			userId: user.id,
 		};
