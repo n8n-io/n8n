@@ -342,7 +342,11 @@ export class SelfHealingAgentService {
 		});
 		context.runId = options.runId;
 		context.threadId = options.threadId;
-		context.permissions = this.settings.getPermissions();
+		context.permissions = {
+			...this.settings.getPermissions(),
+			fetchUrl: 'always_allow',
+			webSearch: 'always_allow',
+		};
 		context.branchReadOnly = this.writeAccess.isReadOnly();
 		if (context.branchReadOnly) {
 			context.permissions = applyBranchReadOnlyOverrides(context.permissions);

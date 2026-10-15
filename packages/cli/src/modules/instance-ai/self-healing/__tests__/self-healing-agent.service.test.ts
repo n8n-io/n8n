@@ -1,6 +1,6 @@
 import type { Workspace, WorkspaceFilesystem } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
+import { DEFAULT_INSTANCE_AI_PERMISSIONS, type WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
@@ -194,6 +194,34 @@ describe('SelfHealingAgentService', () => {
 		};
 		vi.mocked(streamAgentRun).mockImplementation(async () => stream);
 	});
+
+	it.each(['require_approval', 'blocked', 'always_allow'] as const)(
+		'allows research when Assistant research permissions are %s',
+		async (permission) => {
+			const permissions = {
+				...DEFAULT_INSTANCE_AI_PERMISSIONS,
+				fetchUrl: permission,
+				webSearch: permission,
+			};
+			settings.getPermissions.mockReturnValueOnce(permissions);
+
+			await service.execute(input, options);
+
+			expect(createSelfHealingAgent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					context: expect.objectContaining({
+						permissions: {
+							...permissions,
+							fetchUrl: 'always_allow',
+							webSearch: 'always_allow',
+						},
+					}),
+				}),
+			);
+			expect(permissions.fetchUrl).toBe(permission);
+			expect(permissions.webSearch).toBe(permission);
+		},
+	);
 
 	it('prepares the captured baseline and binds verification', async () => {
 		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async (factoryOptions) => {

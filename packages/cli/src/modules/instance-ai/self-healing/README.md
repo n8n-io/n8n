@@ -42,7 +42,8 @@ Workflow reads return the captured baseline. The agent cannot select another wor
 
 The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
 It can read and edit workspace files, run sandbox commands, and call `verify_candidate`.
-Research remains subject to the existing policy. A request that needs approval is unavailable.
+Self-healing always allows web search and URL fetching, regardless of the Assistant permission settings.
+These research actions do not need interactive approval.
 The agent has no save, publish, credential setup, MCP, browser, or delegation tools.
 It does not request user confirmation or start follow-up runs.
 

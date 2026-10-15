@@ -117,20 +117,12 @@ async function handleWebSearch(
 			runId: context.runId,
 		});
 		if (!check.allowed) {
-			if (!ctx.suspend) {
-				return {
-					query: input.query,
-					results: [],
-					unavailable: true,
-					reason: check.blocked ? 'Action blocked by admin.' : 'Interactive approval is required.',
-				};
-			}
-
 			if (check.blocked) {
 				return { query: input.query, results: [] };
 			}
 
-			return await ctx.suspend(check.suspendPayload!);
+			if (ctx.suspend) return await ctx.suspend(check.suspendPayload!);
+			return { query: input.query, results: [] };
 		}
 	}
 
@@ -202,14 +194,6 @@ async function handleFetchUrl(
 			runId: context.runId,
 		});
 		if (!check.allowed) {
-			if (!ctx.suspend) {
-				return {
-					url: input.url,
-					unavailable: true,
-					reason: check.blocked ? 'Action blocked by admin.' : 'Interactive approval is required.',
-				};
-			}
-
 			if (check.blocked) {
 				return {
 					url: input.url,
@@ -221,7 +205,15 @@ async function handleFetchUrl(
 				};
 			}
 
-			return await ctx.suspend(check.suspendPayload!);
+			if (ctx.suspend) return await ctx.suspend(check.suspendPayload!);
+			return {
+				url: input.url,
+				finalUrl: input.url,
+				title: '',
+				content: '',
+				truncated: false,
+				contentLength: 0,
+			};
 		}
 	}
 
@@ -256,10 +248,7 @@ async function handleFetchUrl(
 
 // ── Tool factory ────────────────────────────────────────────────────────────
 
-export function createResearchTool(
-	context: InstanceAiContext,
-	options: { interactive?: boolean } = {},
-) {
+export function createResearchTool(context: InstanceAiContext) {
 	return new Tool('research')
 		.description(
 			'Search the web or fetch page content for external (non-n8n) documentation. ' +
@@ -274,16 +263,11 @@ export function createResearchTool(
 		.suspend(domainGatingSuspendSchema)
 		.resume(domainGatingResumeSchema)
 		.handler(async (input: Input, ctx) => {
-			const toolContext =
-				options.interactive === false
-					? { abortSignal: ctx.abortSignal, resumeData: undefined }
-					: ctx;
-
 			switch (input.action) {
 				case 'web-search':
-					return await handleWebSearch(context, input, toolContext);
+					return await handleWebSearch(context, input, ctx);
 				case 'fetch-url':
-					return await handleFetchUrl(context, input, toolContext);
+					return await handleFetchUrl(context, input, ctx);
 			}
 		})
 		.build();

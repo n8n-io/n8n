@@ -71,7 +71,7 @@ function createSelfHealingTools(
 			description: 'Read node metadata. Use type-definition before changing node parameters.',
 		}),
 		createN8nDocsTool(context),
-		createResearchTool(context, { interactive: false }),
+		createResearchTool(context),
 		new Tool('verify_candidate')
 			.description('Verify the candidate against the captured workflow baseline.')
 			.input(selfHealingCandidateInputSchema)

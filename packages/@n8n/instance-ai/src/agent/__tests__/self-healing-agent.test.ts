@@ -297,30 +297,6 @@ describe('createSelfHealingAgent', () => {
 		).resolves.toMatchObject({ count: 1, data: [{ id: 1, status: 'ready' }] });
 	});
 
-	it.each(['require_approval', 'blocked'] as const)(
-		'returns unavailable for %s research without suspension or a grant',
-		async (permission) => {
-			const context = createContext();
-			context.permissions = {
-				...DEFAULT_INSTANCE_AI_PERMISSIONS,
-				webSearch: permission,
-				fetchUrl: permission,
-			};
-			const tool = findTool((await createAgent(context)).declaredTools, 'research');
-			const suspend = vi.fn();
-			const toolContext = { suspend, resumeData: { approved: true } };
-			await expect(
-				executeTool(tool, { action: 'web-search', query: 'API docs' }, toolContext),
-			).resolves.toMatchObject({ unavailable: true });
-			await expect(
-				executeTool(tool, { action: 'fetch-url', url: 'https://example.com' }, toolContext),
-			).resolves.toMatchObject({ unavailable: true });
-			expect(suspend).not.toHaveBeenCalled();
-			expect(context.webResearchService?.search).not.toHaveBeenCalled();
-			expect(context.webResearchService?.fetchUrl).not.toHaveBeenCalled();
-		},
-	);
-
 	it('runs research when policy permits it', async () => {
 		const context = createContext();
 		context.permissions = {
@@ -341,12 +317,15 @@ describe('createSelfHealingAgent', () => {
 			truncated: false,
 		});
 		const tool = findTool((await createAgent(context)).declaredTools, 'research');
+		const suspend = vi.fn();
+		const toolContext = { suspend };
 		await expect(
-			executeTool(tool, { action: 'web-search', query: 'API docs' }),
+			executeTool(tool, { action: 'web-search', query: 'API docs' }, toolContext),
 		).resolves.toMatchObject({ results: [] });
 		await expect(
-			executeTool(tool, { action: 'fetch-url', url: 'https://example.com' }),
+			executeTool(tool, { action: 'fetch-url', url: 'https://example.com' }, toolContext),
 		).resolves.toMatchObject({ title: 'Docs' });
+		expect(suspend).not.toHaveBeenCalled();
 	});
 
 	it.each([{}, { triggerNodeName: 'Incoming Order', inputData: { body: { price: '12' } } }])(
