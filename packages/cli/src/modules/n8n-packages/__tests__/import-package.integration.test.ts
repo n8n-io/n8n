@@ -2376,7 +2376,7 @@ describe('credential-missing-mode: create-stub', () => {
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
 	});
 
-	it('does not require the credential:create API key scope for create-stub', async () => {
+	it('does not require the credential:create scope for create-stub', async () => {
 		const owner = await createOwner();
 
 		const result = await importPackage({
@@ -2594,7 +2594,7 @@ describe('credential-missing-mode: create-with-values', () => {
 		expect(await Container.get(CredentialsRepository).count()).toBe(0);
 	});
 
-	it('requires the credential:create API key scope when create-with-values creates a credential, and writes nothing without it', async () => {
+	it('requires the credential:create scope when create-with-values creates a credential, and writes nothing without it', async () => {
 		const owner = await createOwner();
 		const packageBuffer = await buildImportPackageBuffer(
 			[
@@ -2628,7 +2628,7 @@ describe('credential-missing-mode: create-with-values', () => {
 		expect(result.credentials.stubbed).toEqual(['missing-cred']);
 	});
 
-	it('does not require the credential:create API key scope when every credential resolves', async () => {
+	it('does not require the credential:create scope when every credential resolves', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,

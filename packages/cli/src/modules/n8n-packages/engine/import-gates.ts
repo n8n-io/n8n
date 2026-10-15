@@ -62,10 +62,6 @@ export function assertDataTableWritesAllowed(
 	}
 }
 
-/**
- * `create-stub` creates credentials without this scope until the next major version, so
- * existing API keys keep working.
- */
 export function assertCredentialWritesAllowed(
 	apiKeyScopes: string[] | undefined,
 	credentialPlans: Array<{ missingMode: CredentialMissingMode; resolution: CredentialResolution }>,
