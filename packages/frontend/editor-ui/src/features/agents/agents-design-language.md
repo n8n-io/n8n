@@ -141,8 +141,7 @@ modal.
 
 Use the configured local name for schedules, skills, node tools, MCP servers,
 workflow tools, and vector stores. Give new items a valid default name. Show the
-pencil at all times, so that the user sees that the title is editable. Keep the
-title clickable.
+pencil on hover. Keep the title clickable.
 
 Show the asset icon beside the configured local name in tool configuration
 modals. Use the same icon for direct edits and multi-step add flows.
