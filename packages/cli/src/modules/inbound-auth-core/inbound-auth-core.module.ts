@@ -7,6 +7,7 @@ import {
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
+	ResourceAdmission,
 	TrustedSourceGate,
 	TrustedSourceStore,
 	type AuthorizationServerMetadata,
@@ -15,8 +16,7 @@ import {
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 // Discovery of the local source must fail, not succeed with made-up documents.
 class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
@@ -76,6 +76,9 @@ export class InboundAuthCoreModule implements ModuleInterface {
 
 		const { InboundAuthPipeline } = await import('./authentication-pipeline.js');
 		Container.set(AuthenticationPipeline, Container.get(InboundAuthPipeline));
+
+		const { InboundResourceAdmission } = await import('./resource-admission.js');
+		Container.set(ResourceAdmission, Container.get(InboundResourceAdmission));
 
 		// Only main serves the public API. The strategy resolves the pipeline, so it registers last.
 		if (Container.get(InstanceSettings).instanceType === 'main') {

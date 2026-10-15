@@ -7,6 +7,7 @@ export {
 } from './credentials/credentials-finder.service';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
+export type { Hash, MaybeHash } from './services/cache/cache.types';
 export { RedisClientService } from './services/redis-client.service';
 export type { RedisClientType } from './services/redis.types';
 export { RoleCacheService, type RoleLoader } from './services/role-cache.service';
@@ -104,3 +105,4 @@ export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,
 } from './workflows/restricted-node-types-provider-proxy.service';
+export * from './auth';
