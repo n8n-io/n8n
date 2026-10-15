@@ -4,11 +4,7 @@ import {
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
-<<<<<<< HEAD
-=======
-	ImportWorkflowFromUrlDto,
 	ListCallableSubworkflowsQueryDto,
->>>>>>> e2529a849432bdb3082615c04b1702df61cb91d5
 	ManualRunDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
@@ -35,6 +31,7 @@ import {
 	Post,
 	ProjectScope,
 	Put,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';

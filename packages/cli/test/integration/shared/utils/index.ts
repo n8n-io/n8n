@@ -112,7 +112,6 @@ function minimalNodeType(name: string, properties: INodeProperties[] = []): INod
 	};
 }
 
-<<<<<<< HEAD
 // Test-only definitions keep deprecation coverage after 3.x removes the legacy nodes.
 export function createDeprecatedNodeType(name: string): INodeType {
 	const { type } = minimalNodeType(name, [
@@ -122,10 +121,7 @@ export function createDeprecatedNodeType(name: string): INodeType {
 	return type as INodeType;
 }
 
-function buildDefaultNodes(): INodeTypeData {
-=======
 export function buildDefaultNodes(): INodeTypeData {
->>>>>>> e2529a849432bdb3082615c04b1702df61cb91d5
 	ScheduleTrigger.prototype.trigger = async () => ({});
 	return {
 		'n8n-nodes-base.manualTrigger': {
