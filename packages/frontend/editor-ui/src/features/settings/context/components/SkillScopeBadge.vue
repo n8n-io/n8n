@@ -6,7 +6,7 @@ import { N8nBadge, N8nIcon } from '@n8n/design-system';
 import { useSkillScopeDisplay } from '../skills.utils';
 
 const props = defineProps<{
-	skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'agentName'>;
+	skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType' | 'agentName'>;
 }>();
 
 const { scopeDisplay } = useSkillScopeDisplay();

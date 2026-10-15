@@ -116,8 +116,8 @@ describe('SkillsApiService', () => {
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
 		repository.countUsingAgents.mockResolvedValue(new Map());
-		repository.findProjectNames.mockImplementation(
-			async (ids) => new Map(ids.map((id) => [id, 'Team'] as const)),
+		repository.findProjects.mockImplementation(
+			async (ids) => new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const }])),
 		);
 		repository.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
 		repository.findAgents.mockImplementation(
@@ -240,7 +240,9 @@ describe('SkillsApiService', () => {
 		it('describes each skill', async () => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 			repository.countUsingAgents.mockResolvedValue(new Map([['skill_a', 2]]));
-			repository.findProjectNames.mockResolvedValue(new Map([['project-1', 'Team']]));
+			repository.findProjects.mockResolvedValue(
+				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+			);
 			skillService.accessCheck.mockImplementation(async (_user, op) => () => op === 'update');
 
 			const [item] = (await service.list(user, query())).data;
@@ -252,6 +254,7 @@ describe('SkillsApiService', () => {
 				scope: 'project',
 				projectId: 'project-1',
 				projectName: 'Team',
+				projectType: 'team',
 				agentId: null,
 				agentName: null,
 				source: 'ui',
@@ -267,7 +270,9 @@ describe('SkillsApiService', () => {
 
 		it('describes an agent skill with its agent and the project of the agent', async () => {
 			visible = [skill('skill_a', { agentId: 'agent-1' })];
-			repository.findProjectNames.mockResolvedValue(new Map([['project-1', 'Team']]));
+			repository.findProjects.mockResolvedValue(
+				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+			);
 			const check = vi.fn().mockReturnValue(true);
 			skillService.accessCheck.mockResolvedValue(check);
 
@@ -442,12 +447,12 @@ describe('SkillsApiService', () => {
 		// A global projectSkill:create passes the scope check for any project id.
 		it('refuses a project skill for a project that does not exist', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
-			repository.findProjectNames.mockResolvedValue(new Map());
+			repository.findProjects.mockResolvedValue(new Map());
 
 			await expect(
 				service.create(user, payload({ scope: 'project', projectId: 'project-gone' })),
 			).rejects.toThrow(NotFoundError);
-			expect(repository.findProjectNames).toHaveBeenCalledWith(['project-gone']);
+			expect(repository.findProjects).toHaveBeenCalledWith(['project-gone']);
 			expect(skillService.create).not.toHaveBeenCalled();
 		});
 	});
@@ -504,7 +509,9 @@ describe('SkillsApiService', () => {
 
 		it('moves the skill and saves it in one transaction, then refreshes after the commit', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
-			repository.findProjectNames.mockResolvedValue(new Map([['project-1', 'Team']]));
+			repository.findProjects.mockResolvedValue(
+				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+			);
 			skillService.save.mockResolvedValue(saved);
 
 			await service.update(

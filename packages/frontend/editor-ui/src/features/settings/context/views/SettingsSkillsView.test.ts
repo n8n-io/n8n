@@ -45,6 +45,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		scope: 'instance',
 		projectId: null,
 		projectName: null,
+		projectType: null,
 		agentId: null,
 		agentName: null,
 		source: 'ui',

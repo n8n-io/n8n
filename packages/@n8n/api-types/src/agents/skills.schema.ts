@@ -6,6 +6,7 @@ import {
 	agentSkillShape,
 } from './agent-skill.schema';
 import type { AgentSkill } from './types';
+import type { ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
@@ -51,6 +52,8 @@ export type SkillListItem = {
 	/** The project of a project skill, or the project of the agent of an agent skill. */
 	projectId: string | null;
 	projectName: string | null;
+	/** Lets the editor name another member's personal project, which it does not list. */
+	projectType: ProjectType | null;
 	/** Set for an agent skill: the only agent that can use it. */
 	agentId: string | null;
 	agentName: string | null;

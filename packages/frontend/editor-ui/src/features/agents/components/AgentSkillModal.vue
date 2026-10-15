@@ -158,6 +158,8 @@ const selectedScopeIcon = computed(
 	() => props.data.scopeOptions?.find((option) => option.value === scope.value)?.icon,
 );
 const readOnly = computed(() => props.data.readOnly === true);
+/** Save sends a snapshot, so the editor is locked until the answer comes back. */
+const editorLocked = computed(() => readOnly.value || isSaving.value);
 
 const isEditing = computed(() => !!props.data.skillId);
 const canAddReference = computed(
@@ -220,6 +222,7 @@ const canSave = computed(() => formIsValid.value && !validationErrors.value.name
 
 function onSkillUploaded(importedSkill: AgentSkill) {
 	skill.value = normalizeSkill(importedSkill);
+	serverNameError.value = '';
 	selectedPath.value = SKILL_FILE;
 	submitted.value = false;
 	step.value = 'edit';
@@ -227,6 +230,7 @@ function onSkillUploaded(importedSkill: AgentSkill) {
 
 function onBack() {
 	skill.value = { name: getDefaultSkillName(), description: '', instructions: '' };
+	serverNameError.value = '';
 	selectedPath.value = SKILL_FILE;
 	submitted.value = false;
 	formIsValid.value = false;
@@ -403,14 +407,14 @@ function onRemove() {
 					:skill="skill"
 					:selected-path="selectedPath"
 					:add-reference-disabled="!canAddReference"
-					:read-only="readOnly"
+					:read-only="editorLocked"
 					@add-reference="onAddReference"
 					@remove-reference="onRemoveReference"
 					@select="selectedPath = $event"
 				/>
 				<AgentSkillViewer
 					:skill="skill"
-					:disabled="readOnly"
+					:disabled="editorLocked"
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:show-validation-warnings="submitted || openedWithMissingContent"
@@ -435,7 +439,7 @@ function onRemove() {
 									<N8nSelect
 										v-model="scope"
 										size="large"
-										:disabled="!canChangeScope"
+										:disabled="!canChangeScope || isSaving"
 										:teleported="false"
 										data-testid="agent-skill-scope-select"
 									>

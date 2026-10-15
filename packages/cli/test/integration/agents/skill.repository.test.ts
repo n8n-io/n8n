@@ -687,14 +687,14 @@ describe('SkillRepository', () => {
 		});
 	});
 
-	describe('findProjectNames', () => {
-		it('maps project ids to names', async () => {
-			const names = await skills.findProjectNames([project.id, project.id, otherProject.id]);
+	describe('findProjects', () => {
+		it('maps project ids to names and types', async () => {
+			const projects = await skills.findProjects([project.id, project.id, otherProject.id]);
 
-			expect(names).toEqual(
+			expect(projects).toEqual(
 				new Map([
-					[project.id, 'Team'],
-					[otherProject.id, 'Other team'],
+					[project.id, { name: 'Team', type: 'team' }],
+					[otherProject.id, { name: 'Other team', type: 'team' }],
 				]),
 			);
 		});

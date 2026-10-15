@@ -25,6 +25,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		scope: 'instance',
 		projectId: null,
 		projectName: null,
+		projectType: null,
 		agentId: null,
 		agentName: null,
 		source: 'ui',
@@ -72,8 +73,34 @@ describe('SkillsTable', () => {
 
 	it.each([
 		['Global', skill({ scope: 'instance' })],
-		['Personal project', skill({ scope: 'project', projectId: 'personal-1', projectName: 'Me' })],
-		['Marketing', skill({ scope: 'project', projectId: 'team-1', projectName: 'Marketing' })],
+		[
+			'Personal project',
+			skill({
+				scope: 'project',
+				projectId: 'personal-1',
+				projectName: 'Me',
+				projectType: 'personal',
+			}),
+		],
+		[
+			'Marketing',
+			skill({
+				scope: 'project',
+				projectId: 'team-1',
+				projectName: 'Marketing',
+				projectType: 'team',
+			}),
+		],
+		// Another member's personal project: the editor does not list it, the row names its type.
+		[
+			'Ada Lovelace',
+			skill({
+				scope: 'project',
+				projectId: 'personal-2',
+				projectName: 'Ada Lovelace <ada@example.com>',
+				projectType: 'personal',
+			}),
+		],
 		['FirstClassDarwin only', skill({ scope: 'agent', agentName: 'FirstClassDarwin' })],
 	])('labels the scope "%s"', (label, row) => {
 		const { getByTestId } = render([row]);

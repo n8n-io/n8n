@@ -546,17 +546,23 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, agents.size]));
 	}
 
-	async findProjectNames(
+	/** Name and type of each project, keyed by project id. A missing project is absent. */
+	async findProjects(
 		projectIds: string[],
 		ctx: OperationContext = {},
-	): Promise<Map<string, string>> {
+	): Promise<Map<string, Pick<Project, 'name' | 'type'>>> {
 		const manager = this.managerFor(ctx);
 		const projects = await inChunks(
 			projectIds,
 			async (chunk) =>
-				await manager.find(Project, { where: { id: In(chunk) }, select: ['id', 'name'] }),
+				await manager.find(Project, {
+					where: { id: In(chunk) },
+					select: ['id', 'name', 'type'],
+				}),
 		);
-		return new Map(projects.map((project) => [project.id, project.name]));
+		return new Map(
+			projects.map((project) => [project.id, { name: project.name, type: project.type }]),
+		);
 	}
 
 	/** Name and project of each agent, keyed by agent id. An agent skill takes its project from them. */

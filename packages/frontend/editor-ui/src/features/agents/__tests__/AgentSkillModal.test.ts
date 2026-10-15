@@ -423,6 +423,44 @@ describe('AgentSkillModal', () => {
 		expect(queryByTestId('agent-modal-title-error')).not.toBeInTheDocument();
 	});
 
+	it('locks the editor while the save is pending', async () => {
+		let finish: (value?: undefined) => void = () => {};
+		const onConfirm = vi.fn(
+			async () => await new Promise<undefined>((resolve) => (finish = resolve)),
+		);
+		const { getByTestId, queryByTestId } = renderModal({
+			onConfirm,
+			skill: SAVED_SKILL,
+			skillId: 's1',
+		});
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Summarize');
+
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		await waitFor(() => expect(getByTestId('agent-modal-title-input')).toBeDisabled());
+		expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
+		finish();
+		await waitFor(() => expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME));
+	});
+
+	it('clears a refused name when the user goes back and starts again', async () => {
+		const onConfirm = vi.fn().mockResolvedValue({ saved: false, nameError: 'Name taken' });
+		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		await fireEvent.update(
+			getByTestId('agent-skill-description-input').querySelector('input')!,
+			'Use for research',
+		);
+		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+		await waitFor(() => expect(getByTestId('agent-modal-title-error')).toBeInTheDocument());
+
+		await fireEvent.click(getByTestId('agent-modal-back'));
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+
+		expect(queryByTestId('agent-modal-title-error')).not.toBeInTheDocument();
+	});
+
 	it('stays open when the save fails, and closes once it succeeds', async () => {
 		const onConfirm = vi
 			.fn()

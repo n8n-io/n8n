@@ -203,7 +203,7 @@ export class SkillsApiService {
 				if (payload.agentId) throw new UserError('A project skill has no agent.');
 				await this.assertCanCreateIn(user, projectId);
 				// A global scope passes without looking at the project, so check that it exists.
-				if (!(await this.skillRepository.findProjectNames([projectId])).has(projectId)) {
+				if (!(await this.skillRepository.findProjects([projectId])).has(projectId)) {
 					throw new NotFoundError('Project not found');
 				}
 				// A personal project keeps its own skills, as a team project does.
@@ -239,7 +239,7 @@ export class SkillsApiService {
 		const [latest, usage, projects, creators, canEdit, canDelete] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillRepository.countUsingAgents(ids),
-			this.skillRepository.findProjectNames(skills.flatMap((skill) => projectOf(skill) ?? [])),
+			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
 			this.findCreators(skills),
 			this.skillService.accessCheck(user, 'update'),
 			this.skillService.accessCheck(user, 'delete'),
@@ -255,7 +255,8 @@ export class SkillsApiService {
 				description: summary.description,
 				scope: scopeOf(skill),
 				projectId,
-				projectName: projectId ? (projects.get(projectId) ?? null) : null,
+				projectName: projectId ? (projects.get(projectId)?.name ?? null) : null,
+				projectType: projectId ? (projects.get(projectId)?.type ?? null) : null,
 				agentId: skill.agentId,
 				agentName: skill.agentId ? (agents.get(skill.agentId)?.name ?? null) : null,
 				source: skill.source,

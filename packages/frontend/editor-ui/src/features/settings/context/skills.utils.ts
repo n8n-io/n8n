@@ -12,11 +12,15 @@ export function useSkillScopeDisplay() {
 	const i18n = useI18n();
 	const projectsStore = useProjectsStore();
 
-	function projectLabel(projectId: string, projectName: string | null) {
+	function projectLabel(
+		projectId: string,
+		projectName: string | null,
+		projectType: SkillListItem['projectType'],
+	) {
 		if (projectId === projectsStore.personalProject?.id) {
 			return i18n.baseText('settings.context.skills.scope.personalProject');
 		}
-		if (projectsStore.isPersonalProject(projectId) && projectName) {
+		if (projectType === 'personal' && projectName) {
 			// A personal project is named `First Last <email>`; the owner is the name part.
 			const { name, email } = splitName(projectName);
 			return name ?? email ?? projectName;
@@ -26,7 +30,7 @@ export function useSkillScopeDisplay() {
 	}
 
 	function scopeDisplay(
-		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'agentName'>,
+		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType' | 'agentName'>,
 	): SkillScopeDisplay {
 		switch (skill.scope) {
 			case 'instance':
@@ -45,8 +49,8 @@ export function useSkillScopeDisplay() {
 					return { icon: 'layers', label: i18n.baseText('settings.context.skills.scope.project') };
 				}
 				return {
-					icon: projectsStore.isPersonalProject(skill.projectId) ? 'user' : 'layers',
-					label: projectLabel(skill.projectId, skill.projectName),
+					icon: skill.projectType === 'personal' ? 'user' : 'layers',
+					label: projectLabel(skill.projectId, skill.projectName, skill.projectType),
 				};
 		}
 	}

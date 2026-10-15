@@ -131,6 +131,7 @@ describe('SkillsController', () => {
 				agentName: 'Support bot',
 				projectId: project.id,
 				projectName: 'Team',
+				projectType: 'team',
 				latestVersion: 1,
 				canEdit: true,
 				canDelete: true,
