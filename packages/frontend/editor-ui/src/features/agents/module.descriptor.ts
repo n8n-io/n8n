@@ -163,7 +163,7 @@ export const AgentsModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-agents',
-			order: 260,
+			order: 50,
 			section: 'ai',
 			icon: 'robot',
 			label: i18n.baseText('settings.agents'),

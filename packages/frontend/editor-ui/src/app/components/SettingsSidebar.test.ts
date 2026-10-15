@@ -5,14 +5,16 @@ import SettingsSidebar from './SettingsSidebar.vue';
 
 const handleSettingsItemSelectMock = vi.hoisted(() => vi.fn());
 
-const personal = { id: 'settings-personal', label: 'Personal' };
+const moduleLink = { id: 'settings-module', label: 'Module page' };
+const personal = { id: 'settings-personal', label: 'Profile & preferences' };
 const credits = { id: 'settings-n8n-connect', label: 'Gateway credits' };
 
 vi.mock('../composables/useSettingsItems', () => ({
 	useSettingsItems: () => ({
-		settingsItems: ref([personal, credits]),
+		settingsItems: ref([moduleLink, personal, credits]),
 		settingsSections: ref([
-			{ id: 'general', title: undefined, items: [personal] },
+			{ id: 'general', title: undefined, items: [moduleLink] },
+			{ id: 'personal', title: 'Personal', items: [personal] },
 			{ id: 'ai', title: 'AI', items: [credits] },
 		]),
 		handleSettingsItemSelect: handleSettingsItemSelectMock,
@@ -41,8 +43,12 @@ describe('SettingsSidebar', () => {
 	it('lists the links under their section headings', () => {
 		const { getByTestId, getByText } = renderComponent();
 
-		expect(getByTestId('settings-section-general')).toContainElement(getByText('Personal'));
+		expect(getByTestId('settings-section-general')).toContainElement(getByText('Module page'));
 		expect(getByTestId('settings-section-general')).not.toHaveTextContent('General');
+		expect(getByTestId('settings-section-personal')).toContainElement(getByText('Personal'));
+		expect(getByTestId('settings-section-personal')).toContainElement(
+			getByText('Profile & preferences'),
+		);
 		expect(getByTestId('settings-section-ai')).toContainElement(getByText('AI'));
 		expect(getByTestId('settings-section-ai')).toContainElement(getByText('Gateway credits'));
 	});

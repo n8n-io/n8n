@@ -194,17 +194,16 @@ you use a surface.
 
 ### Position of a settings link
 
-The settings sidebar lists its links under headings: People & access, AI, Integrations, Security
-and Operations. Two links sit before the first heading: Usage and plan, and Personal.
+The settings sidebar lists its links under headings: Personal, People & access, AI, Integrations,
+Security, Operations and Usage & billing.
 
-Each item in `settingsPages` accepts an optional `section` (`'people' | 'ai' | 'integrations' |
-'security' | 'operations'`) and an optional integer `order`. The sidebar groups the shell links and
-the module links by `section`, then sorts each group from low to high `order`. The shell links use
-the hundreds digit for the section and the tens for the row: People & access is 110, 120, ..., AI
-is 210, 220, ..., and so on. Pick a number between two shell links of your section to put your
-link between them. A link without `order` goes last in its section. Two links with the same `order`
-keep their registration order. A link without `section` is listed before the first heading, next to
-Usage and plan and Personal. Neither field is part of `IMenuItem`.
+Each item in `settingsPages` accepts an optional `section` (`'personal' | 'people' | 'ai' |
+'integrations' | 'security' | 'operations' | 'billing'`) and an optional integer `order`. The
+sidebar groups the shell links and the module links by `section`, then sorts each group from low to
+high `order`. The shell links use 10, 20, 30, and so on inside each section. Pick a number between
+two shell links of your section to put your link between them. A link without `order` goes last in
+its section. Two links with the same `order` keep their registration order. A link without
+`section` is listed before the first heading. Neither field is part of `IMenuItem`.
 
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
 `main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces

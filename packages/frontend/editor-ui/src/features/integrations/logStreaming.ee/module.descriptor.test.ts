@@ -13,7 +13,7 @@ describe('LogStreamingModule', () => {
 	it('should register the settings sidebar item under Operations', () => {
 		expect(
 			LogStreamingModule.settingsPages?.map(({ id, order, section }) => ({ id, order, section })),
-		).toEqual([{ id: 'settings-log-streaming', order: 540, section: 'operations' }]);
+		).toEqual([{ id: 'settings-log-streaming', order: 40, section: 'operations' }]);
 	});
 
 	describe('settings sidebar item', () => {

@@ -36,7 +36,7 @@ export const OtelModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-opentelemetry',
-			order: 550,
+			order: 50,
 			section: 'operations',
 			icon: 'telescope',
 			get label() {

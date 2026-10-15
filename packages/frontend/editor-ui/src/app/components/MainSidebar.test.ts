@@ -265,16 +265,17 @@ describe('MainSidebar', () => {
 				},
 			};
 
-			const { getByText, findByTestId } = renderComponent();
+			const { getByText, findByTestId, queryByTestId } = renderComponent();
 
 			getByText('Settings').click();
+			const personalSection = await findByTestId('main-sidebar-settings-section-personal');
 			const aiSection = await findByTestId('main-sidebar-settings-section-ai');
-			const generalSection = await findByTestId('main-sidebar-settings-section-general');
 
 			// Routed links render through the mocked RouterLink, so only the credits link has text.
+			expect(within(personalSection).getByText('Personal')).toBeInTheDocument();
 			expect(within(aiSection).getByText('AI')).toBeInTheDocument();
 			expect(within(aiSection).getByText('Gateway credits')).toBeInTheDocument();
-			expect(within(generalSection).queryByText('General')).not.toBeInTheDocument();
+			expect(queryByTestId('main-sidebar-settings-section-general')).not.toBeInTheDocument();
 		});
 	});
 });

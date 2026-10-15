@@ -91,12 +91,12 @@ describe('useSettingsItems', () => {
 
 	// Module items in registration order, with the orders and sections the real modules set.
 	const realModuleItems = () => [
-		{ id: 'settings-log-streaming', available: true, order: 540, section: 'operations' as const },
-		{ id: 'settings-mcp', available: true, order: 210, section: 'ai' as const },
-		{ id: 'settings-chat-hub', available: true, order: 220, section: 'ai' as const },
-		{ id: 'settings-instance-ai', available: true, order: 250, section: 'ai' as const },
-		{ id: 'settings-agents', available: true, order: 260, section: 'ai' as const },
-		{ id: 'settings-opentelemetry', available: true, order: 550, section: 'operations' as const },
+		{ id: 'settings-log-streaming', available: true, order: 40, section: 'operations' as const },
+		{ id: 'settings-mcp', available: true, order: 10, section: 'ai' as const },
+		{ id: 'settings-chat-hub', available: true, order: 70, section: 'ai' as const },
+		{ id: 'settings-instance-ai', available: true, order: 40, section: 'ai' as const },
+		{ id: 'settings-agents', available: true, order: 50, section: 'ai' as const },
+		{ id: 'settings-opentelemetry', available: true, order: 50, section: 'operations' as const },
 	];
 
 	const makeEverythingAvailable = () => {
@@ -117,19 +117,18 @@ describe('useSettingsItems', () => {
 			const ids = useSettingsItems().settingsItems.value.map(({ id }) => id);
 
 			expect(ids).toEqual([
-				'settings-usage-and-plan',
 				'settings-personal',
 				'settings-users',
 				'settings-roles',
 				'settings-sso',
 				'settings-ldap',
 				'settings-mcp',
-				'settings-chat-hub',
 				'settings-ai',
 				'settings-n8n-connect',
 				'settings-instance-ai',
 				'settings-agents',
 				'settings-context',
+				'settings-chat-hub',
 				'settings-api',
 				'settings-community-nodes',
 				'settings-security',
@@ -142,6 +141,7 @@ describe('useSettingsItems', () => {
 				'settings-log-streaming',
 				'settings-opentelemetry',
 				'settings-migration-report',
+				'settings-usage-and-plan',
 			]);
 		});
 	});
@@ -159,9 +159,9 @@ describe('useSettingsItems', () => {
 
 			expect(sectionsOf()).toEqual([
 				{
-					id: 'general',
-					title: undefined,
-					items: ['settings-usage-and-plan', 'settings-personal'],
+					id: 'personal',
+					title: 'settings.sections.personal',
+					items: ['settings-personal'],
 				},
 				{
 					id: 'people',
@@ -173,12 +173,12 @@ describe('useSettingsItems', () => {
 					title: 'settings.sections.ai',
 					items: [
 						'settings-mcp',
-						'settings-chat-hub',
 						'settings-ai',
 						'settings-n8n-connect',
 						'settings-instance-ai',
 						'settings-agents',
 						'settings-context',
+						'settings-chat-hub',
 					],
 				},
 				{
@@ -208,6 +208,11 @@ describe('useSettingsItems', () => {
 						'settings-migration-report',
 					],
 				},
+				{
+					id: 'billing',
+					title: 'settings.sections.billing',
+					items: ['settings-usage-and-plan'],
+				},
 			]);
 		});
 
@@ -218,7 +223,7 @@ describe('useSettingsItems', () => {
 			expect(sectionsOf().map(({ id }) => id)).not.toContain('integrations');
 		});
 
-		it('lists the general links before the first heading, for a member with no admin pages', () => {
+		it('keeps the headings of the pages a member without admin pages can open', () => {
 			canUserAccessRouteByName.mockImplementation(
 				(name) => name === VIEWS.USAGE || name === VIEWS.PERSONAL_SETTINGS,
 			);
@@ -226,9 +231,14 @@ describe('useSettingsItems', () => {
 
 			expect(sectionsOf()).toEqual([
 				{
-					id: 'general',
-					title: undefined,
-					items: ['settings-usage-and-plan', 'settings-personal'],
+					id: 'personal',
+					title: 'settings.sections.personal',
+					items: ['settings-personal'],
+				},
+				{
+					id: 'billing',
+					title: 'settings.sections.billing',
+					items: ['settings-usage-and-plan'],
 				},
 			]);
 		});
@@ -239,7 +249,7 @@ describe('useSettingsItems', () => {
 
 		it('places a module item between the shell items with the nearest orders in its section', () => {
 			settingsSidebarItems.value = [
-				{ id: 'settings-module', available: true, order: 415, section: 'security' },
+				{ id: 'settings-module', available: true, order: 15, section: 'security' },
 			];
 
 			const ids = idsOf();
@@ -265,9 +275,10 @@ describe('useSettingsItems', () => {
 			const ids = idsOf();
 			const sections = useSettingsItems().settingsSections.value;
 
-			expect(ids.indexOf('settings-module')).toBe(ids.indexOf('settings-personal') + 1);
+			expect(ids.indexOf('settings-module')).toBe(0);
 			expect(sections[0]).toMatchObject({ id: 'general', title: undefined });
-			expect(sections[0].items.map(({ id }) => id)).toContain('settings-module');
+			expect(sections[0].items.map(({ id }) => id)).toEqual(['settings-module']);
+			expect(sections[1]).toMatchObject({ id: 'personal' });
 		});
 
 		it('keeps registration order for equal orders', () => {
@@ -288,16 +299,18 @@ describe('useSettingsItems', () => {
 	describe('the Context item', () => {
 		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
 
-		it('is the last AI link, after the module items', () => {
+		it('follows Agents and precedes Chat, the last AI link', () => {
 			settingsSidebarItems.value = [
-				{ id: 'settings-mcp', available: true, order: 210, section: 'ai' },
-				{ id: 'settings-agents', available: true, order: 260, section: 'ai' },
+				{ id: 'settings-mcp', available: true, order: 10, section: 'ai' },
+				{ id: 'settings-agents', available: true, order: 50, section: 'ai' },
+				{ id: 'settings-chat-hub', available: true, order: 70, section: 'ai' },
 			];
 
 			const ids = idsOf();
 
 			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-agents') + 1);
-			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-community-nodes') - 1);
+			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-chat-hub') - 1);
+			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-community-nodes') - 1);
 		});
 
 		it('is hidden when the flag is off, because the route guard does not run here', () => {

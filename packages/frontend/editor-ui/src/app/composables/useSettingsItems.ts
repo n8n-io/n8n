@@ -31,11 +31,13 @@ export type SettingsSectionGroup = {
 
 const SETTINGS_SECTION_ORDER: SettingsSectionGroupId[] = [
 	'general',
+	'personal',
 	'people',
 	'ai',
 	'integrations',
 	'security',
 	'operations',
+	'billing',
 ];
 
 const sectionOf = (item: IMenuSettingItem): SettingsSectionGroupId => item.section ?? 'general';
@@ -51,23 +53,15 @@ export function useSettingsItems() {
 	const { openTopUp } = useAiGatewayTopUp();
 
 	const settingsItems = computed<IMenuSettingItem[]>(() => {
-		// `order` is the position inside the section: hundreds pick the section, tens the row.
+		// `order` is the row inside the section, in steps of ten so a module can slot in between.
 		const shellItems: ShellSettingsItem[] = [
-			// General: the pages every user has, listed without a heading.
-			{
-				id: 'settings-usage-and-plan',
-				order: 10,
-				icon: 'chart-column-decreasing',
-				label: i18n.baseText('settings.usageAndPlan.title'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.USAGE),
-				route: { to: { name: VIEWS.USAGE } },
-			},
+			// Personal
 			{
 				id: 'settings-personal',
-				order: 20,
+				order: 10,
+				section: 'personal',
 				icon: 'user',
-				label: i18n.baseText('settings.personal'),
+				label: i18n.baseText('settings.personal.personalSettings'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
 				route: { to: { name: VIEWS.PERSONAL_SETTINGS } },
@@ -75,7 +69,7 @@ export function useSettingsItems() {
 			// People & access
 			{
 				id: 'settings-users',
-				order: 110,
+				order: 10,
 				section: 'people',
 				icon: 'users',
 				label: i18n.baseText('settings.users'),
@@ -85,7 +79,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-roles',
-				order: 120,
+				order: 20,
 				section: 'people',
 				icon: 'users',
 				label: i18n.baseText('settings.roles'),
@@ -96,7 +90,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-sso',
-				order: 130,
+				order: 30,
 				section: 'people',
 				icon: 'lock',
 				label: i18n.baseText('settings.sso'),
@@ -106,7 +100,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-ldap',
-				order: 140,
+				order: 40,
 				section: 'people',
 				icon: 'network',
 				label: i18n.baseText('settings.ldap'),
@@ -114,10 +108,10 @@ export function useSettingsItems() {
 				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
 				route: { to: { name: VIEWS.LDAP_SETTINGS } },
 			},
-			// AI (modules add MCP at 210, Chat at 220, Assistant at 250 and Agents at 260)
+			// AI (modules add MCP at 10, Assistant at 40, Agents at 50 and Chat at 70)
 			{
 				id: 'settings-ai',
-				order: 230,
+				order: 20,
 				section: 'ai',
 				icon: 'sparkles',
 				label: i18n.baseText('settings.ai'),
@@ -128,7 +122,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-n8n-connect',
-				order: 240,
+				order: 30,
 				section: 'ai',
 				icon: 'plug-zap',
 				label: i18n.baseText(
@@ -152,7 +146,7 @@ export function useSettingsItems() {
 			{
 				// The flag is read here because the middleware check does not run route guards.
 				id: 'settings-context',
-				order: 270,
+				order: 60,
 				section: 'ai',
 				icon: 'brain',
 				label: i18n.baseText('settings.context.title'),
@@ -165,7 +159,7 @@ export function useSettingsItems() {
 			// Integrations
 			{
 				id: 'settings-api',
-				order: 310,
+				order: 10,
 				section: 'integrations',
 				icon: 'plug',
 				label: i18n.baseText('settings.n8napi'),
@@ -175,7 +169,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-community-nodes',
-				order: 320,
+				order: 20,
 				section: 'integrations',
 				icon: 'box',
 				label: i18n.baseText('settings.communityNodes'),
@@ -186,7 +180,7 @@ export function useSettingsItems() {
 			// Security
 			{
 				id: 'settings-security',
-				order: 410,
+				order: 10,
 				section: 'security',
 				icon: 'shield',
 				label: i18n.baseText('settings.security'),
@@ -196,7 +190,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-external-secrets',
-				order: 420,
+				order: 20,
 				section: 'security',
 				icon: 'vault',
 				label: i18n.baseText('settings.externalSecrets.title'),
@@ -206,7 +200,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-credential-resolvers',
-				order: 430,
+				order: 30,
 				section: 'security',
 				icon: 'key-round',
 				label: i18n.baseText('credentialResolver.view.title'),
@@ -216,7 +210,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-encryption-keys',
-				order: 440,
+				order: 40,
 				section: 'security',
 				icon: 'key-round',
 				label: i18n.baseText('settings.encryptionKeys'),
@@ -226,10 +220,10 @@ export function useSettingsItems() {
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
-			// Operations (modules add Log streaming at 540 and OpenTelemetry at 550)
+			// Operations (modules add Log streaming at 40 and OpenTelemetry at 50)
 			{
 				id: 'settings-source-control',
-				order: 510,
+				order: 10,
 				section: 'operations',
 				icon: 'git-branch',
 				label: i18n.baseText('settings.sourceControl.title'),
@@ -239,7 +233,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-promotions',
-				order: 520,
+				order: 20,
 				section: 'operations',
 				icon: 'git-branch',
 				label: i18n.baseText('settings.promotions.title'),
@@ -250,7 +244,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-workersview',
-				order: 530,
+				order: 30,
 				section: 'operations',
 				icon: 'wrench',
 				label: i18n.baseText('mainSidebar.workersView'),
@@ -262,7 +256,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-migration-report',
-				order: 560,
+				order: 60,
 				section: 'operations',
 				icon: 'clipboard',
 				label: i18n.baseText('settings.migrationReport'),
@@ -270,6 +264,17 @@ export function useSettingsItems() {
 				available:
 					!!MIGRATION_REPORT_TARGET_VERSION && canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
 				route: { to: { name: VIEWS.MIGRATION_REPORT } },
+			},
+			// Usage & billing
+			{
+				id: 'settings-usage-and-plan',
+				order: 10,
+				section: 'billing',
+				icon: 'chart-column-decreasing',
+				label: i18n.baseText('settings.usageAndPlan.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.USAGE),
+				route: { to: { name: VIEWS.USAGE } },
 			},
 		];
 
@@ -292,11 +297,13 @@ export function useSettingsItems() {
 	const settingsSections = computed<SettingsSectionGroup[]>(() => {
 		const titles: Record<SettingsSectionGroupId, string | undefined> = {
 			general: undefined,
+			personal: i18n.baseText('settings.sections.personal'),
 			people: i18n.baseText('settings.sections.people'),
 			ai: i18n.baseText('settings.sections.ai'),
 			integrations: i18n.baseText('settings.sections.integrations'),
 			security: i18n.baseText('settings.sections.security'),
 			operations: i18n.baseText('settings.sections.operations'),
+			billing: i18n.baseText('settings.sections.billing'),
 		};
 
 		return SETTINGS_SECTION_ORDER.map((id) => ({

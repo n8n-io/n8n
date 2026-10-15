@@ -259,7 +259,7 @@ export const InstanceAiModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
-			order: 250,
+			order: 40,
 			section: 'ai',
 			icon: 'n8n-assistant',
 			label: i18n.baseText('settings.n8nAgent'),

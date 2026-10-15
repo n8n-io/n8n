@@ -25,7 +25,7 @@ export const LogStreamingModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-log-streaming',
-			order: 540,
+			order: 40,
 			section: 'operations',
 			icon: 'log-in',
 			get label() {
