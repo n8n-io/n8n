@@ -210,6 +210,7 @@ describe('AgentExecutionRepository', () => {
 			txRunner,
 			queueRepository,
 			messageRepository,
+			systemAgents,
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(

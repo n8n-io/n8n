@@ -15,6 +15,7 @@ import { PARENT_TASK_CANCELLED_REASON } from './background/sub-agent-background-
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import {
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
@@ -66,6 +67,7 @@ export class AgentChatExecutionService {
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	/** Register each execution under this lock before Stop can inspect its database row. */
@@ -248,17 +250,19 @@ export class AgentChatExecutionService {
 		thread: AgentExecutionThread,
 		source: string | null,
 	): boolean {
+		const isSystemAgent = this.systemAgents.has(thread.agentId);
 		switch (context.surface) {
 			case 'n8n-chat':
 				return (
+					!isSystemAgent &&
 					thread.accessScope === 'user' &&
 					thread.ownerId === context.userId &&
 					source === N8N_CHAT_PRODUCTION_SOURCE
 				);
 			case 'system':
-				return canContinueSystemThread(thread, context.userId, source);
+				return canContinueSystemThread(thread, context.userId, isSystemAgent);
 			case 'preview':
-				return canContinueThreadInPreview(thread, context.userId, source);
+				return canContinueThreadInPreview(thread, context.userId, source, isSystemAgent);
 		}
 	}
 

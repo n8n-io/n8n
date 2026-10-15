@@ -60,7 +60,15 @@ interface ResumeParams {
 	runId?: string;
 	toolCallId?: string;
 	send?: (event: AgentSseEvent) => void;
+	/** Called when the runtime admits the turn, with the execution id a client needs to stop it. */
+	onExecutionStarted?: ExecutionStartedCallback;
 }
+
+type ExecutionStartedCallback = (
+	executionId: string,
+	threadId: string,
+	inputMessageIds: string[],
+) => void;
 
 interface ResumeHandle {
 	runId: string;
@@ -474,6 +482,7 @@ export class SystemAgentExecutionService {
 			handle,
 			send: params.send ?? (() => {}),
 			controller,
+			onExecutionStarted: params.onExecutionStarted,
 			prepare: async () => ({
 				type: 'resume',
 				resumeData: params.resumeData,
@@ -557,6 +566,7 @@ export class SystemAgentExecutionService {
 		toolCallId: string;
 		resumeData: unknown;
 		send: (event: AgentSseEvent) => void;
+		onExecutionStarted?: ExecutionStartedCallback;
 	}): Promise<void> {
 		const provider = this.getProvider(params.agentId);
 		const state = await this.checkpointStorage.load(params.runId, params.agentId);
@@ -573,6 +583,7 @@ export class SystemAgentExecutionService {
 				? provider.normalizeResumeData(params.resumeData)
 				: params.resumeData,
 			send: params.send,
+			onExecutionStarted: params.onExecutionStarted,
 		});
 		await done;
 	}
@@ -619,6 +630,7 @@ export class SystemAgentExecutionService {
 		send,
 		controller,
 		admission,
+		onExecutionStarted,
 		prepare,
 	}: {
 		thread: AgentExecutionThread;
@@ -627,6 +639,7 @@ export class SystemAgentExecutionService {
 		controller: AbortController;
 		/** Set when the queue admitted the turn. A resume admits its own turn. */
 		admission?: AgentExecutionAdmission;
+		onExecutionStarted?: ExecutionStartedCallback;
 		prepare: () => Promise<AgentTurnRequest>;
 	}): Promise<void> {
 		let executionId = admission?.executionId;
@@ -657,8 +670,9 @@ export class SystemAgentExecutionService {
 				context: { projectId: thread.projectId, agentId: thread.agentId, threadId: thread.id },
 				chatSurface: 'system',
 				chatController: controller,
-				onExecutionStarted: (id) => {
+				onExecutionStarted: (id, threadId, inputMessageIds) => {
 					executionId = id;
+					onExecutionStarted?.(id, threadId, inputMessageIds);
 				},
 				onBeforeFinalize: settle,
 				prepare,

@@ -217,6 +217,64 @@ describe('AgentMessageQueueService', () => {
 		});
 	});
 
+	describe('system threads', () => {
+		const systemThread = makeThread({ agentId: 'system-agent' });
+
+		beforeEach(() => {
+			systemAgents.register(
+				mock<SystemAgentProvider>({ agentId: 'system-agent', name: 'System agent' }),
+			);
+			threadRepository.findOneBy.mockResolvedValue(systemThread);
+			repository.listPending.mockResolvedValue([]);
+			steering.findEligible.mockResolvedValue(null);
+		});
+
+		it('lists the queue of a system thread before its first execution', async () => {
+			executionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
+
+			const result = await service.listPending({
+				projectId: 'project-1',
+				agentId: 'system-agent',
+				threadId: 'thread-1',
+				userId: 'user-1',
+				kind: 'system',
+			});
+
+			expect(result).toEqual({ items: [], steerableExecutionId: null });
+		});
+
+		it('refuses the Preview queue of a system thread before its first execution', async () => {
+			executionRepository.findFirstSourceByThreadIds.mockResolvedValue(new Map());
+
+			await expect(
+				service.listPending({
+					projectId: 'project-1',
+					agentId: 'system-agent',
+					threadId: 'thread-1',
+					userId: 'user-1',
+					kind: 'preview',
+				}),
+			).rejects.toThrow('Session not found');
+		});
+
+		it('refuses the system queue of a project agent thread with a system source', async () => {
+			threadRepository.findOneBy.mockResolvedValue(makeThread());
+			executionRepository.findFirstSourceByThreadIds.mockResolvedValue(
+				new Map([['thread-1', SYSTEM_CHAT_SOURCE]]),
+			);
+
+			await expect(
+				service.listPending({
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					threadId: 'thread-1',
+					userId: 'user-1',
+					kind: 'system',
+				}),
+			).rejects.toThrow('Session not found');
+		});
+	});
+
 	describe('listPending', () => {
 		it.each(['preview', 'n8n_chat'] as const)(
 			'reports the steerable execution for a %s thread',

@@ -57,12 +57,22 @@ export function threadBelongsTo(
 	);
 }
 
+/*
+ * The agent decides whether a thread is a system thread: a system agent has
+ * only system threads, from creation on. The execution source tells Preview
+ * and n8n Chat apart, but a thread has no source before its first execution.
+ * So every rule takes `isSystemAgent`, and a system thread never passes a
+ * project-agent rule, nor the reverse.
+ */
+
 export function canContinueThreadInPreview(
 	thread: AgentExecutionThread,
 	userId: string,
-	source?: string | null,
+	source: string | null | undefined,
+	isSystemAgent: boolean,
 ): boolean {
 	return (
+		!isSystemAgent &&
 		canUseTopLevelDraftThread(thread, userId) &&
 		thread.taskId === null &&
 		PREVIEW_THREAD_SOURCES.some(
@@ -74,25 +84,24 @@ export function canContinueThreadInPreview(
 export function canContinueThreadInN8nChat(
 	thread: AgentExecutionThread,
 	userId: string,
-	source?: string | null,
+	source: string | null | undefined,
+	isSystemAgent: boolean,
 ): boolean {
 	return (
+		!isSystemAgent &&
 		canUseTopLevelDraftThread(thread, userId) &&
 		thread.taskId === null &&
 		source === N8N_CHAT_PRODUCTION_SOURCE
 	);
 }
 
+/** A system thread does not check the execution source, so it works before the first turn. */
 export function canContinueSystemThread(
 	thread: AgentExecutionThread,
 	userId: string,
-	source?: string | null,
+	isSystemAgent: boolean,
 ): boolean {
-	return (
-		canUseTopLevelDraftThread(thread, userId) &&
-		thread.taskId === null &&
-		source === SYSTEM_CHAT_SOURCE
-	);
+	return isSystemAgent && canUseTopLevelDraftThread(thread, userId) && thread.taskId === null;
 }
 
 /** Whether the user can continue the thread with a message on the chat surface. */
@@ -100,15 +109,16 @@ export function canContinueThreadOnSurface(
 	surface: AgentChatSurface,
 	thread: AgentExecutionThread,
 	userId: string,
-	source?: string | null,
+	source: string | null | undefined,
+	isSystemAgent: boolean,
 ): boolean {
 	switch (surface) {
 		case 'n8n-chat':
-			return canContinueThreadInN8nChat(thread, userId, source);
+			return canContinueThreadInN8nChat(thread, userId, source, isSystemAgent);
 		case 'system':
-			return canContinueSystemThread(thread, userId, source);
+			return canContinueSystemThread(thread, userId, isSystemAgent);
 		case 'preview':
-			return canContinueThreadInPreview(thread, userId, source);
+			return canContinueThreadInPreview(thread, userId, source, isSystemAgent);
 	}
 }
 

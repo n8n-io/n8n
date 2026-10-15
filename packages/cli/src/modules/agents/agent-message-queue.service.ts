@@ -344,7 +344,13 @@ export class AgentMessageQueueService {
 		if (
 			thread.projectId !== input.projectId ||
 			thread.agentId !== input.agentId ||
-			!canContinueThreadOnSurface(chatSurfaceForKind(input.kind), thread, input.userId, source)
+			!canContinueThreadOnSurface(
+				chatSurfaceForKind(input.kind),
+				thread,
+				input.userId,
+				source,
+				this.systemAgents.has(thread.agentId),
+			)
 		) {
 			throw new NotFoundError('Session not found');
 		}
