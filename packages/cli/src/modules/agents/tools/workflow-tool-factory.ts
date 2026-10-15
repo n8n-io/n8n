@@ -619,6 +619,10 @@ async function withWorkflowCancellation<T>(
 		const result = await Promise.race([execute(), aborted.promise]);
 		if (signal.aborted) return await aborted.promise;
 		return result;
+	} catch (error) {
+		// The callback can observe the abort before workflow stopping completes.
+		if (signal.aborted) return await aborted.promise;
+		throw error;
 	} finally {
 		signal.removeEventListener('abort', onAbort);
 	}

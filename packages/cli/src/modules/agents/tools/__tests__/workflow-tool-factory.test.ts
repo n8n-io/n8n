@@ -129,6 +129,51 @@ describe('executeWorkflow → execution classification', () => {
 		finished.resolve(mock<IRun>({ status: 'canceled' }));
 	});
 
+	it.each([false, true])(
+		'waits for workflow stopping when its callback rejects (stop fails: %s)',
+		async (stopFails) => {
+			const controller = new AbortController();
+			const started = createDeferredPromise<undefined>();
+			const finished = createDeferredPromise<IRun>();
+			const stopped = createDeferredPromise<undefined>();
+			const stop = vi.fn().mockReturnValue(stopped.promise);
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			let settled = false;
+			const outcome = executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				{
+					...buildContext(vi.fn().mockResolvedValue('exec-1'), {
+						activeExecutions: mock<ActiveExecutions>({
+							has: () => true,
+							getPostExecutePromise: async () => {
+								started.resolve(undefined);
+								return await finished.promise;
+							},
+						}),
+					}),
+					abortSignal: controller.signal,
+				},
+			).catch((error: unknown) => {
+				settled = true;
+				return error;
+			});
+			await started.promise;
+			const reason = new Error('Response stopped');
+			controller.abort(reason);
+			finished.reject(reason);
+			await vi.dynamicImportSettled();
+			expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+			expect(settled).toBe(false);
+
+			const stopError = new Error('Workflow stop failed');
+			if (stopFails) stopped.reject(stopError);
+			else stopped.resolve(undefined);
+			expect(await outcome).toBe(stopFails ? stopError : reason);
+		},
+	);
+
 	it('does not cancel a workflow after the foreground tool has returned', async () => {
 		const controller = new AbortController();
 		const stop = vi.fn();
