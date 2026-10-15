@@ -1,7 +1,11 @@
 import { test, expect } from '../../../fixtures/base';
 import type { Locator } from '@playwright/test';
 
-async function expectButtonAligned(inputBorder: Locator, fromAiButton: Locator) {
+async function expectButtonAligned(
+	inputBorder: Locator,
+	fromAiButton: Locator,
+	radiusBorder = inputBorder,
+) {
 	await expect(inputBorder).toBeVisible();
 	await expect(fromAiButton).toBeVisible();
 
@@ -15,9 +19,10 @@ async function expectButtonAligned(inputBorder: Locator, fromAiButton: Locator) 
 		height: inputBounds!.height,
 	});
 
-	const radius = await inputBorder.evaluate(
+	const radius = await radiusBorder.evaluate(
 		(element) => getComputedStyle(element).borderTopLeftRadius,
 	);
+	expect(radius).not.toBe('0px');
 	await expect(fromAiButton).toHaveCSS('border-top-left-radius', '0px');
 	await expect(fromAiButton).toHaveCSS('border-bottom-left-radius', '0px');
 	await expect(fromAiButton).toHaveCSS('border-top-right-radius', radius);
@@ -53,6 +58,7 @@ test.describe(
 			await expectButtonAligned(
 				n8n.ndv.getParameterExpressionBorder('language'),
 				n8n.ndv.getFromAiOverrideButton('language'),
+				n8n.ndv.getParameterExpressionPrefixBorder('language'),
 			);
 		});
 

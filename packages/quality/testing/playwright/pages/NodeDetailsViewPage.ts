@@ -256,6 +256,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName).locator('.el-input-group__prepend').locator('..');
 	}
 
+	getParameterExpressionPrefixBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.el-input-group__prepend');
+	}
+
 	getParameterCodeEditorBorder(parameterName: string) {
 		return this.getParameterInput(parameterName).locator('.cm-editor');
 	}
