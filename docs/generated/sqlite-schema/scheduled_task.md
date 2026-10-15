@@ -86,16 +86,13 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
-  datetime_3_ artifactPrunedAt
-  INTEGER artifactSizeBytes
-  TEXT artifactStorageRef
-  varchar_32_ buildStatus
+  varchar_16_ buildStatus
   INTEGER buildTaskId FK
+  INTEGER bundleArtifactId FK
   datetime_3_ createdAt
   varchar id PK
   varchar_255_ label
-  INTEGER sourceSizeBytes
-  TEXT sourceStorageRef
+  INTEGER sourceArtifactId FK
   datetime_3_ updatedAt
 }
 "scheduled_job" {

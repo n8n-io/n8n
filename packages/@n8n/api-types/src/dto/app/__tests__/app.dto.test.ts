@@ -4,11 +4,11 @@ import { UpdateAppDto } from '../update-app.dto';
 import { appSchema, appVersionSchema } from '../../../schemas/app.schema';
 
 describe('app DTOs', () => {
-	it('trims names and namespaces and defaults to n8n authentication', () => {
+	it('trims names and namespaces and defaults to project visibility', () => {
 		expect(CreateAppDto.parse({ name: ' App ', namespace: ' my-app ' })).toEqual({
 			name: 'App',
 			namespace: 'my-app',
-			auth: 'n8n',
+			visibility: 'project',
 		});
 	});
 
@@ -23,14 +23,25 @@ describe('app DTOs', () => {
 		expect(CreateAppDto.safeParse({ name, namespace: 'app' }).success).toBe(false);
 	});
 
-	it('validates authentication and keeps project ownership and version selection out of metadata updates', () => {
-		expect(CreateAppDto.safeParse({ name: 'App', namespace: 'app', auth: 'other' }).success).toBe(
+	it.each(['public', 'project', 'instance'])('accepts %s visibility', (visibility) => {
+		expect(CreateAppDto.parse({ name: 'App', namespace: 'app', visibility }).visibility).toBe(
+			visibility,
+		);
+		expect(UpdateAppDto.parse({ visibility }).visibility).toBe(visibility);
+	});
+
+	it.each(['none', 'n8n', 'private', ''])('rejects visibility %j', (visibility) => {
+		expect(CreateAppDto.safeParse({ name: 'App', namespace: 'app', visibility }).success).toBe(
 			false,
 		);
-		expect(UpdateAppDto.safeParse({ auth: 'none' }).success).toBe(true);
-		expect(UpdateAppDto.safeParse({ auth: 'n8n' }).success).toBe(true);
-		expect(UpdateAppDto.safeParse({ auth: 'private' }).success).toBe(false);
-		expect(UpdateAppDto.safeParse({ visibility: 'public' }).success).toBe(false);
+		expect(UpdateAppDto.safeParse({ visibility }).success).toBe(false);
+	});
+
+	it('keeps authentication, project ownership, and version selection out of metadata updates', () => {
+		expect(CreateAppDto.safeParse({ name: 'App', namespace: 'app', auth: 'n8n' }).success).toBe(
+			false,
+		);
+		expect(UpdateAppDto.safeParse({ auth: 'n8n' }).success).toBe(false);
 		expect(UpdateAppDto.safeParse({ projectId: 'other' }).success).toBe(false);
 		expect(UpdateAppDto.safeParse({ draftVersionId: 'version' }).success).toBe(false);
 		expect(UpdateAppDto.safeParse({ publishedVersionId: 'version' }).success).toBe(false);
@@ -49,7 +60,7 @@ describe('app DTOs', () => {
 			projectId: 'aBcDeFgHiJkLmNoP',
 			name: 'App',
 			namespace: 'app',
-			auth: 'n8n',
+			visibility: 'project',
 			draftVersionId: uuid,
 			publishedVersionId: null,
 			createdAt: '2026-10-13T00:00:00.000Z',

@@ -88,16 +88,13 @@ erDiagram
 }
 "public.app_version" {
   uuid appId FK
-  timestamp_3__with_time_zone artifactPrunedAt
-  integer artifactSizeBytes
-  text artifactStorageRef
-  varchar_32_ buildStatus
+  varchar_16_ buildStatus
   bigint buildTaskId FK
+  integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
   uuid id
   varchar_255_ label
-  integer sourceSizeBytes
-  text sourceStorageRef
+  integer sourceArtifactId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.scheduled_job" {

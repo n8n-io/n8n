@@ -22,11 +22,15 @@ describe('AppsModule', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('apps');
 	});
 
-	it('exposes both entities and initializes with enabled settings', async () => {
+	it('exposes app entities and initializes with enabled settings', async () => {
 		const logger = mock<Logger>();
 		Container.set(Logger, logger);
 		const module = new AppsModule();
-		expect((await module.entities()).map((entity) => entity.name)).toEqual(['App', 'AppVersion']);
+		expect((await module.entities()).map((entity) => entity.name)).toEqual([
+			'App',
+			'AppVersion',
+			'AppArtifact',
+		]);
 		await module.init();
 		expect(logger.warn).toHaveBeenCalledWith('The apps module is experimental.');
 		expect(await module.settings()).toEqual({ enabled: true });
