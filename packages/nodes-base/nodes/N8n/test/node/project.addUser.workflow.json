@@ -1,0 +1,57 @@
+{
+	"name": "Project add user",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [640, 360]
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "addUser",
+				"projectId": "proj-123",
+				"userId": "user-456",
+				"role": "project:editor"
+			},
+			"id": "6d2e3f4a-5b6c-4d7e-9f8a-0b1c2d3e4f5a",
+			"name": "n8n",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 1,
+			"position": [900, 360],
+			"credentials": {
+				"n8nApi": {
+					"id": "7",
+					"name": "n8n account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "n8n",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"pinData": {
+		"n8n": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	}
+}
