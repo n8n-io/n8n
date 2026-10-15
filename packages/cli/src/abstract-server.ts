@@ -246,6 +246,12 @@ export abstract class AbstractServer {
 	}
 
 	async start(): Promise<void> {
+		if (process.env.N8N_MEMORY_PROFILING === 'true') {
+			const { createMemoryProfilerMiddleware } = await import('./middlewares/memory-profiler.js');
+			this.app.use(
+				createMemoryProfilerMiddleware(this.restEndpoint, this.globalConfig.publicApi.path),
+			);
+		}
 		if (!inTest) {
 			await this.setupErrorHandlers();
 			this.setupPushServer();

@@ -292,6 +292,8 @@ catalog:
   knip: ^6.35.1
   openapi-types: 12.1.3
   google-auth-library: 10.9.1
+  echarts: ^6.1.0
+  gridstack: ^14.0.0
 
 catalogMode: strict
 

@@ -54,6 +54,8 @@
     "agent:test": "node scripts/agent-check.mjs test",
     "agent:playwright": "node scripts/agent-check.mjs playwright",
     "agent:harness": "node scripts/agent-harness.mjs",
+    "profile:memory": "node packages/quality/efficiency/memory/session/cli.mjs",
+    "dev:profile": "pnpm --silent --filter n8n run dev --inspect-memory --frontend",
     "profile:vitest": "node scripts/vitest-profile.mjs",
     "profile:ci-tests": "node scripts/ci-test-phase-profile.mjs",
     "test:inventory": "node scripts/test-inventory.mjs",

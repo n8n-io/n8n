@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>n8n</title>
+		<link rel="stylesheet" href="vendor/gridstack.css" />
+		<link rel="stylesheet" href="style.css" />
+		<script src="vendor/echarts.js" defer></script>
+		<script src="vendor/gridstack.js" defer></script>
+		<script type="module" src="app.mjs"></script>
+	</head>
+	<body>
+		<main>
+			<header>
+				<div><p class="eyebrow">n8n</p><h1 data-i18n="title"></h1></div>
+				<div class="header-actions">
+					<span id="phase" role="status"></span>
+					<div id="recording-actions" class="recording-actions" role="group" aria-labelledby="recording-controls-label" hidden>
+						<span id="recording-controls-label" class="sr-only" data-i18n="recordingControls"></span>
+						<button id="start-recording" type="button"><span class="button-icon icon-play" aria-hidden="true"></span><span data-i18n="startRecording"></span></button>
+						<button id="pause-recording" type="button"><span class="button-icon icon-pause" aria-hidden="true"></span><span data-i18n="stopRecording"></span></button>
+						<button id="finish-session" type="button"><span class="button-icon icon-stop" aria-hidden="true"></span><span data-i18n="finishSession"></span></button>
+					</div>
+					<div class="layout-control"><button id="toggle-layout" type="button" aria-pressed="false"><span class="button-icon icon-edit" aria-hidden="true"></span><span id="toggle-layout-label" data-i18n="customizeLayout"></span></button></div>
+				</div>
+			</header>
+			<p><a id="backend" hidden data-i18n="openBackend"></a></p>
+			<p id="backend-status" role="status"><span id="backend-spinner" class="button-icon icon-spinner" aria-hidden="true" hidden></span><span id="backend-status-message"></span></p>
+			<p id="error" role="alert"></p>
+			<div class="dashboard-toolbar">
+				<div id="layout-actions" hidden>
+					<label for="add-card-select" data-i18n="addCardLabel"></label>
+					<select id="add-card-select"></select>
+					<button id="add-card" type="button" data-i18n="addCard"></button>
+					<button id="reset-layout" type="button" data-i18n="resetLayout"></button>
+				</div>
+			</div>
+			<p id="layout-help" data-i18n="dashboardDescription" hidden></p>
+			<p id="layout-status" class="sr-only" role="status"></p>
+			<div id="dashboard" class="grid-stack">
+				<section id="timeline-section">
+					<h2 data-i18n="timeline"></h2>
+					<div id="chart" role="img"></div>
+					<div class="chart-options"><label><input id="hide-gaps" type="checkbox" /><span data-i18n="hideGaps"></span></label><button id="all-requests" type="button" data-i18n="showFullTimeline" hidden></button></div>
+					<p data-i18n="axisDescription"></p>
+				</section>
+				<section id="requests-section"><h2 data-i18n="requests"></h2><p data-i18n="requestsDescription"></p><p id="requests-status"></p><div id="favorite-endpoints"></div><label class="sr-only" for="request-search" data-i18n="searchRequests"></label><input id="request-search" type="search" autocomplete="off" spellcheck="false" /><div id="requests"></div></section>
+				<section id="controls" hidden>
+					<h2 data-i18n="markersAndSnapshots"></h2>
+					<p id="recording-status" role="status"></p>
+					<form id="marker-form"><label for="marker" data-i18n="markerLabel"></label><input id="marker" maxlength="500" required /><button data-i18n="addMarker"></button></form>
+					<button id="snapshot" type="button" data-i18n="takeSnapshot"></button>
+				</section>
+				<section id="allocations-section"><h2 data-i18n="allocations"></h2><p data-i18n="samplingDescription"></p><label for="profile" data-i18n="profileLabel"></label><select id="profile"></select><div id="allocations"></div></section>
+				<section id="constructors-section" hidden><h2 data-i18n="constructors"></h2><p data-i18n="snapshotDescription"></p><div id="constructors"></div></section>
+				<section id="statistics-section"><h2 data-i18n="statistics"></h2><div id="statistics"></div></section>
+				<section id="markers-section"><h2 data-i18n="markers"></h2><ul id="markers"></ul></section>
+				<section id="details-section"><h2 data-i18n="captureDetails"></h2><p id="description"></p><pre id="details"></pre><ul id="issues"></ul></section>
+				<section id="artifacts-section"><h2 data-i18n="artifacts"></h2><p data-i18n="devtoolsDescription"></p><ul id="artifacts"></ul></section>
+			</div>
+		</main>
+	</body>
+</html>

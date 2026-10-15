@@ -30,6 +30,11 @@ frontend, and extensible node-based workflow engine.
   relevant to the surrounding code, not just to the current task
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
+- For changes that can affect backend memory, use the
+  [profiling skill](.agents/skills/profile-memory/SKILL.md). Examples include
+  caches, retained references, large payloads, streaming, and concurrency.
+  Recommend a bounded before-and-after recording. Reuse profiling permission
+  already granted for the task.
 - To find registered telemetry events (names, descriptions, properties), run
   `pnpm --filter @n8n/telemetry catalog` (`--json` for structured output). The
   registry is being adopted incrementally, so search call sites if the catalog
