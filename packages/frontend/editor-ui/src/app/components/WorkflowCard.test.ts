@@ -232,15 +232,9 @@ describe('WorkflowCard', () => {
 		expect(badge).toHaveTextContent('John Doe');
 	});
 
-	// Breadcrumb links must use the base-relative path (.fullPath), not .href, so the
-	// router base (N8N_PATH) is not applied twice. Self-contained so the default router
-	// mock and the existing specs above are untouched.
 	describe('breadcrumb base-path handling', () => {
 		const FOLDER_PATH = '/projects/1/folders/1';
 
-		// A `team` home project keeps isSomeoneElsesWorkflow false so the breadcrumb
-		// shows. N8nBreadcrumbs is stubbed to render the first item's href as text; the
-		// template's `data-test-id` falls through onto the stub root, read back below.
 		const breadcrumbRenderOptions = () => ({
 			props: {
 				data: createWorkflow({
@@ -257,7 +251,6 @@ describe('WorkflowCard', () => {
 			},
 		});
 
-		// Standard deployment (no N8N_PATH): href and fullPath are identical.
 		beforeEach(() => {
 			(router.resolve as unknown as Mock).mockReturnValue({ href: FOLDER_PATH, fullPath: FOLDER_PATH });
 		});
@@ -268,9 +261,6 @@ describe('WorkflowCard', () => {
 			expect(getByTestId('workflow-card-breadcrumbs').textContent).toBe(FOLDER_PATH);
 		});
 
-		// Edge case: under a sub-path (N8N_PATH=/n8n/), router.resolve(...).href is
-		// base-prefixed but .fullPath is not. Using .href would double the base
-		// ("/n8n/n8n/...") and 404.
 		describe('subpath deployment (e.g. N8N_PATH=/n8n/)', () => {
 			const BASE_PREFIXED = `/n8n${FOLDER_PATH}`;
 

@@ -144,9 +144,6 @@ describe('FolderCard', () => {
 		expect(emitted('folderOpened')).toEqual([[{ folder: DEFAULT_FOLDER }]]);
 	});
 
-	// Navigation must use the base-relative path (.fullPath), not .href, so the
-	// router base (N8N_PATH) is not applied twice. Self-contained so the default
-	// router mock and the existing specs above are untouched.
 	describe('navigation base-path handling', () => {
 		const FOLDER_PATH = '/projects/1/folders/1';
 
@@ -159,8 +156,6 @@ describe('FolderCard', () => {
 			await userEvent.click(getByTestId('action-open'));
 		};
 
-		// N8nBreadcrumbs is stubbed to render the first item's href as text; the
-		// template's `data-test-id` falls through onto the stub root, so we read it back.
 		const breadcrumbRenderOptions = () => ({
 			props: {
 				showOwnershipBadge: true,
@@ -178,7 +173,6 @@ describe('FolderCard', () => {
 			},
 		});
 
-		// Standard deployment (no N8N_PATH): href and fullPath are identical.
 		beforeEach(() => {
 			(useRouter().resolve as unknown as Mock).mockReturnValue({
 				href: FOLDER_PATH,
@@ -199,9 +193,6 @@ describe('FolderCard', () => {
 			expect(getByTestId('folder-card-breadcrumbs').textContent).toBe(FOLDER_PATH);
 		});
 
-		// Edge case: under a sub-path (N8N_PATH=/n8n/), router.resolve(...).href is
-		// base-prefixed but .fullPath is not. Using .href would double the base
-		// ("/n8n/n8n/...") and 404.
 		describe('subpath deployment (e.g. N8N_PATH=/n8n/)', () => {
 			const BASE_PREFIXED = `/n8n${FOLDER_PATH}`;
 
