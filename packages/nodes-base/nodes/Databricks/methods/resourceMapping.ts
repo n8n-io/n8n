@@ -1,10 +1,6 @@
 import type { FieldType, ILoadOptionsFunctions, ResourceMapperFields } from 'n8n-workflow';
 
-import {
-	readLakebaseTarget,
-	readLoadLocator,
-	resolveLakebaseSchemaUrlFor,
-} from '../actions/lakebase/helpers';
+import { resolveSelectedLakebaseSchema } from '../actions/lakebase/helpers';
 import {
 	FUNCTION_ARGUMENTS_UNAVAILABLE_NOTICE,
 	isOpenApiUnavailable,
@@ -47,26 +43,18 @@ function fieldTypeOf(column: LakebaseColumn): FieldType {
 	}
 }
 
-/**
- * Lists a table's columns for the Columns form.
- *
- * Load options run before the node has an item, so this reads the locators with
- * the load-time helpers in `actions/lakebase/helpers.ts`.
- */
+/** Lists a table's columns for the Columns form. */
 export async function getLakebaseMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const target = readLakebaseTarget(this);
-	const table = readLoadLocator(this, 'lakebaseTable');
-	if (!Object.values(target).every(Boolean) || !table) return { fields: [] };
-
-	const schemaUrl = await resolveLakebaseSchemaUrlFor(this, target);
+	const target = await resolveSelectedLakebaseSchema(this);
+	if (!target) return { fields: [] };
 
 	let columns: LakebaseColumn[];
 	try {
-		columns = await fetchLakebaseColumns(this, schemaUrl, table);
+		columns = await fetchLakebaseColumns(this, target.schemaUrl, target.name);
 	} catch (error) {
-		if (!isOpenApiUnavailable(error, `${schemaUrl}/openapi.json`)) throw error;
+		if (!isOpenApiUnavailable(error, `${target.schemaUrl}/openapi.json`)) throw error;
 		return { fields: [], emptyFieldsNotice: OPENAPI_DISABLED_NOTICE };
 	}
 
@@ -91,17 +79,14 @@ export async function getLakebaseMappingColumns(
 export async function getLakebaseFunctionArguments(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const target = readLakebaseTarget(this);
-	const fn = readLoadLocator(this, 'lakebaseFunction');
-	if (!Object.values(target).every(Boolean) || !fn) return { fields: [] };
-
-	const schemaUrl = await resolveLakebaseSchemaUrlFor(this, target);
+	const target = await resolveSelectedLakebaseSchema(this, 'function');
+	if (!target) return { fields: [] };
 
 	let args: LakebaseColumn[];
 	try {
-		args = await fetchLakebaseFunctionArguments(this, schemaUrl, fn);
+		args = await fetchLakebaseFunctionArguments(this, target.schemaUrl, target.name);
 	} catch (error) {
-		if (!isOpenApiUnavailable(error, `${schemaUrl}/openapi.json`)) throw error;
+		if (!isOpenApiUnavailable(error, `${target.schemaUrl}/openapi.json`)) throw error;
 		args = [];
 	}
 	if (args.length === 0) {

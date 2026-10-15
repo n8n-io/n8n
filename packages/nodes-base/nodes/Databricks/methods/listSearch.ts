@@ -1,4 +1,3 @@
-import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IHttpRequestOptions,
@@ -19,12 +18,7 @@ import {
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
-import {
-	getSelectedLakebaseTarget,
-	readLakebaseTarget,
-	resolveLakebaseSchemaUrlFor,
-} from '../actions/lakebase/helpers';
-import { isOpenApiUnavailable } from '../actions/lakebase/openApiDocument';
+import { getSelectedLakebaseTarget } from '../actions/lakebase/helpers';
 import { fetchLakebaseFunctions } from '../actions/lakebase/schema';
 import {
 	assertLakebaseOAuth,
@@ -757,38 +751,35 @@ export async function getLakebaseFunctions(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const target = readLakebaseTarget(this);
-	if (!target.project) {
+	const { project, branch, database, schema } = getSelectedLakebaseTarget(this);
+	if (!project) {
 		return { results: [{ name: 'Please Select a Project First', value: '' }] };
 	}
-	if (!target.branch) {
+	if (!branch) {
 		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
 	}
-	if (!target.database) {
+	if (!database) {
 		return { results: [{ name: 'Please Select a Database First', value: '' }] };
 	}
-	if (!target.schema) {
+	if (!schema) {
 		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
-
-	const schemaUrl = await resolveLakebaseSchemaUrlFor(this, target);
-
-	let names: string[];
+	assertLakebaseOAuth(this);
 	try {
-		names = await fetchLakebaseFunctions(this, schemaUrl);
+		const base = await resolveLakebaseRestBase(this, project, branch);
+		const names = await fetchLakebaseFunctions(
+			this,
+			`${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
+		);
+		const results = names
+			.filter((name) => !INTERNAL_FUNCTION_PREFIX.test(name))
+			.map((name) => ({ name, value: name }))
+			.filter(byText(filter));
+		return { results };
 	} catch (error) {
-		if (!isOpenApiUnavailable(error, `${schemaUrl}/openapi.json`)) throw error;
-		throw new NodeOperationError(
-			this.getNode(),
-			'Turn on Data API > API > Advanced settings > OpenAPI specification to list functions, or enter the function name By ID',
+		explainLakebaseSchemaError(
+			error,
+			'Turn on the "OpenAPI specification" setting of the Data API to list functions, or enter the function name By ID',
 		);
 	}
-
-	const needle = filter?.toLowerCase();
-	return {
-		results: names
-			.filter((name) => !INTERNAL_FUNCTION_PREFIX.test(name))
-			.filter((name) => !needle || name.toLowerCase().includes(needle))
-			.map((name) => ({ name, value: name })),
-	};
 }

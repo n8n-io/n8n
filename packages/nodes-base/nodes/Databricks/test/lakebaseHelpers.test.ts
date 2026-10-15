@@ -8,12 +8,10 @@ import type {
 import { mockDeep } from 'vitest-mock-extended';
 
 import {
-	readLakebaseTarget,
 	resolveLakebaseFunctionUrl,
-	resolveLakebaseSchemaUrlFor,
 	resolveLakebaseTableUrl,
+	resolveSelectedLakebaseSchema,
 } from '../actions/lakebase/helpers';
-import { resolveLakebaseRestBase } from '../transport';
 
 const REST_BASE = 'https://host.example/api/2.0/workspace/7/rest';
 
@@ -48,7 +46,7 @@ describe('Lakebase -> helpers', () => {
 	const loadContext = (values: Record<string, NodeParameterValueType | object>) => {
 		const context = mockDeep<ILoadOptionsFunctions>();
 		context.getNode.mockReturnValue(node);
-		context.getNodeParameter.mockImplementation((name) => values[name]);
+		context.getCurrentNodeParameter.mockImplementation((name) => values[name]);
 		return context;
 	};
 
@@ -92,37 +90,43 @@ describe('Lakebase -> helpers', () => {
 		expect(await resolveLakebaseTableUrl(context, 0)).toBe(`${REST_BASE}/app/public/my%20table`);
 	});
 
-	describe('readLakebaseTarget', () => {
-		it('reads the four schema locators', () => {
-			expect(readLakebaseTarget(loadContext(locators))).toEqual({
-				project: 'proj',
-				branch: 'main',
-				database: 'app',
-				schema: 'public',
+	describe('resolveSelectedLakebaseSchema', () => {
+		it('resolves the selected function next to the schema URL', async () => {
+			const context = loadContext({ ...locators, lakebaseFunction: 'spike_add' });
+
+			expect(await resolveSelectedLakebaseSchema(context, 'function')).toEqual({
+				schemaUrl: `${REST_BASE}/app/public`,
+				name: 'spike_add',
 			});
 		});
 
-		it.each([
-			['unset', undefined],
-			['not a string', { mode: 'list' }],
-		])('reads an empty string for a locator that is %s', (_name, value) => {
-			const target = readLakebaseTarget(loadContext({ ...locators, lakebaseBranch: value }));
+		it('reads a locator object and encodes the database and schema', async () => {
+			const context = loadContext({
+				...locators,
+				lakebaseDatabase: { mode: 'list', value: 'my db' },
+				lakebaseSchema: 'my schema',
+				lakebaseTable: 'orders',
+			});
 
-			expect(target.branch).toBe('');
-		});
-	});
-
-	it('resolveLakebaseSchemaUrlFor encodes the database and schema', async () => {
-		const context = loadContext({});
-
-		const url = await resolveLakebaseSchemaUrlFor(context, {
-			project: 'proj',
-			branch: 'main',
-			database: 'my db',
-			schema: 'my schema',
+			expect(await resolveSelectedLakebaseSchema(context)).toEqual({
+				schemaUrl: `${REST_BASE}/my%20db/my%20schema`,
+				name: 'orders',
+			});
 		});
 
-		expect(url).toBe(`${REST_BASE}/my%20db/my%20schema`);
-		expect(resolveLakebaseRestBase).toHaveBeenCalledWith(context, 'proj', 'main');
+		it.each(['lakebaseProject', 'lakebaseBranch', 'lakebaseDatabase', 'lakebaseSchema'])(
+			'is null while %s is unset',
+			async (missing) => {
+				const context = loadContext({ ...locators, lakebaseFunction: 'fn', [missing]: '' });
+
+				expect(await resolveSelectedLakebaseSchema(context, 'function')).toBeNull();
+			},
+		);
+
+		it('is null while the function is unset, even with a table selected', async () => {
+			const context = loadContext({ ...locators, lakebaseTable: 'orders' });
+
+			expect(await resolveSelectedLakebaseSchema(context, 'function')).toBeNull();
+		});
 	});
 });

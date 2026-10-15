@@ -1,5 +1,10 @@
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import type { ILoadOptionsFunctions, INode, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INode,
+	JsonObject,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { getLakebaseFunctions } from '../methods/listSearch';
@@ -70,7 +75,10 @@ describe('Lakebase -> function picker', () => {
 		};
 		const context = mockDeep<ILoadOptionsFunctions>();
 		context.getNode.mockReturnValue(node);
-		context.getNodeParameter.mockImplementation((name) => values[name]);
+		context.getNodeParameter.mockReturnValue('oAuth2');
+		context.getCurrentNodeParameter.mockImplementation(
+			(name: string) => values[name] as unknown as NodeParameterValueType,
+		);
 		context.getCredentials.mockResolvedValue({ host: 'https://host.example' });
 		context.helpers.httpRequestWithAuthentication.mockResolvedValue(response);
 		return context;
@@ -129,17 +137,27 @@ describe('Lakebase -> function picker', () => {
 		);
 	});
 
-	it('names the OpenAPI setting when the document is off', async () => {
+	it('refuses personal access token auth before any request', async () => {
 		const context = setup();
-		apiMock(context).mockRejectedValue(
-			apiError(404, { code: 'PGRST205', message: 'Could not find the table' }),
+		context.getNodeParameter.mockReturnValue('accessToken');
+
+		await expect(getLakebaseFunctions.call(context)).rejects.toThrow(
+			'Lakebase requires OAuth2 authentication',
 		);
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
 
-		const failure = getLakebaseFunctions.call(context);
+	it('rewrites a PGRST205 error to name the OpenAPI setting after the transport retry', async () => {
+		const context = setup();
+		const error = apiError(404, { code: 'PGRST205', message: 'Could not find the table' });
+		apiMock(context).mockRejectedValue(error);
 
-		await expect(failure).rejects.toThrow(NodeOperationError);
-		await expect(failure).rejects.toThrow('OpenAPI specification');
+		await expect(getLakebaseFunctions.call(context)).rejects.toBe(error);
+
 		expect(apiMock(context)).toHaveBeenCalledTimes(2);
+		expect(error.message).toBe(
+			'Turn on the "OpenAPI specification" setting of the Data API to list functions, or enter the function name By ID',
+		);
 	});
 
 	it('rethrows any other error untouched', async () => {

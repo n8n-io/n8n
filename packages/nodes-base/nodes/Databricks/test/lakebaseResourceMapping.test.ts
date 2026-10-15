@@ -200,7 +200,10 @@ describe('Lakebase -> function arguments', () => {
 		};
 		const context = mockDeep<ILoadOptionsFunctions>();
 		context.getNode.mockReturnValue(node);
-		context.getNodeParameter.mockImplementation((name) => values[name]);
+		context.getNodeParameter.mockReturnValue('oAuth2');
+		context.getCurrentNodeParameter.mockImplementation(
+			(name: string) => values[name] as unknown as NodeParameterValueType,
+		);
 		context.getCredentials.mockResolvedValue({ host: 'https://host.example' });
 		return context;
 	};
