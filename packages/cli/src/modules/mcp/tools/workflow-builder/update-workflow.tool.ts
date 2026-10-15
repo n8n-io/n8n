@@ -1047,18 +1047,24 @@ async function collectValidationWarnings(
 }
 
 /**
- * Resolves tag names to ids, creating missing tags when the user may.
+ * Resolves tag names to the `tagIds` or `tagNames` update option, creating missing
+ * tags when the user may.
  *
  * Returns `undefined` when the batch had no tag operation, which the caller turns
- * into an omitted `tagIds` key meaning "leave the workflow's tags alone". It must
- * never return `[]` for that case: an empty array is a valid instruction to clear
- * every tag on the workflow.
+ * into omitted keys meaning "leave the workflow's tags alone". It must never return
+ * `[]` for that case: an empty array is a valid instruction to clear every tag on
+ * the workflow.
+ *
+ * With `deferCreation`, a user who may create tags gets `tagNames` back. The service
+ * then creates missing tags in the save transaction, after its conflict checks, so a
+ * rejected save leaves no new tag behind.
  */
-async function resolveTagIds(
+async function resolveTagUpdate(
 	tagNames: string[] | undefined,
 	user: User,
 	tagService: TagService,
-): Promise<string[] | undefined> {
+	{ deferCreation }: { deferCreation: boolean },
+): Promise<{ tagIds: string[] } | { tagNames: string[] } | undefined> {
 	if (tagNames === undefined) {
 		return undefined;
 	}
@@ -1066,9 +1072,13 @@ async function resolveTagIds(
 	const uniqueTagNames = dedupeNamesPreservingCase(tagNames);
 
 	if (hasGlobalScope(user, 'tag:create')) {
+		if (deferCreation) {
+			return { tagNames: uniqueTagNames };
+		}
+
 		const resolvedTags = await tagService.findOrCreateByNames(uniqueTagNames);
 
-		return resolvedTags.map((t) => t.id);
+		return { tagIds: resolvedTags.map((t) => t.id) };
 	}
 
 	const resolvedTags = await tagService.getByNames(uniqueTagNames);
@@ -1081,7 +1091,7 @@ async function resolveTagIds(
 		);
 	}
 
-	return resolvedTags.map((t) => t.id);
+	return { tagIds: resolvedTags.map((t) => t.id) };
 }
 
 /**
@@ -1337,11 +1347,15 @@ export const createUpdateWorkflowTool = (
 					)),
 				);
 
-				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
-				// The checksum excludes tags, but tagIds replaces every mapping from the read
-				// above. Pass the tags it was based on so a concurrent tag edit is a conflict.
+				// A guarded save can still be rejected, so it lets the service create
+				// missing tags inside the save transaction instead of up front.
+				const tagUpdate = await resolveTagUpdate(result.tagNames, user, tagService, {
+					deferCreation: expectedChecksum !== undefined,
+				});
+				// The checksum excludes tags, but the tag update replaces every mapping from the
+				// read above. Pass the tags it was based on so a concurrent tag edit is a conflict.
 				const expectedTagIds =
-					expectedChecksum !== undefined && tagIds !== undefined
+					expectedChecksum !== undefined && tagUpdate !== undefined
 						? (existingWorkflow.tags ?? []).map((tag) => tag.id)
 						: undefined;
 
@@ -1378,7 +1392,7 @@ export const createUpdateWorkflowTool = (
 						source: 'n8n-mcp',
 						versionName: versionMetadata.name,
 						versionDescription: versionMetadata.description,
-						...(tagIds !== undefined ? { tagIds } : {}),
+						...tagUpdate,
 						// Re-checked inside the service under a row lock in the save
 						// transaction, so a concurrent edit cannot land before this write.
 						...(expectedChecksum !== undefined ? { expectedChecksum } : {}),

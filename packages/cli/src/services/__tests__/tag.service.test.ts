@@ -1,4 +1,4 @@
-import type { TagEntity, TagRepository, TransactionRunner } from '@n8n/db';
+import type { OperationContext, TagEntity, TagRepository, TransactionRunner } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -185,6 +185,69 @@ describe('TagService', () => {
 
 			expect(result.map((t) => t.name)).toEqual(['production', 'critical']);
 			expect(tagRepository.save).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('findOrCreateByNamesInTransaction', () => {
+		const ctx = mock<OperationContext>();
+
+		beforeEach(() => {
+			tagRepository.create.mockImplementation((attrs) => makeTag(attrs as Partial<TagEntity>));
+		});
+
+		test('returns existing tags without inserting or running hooks', async () => {
+			const existing = [makeTag({ id: 'tag-1', name: 'production' })];
+			tagRepository.findManyByName.mockResolvedValue(existing);
+
+			const result = await tagService.findOrCreateByNamesInTransaction([' production '], ctx);
+
+			expect(tagRepository.findManyByName).toHaveBeenCalledWith(['production'], ctx);
+			expect(tagRepository.insertIgnoringNameConflicts).not.toHaveBeenCalled();
+			expect(externalHooks.run).not.toHaveBeenCalled();
+			expect(result).toEqual({ tags: existing, created: [] });
+		});
+
+		test('inserts missing tags in the transaction and defers after-create hooks', async () => {
+			const existing = makeTag({ id: 'tag-1', name: 'production' });
+			tagRepository.findManyByName.mockResolvedValueOnce([existing]);
+			tagRepository.insertIgnoringNameConflicts.mockImplementation(async (tags) => {
+				const [inserted] = tags;
+				tagRepository.findManyByName.mockResolvedValueOnce([
+					makeTag({ id: inserted.id, name: inserted.name }),
+					existing,
+				]);
+			});
+
+			const result = await tagService.findOrCreateByNamesInTransaction(
+				['production', 'critical'],
+				ctx,
+			);
+
+			const [[inserted], insertCtx] = tagRepository.insertIgnoringNameConflicts.mock.calls[0];
+			expect(insertCtx).toBe(ctx);
+			expect(inserted.name).toBe('critical');
+			expect(externalHooks.run).toHaveBeenCalledTimes(1);
+			expect(externalHooks.run).toHaveBeenCalledWith('tag.beforeCreate', [inserted]);
+			expect(result.tags.map((t) => t.name)).toEqual(['production', 'critical']);
+			expect(result.created.map((t) => t.id)).toEqual([inserted.id]);
+		});
+
+		test('does not report a tag as created when a concurrent create of the same name won', async () => {
+			const raced = makeTag({ id: 'tag-raced', name: 'critical' });
+			tagRepository.findManyByName.mockResolvedValueOnce([]).mockResolvedValueOnce([raced]);
+
+			const result = await tagService.findOrCreateByNamesInTransaction(['critical'], ctx);
+
+			expect(result).toEqual({ tags: [raced], created: [] });
+		});
+
+		test('runAfterCreateHooks runs tag.afterCreate for each tag', async () => {
+			const tags = [makeTag({ id: 'a' }), makeTag({ id: 'b' })];
+
+			await tagService.runAfterCreateHooks(tags);
+
+			expect(externalHooks.run).toHaveBeenNthCalledWith(1, 'tag.afterCreate', [tags[0]]);
+			expect(externalHooks.run).toHaveBeenNthCalledWith(2, 'tag.afterCreate', [tags[1]]);
 		});
 	});
 });

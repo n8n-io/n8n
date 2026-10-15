@@ -4234,7 +4234,6 @@ describe('update-workflow MCP tool', () => {
 			test('passes the read tag ids as expectedTagIds when a checksum is given', async () => {
 				const existing = workflowWithTags(['production', 'critical']);
 				findWorkflowMock.mockResolvedValue(existing);
-				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
 
 				const result = await callHandler({
 					workflowId: 'wf-1',
@@ -4245,6 +4244,40 @@ describe('update-workflow MCP tool', () => {
 				expect(result.isError).toBeUndefined();
 				const [, , , updateOptions] = updateMock.mock.calls[0];
 				expect(updateOptions.expectedTagIds).toEqual(['tag-0', 'tag-1']);
+			});
+
+			test('with a checksum, leaves tag creation to the save transaction', async () => {
+				const existing = workflowWithTags(['production']);
+				findWorkflowMock.mockResolvedValue(existing);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: await calculateWorkflowChecksum(existing),
+					operations: [{ type: 'addTags', names: ['critical', ' Critical '] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagNames.sort()).toEqual(['critical', 'production']);
+				expect(updateOptions).not.toHaveProperty('tagIds');
+			});
+
+			test('creates no tag when a guarded save with a new tag is rejected', async () => {
+				const existing = workflowWithTags(['production']);
+				findWorkflowMock.mockResolvedValue(existing);
+				updateMock.mockRejectedValue(new WorkflowChecksumConflictError());
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: await calculateWorkflowChecksum(existing),
+					operations: [{ type: 'addTags', names: ['critical'] }],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.errorCode).toBe('WORKFLOW_CONFLICT');
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
 			});
 
 			test('does not pass expectedTagIds without a checksum or without tag ops', async () => {

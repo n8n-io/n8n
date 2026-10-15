@@ -24,11 +24,31 @@ export class TagRepository extends BaseRepository<TagEntity> {
 	}
 
 	/** Exact (case-sensitive) name lookup; no input normalization. */
-	async findManyByName(names: string[]) {
-		return await this.find({
+	async findManyByName(names: string[], ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).find(TagEntity, {
 			select: ['id', 'name'],
 			where: { name: In(names) },
 		});
+	}
+
+	/**
+	 * Inserts tags and skips each one whose name already exists. A failed insert would
+	 * abort the caller's transaction on Postgres, so a concurrent same-name create is
+	 * ignored here instead. Read the tags back by name to get the stored rows.
+	 */
+	async insertIgnoringNameConflicts(
+		tags: Array<Pick<TagEntity, 'id' | 'name'>>,
+		ctx: OperationContext = {},
+	) {
+		if (tags.length === 0) return;
+
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.insert()
+			.into(TagEntity)
+			.values(tags.map(({ id, name }) => ({ id, name })))
+			.orIgnore()
+			.execute();
 	}
 
 	/**
