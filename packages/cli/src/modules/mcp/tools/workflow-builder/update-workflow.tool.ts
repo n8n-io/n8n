@@ -9,11 +9,16 @@ import {
 	type ClearedSubnodeInput,
 } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import { NodeConnectionTypes, type IWorkflowSettings } from 'n8n-workflow';
+import {
+	calculateWorkflowChecksum,
+	NodeConnectionTypes,
+	type IWorkflowSettings,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { WorkflowChecksumConflictError } from '@/errors/response-errors/workflow-checksum-conflict.error';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
 import type { NodeTypes } from '@/node-types';
@@ -69,8 +74,13 @@ import {
 	type SkippedOperation,
 } from './workflow-operations';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import { WORKFLOW_CONFLICT_ERROR_CODE, WorkflowUpdateConflictError } from '../../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { getMcpWorkflow, validateMcpWorkflow } from '../workflow-validation.utils';
+import {
+	getMcpWorkflow,
+	validateMcpWorkflow,
+	type FoundWorkflow,
+} from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 
@@ -264,9 +274,15 @@ function parseStrictOperations(operations: OperationInput[]): PartialUpdateOpera
 }
 
 const NON_FATAL_OPERATION_TYPES_LIST = [...NON_FATAL_OPERATION_TYPES].join(', ');
-const TOOL_DESCRIPTION = `Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used. Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update. Separately, if other edits in the batch make an existing group invalid, that group is removed and reported in removedGroups.`;
+const TOOL_DESCRIPTION = `Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used. Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update. Separately, if other edits in the batch make an existing group invalid, that group is removed and reported in removedGroups. Other users, n8n Assistant, and other MCP clients can edit the same workflow at the same time. Pass expectedChecksum (the checksum from get_workflow_details, or from the previous update_workflow result) so the update is rejected instead of overwriting their changes. If the result has errorCode "${WORKFLOW_CONFLICT_ERROR_CODE}", nothing was saved: call get_workflow_details again, re-apply your changes to the current workflow, and retry with the new checksum.`;
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
+	expectedChecksum: z
+		.string()
+		.optional()
+		.describe(
+			`The workflow checksum your operations are based on, from get_workflow_details or the previous update_workflow result. If the workflow changed since then, nothing is saved and the call fails with errorCode "${WORKFLOW_CONFLICT_ERROR_CODE}". Provide it whenever you have one.`,
+		),
 	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	operations: z
 		.array(operationInputSchema)
@@ -293,6 +309,12 @@ const outputSchema = {
 	name: z.string().optional(),
 	nodeCount: z.number().optional(),
 	url: z.string().optional(),
+	checksum: z
+		.string()
+		.optional()
+		.describe(
+			'Checksum of the saved workflow. Pass it as expectedChecksum on the next update_workflow call for this workflow.',
+		),
 	appliedOperations: z
 		.number()
 		.optional()
@@ -870,6 +892,7 @@ function buildUpdateTelemetryPayload({
 	sanitizedSkillsUsed,
 	versionName,
 	versionDescription,
+	expectedChecksum,
 }: {
 	userId: string;
 	workflowId: string;
@@ -877,6 +900,7 @@ function buildUpdateTelemetryPayload({
 	sanitizedSkillsUsed: string[] | undefined;
 	versionName?: string;
 	versionDescription?: string;
+	expectedChecksum?: string;
 }): UserCalledMCPToolEventPayload {
 	return {
 		user_id: userId,
@@ -890,8 +914,28 @@ function buildUpdateTelemetryPayload({
 			opTypes: operations.map((op) => op.type),
 			hasVersionName: !!versionName,
 			hasVersionDescription: !!versionDescription,
+			hasExpectedChecksum: !!expectedChecksum,
 		},
 	};
+}
+
+/**
+ * Rejects the update when the workflow changed after the client read it. Runs
+ * before the operations are applied, so a stale batch fails fast. The same
+ * checksum is also passed to `WorkflowService.update`, which checks it again
+ * against a fresh read just before it saves.
+ */
+async function assertChecksumMatches(
+	workflow: FoundWorkflow,
+	expectedChecksum: string | undefined,
+): Promise<void> {
+	if (!expectedChecksum) {
+		return;
+	}
+
+	if ((await calculateWorkflowChecksum(workflow)) !== expectedChecksum) {
+		throw new WorkflowUpdateConflictError(workflow.id);
+	}
 }
 
 /**
@@ -1102,12 +1146,14 @@ export const createUpdateWorkflowTool = (
 		},
 		handler: async ({
 			workflowId,
+			expectedChecksum,
 			skillsUsed,
 			operations,
 			versionName,
 			versionDescription,
 		}: {
 			workflowId: string;
+			expectedChecksum?: string;
 			skillsUsed?: string[];
 			operations: OperationInput[];
 			versionName?: string;
@@ -1121,6 +1167,7 @@ export const createUpdateWorkflowTool = (
 				sanitizedSkillsUsed: sanitizeSkillsUsed(skillsUsed),
 				versionName,
 				versionDescription,
+				expectedChecksum,
 			});
 
 			let updateAttempted = false;
@@ -1154,6 +1201,8 @@ export const createUpdateWorkflowTool = (
 				);
 
 				await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
+
+				await assertChecksumMatches(existingWorkflow, expectedChecksum);
 
 				const result = applyOperations(
 					toWorkflowSlice(existingWorkflow, { includeTags: hasTagOperations }),
@@ -1315,14 +1364,26 @@ export const createUpdateWorkflowTool = (
 						: undefined;
 				expectedTagNames = result.tagNames;
 				updateAttempted = true;
-				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-					aiBuilderAssisted: hasNonTagOperations,
-					source: 'n8n-mcp',
-					versionName: versionMetadata.name,
-					versionDescription: versionMetadata.description,
-					...(tagIds !== undefined ? { tagIds } : {}),
-				});
+				let updatedWorkflow: WorkflowEntity;
+				try {
+					updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
+						aiBuilderAssisted: hasNonTagOperations,
+						source: 'n8n-mcp',
+						versionName: versionMetadata.name,
+						versionDescription: versionMetadata.description,
+						...(tagIds !== undefined ? { tagIds } : {}),
+						// Re-checked against a fresh read inside the service, which closes
+						// most of the window left open by the async validation above.
+						...(expectedChecksum ? { expectedChecksum } : {}),
+					});
+				} catch (updateError) {
+					if (updateError instanceof WorkflowChecksumConflictError) {
+						throw new WorkflowUpdateConflictError(workflowId);
+					}
+					throw updateError;
+				}
 
+				const checksum = await calculateWorkflowChecksum(updatedWorkflow);
 				const baseUrl = urlService.getInstanceBaseUrl();
 				const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;
 
@@ -1362,6 +1423,7 @@ export const createUpdateWorkflowTool = (
 					name: updatedWorkflow.name,
 					nodeCount: updatedWorkflow.nodes.length,
 					url: workflowUrl,
+					checksum,
 					appliedOperations: strictOperations.length - notAppliedCount,
 					autoAssignedCredentials: credentialAssignments,
 					validationWarnings,
@@ -1417,7 +1479,12 @@ export const createUpdateWorkflowTool = (
 				const errorMessage = error instanceof Error ? error.message : String(error);
 				const errorCode = getErrorCode(error);
 
-				if (updateAttempted && existingWorkflow) {
+				// A conflict means the service saved nothing, so there is nothing to recover.
+				if (
+					updateAttempted &&
+					existingWorkflow &&
+					!(error instanceof WorkflowUpdateConflictError)
+				) {
 					let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
 						null;
 					try {
@@ -1504,6 +1571,7 @@ export const createUpdateWorkflowTool = (
 							name: persisted.name,
 							nodeCount: persisted.nodes.length,
 							url: workflowUrl,
+							checksum: await calculateWorkflowChecksum(persisted),
 							note: `Workflow was updated successfully, but a post-save operation failed: ${errorMessage}`,
 						};
 

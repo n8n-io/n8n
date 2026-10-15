@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, type WorkflowEntity } from '@n8n/db';
-import type { INode, INodeTypes } from 'n8n-workflow';
+import { calculateWorkflowChecksum, type INode, type INodeTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -100,6 +100,7 @@ describe('get-workflow-details MCP tool', () => {
 			]);
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
 			expect(payload.workflow.versionId).toBe(workflow.versionId);
+			expect(payload.workflow.checksum).toBe(await calculateWorkflowChecksum(workflow));
 			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
 			expect(payload.workflow.activeVersion).toMatchObject({
 				sameAsDraft: false,
