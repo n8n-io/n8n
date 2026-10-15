@@ -2,9 +2,12 @@ import type { LicenseState } from '@n8n/backend-common';
 
 import { ForbiddenError } from '@n8n/errors';
 
+import { plannedCredentialUpdates } from '../entities/credential/credential-conflict-policy';
+import type { CredentialImportPlan } from '../entities/credential/credential.types';
 import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
+import type { CredentialConflictPolicy } from '../n8n-packages.types';
 
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
@@ -53,6 +56,20 @@ export function assertDataTableWritesAllowed(
 	}
 	if (dataTablePlans.some((plan) => plan.updates.length + plan.columnAlignments.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:update']);
+	}
+}
+
+/**
+ * Plan-derived: requires the scope only when the import writes a matched credential. `fail`
+ * never writes, so it needs no scope.
+ */
+export function assertCredentialWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	policy: CredentialConflictPolicy,
+	credentialPlans: Array<Pick<CredentialImportPlan, 'updates'>>,
+): void {
+	if (plannedCredentialUpdates(policy, credentialPlans).size > 0) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['credential:update']);
 	}
 }
 

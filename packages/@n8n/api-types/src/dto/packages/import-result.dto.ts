@@ -149,11 +149,18 @@ const importCredentialSummarySchema = z
 				'Source credential ids for which credentials were created with bundled expression values ' +
 				'in the target project. Partial or unverified bundled data still blocks workflow publishing.',
 		}),
+		updated: z.array(z.string()).openapi({
+			description:
+				'Source credential ids whose matched credential this import changed under ' +
+				'`credentialConflictPolicy=overwrite`. These ids are not listed under `matched`. ' +
+				'Empty for other policies.',
+		}),
 	})
 	.openapi({
 		description:
-			'Source credential ids grouped by whether they matched an existing credential or were ' +
-			'created as empty stubs or seeded credentials. Full source→target id mapping is in `bindings.credentials`.',
+			'Source credential ids grouped by whether they matched an existing credential, were ' +
+			'created as empty stubs or seeded credentials, or matched a credential that this import ' +
+			'updated. Full source→target id mapping is in `bindings.credentials`.',
 	});
 
 const importDataTableSummarySchema = z.object({

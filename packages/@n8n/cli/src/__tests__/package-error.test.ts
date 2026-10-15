@@ -204,6 +204,28 @@ describe('toPackagesError', () => {
 		);
 	});
 
+	it('names the matched credential when policy refused its update', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-policy-violation',
+						sourceId: 'c1',
+						targetId: 't1',
+						name: 'Prod GitHub',
+						credentialType: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
+						violations: [{ kind: 'k', checkId: 'a', message: 'Not allowed' }],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'update of credential t1 (githubApi) from package credential "Prod GitHub" (c1) refused by policy: Not allowed, used by workflow w1',
+		);
+	});
+
 	it.each([
 		{
 			usedBy: [{ kind: 'workflow', id: 'w1' }],

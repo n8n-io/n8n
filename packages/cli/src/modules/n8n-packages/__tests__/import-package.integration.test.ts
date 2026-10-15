@@ -1287,6 +1287,7 @@ describe('Package import event emission', () => {
 				credentials: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				dataTables: {
@@ -1387,6 +1388,7 @@ describe('Package import event emission', () => {
 				credentials: {
 					matched: 2,
 					created: 1,
+					updated: 0,
 					requirements: 3,
 				},
 				dataTables: {
@@ -1457,6 +1459,7 @@ describe('Package import event emission', () => {
 				credentials: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				dataTables: {
@@ -1529,6 +1532,7 @@ describe('Package import event emission', () => {
 				credentials: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				dataTables: {
@@ -2218,7 +2222,12 @@ describe('credential-missing-mode: create-stub', () => {
 			),
 		});
 
-		expect(result.credentials).toEqual({ matched: [], stubbed: ['missing-cred'], seeded: [] });
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: ['missing-cred'],
+			seeded: [],
+			updated: [],
+		});
 		expect(result.bindings.credentials['missing-cred']).toBe('missing-cred');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
@@ -2438,7 +2447,12 @@ describe('credential-missing-mode: create-with-values', () => {
 			),
 		});
 
-		expect(result.credentials).toEqual({ matched: [], stubbed: [], seeded: ['missing-cred'] });
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: [],
+			seeded: ['missing-cred'],
+			updated: [],
+		});
 
 		const targetId = result.bindings.credentials['missing-cred'];
 		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: targetId });

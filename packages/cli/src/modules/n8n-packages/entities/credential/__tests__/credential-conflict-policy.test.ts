@@ -8,6 +8,7 @@ import {
 	differingCredentials,
 	forbiddenCredentialUpdates,
 	isUpdateCandidate,
+	plannedCredentialUpdates,
 	resolveCredentialConflictPolicy,
 	type UpdatableCredential,
 } from '../credential-conflict-policy';
@@ -45,6 +46,8 @@ const candidate = (
 	sourceId: 'source-1',
 	targetId: 'target-1',
 	targetName: 'Destination',
+	targetType: 'githubApi',
+	ownerProjectId: 'project-a',
 	name: 'Package',
 	data: { token: EXPRESSION },
 	usedBy: [{ kind: 'workflow', id: 'wf-1' }],
@@ -359,5 +362,36 @@ describe('forbiddenCredentialUpdates', () => {
 
 	it('reports nothing without forbidden matches', () => {
 		expect(forbiddenCredentialUpdates([{ forbidden: [] }])).toEqual([]);
+	});
+});
+
+describe('plannedCredentialUpdates', () => {
+	const plans = [
+		{ updates: [candidate(), candidate({ targetId: 'target-2' })] },
+		// Another scope plans the same package credential, with other consumers.
+		{ updates: [candidate({ usedBy: [{ kind: 'workflow', id: 'wf-2' }] })] },
+	];
+
+	it('groups the updates of every scope by destination under overwrite', () => {
+		expect(plannedCredentialUpdates('overwrite', plans)).toEqual(
+			new Map([
+				[
+					'target-1',
+					[
+						candidate({
+							usedBy: [
+								{ kind: 'workflow', id: 'wf-1' },
+								{ kind: 'workflow', id: 'wf-2' },
+							],
+						}),
+					],
+				],
+				['target-2', [candidate({ targetId: 'target-2' })]],
+			]),
+		);
+	});
+
+	it.each(['keep-existing', 'fail'] as const)('plans no update under %s', (policy) => {
+		expect(plannedCredentialUpdates(policy, plans)).toEqual(new Map());
 	});
 });
