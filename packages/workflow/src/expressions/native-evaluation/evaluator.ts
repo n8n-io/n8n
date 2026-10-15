@@ -151,6 +151,9 @@ function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): un
 		throw new EngineFallbackError();
 	}
 
+	// A node reference member (`.item`, `.json`) resolves through the proxy.
+	if (node.object.kind === 'nodeRef') env.charge(1);
+
 	const value = isParameterRead(node) ? readParameter(object, node.key, env) : object[node.key];
 
 	// Neither crosses an engine boundary the same way twice (the vm bridge
@@ -299,6 +302,31 @@ function assertPrimitiveElements(receiver: unknown[]): void {
 }
 
 /**
+ * toSorted() stringifies both operands of every comparison, and includes(),
+ * indexOf() and lastIndexOf() compare each element with the search value, so
+ * their work follows element content, not element count. Returns that
+ * content, which the caller charges on top of the preflight bound.
+ */
+function elementContentWork(receiver: unknown[], method: string): number {
+	if (method === 'toSorted') {
+		let content = 0;
+		for (const element of receiver) content += toStr(element).length;
+
+		// Each comparison reads both operands, so a pass can read the content twice.
+		return 2 * content * Math.ceil(Math.log2(receiver.length + 1));
+	}
+
+	if (method === 'includes' || method === 'indexOf' || method === 'lastIndexOf') {
+		let content = 0;
+		for (const element of receiver) content += typeof element === 'string' ? element.length : 1;
+
+		return content;
+	}
+
+	return 0;
+}
+
+/**
  * Content size of a JSON value: string lengths plus one per element and
  * key, stopping early past the budget. Deeper than the grammar's own depth
  * cap hands off: the engine owns data that deep.
@@ -363,7 +391,7 @@ function evalReceiver(
 
 function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
 	if (node.receiver.kind === 'nodeRef') {
-		return evalNodeRefCall(evalReceiver(node, env), node.method);
+		return evalNodeRefCall(evalReceiver(node, env), node.method, env);
 	}
 
 	if (node.receiver.kind === 'timeRoot') {
@@ -388,6 +416,7 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 		if (node.method === 'concat') assertConcatWeight(receiver, args);
 	}
 	env.charge(preflightSize(receiver, node.method, args));
+	if (isArray(receiver)) env.charge(elementContentWork(receiver, node.method));
 
 	return bounded(method.apply(receiver, args));
 }
@@ -471,12 +500,17 @@ function evalIterate(node: Extract<SimpleNode, { kind: 'iterate' }>, env: Env): 
  * `first()`, `last()` and `all()` on a node proxy. The proxy hands back a
  * host function that reads run data for the node the reference names, which
  * is what the engines call too (the vm bridge routes it through typed RPC).
+ * The host can copy every item per call (combined binary mode does), so the
+ * result is charged per element; a callback body repeats the call per visit.
  */
-function evalNodeRefCall(proxy: unknown, method: string): unknown {
+function evalNodeRefCall(proxy: unknown, method: string, env: Env): unknown {
 	const fn: unknown = Reflect.get(proxy as object, method);
 	if (typeof fn !== 'function') throw new EngineFallbackError();
 
-	return bounded(fn.call(proxy));
+	const result = bounded(fn.call(proxy));
+	env.charge(isArray(result) ? result.length : 1);
+
+	return result;
 }
 
 /**

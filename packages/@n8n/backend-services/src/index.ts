@@ -70,6 +70,42 @@ export {
 } from './services/token-purposes';
 
 export {
+	WorkflowPublishedDataService,
+	type PublishedWorkflowData,
+	type PublishedWorkflowDataForExecution,
+} from './workflows/workflow-published-data.service';
+
+export {
+	RuntimeCredentialProxyService,
+	type RuntimeCredentialProvider,
+} from './services/runtime-credential-proxy.service';
+export {
+	InstanceRegistryProxyService,
+	type InstanceRegistryProvider,
+} from './services/instance-registry-proxy.service';
+export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
+export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
+export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
+export {
+	isRedactableExecution,
+	type ExecutionRedactionOptions,
+	type ExecutionRedaction,
+	type RedactableExecution,
+} from './executions/execution-redaction';
+export {
+	WorkflowMutationHooksProxy,
+	type WorkflowMutationHooks,
+} from './workflows/workflow-mutation-hooks-proxy.service';
+export {
+	WorkflowPublishGuardProxy,
+	type WorkflowPublishGuard,
+} from './workflows/workflow-publish-guard-proxy.service';
+export {
+	RestrictedNodeTypesProviderProxy,
+	type RestrictedNodeTypesProvider,
+} from './workflows/restricted-node-types-provider-proxy.service';
+
+export {
 	type AiPreferenceProjectRef,
 	type AiPreferenceItem,
 	type AppliedPreference,

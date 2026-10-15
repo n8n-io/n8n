@@ -12,6 +12,8 @@ import {
 	UrlService,
 	RoleService,
 	FolderFinderService,
+	ExecutionRedactionServiceProxy,
+	WorkflowPublishedDataService,
 	AiPreferenceService,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -34,7 +36,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
@@ -52,7 +54,7 @@ import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-valid
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';

@@ -8,6 +8,7 @@ import type {
 	ProtectedResourceRegistry,
 } from '@/services/protected-resource.registry';
 import type { UrlService } from '@n8n/backend-services';
+import type { AuthenticationService } from '@n8n/inbound-auth';
 
 import type { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import { OAuthServerService } from '../oauth-server.service';
@@ -29,6 +30,7 @@ beforeAll(async () => {
 const urlService = mock<UrlService>();
 const registry = mock<ProtectedResourceRegistry>();
 const localServer = mock<OAuthServerLocalAuthorizationServer>();
+const authenticationService = mock<AuthenticationService>();
 let controller: OAuthControllerClass;
 
 const makeRes = () => {
@@ -53,10 +55,19 @@ const resource = (scopes: string[], isAvailable?: () => Promise<boolean>): Prote
 	scopes,
 });
 
+const publicApiResource: ProtectedResource = {
+	surface: 'public-api',
+	id: 'public-api',
+	getResourceUrl: () => 'https://n8n.test/api/v1',
+	getAudiences: () => ['https://n8n.test/api/v1'],
+	authorize: async () => true,
+	scopes: [],
+};
+
 beforeEach(() => {
 	vi.resetAllMocks();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
-	controller = new OAuthController(urlService, registry, localServer);
+	controller = new OAuthController(urlService, registry, localServer, authenticationService);
 });
 
 describe('OAuthController', () => {
@@ -127,6 +138,33 @@ describe('OAuthController', () => {
 				bearer_methods_supported: ['header'],
 				authorization_servers: ['https://n8n.test'],
 				scopes_supported: scopes,
+			});
+			expect(authenticationService.advertise).not.toHaveBeenCalled();
+		});
+
+		test('lists the issuers of the trusted sources accepted on the public-api surface', async () => {
+			registry.getByResourcePath.mockResolvedValue(publicApiResource);
+			authenticationService.advertise.mockResolvedValue({
+				authorizationServers: ['https://n8n.test', 'https://idp.example'],
+				challenges: [],
+			});
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['api', 'v1']), res);
+
+			expect(authenticationService.advertise).toHaveBeenCalledWith(
+				expect.objectContaining({
+					surface: 'public-api',
+					resource: {
+						url: 'https://n8n.test/api/v1',
+						acceptedAudiences: ['https://n8n.test/api/v1'],
+					},
+				}),
+			);
+			expect(res.json).toHaveBeenCalledWith({
+				resource: 'https://n8n.test/api/v1',
+				bearer_methods_supported: ['header'],
+				authorization_servers: ['https://n8n.test', 'https://idp.example'],
 			});
 		});
 

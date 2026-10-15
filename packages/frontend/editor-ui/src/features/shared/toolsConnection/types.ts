@@ -1,6 +1,9 @@
-import type { NodeTypeAvailability } from '@n8n/api-types';
-import type { InjectionKey, Ref } from 'vue';
-import type { McpToolPermissions } from '@n8n/api-types';
+import type {
+	AgentPersonalisation,
+	McpToolPermissions,
+	NodeTypeAvailability,
+} from '@n8n/api-types';
+import type { Component, InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -12,7 +15,19 @@ export type ConnectionItemKind =
 
 export type ToolIconSource =
 	| { type: 'file'; src: string }
-	| { type: 'icon'; name: string; color?: string };
+	| { type: 'icon'; name: string; color?: string }
+	| { type: 'avatar'; personalisation: AgentPersonalisation };
+
+/** The subset of `ToolIconSource` that `N8nNodeIcon` can render; avatar sources need their own tile. */
+export type NodeIconSource = Extract<ToolIconSource, { type: 'file' } | { type: 'icon' }>;
+
+/**
+ * Renderer for `{ type: 'avatar' }` icon sources. The consumer that passes
+ * avatar items injects the component at its mount site.
+ */
+export const TOOL_ICON_AVATAR_RENDERER_KEY = Symbol(
+	'tool-icon-avatar-renderer',
+) as InjectionKey<Component | null>;
 
 export interface ToolCredentialRef {
 	authType: string;
