@@ -8495,7 +8495,6 @@
 	"agents.chat.tasks.stopped": "Stopped",
 	"agents.chat.tasks.retry": "Retry stopping",
 	"agents.chat.tasks.stopFailedTitle": "Some tasks still need to stop",
-	"agents.chat.queue.sendError": "Couldn’t send the message. Try again.",
 	"agents.chat.plan.title": "Plan: {title}",
 	"agents.chat.plan.progress": "{done} of {total} task done | {done} of {total} tasks done",
 	"agents.chat.plan.viewTrace": "View trace",
