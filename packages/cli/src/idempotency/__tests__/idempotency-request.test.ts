@@ -48,6 +48,17 @@ describe('honorsIdempotencyKey', () => {
 	])('ignores %s', (path) => {
 		expect(honorsIdempotencyKey('POST', path)).toBe(false);
 	});
+
+	it.each(['/api/v1/workflows', '/api/v1/workflows/abc/activate'])(
+		'keeps the same classification when %s has a query or a trailing slash',
+		(path) => {
+			const honors = honorsIdempotencyKey('POST', path);
+
+			expect(honorsIdempotencyKey('POST', `${path}?x=1`)).toBe(honors);
+			expect(honorsIdempotencyKey('POST', `${path}/`)).toBe(honors);
+			expect(honorsIdempotencyKey('POST', `${path}/?x=1`)).toBe(honors);
+		},
+	);
 });
 
 describe('fingerprintParts', () => {
