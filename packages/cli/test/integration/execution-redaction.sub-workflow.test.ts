@@ -209,7 +209,10 @@ test('redacts a later sibling sub-workflow that receives the redacted output', a
 	);
 
 	const plainChildData = await readExecution(await findChildExecutionId(plainChild.id));
-	expect(plainChildData.redactionInfo).toMatchObject({ isRedacted: true });
+	expect(plainChildData.redactionInfo).toMatchObject({
+		isRedacted: true,
+		reason: 'sub_workflow_redaction_policy',
+	});
 	// The sibling inherits the escalation with the parent's context. Its own snapshot keeps its own policy.
 	expect(plainChildData.executionData?.runtimeData).toMatchObject({
 		redaction: { production: false, manual: false },
