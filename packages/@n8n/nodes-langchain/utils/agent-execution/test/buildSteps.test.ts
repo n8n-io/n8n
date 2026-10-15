@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import type { EngineResponse } from 'n8n-workflow';
+import type { EngineResponse, IDataObject } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { buildSteps } from '../buildSteps';
@@ -1941,6 +1941,194 @@ describe('buildSteps', () => {
 			expect(
 				message.additional_kwargs?.__gemini_function_call_thought_signatures__,
 			).toBeUndefined();
+		});
+	});
+
+	describe('Anthropic parallel tool calls with a shared thinking block', () => {
+		const buildToolResponse = (
+			nodeName: string,
+			id: string,
+			input: IDataObject,
+			anthropic: RequestResponseMetadata['anthropic'] | undefined,
+			result: IDataObject,
+		): NonNullable<EngineResponse<RequestResponseMetadata>['actionResponses']>[number] => ({
+			action: {
+				actionType: 'ExecutionNodeAction',
+				nodeName,
+				input: { id, input },
+				type: NodeConnectionTypes.AiTool,
+				id,
+				metadata: {
+					itemIndex: 0,
+					...(anthropic && { anthropic }),
+				},
+			},
+			data: {
+				data: {
+					ai_tool: [[{ json: result }]],
+				},
+				executionTime: 0,
+				startTime: 0,
+				executionIndex: 0,
+				source: [],
+			},
+		});
+
+		it('should group parallel tool calls that share one thinking block into a single AIMessage', () => {
+			// Anthropic returns one thinking block per turn. createEngineRequests copies it to
+			// every tool call of the turn, so both actions carry the same signature.
+			const sharedThinking = {
+				thinkingContent: '',
+				thinkingType: 'thinking' as const,
+				thinkingSignature: 'turn_signature_abc',
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse('Calculator', 'call_1', { expression: '2+2' }, sharedThinking, {
+						result: '4',
+					}),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, sharedThinking, {
+						temp: '72F',
+					}),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			// First step carries the whole turn: one thinking block, then every tool_use block
+			expect(result[0].action.messageLog).toHaveLength(1);
+			const sharedMessage = result[0].action.messageLog![0];
+			expect(sharedMessage.content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'turn_signature_abc' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+			// tool_calls stays empty: with array content LangChain only sends the content blocks
+			expect(sharedMessage.tool_calls).toEqual([]);
+
+			// Second step must not replay the thinking block again
+			expect(result[1].action.messageLog).toEqual([]);
+
+			// Each step keeps its own tool call id and observation
+			expect(result[0].action.toolCallId).toBe('call_1');
+			expect(result[1].action.toolCallId).toBe('call_2');
+			expect(result[0].observation).toBe(JSON.stringify([{ result: '4' }]));
+			expect(result[1].observation).toBe(JSON.stringify([{ temp: '72F' }]));
+		});
+
+		it('should group parallel tool calls that share one redacted_thinking block', () => {
+			const sharedThinking = {
+				thinkingContent: 'redacted_payload',
+				thinkingType: 'redacted_thinking' as const,
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse('Calculator', 'call_1', { expression: '2+2' }, sharedThinking, {
+						result: '4',
+					}),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, sharedThinking, {
+						temp: '72F',
+					}),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'redacted_thinking', data: 'redacted_payload' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+			expect(result[1].action.messageLog).toEqual([]);
+		});
+
+		it('should NOT group parallel tool calls whose thinking signatures differ', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+					buildToolResponse(
+						'Weather',
+						'call_2',
+						{ location: 'NYC' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_2' },
+						{ temp: '72F' },
+					),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			// Different signatures mean different turns, so each step replays its own block
+			expect(result[0].action.messageLog).toHaveLength(1);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_1' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+			]);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_2' },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+		});
+
+		it('should NOT group when only some parallel tool calls carry a thinking block', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, undefined, { temp: '72F' }),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.messageLog![0].content).toHaveLength(2);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].content).toEqual([]);
+			expect(result[1].action.messageLog![0].tool_calls).toHaveLength(1);
+		});
+
+		it('should keep a single tool call with a thinking block as an individual AIMessage', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_1' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+			]);
 		});
 	});
 });

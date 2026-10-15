@@ -75,8 +75,17 @@ function extractProviderMetadata(metadata?: RequestResponseMetadata): ProviderMe
 }
 
 /**
+ * A tool call to replay as an Anthropic `tool_use` content block.
+ */
+interface AnthropicToolCall {
+	toolInput: IDataObject;
+	toolId: string;
+	toolName: string;
+}
+
+/**
  * Builds Anthropic-specific content blocks for thinking mode.
- * Creates an array with thinking block followed by tool_use block.
+ * Creates an array with the thinking block followed by one tool_use block per tool call.
  *
  * IMPORTANT: The thinking block must come before tool_use in the message.
  * When content is an array, LangChain ignores tool_calls field for Anthropic,
@@ -85,18 +94,14 @@ function extractProviderMetadata(metadata?: RequestResponseMetadata): ProviderMe
  * @param thinkingContent - The thinking content from Anthropic
  * @param thinkingType - Type of thinking block (thinking or redacted_thinking)
  * @param thinkingSignature - Optional signature for thinking block
- * @param toolInput - The tool input data
- * @param toolId - The tool call ID
- * @param toolName - The tool name
+ * @param toolCalls - The tool calls that the model made in this turn
  * @returns Array of content blocks with thinking and tool_use
  */
 function buildAnthropicContentBlocks(
 	thinkingContent: string,
 	thinkingType: 'thinking' | 'redacted_thinking',
 	thinkingSignature: string | undefined,
-	toolInput: IDataObject,
-	toolId: string,
-	toolName: string,
+	toolCalls: AnthropicToolCall[],
 ): Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	// Create thinking block with correct field names for Anthropic API
 	const thinkingBlock: ThinkingContentBlock | RedactedThinkingContentBlock =
@@ -111,19 +116,21 @@ function buildAnthropicContentBlocks(
 					data: thinkingContent,
 				};
 
-	// Create tool_use block (required for Anthropic when using structured content)
-	const toolInputData = toolInput.input;
-	const toolUseBlock: ToolUseContentBlock = {
-		type: 'tool_use',
-		id: toolId,
-		name: toolName,
-		input:
-			toolInputData && typeof toolInputData === 'object'
-				? (toolInputData as Record<string, unknown>)
-				: {},
-	};
+	// Create tool_use blocks (required for Anthropic when using structured content)
+	const toolUseBlocks: ToolUseContentBlock[] = toolCalls.map(({ toolInput, toolId, toolName }) => {
+		const toolInputData = toolInput.input;
+		return {
+			type: 'tool_use',
+			id: toolId,
+			name: toolName,
+			input:
+				toolInputData && typeof toolInputData === 'object'
+					? (toolInputData as Record<string, unknown>)
+					: {},
+		};
+	});
 
-	return [thinkingBlock, toolUseBlock];
+	return [thinkingBlock, ...toolUseBlocks];
 }
 
 /**
@@ -149,14 +156,9 @@ function buildMessageContent(
 	// Anthropic thinking mode: build content blocks
 	// Empty thinking text is valid because the signature carries the reasoning.
 	if (thinkingContent !== undefined && thinkingType) {
-		return buildAnthropicContentBlocks(
-			thinkingContent,
-			thinkingType,
-			thinkingSignature,
-			toolInput,
-			toolId,
-			toolName,
-		);
+		return buildAnthropicContentBlocks(thinkingContent, thinkingType, thinkingSignature, [
+			{ toolInput, toolId, toolName },
+		]);
 	}
 
 	return null;
@@ -307,6 +309,80 @@ function buildSharedGeminiAIMessage(
 }
 
 /**
+ * Anthropic thinking metadata that every tool call of a parallel batch has in common.
+ */
+interface SharedAnthropicThinking {
+	thinkingContent: string;
+	thinkingType: 'thinking' | 'redacted_thinking';
+	thinkingSignature: string | undefined;
+}
+
+/**
+ * Finds the Anthropic thinking block that all tool calls of a parallel batch share.
+ *
+ * Anthropic returns one thinking block for the whole turn and binds its signature to that
+ * turn. createEngineRequests copies the block to the metadata of every tool call of the turn,
+ * so a batch of parallel calls carries identical copies. Returns undefined when the batch has
+ * a single call, when a call has no thinking block, or when the copies differ.
+ *
+ * @param processedTools - Processed tool responses of the current batch
+ * @returns The shared thinking block, or undefined when the batch must not be grouped
+ */
+function getSharedAnthropicThinking(
+	processedTools: ProcessedToolResponse[],
+): SharedAnthropicThinking | undefined {
+	if (processedTools.length < 2) return undefined;
+
+	const first = processedTools[0].providerMetadata;
+	if (first.thinkingContent === undefined || !first.thinkingType) return undefined;
+
+	const allShareThinking = processedTools.every(
+		({ providerMetadata }) =>
+			providerMetadata.thinkingContent === first.thinkingContent &&
+			providerMetadata.thinkingType === first.thinkingType &&
+			providerMetadata.thinkingSignature === first.thinkingSignature,
+	);
+	if (!allShareThinking) return undefined;
+
+	return {
+		thinkingContent: first.thinkingContent,
+		thinkingType: first.thinkingType,
+		thinkingSignature: first.thinkingSignature,
+	};
+}
+
+/**
+ * Builds a shared AIMessage for parallel tool calls with an Anthropic thinking block.
+ *
+ * Anthropic binds the signature of a thinking block to the exact turn the block was created
+ * in. Replaying each parallel tool call as its own assistant turn puts a copy of the block
+ * after content that did not exist when the block was signed, and the API rejects the request
+ * with "Invalid `signature` in `thinking` block". So the whole turn is replayed as one
+ * assistant message: `[thinking, tool_use, tool_use, ...]`, the same shape the model returned.
+ *
+ * LangChain's formatToToolMessages creates one ToolMessage per step. @langchain/anthropic
+ * merges consecutive tool messages into one user turn with several tool_result blocks.
+ *
+ * @param processedTools - Array of processed tool responses to include
+ * @param sharedThinking - The thinking block that all tool calls share
+ * @returns AIMessage with the thinking block followed by all tool_use blocks
+ */
+function buildSharedAnthropicAIMessage(
+	processedTools: ProcessedToolResponse[],
+	sharedThinking: SharedAnthropicThinking,
+): AIMessage {
+	const content = buildAnthropicContentBlocks(
+		sharedThinking.thinkingContent,
+		sharedThinking.thinkingType,
+		sharedThinking.thinkingSignature,
+		processedTools.map(({ toolInput, toolId, toolName }) => ({ toolInput, toolId, toolName })),
+	);
+
+	// When content is an array (Anthropic thinking), LangChain ignores tool_calls
+	return new AIMessage({ content });
+}
+
+/**
  * Builds the observation string from tool result data.
  */
 function buildObservation(toolData: {
@@ -331,9 +407,10 @@ function buildObservation(toolData: {
  * Rebuilds the agent steps from previous tool call responses.
  * This is used to continue agent execution after tool calls have been made.
  *
- * For parallel tool calls with Gemini thought signatures, all function calls are grouped
- * into a single AIMessage to match the original model response structure. This is required
- * because the thought_signature is cryptographically tied to the combined parallel call turn.
+ * For parallel tool calls with Gemini thought signatures or an Anthropic thinking block, all
+ * tool calls are grouped into a single AIMessage to match the original model response
+ * structure. This is required because the signature is cryptographically tied to the combined
+ * parallel call turn.
  *
  * This is a generalized version that can be used across different agent types
  * (Tools Agent, OpenAI Functions Agent, etc.).
@@ -389,10 +466,16 @@ export function buildSteps(
 	const sharedThoughtSignature = batchTools.find((bt) => bt.providerMetadata.thoughtSignature)
 		?.providerMetadata.thoughtSignature;
 
+	// Anthropic binds the thinking signature to the whole turn as well, so parallel tool calls
+	// that share one thinking block must be replayed as a single assistant message.
+	const sharedAnthropicThinking = getSharedAnthropicThinking(batchTools);
+
 	const sharedAIMessage =
 		sharedThoughtSignature && batchTools.length > 1
 			? buildSharedGeminiAIMessage(batchTools, sharedThoughtSignature)
-			: undefined;
+			: sharedAnthropicThinking
+				? buildSharedAnthropicAIMessage(batchTools, sharedAnthropicThinking)
+				: undefined;
 
 	// Second pass: build steps
 	for (let i = 0; i < batchTools.length; i++) {
@@ -403,7 +486,7 @@ export function buildSteps(
 		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
 		const { id, log, type, ...toolInputForResult } = toolInput;
 
-		// Parallel Gemini tool calls: first step gets the shared AIMessage,
+		// Parallel Gemini or Anthropic tool calls: first step gets the shared AIMessage,
 		// subsequent steps get empty messageLog. LangChain's formatToToolMessages
 		// will produce: [SharedAIMessage, ToolMsg_1, ToolMsg_2, ...]
 		const messageLog = sharedAIMessage
