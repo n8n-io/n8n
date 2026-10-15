@@ -29,8 +29,26 @@ export const fixToolCall = async (
 	// eslint-disable-next-line @typescript-eslint/require-await
 ): ReturnType<ToolCallRepairFunction<NoInfer<ToolSet>>> => {
 	const tool = toolMap.get(options.toolCall.toolName);
+	if (!tool || options.toolCall.providerExecuted) return null;
+
+	// The model only sees current names, but replayed or stored output can call a legacy name.
+	const isNoSuchToolError = options.error.name === 'AI_NoSuchToolError';
+	if (isNoSuchToolError && tool.name !== options.toolCall.toolName) {
+		return {
+			type: 'tool-call' as const,
+			toolCallId: options.toolCall.toolCallId,
+			toolName: tool.name,
+			input:
+				typeof options.toolCall.input === 'string'
+					? options.toolCall.input
+					: JSON.stringify(options.toolCall.input ?? {}),
+			providerExecuted: false,
+			dynamic: options.toolCall.dynamic,
+		};
+	}
+
 	const isInvalidToolInputError = options.error.name === 'AI_InvalidToolInputError';
-	if (!tool || !isInvalidToolInputError || options.toolCall.providerExecuted) return null;
+	if (!isInvalidToolInputError) return null;
 
 	if (isEmptyInputError(tool, options.toolCall)) {
 		return {
