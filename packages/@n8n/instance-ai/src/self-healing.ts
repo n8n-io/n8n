@@ -54,6 +54,23 @@ export const selfHealingCandidateInputSchema = z
 	.object({
 		filePath: z.string().min(1).describe('Path to the candidate workflow source.'),
 		validationOnly: z.boolean().optional().describe('Run static checks without execution.'),
+		triggerNodeName: z
+			.string()
+			.min(1)
+			.optional()
+			.describe(
+				'Name of the trigger to start verification from. Select the trigger from the failed execution. ' +
+					'Required when the workflow has more than one trigger. Use a separate call for each trigger.',
+			),
+		inputData: z
+			.record(z.unknown())
+			.optional()
+			.describe(
+				'Test input for the selected trigger. Match its output shape. ' +
+					'For Webhook, pass the body payload or {body, query, headers, params} when the workflow reads request fields. ' +
+					'For Form, pass a flat field map. For Chat, pass {chatInput: "message"}. ' +
+					'For Schedule, omit inputData.',
+			),
 	})
 	.strict();
 
