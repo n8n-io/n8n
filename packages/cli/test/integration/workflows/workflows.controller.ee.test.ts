@@ -1424,7 +1424,7 @@ describe('PATCH /workflows/:workflowId', () => {
 				expect(saved.nodes).toEqual([{ ...stored, name: 'Renamed' }]);
 			});
 
-			it('rejects a member changing a stored URL and leaves the node unchanged', async () => {
+			it('preserves a stored node when a member changes its removed URL parameter', async () => {
 				const workflow = await createWorkflow({ nodes: [remoteSubworkflowNode()] }, owner);
 				await shareWorkflowWithUsers(workflow, [member]);
 
@@ -1433,8 +1433,9 @@ describe('PATCH /workflows/:workflowId', () => {
 					nodes: [remoteSubworkflowNode('https://example.com/other.json')],
 				});
 
-				expect(changed.statusCode).toBe(400);
-				expect(changed.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+				// 3.x has no workflowUrl parameter. The save restores the stored read-only node.
+				expect(changed.statusCode).toBe(200);
+				expect(changed.body.data.nodes).toEqual([remoteSubworkflowNode()]);
 
 				const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
 				expect(saved.nodes).toEqual([remoteSubworkflowNode()]);

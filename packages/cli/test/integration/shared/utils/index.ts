@@ -121,7 +121,7 @@ export function createDeprecatedNodeType(name: string): INodeType {
 	return type as INodeType;
 }
 
-function buildDefaultNodes(): INodeTypeData {
+export function buildDefaultNodes(): INodeTypeData {
 	ScheduleTrigger.prototype.trigger = async () => ({});
 	return {
 		'n8n-nodes-base.manualTrigger': {
