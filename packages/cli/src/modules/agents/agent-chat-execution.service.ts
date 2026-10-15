@@ -12,13 +12,16 @@ import { AgentMessageSteeringService } from './agent-message-steering.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { PARENT_TASK_CANCELLED_REASON } from './background/sub-agent-background-state';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import {
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
+	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import {
+	canContinueSystemThread,
 	canContinueThreadInPreview,
 	chatSurfaceMemoryResourceId,
 	N8N_CHAT_PRODUCTION_SOURCE,
@@ -29,9 +32,9 @@ import { getDelegatedChildCheckpoints } from './utils/delegated-child-checkpoint
 
 type CancelExecutionPayload = PubSubCommandMap['cancel-agent-chat-execution'];
 // In-process callers already know which chat surface a run is on. The wire
-// payload keeps the older `productionN8nChat` flag for rolling-deploy
+// payload also keeps the older `productionN8nChat` flag for rolling-deploy
 // compatibility with mains still running the previous version.
-type ExecutionContext = Omit<CancelExecutionPayload, 'productionN8nChat'> & {
+type ExecutionContext = Omit<CancelExecutionPayload, 'productionN8nChat' | 'surface'> & {
 	surface: AgentChatSurface;
 };
 
@@ -137,7 +140,7 @@ export class AgentChatExecutionService {
 					const { surface, ...rest } = context;
 					await this.publisher.publishCommand({
 						command: 'cancel-agent-chat-execution',
-						payload: { ...rest, productionN8nChat: surface === 'n8n-chat' },
+						payload: { ...rest, surface, productionN8nChat: surface === 'n8n-chat' },
 					});
 					return true;
 				} finally {
@@ -153,10 +156,10 @@ export class AgentChatExecutionService {
 
 	@OnPubSubEvent('cancel-agent-chat-execution', { instanceType: 'main' })
 	async handleCancel(payload: CancelExecutionPayload): Promise<void> {
-		const { productionN8nChat, ...rest } = payload;
+		const { productionN8nChat, surface, ...rest } = payload;
 		const context: ExecutionContext = {
 			...rest,
-			surface: productionN8nChat ? 'n8n-chat' : 'preview',
+			surface: surface ?? (productionN8nChat ? 'n8n-chat' : 'preview'),
 		};
 		if (await this.cancelLocalWithChildren(context)) return;
 		await this.lockService.withLease(
@@ -212,18 +215,27 @@ export class AgentChatExecutionService {
 		const thread = await this.executionService.findThreadById(threadId);
 		if (!thread || !threadBelongsTo(thread, projectId, agentId, userId)) return null;
 		const execution = await this.executionRepository.findOneBy({ id: executionId, threadId });
-		if (
-			!execution ||
-			(context.surface === 'n8n-chat'
-				? !(
-						thread.accessScope === 'user' &&
-						thread.ownerId === userId &&
-						execution.source === N8N_CHAT_PRODUCTION_SOURCE
-					)
-				: !canContinueThreadInPreview(thread, userId, execution.source))
-		)
-			return null;
+		if (!execution || !this.canAccessExecution(context, thread, execution.source)) return null;
 		return execution;
+	}
+
+	private canAccessExecution(
+		context: ExecutionContext,
+		thread: AgentExecutionThread,
+		source: string | null,
+	): boolean {
+		switch (context.surface) {
+			case 'n8n-chat':
+				return (
+					thread.accessScope === 'user' &&
+					thread.ownerId === context.userId &&
+					source === N8N_CHAT_PRODUCTION_SOURCE
+				);
+			case 'system':
+				return canContinueSystemThread(thread, context.userId, source);
+			case 'preview':
+				return canContinueThreadInPreview(thread, context.userId, source);
+		}
 	}
 
 	private async cancelRecordedSuspension(context: ExecutionContext): Promise<boolean> {
@@ -257,7 +269,10 @@ export class AgentChatExecutionService {
 			return false;
 		const thread = await this.executionService.findThreadById(checkpoint.persistence.threadId);
 		const productionUserId = userIdFromProductionChatMemoryResourceId(params.resourceId);
-		const userId = userIdFromDraftChatMemoryResourceId(params.resourceId) ?? productionUserId;
+		const userId =
+			userIdFromDraftChatMemoryResourceId(params.resourceId) ??
+			userIdFromSystemChatMemoryResourceId(params.resourceId) ??
+			productionUserId;
 		if (
 			productionUserId &&
 			(!thread ||

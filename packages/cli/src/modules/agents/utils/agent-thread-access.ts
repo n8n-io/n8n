@@ -1,19 +1,33 @@
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import { draftChatMemoryResourceId, productionChatMemoryResourceId } from './agent-memory-scope';
+import {
+	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
+	systemChatMemoryResourceId,
+} from './agent-memory-scope';
 
 export type AgentSessionMode = 'new' | 'existing';
 
 export const PREVIEW_THREAD_SOURCES = ['', 'chat', 'n8n_chat'] as const;
 export const N8N_CHAT_PRODUCTION_SOURCE = 'n8n_chat_production' as const;
+/** Transcript source of a system-agent turn. It is not a Preview source. */
+export const SYSTEM_CHAT_SOURCE = 'system_chat' as const;
 
-/** The n8n UI chat that a person watches the turn in. Integrations and tasks have none. */
-export type AgentChatSurface = 'preview' | 'n8n-chat';
+/**
+ * The n8n UI chat that a person watches the turn in. Integrations and tasks have none.
+ * `system` is the chat with a code-defined system agent.
+ */
+export type AgentChatSurface = 'preview' | 'n8n-chat' | 'system';
 
 /** The memory resource ID that scopes a thread to its owning user on the given chat surface. */
 export function chatSurfaceMemoryResourceId(surface: AgentChatSurface, userId: string): string {
-	return surface === 'n8n-chat'
-		? productionChatMemoryResourceId(userId)
-		: draftChatMemoryResourceId(userId);
+	switch (surface) {
+		case 'n8n-chat':
+			return productionChatMemoryResourceId(userId);
+		case 'system':
+			return systemChatMemoryResourceId(userId);
+		case 'preview':
+			return draftChatMemoryResourceId(userId);
+	}
 }
 
 export function threadBelongsTo(
@@ -53,6 +67,18 @@ export function canContinueThreadInN8nChat(
 		canUseTopLevelDraftThread(thread, userId) &&
 		thread.taskId === null &&
 		source === N8N_CHAT_PRODUCTION_SOURCE
+	);
+}
+
+export function canContinueSystemThread(
+	thread: AgentExecutionThread,
+	userId: string,
+	source?: string | null,
+): boolean {
+	return (
+		canUseTopLevelDraftThread(thread, userId) &&
+		thread.taskId === null &&
+		source === SYSTEM_CHAT_SOURCE
 	);
 }
 

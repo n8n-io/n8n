@@ -150,6 +150,8 @@ export type PubSubCommandMap = {
 		threadId: string;
 		executionId: string;
 		userId: string;
+		/** Older mains read only `productionN8nChat`, so senders set both. */
+		surface?: 'preview' | 'n8n-chat' | 'system';
 		productionN8nChat?: boolean;
 	};
 

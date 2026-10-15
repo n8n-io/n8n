@@ -1,6 +1,7 @@
 const INTEGRATION_MEMORY_RESOURCE_PREFIX = 'integration:';
 const DRAFT_CHAT_MEMORY_RESOURCE_PREFIX = 'draft-chat:';
 const PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX = 'n8n-chat-production:';
+const SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX = 'system-chat:';
 const THREAD_MEMORY_RESOURCE_PREFIX = 'thread:';
 
 export function threadMemoryResourceId(threadId: string): string {
@@ -26,6 +27,17 @@ export function draftChatMemoryResourceId(userId: string): string {
 
 export function productionChatMemoryResourceId(userId: string): string {
 	return `${PRODUCTION_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
+}
+
+/** A system-agent chat. It is not a Preview chat, so it has its own resource scope. */
+export function systemChatMemoryResourceId(userId: string): string {
+	return `${SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX}${userId}`;
+}
+
+export function userIdFromSystemChatMemoryResourceId(resourceId: string): string | undefined {
+	if (!resourceId.startsWith(SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX)) return undefined;
+	const userId = resourceId.slice(SYSTEM_CHAT_MEMORY_RESOURCE_PREFIX.length);
+	return userId.length > 0 ? userId : undefined;
 }
 
 export function userIdFromProductionChatMemoryResourceId(resourceId: string): string | undefined {
