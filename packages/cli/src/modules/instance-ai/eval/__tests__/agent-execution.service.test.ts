@@ -233,6 +233,63 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
 	});
 
+	it.each([false, true])(
+		'keeps runtime IDs for repeated calls at completion (identical: %s)',
+		async (identical) => {
+			const handlers = new Map<AgentEvent, AgentEventHandler>();
+			const first = { tool: 'Slack_Tool', input: { text: 'first' }, output: { sent: 'first' } };
+			const second = identical
+				? { ...first }
+				: { ...first, input: { text: 'second' }, output: { sent: 'second' } };
+			const skipped = { ...first, output: 'Skipped', canceled: true };
+			reconstructFromAgentEntity.mockResolvedValue({
+				agent: {
+					on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+					close: vi.fn(),
+					generate: vi.fn(async () => {
+						for (const [toolCallId, entry] of [
+							['first', first],
+							['second', second],
+						] as const) {
+							handlers.get(AgentEvent.ToolExecutionStart)?.({
+								type: AgentEvent.ToolExecutionStart,
+								toolCallId,
+								toolName: entry.tool,
+								args: entry.input,
+							});
+						}
+						// Completion order can differ from the original tool-call order.
+						for (const [toolCallId, entry] of [
+							['second', second],
+							['first', first],
+						] as const) {
+							handlers.get(AgentEvent.ToolExecutionEnd)?.({
+								type: AgentEvent.ToolExecutionEnd,
+								toolCallId,
+								toolName: entry.tool,
+								result: entry.output,
+								isError: false,
+							});
+						}
+						return makeGenerateResult({ toolCalls: [first, second, skipped] });
+					}),
+				},
+			});
+			const result = await buildService().executeWithLlmMock(
+				'agent-1',
+				user,
+				request,
+				'Send twice',
+				{ onProgress: vi.fn() },
+			);
+			expect(result.toolCalls).toEqual([
+				expect.objectContaining({ ...first, toolCallId: 'first', status: 'completed' }),
+				expect.objectContaining({ ...second, toolCallId: 'second', status: 'completed' }),
+				expect.objectContaining({ tool: 'Slack_Tool', output: 'Skipped', error: 'canceled' }),
+			]);
+		},
+	);
+
 	it('reports tool progress before generation finishes and flushes writes before returning', async () => {
 		const handlers = new Map<AgentEvent, AgentEventHandler>();
 		const onProgress = vi.fn().mockResolvedValue(undefined);
@@ -458,6 +515,19 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		);
 		expect(result.success).toBe(false);
 		expect(result.errors).toContain('Agent run failed: Generation stopped');
+		expect(result.toolCalls).toEqual([
+			expect.objectContaining({
+				toolCallId: 'failed',
+				status: 'error',
+				error: 'tool_execution_failed',
+				output: 'Tool failed',
+			}),
+			expect.objectContaining({
+				toolCallId: 'interrupted',
+				status: 'error',
+				error: 'execution_stopped',
+			}),
+		]);
 		expect(onProgress).toHaveBeenLastCalledWith([
 			expect.objectContaining({
 				toolCallId: 'failed',
