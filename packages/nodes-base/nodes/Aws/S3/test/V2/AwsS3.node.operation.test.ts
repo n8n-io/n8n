@@ -760,6 +760,7 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 		overrides: {
 			bucketName?: string;
 			fileKey?: string;
+			setUrlExpiryTime?: boolean;
 			expiresIn?: number;
 			options?: Record<string, unknown>;
 		} = {},
@@ -767,6 +768,7 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 		const {
 			bucketName = 'test-bucket',
 			fileKey = 'path/to/file.txt',
+			setUrlExpiryTime = false,
 			expiresIn = 3600,
 			options = {},
 		} = overrides;
@@ -783,6 +785,8 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 					return fileKey;
 				case 'urlExpiryTime':
 					return expiresIn;
+				case 'setUrlExpiryTime':
+					return setUrlExpiryTime;
 				case 'options':
 					return options;
 				default:
@@ -799,7 +803,7 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].json).toEqual({ url: mockPresignedUrl, expiresIn: 3600 });
+			expect(result[0][0].json).toEqual({ url: mockPresignedUrl, validTo: expect.any(String) });
 		});
 
 		it('should fetch bucket region before generating the URL', async () => {
@@ -813,7 +817,7 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 		});
 
 		it('should call getPresignedS3Url with correct arguments', async () => {
-			setupParams({ expiresIn: 7200 });
+			setupParams({ setUrlExpiryTime: true, expiresIn: 7200 });
 
 			await node.execute.call(executeFunctionsMock);
 
@@ -823,6 +827,21 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 				'path/to/file.txt',
 				'eu-central-1',
 				7200,
+				'attachment; filename="file.txt"',
+			);
+		});
+
+		it('should call getPresignedS3Url with correct arguments when switch is unset', async () => {
+			setupParams({ expiresIn: 7200 });
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
+				'GET',
+				'test-bucket',
+				'path/to/file.txt',
+				'eu-central-1',
+				3600,
 				'attachment; filename="file.txt"',
 			);
 		});
@@ -846,11 +865,11 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 		});
 
 		it('should respect custom urlExpiryTime', async () => {
-			setupParams({ expiresIn: 604800 });
+			setupParams({ setUrlExpiryTime: true, expiresIn: 604800 });
 
 			const result = await node.execute.call(executeFunctionsMock);
 
-			expect(result[0][0].json).toMatchObject({ expiresIn: 604800 });
+			expect(result[0][0].json).toMatchObject({ validTo: expect.any(String) });
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(String),
@@ -862,11 +881,15 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 		});
 
 		it('should strip contentDisposition when noContentDisposition is true', async () => {
-			setupParams({ expiresIn: 604800, options: { noContentDisposition: true } });
+			setupParams({
+				setUrlExpiryTime: true,
+				expiresIn: 604800,
+				options: { noContentDisposition: true },
+			});
 
 			const result = await node.execute.call(executeFunctionsMock);
 
-			expect(result[0][0].json).toMatchObject({ expiresIn: 604800 });
+			expect(result[0][0].json).toMatchObject({ validTo: expect.any(String) });
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(String),
@@ -884,7 +907,16 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 
 			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
 			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
-				'Presigning a whole directory is not supported, please provide a file key',
+				'Presigned url for a whole directory is not supported, please provide a file key',
+			);
+		});
+
+		it('should throw NodeOperationError when bucket is not specified', async () => {
+			setupParams({ bucketName: '' });
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'Bucket name is required to generate a presigned URL',
 			);
 		});
 
