@@ -969,6 +969,7 @@ function makeListItem(
 		projectId: overrides.scope === 'project' ? 'p1' : null,
 		projectName: overrides.scope === 'project' ? 'Marketing' : null,
 		agentId: null,
+		agentName: null,
 		source: 'ui',
 		latestVersion: 1,
 		usedByAgents: 0,

@@ -637,6 +637,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			projectId: null,
 			projectName: null,
 			agentId: null,
+			agentName: null,
 			source: 'ui',
 			latestVersion: 1,
 			usedByAgents: 0,
