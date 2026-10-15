@@ -106,6 +106,7 @@ export function buildAiRootPlaceholder(
 ): Record<string, unknown> | undefined {
 	switch (nodeType) {
 		case AGENT_NODE_TYPE:
+		case '@n8n/n8n-nodes-langchain.databricksAiAgent':
 		case '@n8n/n8n-nodes-langchain.openAiAssistant':
 		case '@n8n/n8n-nodes-langchain.informationExtractor':
 			return { output: filler };
