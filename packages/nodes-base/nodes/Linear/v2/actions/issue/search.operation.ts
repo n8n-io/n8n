@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { ISSUE_FIELDS } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
@@ -44,54 +44,31 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const searchQuery = this.getNodeParameter('query', i) as string;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const searchQuery = this.getNodeParameter('query', i) as string;
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query IssueSearch($term: String!, $first: Int, $after: String) {
-				searchIssues(term: $term, first: $first, after: $after) {
-					nodes {
-						${ISSUE_FIELDS}
-					}
-					pageInfo {
-						hasNextPage
-						endCursor
-					}
+	const body = {
+		query: `query IssueSearch($term: String!, $first: Int, $after: String) {
+			searchIssues(term: $term, first: $first, after: $after) {
+				nodes {
+					${ISSUE_FIELDS}
 				}
-			}`,
-			variables: {
-				term: searchQuery,
-				first: 50,
-			},
-		};
-
-		try {
-			const issues = await linearApiRequestAllItems.call(this, 'data.searchIssues', body, limit);
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(issues),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
-		}
-	}
+		}`,
+		variables: {
+			term: searchQuery,
+			first: 50,
+		},
+	};
 
-	return returnData;
+	const issues = await linearApiRequestAllItems.call(this, 'data.searchIssues', body, limit);
+
+	return issues;
 }

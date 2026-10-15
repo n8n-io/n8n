@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { ISSUE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -49,64 +44,38 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
+	const body = this.getNodeParameter('body', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as Record<string, unknown>;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
-			const body = this.getNodeParameter('body', i) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as Record<
-				string,
-				unknown
-			>;
-
-			const variables: IDataObject = { issueId, body };
-			if (additionalFields.parentId && (additionalFields.parentId as string).trim() !== '') {
-				variables.parentId = additionalFields.parentId;
-			}
-
-			const requestBody = {
-				query: `mutation CommentCreate($issueId: String!, $body: String!, $parentId: String) {
-					commentCreate(input: { issueId: $issueId, body: $body, parentId: $parentId }) {
-						success
-						comment {
-							id
-							body
-							createdAt
-							updatedAt
-							user {
-								id
-								displayName
-							}
-						}
-					}
-				}`,
-				variables,
-			};
-
-			const responseData = await linearApiRequest.call(this, requestBody);
-			const result = (responseData as { data: { commentCreate: IDataObject } }).data.commentCreate;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(result),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
-			}
-			throw error;
-		}
+	const variables: IDataObject = { issueId, body };
+	if (additionalFields.parentId && (additionalFields.parentId as string).trim() !== '') {
+		variables.parentId = additionalFields.parentId;
 	}
 
-	return returnData;
+	const requestBody = {
+		query: `mutation CommentCreate($issueId: String!, $body: String!, $parentId: String) {
+			commentCreate(input: { issueId: $issueId, body: $body, parentId: $parentId }) {
+				success
+				comment {
+					id
+					body
+					createdAt
+					updatedAt
+					user {
+						id
+						displayName
+					}
+				}
+			}
+		}`,
+		variables,
+	};
+
+	const responseData = await linearApiRequest.call(this, requestBody);
+	const result = (responseData as { data: { commentCreate: IDataObject } }).data.commentCreate;
+
+	return result;
 }

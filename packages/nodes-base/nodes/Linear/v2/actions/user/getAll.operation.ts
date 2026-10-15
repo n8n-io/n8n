@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
@@ -35,58 +35,35 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query Users($first: Int, $after: String) {
-				users(first: $first, after: $after) {
-					nodes {
-						id
-						name
-						displayName
-						email
-						avatarUrl
-						active
-						admin
-						createdAt
-						updatedAt
-					}
-					pageInfo {
-						hasNextPage
-						endCursor
-					}
+	const body = {
+		query: `query Users($first: Int, $after: String) {
+			users(first: $first, after: $after) {
+				nodes {
+					id
+					name
+					displayName
+					email
+					avatarUrl
+					active
+					admin
+					createdAt
+					updatedAt
 				}
-			}`,
-			variables: { first: 50 },
-		};
-
-		try {
-			const users = await linearApiRequestAllItems.call(this, 'data.users', body, limit);
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(users),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
-		}
-	}
+		}`,
+		variables: { first: 50 },
+	};
 
-	return returnData;
+	const users = await linearApiRequestAllItems.call(this, 'data.users', body, limit);
+
+	return users;
 }

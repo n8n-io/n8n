@@ -37,7 +37,7 @@ describe('Linear v2 → Project, User, Team & Label', () => {
 				return undefined;
 			});
 
-			await projectCreate.execute.call(mockThis, [{ json: {} }]);
+			await projectCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -54,7 +54,7 @@ describe('Linear v2 → Project, User, Team & Label', () => {
 				data: { viewer: { id: 'user-1', displayName: 'Alice' } },
 			});
 
-			await userGetCurrent.execute.call(mockThis, [{ json: {} }]);
+			await userGetCurrent.execute.call(mockThis);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -76,7 +76,7 @@ describe('Linear v2 → Project, User, Team & Label', () => {
 				return undefined;
 			});
 
-			await teamGetAll.execute.call(mockThis, [{ json: {} }]);
+			await teamGetAll.execute.call(mockThis, 0);
 
 			expect(allItemsSpy).toHaveBeenCalledWith(
 				'data.teams',
@@ -99,7 +99,7 @@ describe('Linear v2 → Project, User, Team & Label', () => {
 				return undefined;
 			});
 
-			await labelCreate.execute.call(mockThis, [{ json: {} }]);
+			await labelCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({

@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { USER_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -22,52 +17,29 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
-
-			const body = {
-				query: `query User($userId: String!) {
-					user(id: $userId) {
-						id
-						name
-						displayName
-						email
-						avatarUrl
-						active
-						admin
-						createdAt
-						updatedAt
-					}
-				}`,
-				variables: { userId },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const user = (responseData as { data: { user: IDataObject } }).data.user;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(user as IDataObject),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `query User($userId: String!) {
+			user(id: $userId) {
+				id
+				name
+				displayName
+				email
+				avatarUrl
+				active
+				admin
+				createdAt
+				updatedAt
 			}
-			throw error;
-		}
-	}
+		}`,
+		variables: { userId },
+	};
 
-	return returnData;
+	const responseData = await linearApiRequest.call(this, body);
+	const user = (responseData as { data: { user: IDataObject } }).data.user;
+
+	return user as IDataObject;
 }

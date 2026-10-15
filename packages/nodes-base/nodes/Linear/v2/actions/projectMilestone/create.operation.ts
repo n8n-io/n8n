@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { PROJECT_LOCATOR, PROJECT_MILESTONE_FIELDS } from '../../../shared/constants';
 import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
@@ -55,56 +50,34 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
+	const name = this.getNodeParameter('name', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+	normalizeTimelessDates(additionalFields);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
-			const name = this.getNodeParameter('name', i) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-			normalizeTimelessDates(additionalFields);
-
-			const body = {
-				query: `mutation ProjectMilestoneCreate($name: String!, $projectId: String!, $description: String, $targetDate: TimelessDate) {
-					projectMilestoneCreate(input: {
-						name: $name
-						projectId: $projectId
-						description: $description
-						targetDate: $targetDate
-					}) {
-						success
-						projectMilestone {
-							${PROJECT_MILESTONE_FIELDS}
-						}
-					}
-				}`,
-				variables: { name, projectId, ...additionalFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const milestone = (
-				responseData as { data: { projectMilestoneCreate: { projectMilestone: IDataObject } } }
-			).data.projectMilestoneCreate?.projectMilestone;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(milestone), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation ProjectMilestoneCreate($name: String!, $projectId: String!, $description: String, $targetDate: TimelessDate) {
+			projectMilestoneCreate(input: {
+				name: $name
+				projectId: $projectId
+				description: $description
+				targetDate: $targetDate
+			}) {
+				success
+				projectMilestone {
+					${PROJECT_MILESTONE_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { name, projectId, ...additionalFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const milestone = (
+		responseData as { data: { projectMilestoneCreate: { projectMilestone: IDataObject } } }
+	).data.projectMilestoneCreate?.projectMilestone;
+
+	return milestone;
 }

@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { PIPELINE_LOCATOR, RELEASE_FIELDS } from '../../../shared/constants';
 import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
@@ -55,57 +50,35 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const name = this.getNodeParameter('name', i) as string;
+	const pipelineId = this.getNodeParameter('pipelineId', i, '', {
+		extractValue: true,
+	}) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+	normalizeTimelessDates(additionalFields);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const name = this.getNodeParameter('name', i) as string;
-			const pipelineId = this.getNodeParameter('pipelineId', i, '', {
-				extractValue: true,
-			}) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-			normalizeTimelessDates(additionalFields);
-
-			const body = {
-				query: `mutation ReleaseCreate($name: String!, $pipelineId: String!, $version: String, $targetDate: TimelessDate) {
-					releaseCreate(input: {
-						name: $name
-						pipelineId: $pipelineId
-						version: $version
-						targetDate: $targetDate
-					}) {
-						success
-						release {
-							${RELEASE_FIELDS}
-						}
-					}
-				}`,
-				variables: { name, pipelineId, ...additionalFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const release = (responseData as { data: { releaseCreate: { release: IDataObject } } }).data
-				.releaseCreate?.release;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(release), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation ReleaseCreate($name: String!, $pipelineId: String!, $version: String, $targetDate: TimelessDate) {
+			releaseCreate(input: {
+				name: $name
+				pipelineId: $pipelineId
+				version: $version
+				targetDate: $targetDate
+			}) {
+				success
+				release {
+					${RELEASE_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { name, pipelineId, ...additionalFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const release = (responseData as { data: { releaseCreate: { release: IDataObject } } }).data
+		.releaseCreate?.release;
+
+	return release;
 }

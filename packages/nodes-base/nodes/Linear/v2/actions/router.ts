@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import * as attachment from './attachment';
@@ -24,73 +24,88 @@ import * as workflowState from './workflowState';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
+	const returnData: INodeExecutionData[] = [];
+
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
 
 	const linear = { resource, operation } as Linear;
 
-	let returnData: INodeExecutionData[] = [];
+	for (let i = 0; i < items.length; i++) {
+		try {
+			let responseData: IDataObject | IDataObject[];
 
-	switch (linear.resource) {
-		case 'issue':
-			returnData = await issue[linear.operation].execute.call(this, items);
-			break;
-		case 'comment':
-			returnData = await comment[linear.operation].execute.call(this, items);
-			break;
-		case 'customer':
-			returnData = await customer[linear.operation].execute.call(this, items);
-			break;
-		case 'customerNeed':
-			returnData = await customerNeed[linear.operation].execute.call(this, items);
-			break;
-		case 'project':
-			returnData = await project[linear.operation].execute.call(this, items);
-			break;
-		case 'projectMilestone':
-			returnData = await projectMilestone[linear.operation].execute.call(this, items);
-			break;
-		case 'projectUpdate':
-			returnData = await projectUpdate[linear.operation].execute.call(this, items);
-			break;
-		case 'user':
-			returnData = await user[linear.operation].execute.call(this, items);
-			break;
-		case 'team':
-			returnData = await team[linear.operation].execute.call(this, items);
-			break;
-		case 'label':
-			returnData = await label[linear.operation].execute.call(this, items);
-			break;
-		case 'cycle':
-			returnData = await cycle[linear.operation].execute.call(this, items);
-			break;
-		case 'attachment':
-			returnData = await attachment[linear.operation].execute.call(this, items);
-			break;
-		case 'workflowState':
-			returnData = await workflowState[linear.operation].execute.call(this, items);
-			break;
-		case 'document':
-			returnData = await document[linear.operation].execute.call(this, items);
-			break;
-		case 'initiative':
-			returnData = await initiative[linear.operation].execute.call(this, items);
-			break;
-		case 'teamMembership':
-			returnData = await teamMembership[linear.operation].execute.call(this, items);
-			break;
-		case 'release':
-			returnData = await release[linear.operation].execute.call(this, items);
-			break;
-		case 'view':
-			returnData = await view[linear.operation].execute.call(this, items);
-			break;
-		case 'issueRelation':
-			returnData = await issueRelation[linear.operation].execute.call(this, items);
-			break;
-		default:
-			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
+			switch (linear.resource) {
+				case 'issue':
+					responseData = await issue[linear.operation].execute.call(this, i);
+					break;
+				case 'comment':
+					responseData = await comment[linear.operation].execute.call(this, i);
+					break;
+				case 'customer':
+					responseData = await customer[linear.operation].execute.call(this, i);
+					break;
+				case 'customerNeed':
+					responseData = await customerNeed[linear.operation].execute.call(this, i);
+					break;
+				case 'project':
+					responseData = await project[linear.operation].execute.call(this, i);
+					break;
+				case 'projectMilestone':
+					responseData = await projectMilestone[linear.operation].execute.call(this, i);
+					break;
+				case 'projectUpdate':
+					responseData = await projectUpdate[linear.operation].execute.call(this, i);
+					break;
+				case 'user':
+					responseData = await user[linear.operation].execute.call(this, i);
+					break;
+				case 'team':
+					responseData = await team[linear.operation].execute.call(this, i);
+					break;
+				case 'label':
+					responseData = await label[linear.operation].execute.call(this, i);
+					break;
+				case 'cycle':
+					responseData = await cycle[linear.operation].execute.call(this, i);
+					break;
+				case 'attachment':
+					responseData = await attachment[linear.operation].execute.call(this, i);
+					break;
+				case 'workflowState':
+					responseData = await workflowState[linear.operation].execute.call(this, i);
+					break;
+				case 'document':
+					responseData = await document[linear.operation].execute.call(this, i);
+					break;
+				case 'initiative':
+					responseData = await initiative[linear.operation].execute.call(this, i);
+					break;
+				case 'teamMembership':
+					responseData = await teamMembership[linear.operation].execute.call(this, i);
+					break;
+				case 'release':
+					responseData = await release[linear.operation].execute.call(this, i);
+					break;
+				case 'view':
+					responseData = await view[linear.operation].execute.call(this, i);
+					break;
+				case 'issueRelation':
+					responseData = await issueRelation[linear.operation].execute.call(this, i);
+					break;
+				default:
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
+			}
+
+			returnData.push(
+				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
+					itemData: { item: i },
+				}),
+			);
+		} catch (error) {
+			if (!this.continueOnFail()) throw error;
+			returnData.push({ json: { error: (error as Error).message }, pairedItem: { item: i } });
+		}
 	}
 
 	return [returnData];

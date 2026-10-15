@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { CYCLE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -51,59 +46,37 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const cycleId = this.getNodeParameter('cycleId', i, '', { extractValue: true }) as string;
+	const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const cycleId = this.getNodeParameter('cycleId', i, '', { extractValue: true }) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-			const body = {
-				query: `mutation CycleUpdate($cycleId: String!, $name: String, $startsAt: DateTime, $endsAt: DateTime) {
-					cycleUpdate(id: $cycleId, input: {
-						name: $name
-						startsAt: $startsAt
-						endsAt: $endsAt
-					}) {
-						success
-						cycle {
-							id
-							name
-							number
-							startsAt
-							endsAt
-							updatedAt
-						}
-					}
-				}`,
-				variables: { cycleId, ...updateFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const cycleUpdate = (
-				responseData as { data: { cycleUpdate: { success: boolean; cycle: IDataObject } } }
-			).data.cycleUpdate;
-			const result = cycleUpdate?.cycle ?? (cycleUpdate as unknown as IDataObject);
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation CycleUpdate($cycleId: String!, $name: String, $startsAt: DateTime, $endsAt: DateTime) {
+			cycleUpdate(id: $cycleId, input: {
+				name: $name
+				startsAt: $startsAt
+				endsAt: $endsAt
+			}) {
+				success
+				cycle {
+					id
+					name
+					number
+					startsAt
+					endsAt
+					updatedAt
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { cycleId, ...updateFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const cycleUpdate = (
+		responseData as { data: { cycleUpdate: { success: boolean; cycle: IDataObject } } }
+	).data.cycleUpdate;
+	const result = cycleUpdate?.cycle ?? (cycleUpdate as unknown as IDataObject);
+
+	return result;
 }

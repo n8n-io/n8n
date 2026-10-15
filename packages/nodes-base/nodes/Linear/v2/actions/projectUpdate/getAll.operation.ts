@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { PROJECT_LOCATOR, PROJECT_UPDATE_FIELDS } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
@@ -35,57 +35,34 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query ProjectUpdates($projectId: String!, $first: Int, $after: String) {
-				project(id: $projectId) {
-					projectUpdates(first: $first, after: $after) {
-						nodes {
-							${PROJECT_UPDATE_FIELDS}
-						}
-						pageInfo {
-							hasNextPage
-							endCursor
-						}
+	const body = {
+		query: `query ProjectUpdates($projectId: String!, $first: Int, $after: String) {
+			project(id: $projectId) {
+				projectUpdates(first: $first, after: $after) {
+					nodes {
+						${PROJECT_UPDATE_FIELDS}
+					}
+					pageInfo {
+						hasNextPage
+						endCursor
 					}
 				}
-			}`,
-			variables: { projectId, first: 50 },
-		};
-
-		try {
-			const updates = await linearApiRequestAllItems.call(
-				this,
-				'data.project.projectUpdates',
-				body,
-				limit,
-			);
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(updates), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
 			}
-		}
-	}
+		}`,
+		variables: { projectId, first: 50 },
+	};
 
-	return returnData;
+	const updates = await linearApiRequestAllItems.call(
+		this,
+		'data.project.projectUpdates',
+		body,
+		limit,
+	);
+	return updates;
 }

@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
@@ -30,44 +25,21 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const customerId = this.getNodeParameter('customerId', i) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const customerId = this.getNodeParameter('customerId', i) as string;
-
-			const body = {
-				query: `mutation CustomerDelete($customerId: String!) {
-					customerDelete(id: $customerId) {
-						success
-					}
-				}`,
-				variables: { customerId },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const result = (responseData as { data: { customerDelete: IDataObject } }).data
-				.customerDelete;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation CustomerDelete($customerId: String!) {
+			customerDelete(id: $customerId) {
+				success
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { customerId },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const result = (responseData as { data: { customerDelete: IDataObject } }).data.customerDelete;
+
+	return result;
 }

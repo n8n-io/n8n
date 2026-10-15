@@ -38,7 +38,7 @@ describe('Linear v2 → Issue & Comment', () => {
 				return undefined;
 			});
 
-			await issueCreate.execute.call(mockThis, [{ json: {} }]);
+			await issueCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -71,7 +71,7 @@ describe('Linear v2 → Issue & Comment', () => {
 				return undefined;
 			});
 
-			await issueCreate.execute.call(mockThis, [{ json: {} }]);
+			await issueCreate.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -102,7 +102,7 @@ describe('Linear v2 → Issue & Comment', () => {
 				return undefined;
 			});
 
-			await issueGetAll.execute.call(mockThis, [{ json: {} }]);
+			await issueGetAll.execute.call(mockThis, 0);
 
 			expect(allItemsSpy).toHaveBeenCalledWith(
 				'data.issues',
@@ -122,7 +122,7 @@ describe('Linear v2 → Issue & Comment', () => {
 				return undefined;
 			});
 
-			await issueGetAll.execute.call(mockThis, [{ json: {} }]);
+			await issueGetAll.execute.call(mockThis, 0);
 
 			expect(allItemsSpy).toHaveBeenCalledWith(
 				'data.issues',
@@ -143,7 +143,7 @@ describe('Linear v2 → Issue & Comment', () => {
 				return undefined;
 			});
 
-			await issueGet.execute.call(mockThis, [{ json: {} }]);
+			await issueGet.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -169,7 +169,7 @@ describe('Linear v2 → Issue & Comment', () => {
 				return undefined;
 			});
 
-			await issueGetAll.execute.call(mockThis, [{ json: {} }]);
+			await issueGetAll.execute.call(mockThis, 0);
 
 			expect(allItemsSpy).toHaveBeenCalledWith(
 				'data.issues',
@@ -200,7 +200,7 @@ describe('Linear v2 → Issue & Comment', () => {
 				return undefined;
 			});
 
-			await issueSearch.execute.call(mockThis, [{ json: {} }]);
+			await issueSearch.execute.call(mockThis, 0);
 
 			expect(allItemsSpy).toHaveBeenCalledWith(
 				'data.searchIssues',
@@ -226,7 +226,7 @@ describe('Linear v2 → Issue & Comment', () => {
 				return undefined;
 			});
 
-			await commentCreate.execute.call(mockThis, [{ json: {} }]);
+			await commentCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({

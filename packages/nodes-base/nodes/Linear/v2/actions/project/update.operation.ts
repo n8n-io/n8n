@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { LEAD_LOCATOR, PROJECT_LOCATOR } from '../../../shared/constants';
@@ -72,74 +67,50 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
+	const updateFields = this.getNodeParameter('updateFields', i);
+	extractLocatorIds(this, updateFields, 'updateFields', i);
+	normalizeTimelessDates(updateFields);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
-			const updateFields = this.getNodeParameter('updateFields', i);
-			extractLocatorIds(this, updateFields, 'updateFields', i);
-			normalizeTimelessDates(updateFields);
-
-			const body = {
-				query: `mutation ProjectUpdate(
-					$projectId: String!,
-					$name: String,
-					$description: String,
-					$leadId: String,
-					$state: String,
-					$targetDate: TimelessDate
-				) {
-					projectUpdate(id: $projectId, input: {
-						name: $name
-						description: $description
-						leadId: $leadId
-						state: $state
-						targetDate: $targetDate
-					}) {
-						success
-						project {
-							id
-							name
-							description
-							state
-							createdAt
-							updatedAt
-							targetDate
-						}
-					}
-				}`,
-				variables: {
-					projectId,
-					...updateFields,
-				},
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const project = (responseData as { data: { projectUpdate: { project: IDataObject } } }).data
-				.projectUpdate?.project;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(project),
-				{ itemData: { item: i } },
-			);
-			returnData.push.apply(returnData, executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push.apply(
-					returnData,
-					this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation ProjectUpdate(
+			$projectId: String!,
+			$name: String,
+			$description: String,
+			$leadId: String,
+			$state: String,
+			$targetDate: TimelessDate
+		) {
+			projectUpdate(id: $projectId, input: {
+				name: $name
+				description: $description
+				leadId: $leadId
+				state: $state
+				targetDate: $targetDate
+			}) {
+				success
+				project {
+					id
+					name
+					description
+					state
+					createdAt
+					updatedAt
+					targetDate
+				}
 			}
-			throw error;
-		}
-	}
+		}`,
+		variables: {
+			projectId,
+			...updateFields,
+		},
+	};
 
-	return returnData;
+	const responseData = await linearApiRequest.call(this, body);
+	const project = (responseData as { data: { projectUpdate: { project: IDataObject } } }).data
+		.projectUpdate?.project;
+
+	return project;
 }

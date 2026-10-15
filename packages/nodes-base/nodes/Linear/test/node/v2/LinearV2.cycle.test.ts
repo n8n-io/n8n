@@ -37,7 +37,7 @@ describe('Linear v2 → Cycle, Attachment & WorkflowState', () => {
 				return undefined;
 			});
 
-			await cycleCreate.execute.call(mockThis, [{ json: {} }]);
+			await cycleCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -63,7 +63,7 @@ describe('Linear v2 → Cycle, Attachment & WorkflowState', () => {
 				return undefined;
 			});
 
-			await attachmentGet.execute.call(mockThis, [{ json: {} }]);
+			await attachmentGet.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -87,7 +87,7 @@ describe('Linear v2 → Cycle, Attachment & WorkflowState', () => {
 				return undefined;
 			});
 
-			await workflowStateGetAll.execute.call(mockThis, [{ json: {} }]);
+			await workflowStateGetAll.execute.call(mockThis, 0);
 
 			expect(allItemsSpy).toHaveBeenCalledWith(
 				'data.workflowStates',

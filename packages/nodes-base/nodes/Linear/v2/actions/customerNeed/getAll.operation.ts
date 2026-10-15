@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { CUSTOMER_NEED_FIELDS } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
@@ -34,49 +34,26 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query CustomerNeeds($first: Int, $after: String) {
-				customerNeeds(first: $first, after: $after) {
-					nodes {
-						${CUSTOMER_NEED_FIELDS}
-					}
-					pageInfo {
-						hasNextPage
-						endCursor
-					}
+	const body = {
+		query: `query CustomerNeeds($first: Int, $after: String) {
+			customerNeeds(first: $first, after: $after) {
+				nodes {
+					${CUSTOMER_NEED_FIELDS}
 				}
-			}`,
-			variables: { first: 50 },
-		};
-
-		try {
-			const needs = await linearApiRequestAllItems.call(this, 'data.customerNeeds', body, limit);
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(needs), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
-		}
-	}
+		}`,
+		variables: { first: 50 },
+	};
 
-	return returnData;
+	const needs = await linearApiRequestAllItems.call(this, 'data.customerNeeds', body, limit);
+	return needs;
 }

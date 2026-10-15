@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { TEAM_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -57,67 +52,41 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const name = this.getNodeParameter('name', i) as string;
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as Record<string, unknown>;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const name = this.getNodeParameter('name', i) as string;
-			const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as Record<
-				string,
-				unknown
-			>;
-
-			const body = {
-				query: `mutation IssueLabelCreate($name: String!, $teamId: String, $color: String, $description: String) {
-					issueLabelCreate(input: {
-						name: $name
-						teamId: $teamId
-						color: $color
-						description: $description
-					}) {
-						success
-						issueLabel {
-							id
-							name
-							color
-							description
-							createdAt
-						}
-					}
-				}`,
-				variables: {
-					name,
-					// Omitting the team creates a workspace-wide label
-					teamId: teamId || undefined,
-					...additionalFields,
-				},
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const label = (responseData as { data: { issueLabelCreate: { issueLabel: IDataObject } } })
-				.data.issueLabelCreate?.issueLabel;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(label),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation IssueLabelCreate($name: String!, $teamId: String, $color: String, $description: String) {
+			issueLabelCreate(input: {
+				name: $name
+				teamId: $teamId
+				color: $color
+				description: $description
+			}) {
+				success
+				issueLabel {
+					id
+					name
+					color
+					description
+					createdAt
+				}
 			}
-			throw error;
-		}
-	}
+		}`,
+		variables: {
+			name,
+			// Omitting the team creates a workspace-wide label
+			teamId: teamId || undefined,
+			...additionalFields,
+		},
+	};
 
-	return returnData;
+	const responseData = await linearApiRequest.call(this, body);
+	const label = (responseData as { data: { issueLabelCreate: { issueLabel: IDataObject } } }).data
+		.issueLabelCreate?.issueLabel;
+
+	return label;
 }

@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { LEAD_LOCATOR } from '../../../shared/constants';
@@ -82,84 +77,57 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const name = this.getNodeParameter('name', i) as string;
+	const teamIds = this.getNodeParameter('teamIds', i) as string[];
+	const additionalFields = this.getNodeParameter('additionalFields', i) as Record<string, unknown>;
+	extractLocatorIds(this, additionalFields, 'additionalFields', i);
+	normalizeTimelessDates(additionalFields);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const name = this.getNodeParameter('name', i) as string;
-			const teamIds = this.getNodeParameter('teamIds', i) as string[];
-			const additionalFields = this.getNodeParameter('additionalFields', i) as Record<
-				string,
-				unknown
-			>;
-			extractLocatorIds(this, additionalFields, 'additionalFields', i);
-			normalizeTimelessDates(additionalFields);
-
-			const body = {
-				query: `mutation ProjectCreate(
-					$name: String!,
-					$teamIds: [String!]!,
-					$description: String,
-					$leadId: String,
-					$state: String,
-					$targetDate: TimelessDate
-				) {
-					projectCreate(input: {
-						name: $name
-						teamIds: $teamIds
-						description: $description
-						leadId: $leadId
-						state: $state
-						targetDate: $targetDate
-					}) {
-						success
-						project {
-							id
-							name
-							description
-							state
-							createdAt
-							updatedAt
-							targetDate
-							lead {
-								id
-								displayName
-							}
-						}
+	const body = {
+		query: `mutation ProjectCreate(
+			$name: String!,
+			$teamIds: [String!]!,
+			$description: String,
+			$leadId: String,
+			$state: String,
+			$targetDate: TimelessDate
+		) {
+			projectCreate(input: {
+				name: $name
+				teamIds: $teamIds
+				description: $description
+				leadId: $leadId
+				state: $state
+				targetDate: $targetDate
+			}) {
+				success
+				project {
+					id
+					name
+					description
+					state
+					createdAt
+					updatedAt
+					targetDate
+					lead {
+						id
+						displayName
 					}
-				}`,
-				variables: {
-					name,
-					teamIds,
-					...additionalFields,
-				},
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const project = (responseData as { data: { projectCreate: { project: IDataObject } } }).data
-				.projectCreate?.project;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(project),
-				{ itemData: { item: i } },
-			);
-			returnData.push.apply(returnData, executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push.apply(
-					returnData,
-					this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+				}
 			}
-			throw error;
-		}
-	}
+		}`,
+		variables: {
+			name,
+			teamIds,
+			...additionalFields,
+		},
+	};
 
-	return returnData;
+	const responseData = await linearApiRequest.call(this, body);
+	const project = (responseData as { data: { projectCreate: { project: IDataObject } } }).data
+		.projectCreate?.project;
+
+	return project;
 }

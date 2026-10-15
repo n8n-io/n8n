@@ -37,7 +37,7 @@ describe('Linear v2 → Project Milestone & Project Update', () => {
 				return undefined;
 			});
 
-			await milestoneCreate.execute.call(mockThis, [{ json: {} }]);
+			await milestoneCreate.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -65,7 +65,7 @@ describe('Linear v2 → Project Milestone & Project Update', () => {
 				return undefined;
 			});
 
-			await milestoneGetAll.execute.call(mockThis, [{ json: {} }]);
+			await milestoneGetAll.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				'data.project.projectMilestones',
@@ -88,7 +88,7 @@ describe('Linear v2 → Project Milestone & Project Update', () => {
 				return undefined;
 			});
 
-			await updateCreate.execute.call(mockThis, [{ json: {} }]);
+			await updateCreate.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -115,7 +115,7 @@ describe('Linear v2 → Project Milestone & Project Update', () => {
 				return undefined;
 			});
 
-			await updateGetAll.execute.call(mockThis, [{ json: {} }]);
+			await updateGetAll.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				'data.project.projectUpdates',

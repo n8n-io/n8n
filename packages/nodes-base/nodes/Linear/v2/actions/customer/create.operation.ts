@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { CUSTOMER_FIELDS } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -47,56 +42,34 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const name = this.getNodeParameter('name', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const name = this.getNodeParameter('name', i) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-			const variables: IDataObject = { name };
-			if (additionalFields.domains) {
-				variables.domains = (additionalFields.domains as string)
-					.split(',')
-					.map((d) => d.trim())
-					.filter(Boolean);
-			}
-
-			const body = {
-				query: `mutation CustomerCreate($name: String!, $domains: [String!]) {
-					customerCreate(input: { name: $name, domains: $domains }) {
-						success
-						customer {
-							${CUSTOMER_FIELDS}
-						}
-					}
-				}`,
-				variables,
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const customer = (responseData as { data: { customerCreate: { customer: IDataObject } } })
-				.data.customerCreate?.customer;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(customer), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
-			}
-			throw error;
-		}
+	const variables: IDataObject = { name };
+	if (additionalFields.domains) {
+		variables.domains = (additionalFields.domains as string)
+			.split(',')
+			.map((d) => d.trim())
+			.filter(Boolean);
 	}
-	return returnData;
+
+	const body = {
+		query: `mutation CustomerCreate($name: String!, $domains: [String!]) {
+			customerCreate(input: { name: $name, domains: $domains }) {
+				success
+				customer {
+					${CUSTOMER_FIELDS}
+				}
+			}
+		}`,
+		variables,
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const customer = (responseData as { data: { customerCreate: { customer: IDataObject } } }).data
+		.customerCreate?.customer;
+
+	return customer;
 }

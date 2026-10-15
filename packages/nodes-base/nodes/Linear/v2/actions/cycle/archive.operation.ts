@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { CYCLE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -22,43 +17,21 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const cycleId = this.getNodeParameter('cycleId', i, '', { extractValue: true }) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const cycleId = this.getNodeParameter('cycleId', i, '', { extractValue: true }) as string;
-
-			const body = {
-				query: `mutation CycleArchive($cycleId: String!) {
-					cycleArchive(id: $cycleId) {
-						success
-					}
-				}`,
-				variables: { cycleId },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const result = (responseData as { data: { cycleArchive: IDataObject } }).data.cycleArchive;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation CycleArchive($cycleId: String!) {
+			cycleArchive(id: $cycleId) {
+				success
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { cycleId },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const result = (responseData as { data: { cycleArchive: IDataObject } }).data.cycleArchive;
+
+	return result;
 }

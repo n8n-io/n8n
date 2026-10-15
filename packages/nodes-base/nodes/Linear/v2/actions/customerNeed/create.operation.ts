@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import {
 	CUSTOMER_LOCATOR,
@@ -62,57 +57,35 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const customerId = this.getNodeParameter('customerId', i, '', {
+		extractValue: true,
+	}) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+	extractLocatorIds(this, additionalFields, 'additionalFields', i);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const customerId = this.getNodeParameter('customerId', i, '', {
-				extractValue: true,
-			}) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-			extractLocatorIds(this, additionalFields, 'additionalFields', i);
-
-			const body = {
-				query: `mutation CustomerNeedCreate($customerId: String!, $body: String, $issueId: String, $projectId: String, $priority: Float) {
-					customerNeedCreate(input: {
-						customerId: $customerId
-						body: $body
-						issueId: $issueId
-						projectId: $projectId
-						priority: $priority
-					}) {
-						success
-						need {
-							${CUSTOMER_NEED_FIELDS}
-						}
-					}
-				}`,
-				variables: { customerId, ...additionalFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const need = (responseData as { data: { customerNeedCreate: { need: IDataObject } } }).data
-				.customerNeedCreate?.need;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(need), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation CustomerNeedCreate($customerId: String!, $body: String, $issueId: String, $projectId: String, $priority: Float) {
+			customerNeedCreate(input: {
+				customerId: $customerId
+				body: $body
+				issueId: $issueId
+				projectId: $projectId
+				priority: $priority
+			}) {
+				success
+				need {
+					${CUSTOMER_NEED_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { customerId, ...additionalFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const need = (responseData as { data: { customerNeedCreate: { need: IDataObject } } }).data
+		.customerNeedCreate?.need;
+
+	return need;
 }

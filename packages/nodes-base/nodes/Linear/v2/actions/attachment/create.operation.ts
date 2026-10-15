@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { ISSUE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -55,69 +50,43 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
+	const url = this.getNodeParameter('url', i) as string;
+	const title = this.getNodeParameter('title', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as Record<string, unknown>;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
-			const url = this.getNodeParameter('url', i) as string;
-			const title = this.getNodeParameter('title', i) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as Record<
-				string,
-				unknown
-			>;
-
-			const body = {
-				query: `mutation AttachmentCreate($issueId: String!, $url: String!, $title: String!, $subtitle: String) {
-					attachmentCreate(input: {
-						issueId: $issueId
-						url: $url
-						title: $title
-						subtitle: $subtitle
-					}) {
-						success
-						attachment {
-							id
-							url
-							title
-							subtitle
-							createdAt
-							updatedAt
-						}
-					}
-				}`,
-				variables: {
-					issueId,
-					url,
-					title,
-					...additionalFields,
-				},
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const attachment = (
-				responseData as { data: { attachmentCreate: { attachment: IDataObject } } }
-			).data.attachmentCreate?.attachment;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(attachment), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation AttachmentCreate($issueId: String!, $url: String!, $title: String!, $subtitle: String) {
+			attachmentCreate(input: {
+				issueId: $issueId
+				url: $url
+				title: $title
+				subtitle: $subtitle
+			}) {
+				success
+				attachment {
+					id
+					url
+					title
+					subtitle
+					createdAt
+					updatedAt
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: {
+			issueId,
+			url,
+			title,
+			...additionalFields,
+		},
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const attachment = (responseData as { data: { attachmentCreate: { attachment: IDataObject } } })
+		.data.attachmentCreate?.attachment;
+
+	return attachment;
 }

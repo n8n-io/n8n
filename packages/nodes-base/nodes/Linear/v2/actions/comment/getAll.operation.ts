@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { ISSUE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
@@ -37,69 +37,41 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query IssueComments($issueId: String!, $first: Int, $after: String) {
-				issue(id: $issueId) {
-					comments(first: $first, after: $after) {
-						nodes {
+	const body = {
+		query: `query IssueComments($issueId: String!, $first: Int, $after: String) {
+			issue(id: $issueId) {
+				comments(first: $first, after: $after) {
+					nodes {
+						id
+						body
+						createdAt
+						updatedAt
+						user {
 							id
-							body
-							createdAt
-							updatedAt
-							user {
-								id
-								displayName
-								email
-							}
-						}
-						pageInfo {
-							hasNextPage
-							endCursor
+							displayName
+							email
 						}
 					}
+					pageInfo {
+						hasNextPage
+						endCursor
+					}
 				}
-			}`,
-			variables: {
-				issueId,
-				first: 50,
-			},
-		};
-
-		try {
-			const comments = await linearApiRequestAllItems.call(
-				this,
-				'data.issue.comments',
-				body,
-				limit,
-			);
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(comments),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
 			}
-		}
-	}
+		}`,
+		variables: {
+			issueId,
+			first: 50,
+		},
+	};
 
-	return returnData;
+	const comments = await linearApiRequestAllItems.call(this, 'data.issue.comments', body, limit);
+
+	return comments;
 }

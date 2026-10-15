@@ -34,7 +34,7 @@ describe('Linear v2 → Document & TeamMembership', () => {
 				return undefined;
 			});
 
-			await documentCreate.execute.call(mockThis, [{ json: {} }]);
+			await documentCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -55,7 +55,7 @@ describe('Linear v2 → Document & TeamMembership', () => {
 				return undefined;
 			});
 
-			await documentCreate.execute.call(mockThis, [{ json: {} }]);
+			await documentCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -79,7 +79,7 @@ describe('Linear v2 → Document & TeamMembership', () => {
 				return undefined;
 			});
 
-			await teamMembershipCreate.execute.call(mockThis, [{ json: {} }]);
+			await teamMembershipCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({

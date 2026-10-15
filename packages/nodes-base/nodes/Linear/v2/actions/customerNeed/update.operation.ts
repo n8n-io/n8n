@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { CUSTOMER_NEED_FIELDS } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -53,51 +48,29 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const customerNeedId = this.getNodeParameter('customerNeedId', i) as string;
+	const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const customerNeedId = this.getNodeParameter('customerNeedId', i) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-			const body = {
-				query: `mutation CustomerNeedUpdate($customerNeedId: String!, $body: String, $priority: Float) {
-					customerNeedUpdate(id: $customerNeedId, input: {
-						body: $body
-						priority: $priority
-					}) {
-						success
-						need {
-							${CUSTOMER_NEED_FIELDS}
-						}
-					}
-				}`,
-				variables: { customerNeedId, ...updateFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const need = (responseData as { data: { customerNeedUpdate: { need: IDataObject } } }).data
-				.customerNeedUpdate?.need;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(need), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation CustomerNeedUpdate($customerNeedId: String!, $body: String, $priority: Float) {
+			customerNeedUpdate(id: $customerNeedId, input: {
+				body: $body
+				priority: $priority
+			}) {
+				success
+				need {
+					${CUSTOMER_NEED_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { customerNeedId, ...updateFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const need = (responseData as { data: { customerNeedUpdate: { need: IDataObject } } }).data
+		.customerNeedUpdate?.need;
+
+	return need;
 }

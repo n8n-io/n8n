@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { INITIATIVE_FIELDS } from '../../../shared/constants';
 import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
@@ -75,56 +70,33 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const initiativeId = this.getNodeParameter('initiativeId', i, '', {
+		extractValue: true,
+	}) as string;
+	const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+	normalizeTimelessDates(updateFields);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const initiativeId = this.getNodeParameter('initiativeId', i, '', {
-				extractValue: true,
-			}) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-			normalizeTimelessDates(updateFields);
-
-			const body = {
-				query: `mutation InitiativeUpdate($initiativeId: String!, $name: String, $description: String, $targetDate: TimelessDate) {
-					initiativeUpdate(id: $initiativeId, input: {
-						name: $name
-						description: $description
-						targetDate: $targetDate
-					}) {
-						success
-						initiative {
-							${INITIATIVE_FIELDS}
-						}
-					}
-				}`,
-				variables: { initiativeId, ...updateFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const initiative = (
-				responseData as { data: { initiativeUpdate: { initiative: IDataObject } } }
-			).data.initiativeUpdate?.initiative;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(initiative), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation InitiativeUpdate($initiativeId: String!, $name: String, $description: String, $targetDate: TimelessDate) {
+			initiativeUpdate(id: $initiativeId, input: {
+				name: $name
+				description: $description
+				targetDate: $targetDate
+			}) {
+				success
+				initiative {
+					${INITIATIVE_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { initiativeId, ...updateFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const initiative = (responseData as { data: { initiativeUpdate: { initiative: IDataObject } } })
+		.data.initiativeUpdate?.initiative;
+
+	return initiative;
 }

@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import {
 	ISSUE_LOCATOR,
@@ -38,58 +33,36 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const issueId = this.getNodeParameter('issueId', i, '', {
+		extractValue: true,
+	}) as string;
+	const relatedIssueId = this.getNodeParameter('relatedIssueId', i, '', {
+		extractValue: true,
+	}) as string;
+	const type = this.getNodeParameter('type', i) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const issueId = this.getNodeParameter('issueId', i, '', {
-				extractValue: true,
-			}) as string;
-			const relatedIssueId = this.getNodeParameter('relatedIssueId', i, '', {
-				extractValue: true,
-			}) as string;
-			const type = this.getNodeParameter('type', i) as string;
-
-			const body = {
-				query: `mutation IssueRelationCreate($issueId: String!, $relatedIssueId: String!, $type: String!) {
-					issueRelationCreate(input: {
-						issueId: $issueId
-						relatedIssueId: $relatedIssueId
-						type: $type
-					}) {
-						success
-						issueRelation {
-							${ISSUE_RELATION_FIELDS}
-						}
-					}
-				}`,
-				variables: { issueId, relatedIssueId, type },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const issueRelation = (
-				responseData as { data: { issueRelationCreate: { issueRelation: IDataObject } } }
-			).data.issueRelationCreate?.issueRelation;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(issueRelation), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation IssueRelationCreate($issueId: String!, $relatedIssueId: String!, $type: String!) {
+			issueRelationCreate(input: {
+				issueId: $issueId
+				relatedIssueId: $relatedIssueId
+				type: $type
+			}) {
+				success
+				issueRelation {
+					${ISSUE_RELATION_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { issueId, relatedIssueId, type },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const issueRelation = (
+		responseData as { data: { issueRelationCreate: { issueRelation: IDataObject } } }
+	).data.issueRelationCreate?.issueRelation;
+
+	return issueRelation;
 }

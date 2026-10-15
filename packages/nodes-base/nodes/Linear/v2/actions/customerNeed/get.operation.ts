@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { CUSTOMER_NEED_FIELDS } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -31,43 +26,21 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const customerNeedId = this.getNodeParameter('customerNeedId', i) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const customerNeedId = this.getNodeParameter('customerNeedId', i) as string;
-
-			const body = {
-				query: `query CustomerNeed($customerNeedId: String!) {
-					customerNeed(id: $customerNeedId) {
-						${CUSTOMER_NEED_FIELDS}
-					}
-				}`,
-				variables: { customerNeedId },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const need = (responseData as { data: { customerNeed: IDataObject } }).data.customerNeed;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(need), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `query CustomerNeed($customerNeedId: String!) {
+			customerNeed(id: $customerNeedId) {
+				${CUSTOMER_NEED_FIELDS}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { customerNeedId },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const need = (responseData as { data: { customerNeed: IDataObject } }).data.customerNeed;
+
+	return need;
 }

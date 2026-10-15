@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { ISSUE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
@@ -35,59 +35,36 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query IssueAttachments($issueId: String!, $first: Int, $after: String) {
-				issue(id: $issueId) {
-					attachments(first: $first, after: $after) {
-						nodes {
-							id
-							url
-							title
-							subtitle
-							createdAt
-							updatedAt
-						}
-						pageInfo { hasNextPage endCursor }
+	const body = {
+		query: `query IssueAttachments($issueId: String!, $first: Int, $after: String) {
+			issue(id: $issueId) {
+				attachments(first: $first, after: $after) {
+					nodes {
+						id
+						url
+						title
+						subtitle
+						createdAt
+						updatedAt
 					}
+					pageInfo { hasNextPage endCursor }
 				}
-			}`,
-			variables: { issueId, first: 50 },
-		};
-
-		try {
-			const attachments = await linearApiRequestAllItems.call(
-				this,
-				'data.issue.attachments',
-				body,
-				limit,
-			);
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(attachments), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
 			}
-		}
-	}
+		}`,
+		variables: { issueId, first: 50 },
+	};
 
-	return returnData;
+	const attachments = await linearApiRequestAllItems.call(
+		this,
+		'data.issue.attachments',
+		body,
+		limit,
+	);
+	return attachments;
 }

@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
@@ -35,57 +35,34 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query Teams($first: Int, $after: String) {
-				teams(first: $first, after: $after) {
-					nodes {
-						id
-						name
-						description
-						key
-						color
-						createdAt
-						updatedAt
-						timezone
-					}
-					pageInfo {
-						hasNextPage
-						endCursor
-					}
+	const body = {
+		query: `query Teams($first: Int, $after: String) {
+			teams(first: $first, after: $after) {
+				nodes {
+					id
+					name
+					description
+					key
+					color
+					createdAt
+					updatedAt
+					timezone
 				}
-			}`,
-			variables: { first: 50 },
-		};
-
-		try {
-			const teams = await linearApiRequestAllItems.call(this, 'data.teams', body, limit);
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(teams),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
-		}
-	}
+		}`,
+		variables: { first: 50 },
+	};
 
-	return returnData;
+	const teams = await linearApiRequestAllItems.call(this, 'data.teams', body, limit);
+
+	return teams;
 }

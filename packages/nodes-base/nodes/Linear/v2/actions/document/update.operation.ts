@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { DOCUMENT_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -46,56 +41,34 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const documentId = this.getNodeParameter('documentId', i, '', {
+		extractValue: true,
+	}) as string;
+	const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const documentId = this.getNodeParameter('documentId', i, '', {
-				extractValue: true,
-			}) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-			const body = {
-				query: `mutation DocumentUpdate($documentId: String!, $title: String, $content: String) {
-					documentUpdate(id: $documentId, input: {
-						title: $title
-						content: $content
-					}) {
-						success
-						document {
-							id
-							title
-							content
-							updatedAt
-						}
-					}
-				}`,
-				variables: { documentId, ...updateFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const document = (responseData as { data: { documentUpdate: { document: IDataObject } } })
-				.data.documentUpdate?.document;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(document), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation DocumentUpdate($documentId: String!, $title: String, $content: String) {
+			documentUpdate(id: $documentId, input: {
+				title: $title
+				content: $content
+			}) {
+				success
+				document {
+					id
+					title
+					content
+					updatedAt
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { documentId, ...updateFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const document = (responseData as { data: { documentUpdate: { document: IDataObject } } }).data
+		.documentUpdate?.document;
+
+	return document;
 }

@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { RELEASE_FIELDS } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
@@ -34,49 +34,26 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query Releases($first: Int, $after: String) {
-				releases(first: $first, after: $after) {
-					nodes {
-						${RELEASE_FIELDS}
-					}
-					pageInfo {
-						hasNextPage
-						endCursor
-					}
+	const body = {
+		query: `query Releases($first: Int, $after: String) {
+			releases(first: $first, after: $after) {
+				nodes {
+					${RELEASE_FIELDS}
 				}
-			}`,
-			variables: { first: 50 },
-		};
-
-		try {
-			const releases = await linearApiRequestAllItems.call(this, 'data.releases', body, limit);
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(releases), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
-		}
-	}
+		}`,
+		variables: { first: 50 },
+	};
 
-	return returnData;
+	const releases = await linearApiRequestAllItems.call(this, 'data.releases', body, limit);
+	return releases;
 }

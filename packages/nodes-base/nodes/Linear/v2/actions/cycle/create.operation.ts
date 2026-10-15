@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { TEAM_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -53,70 +48,44 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
+	const startsAt = this.getNodeParameter('startsAt', i) as string;
+	const endsAt = this.getNodeParameter('endsAt', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as Record<string, unknown>;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-			const startsAt = this.getNodeParameter('startsAt', i) as string;
-			const endsAt = this.getNodeParameter('endsAt', i) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as Record<
-				string,
-				unknown
-			>;
-
-			const body = {
-				query: `mutation CycleCreate($teamId: String!, $startsAt: DateTime!, $endsAt: DateTime!, $name: String) {
-					cycleCreate(input: {
-						teamId: $teamId
-						startsAt: $startsAt
-						endsAt: $endsAt
-						name: $name
-					}) {
-						success
-						cycle {
-							id
-							name
-							number
-							startsAt
-							endsAt
-							createdAt
-							updatedAt
-						}
-					}
-				}`,
-				variables: {
-					teamId,
-					startsAt,
-					endsAt,
-					...additionalFields,
-				},
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const cycle = (responseData as { data: { cycleCreate: { cycle: IDataObject } } }).data
-				.cycleCreate?.cycle;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(cycle),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation CycleCreate($teamId: String!, $startsAt: DateTime!, $endsAt: DateTime!, $name: String) {
+			cycleCreate(input: {
+				teamId: $teamId
+				startsAt: $startsAt
+				endsAt: $endsAt
+				name: $name
+			}) {
+				success
+				cycle {
+					id
+					name
+					number
+					startsAt
+					endsAt
+					createdAt
+					updatedAt
+				}
 			}
-			throw error;
-		}
-	}
+		}`,
+		variables: {
+			teamId,
+			startsAt,
+			endsAt,
+			...additionalFields,
+		},
+	};
 
-	return returnData;
+	const responseData = await linearApiRequest.call(this, body);
+	const cycle = (responseData as { data: { cycleCreate: { cycle: IDataObject } } }).data.cycleCreate
+		?.cycle;
+
+	return cycle;
 }

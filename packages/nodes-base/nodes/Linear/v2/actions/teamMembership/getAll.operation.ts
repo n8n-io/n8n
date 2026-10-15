@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { TEAM_LOCATOR } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
@@ -35,64 +35,41 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query TeamMemberships($teamId: String!, $first: Int, $after: String) {
-				team(id: $teamId) {
-					memberships(first: $first, after: $after) {
-						nodes {
+	const body = {
+		query: `query TeamMemberships($teamId: String!, $first: Int, $after: String) {
+			team(id: $teamId) {
+				memberships(first: $first, after: $after) {
+					nodes {
+						id
+						owner
+						sortOrder
+						user {
 							id
-							owner
-							sortOrder
-							user {
-								id
-								name
-								displayName
-								email
-								avatarUrl
-								active
-							}
+							name
+							displayName
+							email
+							avatarUrl
+							active
 						}
-						pageInfo { hasNextPage endCursor }
 					}
+					pageInfo { hasNextPage endCursor }
 				}
-			}`,
-			variables: { teamId, first: 50 },
-		};
-
-		try {
-			const memberships = await linearApiRequestAllItems.call(
-				this,
-				'data.team.memberships',
-				body,
-				limit,
-			);
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(memberships), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
 			}
-		}
-	}
+		}`,
+		variables: { teamId, first: 50 },
+	};
 
-	return returnData;
+	const memberships = await linearApiRequestAllItems.call(
+		this,
+		'data.team.memberships',
+		body,
+		limit,
+	);
+	return memberships;
 }

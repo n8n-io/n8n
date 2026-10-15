@@ -37,7 +37,7 @@ describe('Linear v2 → Initiative', () => {
 				return undefined;
 			});
 
-			await initiativeCreate.execute.call(mockThis, [{ json: {} }]);
+			await initiativeCreate.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -62,7 +62,7 @@ describe('Linear v2 → Initiative', () => {
 				return undefined;
 			});
 
-			await initiativeGet.execute.call(mockThis, [{ json: {} }]);
+			await initiativeGet.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -85,7 +85,7 @@ describe('Linear v2 → Initiative', () => {
 				return undefined;
 			});
 
-			await initiativeGetAll.execute.call(mockThis, [{ json: {} }]);
+			await initiativeGetAll.execute.call(mockThis, 0);
 
 			expect(allItemsSpy).toHaveBeenCalledWith(
 				'data.initiatives',
@@ -106,7 +106,7 @@ describe('Linear v2 → Initiative', () => {
 				return undefined;
 			});
 
-			await initiativeArchive.execute.call(mockThis, [{ json: {} }]);
+			await initiativeArchive.execute.call(mockThis, 0);
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({

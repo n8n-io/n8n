@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { TEAM_LOCATOR, USER_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -22,67 +17,42 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
+	const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-			const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
-
-			const body = {
-				query: `mutation TeamMembershipCreate($teamId: String!, $userId: String!) {
-					teamMembershipCreate(input: {
-						teamId: $teamId
-						userId: $userId
-					}) {
-						success
-						teamMembership {
-							id
-							createdAt
-							team {
-								id
-								name
-							}
-							user {
-								id
-								displayName
-								email
-							}
-						}
+	const body = {
+		query: `mutation TeamMembershipCreate($teamId: String!, $userId: String!) {
+			teamMembershipCreate(input: {
+				teamId: $teamId
+				userId: $userId
+			}) {
+				success
+				teamMembership {
+					id
+					createdAt
+					team {
+						id
+						name
 					}
-				}`,
-				variables: { teamId, userId },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const membership = (
-				responseData as {
-					data: { teamMembershipCreate: { teamMembership: IDataObject } };
+					user {
+						id
+						displayName
+						email
+					}
 				}
-			).data.teamMembershipCreate?.teamMembership;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(membership as IDataObject),
-					{
-						itemData: { item: i },
-					},
-				),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
 			}
-			throw error;
+		}`,
+		variables: { teamId, userId },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const membership = (
+		responseData as {
+			data: { teamMembershipCreate: { teamMembership: IDataObject } };
 		}
-	}
-	return returnData;
+	).data.teamMembershipCreate?.teamMembership;
+
+	return membership as IDataObject;
 }

@@ -35,7 +35,7 @@ describe('Linear v2 → Customer & Customer Need', () => {
 				return undefined;
 			});
 
-			await customerCreate.execute.call(mockThis, [{ json: {} }]);
+			await customerCreate.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -61,7 +61,7 @@ describe('Linear v2 → Customer & Customer Need', () => {
 				return undefined;
 			});
 
-			await customerGetAll.execute.call(mockThis, [{ json: {} }]);
+			await customerGetAll.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				'data.customers',
@@ -83,7 +83,7 @@ describe('Linear v2 → Customer & Customer Need', () => {
 				return undefined;
 			});
 
-			await needCreate.execute.call(mockThis, [{ json: {} }]);
+			await needCreate.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				expect.objectContaining({

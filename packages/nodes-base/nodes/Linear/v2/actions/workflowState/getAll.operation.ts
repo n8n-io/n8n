@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { TEAM_LOCATOR } from '../../../shared/constants';
 import { extractLocatorIds, linearApiRequestAllItems } from '../../../shared/GenericFunctions';
@@ -47,65 +42,42 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
+	const filters = this.getNodeParameter('filters', i) as IDataObject;
+	extractLocatorIds(this, filters, 'filters', i);
 
-	for (let i = 0; i < items.length; i++) {
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-		const filters = this.getNodeParameter('filters', i) as IDataObject;
-		extractLocatorIds(this, filters, 'filters', i);
+	const filter: IDataObject = {};
+	if (filters.teamId) filter.team = { id: { eq: filters.teamId } };
 
-		const filter: IDataObject = {};
-		if (filters.teamId) filter.team = { id: { eq: filters.teamId } };
-
-		const body = {
-			query: `query WorkflowStates($first: Int, $after: String, $filter: WorkflowStateFilter) {
-				workflowStates(first: $first, after: $after, filter: $filter) {
-					nodes {
+	const body = {
+		query: `query WorkflowStates($first: Int, $after: String, $filter: WorkflowStateFilter) {
+			workflowStates(first: $first, after: $after, filter: $filter) {
+				nodes {
+					id
+					name
+					type
+					color
+					description
+					position
+					createdAt
+					updatedAt
+					team {
 						id
 						name
-						type
-						color
-						description
-						position
-						createdAt
-						updatedAt
-						team {
-							id
-							name
-						}
 					}
-					pageInfo { hasNextPage endCursor }
 				}
-			}`,
-			variables: {
-				first: 50,
-				...(Object.keys(filter).length > 0 ? { filter } : {}),
-			},
-		};
-
-		try {
-			const states = await linearApiRequestAllItems.call(this, 'data.workflowStates', body, limit);
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(states), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
+				pageInfo { hasNextPage endCursor }
 			}
-		}
-	}
+		}`,
+		variables: {
+			first: 50,
+			...(Object.keys(filter).length > 0 ? { filter } : {}),
+		},
+	};
 
-	return returnData;
+	const states = await linearApiRequestAllItems.call(this, 'data.workflowStates', body, limit);
+	return states;
 }

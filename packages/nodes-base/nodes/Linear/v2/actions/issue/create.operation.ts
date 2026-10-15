@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import {
 	ASSIGNEE_LOCATOR,
@@ -116,89 +111,66 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
+	const title = this.getNodeParameter('title', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+	extractLocatorIds(this, additionalFields, 'additionalFields', i);
+	normalizeTimelessDates(additionalFields);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-			const title = this.getNodeParameter('title', i) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-			extractLocatorIds(this, additionalFields, 'additionalFields', i);
-			normalizeTimelessDates(additionalFields);
-
-			const body = {
-				query: `mutation IssueCreate(
-					$title: String!,
-					$teamId: String!,
-					$description: String,
-					$assigneeId: String,
-					$priority: Int,
-					$stateId: String,
-					$dueDate: TimelessDate,
-					$labelIds: [String!],
-					$projectId: String,
-					$projectMilestoneId: String,
-					$cycleId: String,
-					$parentId: String,
-					$estimate: Int,
-					$subscriberIds: [String!]
-				) {
-					issueCreate(input: {
-						title: $title
-						teamId: $teamId
-						description: $description
-						assigneeId: $assigneeId
-						priority: $priority
-						stateId: $stateId
-						dueDate: $dueDate
-						labelIds: $labelIds
-						projectId: $projectId
-						projectMilestoneId: $projectMilestoneId
-						cycleId: $cycleId
-						parentId: $parentId
-						estimate: $estimate
-						subscriberIds: $subscriberIds
-					}) {
-						success
-						issue {
-							${ISSUE_FIELDS}
-						}
-					}
-				}`,
-				variables: {
-					teamId,
-					title,
-					...additionalFields,
-				},
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const issue = (
-				responseData as {
-					data: { issueCreate: { issue: IDataObject } };
+	const body = {
+		query: `mutation IssueCreate(
+			$title: String!,
+			$teamId: String!,
+			$description: String,
+			$assigneeId: String,
+			$priority: Int,
+			$stateId: String,
+			$dueDate: TimelessDate,
+			$labelIds: [String!],
+			$projectId: String,
+			$projectMilestoneId: String,
+			$cycleId: String,
+			$parentId: String,
+			$estimate: Int,
+			$subscriberIds: [String!]
+		) {
+			issueCreate(input: {
+				title: $title
+				teamId: $teamId
+				description: $description
+				assigneeId: $assigneeId
+				priority: $priority
+				stateId: $stateId
+				dueDate: $dueDate
+				labelIds: $labelIds
+				projectId: $projectId
+				projectMilestoneId: $projectMilestoneId
+				cycleId: $cycleId
+				parentId: $parentId
+				estimate: $estimate
+				subscriberIds: $subscriberIds
+			}) {
+				success
+				issue {
+					${ISSUE_FIELDS}
 				}
-			).data.issueCreate?.issue;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(issue),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
 			}
-			throw error;
-		}
-	}
+		}`,
+		variables: {
+			teamId,
+			title,
+			...additionalFields,
+		},
+	};
 
-	return returnData;
+	const responseData = await linearApiRequest.call(this, body);
+	const issue = (
+		responseData as {
+			data: { issueCreate: { issue: IDataObject } };
+		}
+	).data.issueCreate?.issue;
+
+	return issue;
 }

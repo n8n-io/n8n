@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { CUSTOM_VIEW_FIELDS, VIEW_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -46,52 +41,29 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const viewId = this.getNodeParameter('viewId', i, '', { extractValue: true }) as string;
+	const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const viewId = this.getNodeParameter('viewId', i, '', { extractValue: true }) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-			const body = {
-				query: `mutation CustomViewUpdate($viewId: String!, $name: String, $description: String) {
-					customViewUpdate(id: $viewId, input: {
-						name: $name
-						description: $description
-					}) {
-						success
-						customView {
-							${CUSTOM_VIEW_FIELDS}
-						}
-					}
-				}`,
-				variables: { viewId, ...updateFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const customView = (
-				responseData as { data: { customViewUpdate: { customView: IDataObject } } }
-			).data.customViewUpdate?.customView;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(customView), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation CustomViewUpdate($viewId: String!, $name: String, $description: String) {
+			customViewUpdate(id: $viewId, input: {
+				name: $name
+				description: $description
+			}) {
+				success
+				customView {
+					${CUSTOM_VIEW_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { viewId, ...updateFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const customView = (responseData as { data: { customViewUpdate: { customView: IDataObject } } })
+		.data.customViewUpdate?.customView;
+
+	return customView;
 }

@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { PROJECT_UPDATE_FIELDS, PROJECT_UPDATE_HEALTH_OPTIONS } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -54,52 +49,30 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const projectUpdateId = this.getNodeParameter('projectUpdateId', i) as string;
+	const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const projectUpdateId = this.getNodeParameter('projectUpdateId', i) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-			const body = {
-				query: `mutation ProjectUpdateUpdate($projectUpdateId: String!, $body: String, $health: ProjectUpdateHealthType) {
-					projectUpdateUpdate(id: $projectUpdateId, input: {
-						body: $body
-						health: $health
-					}) {
-						success
-						projectUpdate {
-							${PROJECT_UPDATE_FIELDS}
-						}
-					}
-				}`,
-				variables: { projectUpdateId, ...updateFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const projectUpdate = (
-				responseData as { data: { projectUpdateUpdate: { projectUpdate: IDataObject } } }
-			).data.projectUpdateUpdate?.projectUpdate;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(projectUpdate), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation ProjectUpdateUpdate($projectUpdateId: String!, $body: String, $health: ProjectUpdateHealthType) {
+			projectUpdateUpdate(id: $projectUpdateId, input: {
+				body: $body
+				health: $health
+			}) {
+				success
+				projectUpdate {
+					${PROJECT_UPDATE_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { projectUpdateId, ...updateFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const projectUpdate = (
+		responseData as { data: { projectUpdateUpdate: { projectUpdate: IDataObject } } }
+	).data.projectUpdateUpdate?.projectUpdate;
+
+	return projectUpdate;
 }

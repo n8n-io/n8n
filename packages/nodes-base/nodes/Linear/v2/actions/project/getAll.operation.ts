@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
@@ -35,61 +35,38 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query Projects($first: Int, $after: String) {
-				projects(first: $first, after: $after) {
-					nodes {
+	const body = {
+		query: `query Projects($first: Int, $after: String) {
+			projects(first: $first, after: $after) {
+				nodes {
+					id
+					name
+					description
+					state
+					createdAt
+					updatedAt
+					targetDate
+					url
+					lead {
 						id
-						name
-						description
-						state
-						createdAt
-						updatedAt
-						targetDate
-						url
-						lead {
-							id
-							displayName
-						}
-					}
-					pageInfo {
-						hasNextPage
-						endCursor
+						displayName
 					}
 				}
-			}`,
-			variables: { first: 50 },
-		};
-
-		try {
-			const projects = await linearApiRequestAllItems.call(this, 'data.projects', body, limit);
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(projects),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
-		}
-	}
+		}`,
+		variables: { first: 50 },
+	};
 
-	return returnData;
+	const projects = await linearApiRequestAllItems.call(this, 'data.projects', body, limit);
+
+	return projects;
 }

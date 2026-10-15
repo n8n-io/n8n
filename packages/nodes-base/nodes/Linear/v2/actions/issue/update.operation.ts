@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import {
 	ASSIGNEE_LOCATOR,
@@ -117,84 +112,61 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
-
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-			extractLocatorIds(this, updateFields, 'updateFields', i);
-			normalizeTimelessDates(updateFields);
-			const body = {
-				query: `mutation IssueUpdate(
-					$issueId: String!,
-					$title: String,
-					$teamId: String,
-					$description: String,
-					$assigneeId: String,
-					$priority: Int,
-					$stateId: String,
-					$dueDate: TimelessDate,
-					$labelIds: [String!],
-					$projectId: String,
-					$projectMilestoneId: String,
-					$cycleId: String,
-					$parentId: String,
-					$estimate: Int,
-					$subscriberIds: [String!]
-				) {
-					issueUpdate(id: $issueId, input: {
-						title: $title
-						teamId: $teamId
-						description: $description
-						assigneeId: $assigneeId
-						priority: $priority
-						stateId: $stateId
-						dueDate: $dueDate
-						labelIds: $labelIds
-						projectId: $projectId
-						projectMilestoneId: $projectMilestoneId
-						cycleId: $cycleId
-						parentId: $parentId
-						estimate: $estimate
-						subscriberIds: $subscriberIds
-					}) {
-						success
-						issue {
-							${ISSUE_FIELDS}
-						}
-					}
-				}`,
-				variables: {
-					issueId,
-					...updateFields,
-				},
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const issue = (responseData as { data: { issueUpdate: { issue: IDataObject } } }).data
-				.issueUpdate?.issue;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(issue),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
+	const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+	extractLocatorIds(this, updateFields, 'updateFields', i);
+	normalizeTimelessDates(updateFields);
+	const body = {
+		query: `mutation IssueUpdate(
+			$issueId: String!,
+			$title: String,
+			$teamId: String,
+			$description: String,
+			$assigneeId: String,
+			$priority: Int,
+			$stateId: String,
+			$dueDate: TimelessDate,
+			$labelIds: [String!],
+			$projectId: String,
+			$projectMilestoneId: String,
+			$cycleId: String,
+			$parentId: String,
+			$estimate: Int,
+			$subscriberIds: [String!]
+		) {
+			issueUpdate(id: $issueId, input: {
+				title: $title
+				teamId: $teamId
+				description: $description
+				assigneeId: $assigneeId
+				priority: $priority
+				stateId: $stateId
+				dueDate: $dueDate
+				labelIds: $labelIds
+				projectId: $projectId
+				projectMilestoneId: $projectMilestoneId
+				cycleId: $cycleId
+				parentId: $parentId
+				estimate: $estimate
+				subscriberIds: $subscriberIds
+			}) {
+				success
+				issue {
+					${ISSUE_FIELDS}
+				}
 			}
-			throw error;
-		}
-	}
+		}`,
+		variables: {
+			issueId,
+			...updateFields,
+		},
+	};
 
-	return returnData;
+	const responseData = await linearApiRequest.call(this, body);
+	const issue = (responseData as { data: { issueUpdate: { issue: IDataObject } } }).data.issueUpdate
+		?.issue;
+
+	return issue;
 }

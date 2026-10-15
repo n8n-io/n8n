@@ -35,7 +35,7 @@ describe('Linear v2 → Release, Custom View & Issue Relation', () => {
 				return undefined;
 			});
 
-			await releaseCreate.execute.call(mockThis, [{ json: {} }]);
+			await releaseCreate.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -62,7 +62,7 @@ describe('Linear v2 → Release, Custom View & Issue Relation', () => {
 				return undefined;
 			});
 
-			await viewCreate.execute.call(mockThis, [{ json: {} }]);
+			await viewCreate.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -86,7 +86,7 @@ describe('Linear v2 → Release, Custom View & Issue Relation', () => {
 				return undefined;
 			});
 
-			await issueRelationCreate.execute.call(mockThis, [{ json: {} }]);
+			await issueRelationCreate.execute.call(mockThis, 0);
 
 			expect(spy).toHaveBeenCalledWith(
 				expect.objectContaining({

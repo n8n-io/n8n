@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
@@ -33,57 +33,34 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	for (let i = 0; i < items.length; i++) {
-		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
-
-		const body = {
-			query: `query Cycles($first: Int, $after: String) {
-				cycles(first: $first, after: $after) {
-					nodes {
+	const body = {
+		query: `query Cycles($first: Int, $after: String) {
+			cycles(first: $first, after: $after) {
+				nodes {
+					id
+					name
+					number
+					startsAt
+					endsAt
+					archivedAt
+					createdAt
+					updatedAt
+					team {
 						id
 						name
-						number
-						startsAt
-						endsAt
-						archivedAt
-						createdAt
-						updatedAt
-						team {
-							id
-							name
-						}
 					}
-					pageInfo { hasNextPage endCursor }
 				}
-			}`,
-			variables: { first: 50 },
-		};
-
-		try {
-			const cycles = await linearApiRequestAllItems.call(this, 'data.cycles', body, limit);
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(cycles), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-			} else {
-				throw error;
+				pageInfo { hasNextPage endCursor }
 			}
-		}
-	}
+		}`,
+		variables: { first: 50 },
+	};
 
-	return returnData;
+	const cycles = await linearApiRequestAllItems.call(this, 'data.cycles', body, limit);
+	return cycles;
 }

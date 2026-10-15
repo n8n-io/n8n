@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { ISSUE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
@@ -22,45 +17,21 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
-
-		try {
-			const body = {
-				query: `mutation IssueUnarchive($issueId: String!) {
-					issueUnarchive(id: $issueId) {
-						success
-					}
-				}`,
-				variables: { issueId },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const result = (responseData as { data: { issueUnarchive: IDataObject } }).data
-				.issueUnarchive;
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(result),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation IssueUnarchive($issueId: String!) {
+			issueUnarchive(id: $issueId) {
+				success
 			}
-			throw error;
-		}
-	}
+		}`,
+		variables: { issueId },
+	};
 
-	return returnData;
+	const responseData = await linearApiRequest.call(this, body);
+	const result = (responseData as { data: { issueUnarchive: IDataObject } }).data.issueUnarchive;
+
+	return result;
 }

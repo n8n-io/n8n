@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 
 import { PROJECT_LOCATOR } from '../../../shared/constants';
 import { extractLocatorIds, linearApiRequest } from '../../../shared/GenericFunctions';
@@ -48,60 +43,35 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+): Promise<IDataObject | IDataObject[]> {
+	const title = this.getNodeParameter('title', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i) as Record<string, unknown>;
+	extractLocatorIds(this, additionalFields, 'additionalFields', i);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const title = this.getNodeParameter('title', i) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as Record<
-				string,
-				unknown
-			>;
-			extractLocatorIds(this, additionalFields, 'additionalFields', i);
-
-			const body = {
-				query: `mutation DocumentCreate($title: String!, $content: String, $projectId: String) {
-					documentCreate(input: {
-						title: $title
-						content: $content
-						projectId: $projectId
-					}) {
-						success
-						document {
-							id
-							title
-							content
-							createdAt
-							updatedAt
-						}
-					}
-				}`,
-				variables: { title, ...additionalFields },
-			};
-
-			const responseData = await linearApiRequest.call(this, body);
-			const document = (responseData as { data: { documentCreate: { document: IDataObject } } })
-				.data.documentCreate?.document;
-
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(document), {
-					itemData: { item: i },
-				}),
-			);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: (error as Error).message }),
-						{ itemData: { item: i } },
-					),
-				);
-				continue;
+	const body = {
+		query: `mutation DocumentCreate($title: String!, $content: String, $projectId: String) {
+			documentCreate(input: {
+				title: $title
+				content: $content
+				projectId: $projectId
+			}) {
+				success
+				document {
+					id
+					title
+					content
+					createdAt
+					updatedAt
+				}
 			}
-			throw error;
-		}
-	}
-	return returnData;
+		}`,
+		variables: { title, ...additionalFields },
+	};
+
+	const responseData = await linearApiRequest.call(this, body);
+	const document = (responseData as { data: { documentCreate: { document: IDataObject } } }).data
+		.documentCreate?.document;
+
+	return document;
 }
