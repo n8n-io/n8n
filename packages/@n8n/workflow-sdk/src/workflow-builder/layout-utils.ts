@@ -942,6 +942,7 @@ function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 export function resolveStickyGeometry(
 	nodes: ReadonlyMap<string, GraphNode>,
 	positions: ReadonlyMap<string, [number, number]>,
+	knownPorts?: ReadonlyMap<string, NodePorts>,
 ): Map<string, StickyGeometry> {
 	const geometryByName = new Map<string, StickyGeometry>();
 
@@ -962,9 +963,15 @@ export function resolveStickyGeometry(
 	const boxOfNode = (name: string): BoundingBox | undefined => {
 		const graphNode = nodes.get(name);
 		if (!graphNode) return undefined;
-		const position = graphNode.instance.config?.position ?? positions.get(name);
-		if (!position) return undefined;
-		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+		const position = graphNode.instance.config?.position ??
+			positions.get(name) ?? [START_X, DEFAULT_Y];
+		const { width, height } = getNodeDimensions(
+			name,
+			aiParentNames,
+			aiConfigNames,
+			nodes,
+			knownPorts,
+		);
 		return { x: position[0], y: position[1], width, height };
 	};
 
