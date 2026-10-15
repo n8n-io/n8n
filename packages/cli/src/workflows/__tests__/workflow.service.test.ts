@@ -474,11 +474,13 @@ describe('WorkflowService', () => {
 			findForContentUpdate: Mock;
 			runInTransaction: Mock;
 		}>;
+		let workflowTagMappingRepositoryMock: MockProxy<WorkflowTagMappingRepository>;
 
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
 			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 			workflowRepositoryMock = mock();
+			workflowTagMappingRepositoryMock = mock<WorkflowTagMappingRepository>();
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			redactionEnforcementServiceMock = mock<RedactionEnforcementService>();
@@ -499,7 +501,7 @@ describe('WorkflowService', () => {
 				mock(), // logger
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock as never, // workflowRepository
-				mock(), // workflowTagMappingRepository
+				workflowTagMappingRepositoryMock, // workflowTagMappingRepository
 				ownershipServiceMock, // ownershipService
 				mock(), // tagService
 				workflowHistoryServiceMock, // workflowHistoryService
@@ -747,6 +749,60 @@ describe('WorkflowService', () => {
 				expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
 				expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
 				expect(eventServiceMock.emit).not.toHaveBeenCalled();
+			});
+
+			test('rejects and writes nothing when the tags changed since the caller read them', async () => {
+				const original = setupExistingWorkflow();
+				const expectedChecksum = await calculateWorkflowChecksum(original);
+				workflowRepositoryMock.findForContentUpdate.mockResolvedValue(original);
+				workflowTagMappingRepositoryMock.findTagIdsByWorkflowId.mockResolvedValue([
+					'tag-1',
+					'tag-added-by-someone-else',
+				]);
+
+				await expect(
+					workflowService.update(
+						mock<User>(),
+						Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
+						original.id,
+						{ expectedChecksum, expectedTagIds: ['tag-1'], tagIds: ['tag-1', 'tag-2'] },
+					),
+				).rejects.toThrow(WorkflowChecksumConflictError);
+
+				expect(workflowTagMappingRepositoryMock.findTagIdsByWorkflowId).toHaveBeenCalledWith(
+					original.id,
+					trxCtx,
+				);
+				expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
+				expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
+				expect(workflowTagMappingRepositoryMock.overwriteTaggings).not.toHaveBeenCalled();
+			});
+
+			test('overwrites tags in the save transaction when they still match', async () => {
+				const original = setupExistingWorkflow();
+				const expectedChecksum = await calculateWorkflowChecksum(original);
+				workflowRepositoryMock.findForContentUpdate.mockResolvedValue(original);
+				workflowTagMappingRepositoryMock.findTagIdsByWorkflowId.mockResolvedValue([
+					'tag-2',
+					'tag-1',
+				]);
+
+				await workflowService.update(
+					mock<User>(),
+					Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
+					original.id,
+					{
+						expectedChecksum,
+						expectedTagIds: ['tag-1', 'tag-2'],
+						tagIds: ['tag-1', 'tag-2', 'tag-3'],
+					},
+				);
+
+				expect(workflowTagMappingRepositoryMock.overwriteTaggings).toHaveBeenCalledWith(
+					original.id,
+					['tag-1', 'tag-2', 'tag-3'],
+					trxCtx,
+				);
 			});
 
 			test('keeps the plain save path when no checksum is given', async () => {

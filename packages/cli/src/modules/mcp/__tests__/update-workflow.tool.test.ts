@@ -4231,6 +4231,41 @@ describe('update-workflow MCP tool', () => {
 				expect(updateOptions.tagIds).toEqual(['tag-0']);
 			});
 
+			test('passes the read tag ids as expectedTagIds when a checksum is given', async () => {
+				const existing = workflowWithTags(['production', 'critical']);
+				findWorkflowMock.mockResolvedValue(existing);
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: await calculateWorkflowChecksum(existing),
+					operations: [{ type: 'removeTags', names: ['critical'] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.expectedTagIds).toEqual(['tag-0', 'tag-1']);
+			});
+
+			test('does not pass expectedTagIds without a checksum or without tag ops', async () => {
+				const existing = workflowWithTags(['production']);
+				findWorkflowMock.mockResolvedValue(existing);
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['production'] }],
+				});
+				await callHandler({
+					workflowId: 'wf-1',
+					expectedChecksum: await calculateWorkflowChecksum(existing),
+					operations: [{ type: 'setWorkflowMetadata', name: 'renamed' }],
+				});
+
+				expect(updateMock.mock.calls[0][3]).not.toHaveProperty('expectedTagIds');
+				expect(updateMock.mock.calls[1][3]).not.toHaveProperty('expectedTagIds');
+			});
+
 			test('removing the last tag passes an empty tagIds array', async () => {
 				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
 				findOrCreateByNamesMock.mockResolvedValue([]);

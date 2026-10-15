@@ -1338,6 +1338,12 @@ export const createUpdateWorkflowTool = (
 				);
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
+				// The checksum excludes tags, but tagIds replaces every mapping from the read
+				// above. Pass the tags it was based on so a concurrent tag edit is a conflict.
+				const expectedTagIds =
+					expectedChecksum !== undefined && tagIds !== undefined
+						? (existingWorkflow.tags ?? []).map((tag) => tag.id)
+						: undefined;
 
 				// Fallback is diff-based; it only ends up persisted when the update
 				// actually produces a new history version (node/connection/group changes).
@@ -1376,6 +1382,7 @@ export const createUpdateWorkflowTool = (
 						// Re-checked inside the service under a row lock in the save
 						// transaction, so a concurrent edit cannot land before this write.
 						...(expectedChecksum !== undefined ? { expectedChecksum } : {}),
+						...(expectedTagIds !== undefined ? { expectedTagIds } : {}),
 					});
 				} catch (updateError) {
 					if (updateError instanceof WorkflowChecksumConflictError) {

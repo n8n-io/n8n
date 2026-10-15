@@ -135,6 +135,11 @@ type WorkflowUpdateOptions = {
 	apiKeyScopes?: readonly string[];
 	aiBuilderAssisted?: boolean;
 	expectedChecksum?: string;
+	/**
+	 * Tag ids the caller based `tagIds` on. The checksum excludes tags, so a caller that
+	 * rewrites tags from an earlier read passes this to reject a concurrent tag change.
+	 */
+	expectedTagIds?: string[];
 	autosaved?: boolean;
 	source?: WorkflowActionSource;
 	versionName?: string;
@@ -558,16 +563,18 @@ export class WorkflowService {
 		options: WorkflowUpdateOptions = {},
 	): Promise<WorkflowEntity> {
 		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options);
-		// A checksum-guarded save re-checks the checksum under a row lock, so the check
+		// A guarded save re-checks the checksum and tags under a row lock, so the checks
 		// and the writes must share one transaction. History errors then propagate:
 		// a failed insert aborts the transaction, so the save cannot continue anyway.
-		const saved = prepared.options.expectedChecksum
-			? await this.workflowRepository.runInTransaction(
-					{},
-					async (_trx, ctx) =>
-						await this.savePreparedUpdate(prepared, ctx, { propagateVersionHistoryErrors: true }),
-				)
-			: await this.savePreparedUpdate(prepared);
+		const { expectedChecksum, expectedTagIds } = prepared.options;
+		const saved =
+			expectedChecksum || expectedTagIds
+				? await this.workflowRepository.runInTransaction(
+						{},
+						async (_trx, ctx) =>
+							await this.savePreparedUpdate(prepared, ctx, { propagateVersionHistoryErrors: true }),
+					)
+				: await this.savePreparedUpdate(prepared);
 		return await this.finishUpdate(prepared, saved);
 	}
 
@@ -581,6 +588,7 @@ export class WorkflowService {
 	): Promise<PreparedWorkflowUpdate> {
 		const {
 			expectedChecksum,
+			expectedTagIds,
 			tagIds,
 			parentFolderId,
 			forceSave = false,
@@ -880,6 +888,7 @@ export class WorkflowService {
 			settingsChanged,
 			options: {
 				expectedChecksum: !forceSave && expectedChecksum ? expectedChecksum : undefined,
+				expectedTagIds: !forceSave ? expectedTagIds : undefined,
 				tagIds,
 				autosaved,
 				source,
@@ -900,9 +909,16 @@ export class WorkflowService {
 	) {
 		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
 		const workflowId = prepared.workflow.id;
-		const { expectedChecksum, tagIds, autosaved, source, versionName, versionDescription } =
-			prepared.options;
-		if (expectedChecksum) {
+		const {
+			expectedChecksum,
+			expectedTagIds,
+			tagIds,
+			autosaved,
+			source,
+			versionName,
+			versionDescription,
+		} = prepared.options;
+		if (expectedChecksum || expectedTagIds) {
 			// The check in prepareUpdate ran before slow, async preparation. Re-read the
 			// row (locked when ctx carries a transaction) so a concurrent save that landed
 			// in between is rejected instead of overwritten.
@@ -912,7 +928,19 @@ export class WorkflowService {
 					`Workflow with ID "${workflowId}" could not be found to be updated.`,
 				);
 			}
-			await this._detectConflicts(current, expectedChecksum);
+			if (expectedChecksum) {
+				await this._detectConflicts(current, expectedChecksum);
+			}
+		}
+		if (expectedTagIds && tagIds && !tagsDisabled) {
+			// The checksum excludes tags, so compare the tag mappings that tagIds would replace.
+			const currentTagIds = await this.workflowTagMappingRepository.findTagIdsByWorkflowId(
+				workflowId,
+				ctx,
+			);
+			if (!isEqual([...currentTagIds].sort(), [...expectedTagIds].sort())) {
+				throw new WorkflowChecksumConflictError();
+			}
 		}
 		if (saveNewVersion) {
 			const versionMetadata =
