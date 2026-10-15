@@ -68,8 +68,6 @@ export interface ExecuteResumableStreamOptions {
 	context: ResumableStreamContext;
 	control: ResumableStreamControl;
 	initialAgentRunId?: string;
-	/** Return stream read failures with partial usage instead of throwing. */
-	captureStreamErrors?: boolean;
 }
 
 export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
@@ -206,6 +204,23 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 	throw new Error('Unsupported agent stream result');
 }
 
+function buildCancelledResult(
+	agentRunId: string,
+	text: Promise<string> | undefined,
+	workSummaryAccumulator: WorkSummaryAccumulator,
+	usageAccumulator: UsageAccumulator,
+	nativeStepIndex: number,
+): ExecuteResumableStreamResult {
+	return {
+		status: 'cancelled',
+		agentRunId,
+		text,
+		stepCount: nativeStepIndex || undefined,
+		workSummary: workSummaryAccumulator.toSummary(),
+		usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
+	};
+}
+
 /**
  * Record a parsed suspension. The first suspension is kept (and, in auto mode,
  * its confirmation awaited); any further distinct suspension before resume is
@@ -305,51 +320,6 @@ interface StreamPassResult {
 	nativeStepIndex: number;
 }
 
-/** Preserve abort drains and optionally capture other stream read failures. */
-async function* readStreamChunks(
-	stream: AsyncIterable<unknown>,
-	context: ResumableStreamContext,
-	captureStreamErrors = false,
-) {
-	const iterator = stream[Symbol.asyncIterator]();
-	let finished = false;
-
-	try {
-		while (true) {
-			let next: IteratorResult<unknown, unknown>;
-
-			try {
-				next = await iterator.next();
-			} catch (error) {
-				finished = true;
-
-				if (context.signal.aborted) {
-					context.logger.debug('Instance AI abort drain ended early', {
-						threadId: context.threadId,
-						runId: context.runId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				} else if (captureStreamErrors) {
-					yield { type: 'error', error };
-				} else {
-					throw error;
-				}
-
-				return;
-			}
-
-			if (next.done) {
-				finished = true;
-				return;
-			}
-
-			yield next.value;
-		}
-	} finally {
-		if (!finished) await iterator.return?.();
-	}
-}
-
 /**
  * Consume one stream until it ends (or is cancelled), publishing events,
  * accumulating usage/work, and capturing the first suspension. Returns the pass
@@ -389,19 +359,40 @@ async function consumeStreamPass(args: {
 	let finishReason: FinishReason | undefined;
 	let structuredOutput: unknown;
 	const drainedCorrectionsForResume: string[] = [];
-	const chunks = readStreamChunks(activeStream, options.context, options.captureStreamErrors);
 
-	for await (const chunk of chunks) {
+	for await (const chunk of activeStream) {
+		if (options.context.signal.aborted) {
+			// A stop aborts the agent stream too: it stops generating and emits a
+			// terminal finish chunk carrying the run's usage. Drain the rest of the
+			// stream (without publishing further events) so that usage is observed
+			// and the cancelled run still gets billed for the tokens it consumed.
+			usageAccumulator.observe(chunk);
+			try {
+				for await (const remaining of activeStream) {
+					usageAccumulator.observe(remaining);
+				}
+			} catch (drainError) {
+				options.context.logger.debug('Instance AI abort drain ended early', {
+					threadId: options.context.threadId,
+					runId: options.context.runId,
+					error: drainError instanceof Error ? drainError.message : String(drainError),
+				});
+			}
+			return {
+				cancelled: true,
+				hasError,
+				drainedCorrectionsForResume,
+				currentResponseId,
+				nativeStepIndex,
+			};
+		}
+
+		options.context.onActivity?.();
 		usageAccumulator.observe(chunk);
 		if (isRecord(chunk) && chunk.type === 'finish') {
 			finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
 			structuredOutput = chunk.structuredOutput;
 		}
-
-		// Drain cancelled streams for terminal output and billing, without publishing events.
-		if (options.context.signal.aborted) continue;
-
-		options.context.onActivity?.();
 
 		if (isRecord(chunk) && chunk.type === 'start-step') {
 			nativeStepIndex += 1;
@@ -533,37 +524,69 @@ export async function executeResumableStream(
 		currentResponseId = pass.currentResponseId;
 		nativeStepIndex = pass.nativeStepIndex;
 
-		const result = {
-			agentRunId: activeAgentRunId,
-			text,
-			...(pass.error !== undefined ? { error: pass.error } : {}),
-			finishReason: pass.finishReason,
-			structuredOutput: pass.structuredOutput,
-			stepCount: nativeStepIndex || undefined,
-			workSummary: workSummaryAccumulator.toSummary(),
-			usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
-		};
-
-		const { suspension, hasError, pendingConfirmation, confirmationEvent } = pass;
-		const { drainedCorrectionsForResume } = pass;
-
-		if (pass.cancelled || options.context.signal.aborted) {
-			return { ...result, status: 'cancelled' };
+		if (pass.cancelled) {
+			return buildCancelledResult(
+				activeAgentRunId,
+				text,
+				workSummaryAccumulator,
+				usageAccumulator,
+				nativeStepIndex,
+			);
 		}
 
-		if (pass.stopReason || !suspension) {
+		const { suspension, hasError, error, pendingConfirmation, confirmationEvent } = pass;
+		const { drainedCorrectionsForResume } = pass;
+
+		if (options.context.signal.aborted) {
+			return buildCancelledResult(
+				activeAgentRunId,
+				text,
+				workSummaryAccumulator,
+				usageAccumulator,
+				nativeStepIndex,
+			);
+		}
+
+		if (pass.stopReason) {
 			return {
-				...result,
 				status: hasError || pass.finishReason === 'error' ? 'errored' : 'completed',
-				...(pass.stopReason ? { stopReason: pass.stopReason } : {}),
+				agentRunId: activeAgentRunId,
+				text,
+				...(error !== undefined ? { error } : {}),
+				finishReason: pass.finishReason,
+				structuredOutput: pass.structuredOutput,
+				stepCount: nativeStepIndex || undefined,
+				workSummary: workSummaryAccumulator.toSummary(),
+				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
+				stopReason: pass.stopReason,
+			};
+		}
+
+		if (!suspension) {
+			return {
+				status: hasError || pass.finishReason === 'error' ? 'errored' : 'completed',
+				agentRunId: activeAgentRunId,
+				text,
+				...(error !== undefined ? { error } : {}),
+				finishReason: pass.finishReason,
+				structuredOutput: pass.structuredOutput,
+				stepCount: nativeStepIndex || undefined,
+				workSummary: workSummaryAccumulator.toSummary(),
+				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 			};
 		}
 
 		if (options.control.mode === 'manual') {
 			return {
-				...result,
 				status: 'suspended',
+				structuredOutput: pass.structuredOutput,
+				finishReason: pass.finishReason,
+				stepCount: nativeStepIndex || undefined,
+				agentRunId: activeAgentRunId,
+				text,
 				suspension,
+				workSummary: workSummaryAccumulator.toSummary(),
+				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				...(confirmationEvent ? { confirmationEvent } : {}),
 			};
 		}

@@ -10,7 +10,7 @@ describe('InstanceAiModule', () => {
 	const usePruneInterval = (pruneInterval: number): void => {
 		Container.set(
 			InstanceAiConfig,
-			mock<InstanceAiConfig>({ pruneInterval, selfHealingEnabled: false }),
+			mock<InstanceAiConfig>({ pruneInterval, workflowSuggestionsEnabled: false }),
 		);
 	};
 

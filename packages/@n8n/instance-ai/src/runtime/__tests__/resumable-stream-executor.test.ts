@@ -111,24 +111,21 @@ describe('normalizeStreamSource', () => {
 			}),
 		});
 
-		const result = await executeResumableStream({
-			agent: {},
-			stream: source,
-			captureStreamErrors: true,
-			context: {
-				threadId: 'thread-1',
-				runId: 'run-1',
-				agentId: 'agent-1',
-				eventBus: createEventBus(),
-				signal: new AbortController().signal,
-				logger: createLogger(),
-			},
-			control: { mode: 'manual' },
-		});
-
-		expect(result.status).toBe('errored');
-		expect(result.error).toBe(error);
-		expect(result.usage).toBeUndefined();
+		await expect(
+			executeResumableStream({
+				agent: {},
+				stream: source,
+				context: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					agentId: 'agent-1',
+					eventBus: createEventBus(),
+					signal: new AbortController().signal,
+					logger: createLogger(),
+				},
+				control: { mode: 'manual' },
+			}),
+		).rejects.toBe(error);
 	});
 });
 
@@ -171,67 +168,74 @@ describe('executeResumableStream', () => {
 		await expect(result.text).resolves.toBe('Working...');
 	});
 
-	it.each([
-		{ aborted: false, captureStreamErrors: true },
-		{ aborted: true, captureStreamErrors: true },
-		{ aborted: true, captureStreamErrors: false },
-	])(
-		'retains usage when stream iteration fails (aborted: $aborted, capture: $captureStreamErrors)',
-		async ({ aborted, captureStreamErrors }) => {
-			const controller = new AbortController();
-			const streamError = new Error('Connection closed');
-			const eventBus = createEventBus();
-			async function* failingStream() {
-				await Promise.resolve();
-				if (aborted) controller.abort();
+	it.each([false, true])('propagates read failures after finish: %s', async (afterFinish) => {
+		const streamError = new Error('Connection closed');
+		const eventBus = createEventBus();
+		async function* failingStream() {
+			if (afterFinish) {
 				yield {
 					type: 'finish',
-					finishReason: 'error',
+					finishReason: 'stop',
+					structuredOutput: { summary: 'Candidate checked' },
 					model: 'test-model',
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				};
-				throw streamError;
 			}
-
-			const result = await executeResumableStream({
+			throw streamError;
+		}
+		await expect(
+			executeResumableStream({
 				agent: {},
 				stream: { runId: 'agent-run-1', fullStream: failingStream() },
-				captureStreamErrors,
 				context: {
 					threadId: 'thread-1',
 					runId: 'run-1',
 					agentId: 'agent-1',
 					eventBus,
-					signal: controller.signal,
+					signal: new AbortController().signal,
 					logger: createLogger(),
 				},
 				control: { mode: 'manual' },
-			});
+			}),
+		).rejects.toBe(streamError);
+		expect(eventBus.publish).not.toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({ type: 'error' }),
+		);
+	});
 
-			expect(result.status).toBe(aborted ? 'cancelled' : 'errored');
-			expect(result.finishReason).toBe('error');
-			expect(result.usage?.totalTokens).toBe(15);
-			expect(result.usage?.usage).toEqual([
-				{
-					type: 'llmTokens',
-					model: 'test-model',
-					uncachedInput: 10,
-					cacheRead: 0,
-					cacheWrite: 0,
-					output: 5,
-				},
-			]);
-			if (!aborted) {
-				expect(result.error).toBe(streamError);
-				expect(eventBus.publish).toHaveBeenCalledWith(
-					'thread-1',
-					expect.objectContaining({ type: 'error' }),
-				);
-			} else {
-				expect(eventBus.publish).not.toHaveBeenCalled();
-			}
-		},
-	);
+	it('retains usage when the cancellation drain fails', async () => {
+		const controller = new AbortController();
+		const eventBus = createEventBus();
+		async function* failingStream() {
+			controller.abort();
+			yield {
+				type: 'finish',
+				finishReason: 'error',
+				model: 'test-model',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+			};
+			throw new Error('Connection closed');
+		}
+		const result = await executeResumableStream({
+			agent: {},
+			stream: { runId: 'agent-run-1', fullStream: failingStream() },
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: controller.signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+		expect(result.status).toBe('cancelled');
+		expect(result.finishReason).toBeUndefined();
+		expect(result.structuredOutput).toBeUndefined();
+		expect(result.usage?.totalTokens).toBe(15);
+		expect(eventBus.publish).not.toHaveBeenCalled();
+	});
 
 	it.each(['activity', 'publish', 'cleanup'] as const)(
 		'propagates %s failures and closes the stream',
@@ -257,7 +261,6 @@ describe('executeResumableStream', () => {
 				executeResumableStream({
 					agent: {},
 					stream: { runId: 'agent-run-1', fullStream: stream() },
-					captureStreamErrors: true,
 					context: {
 						threadId: 'thread-1',
 						runId: 'run-1',
@@ -331,30 +334,46 @@ describe('executeResumableStream', () => {
 		expect(result.confirmationEvent?.payload.requestId).toBe('request-1');
 	});
 
-	it('returns errored status when stream contains an error chunk', async () => {
-		const error = new Error('Not Found');
-		const result = await executeResumableStream({
-			agent: {},
-			stream: {
-				runId: 'agent-run-1',
-				fullStream: fromChunks([textChunk('Working...'), errorChunk(error)]),
-			},
-			context: {
-				threadId: 'thread-1',
-				runId: 'run-1',
-				agentId: 'agent-1',
-				eventBus: createEventBus(),
-				signal: new AbortController().signal,
-				logger: createLogger(),
-			},
-			control: { mode: 'manual' },
-		});
+	it.each([false, true])(
+		'reports SDK errors with available terminal usage (finish: %s)',
+		async (withFinish) => {
+			const error = new Error('Not Found');
+			const result = await executeResumableStream({
+				agent: {},
+				stream: {
+					runId: 'agent-run-1',
+					fullStream: fromChunks([
+						textChunk('Working...'),
+						errorChunk(error),
+						...(withFinish
+							? [
+									{
+										type: 'finish',
+										finishReason: 'error',
+										model: 'test-model',
+										usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+									},
+								]
+							: []),
+					]),
+				},
+				context: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					agentId: 'agent-1',
+					eventBus: createEventBus(),
+					signal: new AbortController().signal,
+					logger: createLogger(),
+				},
+				control: { mode: 'manual' },
+			});
 
-		expect(result.status).toBe('errored');
-		expect(result.agentRunId).toBe('agent-run-1');
-		expect(result.error).toBe(error);
-		expect(result.usage).toBeUndefined();
-	});
+			expect(result.status).toBe('errored');
+			expect(result.agentRunId).toBe('agent-run-1');
+			expect(result.error).toBe(error);
+			expect(result.usage?.totalTokens).toBe(withFinish ? 15 : undefined);
+		},
+	);
 
 	it('reports the finish reason of the resumed stream, not the suspended one', async () => {
 		const resume = vi.fn().mockResolvedValue({
@@ -429,61 +448,65 @@ describe('executeResumableStream', () => {
 		expect(result.error).toBe(quotaError);
 	});
 
-	it('captures terminal usage on an aborted run so cancelled runs are billed', async () => {
-		const controller = new AbortController();
-		const eventBus = createEventBus();
-		const structuredOutput = { outcome: 'needs_you' };
+	it.each([false, true])(
+		'captures cancellation usage without output (abort after finish: %s)',
+		async (afterFinish) => {
+			const controller = new AbortController();
+			const eventBus = createEventBus();
+			const structuredOutput = { outcome: 'needs_you' };
 
-		// Yield a text chunk, abort mid-stream (as a user "stop" does), then let
-		// the agent emit its terminal finish chunk carrying the run's usage.
-		async function* abortingStream() {
-			await Promise.resolve();
-			yield textChunk('partial');
-			controller.abort();
-			yield textChunk('after cancellation');
-			yield {
-				type: 'finish',
-				finishReason: 'error',
-				structuredOutput,
-				model: 'test-model',
-				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
-			};
-		}
+			// Yield a text chunk, abort mid-stream (as a user "stop" does), then let
+			// the agent emit its terminal finish chunk carrying the run's usage.
+			async function* abortingStream() {
+				await Promise.resolve();
+				yield textChunk('partial');
+				if (!afterFinish) controller.abort();
+				yield textChunk('after partial');
+				yield {
+					type: 'finish',
+					finishReason: 'error',
+					structuredOutput,
+					model: 'test-model',
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				};
+				if (afterFinish) controller.abort();
+			}
 
-		const result = await executeResumableStream({
-			agent: {},
-			stream: { runId: 'agent-run-1', fullStream: abortingStream() },
-			context: {
-				threadId: 'thread-1',
-				runId: 'run-1',
-				agentId: 'agent-1',
-				eventBus,
-				signal: controller.signal,
-				logger: createLogger(),
-			},
-			control: { mode: 'manual' },
-		});
+			const result = await executeResumableStream({
+				agent: {},
+				stream: { runId: 'agent-run-1', fullStream: abortingStream() },
+				context: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					agentId: 'agent-1',
+					eventBus,
+					signal: controller.signal,
+					logger: createLogger(),
+				},
+				control: { mode: 'manual' },
+			});
 
-		expect(result.status).toBe('cancelled');
-		expect(result.finishReason).toBe('error');
-		expect(result.structuredOutput).toEqual(structuredOutput);
-		expect(result.usage).toMatchObject({
-			promptTokens: 10,
-			completionTokens: 5,
-			totalTokens: 15,
-		});
-		expect(result.usage?.usage).toEqual([
-			{
-				type: 'llmTokens',
-				model: 'test-model',
-				uncachedInput: 10,
-				cacheRead: 0,
-				cacheWrite: 0,
-				output: 5,
-			},
-		]);
-		expect(eventBus.publish).toHaveBeenCalledTimes(1);
-	});
+			expect(result.status).toBe('cancelled');
+			expect(result.finishReason).toBeUndefined();
+			expect(result.structuredOutput).toBeUndefined();
+			expect(result.usage).toMatchObject({
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+			});
+			expect(result.usage?.usage).toEqual([
+				{
+					type: 'llmTokens',
+					model: 'test-model',
+					uncachedInput: 10,
+					cacheRead: 0,
+					cacheWrite: 0,
+					output: 5,
+				},
+			]);
+			expect(eventBus.publish).toHaveBeenCalledTimes(afterFinish ? 2 : 1);
+		},
+	);
 
 	it('reports liveness activity for each consumed chunk', async () => {
 		const onActivity = vi.fn();

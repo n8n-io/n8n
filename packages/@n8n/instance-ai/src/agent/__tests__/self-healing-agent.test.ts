@@ -79,6 +79,8 @@ function modelTurn(parts: MockStreamPart[], callsTool = false): MockStreamResult
 
 describe('createSelfHealingAgent', () => {
 	it('runs the factory, read tools, verifier, and stream consumer with a deterministic model', async () => {
+		// Agent.build() reads model prices. Keep this deterministic test offline.
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({}));
 		const context = createContext();
 		vi.mocked(context.executionService.getStatus).mockResolvedValue({
 			executionId: 'execution',

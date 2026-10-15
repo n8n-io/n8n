@@ -43,7 +43,7 @@ describe('SelfHealingInvestigationService', () => {
 	const eventLog = mock<DurableEventLog>();
 	const sweeper = mock<InterruptedRunSweeper>();
 	const txRunner = mock<TransactionRunner>();
-	const config = mock<InstanceAiConfig>({ selfHealingEnabled: true });
+	const config = mock<InstanceAiConfig>({ workflowSuggestionsEnabled: true });
 	const logger = mock<Logger>();
 	const service = new SelfHealingInvestigationService(
 		investigations,
@@ -67,7 +67,7 @@ describe('SelfHealingInvestigationService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		config.selfHealingEnabled = true;
+		config.workflowSuggestionsEnabled = true;
 		execution = undefined;
 		controller = new AbortController();
 		investigation = mock<SelfHealingInvestigation>({
@@ -124,8 +124,8 @@ describe('SelfHealingInvestigationService', () => {
 		return response;
 	}
 
-	it('does not admit an investigation when self-healing is disabled', async () => {
-		config.selfHealingEnabled = false;
+	it('does not admit an investigation when workflow suggestions are disabled', async () => {
+		config.workflowSuggestionsEnabled = false;
 
 		await expect(service.start(input)).rejects.toThrow('Self-healing investigations are disabled.');
 		expect(investigations.createInvestigation).not.toHaveBeenCalled();
@@ -285,8 +285,17 @@ describe('SelfHealingInvestigationService', () => {
 		'creates no result for a %s run',
 		async (status) => {
 			run.status = status;
+			run.output = {
+				outcome: 'fix_ready',
+				summary: 'Candidate checked.',
+				report: 'Verification passed.',
+				candidateFilePath: 'candidate.workflow.ts',
+			};
+			run.candidate = { filePath: 'candidate.workflow.ts', compile: vi.fn() };
 			await startAndFinish();
 			expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id);
+			expect(investigations.storeAcceptedOutput).not.toHaveBeenCalled();
+			expect(run.candidate?.compile).not.toHaveBeenCalled();
 			expect(results.complete).not.toHaveBeenCalled();
 		},
 	);

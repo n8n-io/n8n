@@ -15,7 +15,10 @@ import type { SelfHealingTemporaryWorkflowService } from '../self-healing-tempor
 
 describe('SelfHealingReconciliationTask', () => {
 	function setup() {
-		const config = mock<InstanceAiConfig>({ pruneInterval: 1000, selfHealingEnabled: false });
+		const config = mock<InstanceAiConfig>({
+			pruneInterval: 1000,
+			workflowSuggestionsEnabled: false,
+		});
 		const investigations = mock<SelfHealingInvestigationService>();
 		const task = new SelfHealingReconciliationTask(config, investigations);
 		return { config, investigations, task };

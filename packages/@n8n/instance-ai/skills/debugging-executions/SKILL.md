@@ -66,10 +66,11 @@ start there. That bundle has `parameters` (raw, with expressions intact),
 `resolved` (substituted), `failedExpressions` (those that threw), and
 `emptyResolutions` (those that resolved to `null`/`undefined`/`""` silently).
 The offending expression is usually visible without a follow-up call. Entries in
-either list tagged with `reason: "unreconstructable-context"` are NOT real bugs —
-they reference variables we don't reconstruct in replay (`$vars`, `$secrets`,
-`$response`, `$request`, `$pageCount`, `$ai`). The value existed at execution
-time; we just don't have it here.
+either list tagged with `reason: "unreconstructable-context"` lack replay
+context for variables such as `$vars`, `$secrets`, `$response`, `$request`,
+`$pageCount`, or `$ai`. That diagnostic does not prove whether the expression
+worked at execution time. Inspect the original error and actual input before
+editing. Do not replace an expression only to remove a replay diagnostic.
 
 ## Confirming a fix on the node that failed
 

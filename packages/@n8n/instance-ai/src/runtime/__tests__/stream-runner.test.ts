@@ -121,15 +121,11 @@ describe('streamAgentRun', () => {
 				signal: new AbortController().signal,
 				eventBus,
 				logger: createLogger(),
-				captureStreamErrors: true,
 			},
 		);
 
 		expect(result).toEqual(terminalResult);
 		expect(agent.stream).toHaveBeenCalledWith('test input', { recoverUsageOnAbort: true });
-		expect(executeResumableStream).toHaveBeenLastCalledWith(
-			expect.objectContaining({ captureStreamErrors: true }),
-		);
 	});
 
 	it('passes through the buffered manual confirmation event', async () => {

@@ -346,7 +346,6 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
-			selfHealingEnabled: false,
 			workflowSuggestionsEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',

@@ -59,7 +59,7 @@ export class SelfHealingInvestigationService {
 
 	/** Internal entry point. Automatic triggers and retry policy belong to the caller. */
 	async start(input: StartInvestigation): Promise<ExistingWork> {
-		if (!this.config.selfHealingEnabled) {
+		if (!this.config.workflowSuggestionsEnabled) {
 			throw new BadRequestError('Self-healing investigations are disabled.');
 		}
 		const actor = await this.suggestions.requireEditor(input.backgroundUserId, input.workflowId);

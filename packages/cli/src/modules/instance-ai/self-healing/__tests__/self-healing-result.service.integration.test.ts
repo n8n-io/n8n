@@ -84,7 +84,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	Container.get(GlobalConfig).workflows.useWorkflowPublicationService = true;
-	Container.get(GlobalConfig).instanceAi.selfHealingEnabled = true;
+	Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled = true;
 	runtime.startSelfHealingRun.mockReset();
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
 	validation.validateForActivation.mockResolvedValue({ isValid: true });

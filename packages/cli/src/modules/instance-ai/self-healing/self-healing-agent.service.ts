@@ -131,7 +131,7 @@ export class SelfHealingAgentService {
 	) {}
 
 	assertEnabled(): void {
-		if (!this.config.instanceAi.selfHealingEnabled) {
+		if (!this.config.instanceAi.workflowSuggestionsEnabled) {
 			throw new BadRequestError('Self-healing investigations are disabled.');
 		}
 	}
@@ -269,13 +269,23 @@ export class SelfHealingAgentService {
 				});
 			}
 			if (signal.aborted) result.status = 'cancelled';
-			if (result.status === 'cancelled') result.reason = options.getAbortReason();
+			if (result.status === 'cancelled') {
+				result.reason = options.getAbortReason();
+				delete result.output;
+				delete result.candidate;
+				delete result.finishReason;
+				delete result.validationError;
+			}
 			try {
 				await options.onComplete(result, signal);
 			} finally {
 				if (signal.aborted && result.status !== 'cancelled') {
 					result.status = 'cancelled';
 					result.reason = options.getAbortReason();
+					delete result.output;
+					delete result.candidate;
+					delete result.finishReason;
+					delete result.validationError;
 				}
 				await this.finish(result, stream, tracing, modelId, options);
 				if (!stream) {
@@ -470,7 +480,6 @@ export class SelfHealingAgentService {
 					eventBus: this.events,
 					logger: this.logger,
 					onActivity: options.onActivity,
-					captureStreamErrors: true,
 				},
 			);
 

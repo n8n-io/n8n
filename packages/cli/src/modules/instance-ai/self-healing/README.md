@@ -6,7 +6,7 @@ It also provides the result review API.
 ## Run an investigation
 
 Call `SelfHealingInvestigationService.start(input)` from backend code.
-Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` before startup.
+Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup.
 Supply `backgroundUserId`, `projectId`, `workflowId`, and the original failed `executionId`.
 The caller supplies the user who enabled self-healing. The producer checks their current access.
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
@@ -184,10 +184,11 @@ Normal chat ownership and tool permissions apply. Do not copy the background con
 
 ## Availability
 
-Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to load review routes.
+Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to enable investigations
+and load review routes. The flag defaults to `false`. Restart n8n after changing it.
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
-The rollout flag is separate from `N8N_INSTANCE_AI_SELF_HEALING_ENABLED`. Saved review services
-do not check investigation enablement or Assistant model availability.
+Saved review services do not require Assistant model availability. Recovery of existing
+investigations remains available when the flag is off.
 
 The inbox will provide result listing, pagination, counts, refresh, and seed examples.
 The review UI will provide review screens and chat and editor navigation.
