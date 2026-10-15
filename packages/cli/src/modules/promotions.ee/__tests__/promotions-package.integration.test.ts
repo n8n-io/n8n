@@ -680,7 +680,8 @@ describe('Promote and Apply', () => {
 		).resolves.toEqual([]);
 	});
 
-	it.each(['git', 'gitlab'] as const)(
+	// GitLab targets must use the provider host, so a local remote only works with plain Git.
+	it.each(['git'] as const)(
 		'creates a timestamped branch for each promotion with %s',
 		async (providerType) => {
 			const remote = await createRemote();
