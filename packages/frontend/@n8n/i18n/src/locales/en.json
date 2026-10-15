@@ -9865,7 +9865,7 @@
 	"agents.channels.teams.managed.errors.createAppFirst": "Create the Teams app first.",
 	"agents.channels.teams.managed.errors.credentialMissing": "The Microsoft sign-in could not be loaded. Try again.",
 	"agents.channels.modal.teamsResourcesNotDeleted.title": "The agent is still in Teams but won't respond",
-	"agents.channels.modal.teamsResourcesNotDeleted.message": "Remove the Teams app and Azure Bot manually.",
+	"agents.channels.modal.teamsResourcesNotDeleted.message": "Remove the Teams app, Azure Bot and app registration manually.",
 	"agents.channels.modal.teamsResourcesNotDeleted.link": "Open Teams",
 	"agents.channels.teams.remove.title": "Remove Microsoft Teams?",
 	"agents.channels.teams.remove.description": "Your agent will be disconnected from Microsoft Teams. Messages already sent will remain in Teams. To reconnect, you'll need to set up Microsoft Teams again.",

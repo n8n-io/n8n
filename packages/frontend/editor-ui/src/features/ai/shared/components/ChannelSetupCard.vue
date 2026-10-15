@@ -375,8 +375,8 @@ watch(
 			/>
 		</div>
 
-		<!-- Skipping removes the channel, which would orphan the one the setup just provisioned. -->
-		<footer v-if="!canFinish && !savedHere" :class="$style.footer">
+		<!-- Skipping removes the channel, which would orphan the one this card saved. -->
+		<footer v-if="!savedHere" :class="$style.footer">
 			<N8nButton
 				variant="ghost"
 				size="medium"

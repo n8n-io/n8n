@@ -710,6 +710,19 @@ describe('ChannelSetupCard', () => {
 			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
 		});
 
+		it('keeps Later while the provisioned channel failed to save', async () => {
+			mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
+			const wrapper = mountCard({ integrationType: 'teams' });
+			await flushPromises();
+
+			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledTimes(1);
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(true);
+		});
+
 		it('stays open after a connect when the setup has steps past it', async () => {
 			mocks.teamsKeepOpenAfterConnect = true;
 			const wrapper = mountCard({ integrationType: 'teams' });
