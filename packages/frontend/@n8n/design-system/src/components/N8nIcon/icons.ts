@@ -11,6 +11,7 @@ import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
 import Entra from './custom/entra.svg';
+import Microsoft from './custom/microsoft.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
@@ -575,6 +576,7 @@ export const updatedIconSet = {
 	teams: Teams,
 	azure: Azure,
 	entra: Entra,
+	microsoft: Microsoft,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,

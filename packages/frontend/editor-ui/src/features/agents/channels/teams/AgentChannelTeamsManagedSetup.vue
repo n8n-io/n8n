@@ -654,7 +654,7 @@ const downloadPackage = async () =>
 					<N8nButton
 						variant="outline"
 						size="medium"
-						icon="teams"
+						icon="microsoft"
 						:loading="busy === 'connect'"
 						:disabled="loading || busy !== null"
 						data-testid="teams-manager-connect"
