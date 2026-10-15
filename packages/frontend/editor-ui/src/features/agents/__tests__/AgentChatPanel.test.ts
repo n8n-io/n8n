@@ -21,7 +21,7 @@ import {
 } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig } from '../types';
 import AgentChatPlan from '../components/AgentChatPlan.vue';
-import { planMessage, planView } from './fixtures/agent-plan';
+import { planMessage, planView, planTask, planSnapshot } from './fixtures/agent-plan';
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
 import {
@@ -1589,6 +1589,53 @@ describe('AgentChatPanel', () => {
 			} finally {
 				wrapper.unmount();
 			}
+		});
+
+		it('keeps stopped rows when a new turn adds Groove and when a resume is only reserved', async () => {
+			const plan = planView({
+				document: { title: 'Research', items: [1, 2, 3].map((id) => planTask(id, 'in_progress')) },
+			});
+			const workState = {
+				stoppedTaskIds: plan.document.items.map((item) => item.id),
+				stoppingTaskIds: [],
+				fullyStopped: true,
+				stoppedAt: '2026-10-01T10:00:30.000Z',
+				taskStateAvailable: true,
+			};
+			messagesMock.value = [planMessage(plan)];
+			planStopState.value = {
+				planId: plan.planId,
+				requestedAt: workState.stoppedAt,
+				status: 'resumed',
+				failures: [],
+				plan: planSnapshot({ ...plan, workState }),
+			};
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			const card = wrapper.getComponent(AgentChatPlan);
+			await card.get('button').trigger('click');
+			expect(card.props('stopped')).toBe(true);
+			backgroundJobsMock.value = [{ ...job, status: 'suspended', pauseRequested: true }];
+			await nextTick();
+			expect(card.props('stopping')).toBe(false);
+			expect(card.findAll('[data-status="stopped"]')).toHaveLength(3);
+			messagesMock.value.push(
+				planMessage({
+					...plan,
+					revision: 2,
+					document: {
+						title: 'Research',
+						items: [...plan.document.items, { ...planTask(4, 'in_progress'), title: 'Groove' }],
+					},
+				}),
+			);
+			await nextTick();
+			expect(card.props('stopped')).toBe(false);
+			expect(card.findAll('[data-status="stopped"]')).toHaveLength(3);
+			expect(card.findAll('[data-status="in_progress"]')).toHaveLength(1);
+			expect(card.find('[data-testid="agent-chat-plan-stop"]').exists()).toBe(true);
+			await wrapper.setProps({ channel: 'n8n-chat' });
+			expect(card.props('workState')).toBeUndefined();
+			wrapper.unmount();
 		});
 
 		it('uses the saved plan stop state when no child jobs exist', async () => {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import type { AgentPlanWorkState } from '@n8n/api-types';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import type { RouteLocationRaw } from 'vue-router';
 import { N8nAiActivityStepGroup, N8nIcon, N8nLink, N8nButton } from '@n8n/design-system';
@@ -10,6 +11,7 @@ import { TIME } from '@/app/constants/durations';
 
 const props = defineProps<{
 	plan: AgentPlanView;
+	workState?: AgentPlanWorkState;
 	traceRoute?: RouteLocationRaw;
 	showStop?: boolean;
 	canStop?: boolean;
@@ -19,6 +21,9 @@ const props = defineProps<{
 	reportFailed?: boolean;
 	stopFailed?: boolean;
 }>();
+const isStopped = computed(() =>
+	props.workState?.taskStateAvailable ? props.workState.fullyStopped : props.stopped,
+);
 const expanded = defineModel<boolean>('expanded', { default: false });
 watch(
 	() => props.plan.planId,
@@ -42,7 +47,7 @@ watch(
 	() =>
 		Number.isFinite(startTime.value) &&
 		!props.plan.closed &&
-		!props.stopped &&
+		!isStopped.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
 		if (active) {
@@ -55,8 +60,8 @@ watch(
 const elapsed = computed(() => {
 	const endTime = props.plan.closed
 		? Date.parse(props.plan.closedAt ?? '')
-		: props.stopped
-			? Date.parse(props.stoppedAt ?? '') || now.value
+		: isStopped.value
+			? Date.parse(props.workState?.stoppedAt ?? props.stoppedAt ?? '') || now.value
 			: now.value;
 	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime)) return null;
 	return formatAgentElapsedTime(endTime - startTime.value);
@@ -64,7 +69,7 @@ const elapsed = computed(() => {
 const label = computed(() => {
 	if (props.stopping) return i18n.baseText('agents.chat.tasks.stopping');
 	if (props.stopFailed) return i18n.baseText('agents.chat.tasks.stopFailedTitle');
-	if (props.stopped) return i18n.baseText('agents.chat.tasks.stopped');
+	if (isStopped.value) return i18n.baseText('agents.chat.tasks.stopped');
 	return props.plan.closed
 		? (props.plan.document.presentation?.detail ?? props.plan.document.title)
 		: (props.plan.document.presentation?.label ??
@@ -72,20 +77,34 @@ const label = computed(() => {
 					interpolate: { title: props.plan.document.title },
 				}));
 });
+type PlanItem = AgentPlanView['document']['items'][number];
+type DisplayStatus = AgentPlanItemStatus | 'stopped' | 'stopping' | 'unavailable';
+function displayStatus(item: PlanItem): DisplayStatus {
+	if (item.status !== 'pending' && item.status !== 'in_progress') return item.status;
+	if (props.workState?.taskStateAvailable === false) return 'unavailable';
+	if (props.workState && item.kind === 'group' && item.tasks.length) {
+		const statuses = item.tasks.map(displayStatus);
+		if (statuses.includes('stopping')) return 'stopping';
+		if (statuses.includes('in_progress')) return 'in_progress';
+		if (statuses.includes('pending')) return 'pending';
+		if (statuses.includes('stopped')) return 'stopped';
+		if (statuses.includes('failed')) return 'failed';
+		if (statuses.includes('cancelled')) return 'cancelled';
+		return 'done';
+	}
+	if (props.workState?.stoppingTaskIds.includes(item.id)) return 'stopping';
+	if (props.workState?.stoppedTaskIds.includes(item.id) || (!props.workState && isStopped.value))
+		return 'stopped';
+	return item.status;
+}
 const isRunning = computed(
 	() =>
 		!props.plan.closed &&
-		!props.stopped &&
-		props.plan.document.items.some(
-			(item) =>
-				item.status === 'in_progress' ||
-				(item.kind === 'group' && item.tasks.some((task) => task.status === 'in_progress')),
-		),
+		!isStopped.value &&
+		props.plan.document.items
+			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
+			.some((item) => ['in_progress', 'stopping'].includes(displayStatus(item))),
 );
-type DisplayStatus = AgentPlanItemStatus | 'stopped';
-function displayStatus(status: AgentPlanItemStatus): DisplayStatus {
-	return props.stopped && (status === 'pending' || status === 'in_progress') ? 'stopped' : status;
-}
 const statusLabels: Record<DisplayStatus, BaseTextKey> = {
 	pending: 'agents.chat.plan.status.pending',
 	in_progress: 'agents.chat.plan.status.inProgress',
@@ -93,6 +112,8 @@ const statusLabels: Record<DisplayStatus, BaseTextKey> = {
 	failed: 'agents.chat.plan.status.failed',
 	cancelled: 'agents.chat.plan.status.canceled',
 	stopped: 'agents.chat.tasks.stopped',
+	stopping: 'agents.chat.tasks.stopping',
+	unavailable: 'agents.chat.plan.status.unavailable',
 };
 const statusIcons = {
 	pending: 'circle',
@@ -101,6 +122,8 @@ const statusIcons = {
 	failed: 'x',
 	cancelled: 'x',
 	stopped: 'circle-pause',
+	stopping: 'loader-circle',
+	unavailable: 'circle-help',
 } as const;
 const summary = computed(() => {
 	const tasks = props.plan.document.items.flatMap((item) =>
@@ -123,7 +146,7 @@ const summary = computed(() => {
 			:key="plan.planId"
 			:label="label"
 			:title="
-				stopping || stopped || stopFailed || plan.closed || plan.document.presentation
+				stopping || isStopped || stopFailed || plan.closed || plan.document.presentation
 					? label
 					: plan.document.title
 			"
@@ -132,7 +155,7 @@ const summary = computed(() => {
 		>
 			<template #prefix>
 				<N8nIcon
-					:icon="stopped ? 'circle-pause' : isRunning ? 'loader-circle' : 'list-checks'"
+					:icon="isStopped ? 'circle-pause' : isRunning ? 'loader-circle' : 'list-checks'"
 					:spin="isRunning"
 					:class="{ [$style.running]: isRunning }"
 					size="small"
@@ -161,21 +184,21 @@ const summary = computed(() => {
 						<div :class="[$style.row, { [$style.group]: item.kind === 'group' }]">
 							<span
 								role="img"
-								:aria-label="i18n.baseText(statusLabels[displayStatus(item.status)])"
-								:title="i18n.baseText(statusLabels[displayStatus(item.status)])"
-								:data-status="displayStatus(item.status)"
+								:aria-label="i18n.baseText(statusLabels[displayStatus(item)])"
+								:title="i18n.baseText(statusLabels[displayStatus(item)])"
+								:data-status="displayStatus(item)"
 								:class="$style.status"
 							>
 								<N8nIcon
-									:icon="statusIcons[displayStatus(item.status)]"
-									:spin="displayStatus(item.status) === 'in_progress'"
+									:icon="statusIcons[displayStatus(item)]"
+									:spin="['in_progress', 'stopping'].includes(displayStatus(item))"
 									size="small"
 									aria-hidden="true"
 								/>
 							</span>
 							<span :class="$style.itemTitle" :title="item.title">{{ item.title }}</span>
 							<span
-								v-if="displayStatus(item.status) === 'stopped'"
+								v-if="displayStatus(item) === 'stopped'"
 								:class="$style.stoppedLabel"
 								aria-hidden="true"
 							>
@@ -186,21 +209,21 @@ const summary = computed(() => {
 							<li v-for="task in item.tasks" :key="task.id" :class="$style.row">
 								<span
 									role="img"
-									:aria-label="i18n.baseText(statusLabels[displayStatus(task.status)])"
-									:title="i18n.baseText(statusLabels[displayStatus(task.status)])"
-									:data-status="displayStatus(task.status)"
+									:aria-label="i18n.baseText(statusLabels[displayStatus(task)])"
+									:title="i18n.baseText(statusLabels[displayStatus(task)])"
+									:data-status="displayStatus(task)"
 									:class="$style.status"
 								>
 									<N8nIcon
-										:icon="statusIcons[displayStatus(task.status)]"
-										:spin="displayStatus(task.status) === 'in_progress'"
+										:icon="statusIcons[displayStatus(task)]"
+										:spin="['in_progress', 'stopping'].includes(displayStatus(task))"
 										size="small"
 										aria-hidden="true"
 									/>
 								</span>
 								<span :class="$style.itemTitle" :title="task.title">{{ task.title }}</span>
 								<span
-									v-if="displayStatus(task.status) === 'stopped'"
+									v-if="displayStatus(task) === 'stopped'"
 									:class="$style.stoppedLabel"
 									aria-hidden="true"
 								>
@@ -212,7 +235,7 @@ const summary = computed(() => {
 				</ul>
 			</div>
 			<p
-				v-if="!plan.closed && !stopping && !stopped && plan.document.presentation?.detail"
+				v-if="!plan.closed && !stopping && !isStopped && plan.document.presentation?.detail"
 				:class="$style.detail"
 				:title="plan.document.presentation.detail"
 			>
@@ -254,6 +277,9 @@ const summary = computed(() => {
 			</div>
 			<p v-if="stopFailed" :class="$style.detail" role="status">
 				{{ i18n.baseText('agents.chat.backgroundTasks.stopError') }}
+			</p>
+			<p v-if="workState?.taskStateAvailable === false" :class="$style.detail" role="status">
+				{{ i18n.baseText('agents.chat.plan.taskStateUnavailable') }}
 			</p>
 			<p v-if="reportFailed" :class="$style.detail" role="status">
 				{{ i18n.baseText('agents.chat.tasks.reportFailed') }}
