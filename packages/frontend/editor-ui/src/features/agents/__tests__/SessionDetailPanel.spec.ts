@@ -6,9 +6,6 @@ import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { TimelineItem } from '../session-timeline.types';
 
-vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
-	default: { template: '<div data-test-id="wf-log-viewer"></div>' },
-}));
 vi.mock('../components/ToolIoView.vue', () => ({
 	default: {
 		name: 'ToolIoView',
@@ -164,7 +161,13 @@ describe('SessionDetailPanel — integration action cards', () => {
 });
 
 describe('SessionDetailPanel — workflow branches', () => {
-	it('renders the WorkflowExecutionLogViewer when workflowExecutionId is set', () => {
+	it('renders the ingested workflow input and output when workflowExecutionId is set', () => {
+		const toolInput = { query: 'open entries' };
+		const toolOutput = {
+			executionId: 'exec-1',
+			status: 'success',
+			data: { 'Last node': [{ value: 'ingested' }] },
+		};
 		const w = mountIt({
 			kind: 'workflow',
 			executionId: 'e1',
@@ -172,11 +175,16 @@ describe('SessionDetailPanel — workflow branches', () => {
 			workflowId: 'wf-1',
 			workflowName: 'WF',
 			workflowExecutionId: 'exec-1',
+			toolInput,
+			toolOutput,
 		});
-		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-input"]').text()).toContain('open entries');
+		expect(w.find('[data-test-id="workflow-output"]').text()).toContain('ingested');
+		expect(w.find('[data-test-id="workflow-output"]').text()).toContain('Last node');
+		expect(w.find('[data-test-id="wf-error-fallback"]').exists()).toBe(false);
 	});
 
-	it('shows a soft-failure callout alongside the workflow execution viewer', () => {
+	it('shows a soft-failure callout alongside the ingested workflow output', () => {
 		const w = mountIt({
 			kind: 'workflow',
 			executionId: 'e1',
@@ -190,7 +198,7 @@ describe('SessionDetailPanel — workflow branches', () => {
 		const callout = w.find('[data-test-id="workflow-error-callout"]');
 		expect(callout.exists()).toBe(true);
 		expect(callout.text()).toContain('Node X failed');
-		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output"]').text()).toContain('Node X failed');
 		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(true);
 	});
 

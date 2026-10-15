@@ -25,7 +25,6 @@ import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
-import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import type { TimelineItem } from '../session-timeline.types';
@@ -378,14 +377,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						>
 							{{ errorMessage }}
 						</N8nCallout>
-						<WorkflowExecutionLogViewer
-							v-if="item.workflowExecutionId && item.workflowId"
-							:key="`${item.workflowId}:${item.workflowExecutionId}`"
-							:workflow-id="item.workflowId"
-							:workflow-execution-id="item.workflowExecutionId"
-						/>
 						<div
-							v-else-if="item.workflowTriggerType === 'form' && workflowFormOutput"
+							v-if="item.workflowTriggerType === 'form' && workflowFormOutput"
 							data-test-id="wf-form-card"
 							:class="$style.formCard"
 						>
@@ -398,6 +391,20 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 								>{{ i18n.baseText('agentSessions.timeline.openForm') }}</a
 							>
 						</div>
+						<template v-else-if="item.workflowExecutionId && item.workflowId">
+							<div v-if="item.toolInput !== undefined" data-test-id="workflow-input">
+								<div :class="$style.label">
+									{{ i18n.baseText('agentSessions.timeline.input') }}
+								</div>
+								<N8nCodeBlock :code="stringifyJson(item.toolInput)" language="json" />
+							</div>
+							<div v-if="item.toolOutput !== undefined" data-test-id="workflow-output">
+								<div :class="$style.label">
+									{{ i18n.baseText('agentSessions.timeline.output') }}
+								</div>
+								<N8nCodeBlock :code="stringifyJson(item.toolOutput)" language="json" />
+							</div>
+						</template>
 						<div v-else-if="item.toolSuccess === undefined" data-test-id="workflow-input">
 							<div :class="$style.label">
 								{{ i18n.baseText('agentSessions.timeline.input') }}
