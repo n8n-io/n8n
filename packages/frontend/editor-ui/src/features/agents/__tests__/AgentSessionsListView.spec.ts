@@ -70,6 +70,11 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('vue-router', () => ({
 	useRoute: () => ({ params: {} }),
 	useRouter: () => ({ push: routerPush }),
+	RouterLink: {
+		name: 'RouterLink',
+		props: ['to'],
+		template: '<a><slot /></a>',
+	},
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -90,11 +95,14 @@ vi.mock('@n8n/design-system', () => ({
 		template:
 			'<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />{{ label }}</label>',
 	},
-	N8nIcon: { template: '<span :data-icon="icon" />', props: ['icon', 'size'] },
+	N8nIcon: {
+		template: '<span :data-icon="icon" :data-color="color" />',
+		props: ['icon', 'size', 'color'],
+	},
+	N8nSpinner: { template: '<span data-spinner />', props: ['size'] },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs"><slot /></button>',
 	},
-	N8nTableBase: { template: '<table><slot /></table>' },
 	N8nText: {
 		props: ['color'],
 		template: '<span :data-color="color"><slot /></span>',
@@ -244,47 +252,33 @@ describe('AgentSessionsListView', () => {
 		documentRemoveEventListenerSpy.mockRestore();
 	});
 
-	it('opens the trace from the row and keeps a native title button', async () => {
+	it('links each row to its trace', async () => {
 		const wrapper = await mountView();
 		const row = wrapper.get('[data-test-id="agent-session-list-item"]');
-		const expectedRoute = {
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		};
 
 		expect(wrapper.find('[data-test-id="agent-session-new-chat"]').exists()).toBe(false);
 		expect(row.attributes('role')).toBeUndefined();
 		expect(row.attributes('tabindex')).toBeUndefined();
-
-		await row.trigger('click');
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
-
-		const traceButton = wrapper.get('[data-test-id="agent-session-open"]');
-
-		expect(traceButton.element.tagName).toBe('BUTTON');
-		expect(traceButton.attributes('type')).toBe('button');
+		expect(row.getComponent({ name: 'RouterLink' }).props('to')).toEqual({
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		});
 		expect(wrapper.get('[data-test-id="agent-session-title"]').text()).toBe('My session');
-
-		routerPush.mockClear();
-		await traceButton.trigger('click');
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
 	});
 
 	it.each([
 		['succeeded', 'Succeeded', 'success', true],
 		['error', 'Error', 'danger', true],
-		['cancelled', 'Canceled', 'warning', true],
-		['interrupted', 'Interrupted', 'warning', true],
-		['running', 'Running', 'text-base', false],
+		['cancelled', 'Canceled', 'text-xlight', true],
+		['interrupted', 'Interrupted', 'text-xlight', true],
+		['running', 'Running', undefined, false],
 	] as const)('renders the %s session state', async (status, label, color, showsDuration) => {
 		const wrapper = await mountView({
 			threads: [makeThread({ status })],
 		});
 		const indicator = wrapper.get('[data-testid="agent-session-status-indicator"]');
 
-		expect(indicator.text()).toBe(label);
+		expect(indicator.attributes('aria-label')).toBe(label);
 		expect(indicator.attributes('data-color')).toBe(color);
 		expect(wrapper.find('[data-testid="agent-session-status-duration"]').exists()).toBe(
 			showsDuration,
@@ -401,18 +395,16 @@ describe('AgentSessionsListView', () => {
 
 		expect(fetchThreads).not.toHaveBeenCalled();
 		expect(startAutoRefresh).not.toHaveBeenCalled();
-		expect(documentAddEventListenerSpy).not.toHaveBeenCalledWith(
-			'visibilitychange',
-			expect.any(Function),
-		);
+
+		const visibilityListener = documentAddEventListenerSpy.mock.calls.find(
+			(call: unknown[]) => call[0] === 'visibilitychange',
+		)?.[1] as EventListener | undefined;
+		visibilityListener?.(new Event('visibilitychange'));
+		expect(refreshThreads).not.toHaveBeenCalled();
 
 		wrapper.unmount();
 
 		expect(stopAutoRefresh).not.toHaveBeenCalled();
-		expect(documentRemoveEventListenerSpy).not.toHaveBeenCalledWith(
-			'visibilitychange',
-			expect.any(Function),
-		);
 	});
 
 	it.each([

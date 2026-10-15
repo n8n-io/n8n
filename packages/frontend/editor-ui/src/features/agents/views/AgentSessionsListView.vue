@@ -283,19 +283,19 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	}
 }
 
-function loadingSkeletonWidths() {
-	const longestWidth = 216 + Math.random() * 24;
-	const shorterWidth = 24 + Math.random() * 24;
-
-	return [
-		longestWidth,
-		...Array.from({ length: 3 }, (_, index) => shorterWidth + index * 6 + Math.random() * 6),
-	].map((width) => ({
-		'--n8n--agent-session-list--skeleton-text-width': `clamp(96px, ${width}px, 240px)`,
-	}));
+function formatDuration(ms: number): string {
+	if (ms < 1000) return `${ms}ms`;
+	const seconds = ms / 1000;
+	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
-const skeletonWidths = loadingSkeletonWidths();
+/** Fixed token widths keep the skeleton stable between renders. */
+const skeletonTitleWidth = {
+	'--n8n--agent-session-list--skeleton-text-width': 'var(--spacing--5xl)',
+};
+const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--spacing--2xl)'].map(
+	(width) => ({ '--n8n--agent-session-list--skeleton-text-width': width }),
+);
 </script>
 
 <template>
@@ -318,11 +318,11 @@ const skeletonWidths = loadingSkeletonWidths();
 					<div :class="$style.listIconContainer">
 						<span :class="$style.listIconSkeleton"></span>
 					</div>
-					<span :class="$style.listTextSkeleton" :style="skeletonWidths[0]"></span>
+					<span :class="$style.listTextSkeleton" :style="skeletonTitleWidth"></span>
 				</div>
 				<div :class="$style.listEnd">
 					<span
-						v-for="(width, index) in skeletonWidths.slice(1)"
+						v-for="(width, index) in skeletonMetaWidths"
 						:key="index"
 						:class="$style.listTextSkeleton"
 						:style="width"
@@ -369,16 +369,20 @@ const skeletonWidths = loadingSkeletonWidths();
 								v-if="thread.status === 'running'"
 								:aria-label="statusLabel(thread.status)"
 								size="medium"
+								data-testid="agent-session-status-indicator"
 							/>
 							<N8nIcon
 								v-else-if="thread.status"
 								:icon="getStatusIcon(thread.status)"
 								:color="getStatusIconColor(thread.status)"
-								:aria-label="statusLabel(thread?.status)"
+								:aria-label="statusLabel(thread.status)"
 								size="medium"
+								data-testid="agent-session-status-indicator"
 							/>
 						</div>
-						<N8nText step="sm" color="text-dark" bold>{{ threadTitleOf(thread) }}</N8nText>
+						<N8nText step="sm" color="text-dark" bold data-test-id="agent-session-title">{{
+							threadTitleOf(thread)
+						}}</N8nText>
 					</div>
 					<div :class="$style.listEnd">
 						<N8nBadge
@@ -389,6 +393,19 @@ const skeletonWidths = loadingSkeletonWidths();
 						</N8nBadge>
 						<N8nText step="sm" bold color="text-light" data-test-id="agent-session-updated-at">
 							{{ formatDate(thread.updatedAt) }}
+						</N8nText>
+						<N8nText
+							v-if="thread.status && thread.status !== 'running'"
+							step="sm"
+							bold
+							color="text-light"
+							data-testid="agent-session-status-duration"
+						>
+							{{
+								i18n.baseText('executionDetails.runningTimeFinished', {
+									interpolate: { time: formatDuration(thread.totalDuration) },
+								})
+							}}
 						</N8nText>
 						<N8nText step="sm" bold color="text-light" data-test-id="agent-session-token-usage">
 							{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t
@@ -445,7 +462,6 @@ const skeletonWidths = loadingSkeletonWidths();
 
 .listContainer {
 	margin: 0;
-	padding: 0;
 	list-style: none;
 	background-color: var(--background--surface);
 	border-radius: var(--radius);
@@ -494,7 +510,8 @@ const skeletonWidths = loadingSkeletonWidths();
 	flex-shrink: 0;
 	display: grid;
 	place-items: center;
-	size: var(--height--2xs) var(--height--2xs);
+	width: var(--height--2xs);
+	height: var(--height--2xs);
 }
 
 .listStart {
