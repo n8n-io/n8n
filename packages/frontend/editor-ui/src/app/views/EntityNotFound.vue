@@ -58,7 +58,7 @@ const locale = useI18n();
 					})
 				}}
 			</N8nText>
-			<N8nButton variant="subtle" href="/">
+			<N8nButton variant="outline" href="/">
 				{{ locale.baseText('error.entityNotFound.action') }}
 			</N8nButton>
 		</N8nCard>

@@ -43,7 +43,7 @@ const getNpsTestRequirements: TestRequirements = {
 test.fixme(
 	'NPS Survey',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Context' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

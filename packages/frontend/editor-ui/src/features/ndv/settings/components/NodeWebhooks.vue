@@ -260,7 +260,7 @@ watch(
 
 	.headline {
 		color: $color-primary;
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--2xs);
 	}
 }
@@ -281,7 +281,7 @@ watch(
 	text-align: center;
 	border-radius: 2px;
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--foreground--tint-2);
 }
 

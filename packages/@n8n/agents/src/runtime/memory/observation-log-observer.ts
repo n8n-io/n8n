@@ -29,6 +29,12 @@ const MARKER_BY_TOKEN: Record<string, ObservationLogMarker> = {
 
 const BULLET_PATTERN =
 	/^(\s*)[*-]\s+(CRITICAL|IMPORTANT|INFO|COMPLETION)(?:\s+\(\d{2}:\d{2}\))?\s+(.+)$/iu;
+/**
+ * Indented lines that are malformed structure, not detail: a fence, the sentinel, a timed
+ * unknown marker, or a misspelled marker. Other uppercase words (API, GET) stay detail.
+ */
+const NON_DETAIL_PATTERN =
+	/^(?:```|NO_OBSERVATIONS$|(?:[*-]\s+)?(?:[A-Z_]+\s+\(\d{2}:\d{2}\)|(?:COMPLET|CRITIC|IMPORTAN|INFO)[A-Z]*\b))/u;
 const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
@@ -119,6 +125,13 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 
 		const match = BULLET_PATTERN.exec(rawLine);
 		if (!match) {
+			// Models often add an indented detail list under an observation. Keep
+			// that detail on the entry above instead of rejecting the response.
+			const previous = entries.at(-1);
+			if (previous && /^\s/.test(rawLine) && !NON_DETAIL_PATTERN.test(trimmed)) {
+				previous.text = appendObservationDetail(previous.text, trimmed);
+				continue;
+			}
 			skippedLines.push(rawLine);
 			continue;
 		}
@@ -139,6 +152,12 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 	}
 
 	return { entries, skippedLines };
+}
+
+/** Joins a detail line onto one line, so the rendered log keeps one entry per line. */
+function appendObservationDetail(text: string, detailLine: string): string {
+	const detail = detailLine.replace(/^[*-]\s+/, '');
+	return /[:;.!?]$/.test(text) ? `${text} ${detail}` : `${text}; ${detail}`;
 }
 
 export function renderObserverTranscript(

@@ -334,7 +334,7 @@ describe('AgentCapabilitiesSection', () => {
 		},
 	);
 
-	it('toggles skills and sub-agents without removing their configuration', async () => {
+	it('toggles sub-agents but not skills, without removing their configuration', async () => {
 		const config: AgentJsonConfig = {
 			...configWithMcpServers([]),
 			subAgents: {
@@ -356,7 +356,6 @@ describe('AgentCapabilitiesSection', () => {
 				skills: [
 					{
 						id: 'skill-1',
-						enabled: false,
 						skill: { name: 'Triage', description: '', instructions: '' },
 					},
 				],
@@ -365,14 +364,16 @@ describe('AgentCapabilitiesSection', () => {
 		);
 		await flushPromises();
 		const skill = wrapper.get('[data-testid="agent-capabilities-skill-row"]');
-		expect(skill.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+		expect(skill.attributes('aria-description')).toBeUndefined();
 		await skill.trigger('click');
 		expect(wrapper.emitted('open-skill')).toEqual([['skill-1']]);
+		// A skill has no on/off toggle: its menu only removes it.
 		await skill.trigger('contextmenu');
-		await userEvent.click(
-			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
-		);
-		expect(wrapper.emitted('toggle-skill')).toEqual([[{ id: 'skill-1', enabled: true }]]);
+		await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.remove' });
+		expect(
+			screen.queryByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
+		).not.toBeInTheDocument();
+		await userEvent.keyboard('{Escape}');
 
 		const subAgent = wrapper.findAll('[data-testid="agent-capabilities-sub-agent-row"]')[0];
 		expect(subAgent.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');

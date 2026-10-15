@@ -5,7 +5,7 @@ import type { IWorkflowSettings } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowPublishedDataService } from './workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
 
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';

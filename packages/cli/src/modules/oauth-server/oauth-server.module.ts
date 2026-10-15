@@ -37,7 +37,7 @@ export class OAuthServerModule implements ModuleInterface {
 
 		// The JWKS endpoint is served by main only.
 		if (instanceType === 'main') {
-			const { JwksRegistry } = await import('@/jwks/jwks.registry.js');
+			const { JwksRegistry } = await import('@n8n/backend-services/auth');
 			const { OAuthSigningJwksProvider } = await import('./oauth-signing-jwks.provider.js');
 			Container.get(JwksRegistry).register(Container.get(OAuthSigningJwksProvider));
 		}
@@ -52,9 +52,7 @@ export class OAuthServerModule implements ModuleInterface {
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core
 		// `OAuthTokenVerifierProxy` instead of importing this module.
-		const { OAuthTokenVerifierProxy } = await import(
-			'@/services/oauth-token-verifier-proxy.service.js'
-		);
+		const { OAuthTokenVerifierProxy } = await import('@n8n/backend-services/auth');
 		const { OAuthTokenService } = await import('./oauth-token.service.js');
 		Container.get(OAuthTokenVerifierProxy).registerProvider(Container.get(OAuthTokenService));
 
@@ -63,7 +61,7 @@ export class OAuthServerModule implements ModuleInterface {
 		);
 		registerProtectedResourceResolvers();
 
-		const { OAuth2FlowProxy } = await import('@/services/oauth2-flow-proxy.service.js');
+		const { OAuth2FlowProxy } = await import('@n8n/backend-services/auth');
 		const { OAuth2FlowService } = await import('./oauth-flow.service.js');
 		Container.get(OAuth2FlowProxy).registerProvider(Container.get(OAuth2FlowService));
 	}

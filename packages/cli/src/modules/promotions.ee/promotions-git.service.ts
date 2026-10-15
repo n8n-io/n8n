@@ -175,7 +175,11 @@ export class PromotionsGitService {
 								}
 								// branchName is check-ref-format validated and passed without a shell.
 								await git.raw(['init', `--initial-branch=${branchName}`, nextRepositoryFolder]);
-								await git.raw(['-C', nextRepositoryFolder, 'remote', 'add', 'origin', remoteUrl]);
+								// simple-git 4 blocks `-C`, so add the remote from inside the new repository.
+								await simpleGit({ ...BASE_GIT_OPTIONS, baseDir: nextRepositoryFolder }).addRemote(
+									'origin',
+									remoteUrl,
+								);
 							} else {
 								await git.clone(remoteUrl, nextRepositoryFolder, [
 									'--branch',
@@ -261,8 +265,15 @@ export class PromotionsGitService {
 								});
 							}
 
+							// Empty on a repository with no commits yet.
 							const previousHead = rollbackOnFailure
-								? (await git.revparse(['HEAD'])).trim()
+								? (
+										await git.raw([
+											'for-each-ref',
+											'--format=%(objectname)',
+											`refs/heads/${branchName}`,
+										])
+									).trim()
 								: undefined;
 							try {
 								// Scope staging to the package while including removed entities.
@@ -278,10 +289,16 @@ export class PromotionsGitService {
 
 								return { commitSha };
 							} catch (error) {
-								if (previousHead) {
+								if (previousHead !== undefined) {
 									try {
 										// Restore Git state. The caller restores the package files.
-										await git.raw(['reset', '--mixed', previousHead]);
+										if (previousHead) {
+											await git.raw(['reset', '--mixed', previousHead]);
+										} else {
+											// Remove the first commit and clear the index.
+											await git.raw(['update-ref', '-d', 'HEAD']);
+											await git.raw(['read-tree', '--empty']);
+										}
 									} catch {
 										this.logger.warn(
 											'Failed to restore the Git revision after a failed promotion',
@@ -472,6 +489,29 @@ export class PromotionsGitService {
 		}
 	}
 
+	/** Reports whether the local branch's last commit holds this path. False when it has no commits. */
+	async hasCommittedPath({
+		paths,
+		branchName,
+		configId,
+		pathspec,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
+		pathspec: string;
+	}): Promise<boolean> {
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const head = (
+					await git.raw(['for-each-ref', '--format=%(objectname)', `refs/heads/${branchName}`])
+				).trim();
+				if (!head) return false;
+				return (await git.raw(['ls-tree', head, '--', pathspec])).trim() !== '';
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName });
+		}
+	}
+
 	async readFilesAtCommit({
 		paths,
 		branchName,
@@ -539,6 +579,7 @@ export class PromotionsGitService {
 					...options,
 					config,
 					unsafe: { allowUnsafeCredentialHelper: true },
+					allowEnvironment: ['GIT_TERMINAL_PROMPT'],
 				})
 					.env('GIT_TERMINAL_PROMPT', '0')
 					.env('N8N_GIT_USERNAME', credentials.username)
@@ -557,6 +598,7 @@ export class PromotionsGitService {
 				git = simpleGit({
 					...options,
 					unsafe: { allowUnsafeSshCommand: true },
+					allowEnvironment: ['GIT_SSH_COMMAND', 'GIT_TERMINAL_PROMPT'],
 				})
 					.env('GIT_SSH_COMMAND', sshCommand)
 					.env('GIT_TERMINAL_PROMPT', '0');

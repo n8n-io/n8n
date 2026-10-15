@@ -147,10 +147,17 @@ jobs:
               cubic.yaml
               .agents/review-rules/**
             e2e-performance:
+              packages/quality/efficiency/memory/idle/**
+              packages/quality/efficiency/playwright.config.ts
+              packages/quality/efficiency/package.json
+              packages/quality/testing/playwright/package.json
+              packages/quality/testing/playwright/quality-*.ts
+              packages/quality/testing/playwright/fixtures/**
               packages/quality/testing/playwright/tests/performance/**
               packages/quality/testing/playwright/utils/performance-helper.ts
               packages/quality/environments/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
+              .github/workflows/test-e2e-reusable.yml
             # Whole directories, not the `engine-*` files alone. Engine v2
             # routing lives in ordinary control plane code: `workflow-runner.ts`
             # and the webhook and trigger paths decide whether a run reaches the

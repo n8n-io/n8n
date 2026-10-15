@@ -118,7 +118,7 @@ const handleDragEnd = () => {
 	<N8nPopover :class="$style.container" width="260px" max-height="300px" scroll-type="auto">
 		<template #trigger>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				icon="sliders-horizontal"
 				:icon-size="iconSize"
 				:size="buttonSize"
@@ -215,7 +215,7 @@ const handleDragEnd = () => {
 <style lang="scss" module>
 .header {
 	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	margin-bottom: var(--spacing--xs);
 }
 

@@ -12,10 +12,7 @@ import {
 	staticErrorWorkflowId,
 } from '@/workflows/error-workflow-validation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type {
-	PublishedWorkflowData,
-	WorkflowPublishedDataService,
-} from '@/workflows/workflow-published-data.service';
+import type { PublishedWorkflowData, WorkflowPublishedDataService } from '@n8n/backend-services';
 
 const ERROR_TRIGGER_TYPE = 'n8n-nodes-base.errorTrigger';
 

@@ -170,7 +170,7 @@ describe('AgentChatMessageList', () => {
 		});
 		const callout = wrapper.get('[data-testid="agent-chat-retry-error"]');
 		const retry = callout.get('[data-testid="agent-chat-retry"]');
-		expect(wrapper.findComponent({ name: 'N8nButton' }).props('variant')).toBe('subtle');
+		expect(wrapper.findComponent({ name: 'N8nButton' }).props('variant')).toBe('outline');
 		await retry.trigger('click');
 		expect(wrapper.emitted('retry')).toBeUndefined();
 		await wrapper.setProps({ retryDisabled: false });
@@ -914,6 +914,52 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.emitted('increase-budget')?.[0]).toEqual([
 			{ field: 'sessionCostCapUsd', amount: 10 },
 		]);
+	});
+
+	it('hides the increase action on a notice owned by a different agent', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				agentId: 'agent-1',
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.monthly', agentId: 'agent-2' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+			},
+		});
+
+		const card = wrapper.get('[data-testid="agent-budget-notice-card"]');
+		expect(card.attributes('data-can-increase')).toBe('false');
+	});
+
+	it('shows the increase action on a notice owned by the previewed agent', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				agentId: 'agent-1',
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.monthly', agentId: 'agent-1' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+			},
+		});
+
+		const card = wrapper.get('[data-testid="agent-budget-notice-card"]');
+		expect(card.attributes('data-can-increase')).toBe('true');
 	});
 
 	it('passes the increase permission and pending state to the notice cards', () => {
