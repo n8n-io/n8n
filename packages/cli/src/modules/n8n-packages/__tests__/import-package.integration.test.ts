@@ -2503,6 +2503,8 @@ describe('credential-missing-mode: create-with-values', () => {
 				),
 			}),
 		).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 
 	it('publishes workflows with seeded credentials but blocks those with fallback stubs', async () => {
