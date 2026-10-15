@@ -92,6 +92,7 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * Hosts whose agent always exists omit it.
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
+	flushConfigSave?: () => Promise<unknown>;
 	/**
 	 * Flushes pending agent edits before an API mutation that also writes the
 	 * agent config. This prevents the mutation from advancing the config hash
@@ -126,6 +127,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		localSkills,
 		supportsToolApproval,
 		ensureAgentPersisted,
+		flushConfigSave,
 		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
@@ -614,6 +616,26 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				...(localConfig.value.skills ?? []).filter((ref) => ref.id !== hubSkill.id),
 				{ type: 'skill', id: hubSkill.id },
 			],
+		});
+		if (!flushConfigSave) return;
+		try {
+			await flushConfigSave();
+		} catch {
+			if (isCurrentTarget()) undoRefusedAttach(hubSkill.id);
+		}
+	}
+
+	function undoRefusedAttach(skillId: string) {
+		if (!agent.value || !localConfig.value) return;
+		const withoutSkill = <T>(byId: Record<string, T> | undefined) =>
+			Object.fromEntries(Object.entries(byId ?? {}).filter(([id]) => id !== skillId));
+		agent.value = {
+			...agent.value,
+			skills: withoutSkill(agent.value.skills),
+			skillHashes: withoutSkill(agent.value.skillHashes),
+		};
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).filter((ref) => ref.id !== skillId),
 		});
 	}
 

@@ -66,6 +66,7 @@ function setup(
 	overrides: {
 		supportsToolApproval?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
+		flushConfigSave?: () => Promise<unknown>;
 		beforeAgentMutation?: () => Promise<void>;
 		refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 		agent?: Ref<AgentResource | null>;
@@ -651,13 +652,16 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		};
 	}
 
-	function setupHub({ skillsHubEnabled = true } = {}) {
+	function setupHub({
+		skillsHubEnabled = true,
+		flushConfigSave,
+	}: { skillsHubEnabled?: boolean; flushConfigSave?: () => Promise<unknown> } = {}) {
 		const agent = ref<AgentResource | null>({
 			id: 'agent-1',
 			skills: { tone: supportTone },
 			skillHashes: { tone: 'hash-tone' },
 		} as unknown as AgentResource);
-		const result = setup({ agent, agentId: ref('agent-1') });
+		const result = setup({ agent, agentId: ref('agent-1'), flushConfigSave });
 		useSettingsStore().moduleSettings.agents = {
 			enabled: true,
 			modules: [],
@@ -773,6 +777,36 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(agent.value?.skills.sql).toEqual(sqlHelper);
 		expect(agent.value?.skillHashes?.sql).toBe('hash-sql');
 		expect(createAgentSkill).not.toHaveBeenCalled();
+	});
+
+	it('undoes an attach when the config save fails', async () => {
+		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
+		const { modalData, scheduleConfigUpdate, agent } = setupHub({
+			flushConfigSave: async () => await Promise.reject(new Error('refused')),
+		});
+
+		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+			skills: [{ type: 'skill', id: 'tone' }],
+		});
+		expect(agent.value?.skills.sql).toBeUndefined();
+		expect(agent.value?.skillHashes?.sql).toBeUndefined();
+		expect(agent.value?.skills.tone).toEqual(supportTone);
+	});
+
+	it('keeps an attach when the config save succeeds', async () => {
+		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
+		const { modalData, scheduleConfigUpdate, agent } = setupHub({
+			flushConfigSave: async () => await Promise.resolve(undefined),
+		});
+
+		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledTimes(1);
+		expect(agent.value?.skills.sql).toEqual(sqlHelper);
 	});
 
 	it('refuses to attach a skill whose name is hard to tell apart from an attached one', async () => {

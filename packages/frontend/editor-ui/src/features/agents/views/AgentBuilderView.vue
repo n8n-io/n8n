@@ -1981,6 +1981,7 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	flushConfigSave: flushConfigAutosave,
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
