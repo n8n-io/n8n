@@ -4,8 +4,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { JwksRegistry } from '@/jwks/jwks.registry';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { JwksRegistry, OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 
 import { OAuthJweDecryptService } from '../oauth-jwe-decrypt.service';
 import { OAuthJweJwksProvider } from '../oauth-jwe-jwks.provider';

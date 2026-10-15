@@ -16,9 +16,8 @@ import { Container } from '@n8n/di';
 import { AuthenticationService } from '@n8n/inbound-auth';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 import { OAuthServerLocalAuthorizationServer } from './oauth-local-authorization-server';
 import { OAuthServerConfig } from './oauth-server.config';

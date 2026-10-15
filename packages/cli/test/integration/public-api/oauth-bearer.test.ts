@@ -31,7 +31,7 @@ describe('Public API with OAuth2 bearer tokens', () => {
 		const { PublicApiOAuthStrategy } = await import(
 			'@/modules/inbound-auth-core/public-api-oauth.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
+		const { AuthStrategyRegistry } = await import('@n8n/backend-services/auth');
 		Container.get(AuthStrategyRegistry).register(Container.get(PublicApiOAuthStrategy));
 	});
 
