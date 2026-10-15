@@ -358,7 +358,7 @@ it('keeps the first accepted output and protects it from technical cleanup', asy
 		usage: { credits: null, turns: null, durationSeconds: null },
 		completedAt: new Date().toISOString(),
 	});
-	await investigations.finishWithoutResult(investigation.id);
+	await investigations.finishIfNoAcceptedOutput(investigation.id);
 	expect(await investigations.get(investigation.id)).toMatchObject({
 		acceptedOutput: first.acceptedOutput,
 		finishedAt: null,

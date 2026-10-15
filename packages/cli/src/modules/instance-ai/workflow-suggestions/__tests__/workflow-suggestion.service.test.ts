@@ -157,7 +157,7 @@ it.each([
 	'publication history',
 	'snapshot',
 	'project',
-])('rejects verification after a change to the %s', async (change) => {
+])('rejects a stale baseline after a change to the %s', async (change) => {
 	if (change === 'content') workflow.name = 'Changed';
 	if (change === 'saved version') workflow.versionId = 'new-version';
 	if (change === 'published version') workflow.activeVersionId = 'new-version';

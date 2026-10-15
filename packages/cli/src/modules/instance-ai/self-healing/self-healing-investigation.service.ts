@@ -131,7 +131,7 @@ export class SelfHealingInvestigationService {
 			);
 		} catch (error) {
 			// Accepted output survives a failed transaction and needs no workspace on retry.
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.investigations.finishIfNoAcceptedOutput(investigation.id);
 			throw error;
 		}
 	}
@@ -142,7 +142,7 @@ export class SelfHealingInvestigationService {
 		signal: AbortSignal,
 	) {
 		if (run.status !== 'completed' || run.finishReason !== 'stop' || !run.output) {
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.investigations.finishIfNoAcceptedOutput(investigation.id);
 			return;
 		}
 		const output = run.output;
@@ -234,13 +234,13 @@ export class SelfHealingInvestigationService {
 			return;
 		}
 		if (!(await this.events.lastFactAt(threadId, runId))) {
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.investigations.finishIfNoAcceptedOutput(investigation.id);
 			return;
 		}
 		await this.sweeper.sweepRun(threadId, runId);
 		await this.eventLog.flush(threadId);
 		if (await this.events.getRunFinish(threadId, runId)) {
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.investigations.finishIfNoAcceptedOutput(investigation.id);
 		}
 	}
 

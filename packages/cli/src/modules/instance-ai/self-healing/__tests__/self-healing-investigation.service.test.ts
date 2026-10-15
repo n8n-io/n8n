@@ -286,7 +286,7 @@ describe('SelfHealingInvestigationService', () => {
 		async (status) => {
 			run.status = status;
 			await startAndFinish();
-			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
+			expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id);
 			expect(results.complete).not.toHaveBeenCalled();
 		},
 	);
@@ -343,7 +343,7 @@ describe('SelfHealingInvestigationService', () => {
 		expect(investigations.storeAcceptedOutput).not.toHaveBeenCalled();
 		expect(results.complete).not.toHaveBeenCalled();
 		await vi.waitFor(() =>
-			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id),
+			expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id),
 		);
 	});
 
@@ -402,7 +402,7 @@ describe('SelfHealingInvestigationService', () => {
 		events.getRunFinish.mockResolvedValue({ status: 'interrupted', reason: 'crash_interrupted' });
 		await service.reconcile();
 		expect(sweeper.sweepRun).toHaveBeenCalledWith(investigation.threadId, investigation.runId);
-		expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
+		expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id);
 		expect(results.complete).not.toHaveBeenCalled();
 	});
 
@@ -411,14 +411,14 @@ describe('SelfHealingInvestigationService', () => {
 		runtime.isRunLive.mockReturnValue(true);
 		await service.reconcile();
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
-		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();
+		expect(investigations.finishIfNoAcceptedOutput).not.toHaveBeenCalled();
 	});
 
 	it('releases a claim when the process stopped before creating the private thread', async () => {
 		investigations.listUnfinished.mockResolvedValue([investigation]);
 		events.lastFactAt.mockResolvedValue(null);
 		await service.reconcile();
-		expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
+		expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id);
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
 	});
 

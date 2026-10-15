@@ -70,7 +70,7 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 		);
 	}
 
-	async finishWithoutResult(id: string, ctx: OperationContext = {}) {
+	async finishIfNoAcceptedOutput(id: string, ctx: OperationContext = {}) {
 		await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
 			{ id, finishedAt: IsNull(), acceptedOutput: IsNull() },
