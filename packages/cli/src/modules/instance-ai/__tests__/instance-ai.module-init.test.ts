@@ -84,9 +84,10 @@ describe('InstanceAiModule.init', () => {
 	}
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
-		const { config } = setup();
+		const { config, investigations } = setup();
 
 		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
 
 		expect(loadSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(createSuggestionEventRelay).not.toHaveBeenCalled();
@@ -94,6 +95,7 @@ describe('InstanceAiModule.init', () => {
 
 		config.workflowSuggestionsEnabled = true;
 		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
 
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(createSuggestionEventRelay).toHaveBeenCalledOnce();
@@ -106,13 +108,14 @@ describe('InstanceAiModule.init', () => {
 		sweeper.sweep.mockReturnValue(sweep.promise);
 
 		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(sweeper.sweep).toHaveBeenCalledOnce());
 
 		expect(investigations.reconcile).not.toHaveBeenCalled();
 		sweep.resolve();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
 	});
 
-	it('reports a startup reconciliation failure separately', async () => {
+	it('reports a startup reconciliation failure', async () => {
 		const { investigations, logger } = setup();
 		const error = new Error('Investigation query failed.');
 		investigations.reconcile.mockRejectedValue(error);
@@ -120,14 +123,8 @@ describe('InstanceAiModule.init', () => {
 		await new InstanceAiModule().init();
 
 		await vi.waitFor(() =>
-			expect(logger.error).toHaveBeenCalledWith(
-				'Self-healing investigation reconciliation failed on startup',
-				{ error },
-			),
+			expect(logger.error).toHaveBeenCalledWith('Startup run reconciliation failed', { error }),
 		);
-		expect(logger.error).not.toHaveBeenCalledWith('Interrupted-run sweep failed on startup', {
-			error,
-		});
 	});
 
 	it('reports a rejected sweep without starting reconciliation', async () => {
@@ -138,7 +135,7 @@ describe('InstanceAiModule.init', () => {
 		await new InstanceAiModule().init();
 
 		await vi.waitFor(() =>
-			expect(logger.error).toHaveBeenCalledWith('Interrupted-run sweep failed on startup', {
+			expect(logger.error).toHaveBeenCalledWith('Startup run reconciliation failed', {
 				error,
 			}),
 		);
