@@ -281,14 +281,34 @@ const hostEventItems = computed(() => {
 	const itemsByGroupId = new Map<string, AgentsChatHostEventItems>();
 	const extensions = interactionExtensions?.value ?? [];
 	for (const group of displayGroups.value) {
-		if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN && group.hostEvents) {
-			const showTransient = !group.finalMessage?.content.trim();
-			itemsByGroupId.set(group.id, getHostEventItems(group.hostEvents, extensions, showTransient));
-		} else if (group.kind === DISPLAY_GROUP_KIND.MESSAGE && group.message.hostEvents) {
-			const { message } = group;
-			const sources = appendHostEventSources([], message);
-			const showTransient = !message.content.trim();
-			itemsByGroupId.set(group.id, getHostEventItems(sources, extensions, showTransient));
+		switch (group.kind) {
+			case DISPLAY_GROUP_KIND.TOOL_RUN: {
+				if (!group.hostEvents) break;
+				const showTransient = !group.finalMessage?.content.trim();
+				itemsByGroupId.set(
+					group.id,
+					getHostEventItems(group.hostEvents, extensions, showTransient),
+				);
+				break;
+			}
+			case DISPLAY_GROUP_KIND.MESSAGE: {
+				const { message } = group;
+				if (!message.hostEvents) break;
+				const sources = appendHostEventSources([], message);
+				const showTransient = !message.content.trim();
+				itemsByGroupId.set(group.id, getHostEventItems(sources, extensions, showTransient));
+				break;
+			}
+			case DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL:
+				// Signal groups have no host events.
+				break;
+			default: {
+				// A new group kind fails the type check here. Add a case for it.
+				const unhandled: never = group;
+				if (import.meta.env.DEV) {
+					console.warn('[AgentChatMessageList] Host events skip a display group kind', unhandled);
+				}
+			}
 		}
 	}
 	return itemsByGroupId;
