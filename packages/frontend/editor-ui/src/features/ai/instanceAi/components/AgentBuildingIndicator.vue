@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { N8nSpinner, N8nText, N8nVisuallyHidden } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { useIntervalFn } from '@vueuse/core';
 import { ref } from 'vue';
 
 import { TIME } from '@/app/constants/durations';
+import { generateWhimsicalLabel } from '@/features/ai/shared/utils/whimsicalLabel';
 
 const i18n = useI18n();
 
@@ -27,26 +28,6 @@ const waves = lobes.map((lobe, index) => ({
 	'--wave-delay': `calc(var(--n8n-wave--duration) * ${-index / 7})`,
 	'--wave-duration': `calc(var(--n8n-wave--duration) * ${1 + (index % 3) * 0.17})`,
 }));
-
-const whimsicalLabels: BaseTextKey[] = [
-	'instanceAi.agentPreview.building.imagining',
-	'instanceAi.agentPreview.building.tinkering',
-	'instanceAi.agentPreview.building.pondering',
-	'instanceAi.agentPreview.building.brewing',
-	'instanceAi.agentPreview.building.hatching',
-	'instanceAi.agentPreview.building.concocting',
-	'instanceAi.agentPreview.building.sparkling',
-	'instanceAi.agentPreview.building.noodling',
-	'instanceAi.agentPreview.building.percolating',
-	'instanceAi.agentPreview.building.doodling',
-];
-
-function generateWhimsicalLabel(): BaseTextKey {
-	return (
-		whimsicalLabels[Math.floor(Math.random() * whimsicalLabels.length)] ??
-		'instanceAi.agentPreview.building'
-	);
-}
 
 const whimsicalLabel = ref(generateWhimsicalLabel());
 

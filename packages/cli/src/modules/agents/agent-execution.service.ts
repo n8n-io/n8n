@@ -5,6 +5,7 @@ import type {
 	AgentN8nChatThreadsResponse,
 	AgentSessionPreviewAccess,
 	AgentSessionQueryFilters,
+	AgentSessionLatestActivity,
 	AgentSessionStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -69,6 +70,7 @@ import {
 	type ThreadFailureSummary,
 } from './utils/execution-failure-summary';
 import { applyFatalSessionOutcome } from './utils/fatal-session-outcome';
+import { latestSessionActivity } from './utils/latest-session-activity';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -142,6 +144,7 @@ export interface ThreadListItem
 	source: string | null;
 	failureSummary: ThreadFailureSummary | null;
 	status: AgentSessionStatus | null;
+	latestActivity?: AgentSessionLatestActivity | null;
 }
 
 const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
@@ -792,7 +795,7 @@ export class AgentExecutionService {
 	): Promise<ThreadListItem[]> {
 		if (threads.length === 0) return [];
 		const threadIds = threads.map((t) => t.id);
-		const [messageMap, sourceMap, failureSummaryMap, latestStatusMap] = await Promise.all([
+		const [messageMap, sourceMap, failureSummaryMap, latestExecutionMap] = await Promise.all([
 			this.agentExecutionRepository.findFirstUserMessageByThreadIds(threadIds),
 			this.agentExecutionRepository.findFirstSourceByThreadIds(threadIds),
 			this.agentExecutionRepository.findFailureSummariesByThreadIds(threadIds),
@@ -802,13 +805,18 @@ export class AgentExecutionService {
 		return threads.map((thread) => {
 			const { ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t } = thread;
 			const source = sourceMap.get(t.id) ?? null;
+			const latestExecution = latestExecutionMap.get(t.id);
 			return {
 				...t,
 				canContinueInPreview: canContinueThreadInPreview(thread, userId, source),
 				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
-				status: toSessionStatus(latestStatusMap.get(t.id)),
+				status: toSessionStatus(latestExecution?.status),
+				latestActivity:
+					latestExecution?.status === 'running'
+						? latestSessionActivity(latestExecution.timeline)
+						: null,
 			};
 		});
 	}

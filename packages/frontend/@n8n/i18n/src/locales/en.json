@@ -1606,6 +1606,7 @@
 	"agentSessions.timeline.approved": "Approved",
 	"agentSessions.timeline.declined": "Declined",
 	"agentSessions.timeline.requestDetails": "Request details",
+	"agentSessions.activity.responding": "Responding",
 	"agentSessions.timeline.response": "Response",
 	"agentSessions.timeline.id": "ID",
 	"agentSessions.timeline.created": "Created",

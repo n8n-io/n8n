@@ -3,6 +3,7 @@ import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/d
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { jsonParse } from 'n8n-workflow';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
@@ -257,23 +258,39 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return sources;
 	}
 
+	/** Include the latest timeline only while its execution is running. */
 	async findLatestStatusesByThreadIds(
 		threadIds: string[],
-	): Promise<Map<string, AgentExecutionStatus>> {
+	): Promise<Map<string, Pick<AgentExecution, 'status' | 'timeline'>>> {
 		if (threadIds.length === 0) return new Map();
 
 		const tableName = this.metadata.tablePath;
 		const rows = await this.createQueryBuilder('e')
 			.select(['e."threadId" AS "threadId"', 'e."status" AS "status"'])
+			.addSelect('CASE WHEN e."status" = :running THEN e."timeline" ELSE NULL END', 'timeline')
+			.setParameter('running', 'running')
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere(
 				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
 					'WHERE e2."threadId" = e."threadId" ' +
 					'ORDER BY e2."createdAt" DESC, e2.id DESC LIMIT 1)',
 			)
-			.getRawMany<{ threadId: string; status: AgentExecutionStatus }>();
+			.getRawMany<{
+				threadId: string;
+				status: AgentExecutionStatus;
+				timeline: AgentExecution['timeline'] | string;
+			}>();
 
-		return new Map(rows.map((row) => [row.threadId, row.status]));
+		return new Map(
+			rows.map((row) => {
+				/** SQLite returns stored JSON as text. Postgres returns parsed JSON. */
+				const timeline: AgentExecution['timeline'] =
+					typeof row.timeline === 'string'
+						? jsonParse<AgentExecution['timeline']>(row.timeline)
+						: row.timeline;
+				return [row.threadId, { status: row.status, timeline }];
+			}),
+		);
 	}
 
 	async findFailureSummariesByThreadIds(

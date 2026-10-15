@@ -7,14 +7,16 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { resolveToolNameForDisplay } from '@/features/agents/utils/toolDisplayName';
 import type {
 	AgentExecutionThread,
 	AgentSessionFilters,
 	AgentSessionStatus,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
-import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { generateWhimsicalLabel } from '@/features/ai/shared/utils/whimsicalLabel';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import {
@@ -28,7 +30,6 @@ import {
 } from '@n8n/design-system';
 import type { ActionDropdownItem, IconColor, IconName } from '@n8n/design-system';
 
-type TraceTarget = { agentId: string; threadId: string };
 type OriginPresentation = { icon: IconName; label: string };
 
 const props = withDefaults(
@@ -64,11 +65,26 @@ const hasActiveFilters = computed(() => {
 	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
 });
 
+/** Keep each label until its session leaves reasoning. Polls must not replace it. */
+const reasoningLabels = ref(new Map<string, BaseTextKey>());
+
+watch(
+	() =>
+		sessionsStore.threads.flatMap((thread) =>
+			thread.status === 'running' && thread.latestActivity?.type === 'reasoning' ? [thread.id] : [],
+		),
+	(threadIds) => {
+		const labels = new Map<string, BaseTextKey>();
+		for (const threadId of threadIds) {
+			labels.set(threadId, reasoningLabels.value.get(threadId) ?? generateWhimsicalLabel());
+		}
+		reasoningLabels.value = labels;
+	},
+	{ immediate: true },
+);
+
 function onVisibilityChange() {
-	// Refresh as soon as the user returns to the tab — auto-refresh is
-	// throttled while the document is hidden, so a silent merge-refresh on
-	// return closes the gap before the next interval tick without flashing
-	// the load-more button or dropping paginated pages.
+	/** Refresh after a hidden tab becomes visible. Keep the loaded pages. */
 	if (disposed || !managesStoreLifecycle || !sessionsStore.autoRefresh) return;
 	if (!projectId.value || !agentId.value) return;
 	void sessionsStore.refreshThreads(projectId.value, agentId.value);
@@ -126,7 +142,6 @@ function getStatusIconColor(status: AgentSessionStatus): IconColor {
 		case 'error':
 			return 'danger';
 		case 'cancelled':
-			return 'text-xlight';
 		case 'interrupted':
 			return 'text-xlight';
 		default:
@@ -149,9 +164,26 @@ function statusLabel(status: AgentSessionStatus): string {
 	}
 }
 
+function rowTitle(thread: AgentExecutionThread): string {
+	const activity = thread.status === 'running' ? thread.latestActivity : null;
+	if (!activity) return threadTitleOf(thread);
+
+	if (activity.type === 'tool-call') {
+		return (
+			activity.displayName ||
+			resolveToolNameForDisplay(activity.toolName, i18n) ||
+			threadTitleOf(thread)
+		);
+	}
+
+	return activity.type === 'reasoning'
+		? i18n.baseText(reasoningLabels.value.get(thread.id) ?? 'ai.thinking.active')
+		: i18n.baseText('agentSessions.activity.responding');
+}
+
 function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 	const rawSource = thread.source?.trim();
-	const source = rawSource ? rawSource.toLowerCase() : undefined;
+	const source = rawSource?.toLowerCase() || undefined;
 
 	if (thread.parentThreadId || source === 'subagent' || source === 'sub-agent') {
 		return { icon: 'bot', label: i18n.baseText('agentSessions.origin.subAgent') };
@@ -179,8 +211,6 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 		case 'teams':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
 		case 'whatsapp':
-			// The generic capitalize-first-letter above would produce "Whatsapp",
-			// misspelling the brand name — WhatsApp has an internal capital.
 			return { icon: source, label: 'WhatsApp' };
 		case 'chat':
 		case 'n8n_chat':
@@ -215,24 +245,16 @@ function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<stri
 	return actions;
 }
 
-function onViewTrace(target: TraceTarget) {
-	const routeTarget = {
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: {
-			projectId: projectId.value,
-			agentId: target.agentId,
-			threadId: target.threadId,
-		},
-	};
-	void router.push(routeTarget);
-}
-
 async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
-		onViewTrace({
-			agentId: thread.parentAgentId,
-			threadId: thread.parentThreadId,
+		void router.push({
+			name: AGENT_SESSION_DETAIL_VIEW,
+			params: {
+				projectId: projectId.value,
+				agentId: thread.parentAgentId,
+				threadId: thread.parentThreadId,
+			},
 		});
 		return;
 	}
@@ -380,9 +402,28 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 								data-testid="agent-session-status-indicator"
 							/>
 						</div>
-						<N8nText step="sm" color="text-dark" bold data-test-id="agent-session-title">{{
-							threadTitleOf(thread)
-						}}</N8nText>
+						<div v-if="thread.status === 'running'" :class="$style.activityLabel">
+							<Transition
+								type="transition"
+								:enter-active-class="$style.labelEnterActive"
+								:leave-active-class="$style.labelLeaveActive"
+								:enter-from-class="$style.labelEnterFrom"
+								:leave-to-class="$style.labelLeaveTo"
+							>
+								<N8nText
+									:key="rowTitle(thread)"
+									step="sm"
+									color="text-dark"
+									:class="[$style.activityWord, $style.shimmer]"
+									bold
+								>
+									{{ rowTitle(thread) }}
+								</N8nText>
+							</Transition>
+						</div>
+						<N8nText v-else step="sm" color="text-dark" bold data-test-id="agent-session-title">
+							{{ threadTitleOf(thread) }}
+						</N8nText>
 					</div>
 					<div :class="$style.listEnd">
 						<N8nBadge
@@ -422,7 +463,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 					/>
 				</div>
 			</li>
-			<li v-if="sessionsStore.nextCursor" :class="$style.lastRow">
+			<li v-if="sessionsStore.nextCursor">
 				<N8nButton
 					icon="refresh-cw"
 					variant="ghost"
@@ -430,7 +471,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 					:label="i18n.baseText('agentSessions.loadMore')"
 					:loading="sessionsStore.loading"
 					data-test-id="agent-sessions-load-more"
-					@click="loadMore()"
+					@click="loadMore"
 				/>
 			</li>
 		</ul>
@@ -493,7 +534,8 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	justify-content: space-between;
 	gap: var(--spacing--xs);
 	min-width: 0;
-	padding: var(--spacing--xs);
+	padding-inline-start: var(--spacing--xs);
+	height: var(--height--2xl);
 	color: inherit;
 	text-decoration: none;
 	outline: 0;
@@ -506,14 +548,6 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	gap: var(--spacing--xs);
 }
 
-.listIconContainer {
-	flex-shrink: 0;
-	display: grid;
-	place-items: center;
-	width: var(--height--2xs);
-	height: var(--height--2xs);
-}
-
 .listStart {
 	min-width: 0;
 }
@@ -521,6 +555,15 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 .listEnd {
 	flex-wrap: wrap;
 	justify-content: flex-end;
+	gap: var(--spacing--sm);
+}
+
+.listIconContainer {
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+	width: var(--height--2xs);
+	height: var(--height--2xs);
 }
 
 .listTextSkeleton,
@@ -551,6 +594,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--4xs);
+	width: var(--height--2xl);
 }
 
 .emptyState {
@@ -565,5 +609,45 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	max-width: 100%;
 	color: var(--text-color--subtler);
 	white-space: normal;
+}
+
+.activityLabel {
+	display: grid;
+	overflow-y: hidden;
+}
+
+.activityWord {
+	grid-area: 1 / 1;
+}
+
+.labelEnterActive,
+.labelLeaveActive {
+	transition:
+		opacity var(--duration--snappy) var(--easing--ease-out),
+		transform var(--duration--snappy) var(--easing--ease-out),
+		filter var(--duration--snappy) var(--easing--ease-out);
+
+	@include motion.reduced-motion;
+}
+
+.labelEnterFrom,
+.labelLeaveTo {
+	opacity: 0;
+	filter: blur(var(--spacing--3xs));
+}
+
+.labelEnterFrom {
+	transform: translateY(var(--spacing--2xs));
+}
+
+.labelLeaveTo {
+	transform: translateY(calc(-1 * var(--spacing--2xs)));
+}
+
+.shimmer {
+	--animation--shimmer--background: var(--text-color);
+	--animation--shimmer--foreground: var(--text-color--subtler);
+	--animation--shimmer--duration: calc(var(--duration--slowest) * 2);
+	@include motion.shimmer;
 }
 </style>

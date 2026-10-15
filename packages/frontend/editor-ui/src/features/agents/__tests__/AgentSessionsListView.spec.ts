@@ -57,6 +57,8 @@ vi.mock('@n8n/i18n', () => ({
 						'Sessions will appear here after you preview your agent.',
 					'agentSessions.emptyWithFilters': 'No sessions match these filters',
 					'agentSessions.status.running': 'Running',
+					'ai.thinking.active': 'Thinking',
+					'agentSessions.activity.responding': 'Responding',
 					'agentSessions.status.succeeded': 'Succeeded',
 					'agentSessions.status.error': 'Error',
 					'agentSessions.status.cancelled': 'Canceled',
@@ -250,6 +252,65 @@ describe('AgentSessionsListView', () => {
 	afterEach(() => {
 		documentAddEventListenerSpy.mockRestore();
 		documentRemoveEventListenerSpy.mockRestore();
+	});
+
+	it.each([
+		{
+			status: 'running',
+			latestActivity: { type: 'reasoning' },
+			expected: 'instanceAi.agentPreview.building.',
+		},
+		{ status: 'running', latestActivity: { type: 'text' }, expected: 'Responding' },
+		{
+			status: 'running',
+			latestActivity: { type: 'tool-call', toolName: 'web_search' },
+			expected: 'Web search',
+		},
+		{
+			status: 'running',
+			latestActivity: {
+				type: 'tool-call',
+				toolName: 'send_mail',
+				displayName: 'Send weekly report',
+			},
+			expected: 'Send weekly report',
+		},
+		{ status: 'running', latestActivity: null, expected: 'My session' },
+		{ status: 'succeeded', latestActivity: { type: 'reasoning' }, expected: 'My session' },
+	] satisfies Array<
+		Pick<AgentExecutionThread, 'status' | 'latestActivity'> & { expected: string }
+	>)('shows $expected for $status activity', async ({ status, latestActivity, expected }) => {
+		const wrapper = await mountView({ threads: [makeThread({ status, latestActivity })] });
+		expect(wrapper.get('[data-test-id="agent-session-list-item"]').text()).toContain(expected);
+		wrapper.unmount();
+	});
+
+	it('keeps separate reasoning labels stable across renders', async () => {
+		const wrapper = await mountView({
+			threads: [
+				makeThread({ id: 'reasoning-1', status: 'running', latestActivity: { type: 'reasoning' } }),
+				makeThread({ id: 'reasoning-2', status: 'running', latestActivity: { type: 'reasoning' } }),
+			],
+		});
+		function reasoningRowLabels() {
+			return wrapper
+				.findAll('[data-test-id="agent-session-list-item"]')
+				.flatMap((row) =>
+					row.text().includes('instanceAi.agentPreview.building.') ? [row.text()] : [],
+				);
+		}
+
+		const labels = reasoningRowLabels();
+		expect(labels).toHaveLength(2);
+		for (const label of labels) {
+			expect(label).toContain('instanceAi.agentPreview.building.');
+		}
+
+		wrapper.vm.$forceUpdate();
+		await flushPromises();
+
+		expect(reasoningRowLabels()).toEqual(labels);
+		wrapper.unmount();
 	});
 
 	it('links each row to its trace', async () => {

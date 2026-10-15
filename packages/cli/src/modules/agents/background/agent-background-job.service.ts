@@ -1071,7 +1071,7 @@ export class AgentBackgroundJobService {
 		let settledAny = false;
 		for (const { job, childThreadId } of orphans) {
 			if (signal?.aborted) break;
-			const childStatus = statuses.get(childThreadId);
+			const childStatus = statuses.get(childThreadId)?.status;
 			if (childStatus !== 'running' && (await this.suspend(job.id))) {
 				settledAny = true;
 				continue;

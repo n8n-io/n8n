@@ -4098,9 +4098,15 @@ describe('AgentExecutionRepository', () => {
 				threadId: running.id,
 				status: 'running',
 				failureSummary: null,
+				timeline: [{ type: 'reasoning', content: 'Private reasoning', timestamp: 10 }],
 				createdAt: new Date('2026-01-02T00:00:00Z'),
 			});
-			await createExecution({ threadId: succeeded.id, status: 'success', failureSummary: null });
+			await createExecution({
+				threadId: succeeded.id,
+				status: 'success',
+				failureSummary: null,
+				timeline: [{ type: 'text', content: 'Private response', timestamp: 20 }],
+			});
 			await createExecution({
 				threadId: recovered.id,
 				status: 'success',
@@ -4126,8 +4132,16 @@ describe('AgentExecutionRepository', () => {
 			expect(new Set(await idsFor('succeeded'))).toEqual(new Set([succeeded.id, recovered.id]));
 			expect(await idsFor('error')).toEqual([errored.id]);
 
-			const latestStatuses = await repository.findLatestStatusesByThreadIds([running.id]);
-			expect(latestStatuses.get(running.id)).toBe('running');
+			const latestStatuses = await repository.findLatestStatusesByThreadIds([
+				running.id,
+				succeeded.id,
+			]);
+			expect(latestStatuses.get(running.id)).toEqual({
+				status: 'running',
+				timeline: [{ type: 'reasoning', content: 'Private reasoning', timestamp: 10 }],
+			});
+			expect(latestStatuses.get(succeeded.id)).toEqual({ status: 'success', timeline: null });
+			expect(await repository.findLatestStatusesByThreadIds([])).toEqual(new Map());
 		});
 
 		it('mirrors the displayed origin precedence', async () => {

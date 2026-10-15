@@ -65,6 +65,11 @@ export const AGENT_SESSION_ORIGINS = [
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
+
+/** List-only activity summary. Does not include execution content or tool data. */
+export type AgentSessionLatestActivity =
+	| { type: 'reasoning' | 'text' }
+	| { type: 'tool-call'; toolName: string; displayName?: string };
 export type AgentSessionOrigin = (typeof AGENT_SESSION_ORIGINS)[number];
 
 const agentListFilterSchema = z
