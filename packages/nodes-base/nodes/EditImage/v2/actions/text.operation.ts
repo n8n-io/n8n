@@ -1,5 +1,6 @@
 import type { Canvas } from '@napi-rs/canvas';
 import getSystemFonts from 'get-system-fonts';
+import { UserError } from 'n8n-workflow';
 import { parse as pathParse } from 'path';
 
 import {
@@ -78,15 +79,15 @@ export async function execute(
 	let font = options.font;
 	if (!font && typeof operation.font === 'string') font = operation.font;
 	if (!font) font = fonts.find((systemFont) => systemFont.includes('Arial.'));
-	if (!font) throw new Error('Default font not found. Select a font from the options.');
+	if (!font) throw new UserError('Default font not found. Select a font from the options.');
 	if (!fonts.includes(font)) {
-		throw new Error('The selected font is not available. Select a font from the options.');
+		throw new UserError('The selected font is not available. Select a font from the options.');
 	}
 
 	const { GlobalFonts } = await import('@napi-rs/canvas');
 	const family = `n8n-edit-image-${fontRegistrationSequence++}-${pathParse(font).name}`;
 	const fontKey = GlobalFonts.registerFromPath(font, family);
-	if (!fontKey) throw new Error('The selected font could not be loaded.');
+	if (!fontKey) throw new UserError('The selected font could not be loaded.');
 
 	try {
 		const context = canvas.getContext('2d');

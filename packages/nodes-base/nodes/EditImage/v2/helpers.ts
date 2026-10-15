@@ -1,7 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { Canvas } from '@napi-rs/canvas';
 import type { IBinaryData, IExecuteFunctions, INode } from 'n8n-workflow';
-import { isSafeObjectProperty, NodeOperationError } from 'n8n-workflow';
+import { isSafeObjectProperty, NodeOperationError, UserError } from 'n8n-workflow';
 
 export type EditImageNodeOptions = {
 	destinationKey?: string;
@@ -97,7 +97,7 @@ function parseNumericParameter(value: unknown, parameterName: string, node: INod
 export function getNumber(data: OperationData, name: string): number {
 	const value = data[name];
 	if (typeof value !== 'number') {
-		throw new Error(`The value of "${name}" must be a number`);
+		throw new UserError(`The value of "${name}" must be a number`);
 	}
 	return value;
 }
@@ -105,7 +105,7 @@ export function getNumber(data: OperationData, name: string): number {
 export function getString(data: OperationData, name: string): string {
 	const value = data[name];
 	if (typeof value !== 'string') {
-		throw new Error(`The value of "${name}" must be a string`);
+		throw new UserError(`The value of "${name}" must be a string`);
 	}
 	return value;
 }
@@ -236,6 +236,21 @@ export async function copyCanvas(
 
 export function getMimeType(format: OutputFormat): string {
 	return format === 'tif' ? 'image/tiff' : `image/${format}`;
+}
+
+export function detectImageFormat(buffer: Buffer): OutputFormat | undefined {
+	if (buffer.subarray(0, 2).toString('ascii') === 'BM') return 'bmp';
+	if (buffer.subarray(0, 3).toString('hex') === 'ffd8ff') return 'jpeg';
+	if (buffer.subarray(0, 4).toString('hex') === '89504e47') return 'png';
+
+	const firstFourBytes = buffer.subarray(0, 4).toString('ascii');
+	if (firstFourBytes === 'GIF8') return 'gif';
+	if (firstFourBytes === 'II*\u0000' || firstFourBytes === 'MM\u0000*') return 'tiff';
+	if (firstFourBytes === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') {
+		return 'webp';
+	}
+
+	return undefined;
 }
 
 export async function encodeCanvas(

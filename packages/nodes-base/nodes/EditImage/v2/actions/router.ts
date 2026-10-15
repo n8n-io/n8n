@@ -18,6 +18,7 @@ import * as transparent from './transparent.operation';
 import {
 	assertSafeOutputPropertyName,
 	collectOperations,
+	detectImageFormat,
 	encodeCanvas,
 	type EditImageNodeOptions,
 	getDataPropertyName,
@@ -128,14 +129,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				}
 			}
 
-			const format = options.format ?? 'png';
+			const format =
+				options.format ?? (inputBuffer ? detectImageFormat(inputBuffer) : undefined) ?? 'png';
 			const outputBuffer = await encodeCanvas(canvas, format, options.quality, jpegBackground);
 			const binaryPropertyName = getOutputPropertyName(options, dataPropertyName);
 			assertSafeOutputPropertyName(binaryPropertyName, node);
 			const existingBinaryData = newItem.binary?.[binaryPropertyName];
 			const preparedBinaryData = await this.helpers.prepareBinaryData(outputBuffer);
 			const fileName =
-				options.fileName ?? replaceFileExtension(existingBinaryData?.fileName, format);
+				options.fileName || replaceFileExtension(existingBinaryData?.fileName, format);
 
 			if (!newItem.binary) newItem.binary = {};
 			setSafeObjectProperty(newItem.binary, binaryPropertyName, {

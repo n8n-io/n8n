@@ -138,17 +138,43 @@ function applyCustomComposite(
 					(sourceAlpha * targetAlpha) / MAX_CHANNEL_VALUE,
 				);
 			} else if (operator === 'Out') {
-				if (targetAlpha === 0) {
+				// Preserve GraphicsMagick's opaque RGB behavior. For partial alpha,
+				// calculate the source coverage outside the target.
+				if (targetAlpha < MAX_CHANNEL_VALUE && sourceAlpha > 0) {
+					// Porter-Duff source-out keeps the source only where the target is transparent.
 					baseData.data[targetIndex] = sourceRed;
 					baseData.data[targetIndex + 1] = sourceGreen;
 					baseData.data[targetIndex + 2] = sourceBlue;
-					baseData.data[targetIndex + 3] = sourceAlpha;
+					baseData.data[targetIndex + 3] = Math.floor(
+						(sourceAlpha * (MAX_CHANNEL_VALUE - targetAlpha)) / MAX_CHANNEL_VALUE,
+					);
 				}
 			} else if (operator === 'Xor') {
-				baseData.data[targetIndex] = 0;
-				baseData.data[targetIndex + 1] = 0;
-				baseData.data[targetIndex + 2] = 0;
-				baseData.data[targetIndex + 3] = MAX_CHANNEL_VALUE;
+				if (sourceAlpha === MAX_CHANNEL_VALUE && targetAlpha === MAX_CHANNEL_VALUE) {
+					// GraphicsMagick flattens fully opaque RGB inputs because they cannot
+					// store the transparent result. Canvas does not retain the source color type.
+					baseData.data[targetIndex] = 0;
+					baseData.data[targetIndex + 1] = 0;
+					baseData.data[targetIndex + 2] = 0;
+					baseData.data[targetIndex + 3] = MAX_CHANNEL_VALUE;
+				} else {
+					// Porter-Duff XOR keeps the source outside the target and the target
+					// outside the source. These weights are the two exclusive alpha regions.
+					const sourceWeight = sourceAlpha * (MAX_CHANNEL_VALUE - targetAlpha);
+					const targetWeight = targetAlpha * (MAX_CHANNEL_VALUE - sourceAlpha);
+					const totalWeight = sourceWeight + targetWeight;
+					for (let channel = 0; channel < 3; channel++) {
+						baseData.data[targetIndex + channel] =
+							totalWeight === 0
+								? 0
+								: Math.round(
+										(overlayData.data[sourceIndex + channel] * sourceWeight +
+											targetData.data[targetIndex + channel] * targetWeight) /
+											totalWeight,
+									);
+					}
+					baseData.data[targetIndex + 3] = Math.round(totalWeight / MAX_CHANNEL_VALUE);
+				}
 			} else if (operator === 'CopyRed') {
 				baseData.data[targetIndex] = sourceRed;
 			} else if (operator === 'CopyGreen') {

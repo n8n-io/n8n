@@ -1,4 +1,5 @@
 import type { Canvas } from '@napi-rs/canvas';
+import { UserError } from 'n8n-workflow';
 
 import { getNumber, type OperationData } from '../helpers';
 
@@ -14,7 +15,7 @@ export async function execute(canvas: Canvas, operation: OperationData): Promise
 	const width = right - sourceX;
 	const height = bottom - sourceY;
 
-	if (width <= 0 || height <= 0) throw new Error('The crop area is outside the image');
+	if (width <= 0 || height <= 0) throw new UserError('The crop area is outside the image');
 
 	const { createCanvas } = await import('@napi-rs/canvas');
 	const output = createCanvas(width, height);

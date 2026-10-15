@@ -1,6 +1,8 @@
 import type { Canvas } from '@napi-rs/canvas';
 import type { IDataObject } from 'n8n-workflow';
 
+import { detectImageFormat } from '../helpers';
+
 type ColorInformation = {
 	colorType: 'grayscale' | 'grayscale-alpha' | 'rgb' | 'rgba' | 'unknown';
 	bitDepth?: number;
@@ -94,7 +96,7 @@ export async function execute(buffer: Buffer, canvas: Canvas): Promise<IDataObje
 				width: canvas.width,
 				height: canvas.height,
 			},
-			format: 'unknown',
+			format: detectImageFormat(buffer) ?? 'unknown',
 			colorType: 'unknown',
 			fileSize: buffer.length,
 		};

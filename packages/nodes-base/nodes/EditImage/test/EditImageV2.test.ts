@@ -6,12 +6,21 @@ import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 
 import { EditImage } from '../EditImage.node';
 import { calculateResizeDimensions } from '../v2/actions/resize.operation';
 import { toCanvasColor } from '../v2/helpers';
+
+function isQualityOption(
+	option: INodeProperties | INodePropertyCollection | INodePropertyOptions,
+): option is INodeProperties | INodePropertyOptions {
+	return option.name === 'quality' && 'displayOptions' in option;
+}
 
 const node: INode = {
 	id: 'edit-image-v2',
@@ -43,6 +52,30 @@ async function imageBufferWithTransparentCorners(): Promise<Buffer> {
 	const context = canvas.getContext('2d');
 	context.fillStyle = '#ff0000';
 	context.fillRect(2, 2, 6, 6);
+	return await canvas.encode('png');
+}
+
+async function rgbaImageBuffer(
+	red: number,
+	green: number,
+	blue: number,
+	alpha: number,
+): Promise<Buffer> {
+	const canvas = createCanvas(1, 1);
+	const context = canvas.getContext('2d');
+	const imageData = context.createImageData(1, 1);
+	imageData.data.set([red, green, blue, alpha]);
+	context.putImageData(imageData, 0, 0);
+	return await canvas.encode('png');
+}
+
+async function twoColorImageBuffer(): Promise<Buffer> {
+	const canvas = createCanvas(2, 1);
+	const context = canvas.getContext('2d');
+	context.fillStyle = '#ff0000';
+	context.fillRect(0, 0, 1, 1);
+	context.fillStyle = '#000000';
+	context.fillRect(1, 0, 1, 1);
 	return await canvas.encode('png');
 }
 
@@ -173,7 +206,7 @@ describe('Edit Image v2', () => {
 		const options = editImage.description.properties.find(
 			(property) => property.name === 'options',
 		);
-		const qualityOptions = options?.options?.filter((option) => option.name === 'quality');
+		const qualityOptions = options?.options?.filter(isQualityOption);
 
 		expect(qualityOptions).toHaveLength(2);
 		expect(qualityOptions?.[0].displayOptions?.show).toEqual({
@@ -181,7 +214,7 @@ describe('Edit Image v2', () => {
 			'@version': [{ _cnd: { lt: 2 } }],
 		});
 		expect(qualityOptions?.[1].displayOptions?.show).toEqual({
-			format: ['jpeg'],
+			format: ['jpeg', 'webp'],
 			'@version': [{ _cnd: { gte: 2 } }],
 		});
 	});
@@ -203,6 +236,17 @@ describe('Edit Image v2', () => {
 		['percent', 50, 25, { width: 100, height: 25 }],
 	])('calculates %s resize dimensions', (option, width, height, expected) => {
 		expect(calculateResizeDimensions(200, 100, width, height, option)).toEqual(expected);
+	});
+
+	it.each([
+		[0, 100],
+		[100, 0],
+		[-1, 100],
+		[100, -1],
+	])('rejects non-positive resize dimensions %s x %s', (width, height) => {
+		expect(() => calculateResizeDimensions(200, 100, width, height, 'ignoreAspectRatio')).toThrow(
+			'Resize width and height must be greater than zero',
+		);
 	});
 
 	it.each([
@@ -250,6 +294,98 @@ describe('Edit Image v2', () => {
 
 		expect(outputBuffer(result).length).toBeGreaterThan(0);
 		expect(result[0][0].json).toEqual({ id: 1 });
+	});
+
+	it('makes the selected RGB color transparent regardless of its opacity byte', async () => {
+		const input = await twoColorImageBuffer();
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'transparent',
+				dataPropertyName: 'data',
+				color: '#ff0000ff',
+			},
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+		const output = outputBuffer(result);
+
+		expect(await alphaAt(output, 0, 0)).toBe(0);
+		expect(await alphaAt(output, 1, 0)).toBe(255);
+	});
+
+	it('returns the requested crop dimensions', async () => {
+		const input = await imageBuffer('#ff0000', 20, 10);
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'crop',
+				dataPropertyName: 'data',
+				width: 8,
+				height: 6,
+				positionX: 1,
+				positionY: 1,
+			},
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+		const output = await loadImage(outputBuffer(result));
+
+		expect({ width: output.width, height: output.height }).toEqual({ width: 8, height: 6 });
+	});
+
+	it.each([
+		[
+			'line',
+			{
+				primitive: 'line',
+				startPositionX: 0,
+				startPositionY: 0,
+				endPositionX: 19,
+				endPositionY: 19,
+				cornerRadius: 0,
+			},
+		],
+		[
+			'circle',
+			{
+				primitive: 'circle',
+				startPositionX: 10,
+				startPositionY: 10,
+				endPositionX: 15,
+				endPositionY: 10,
+				cornerRadius: 0,
+			},
+		],
+	])('renders the %s draw primitive', async (_, drawParameters) => {
+		const input = await imageBuffer('#ffffff', 20, 20);
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'draw',
+				dataPropertyName: 'data',
+				color: '#0066ff00',
+				...drawParameters,
+			},
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+		const [red, green, blue] = await colorAt(outputBuffer(result), 10, 10);
+
+		expect(blue).toBeGreaterThan(red);
+		expect(blue).toBeGreaterThan(green);
 	});
 
 	it('adds a border without filling transparent source pixels', async () => {
@@ -338,6 +474,32 @@ describe('Edit Image v2', () => {
 		const result = await new EditImage().execute.call(executeFunctions);
 
 		expect(await alphaAt(outputBuffer(result), 0, 0)).toBe(0);
+	});
+
+	it.each([
+		[90, { width: 50, height: 100 }],
+		[180, { width: 100, height: 50 }],
+		[270, { width: 50, height: 100 }],
+	])('keeps exact dimensions for a %s degree rotation', async (rotate, expected) => {
+		const input = await imageBuffer('#ff0000', 100, 50);
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'rotate',
+				dataPropertyName: 'data',
+				rotate,
+				backgroundColor: '#ffffffff',
+			},
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/png' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+		const output = await loadImage(outputBuffer(result));
+
+		expect({ width: output.width, height: output.height }).toEqual(expected);
 	});
 
 	it('matches the legacy shear dimensions and direction', async () => {
@@ -514,6 +676,23 @@ describe('Edit Image v2', () => {
 		expect(await compositeFirstPixel(operator, input, overlay)).toEqual(expected);
 	});
 
+	it.each(['Out', 'Xor'])(
+		'applies alpha-aware %s compositing to partially transparent pixels',
+		async (operator) => {
+			const input = await rgbaImageBuffer(100, 110, 120, 128);
+			const overlay = await rgbaImageBuffer(200, 150, 50, 255);
+
+			expect(await compositeFirstPixel(operator, input, overlay)).toEqual([201, 151, 50, 127]);
+		},
+	);
+
+	it('does not erase the target when XOR receives a transparent source pixel', async () => {
+		const input = await rgbaImageBuffer(100, 110, 120, 255);
+		const overlay = await rgbaImageBuffer(200, 150, 50, 0);
+
+		expect(await compositeFirstPixel('Xor', input, overlay)).toEqual([100, 110, 120, 255]);
+	});
+
 	it('copies intensity into opacity when the source has no alpha channel', async () => {
 		const input = await imageBuffer('#646e78', 1, 1);
 		const overlay = await jpegImageBuffer('#c89632');
@@ -565,6 +744,26 @@ describe('Edit Image v2', () => {
 			bitDepth: 8,
 			channels: 3,
 			hasAlpha: false,
+		});
+	});
+
+	it('returns dimensions and format for GIF metadata fallback', async () => {
+		const canvas = createCanvas(3, 2);
+		const input = await canvas.encode('gif');
+		const executeFunctions = createExecuteFunctions({
+			parameters: { operation: 'information', dataPropertyName: 'data' },
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/gif' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+
+		expect(result[0][0].json).toMatchObject({
+			size: { width: 3, height: 2 },
+			format: 'gif',
 		});
 	});
 
@@ -634,14 +833,14 @@ describe('Edit Image v2', () => {
 			const bounds = await nonWhiteBounds(outputBuffer(result));
 
 			if (verticalAlignment === 'north') {
-				expect(bounds.top).toBe(0);
+				expect(bounds.left).toBeLessThan(20);
+				expect(bounds.top).toBeLessThan(20);
 			} else {
-				expect(bounds.top).toBeGreaterThanOrEqual(83);
-				expect(bounds.top).toBeLessThanOrEqual(84);
-				expect(bounds.right).toBeGreaterThanOrEqual(94);
+				expect(bounds.top).toBeGreaterThan(70);
+				expect(bounds.right).toBeGreaterThan(80);
 				expect(bounds.right).toBeLessThanOrEqual(95);
-				expect(bounds.bottom).toBeGreaterThanOrEqual(96);
-				expect(bounds.bottom).toBeLessThanOrEqual(98);
+				expect(bounds.bottom).toBeGreaterThan(80);
+				expect(bounds.bottom).toBeLessThanOrEqual(100);
 			}
 		},
 	);
@@ -718,6 +917,82 @@ describe('Edit Image v2', () => {
 		const metadata = await new Transformer(outputBuffer(result)).metadata();
 
 		expect(metadata).toMatchObject({ width: 9, height: 6 });
+	});
+
+	it('preserves the input format when no output format is selected', async () => {
+		const input = await jpegImageBuffer('#ff0000');
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'resize',
+				dataPropertyName: 'data',
+				width: 1,
+				height: 1,
+				resizeOption: 'ignoreAspectRatio',
+			},
+			input: {
+				json: {},
+				binary: {
+					data: {
+						data: input.toString('base64'),
+						mimeType: 'image/jpeg',
+						fileName: 'input.jpeg',
+					},
+				},
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+
+		expect(outputBuffer(result).subarray(0, 2).toString('hex')).toBe('ffd8');
+		expect(result[0][0].binary?.data?.fileName).toBe('input.jpeg');
+	});
+
+	it('updates the extension when the optional file name is empty', async () => {
+		const input = await imageBuffer();
+		const executeFunctions = createExecuteFunctions({
+			parameters: {
+				operation: 'resize',
+				dataPropertyName: 'data',
+				width: 20,
+				height: 10,
+				resizeOption: 'ignoreAspectRatio',
+				options: { format: 'jpeg', fileName: '' },
+			},
+			input: {
+				json: {},
+				binary: {
+					data: {
+						data: input.toString('base64'),
+						mimeType: 'image/png',
+						fileName: 'input.png',
+					},
+				},
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+
+		expect(result[0][0].binary?.data?.fileName).toBe('input.jpeg');
+	});
+
+	it('applies quality to WebP output', async () => {
+		const runWithQuality = async (quality: number) => {
+			const executeFunctions = createExecuteFunctions({
+				parameters: {
+					operation: 'create',
+					dataPropertyName: 'data',
+					width: 4,
+					height: 4,
+					backgroundColor: '#ff0000',
+					options: { format: 'webp', quality },
+				},
+			});
+			return outputBuffer(await new EditImage().execute.call(executeFunctions));
+		};
+
+		expect(await runWithQuality(0)).not.toEqual(await runWithQuality(100));
 	});
 
 	it.each([

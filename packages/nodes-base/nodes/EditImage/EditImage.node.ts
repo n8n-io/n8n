@@ -1099,11 +1099,11 @@ export class EditImage implements INodeType {
 						default: 100,
 						displayOptions: {
 							show: {
-								format: ['jpeg'],
+								format: ['jpeg', 'webp'],
 								'@version': [{ _cnd: { gte: 2 } }],
 							},
 						},
-						description: 'Sets the JPEG quality from 0 to 100',
+						description: 'Sets the JPEG or WebP quality from 0 to 100',
 					},
 				],
 			},

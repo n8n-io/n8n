@@ -1,4 +1,5 @@
 import type { Canvas } from '@napi-rs/canvas';
+import { UserError } from 'n8n-workflow';
 
 import { copyCanvas, getNumber, getString, type OperationData } from '../helpers';
 
@@ -9,6 +10,10 @@ export function calculateResizeDimensions(
 	height: number,
 	resizeOption: string,
 ): { width: number; height: number } {
+	if (width <= 0 || height <= 0) {
+		throw new UserError('Resize width and height must be greater than zero');
+	}
+
 	if (resizeOption === 'ignoreAspectRatio') {
 		return { width: Math.round(width), height: Math.round(height) };
 	}
