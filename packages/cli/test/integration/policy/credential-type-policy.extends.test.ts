@@ -193,6 +193,10 @@ describe('writing an extends rule', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
+		const persisted = await ownerAgent.get('/credential-type-policies/instance');
+		expect(persisted.body.data.rules).toEqual([
+			{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notInstalledApi' } },
+		]);
 		expect(response.body.data.warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r1' }]);
 	});
 
