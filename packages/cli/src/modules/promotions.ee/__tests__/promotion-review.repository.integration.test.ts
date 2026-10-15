@@ -124,6 +124,33 @@ describe('PromotionReviewRepository', () => {
 		expect(found?.approvedBy).toBeNull();
 	});
 
+	it('attaches a recorded run to its review', async () => {
+		const review = await reviewRepository.insertReview({
+			id: 'review-later',
+			connectionId,
+			type: 'gitlab',
+			remoteReviewId: '9!1',
+		});
+		const run = await runRepository.insertRun({
+			configId,
+			createdById: owner.id,
+			direction: 'promote',
+			type: 'git',
+			details: {
+				schemaVersion: 1,
+				branchName: 'n8n-promotion/later',
+				commitSha: 'c'.repeat(40),
+			},
+			reviewId: null,
+		});
+
+		await runRepository.attachReview(run.id, review.id);
+
+		const found = await reviewRepository.findByIdWithRelations(review.id);
+		expect(found?.runs).toHaveLength(1);
+		expect(found?.runs[0]).toMatchObject({ id: run.id, reviewId: review.id });
+	});
+
 	it('keeps the review when its config or approver is deleted', async () => {
 		const { review, run } = await insertReview();
 		const member = await createMember();

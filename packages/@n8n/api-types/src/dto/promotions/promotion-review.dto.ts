@@ -49,12 +49,13 @@ const promotionReviewRemoteSchema = z.object({
 });
 export type PromotionReviewRemote = z.infer<typeof promotionReviewRemoteSchema>;
 
-/** One inbox row: the database row plus what the host reports, when it answers. */
+/**
+ * One inbox row. The branch and commit stay off this row. They live on the newest
+ * run, and the list query does not load runs.
+ */
 export const promotionReviewSummarySchema = z.object({
 	id: n8nIdSchema,
 	state: promotionReviewStateSchema,
-	branchName: z.string(),
-	commitSha: z.string(),
 	/** Host reference for the review type. GitLab stores `<projectId>!<iid>`. NULL when the review lives in n8n. */
 	remoteReviewId: z.string().nullable(),
 	connection: z.object({ id: n8nIdSchema, name: z.string() }).nullable(),
@@ -98,8 +99,12 @@ export const promotionReviewWorkflowChangeSchema = z.object({
 });
 export type PromotionReviewWorkflowChange = z.infer<typeof promotionReviewWorkflowChangeSchema>;
 
-/** The detail view: the row, the merge request as the host reports it, and the changed workflows. */
+/** The detail view: the row, the newest run, the merge request, and the changed workflows. */
 export const promotionReviewDetailSchema = promotionReviewSummarySchema.extend({
+	/** The branch of the newest run. */
+	branchName: z.string(),
+	/** The commit of the newest run. */
+	commitSha: z.string(),
 	mergeRequest: z
 		.object({
 			description: z.string().nullable(),
