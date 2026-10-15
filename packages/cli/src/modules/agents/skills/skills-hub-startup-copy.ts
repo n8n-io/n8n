@@ -22,6 +22,10 @@ const BATCH_SIZE = 100;
 const WARN_AGENT_IDS = 20;
 
 type CopyCounts = {
+	/** Agents checked, whether or not they needed a copy. */
+	scanned: number;
+	/** Agents with nothing left to copy. */
+	skipped: number;
 	agents: number;
 	skills: number;
 	versions: number;
@@ -31,6 +35,9 @@ type CopyCounts = {
 
 /** What one agent's copy wrote. */
 type AgentCounts = Pick<CopyCounts, 'skills' | 'versions' | 'pins'>;
+
+/** What one agent's copy wrote, and what it copied from. */
+type AgentCopyResult = AgentCounts & { publishedVersions: number; draft: boolean };
 
 type AgentWork = {
 	agent: Pick<Agent, 'id' | 'schema' | 'skills'>;
@@ -89,14 +96,32 @@ export class SkillsHubStartupCopy {
 	}
 
 	async copyAll(): Promise<CopyCounts> {
-		const counts: CopyCounts = { agents: 0, skills: 0, versions: 0, pins: 0, failed: 0 };
+		const counts: CopyCounts = {
+			scanned: 0,
+			skipped: 0,
+			agents: 0,
+			skills: 0,
+			versions: 0,
+			pins: 0,
+			failed: 0,
+		};
+		// A start line without a summary line shows that the copy stopped halfway.
+		this.logger.info('Started copying inline agent skills into the skills hub');
+		const startedAt = Date.now();
 		let after: Pick<Agent, 'createdAt' | 'id'> | null = null;
 		for (;;) {
 			const agents = await this.agentRepository.findPageForSkillCopy(after, BATCH_SIZE);
 			for (const agent of agents) {
+				counts.scanned++;
 				try {
 					const copied = await this.copyAgentWithRetry(agent.id);
-					if (copied) {
+					if (!copied) counts.skipped++;
+					else {
+						// Logged after the commit, so a rolled-back copy never shows up here.
+						this.logger.debug('Copied the inline skills of an agent into the skills hub', {
+							agentId: agent.id,
+							...copied,
+						});
 						counts.agents++;
 						counts.skills += copied.skills;
 						counts.versions += copied.versions;
@@ -108,14 +133,24 @@ export class SkillsHubStartupCopy {
 					counts.failed++;
 					this.logger.error('Failed to copy the skills of an agent into the skills hub', {
 						agentId: agent.id,
+						errorName: error instanceof Error ? error.name : undefined,
 						error: error instanceof Error ? error.message : String(error),
 					});
+					if (error instanceof Error) {
+						this.logger.debug('Stack of the failed skills hub copy', {
+							agentId: agent.id,
+							stack: error.stack,
+						});
+					}
 				}
 			}
 			if (agents.length < BATCH_SIZE) break;
 			after = agents[agents.length - 1];
 		}
-		this.logger.info('Copied inline agent skills into the skills hub', counts);
+		this.logger.info('Copied inline agent skills into the skills hub', {
+			...counts,
+			durationMs: Date.now() - startedAt,
+		});
 		return counts;
 	}
 
@@ -152,13 +187,17 @@ export class SkillsHubStartupCopy {
 	 * time, so one of them fails on the primary key. A second try picks another id. A
 	 * failed try rolls back, so only the counts of the try that commits are kept.
 	 */
-	private async copyAgentWithRetry(agentId: string): Promise<AgentCounts | null> {
+	private async copyAgentWithRetry(agentId: string): Promise<AgentCopyResult | null> {
 		// Most agents have nothing left to copy after the first start. Check that without
 		// a transaction and a row lock, and check again under the lock.
 		if (!(await this.findWork(agentId, {}))) return null;
 		try {
 			return await this.copyAgent(agentId);
-		} catch {
+		} catch (error) {
+			this.logger.warn('Retrying the skills hub copy of an agent after a failed try', {
+				agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 			return await this.copyAgent(agentId);
 		}
 	}
@@ -180,7 +219,7 @@ export class SkillsHubStartupCopy {
 	}
 
 	/** Copies one agent in one transaction. Returns null when it wrote nothing. */
-	private async copyAgent(agentId: string): Promise<AgentCounts | null> {
+	private async copyAgent(agentId: string): Promise<AgentCopyResult | null> {
 		return await this.txRunner.run({}, async (ctx) => {
 			// A draft write to this agent waits until the copy commits. The agent row and the
 			// hub-row check are read under the lock, so the copy never uses stale inline
@@ -216,7 +255,7 @@ export class SkillsHubStartupCopy {
 				}
 				await this.skillRepository.replaceDependencies(agent.id, refs, ctx);
 			}
-			return counts;
+			return { ...counts, publishedVersions: versions.length, draft: copyDraft };
 		});
 	}
 

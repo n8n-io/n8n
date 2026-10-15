@@ -90,7 +90,6 @@
     "@types/luxon": "catalog:",
     "@types/ms": "catalog:",
     "@types/multer": "^2.1.0",
-    "@types/nodemailer": "catalog:",
     "@types/psl": "^1.1.0",
     "@types/replacestream": "^4.0.1",
     "@types/semver": "catalog:",

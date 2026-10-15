@@ -443,6 +443,28 @@ describe('AgentEvalChecksPanel', () => {
 			expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(4);
 		});
 
+		it('marks the selected status filter', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderFour();
+
+			const all = getByTestId('agent-eval-checks-filter-all');
+			const pass = getByTestId('agent-eval-checks-filter-pass');
+
+			expect(all).toHaveAttribute('aria-pressed', 'true');
+			expect(all.className).toContain('brand');
+			expect(pass).toHaveAttribute('aria-pressed', 'false');
+			expect(pass.className).toContain('outline');
+			expect(pass.className).not.toContain('brand');
+
+			await user.click(pass);
+
+			expect(pass).toHaveAttribute('aria-pressed', 'true');
+			expect(pass.className).toContain('brand');
+			expect(all).toHaveAttribute('aria-pressed', 'false');
+			expect(all.className).toContain('outline');
+			expect(all.className).not.toContain('brand');
+		});
+
 		it('filters down to only passing rows', async () => {
 			const user = userEvent.setup();
 			const { getAllByTestId, getByTestId } = renderFour();
@@ -1447,6 +1469,7 @@ describe('AgentEvalChecksPanel', () => {
 		await vi.waitFor(() =>
 			expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument(),
 		);
+		expect(getByTestId('agent-eval-checks-filter-all')).toHaveAttribute('aria-pressed', 'true');
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
 	});
 });
