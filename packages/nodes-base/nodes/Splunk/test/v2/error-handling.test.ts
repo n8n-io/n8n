@@ -3,6 +3,7 @@ import { NodeApiError } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { SplunkV2 } from '../../v2/SplunkV2.node';
+import * as getSearch from '../../v2/actions/search/get.operation';
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
 
@@ -98,6 +99,59 @@ describe('Splunk v2 error handling', () => {
 			'splunkApi',
 			expect.objectContaining({ url: expect.stringMatching(/\/second$/) }),
 		);
+	});
+
+	test('preserves the error response from a legacy XML request', async () => {
+		const context = setup(true);
+		context.getNodeParameter.calledWith('operation', 0).mockReturnValue('deleteJob');
+		const payload =
+			'<response><messages><msg type="ERROR">Search job not found</msg></messages></response>';
+		const apiError = new NodeApiError(
+			node,
+			Object.assign(new Error('404 - Search job not found'), {
+				name: 'AxiosError',
+				statusCode: 404,
+				status: 404,
+				error: payload,
+				response: { status: 404, statusText: 'Not Found', headers: {} },
+			}) as unknown as JsonObject,
+		);
+		context.helpers.requestWithAuthentication.mockImplementation(async (_credentials, options) => {
+			if (options.uri?.endsWith('/first')) throw apiError;
+			return '<response />';
+		});
+
+		await expect(SplunkV2.prototype.execute.call(context)).resolves.toEqual([
+			[
+				{ json: { error: payload }, pairedItem: { item: 0 } },
+				{ json: { success: true }, pairedItem: { item: 1 } },
+			],
+		]);
+	});
+
+	test('continues after an operation throws an API error without a cause', async () => {
+		const context = setup(true);
+		const operation = vi
+			.spyOn(getSearch, 'execute')
+			.mockRejectedValueOnce(
+				new NodeApiError(
+					node,
+					{ message: 'Search job not found' },
+					{ message: 'Search job not found' },
+				),
+			)
+			.mockResolvedValueOnce({ sid: 'second' });
+
+		try {
+			await expect(SplunkV2.prototype.execute.call(context)).resolves.toEqual([
+				[
+					{ json: { error: 'Search job not found' }, pairedItem: { item: 0 } },
+					{ json: { sid: 'second' }, pairedItem: { item: 1 } },
+				],
+			]);
+		} finally {
+			operation.mockRestore();
+		}
 	});
 
 	test('returns successful items with their input links', async () => {
