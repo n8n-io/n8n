@@ -1,5 +1,5 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
-import { type EventService, UrlService, type RoleService } from '@n8n/backend-services';
+import { type EventService, UrlService, type RoleService, JwtService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -30,7 +30,6 @@ import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
 
-import { JwtService } from '../jwt.service';
 import type { OwnershipTransferService } from '../ownership-transfer/ownership-transfer.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';

@@ -13,7 +13,8 @@ Commands in this table run from the repository root. Container-backed tests need
 | Test a product UI or API journey | `e2e` (local) or `<mode>:e2e` (container) | `pnpm --filter n8n-playwright test:local` | [E2E tests](tests/e2e/) |
 | Test PostgreSQL, queue mode, multi-main, or process lifecycle | `<mode>:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=postgres:infrastructure` | [Infrastructure tests](tests/infrastructure/) |
 | Check accessibility within a product journey | E2E project with the `a11y` fixture | `pnpm --filter n8n-playwright test:local` | [Accessibility checks](docs/ACCESSIBILITY.md) |
-| Measure idle memory, retention, or canvas performance | `performance` | `pnpm --filter n8n-playwright test:performance` | [Performance guide](tests/performance/README.md) |
+| Measure memory retention or canvas performance | `performance` | `pnpm --filter n8n-playwright test:performance` | [Performance guide](tests/performance/README.md) |
+| Measure idle memory | `@n8n/efficiency` memory project | `pnpm --filter @n8n/efficiency test:memory` | [Idle memory baselines](../../efficiency/memory/idle/README.md) |
 | Measure Docker image size and layer waste | `@n8n/efficiency` image projects | `pnpm --filter @n8n/efficiency test:images` | [Image efficiency](../../efficiency/images/README.md) |
 | Measure infrastructure throughput and resource use | `benchmarking:infrastructure` | `pnpm --filter n8n-playwright test:benchmark` | [Infrastructure benchmarks](tests/infrastructure/benchmarks/README.md) |
 | Investigate Instance AI memory with a local-only, Docker-backed run | `benchmark-memory-instanceai:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=benchmark-memory-instanceai:infrastructure` | [Local benchmark setup](tests/infrastructure/benchmarks-local/README.md) |
@@ -34,11 +35,18 @@ Other private workspaces can declare `n8n-playwright` and the catalog-pinned `@p
 | `n8n-playwright/test` | `test` and `expect` with the base Currents fixtures |
 | `n8n-playwright/cli` | CLI fixture with command steps, output attachments, exit-code checks, and process cleanup |
 | `n8n-playwright/metrics` | `attachMetric()` for QA metrics and Currents analytics |
+| `n8n-playwright/containers` | Container configuration, worker lifecycle, database preparation, keepalive, and failure diagnostics |
+| `n8n-playwright/memory` | `getStableHeap()` with the existing GC and memory sampling method |
 
 The configuration factory accepts standard Playwright options. It does not start a browser, application, or container stack.
 Reporter paths resolve from this package. Test paths and report outputs resolve from the consuming workspace.
 Supply `reporter` to replace the defaults, or append suite-specific reporters to `qualityReporters()`.
-The existing container and product fixtures remain in `fixtures/`.
+The product fixtures reuse the shared container lifecycle from `fixtures/containers.ts`.
+
+The container export accepts `containerConfig` at project scope and `capability` through `test.use()`.
+It keeps the same configuration precedence as the product fixtures.
+Request `dbSetup` when a suite needs the reset and seeded database.
+The container fixtures do not launch a browser.
 
 ### CLI fixture
 

@@ -1,5 +1,11 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import type {
+	EventService,
+	RoleService,
+	WorkflowMutationHooksProxy,
+	WorkflowPublishGuardProxy,
+	RestrictedNodeTypesProviderProxy,
+} from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Transaction,
@@ -55,11 +61,10 @@ import type { WorkflowHookContextService } from '@/workflow-hook-context.service
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
-import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
-import type { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
