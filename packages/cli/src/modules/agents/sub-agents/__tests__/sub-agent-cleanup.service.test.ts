@@ -3,7 +3,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentRuntimeCacheService } from '../../agent-runtime-cache.service';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentCleanupService } from '../sub-agent-cleanup.service';
 import { type AgentFixtureOverrides } from '../../__tests__/test-utils/stored-agent-config';
@@ -11,7 +11,7 @@ import { type AgentFixtureOverrides } from '../../__tests__/test-utils/stored-ag
 const projectId = 'project-1';
 const childAgentId = 'child-1';
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: 'parent-1',
 		projectId,
@@ -21,7 +21,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 			instructions: 'Delegate work',
 		} as AgentJsonConfig,
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeService() {

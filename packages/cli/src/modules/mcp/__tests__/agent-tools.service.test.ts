@@ -53,7 +53,7 @@ import {
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import { SlackManagedSetupService } from '@/modules/agents/integrations/platforms/slack/slack-managed-setup.service';
 import { SlackManualSetupService } from '@/modules/agents/integrations/platforms/slack/slack-manual-setup.service';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
@@ -119,7 +119,7 @@ const approvalSuspension = (
 	resumeSchema: standardApprovalResumeSchema,
 });
 
-const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
+const agentEntity = (overrides: Record<string, unknown> = {}): ProjectAgent =>
 	({
 		id: 'agent-1',
 		name: 'My Agent',
@@ -132,7 +132,7 @@ const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
 		schema: baseConfig,
 		integrations: [],
 		...overrides,
-	}) as unknown as Agent;
+	}) as unknown as ProjectAgent;
 
 describe('McpAgentToolsService', () => {
 	// One fake skill refs seam for the MCP service and the services it writes through.
@@ -226,7 +226,7 @@ describe('McpAgentToolsService', () => {
 		return await tool.handler(input, { signal });
 	};
 
-	const useRealCustomToolPersistence = (agent: Agent) => {
+	const useRealCustomToolPersistence = (agent: ProjectAgent) => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
 		const lifecycleTelemetry = mock<Telemetry>();

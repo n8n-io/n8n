@@ -19,7 +19,7 @@ import { AgentTaskService } from '../agent-task.service';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentsService } from '../agents.service';
 import type { AgentTask } from '../entities/agent-task.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -38,7 +38,7 @@ function mockCreateReturning(agentRepository: MockProxy<AgentRepository>, entity
 		Object.assign(entity, fields)) as never);
 }
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: agentId,
 		name: 'Agent',
@@ -52,7 +52,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		skills: {},
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeService() {
@@ -1216,7 +1216,7 @@ describe('AgentsService', () => {
 						{ type: 'telegram', credentialId: 'cred-2' },
 					],
 					tools: { c1: { code: '', descriptor: { name: 'Refund tool' } } },
-				} as unknown as Partial<Agent>),
+				} as unknown as Partial<ProjectAgent>),
 			);
 			agentTaskRepository.findByAgentId.mockResolvedValue([
 				{ id: 't1', name: 'Daily digest' } as AgentTask,
@@ -1283,7 +1283,7 @@ describe('AgentsService', () => {
 						skills: [{ type: 'skill', id: 's-missing' }],
 						tasks: [{ type: 'task', id: 't-missing', enabled: false }],
 					},
-				} as unknown as Partial<Agent>),
+				} as unknown as Partial<ProjectAgent>),
 			);
 			agentTaskRepository.findByAgentId.mockResolvedValue([]);
 

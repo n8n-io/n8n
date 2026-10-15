@@ -45,7 +45,7 @@ import type {
 	AgentSandboxRuntimeService,
 } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -149,7 +149,7 @@ function makeReconstructionService(
 function makeAgentEntity(
 	schemaConfig?: AgentJsonConfig['config'],
 	overrides?: Partial<AgentJsonConfig>,
-): Agent {
+): ProjectAgent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
 		model: 'anthropic/claude-sonnet-4-5',
@@ -162,7 +162,7 @@ function makeAgentEntity(
 		projectId: 'project-1',
 		schema,
 		tools: {},
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP wiring', () => {
@@ -609,7 +609,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				id: 'agent-2',
 				name: 'Research Agent',
 				activeVersionId: 'version-2',
-			} as Agent);
+			} as ProjectAgent);
 			const service = makeReconstructionService({ agentRepository });
 			const entity = makeAgentEntity(undefined, {
 				subAgents: { agents: [{ agentId: 'agent-2' }] },
@@ -652,7 +652,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const entity = makeAgentEntity(undefined, {
 			subAgents: {
@@ -686,7 +686,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: 'version-billing',
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
@@ -706,7 +706,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			id: 'agent-billing',
 			name: 'Billing Agent',
 			activeVersionId: null,
-		} as Agent);
+		} as ProjectAgent);
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
@@ -1102,7 +1102,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 	function setupWithRoster() {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			mock<Agent>({ id: 'agent-2', name: 'Researcher', activeVersionId: 'version-1' }),
+			mock<ProjectAgent>({ id: 'agent-2', name: 'Researcher', activeVersionId: 'version-1' }),
 		);
 		return {
 			service: makeReconstructionService({ agentRepository }),
@@ -1151,7 +1151,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;
 		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: 'disabled-agent' }));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			mock<ProjectAgent>({ id: 'disabled-agent' }),
+		);
 		const service = makeReconstructionService({ agentRepository });
 		await service.reconstructFromAgentEntity(
 			storedRunSource(

@@ -26,7 +26,11 @@ import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaste
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import {
+	type Agent,
+	isProjectAgent,
+	type ProjectAgent,
+} from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
 import { SkillService, toAgentSkill } from '@/modules/agents/skills/skill.service';
@@ -121,11 +125,13 @@ describe('Agent skills in the skills hub', () => {
 		});
 	}
 
-	async function reload(agent: Agent) {
-		return await agentRepository.findOneByOrFail({ id: agent.id });
+	async function reload(agent: Agent): Promise<ProjectAgent> {
+		const found = await agentRepository.findOneByOrFail({ id: agent.id });
+		if (!isProjectAgent(found)) throw new Error(`Agent "${agent.id}" is not a project agent`);
+		return found;
 	}
 
-	async function publish(agent: Agent) {
+	async function publish(agent: ProjectAgent) {
 		await publishService.publishAgent(agent.id, agent.projectId, owner, {
 			by: 'user',
 			trigger: 'explicit',

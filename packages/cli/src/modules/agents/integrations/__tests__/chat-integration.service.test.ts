@@ -16,7 +16,7 @@ import type { UrlService } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
@@ -88,7 +88,7 @@ class FakeIntegration extends AgentChatIntegration {
 	}
 }
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: 'agent-1',
 		projectId: 'project-1',
@@ -96,7 +96,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		activeVersionId: null,
 		activeVersion: null,
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 const slackIntegration: AgentIntegrationConfig = {

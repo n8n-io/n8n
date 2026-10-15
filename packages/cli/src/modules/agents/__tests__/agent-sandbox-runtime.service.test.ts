@@ -13,7 +13,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { AiService } from '../../../services/ai.service';
 import type { SandboxSettingsService } from '../../../services/sandbox-settings.service';
 
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -74,7 +74,7 @@ function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 		id: agentId,
 		projectId,
 		activeVersionId: null,
-	} as Agent);
+	} as ProjectAgent);
 	return repository;
 }
 

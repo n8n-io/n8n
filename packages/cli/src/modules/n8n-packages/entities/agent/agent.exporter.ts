@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { type Agent, isProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
 
 import type { PreparedAgentExport } from './agent-export.types';
@@ -30,6 +30,12 @@ export class AgentExporter {
 		agent: Agent,
 		policy: ExportVersionPolicy = ExportVersionPolicy.Latest,
 	): Promise<PreparedAgentExport | undefined> {
+		// The export queries return only project agents. An instance agent has no project to export from.
+		if (!isProjectAgent(agent)) {
+			throw new UnexpectedError('Only project agents can be exported', {
+				extra: { agentId: agent.id },
+			});
+		}
 		if (agent.activeVersionId === null) {
 			if (policy === ExportVersionPolicy.IgnoreUnpublished) return undefined;
 			if (policy === ExportVersionPolicy.PublishedStrict) {

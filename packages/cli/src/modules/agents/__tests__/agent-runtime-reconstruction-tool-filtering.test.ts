@@ -34,7 +34,7 @@ import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.serv
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import { resolveAgentRunSource, type AgentRunSource } from '../utils/agent-published-snapshot';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -130,7 +130,7 @@ function makeAgentEntity(tools: AgentJsonToolConfig[]): AgentRunSource {
 		projectId,
 		schema,
 		tools: { custom_tool: { descriptor: { name: 'custom_tool' }, code: '' } },
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 	return { agent, skillRefs: undefined, skills: {} };
 }
 
@@ -258,7 +258,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 					tools: {},
 					skills: {},
 				},
-			} as unknown as Agent;
+			} as unknown as ProjectAgent;
 
 			const runSource = await resolveAgentRunSource(
 				agent,

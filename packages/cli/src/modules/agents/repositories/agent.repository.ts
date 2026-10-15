@@ -9,21 +9,32 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { Agent } from '../entities/agent.entity';
+import {
+	Agent,
+	isProjectAgent,
+	type ProjectAgent,
+	type ProjectScoped,
+} from '../entities/agent.entity';
 
 export interface AgentListResult {
 	count: number;
-	data: Agent[];
+	data: ProjectAgent[];
 }
 
-export type AgentSummary = Pick<
-	Agent,
-	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
+export type AgentSummary = ProjectScoped<
+	Pick<Agent, 'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'>
 >;
+
+/** Instance agents are code-defined and read-only, so project queries must not see them. */
+const projectScope = 'project' as const;
+const projectScopeSql = "agent.scope = 'project'";
+/** The same filter for UPDATE builders, which have no `agent` alias. */
+const projectScopeUpdateSql = "scope = 'project'";
 
 /** Integration and publication state for channel runtime decisions. */
 export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
@@ -56,30 +67,35 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return await this.existsBy({ id, revision });
 	}
 
-	async findByProjectId(projectId: string): Promise<Agent[]> {
-		return await this.find({
-			where: { projectId },
+	async findByProjectId(projectId: string): Promise<ProjectAgent[]> {
+		const agents = await this.find({
+			where: { projectId, scope: projectScope },
 			relations: { activeVersion: true },
 			order: { updatedAt: 'DESC' },
 		});
+		return agents.filter(isProjectAgent);
 	}
 
 	async findForExport(
 		agentIds: string[],
 		projectIds: string[] | null,
 		options: { includeActiveVersion: boolean },
-	): Promise<Agent[]> {
+	): Promise<ProjectAgent[]> {
 		if (agentIds.length === 0 || projectIds?.length === 0) return [];
 		// Keep both ID filters below the database parameter limit.
 		const projectBatches = projectIds === null ? [null] : chunkIds([...new Set(projectIds)]);
-		const agents: Agent[] = [];
+		const agents: ProjectAgent[] = [];
 		for (const ids of chunkIds([...new Set(agentIds)])) {
 			for (const projects of projectBatches) {
 				const found = await this.find({
-					where: { id: In(ids), ...(projects === null ? {} : { projectId: In(projects) }) },
+					where: {
+						id: In(ids),
+						scope: 'project',
+						...(projects === null ? {} : { projectId: In(projects) }),
+					},
 					relations: { activeVersion: options.includeActiveVersion },
 				});
-				agents.push(...found);
+				agents.push(...found.filter(isProjectAgent));
 			}
 		}
 		return agents.sort((left, right) => left.id.localeCompare(right.id));
@@ -123,10 +139,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 				'agent.availableInMCP',
 				'agent.updatedAt',
 			])
+			.where(projectScopeSql)
 			.orderBy('agent.updatedAt', 'DESC');
 
 		if (projectIds !== null) {
-			query.where('agent.projectId IN (:...projectIds)', { projectIds });
+			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
 		}
 		if (options.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${options.query}%` });
@@ -141,7 +158,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.take(options.limit);
 		}
 
-		return await query.getMany();
+		return (await query.getMany()).filter(isProjectAgent);
 	}
 
 	async findByProjectIdsPaginated(
@@ -165,15 +182,16 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.leftJoinAndSelect('agent.project', 'project');
 		}
 
+		query.where(projectScopeSql);
 		if (projectIds !== null) {
-			query.where('agent.projectId IN (:...projectIds)', { projectIds });
+			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
 		}
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy, usageCounts);
 		query.skip(options.skip).take(options.take);
 
 		const [data, count] = await query.getManyAndCount();
-		return { count, data };
+		return { count, data: data.filter(isProjectAgent) };
 	}
 
 	/**
@@ -189,6 +207,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		query: SelectQueryBuilder<Agent>,
 		projectIds: string[] | null,
 	): SelectQueryBuilder<Agent> {
+		query.andWhere(projectScopeSql);
 		if (projectIds !== null) {
 			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
 		}
@@ -215,7 +234,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * project, when `projectIds` is null) and its published config carries the
 	 * channel. Loads `project` too — the chat page labels the agent with it.
 	 */
-	async findChatReachableById(id: string, projectIds: string[] | null): Promise<Agent | null> {
+	async findChatReachableById(
+		id: string,
+		projectIds: string[] | null,
+	): Promise<ProjectAgent | null> {
 		if (projectIds?.length === 0) return null;
 
 		const query = this.createQueryBuilder('agent')
@@ -223,7 +245,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.leftJoinAndSelect('agent.project', 'project')
 			.where('agent.id = :id', { id });
 
-		return await this.chatReachableQuery(query, projectIds).getOne();
+		return projectAgentOrNull(await this.chatReachableQuery(query, projectIds).getOne());
 	}
 
 	private applyFilters(
@@ -329,11 +351,13 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * published snapshot (or `null`) in a single query, which is what the publish button uses
 	 * to compute its state (published vs. unpublished, has changes vs. up to date).
 	 */
-	async findByIdAndProjectId(id: string, projectId: string): Promise<Agent | null> {
-		return await this.findOne({
-			where: { id, projectId },
-			relations: { activeVersion: true },
-		});
+	async findByIdAndProjectId(id: string, projectId: string): Promise<ProjectAgent | null> {
+		return projectAgentOrNull(
+			await this.findOne({
+				where: { id, projectId, scope: projectScope },
+				relations: { activeVersion: true },
+			}),
+		);
 	}
 
 	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
@@ -348,13 +372,37 @@ export class AgentRepository extends BaseRepository<Agent> {
 	/**
 	 * Finds an agent by ID alone. Agent IDs are globally unique, so this is safe
 	 * for callers whose access check does not hinge on a specific project (e.g.
-	 * users with global agent scopes).
+	 * users with global agent scopes). Returns no instance agent.
 	 */
-	async findById(id: string): Promise<Agent | null> {
-		return await this.findOne({
-			where: { id },
-			relations: { activeVersion: true },
-		});
+	async findById(id: string): Promise<ProjectAgent | null> {
+		return projectAgentOrNull(
+			await this.findOne({
+				where: { id, scope: projectScope },
+				relations: { activeVersion: true },
+			}),
+		);
+	}
+
+	/**
+	 * Creates or renames the row of a code-defined instance agent. The row
+	 * anchors threads, executions and queue items through foreign keys. It
+	 * stores no config, because the runtime comes from code.
+	 */
+	async ensureInstanceAgent(id: string, name: string): Promise<void> {
+		// Two mains can start at the same time: the second insert of the id must not fail.
+		await this.createQueryBuilder()
+			.insert()
+			.into(Agent)
+			.values({ id, name, scope: 'instance', projectId: null, schema: null })
+			.orIgnore()
+			.execute();
+		const existing = await this.findOneOrFail({ select: ['id', 'name', 'scope'], where: { id } });
+		if (existing.scope !== 'instance') {
+			throw new UnexpectedError(`Agent "${id}" exists as a project agent`);
+		}
+		if (existing.name !== name) {
+			await this.update({ id, scope: 'instance' }, { name });
+		}
 	}
 
 	async findDependencyIndexAgentIdsBatch(
@@ -363,11 +411,12 @@ export class AgentRepository extends BaseRepository<Agent> {
 	): Promise<Array<Pick<Agent, 'id'>>> {
 		const query = this.createQueryBuilder('agent')
 			.select(['agent.id'])
+			.where(projectScopeSql)
 			.orderBy('agent.id', 'ASC')
 			.take(batchSize);
 
 		if (afterId !== null) {
-			query.where('agent.id > :afterId', { afterId });
+			query.andWhere('agent.id > :afterId', { afterId });
 		}
 
 		return await query.getMany();
@@ -375,44 +424,49 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async findSummariesByIds(
 		ids: string[],
-	): Promise<Array<Pick<Agent, 'id' | 'name' | 'projectId'>>> {
+	): Promise<Array<ProjectScoped<Pick<Agent, 'id' | 'name' | 'projectId'>>>> {
 		if (ids.length === 0) return [];
 
-		return await this.find({
+		const agents = await this.find({
 			select: ['id', 'name', 'projectId'],
-			where: { id: In(ids) },
+			where: { id: In(ids), scope: projectScope },
 		});
+		return agents.filter(isProjectAgent);
 	}
 
-	async findByIdInProjects(id: string, projectIds: string[]): Promise<Agent | null> {
+	async findByIdInProjects(id: string, projectIds: string[]): Promise<ProjectAgent | null> {
 		if (projectIds.length === 0) return null;
-		return await this.findOne({
-			where: { id, projectId: In(projectIds) },
-			relations: { activeVersion: true },
-		});
+		return projectAgentOrNull(
+			await this.findOne({
+				where: { id, projectId: In(projectIds), scope: projectScope },
+				relations: { activeVersion: true },
+			}),
+		);
 	}
 
 	/** Ownership check only — skips `findByIdAndProjectId`'s `activeVersion` load. */
 	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
-		return await this.exists({ where: { id, projectId } });
+		return await this.exists({ where: { id, projectId, scope: projectScope } });
 	}
 
 	/** Lightweight project-id lookup — avoids loading the full agent config. */
 	async getProjectIdById(id: string): Promise<string | null> {
 		const result = await this.findOne({
 			select: ['projectId'],
-			where: { id },
+			where: { id, scope: projectScope },
 		});
 		return result?.projectId ?? null;
 	}
 
 	/** Name and home project for the budget-alert email. Skips the config JSON. */
-	async findBudgetAlertTarget(id: string): Promise<Pick<Agent, 'name' | 'projectId'> | null> {
+	async findBudgetAlertTarget(
+		id: string,
+	): Promise<ProjectScoped<Pick<Agent, 'name' | 'projectId'>> | null> {
 		const agent = await this.findOne({
 			select: ['name', 'projectId'],
-			where: { id },
+			where: { id, scope: projectScope },
 		});
-		if (!agent) return null;
+		if (!agent || !isProjectAgent(agent)) return null;
 		return { name: agent.name, projectId: agent.projectId };
 	}
 
@@ -423,32 +477,33 @@ export class AgentRepository extends BaseRepository<Agent> {
 		if (ids.length === 0) return [];
 		return await this.find({
 			select: ['id', 'name', 'activeVersionId'],
-			where: { id: In(ids), projectId },
+			where: { id: In(ids), projectId, scope: projectScope },
 		});
 	}
 
 	async findMcpAvailabilityCandidates(
 		where: { ids: string[] } | { projectIds: string[] } | { all: true },
-	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
+	): Promise<Array<ProjectScoped<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>>> {
 		if ('ids' in where && where.ids.length === 0) return [];
 		if ('projectIds' in where && where.projectIds.length === 0) return [];
 
 		const criteria =
 			'ids' in where
-				? { id: In(where.ids) }
+				? { id: In(where.ids), scope: projectScope }
 				: 'projectIds' in where
-					? { projectId: In(where.projectIds) }
-					: undefined;
+					? { projectId: In(where.projectIds), scope: projectScope }
+					: { scope: projectScope };
 
-		return await this.find({
+		const agents = await this.find({
 			select: ['id', 'projectId', 'availableInMCP'],
 			where: criteria,
 		});
+		return agents.filter(isProjectAgent);
 	}
 
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
-		await this.update({ id: In(agentIds) }, { availableInMCP });
+		await this.update({ id: In(agentIds), scope: projectScope }, { availableInMCP });
 	}
 
 	/**
@@ -458,7 +513,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 */
 	async claimSetupCompleted(id: string, completedAt: Date): Promise<boolean> {
 		const result = await this.update(
-			{ id, setupCompletedAt: IsNull() },
+			{ id, scope: projectScope, setupCompletedAt: IsNull() },
 			{ setupCompletedAt: completedAt },
 		);
 
@@ -469,7 +524,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
 		return await this.findOne({
 			select: ['integrations', 'versionId', 'activeVersionId'],
-			where: { id },
+			where: { id, scope: projectScope },
 		});
 	}
 
@@ -487,6 +542,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		const result = await this.update(
 			{
 				id,
+				scope: projectScope,
 				revision: expected.revision,
 				versionId: expected.versionId ?? IsNull(),
 				activeVersionId: expected.activeVersionId ?? IsNull(),
@@ -497,16 +553,18 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return (result.affected ?? 0) > 0;
 	}
 
-	async findPublished(): Promise<Agent[]> {
-		return await this.createQueryBuilder('agent')
+	async findPublished(): Promise<ProjectAgent[]> {
+		const agents = await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.where(projectScopeSql)
 			.getMany();
+		return agents.filter(isProjectAgent);
 	}
 
 	/** The ids of all agents with a published version. Loads no version rows. */
 	async findPublishedAgentIds(): Promise<string[]> {
 		const rows = await this.find({
-			where: { activeVersionId: Not(IsNull()) },
+			where: { activeVersionId: Not(IsNull()), scope: projectScope },
 			select: ['id'],
 		});
 		return rows.map((row) => row.id);
@@ -519,7 +577,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 */
 	async findActiveVersionId(agentId: string): Promise<string | null> {
 		const row = await this.findOne({
-			where: { id: agentId },
+			where: { id: agentId, scope: projectScope },
 			select: ['id', 'activeVersionId'],
 		});
 		return row?.activeVersionId ?? null;
@@ -530,7 +588,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		if (agentIds.length === 0) return new Set();
 
 		const rows = await this.find({
-			where: { id: In(agentIds), activeVersionId: Not(IsNull()) },
+			where: { id: In(agentIds), activeVersionId: Not(IsNull()), scope: projectScope },
 			select: ['id'],
 		});
 		return new Set(rows.map((row) => row.id));
@@ -553,7 +611,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 		credentialId: string,
 		excludeAgentId: string,
 	): Promise<Array<Pick<Agent, 'id' | 'name' | 'integrations'>>> {
-		const agents = await this.find({ select: ['id', 'name', 'integrations'] });
+		const agents = await this.find({
+			select: ['id', 'name', 'integrations'],
+			where: { scope: projectScope },
+		});
 		return agents.filter(
 			(agent) =>
 				agent.id !== excludeAgentId &&
@@ -593,13 +654,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 		credentialId: string,
 		projectId: string,
 		excludeAgentId: string,
-	): Promise<Agent[]> {
-		const agents = await this.find({ where: { projectId } });
-		return agents.filter(
-			(agent) =>
-				agent.id !== excludeAgentId &&
-				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
-		);
+	): Promise<ProjectAgent[]> {
+		const agents = await this.find({ where: { projectId, scope: projectScope } });
+		return agents
+			.filter(isProjectAgent)
+			.filter(
+				(agent) =>
+					agent.id !== excludeAgentId &&
+					(agent.integrations ?? []).some(
+						(i) => i.type === type && i.credentialId === credentialId,
+					),
+			);
 	}
 
 	/**
@@ -626,6 +691,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				revision: () => 'revision + 1',
 			})
 			.where('id = :id AND revision = :expected', { id, expected: expectedRevision })
+			.andWhere(projectScopeUpdateSql)
 			.execute();
 		return (result.affected ?? 0) > 0;
 	}
@@ -658,6 +724,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				revision: () => 'revision + 1',
 			})
 			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
+			.andWhere(projectScopeUpdateSql)
 			.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
@@ -687,6 +754,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				.set({ versionId: randomUUID() })
 				.where('id = :id', { id })
 				.andWhere('"versionId" = "activeVersionId"')
+				.andWhere(projectScopeUpdateSql)
 				.execute();
 			if ((result.affected ?? 0) > 0) changed.push(id);
 		}
@@ -748,7 +816,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findProjectIdsByIds(
 		ids: string[],
 		ctx: OperationContext = {},
-	): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+	): Promise<Array<ProjectScoped<Pick<Agent, 'id' | 'projectId'>>>> {
 		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
 		// In batches: a skill can have more followers than SQLite allows bound parameters.
 		for (const chunk of chunkIds([...new Set(ids)])) {
@@ -759,7 +827,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				})),
 			);
 		}
-		return agents;
+		return agents.filter(isProjectAgent);
 	}
 
 	/**
@@ -779,6 +847,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.update(Agent)
 			.set({ schema: agent.schema, skills: agent.skills, updatedAt: agent.updatedAt })
 			.where('id = :id', { id: agent.id })
+			.andWhere(projectScopeUpdateSql)
 			.execute();
 	}
 
@@ -791,6 +860,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.update(Agent)
 			.set({ schema: agent.schema, updatedAt: agent.updatedAt })
 			.where('id = :id', { id: agent.id })
+			.andWhere(projectScopeUpdateSql)
 			.execute();
 	}
+}
+
+function projectAgentOrNull(agent: Agent | null): ProjectAgent | null {
+	return agent && isProjectAgent(agent) ? agent : null;
 }

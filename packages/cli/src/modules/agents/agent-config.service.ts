@@ -22,7 +22,7 @@ import { AgentPolicyService } from './agent-policy.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
-import type { Agent } from './entities/agent.entity';
+import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import {
@@ -177,7 +177,7 @@ export class AgentConfigService {
 	}
 
 	private async finishConfigUpdate(
-		saved: Agent,
+		saved: ProjectAgent,
 		validatedConfig: AgentJsonConfig,
 		replacement: ConfigReplacement,
 		clearOmitted: boolean,
@@ -202,7 +202,7 @@ export class AgentConfigService {
 	}
 
 	private async removeUnreferencedTasks(
-		agent: Agent,
+		agent: ProjectAgent,
 		existingTaskIds: string[],
 		ctx: OperationContext,
 	): Promise<void> {
@@ -214,7 +214,7 @@ export class AgentConfigService {
 	}
 
 	private async saveConfig(
-		entity: Agent,
+		entity: ProjectAgent,
 		skillRefs: AgentSkillRefs,
 		credentialProvider: AgentsCredentialProvider,
 		user: User,
@@ -259,7 +259,7 @@ export class AgentConfigService {
 	}
 
 	private removeUnreferencedResources(
-		entity: Agent,
+		entity: ProjectAgent,
 		config: AgentJsonConfig,
 		clearOmitted: boolean,
 	): void {
@@ -276,7 +276,7 @@ export class AgentConfigService {
 		}
 	}
 
-	private removeUnreferencedCustomTools(entity: Agent, config: AgentJsonConfig): void {
+	private removeUnreferencedCustomTools(entity: ProjectAgent, config: AgentJsonConfig): void {
 		const referencedIds = new Set(
 			(config.tools ?? [])
 				.filter(
@@ -293,7 +293,7 @@ export class AgentConfigService {
 	}
 
 	private buildConfigReplacement(
-		entity: Agent,
+		entity: ProjectAgent,
 		previousSchema: AgentJsonConfig | null,
 		validatedConfig: AgentJsonConfig,
 		rawConfig: unknown,
@@ -360,7 +360,7 @@ export class AgentConfigService {
 	}
 
 	private async reconcileConfigReferences(
-		entity: Agent,
+		entity: ProjectAgent,
 		previousSchema: AgentJsonConfig | null,
 		config: AgentJsonConfig,
 		clearOmitted: boolean,
@@ -379,7 +379,7 @@ export class AgentConfigService {
 
 	private async reconcileSubAgentReferences(
 		config: AgentJsonConfig,
-		entity: Agent,
+		entity: ProjectAgent,
 	): Promise<ResolvedSubAgentRef[]> {
 		if (config.subAgents?.agents !== undefined) {
 			const existingAgentIds = new Set(
@@ -399,7 +399,7 @@ export class AgentConfigService {
 		return [];
 	}
 
-	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
+	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: ProjectAgent) {
 		for (const { agentId } of resolvedSubAgents) {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');

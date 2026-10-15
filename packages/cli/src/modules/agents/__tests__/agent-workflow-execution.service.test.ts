@@ -35,7 +35,7 @@ import {
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
 import { AgentSpendLedger } from '../budget-guardrail';
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -56,7 +56,7 @@ const schema: AgentJsonConfig = {
 	instructions: 'Help users',
 };
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: agentId,
 		name: 'Support Agent',
@@ -67,7 +67,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		skills: {},
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeReadableStream(chunks: StreamChunk[]): ReadableStream<StreamChunk> {
@@ -502,7 +502,7 @@ describe('AgentWorkflowExecutionService', () => {
 		async (compilation) => {
 			const { service, agentRepository, reconstructionService, executionService } = makeService();
 			const lookupStarted = createDeferredPromise();
-			const agentLookup = createDeferredPromise<Agent>();
+			const agentLookup = createDeferredPromise<ProjectAgent>();
 			const runtime = makeRuntime();
 			const cause = new UserError('Session not found');
 			executionService.getSessionMode.mockResolvedValue('existing');
@@ -1521,7 +1521,9 @@ describe('AgentWorkflowExecutionService', () => {
 
 	describe('eval runs', () => {
 		const evalConfig: AgentJsonConfig = { ...schema, instructions: 'Help users (eval copy)' };
-		const integrations = [{ type: 'slack', credentialId: 'slack-1' }] as Agent['integrations'];
+		const integrations = [
+			{ type: 'slack', credentialId: 'slack-1' },
+		] as ProjectAgent['integrations'];
 
 		function makePrepareForEval() {
 			const instrumentation: AgentRuntimeInstrumentation = {

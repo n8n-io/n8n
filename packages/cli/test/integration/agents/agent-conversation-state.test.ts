@@ -138,7 +138,7 @@ describe('Agent conversation state', () => {
 				id: 'thread-1',
 				agentId: agent.id,
 				agentName: agent.name,
-				projectId: agent.projectId,
+				projectId: agent.projectId as string,
 				sessionNumber: 1,
 			}),
 		);

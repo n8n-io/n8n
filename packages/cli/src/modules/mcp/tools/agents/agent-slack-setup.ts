@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 
 import { SlackManagedSetupService } from '@/modules/agents/integrations/platforms/slack/slack-managed-setup.service';
 import { SlackManualSetupService } from '@/modules/agents/integrations/platforms/slack/slack-manual-setup.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 
 export const SLACK_INTEGRATION_TYPE = 'slack';
 
@@ -40,7 +40,7 @@ export class McpAgentSlackSetup {
 	 * client must come back with an explicit workspace before n8n creates a
 	 * Slack app.
 	 */
-	async describeSetup(agent: Agent, user: User, agentUrl: string) {
+	async describeSetup(agent: ProjectAgent, user: User, agentUrl: string) {
 		const state = await this.managedSetup.getSetupState({
 			projectId: agent.projectId,
 			agentId: agent.id,
@@ -112,7 +112,7 @@ export class McpAgentSlackSetup {
 	}
 
 	async install(
-		agent: Agent,
+		agent: ProjectAgent,
 		user: User,
 		target: { managerCredentialId: string; workspaceId: string },
 	) {
@@ -131,7 +131,7 @@ export class McpAgentSlackSetup {
 	 * credential that n8n did not build for this Agent, return what the app must
 	 * be set to.
 	 */
-	async describeBotCredential(agent: Agent, user: User, credentialId: string) {
+	async describeBotCredential(agent: ProjectAgent, user: User, credentialId: string) {
 		if (await this.isAppConfiguredForAgent(agent, user, credentialId)) {
 			return { slackApp: { configuredForAgent: true } };
 		}
@@ -145,7 +145,7 @@ export class McpAgentSlackSetup {
 	 * A failed check counts as unverified: the caller has already saved the
 	 * connect, or can only report the result.
 	 */
-	async isAppConfiguredForAgent(agent: Agent, user: User, credentialId: string) {
+	async isAppConfiguredForAgent(agent: ProjectAgent, user: User, credentialId: string) {
 		try {
 			return await this.managedSetup.isAppConfiguredForAgent(credentialId, agent, user);
 		} catch (error) {
@@ -158,7 +158,7 @@ export class McpAgentSlackSetup {
 		}
 	}
 
-	private async appRequirements(agent: Agent) {
+	private async appRequirements(agent: ProjectAgent) {
 		const { manifest } = await this.manualSetup.getManifest({
 			projectId: agent.projectId,
 			agentId: agent.id,
