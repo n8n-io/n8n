@@ -951,7 +951,6 @@ function makeListItem(
 		description: `${overrides.name} description`,
 		projectId: overrides.scope === 'project' ? 'p1' : null,
 		projectName: overrides.scope === 'project' ? 'Marketing' : null,
-		userId: null,
 		agentId: null,
 		source: 'ui',
 		latestVersion: 1,

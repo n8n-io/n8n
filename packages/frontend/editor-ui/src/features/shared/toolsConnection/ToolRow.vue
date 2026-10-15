@@ -269,7 +269,7 @@ function handleConnect() {
 					)
 				"
 				data-test-id="tools-connection-row-attach"
-				@update:model-value="emit($event ? 'connect' : 'disconnect', item)"
+				@update:model-value="$event ? emit('connect', item) : emit('disconnect', item)"
 			/>
 			<N8nButton
 				v-else-if="item.kind === 'service'"

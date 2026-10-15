@@ -636,7 +636,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			scope: 'instance',
 			projectId: null,
 			projectName: null,
-			userId: null,
 			agentId: null,
 			source: 'ui',
 			latestVersion: 1,
