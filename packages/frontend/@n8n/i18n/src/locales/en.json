@@ -9408,6 +9408,7 @@
 	"agents.channels.teams.setup.availability.fileAccessPermission": "To read files that people attach in channels and group chats, the app needs the Microsoft Graph permission Files.Read.All. An administrator adds it under API permissions › Microsoft Graph › Application permissions, then selects Grant admin consent. Do not use Delegated permissions: the agent cannot use them. Send this link to an administrator if you are not one. After approval, it can take up to an hour to apply. Direct messages and pasted images work without it.",
 	"agents.channels.teams.setup.availability.fileAccessApproved": "File access approved.",
 	"agents.channels.teams.setup.availability.fileAccessNotApproved": "The agent can’t read files in channels and group chats until an admin approves.",
+	"agents.channels.teams.setup.availability.fileAccessNotApprovedOwnApp": "The agent can’t read files in channels and group chats until an admin grants the Files.Read.All application permission.",
 	"agents.channels.teams.setup.availability.fileAccessApprovedHint": "It can take up to an hour to apply.",
 	"agents.channels.teams.setup.availability.summarySeparator": " · ",
 	"agents.channels.teams.setup.install.identityTooltip": "Name and avatar come from the agent. To change them, edit the agent and download the package again.",

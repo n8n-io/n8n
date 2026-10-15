@@ -738,15 +738,7 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-done')).toBeDisabled();
 		});
 
-		it('locks the availability once connected, so a new download matches what was saved', async () => {
-			const { getByTestId, rerender } = await downloadAndConnect();
-
-			await rerender(props({ modelValue: 'cred-1', connected: true }));
-
-			await waitFor(() => expect(getByTestId('teams-availability-step')).toHaveAttribute('inert'));
-		});
-
-		it('locks the availability from the download on, even when connecting fails', async () => {
+		it('locks the availability only while the package downloads', async () => {
 			withBot();
 			let release: ((blob: Blob) => void) | undefined;
 			vi.mocked(fetchTeamsAppPackage).mockImplementation(
@@ -763,10 +755,24 @@ describe('AgentChannelTeamsSetup', () => {
 
 			release?.(new Blob(['zip']));
 			await waitFor(() => expect(emitted().connect).toBeTruthy());
-			await rerender(props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }));
+			await rerender(props({ modelValue: 'cred-1', connected: true }));
 
-			await waitFor(() => expect(getByTestId('teams-connect-retry')).toBeVisible());
-			expect(getByTestId('teams-availability-step')).toHaveAttribute('inert');
+			await waitFor(() =>
+				expect(getByTestId('teams-availability-step')).not.toHaveAttribute('inert'),
+			);
+		});
+
+		it('asks for a new download before Done once the availability changed', async () => {
+			const { getByTestId, rerender } = await downloadAndConnect();
+			await rerender(props({ modelValue: 'cred-1', connected: true }));
+			await waitFor(() => expect(getByTestId('teams-done')).toBeEnabled());
+
+			await openAvailability(getByTestId);
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+			expect(getByTestId('teams-done')).toBeDisabled();
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(getByTestId('teams-done')).toBeEnabled());
 		});
 
 		it('does not count a package for a credential that was swapped since', async () => {

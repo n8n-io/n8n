@@ -222,6 +222,8 @@ const availabilityTouched = ref(false);
 function editAvailability(value: TeamsAvailability) {
 	availability.value = value;
 	availabilityTouched.value = true;
+	// The downloaded package carries the old scopes.
+	downloadedFor.value = null;
 }
 
 /**
@@ -363,15 +365,9 @@ async function downloadAndConnect() {
 	if (!props.connected) emit('connect');
 }
 
-// The package fixes these settings, and connecting saves them, so they lock from the download on.
-// Channel settings is where they change after that.
-const availabilityLocked = computed(
-	() =>
-		!ready.value ||
-		props.connected ||
-		downloading.value ||
-		downloadedFor.value === credentialId.value,
-);
+// Locked only while a package is built from them. An edit after that invalidates the
+// package, and Done saves the form, so the new download and n8n agree again.
+const availabilityLocked = computed(() => !ready.value || downloading.value);
 
 const canFinish = computed(() => downloadedFor.value === credentialId.value && props.connected);
 
