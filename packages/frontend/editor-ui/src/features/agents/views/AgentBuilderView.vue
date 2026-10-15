@@ -27,6 +27,7 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
+	type AgentSkillAvailability,
 	type InstanceAiHandoffContext,
 	type PushMessage,
 	type PushPayload,
@@ -1324,6 +1325,7 @@ interface SkillAutosaveSnapshot {
 	skillId: string;
 	skill: AgentSkill;
 	baseSkillHash: string | undefined;
+	availableTo?: AgentSkillAvailability;
 }
 
 interface McpAvailabilitySnapshot {
@@ -1556,6 +1558,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 			snapshot.skillId,
 			snapshot.skill,
 			snapshot.baseSkillHash,
+			snapshot.availableTo,
 		);
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
@@ -1981,11 +1984,12 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
+	flushConfigSave: flushConfigAutosave,
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
-	scheduleSkillSave: ({ skillId, skill }) => {
+	scheduleSkillSave: ({ skillId, skill, availableTo }) => {
 		// Acquire the write lock before persisting any change.
 		agentCollaborationStore.requestWriteAccess();
 		// The persisted validation result no longer reflects the working copy —
@@ -1998,6 +2002,7 @@ const caps = useAgentCapabilitiesActions({
 			skillId,
 			skill,
 			baseSkillHash: agent.value?.skillHashes?.[skillId],
+			...(availableTo ? { availableTo } : {}),
 		});
 	},
 	telemetry: {
