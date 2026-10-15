@@ -1076,6 +1076,22 @@ describe('EnterpriseWorkflowService', () => {
 			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
 		});
 
+		it('reads no history for a node blocked only by a sub-workflow source it cannot inspect', async () => {
+			const urlSourcedNode = {
+				id: 'sub-1',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: { source: 'url', workflowUrl: 'https://example.com/workflow.json' },
+			} as unknown as INode;
+
+			await expect(
+				service.preventTampering({ nodes: [urlSourcedNode] } as IWorkflowBase, 'w1', user),
+			).rejects.toThrow();
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
 		it('reads no history for a node that is read only already', async () => {
 			workflowRepository.get.mockResolvedValue({
 				nodes: [httpNode('foreign-cred')],

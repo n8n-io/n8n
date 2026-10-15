@@ -318,11 +318,16 @@ export class EnterpriseWorkflowService {
 			),
 			...restoredNodes.map((node) => node.id),
 		]);
+		const allowed = new Set(allowedCredentialIds);
 		const candidates = this.getNodesWithInaccessibleCreds(
 			workflow,
 			allowedCredentialIds,
 			options,
-		).filter((node) => node.id && !settledNodeIds.has(node.id));
+		).filter((node) => {
+			if (!node.id || settledNodeIds.has(node.id)) return false;
+			const { ids, hasUnresolved } = this.getNodeCredentialRefs(node);
+			return hasUnresolved || ids.some((id) => !allowed.has(id));
+		});
 		if (candidates.length === 0) return [];
 
 		const versions = await this.workflowHistoryRepository.findNewestVersionNodes(
