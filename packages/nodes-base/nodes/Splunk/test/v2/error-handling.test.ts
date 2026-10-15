@@ -1,5 +1,5 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { SplunkV2 } from '../../v2/SplunkV2.node';
@@ -37,32 +37,32 @@ describe('Splunk v2 error handling', () => {
 
 	const cases = [
 		{
-			name: 'network failure',
-			error: () => new Error('Connection reset'),
-			message: 'No response from API call',
-			errorType: NodeOperationError,
-		},
-		{
-			name: 'API error without a cause',
+			name: 'network error wrapped in NodeApiError',
 			error: () =>
 				new NodeApiError(
 					node,
-					{ message: 'Search job not found', statusCode: 404 },
-					{
-						message: 'Search job not found',
-					},
+					Object.assign(new Error('Connection reset'), {
+						name: 'AxiosError',
+						code: 'ECONNRESET',
+					}) as unknown as JsonObject,
 				),
-			message: 'Search job not found',
-			errorType: NodeApiError,
+			message:
+				'The connection to the server was closed unexpectedly, perhaps it is offline. You can retry the request immediately or wait and retry later.',
 		},
 		{
-			name: 'API error with an existing error payload',
+			name: 'Axios 404 error wrapped in NodeApiError',
 			error: () =>
-				Object.assign(new NodeApiError(node, { message: 'Request failed' }), {
-					cause: { error: 'Original Splunk error' },
-				}),
-			message: 'Original Splunk error',
-			errorType: NodeApiError,
+				new NodeApiError(
+					node,
+					Object.assign(new Error('Request failed with status code 404'), {
+						name: 'AxiosError',
+						response: {
+							status: 404,
+							data: { messages: [{ type: 'ERROR', text: 'Search job not found' }] },
+						},
+					}) as unknown as JsonObject,
+				),
+			message: 'The resource you are requesting could not be found',
 		},
 	];
 
@@ -81,24 +81,24 @@ describe('Splunk v2 error handling', () => {
 				{ json: { sid: 'second' }, pairedItem: { item: 1 } },
 			],
 		]);
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(7);
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'splunkApi',
+			expect.objectContaining({ url: expect.stringMatching(/\/second$/) }),
+		);
 	});
 
-	test.each(cases)(
-		'stops after $name when Continue On Fail is off',
-		async ({ error, errorType }) => {
-			const context = setup(false);
-			context.helpers.httpRequestWithAuthentication.mockRejectedValue(error());
+	test.each(cases)('stops after $name when Continue On Fail is off', async ({ error }) => {
+		const context = setup(false);
+		const apiError = error();
+		context.helpers.httpRequestWithAuthentication.mockRejectedValue(apiError);
 
-			await expect(SplunkV2.prototype.execute.call(context)).rejects.toBeInstanceOf(errorType);
-			expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(6);
-			expect(
-				context.helpers.httpRequestWithAuthentication.mock.calls.every(([, options]) =>
-					options.url.endsWith('/first'),
-				),
-			).toBe(true);
-		},
-	);
+		await expect(SplunkV2.prototype.execute.call(context)).rejects.toBe(apiError);
+		expect(apiError.context.itemIndex).toBe(0);
+		expect(context.helpers.httpRequestWithAuthentication).not.toHaveBeenCalledWith(
+			'splunkApi',
+			expect.objectContaining({ url: expect.stringMatching(/\/second$/) }),
+		);
+	});
 
 	test('returns successful items with their input links', async () => {
 		const context = setup(true);
