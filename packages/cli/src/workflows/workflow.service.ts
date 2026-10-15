@@ -758,7 +758,11 @@ export class WorkflowService {
 		// redactCallerExecutions is on when it is not set. Turning it off lowers redaction and
 		// turning it on raises it, so strip a change the license or the user's scopes do not allow.
 		if (workflowUpdateData.settings?.redactCallerExecutions !== undefined) {
-			const turnsOn = workflowUpdateData.settings.redactCallerExecutions;
+			// The settings schema does not check this value. Any value other than `false` keeps the
+			// setting on, so store a boolean and select the scope from it.
+			const value: unknown = workflowUpdateData.settings.redactCallerExecutions;
+			const turnsOn = value !== false;
+			workflowUpdateData.settings.redactCallerExecutions = turnsOn;
 			const wasOn = workflow.settings?.redactCallerExecutions !== false;
 			const canUpdate =
 				turnsOn === wasOn ||
