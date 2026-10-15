@@ -147,6 +147,32 @@ describe('sticky note placement with tidyUp', () => {
 		expect(overlappingNodes).toEqual([]);
 	});
 
+	it('keeps free-floating notes clear of each other and a long column of nodes', () => {
+		const builder = workflow('wf', 'Test');
+		const obstacles = Array.from({ length: 51 }, (_, index) =>
+			node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: `Step ${index}`, position: [100, 300 + index * 192] },
+			}),
+		);
+		for (const obstacle of obstacles) {
+			builder.add(obstacle);
+		}
+		const json = builder
+			.add(sticky('## One', { name: 'One' }))
+			.add(sticky('## Two', { name: 'Two' }))
+			.toJSON({ tidyUp: true });
+
+		const boxes = ['One', 'Two'].map((name) => stickyBox(json, name));
+		expect(overlaps(boxes[0], boxes[1])).toBe(false);
+		for (const box of boxes) {
+			for (const { name } of obstacles) {
+				expect(overlaps(box, nodeBox(json, name))).toBe(false);
+			}
+		}
+	});
+
 	it.each([false, true])('keeps a sticky clear of a rootless cycle with tidyUp=%s', (tidyUp) => {
 		const { fetch, compute } = buildChain();
 		const json = workflow('wf', 'Test')

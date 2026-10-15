@@ -38,7 +38,6 @@ import {
 	DEFAULT_STICKY_SIZE,
 	STICKY_PADDING,
 	STICKY_HEADER_HEIGHT,
-	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
 import {
 	collapseNodeGroups,
@@ -917,7 +916,8 @@ function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 /** Push a box down until it clears every box already placed. */
 function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 	let separated = box;
-	for (let step = 0; step < MAX_STICKY_SEPARATION_STEPS; step++) {
+	// Each move clears one box and only increases y, so each box needs at most one step.
+	for (let step = 0; step < placed.length; step++) {
 		const collision = placed.find((placedBox) => boxesOverlap(placedBox, separated));
 		if (!collision) break;
 		separated = {
