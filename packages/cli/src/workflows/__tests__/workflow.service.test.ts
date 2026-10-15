@@ -1504,6 +1504,43 @@ describe('WorkflowService', () => {
 				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
 			});
 
+			test('requires enableRedaction for a non-boolean value that turns the setting on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes) =>
+						Array.isArray(scopes) &&
+						scopes.includes('workflow:disableRedaction') &&
+						!scopes.includes('workflow:enableRedaction'),
+				);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: null }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('stores a non-boolean value that turns the setting on as `true`', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockResolvedValue(true);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: null }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: true }));
+			});
+
 			test('does not check scopes when the effective value does not change', async () => {
 				// Not set means on, so sending `true` changes nothing.
 				setupStoredCallerRedaction(undefined);
