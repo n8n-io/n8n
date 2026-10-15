@@ -15,7 +15,7 @@ import {
 } from '@n8n/design-system';
 
 import { useI18n } from '@n8n/i18n';
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { computed } from 'vue';
 
 interface SessionDropdownData {
 	date: string;
@@ -52,19 +52,22 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+const breadcrumbItems = computed(() =>
+	props.breadcrumbItems.map((item, index) =>
+		index === 0 ? { ...item, icon: props.projectIcon } : item,
+	),
+);
 </script>
 
 <template>
 	<div :class="$style.topBar">
 		<div :class="$style.topBarLeft">
 			<N8nBreadcrumbs
-				:items="props.breadcrumbItems"
+				:items="breadcrumbItems"
 				theme="medium"
 				@item-selected="emit('breadcrumb-select', $event)"
 			>
-				<template #prepend>
-					<ProjectIcon :icon="projectIcon" border-less size="mini" aria-hidden="true" />
-				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -178,10 +181,6 @@ const i18n = useI18n();
 
 .topBarLeft :global(.n8n-breadcrumbs) {
 	min-width: 0;
-}
-
-.topBarLeft :global(.n8n-breadcrumbs > ul > li:first-child) {
-	display: none;
 }
 
 .topBarLeft :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
