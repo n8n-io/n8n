@@ -33,6 +33,8 @@ const AI_ROOT_NODE_TYPES = new Set<string>([
 	'@n8n/n8n-nodes-langchain.informationExtractor',
 	TEXT_CLASSIFIER_NODE_TYPE,
 	'@n8n/n8n-nodes-langchain.sentimentAnalysis',
+	// AI Agent 2.2 plus MLflow trace export: same `{ output }` envelope as the Agent.
+	'@n8n/n8n-nodes-langchain.databricksAiAgent',
 	...VENDOR_AI_ROOT_NODE_TYPES,
 ]);
 

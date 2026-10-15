@@ -888,6 +888,10 @@ describe('ai-root shapes', () => {
 		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.anthropic')).toContain(
 			'vendor API response',
 		);
+
+		// The Databricks AI Agent runs the shared Agent, so it keeps the `output` envelope.
+		expect(isAiRootNodeType('@n8n/n8n-nodes-langchain.databricksAiAgent')).toBe(true);
+		expect(describeAiRootShape('@n8n/n8n-nodes-langchain.databricksAiAgent')).toContain('"output"');
 	});
 });
 
