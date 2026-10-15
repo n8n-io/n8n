@@ -1,4 +1,5 @@
 import {
+	EVALUATION_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
 	isTrimmedNodeExecutionData,
@@ -438,6 +439,11 @@ export function findTriggerNodeToAutoSelect(
 		[SCHEDULE_TRIGGER_NODE_TYPE]: 7,
 		[MANUAL_TRIGGER_NODE_TYPE]: 6,
 		[ERROR_TRIGGER_NODE_TYPE]: 4,
+		// Ranked below the core-node fallback: selecting this trigger runs the whole
+		// evaluation dataset, so it should never win over a trigger the user can run
+		// interactively. Its codex category is "Utility", so without this entry it
+		// would fall through to the 8 reserved for third-party app triggers.
+		[EVALUATION_TRIGGER_NODE_TYPE]: -1,
 	};
 
 	function isCoreNode(node: INodeUi): boolean {

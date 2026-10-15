@@ -58,6 +58,13 @@ export class SlackApi implements ICredentialType {
 			type: 'hidden',
 			default: '',
 		},
+		{
+			// Base URL of the connection test only, so an eval can aim the test at a stand-in. Node requests ignore it
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: 'https://slack.com',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -71,7 +78,7 @@ export class SlackApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://slack.com',
+			baseURL: '={{$credentials.url}}',
 			url: '/api/users.profile.get',
 		},
 		rules: [

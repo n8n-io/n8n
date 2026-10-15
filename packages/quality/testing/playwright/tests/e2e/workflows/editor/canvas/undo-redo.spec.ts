@@ -14,7 +14,7 @@ import { resolveFromRoot } from '../../../../../utils/path-helper';
 test.describe(
 	'Undo/Redo',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Context' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

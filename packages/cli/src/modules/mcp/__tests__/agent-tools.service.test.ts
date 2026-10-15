@@ -75,7 +75,6 @@ import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import {
 	createAgentSkillRefsService,
 	storedAgentConfig,
-	storedSkillRefs,
 } from '../../agents/__tests__/test-utils/stored-agent-config';
 
 const userHasScopesMock = userHasScopes as Mock;
@@ -134,6 +133,8 @@ const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
 	}) as unknown as Agent;
 
 describe('McpAgentToolsService', () => {
+	// One fake skill refs seam for the MCP service and the services it writes through.
+	const agentSkillRefs = createAgentSkillRefsService();
 	const telemetry = mockInstance(Telemetry);
 	const credentialsService = mockInstance(CredentialsService);
 	const agentsService = mockInstance(AgentsService);
@@ -185,13 +186,14 @@ describe('McpAgentToolsService', () => {
 		urlService,
 		projectScopeService,
 		new McpAgentSlackSetup(slackManagedSetup, slackManualSetup, mockLogger()),
-		createAgentSkillRefsService(),
+		agentSkillRefs,
 	);
 
 	let tools: Map<string, RegisteredTool>;
 	let registerResource: Mock;
 
 	beforeEach(() => {
+		agentSkillRefs.draftRefs.clear();
 		vi.clearAllMocks();
 		userHasScopesMock.mockResolvedValue(true);
 		agentsService.findByIdForUser.mockResolvedValue(agentEntity());
@@ -253,13 +255,12 @@ describe('McpAgentToolsService', () => {
 			mockLogger(),
 			agentRepository,
 			saveCompletion,
-			createAgentSkillRefsService(agentRepository),
+			agentSkillRefs,
 		);
 		const configService = new AgentConfigService(
 			mockLogger(),
 			agentRepository,
 			agentTaskRepository,
-			mock<AgentSkillsService>(),
 			new AgentConfigPreparationService(
 				localCredentialsService,
 				workflowRepository,
@@ -269,7 +270,7 @@ describe('McpAgentToolsService', () => {
 			transactionRunner,
 			saveCompletion,
 			new AgentPolicyService(new PolicyEnforcementService()),
-			createAgentSkillRefsService(agentRepository),
+			agentSkillRefs,
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>
@@ -1181,6 +1182,33 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
+		it('reports skill names that are hard to tell apart as a warning, not an error', async () => {
+			agentConfigService.validateConfig.mockResolvedValue({ valid: true, config: baseConfig });
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'valid',
+				issues: [],
+				warnings: [
+					{
+						code: 'similar_skill_names',
+						capability: { kind: 'skill' },
+						names: ['Brand voice', 'brand-voice'],
+					},
+				],
+			});
+
+			const result = await callTool('validate_agent', { agentId: 'agent-1' });
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				valid: true,
+				errors: [],
+				missing: [],
+				warnings: [
+					'Skills "Brand voice", "brand-voice" have names that are hard to tell apart. Rename one of them.',
+				],
+			});
+		});
+
 		it('aggregates the schema error and deduplicated missing capability paths', async () => {
 			agentConfigService.validateConfig.mockResolvedValue({
 				valid: false,
@@ -1996,16 +2024,46 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent.config).not.toHaveProperty('integrations');
 		});
 
+		it('lists the pinned skills that have a newer version', async () => {
+			const pinnedRef = {
+				type: 'skill' as const,
+				id: 'brand_voice',
+				versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f',
+			};
+			const skill = { name: 'Brand voice', description: 'Voice', instructions: 'Old text.' };
+			agentsService.findByIdForUser.mockResolvedValue(
+				agentEntity({
+					schema: storedAgentConfig({ ...baseConfig, skills: [pinnedRef] }),
+					tools: {},
+				}),
+			);
+			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+			agentSkillsService.listSkills.mockResolvedValue({ brand_voice: skill });
+			agentTaskService.list.mockResolvedValue([] as never);
+			agentSkillRefs.findOutdatedSkillIds.mockResolvedValueOnce(['brand_voice']);
+
+			const result = await callTool('get_agent', { projectId: 'project-1', agentId: 'agent-1' });
+
+			expect(result.structuredContent).toMatchObject({ outdatedSkillIds: ['brand_voice'] });
+			expect(agentSkillRefs.findOutdatedSkillIds).toHaveBeenCalledWith(
+				[pinnedRef],
+				{ brand_voice: skill },
+				{},
+			);
+		});
+
 		it('returns the stored skill refs, and config.replace of that config keeps them', async () => {
 			const skillRefs = [
 				{ type: 'skill' as const, id: 'zeta' },
-				{ type: 'skill' as const, id: 'alpha', enabled: false },
-				{ type: 'skill' as const, id: 'mid', enabled: true },
+				{
+					type: 'skill' as const,
+					id: 'alpha',
+					versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f',
+				},
+				{ type: 'skill' as const, id: 'mid' },
 			];
-			const skillBody = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
 			const agent = agentEntity({
 				schema: storedAgentConfig({ ...baseConfig, skills: skillRefs }),
-				skills: { zeta: skillBody, mid: { ...skillBody, name: 'Mid' } },
 				tools: {},
 			});
 			useRealCustomToolPersistence(agent);
@@ -2032,7 +2090,7 @@ describe('McpAgentToolsService', () => {
 			});
 
 			expect(written.structuredContent).toMatchObject({ ok: true, configHash });
-			expect(storedSkillRefs(agent)).toEqual(skillRefs);
+			await expect(agentSkillRefs.refsForDraft(agent, {})).resolves.toEqual(skillRefs);
 		});
 
 		it('returns an error result for an unknown agent', async () => {

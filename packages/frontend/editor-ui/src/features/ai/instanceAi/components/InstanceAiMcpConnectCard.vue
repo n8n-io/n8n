@@ -7,6 +7,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ToolCredentialPicker from '@/features/shared/toolsConnection/ToolCredentialPicker.vue';
+import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
@@ -15,7 +16,6 @@ import {
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useMcpServerConnect } from '../composables/useMcpServerConnect';
-import { iconForTool } from '../toolIcons';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConnectionRow, { type ConnectionRowIcon } from './ConnectionRow.vue';
 
@@ -80,7 +80,7 @@ const rows = computed<CardRow[]>(() =>
 		return {
 			serverSlug: server.serverSlug,
 			subtitle: entry?.tagline ?? server.tagline ?? '',
-			icon: iconForTool(entry?.icons ?? [], uiStore.appliedTheme),
+			icon: iconForMcpRegistryServer(entry?.icons ?? [], uiStore.appliedTheme),
 			item: {
 				id: connection?.id ?? server.serverSlug,
 				kind: 'mcp-server',

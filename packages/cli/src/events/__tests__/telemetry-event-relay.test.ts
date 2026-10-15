@@ -112,7 +112,6 @@ describe('TelemetryEventRelay', () => {
 			batchSize: 234,
 			optimizingTimeWindowHours: 400,
 			trimmingTimeWindowDays: 600,
-			trimOnStartUp: false,
 		},
 		host: 'localhost',
 		generic: {
@@ -3421,6 +3420,7 @@ describe('TelemetryEventRelay', () => {
 					workflowIdPolicy: 'new',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
+					credentialConflictPolicy: 'fail',
 					workflowPublishingPolicy: 'preserve-published-state',
 					missingNodeTypeMode: 'fail',
 					projectConflictPolicy: 'merge',
@@ -3491,6 +3491,7 @@ describe('TelemetryEventRelay', () => {
 				workflow_id_policy: 'new',
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
+				credential_conflict_policy: 'fail',
 				workflow_publishing_policy: 'preserve-published-state',
 				missing_node_type_mode: 'fail',
 				project_conflict_policy: 'merge',

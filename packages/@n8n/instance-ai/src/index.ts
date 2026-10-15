@@ -452,6 +452,9 @@ export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunctio
 export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 	() => loadEvalAgents().extractText,
 );
+export const isRetryableEvalError: typeof EvalAgentsMod.isRetryableEvalError = lazyFunction(
+	() => loadEvalAgents().isRetryableEvalError,
+);
 export const meterEvalUsage: typeof EvalUsageMod.meterEvalUsage = lazyFunction(
 	() => loadEvalUsage().meterEvalUsage,
 );
@@ -534,6 +537,7 @@ export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFuncti
 export const createWorkspace: typeof CreateWorkspaceMod.createWorkspace = lazyFunction(
 	() => loadCreateWorkspace().createWorkspace,
 );
+export type { VerifiedWorkspaceBundles } from './workspace/prebaked-workspace-bundle';
 export type SnapshotManager = SnapshotManagerMod.SnapshotManager;
 export const SnapshotManager: typeof SnapshotManagerMod.SnapshotManager = lazyClass(
 	() => loadSnapshotManager().SnapshotManager,

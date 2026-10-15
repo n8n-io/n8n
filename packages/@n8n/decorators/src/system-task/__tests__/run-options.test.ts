@@ -1,108 +1,99 @@
 import { MAX_TIMER_DELAY_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 
 import {
-	resolveSystemTaskRunOptions,
+	resolveSystemTask,
 	timeoutAfterLimit,
-	validateSystemTask,
 	type SystemTask,
-	type SystemTaskEffects,
-	type SystemTaskSchedule,
+	type SystemTaskRunOptions,
 } from '../system-task';
+import type { SchedulerOptions, SystemTaskTarget } from '../types';
 
-const schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 60 };
+const schedule = { kind: 'interval', intervalSeconds: 60 } as const;
 
-const taskWith = (overrides: Partial<SystemTask> & { effects: SystemTaskEffects }): SystemTask => ({
+const schedulerTask = (scheduler: SchedulerOptions): SystemTask => ({
 	name: 'test-task',
 	schedule,
-	placement: { scope: 'cluster', durable: false },
+	target: { scope: 'cluster', scheduler },
+	run: async () => {},
+});
+
+const resolveSystemTaskRunOptions = (task: SystemTask) =>
+	resolveSystemTask(task).runOptions as SystemTaskRunOptions;
+
+const taskOn = (target: SystemTaskTarget, overrides: Partial<SystemTask> = {}): SystemTask => ({
+	name: 'test-task',
+	schedule,
+	target,
 	run: async () => {},
 	...overrides,
 });
 
-it('should let an idempotent task retry and run late', () => {
-	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent' }));
+it('should fill the defaults of the options a task does not state', () => {
+	const options = resolveSystemTaskRunOptions(schedulerTask({ retryOnFailure: true }));
 
 	expect(options).toEqual({
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: 60,
 		maxAttempts: 3,
 		concurrencyLimit: 1,
+		timeoutSeconds: undefined,
 	});
 });
 
-it('should keep a non-idempotent task to a single attempt and drop missed occurrences', () => {
-	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'non-idempotent' }));
-
-	expect(options).toEqual({
-		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-		misfireGraceSeconds: 60,
-		maxAttempts: 1,
-		concurrencyLimit: 1,
-	});
-});
-
-it.each([
-	['misfirePolicy', { misfirePolicy: ScheduledJobMisfirePolicy.Skip }],
-	['misfireGraceSeconds', { misfireGraceSeconds: 5 }],
-	['concurrencyLimit', { concurrencyLimit: 4 }],
-	['timeoutSeconds', { timeoutSeconds: 600 }],
-] as const)('should let a task override %s', (field, override) => {
-	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override }));
-
-	expect(options[field]).toBe(override[field as keyof typeof override]);
-});
-
-it.each([
-	{ maxAttempts: 0 },
-	{ maxAttempts: -1 },
-	{ maxAttempts: 1.5 },
-	{ maxAttempts: 2_147_483_648 },
-	{ misfireGraceSeconds: 0 },
-	{ misfireGraceSeconds: -1 },
-	{ misfireGraceSeconds: 0.5 },
-	{ misfireGraceSeconds: 86_400_000_000 },
-	{ concurrencyLimit: 0 },
-	{ concurrencyLimit: -1 },
-	{ concurrencyLimit: 1.5 },
-	{ concurrencyLimit: 2_147_483_648 },
-	{ timeoutSeconds: -1 },
-	{ timeoutSeconds: 2_147_484 },
-])('should reject the nonsensical override %o', (override) => {
-	expect(() =>
-		resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override })),
-	).toThrow(
-		expect.objectContaining({
-			message: 'A system task declares an out-of-range option',
-			extra: expect.objectContaining({ name: 'test-task', field: Object.keys(override)[0] }),
+it('should map the options a task states to what the scheduler stores', () => {
+	const options = resolveSystemTaskRunOptions(
+		schedulerTask({
+			retryOnFailure: false,
+			missedAfterSeconds: 300,
+			catchUp: false,
+			concurrencyLimit: 4,
+			timeoutSeconds: 600,
 		}),
 	);
-});
-
-it('should keep the defaults for the fields a task does not override', () => {
-	const options = resolveSystemTaskRunOptions(
-		taskWith({ effects: 'non-idempotent', misfireGraceSeconds: 5 }),
-	);
 
 	expect(options).toEqual({
 		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-		misfireGraceSeconds: 5,
+		misfireGraceSeconds: 300,
 		maxAttempts: 1,
-		concurrencyLimit: 1,
+		concurrencyLimit: 4,
+		timeoutSeconds: 600,
 	});
 });
 
-it('should refuse to retry non-idempotent work that asked for more attempts', () => {
+it('should store an unlimited concurrency as no limit', () => {
 	const options = resolveSystemTaskRunOptions(
-		taskWith({ effects: 'non-idempotent', maxAttempts: 10 }),
+		schedulerTask({ retryOnFailure: true, concurrencyLimit: 'unlimited' }),
 	);
 
-	expect(options.maxAttempts).toBe(1);
+	expect(options.concurrencyLimit).toBeNull();
 });
 
-it('should leave the timeout to the scheduler when a task does not override it', () => {
-	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent' }));
+it('should catch up when a task states it explicitly', () => {
+	const options = resolveSystemTaskRunOptions(
+		schedulerTask({ retryOnFailure: true, catchUp: true }),
+	);
 
-	expect(options.timeoutSeconds).toBeUndefined();
+	expect(options.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
+});
+
+it.each<[string, SchedulerOptions]>([
+	['missedAfterSeconds', { retryOnFailure: true, missedAfterSeconds: 0 }],
+	['missedAfterSeconds', { retryOnFailure: true, missedAfterSeconds: -1 }],
+	['missedAfterSeconds', { retryOnFailure: true, missedAfterSeconds: 0.5 }],
+	['missedAfterSeconds', { retryOnFailure: true, missedAfterSeconds: 86_400_000_000 }],
+	['concurrencyLimit', { retryOnFailure: true, concurrencyLimit: 0 }],
+	['concurrencyLimit', { retryOnFailure: true, concurrencyLimit: -1 }],
+	['concurrencyLimit', { retryOnFailure: true, concurrencyLimit: 1.5 }],
+	['concurrencyLimit', { retryOnFailure: true, concurrencyLimit: 2_147_483_648 }],
+	['timeoutSeconds', { retryOnFailure: true, timeoutSeconds: -1 }],
+	['timeoutSeconds', { retryOnFailure: true, timeoutSeconds: 2_147_484 }],
+])('should reject an out-of-range %s in %o', (field, scheduler) => {
+	expect(() => resolveSystemTaskRunOptions(schedulerTask(scheduler))).toThrow(
+		expect.objectContaining({
+			message: 'A system task declares an out-of-range option',
+			extra: expect.objectContaining({ name: 'test-task', field }),
+		}),
+	);
 });
 
 it.each([
@@ -111,7 +102,7 @@ it.each([
 	[1.5, 2],
 ])('should round the timeout %s to %s like a schedule interval', (declared, stored) => {
 	const options = resolveSystemTaskRunOptions(
-		taskWith({ effects: 'idempotent', timeoutSeconds: declared }),
+		schedulerTask({ retryOnFailure: true, timeoutSeconds: declared }),
 	);
 
 	expect(options.timeoutSeconds).toBe(stored);
@@ -119,25 +110,33 @@ it.each([
 
 it('should accept the longest timeout a timer honors', () => {
 	const options = resolveSystemTaskRunOptions(
-		taskWith({ effects: 'idempotent', timeoutSeconds: 2_147_483 }),
+		schedulerTask({ retryOnFailure: true, timeoutSeconds: 2_147_483 }),
 	);
 
 	expect(options.timeoutSeconds).toBe(2_147_483);
 });
 
-it('should let a task permit overlap', () => {
-	const options = resolveSystemTaskRunOptions(
-		taskWith({ effects: 'idempotent', concurrencyLimit: null }),
-	);
+it.each<SystemTaskTarget>([
+	{ scope: 'cluster', leaderTimer: {} },
+	{ scope: 'instance', instanceTypes: ['main'] },
+])(
+	'should resolve no run options for a $scope task that does not run on the scheduler',
+	(target) => {
+		expect(resolveSystemTask(taskOn(target)).runOptions).toBeUndefined();
+	},
+);
 
-	expect(options.concurrencyLimit).toBeNull();
+it('should validate the scheduler options of a task', () => {
+	expect(() =>
+		resolveSystemTask(schedulerTask({ retryOnFailure: true, missedAfterSeconds: 0 })),
+	).toThrow('A system task declares an out-of-range option');
 });
 
 it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
 	'should reject a retry delay of %s',
 	(retryDelaySeconds) => {
 		expect(() =>
-			validateSystemTask(taskWith({ effects: 'idempotent', retryDelaySeconds })),
+			resolveSystemTask(taskOn({ scope: 'cluster', leaderTimer: { retryDelaySeconds } })),
 		).toThrow(
 			expect.objectContaining({
 				message: 'A system task declares an out-of-range retry delay',
@@ -149,7 +148,7 @@ it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
 
 it('should accept the longest retry delay a timeout honors', () => {
 	expect(() =>
-		validateSystemTask(taskWith({ effects: 'idempotent', retryDelaySeconds: 2_147_483 })),
+		resolveSystemTask(taskOn({ scope: 'cluster', leaderTimer: { retryDelaySeconds: 2_147_483 } })),
 	).not.toThrow();
 });
 
@@ -157,12 +156,11 @@ it.each([0, -1, NaN, Infinity])(
 	'should reject an instance task interval of %s seconds',
 	(intervalSeconds) => {
 		expect(() =>
-			validateSystemTask(
-				taskWith({
-					effects: 'idempotent',
-					schedule: { kind: 'interval', intervalSeconds },
-					placement: { scope: 'instance', instanceTypes: ['main'] },
-				}),
+			resolveSystemTask(
+				taskOn(
+					{ scope: 'instance', instanceTypes: ['main'] },
+					{ schedule: { kind: 'interval', intervalSeconds } },
+				),
 			),
 		).toThrow(
 			expect.objectContaining({
@@ -175,8 +173,11 @@ it.each([0, -1, NaN, Infinity])(
 
 it('should accept a cluster task interval of 0 seconds, which is rounded up', () => {
 	expect(() =>
-		validateSystemTask(
-			taskWith({ effects: 'idempotent', schedule: { kind: 'interval', intervalSeconds: 0 } }),
+		resolveSystemTask(
+			taskOn(
+				{ scope: 'cluster', scheduler: { retryOnFailure: true } },
+				{ schedule: { kind: 'interval', intervalSeconds: 0 } },
+			),
 		),
 	).not.toThrow();
 });

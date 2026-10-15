@@ -254,6 +254,14 @@ onMounted(async () => {
 						})
 					}}
 				</N8nHeading>
+				<!-- A resource that advertises scopes is not a workflow; the scope list says what it grants. -->
+				<N8nHeading v-else-if="resourceName && hasScopes" tag="h2" size="large" :bold="true">
+					{{
+						i18n.baseText('oauth.consentView.headingWithResource', {
+							interpolate: { clientName: clientDetails?.clientName ?? '', resourceName },
+						})
+					}}
+				</N8nHeading>
 				<N8nHeading v-else-if="resourceName" tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.headingWithWorkflow', {
@@ -276,16 +284,16 @@ onMounted(async () => {
 							})
 						}}
 					</N8nText>
-					<N8nText v-else-if="resourceName" color="text-base" size="medium">
+					<N8nText v-else-if="hasScopes" color="text-base" size="medium">
 						{{
-							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
+							i18n.baseText('oauth.consentView.scopes.description', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<N8nText v-else-if="hasScopes" color="text-base" size="medium">
+					<N8nText v-else-if="resourceName" color="text-base" size="medium">
 						{{
-							i18n.baseText('oauth.consentView.scopes.description', {
+							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}

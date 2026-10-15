@@ -4,9 +4,11 @@ import {
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
+	ListCallableSubworkflowsQueryDto,
 	ManualRunDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type CallableSubworkflowsResponse,
 	type WorkflowPublicationStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -29,6 +31,7 @@ import {
 	Post,
 	ProjectScope,
 	Put,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -663,6 +666,22 @@ export class WorkflowsController {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 		return await this.workflowPublicationStatusService.getStatus(workflowId);
+	}
+
+	/**
+	 * Lists the workflows that this workflow can call as sub-workflows. Only
+	 * editors of the parent can add a sub-workflow call, so this requires
+	 * `workflow:update` on the parent.
+	 */
+	@Get('/:workflowId/callable-subworkflows')
+	@ProjectScope('workflow:update')
+	async getCallableSubworkflows(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: ListCallableSubworkflowsQueryDto,
+	): Promise<CallableSubworkflowsResponse> {
+		return await this.workflowService.getCallableSubworkflows(req.user, workflowId, query);
 	}
 
 	@Post('/with-node-types')

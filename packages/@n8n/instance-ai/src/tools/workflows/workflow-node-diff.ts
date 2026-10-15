@@ -7,10 +7,10 @@
  * validation and setup routing never punish a node for merely being present.
  *
  * Nodes are paired by id, which get-as-code preserves across the edit round-trip,
- * with a name fallback for nodes without a saved id counterpart. Connection changes count
- * as node changes: a node wired differently (e.g. a previously disconnected
- * node pulled into the flow) is no longer the node the user left there, even
- * when its parameters are byte-identical.
+ * with a name fallback for nodes without a saved id counterpart. A previously
+ * disconnected node pulled into the flow counts as changed, even when its
+ * parameters are byte-identical: it never ran before. Re-wiring a node that was
+ * already connected (a step added before or after it) does not.
  */
 
 import { isRecord } from '@n8n/utils/is-record';
@@ -99,6 +99,18 @@ function connectionsUnchanged(
 	);
 }
 
+function wiredIntoFlow(
+	node: NodeJSON,
+	saved: NodeJSON,
+	builtSignatures: SignatureLookup,
+	savedSignatures: SignatureLookup,
+): boolean {
+	return (
+		(savedSignatures.get(nodeKey(saved)) ?? []).length === 0 &&
+		(builtSignatures.get(nodeKey(node)) ?? []).length > 0
+	);
+}
+
 function parametersUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
 	return (
 		node.type === saved.type &&
@@ -118,8 +130,9 @@ function nodeUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
 
 /**
  * Names of nodes this build added or modified relative to the saved workflow
- * (type, typeVersion, parameters, credentials, disabled state, name, or the
- * node's connections differ). Unnamed nodes are always treated as changed.
+ * (type, typeVersion, parameters, credentials, disabled state, or name differ,
+ * or a disconnected node got wired into the flow). Unnamed nodes are always
+ * treated as changed.
  */
 export function computeChangedNodeNames(
 	workflow: WorkflowJSON,
@@ -135,7 +148,7 @@ export function computeChangedNodeNames(
 		if (
 			!saved ||
 			!nodeUnchanged(node, saved) ||
-			!connectionsUnchanged(node, saved, builtSignatures, savedSignatures)
+			wiredIntoFlow(node, saved, builtSignatures, savedSignatures)
 		) {
 			changed.push(node.name);
 		}

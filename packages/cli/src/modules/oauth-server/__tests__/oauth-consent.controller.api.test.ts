@@ -3,9 +3,8 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -311,6 +310,16 @@ describe('POST /rest/consent/approve', () => {
 		expect(redirectUrl.searchParams.get('iss')).toBe(
 			Container.get(UrlService).getInstanceBaseUrl(),
 		);
+	});
+
+	test('rejects a scope list with duplicates', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.post('/consent/approve')
+			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
+			.send({ approved: true, scopes: ['workflow:read', 'workflow:read'] });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should handle consent denial and return error redirect URL', async () => {

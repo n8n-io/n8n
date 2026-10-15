@@ -2268,7 +2268,7 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="easy-ai-button"
 							size="small"
 							@click="createAIStarterWorkflows('callout')"
@@ -2306,7 +2306,7 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="easy-ai-button"
 							size="small"
 							@click="handleCreateReadyToRunWorkflows('callout')"

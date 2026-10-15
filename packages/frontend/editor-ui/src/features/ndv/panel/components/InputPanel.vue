@@ -103,7 +103,8 @@ const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const { canReveal, isDynamicCredentials, revealData, credentialToShare, openCredentialSharing } =
+	useExecutionRedaction();
 const uiStore = useUIStore();
 
 const workflowObject = computed(() =>
@@ -506,7 +507,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<NodeExecuteButton
 									hide-icon
 									transparent
-									variant="subtle"
+									variant="outline"
 									:node-name="nodeNameToExecute"
 									:label="i18n.baseText('ndv.input.noOutputData.action')"
 									:tooltip="i18n.baseText('ndv.input.noOutputData.tooltip')"
@@ -523,7 +524,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<NodeExecuteButton
 								icon-only
 								hide-label
-								variant="subtle"
+								variant="outline"
 								size="medium"
 								:node-name="nodeNameToExecute"
 								:aria-label="i18n.baseText('ndv.input.noOutputData.action')"
@@ -604,6 +605,8 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				:title="i18n.baseText('ndv.input.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -614,6 +617,8 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				:title="i18n.baseText('ndv.input.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>

@@ -57,6 +57,7 @@ import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-age
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 import { ActiveExecutions } from '@/active-executions';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
@@ -157,6 +158,7 @@ async function fetchWorkflowData(
 				workflowData.nodes ?? [],
 				parentWorkflowId,
 			);
+			WorkflowHelpers.validateWorkflowStructure(workflowData);
 			// An inline sub-workflow is part of the parent that embeds it, not a
 			// workflow of its own, so it runs under the parent workflow's id.
 			workflowData.id = parentWorkflowId;
@@ -600,6 +602,12 @@ async function startExecution(
 
 	const startTime = Date.now();
 
+	// Reported to the caller so its redaction covers this run's output: the parent's own
+	// nodes do not reference these credentials.
+	const workflowCredentialIds = isCredSharingEnabled()
+		? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(workflowData.nodes)
+		: [];
+
 	let data;
 	try {
 		// The original mode of the whole run tree: a sub-workflow's own
@@ -750,7 +758,7 @@ async function startExecution(
 				},
 				workflow,
 			),
-			summarizeDynamicCredentialsUsage(runData.executionData),
+			summarizeDynamicCredentialsUsage(runData.executionData, workflowCredentialIds),
 		);
 	}
 
@@ -768,7 +776,7 @@ async function startExecution(
 				: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
-			...summarizeDynamicCredentialsUsage(data.data),
+			...summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
@@ -789,7 +797,7 @@ async function startExecution(
 			},
 			workflow,
 		),
-		summarizeDynamicCredentialsUsage(data.data),
+		summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
 	);
 }
 

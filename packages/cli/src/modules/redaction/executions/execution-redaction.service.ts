@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
+	runDataUsedCredentialIds,
 	runDataUsedDynamicCredentials,
 	WorkflowExecuteMode,
 	WorkflowSettings,
@@ -192,7 +193,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			const isOwnDynCreds =
 				hasDynCreds && this.isOwnDynamicCredentialsExecution(execution, options.user.id);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
-			const enforceCredentialUsabilityRedaction = credentialInaccessibleExecutions.has(execution);
+			const inaccessibleCredentialIds = credentialInaccessibleExecutions.get(execution) ?? [];
+			const enforceCredentialUsabilityRedaction = inaccessibleCredentialIds.length > 0;
 			const userCanReveal = enforceCredentialUsabilityRedaction
 				? false
 				: hasDynCreds
@@ -205,6 +207,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				userCanReveal,
 				enforceDynCredRedaction,
 				enforceCredentialUsabilityRedaction,
+				inaccessibleCredentialIds,
 				memo: new Map(),
 			};
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
@@ -310,20 +313,27 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	private async resolveCredentialInaccessibleExecutions(
 		executions: RedactableExecution[],
 		user: User,
-	): Promise<Set<RedactableExecution>> {
-		if (!isCredSharingEnabled()) return new Set();
+	): Promise<Map<RedactableExecution, string[]>> {
+		if (!isCredSharingEnabled()) return new Map();
 
 		const credentialIdsByExecution = new Map<RedactableExecution, string[]>();
 		const allCredentialIds = new Set<string>();
 		for (const execution of executions) {
-			const credentialIds = this.credentialsPermissionChecker.getCredentialIdsForNodes(
-				execution.workflowData.nodes,
-			);
+			// The execution's own nodes, plus what its sub-workflows reported onto the calling
+			// nodes' tasks: their output is embedded here.
+			const credentialIds = [
+				...new Set([
+					...this.credentialsPermissionChecker.getCredentialIdsForNodes(
+						execution.workflowData.nodes,
+					),
+					...runDataUsedCredentialIds(execution.data.resultData?.runData),
+				]),
+			];
 			if (credentialIds.length === 0) continue;
 			credentialIdsByExecution.set(execution, credentialIds);
 			for (const id of credentialIds) allCredentialIds.add(id);
 		}
-		if (allCredentialIds.size === 0) return new Set();
+		if (allCredentialIds.size === 0) return new Map();
 
 		const inaccessibleIds =
 			await this.credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser(
@@ -331,12 +341,13 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				[...allCredentialIds],
 				{ ignoreGlobalUseScope: true },
 			);
-		if (inaccessibleIds.length === 0) return new Set();
+		if (inaccessibleIds.length === 0) return new Map();
 
 		const inaccessibleIdSet = new Set(inaccessibleIds);
-		const result = new Set<RedactableExecution>();
+		const result = new Map<RedactableExecution, string[]>();
 		for (const [execution, credentialIds] of credentialIdsByExecution) {
-			if (credentialIds.some((id) => inaccessibleIdSet.has(id))) result.add(execution);
+			const inaccessible = credentialIds.filter((id) => inaccessibleIdSet.has(id));
+			if (inaccessible.length > 0) result.set(execution, inaccessible);
 		}
 		return result;
 	}

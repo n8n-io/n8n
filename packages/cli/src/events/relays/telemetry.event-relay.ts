@@ -1393,6 +1393,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_id_policy: options.workflowIdPolicy,
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
+			credential_conflict_policy: options.credentialConflictPolicy,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
 			missing_node_type_mode: options.missingNodeTypeMode,
 			project_conflict_policy: options.projectConflictPolicy,
@@ -1854,7 +1855,6 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_history: {
 				compaction_optimizing_time_window_hours:
 					this.globalConfig.workflowHistoryCompaction.optimizingTimeWindowHours,
-				compaction_trim_on_start_up: this.globalConfig.workflowHistoryCompaction.trimOnStartUp,
 				compaction_trimming_time_window_days:
 					this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 			},

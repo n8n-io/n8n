@@ -111,7 +111,7 @@ describe('InstanceAiConversation', () => {
 
 	it('blocks the composer and keeps the out-of-credits notice when credits are gone', () => {
 		store.isOutOfCredits = true;
-		store.showCreditWarning = true;
+		store.isLowCredits = true;
 
 		const wrapper = mountConversation();
 
@@ -119,17 +119,6 @@ describe('InstanceAiConversation', () => {
 		expect(wrapper.get('[data-test-id="credit-warning-banner"]').text()).toContain(
 			"You've run out of AI credits",
 		);
-		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
-	});
-
-	it('blocks the composer when the quota is locked', () => {
-		store.isOutOfCredits = true;
-		store.quotaLocked = true;
-		store.showCreditWarning = true;
-
-		const wrapper = mountConversation();
-
-		expect(wrapper.get('[data-test-id="instance-ai-input-out-of-credits"]').text()).toBe('true');
 		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
 	});
 

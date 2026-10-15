@@ -1,3 +1,4 @@
+import type { AgentSkill } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -42,23 +43,28 @@ export class AgentRunnableStateService {
 			isRunnable: boolean;
 			hasPublishHistory: boolean;
 			configHash: string | null;
+			skills: Record<string, AgentSkill>;
 			skillHashes: Record<string, string>;
+			outdatedSkillIds: string[];
 		}
 	> {
+		// The skill bodies the draft runs, from the skills hub, keyed by skill id.
+		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
 		// Base hashes for the optimistic-concurrency checks on config and skill writes.
-		const configHash = getAgentConfigHash(
-			composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {})),
-		);
+		const configHash = getAgentConfigHash(composeJsonConfig(agent, skillRefs));
 		const skillHashes = Object.fromEntries(
-			Object.entries(agent.skills ?? {}).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
+			Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 		);
+		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(skillRefs, skills, {});
 		if (draftValidation) {
 			const hasPublishHistory = await this.agentPublishService.hasPublishHistory(agent.id);
 			return Object.assign(agent, {
 				isRunnable: true,
 				hasPublishHistory,
 				configHash,
+				skills,
 				skillHashes,
+				outdatedSkillIds,
 			});
 		}
 
@@ -82,7 +88,9 @@ export class AgentRunnableStateService {
 			isRunnable: validation.status === 'valid',
 			hasPublishHistory,
 			configHash,
+			skills,
 			skillHashes,
+			outdatedSkillIds,
 		});
 	}
 }

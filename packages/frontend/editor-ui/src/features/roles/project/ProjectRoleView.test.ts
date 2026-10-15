@@ -698,6 +698,23 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
+	describe('Skill scopes', () => {
+		it('hides the Skills scopes while the skills hub is off', () => {
+			const { queryByText } = renderComponent();
+
+			expect(queryByText('Skills')).not.toBeInTheDocument();
+		});
+
+		it('shows the Skills scopes while the skills hub is on', () => {
+			settingsStore.moduleSettings = {
+				agents: { skillsHubEnabled: true },
+			} as typeof settingsStore.moduleSettings;
+			const { getByText } = renderComponent();
+
+			expect(getByText('Skills')).toBeInTheDocument();
+		});
+	});
+
 	describe('External Secrets Scopes', () => {
 		it('should not render externalSecretsProvider scope type when roleBasedAccess is off', () => {
 			const { queryByText } = renderComponent();

@@ -313,6 +313,12 @@ function getAssistantRunContent(groupId: string): string {
 	return lines.join('\n\n');
 }
 
+function canIncreaseForNotice(notice: NonNullable<ChatMessage['budgetNotices']>[number]) {
+	return (
+		props.canIncreaseBudget && (notice.agentId === undefined || notice.agentId === props.agentId)
+	);
+}
+
 interface RecallMemoryOutputEntry {
 	id: string;
 	content: string;
@@ -599,7 +605,7 @@ watch(
 						v-for="notice in group.budgetNotices"
 						:key="notice.id"
 						:code="notice.code"
-						:can-increase="canIncreaseBudget"
+						:can-increase="canIncreaseForNotice(notice)"
 						:pending="budgetIncreasePending"
 						@increase="emit('increase-budget', $event)"
 					/>
@@ -746,7 +752,7 @@ watch(
 							v-for="notice in group.message.budgetNotices ?? []"
 							:key="notice.id"
 							:code="notice.code"
-							:can-increase="canIncreaseBudget"
+							:can-increase="canIncreaseForNotice(notice)"
 							:pending="budgetIncreasePending"
 							@increase="emit('increase-budget', $event)"
 						/>
@@ -775,7 +781,7 @@ watch(
 						<template #trailingContent>
 							<N8nButton
 								size="small"
-								variant="subtle"
+								variant="outline"
 								:class="$style.changeRequestAction"
 								data-testid="agent-preview-change-request-link"
 								@click="onEditWithAssistant(group.message.content)"
@@ -983,8 +989,8 @@ watch(
 }
 
 .markdownContent {
+	--n8n-markdown--base-font-size: var(--font-size--sm);
 	color: var(--text-color);
-	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
 	> *:last-child > *:last-child {
