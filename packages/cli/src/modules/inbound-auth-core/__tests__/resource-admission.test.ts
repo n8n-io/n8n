@@ -150,7 +150,7 @@ describe('ResourceAdmission', () => {
 			});
 		});
 
-		it('keeps the token, the external subject and the email out of the log and the result', async () => {
+		it('keeps the token out of the log and the result, and the external subject and the email out of the log', async () => {
 			authorize.mockResolvedValue(false);
 
 			const result = await admission.admitBearer(resource, REQUEST, 'the-token');
