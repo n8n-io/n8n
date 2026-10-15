@@ -7863,21 +7863,6 @@ describe('createContext — builder delegate wiring', () => {
 		return builderDelegateAdapter;
 	}
 
-	it('skips delegation services when builderDelegateEnabled is false', () => {
-		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
-		const builderDelegateAdapter = mockBuilderModuleActive(mock<InstanceAiBuilderDelegate>());
-
-		const context = service.createContext(mockUser, {
-			projectId: 'proj-1',
-			builderDelegateEnabled: false,
-		});
-
-		expect(context.builderDelegate).toBeUndefined();
-		expect(Container.get).not.toHaveBeenCalledWith(ModuleRegistry);
-		expect(Container.get).not.toHaveBeenCalledWith(InstanceAiBuilderDelegateAdapterService);
-		expect(builderDelegateAdapter.createDelegate).not.toHaveBeenCalled();
-	});
-
 	it.each([
 		{
 			name: 'omits Agent builds when Settings > Agents is off',

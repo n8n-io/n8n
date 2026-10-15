@@ -268,10 +268,6 @@ describe('SelfHealingAgentService', () => {
 			'completed',
 		);
 		expect(options.sandbox.destroySandbox).not.toHaveBeenCalled();
-		expect(adapter.createContext).toHaveBeenCalledWith(
-			user,
-			expect.objectContaining({ builderDelegateEnabled: false }),
-		);
 		expect(createSelfHealingAgent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				context: expect.objectContaining({ threadId: options.threadId, runId: options.runId }),

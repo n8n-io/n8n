@@ -1,6 +1,6 @@
 import type { WorkflowSuggestionBaseline, WorkflowSuggestionGraph } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { TransactionRunner, WorkflowEntity, type User } from '@n8n/db';
+import { TransactionRunner, UserRepository, WorkflowEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
@@ -32,23 +32,12 @@ export class SelfHealingTemporaryWorkflowService {
 		private readonly executions: ExecutionPersistence,
 		private readonly executionService: ExecutionService,
 		private readonly logger: Logger,
+		private readonly users: UserRepository,
 	) {}
 
-	async withTemporaryWorkflow<T>(
-		input: TemporaryWorkflowInput,
-		verify: (workflowId: string) => Promise<T>,
-	): Promise<T> {
-		const workflow = await this.create(input);
-
-		try {
-			return await verify(workflow.id);
-		} finally {
-			await this.cleanup(workflow.id);
-		}
-	}
-
-	private async create({ user, baseline, graph }: TemporaryWorkflowInput) {
-		if (user.disabled || user.id !== baseline.backgroundUserId) {
+	async create({ user: actor, baseline, graph }: TemporaryWorkflowInput) {
+		const user = await this.users.findByIdWithRole(actor.id);
+		if (!user || user.disabled || user.id !== baseline.backgroundUserId) {
 			throw new ForbiddenError('Workflow edit and execution access is required.');
 		}
 
@@ -106,7 +95,7 @@ export class SelfHealingTemporaryWorkflowService {
 		}
 	}
 
-	private async cleanup(workflowId: string): Promise<void> {
+	async cleanup(workflowId: string): Promise<void> {
 		try {
 			for (const executionId of await this.workflows.findUnfinishedExecutionIds(workflowId)) {
 				await this.executionService.stop(executionId, [workflowId]);

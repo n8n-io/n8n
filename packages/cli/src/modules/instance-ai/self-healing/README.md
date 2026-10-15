@@ -58,7 +58,10 @@ Unknown usage measurements stay null. The invocation claims measured credits onc
 Callers must not claim those credits again.
 
 Each invocation has a separate thread under `ia-self-healing:<actorId>`.
-The thread and memory keep this resource identity. Checkpoints stay in memory.
+The database thread record keeps this resource identity for ownership and cleanup.
+SDK conversation history and checkpoints stay in process memory.
+Each invocation starts with empty conversation history.
+Run events remain in the database. These events can include text and tool results.
 Server metadata records the actor, project, workflow, and execution IDs.
 The conversation stays hidden from every user, including the actor.
 Account credit updates omit its thread ID and thread total.

@@ -488,8 +488,6 @@ export class InstanceAiAdapterService {
 			 *  read on every `list()`: the harness appends credentials it creates
 			 *  mid-run, after this context is built. */
 			getCredentialIdAllowlist?: () => string[] | undefined;
-			/** Skip Agent Builder service initialization for runs without delegation. */
-			builderDelegateEnabled?: boolean;
 			/** Eval-only: resolve a credential's connection test as successful without
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
@@ -537,7 +535,6 @@ export class InstanceAiAdapterService {
 			threadId,
 			projectId,
 			getCredentialIdAllowlist,
-			builderDelegateEnabled = true,
 			shouldBypassCredentialTest,
 			getCredentialTestTarget,
 			agentId,
@@ -559,7 +556,7 @@ export class InstanceAiAdapterService {
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
-		const builderDelegateAdapter = builderDelegateEnabled ? this.getBuilderDelegateAdapter() : null;
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,

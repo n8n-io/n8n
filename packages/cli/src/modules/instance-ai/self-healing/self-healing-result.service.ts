@@ -67,7 +67,7 @@ export class SelfHealingResultService {
 			content,
 			completedAt,
 			suggestion: prepared,
-		} = await this.prepareInvestigation(investigation, input);
+		} = await this.prepareResult(investigation, input);
 		return await this.txRunner.run({}, async (ctx) => {
 			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
 			const current = await this.investigations.get(investigationId, ctx);
@@ -96,26 +96,30 @@ export class SelfHealingResultService {
 		});
 	}
 
-	private async prepareInvestigation(
+	private async prepareResult(
 		investigation: SelfHealingInvestigation,
 		input: SelfHealingResultInput,
 	) {
 		if (investigation.finishedAt) {
 			throw new ConflictError('The self-healing investigation has already finished.');
 		}
+
 		const { baseline } = investigation;
 		const { output, candidate } = input;
+
 		const content = selfHealingResultContentSchema.parse({
 			outcome: output.outcome,
 			summary: output.summary,
 			report: output.report,
 			usage: input.usage,
 		});
+
 		const needsYouWithoutChanges =
 			output.outcome === 'needs_you' &&
 			candidate !== undefined &&
 			isEqual(baseline.original.nodes, candidate.graph.nodes) &&
 			isEqual(baseline.original.connections, candidate.graph.connections);
+
 		const suggestion =
 			candidate && !needsYouWithoutChanges
 				? await this.suggestions.prepareSuggestion(baseline, {
@@ -124,6 +128,7 @@ export class SelfHealingResultService {
 						resultKind: output.outcome === 'fix_ready' ? 'fix_ready' : 'needs_you',
 					})
 				: undefined;
+
 		const actor = await this.suggestions.requireEditor(
 			investigation.backgroundUserId,
 			investigation.workflowId,
@@ -133,6 +138,7 @@ export class SelfHealingResultService {
 			investigation.workflowId,
 			investigation.executionId,
 		);
+
 		return { content, completedAt: new Date(input.completedAt), suggestion };
 	}
 
@@ -182,11 +188,7 @@ export class SelfHealingResultService {
 			outcome: result.outcome,
 			summary: result.summary,
 			report: result.report,
-			usage: {
-				credits: result.usage.credits,
-				turns: result.usage.turns,
-				durationSeconds: result.usage.durationSeconds,
-			},
+			usage: result.usage,
 			createdAt: result.createdAt.toISOString(),
 			updatedAt: result.updatedAt.toISOString(),
 			completedAt: result.completedAt.toISOString(),

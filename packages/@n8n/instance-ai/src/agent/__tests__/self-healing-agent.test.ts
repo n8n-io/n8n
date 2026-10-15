@@ -1,5 +1,6 @@
 import {
 	Workspace,
+	type BuiltMemory,
 	type BuiltTool,
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
@@ -141,6 +142,7 @@ describe('createSelfHealingAgent', () => {
 				maxIterations: 5,
 				abortSignal: signal,
 				recoverUsageOnAbort: true,
+				persistence: { threadId: 'internal-thread', resourceId: 'ia-self-healing:actor' },
 			},
 			{
 				threadId: 'internal-thread',
@@ -158,6 +160,14 @@ describe('createSelfHealingAgent', () => {
 		expect(context.executionService.getStatus).toHaveBeenCalledWith('execution');
 		expect(verifyCandidate).toHaveBeenCalledTimes(1);
 		expect(turns).toHaveLength(0);
+
+		const buildMemory = async (instance: typeof agent) =>
+			await (instance as unknown as { build(): Promise<{ memory: BuiltMemory }> }).build();
+		const { memory } = await buildMemory(agent);
+		expect(await memory.getMessages('internal-thread')).not.toHaveLength(0);
+		const nextAgent = await createAgent();
+		const { memory: nextMemory } = await buildMemory(nextAgent);
+		expect(await nextMemory.getMessages('internal-thread')).toEqual([]);
 	});
 
 	it('restricts the final SDK tools and loads the investigation skill before inference', async () => {

@@ -44,35 +44,28 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
 		Container.get(InstanceAiEventRelay);
 
-		// Startup sweep resolves runs the previous process left mid-flight by
-		// converting their in-flight tool calls into tool-interrupted facts and
-		// appending run-finish{interrupted}.
+		void this.reconcileInterruptedRuns().catch((error: unknown) => {
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.error('Startup run reconciliation failed', { error });
+		});
+
+		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
+			await import('./instance-ai-test.controller.js');
+		}
+	}
+
+	private async reconcileInterruptedRuns(): Promise<void> {
 		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		const { SelfHealingInvestigationService } = await import(
 			'./self-healing/self-healing-investigation.service.js'
 		);
-		const sweepLogger = Container.get(Logger).scoped('instance-ai');
 		const sweeper = Container.get(InterruptedRunSweeper);
 		sweeper.setResumeHost(Container.get(InstanceAiService));
-		void sweeper
-			.sweep()
-			.then(async () => {
-				try {
-					await Container.get(SelfHealingInvestigationService).reconcile();
-				} catch (error) {
-					sweepLogger.error('Self-healing investigation reconciliation failed on startup', {
-						error,
-					});
-				}
-			})
-			.catch((error: unknown) => {
-				sweepLogger.error('Interrupted-run sweep failed on startup', { error });
-			});
 
-		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
-			await import('./instance-ai-test.controller.js');
-		}
+		await sweeper.sweep();
+		await Container.get(SelfHealingInvestigationService).reconcile();
 	}
 
 	async systemTasks() {

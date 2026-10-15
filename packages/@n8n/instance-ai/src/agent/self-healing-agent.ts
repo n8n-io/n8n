@@ -1,10 +1,4 @@
-import {
-	Agent,
-	Memory,
-	Tool,
-	loadRuntimeSkillSourceFromDirectory,
-	type BuiltMemory,
-} from '@n8n/agents';
+import { Agent, Memory, Tool, loadRuntimeSkillSourceFromDirectory } from '@n8n/agents';
 import { resolve } from 'node:path';
 
 import { applyAgentThinking } from './apply-agent-thinking';
@@ -36,7 +30,6 @@ import { createLazyRuntimeWorkspace } from '../workspace/lazy-runtime-workspace'
 export interface CreateSelfHealingAgentOptions {
 	modelId: ModelConfig;
 	context: InstanceAiContext;
-	memory?: BuiltMemory;
 	verifyCandidate: SelfHealingCandidateVerifier;
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
@@ -139,10 +132,10 @@ export async function createSelfHealingAgent(
 		})
 		.tool(toolRegistryValues(tracedTools))
 		.structuredOutput(selfHealingOutputSchema)
-		.checkpoint('memory');
+		.checkpoint('memory')
+		.memory(new Memory().storage('memory'));
 
 	if (workspace) agent.workspace(workspace);
-	if (options.memory) agent.memory(new Memory().storage(options.memory));
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
 
 	const telemetry = tracing?.getTelemetry?.({

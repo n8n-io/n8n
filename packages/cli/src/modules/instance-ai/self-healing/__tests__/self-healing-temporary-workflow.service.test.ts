@@ -5,6 +5,7 @@ import {
 	type SharedWorkflow,
 	type TransactionRunner,
 	type User,
+	type UserRepository,
 	WorkflowEntity,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -26,6 +27,7 @@ const transactions = mock<TransactionRunner>();
 const executions = mock<ExecutionPersistence>();
 const executionService = mock<ExecutionService>();
 const logger = mock<Logger>();
+const users = mock<UserRepository>();
 const service = new SelfHealingTemporaryWorkflowService(
 	workflows,
 	finder,
@@ -34,6 +36,7 @@ const service = new SelfHealingTemporaryWorkflowService(
 	executions,
 	executionService,
 	logger,
+	users,
 );
 const user = mock<User>({ id: 'user', disabled: false });
 const graph: WorkflowSuggestionGraph = {
@@ -74,6 +77,7 @@ let original: WorkflowEntity;
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	users.findByIdWithRole.mockResolvedValue(user);
 	original = new WorkflowEntity();
 	original.id = baseline.workflowId;
 	original.shared = [
@@ -91,32 +95,27 @@ beforeEach(() => {
 	workflows.findAbandonedIds.mockResolvedValue([]);
 });
 
-it('runs the exact candidate on an isolated workflow and keeps its findings after cleanup', async () => {
+it('creates an isolated candidate without changing the baseline or original workflow', async () => {
 	const staticDataBefore = structuredClone(original.staticData);
 	const baselineBefore = structuredClone(baseline);
 	const graphBefore = structuredClone(graph);
-	const findings = { success: false, error: 'Missing input' };
-	const verify = vi.fn(async () => {
-		const temporary = workflows.createTemporary.mock.calls[0][0];
-		expect(temporary).toMatchObject({
-			id: 'temporary',
-			name: baseline.original.name,
-			nodes: graph.nodes,
-			connections: graph.connections,
-			settings: baseline.original.settings,
-			pinData: baseline.original.pinData,
-			staticData: original.staticData,
-			isArchived: true,
-			activeVersionId: null,
-		});
-		temporary.nodes[0].parameters.value = 'runtime';
-		temporary.staticData!.changed = true;
-		temporary.pinData!.Step[0].json.value = 'runtime';
-		return findings;
-	});
+	const temporary = await service.create(input);
 
-	await expect(service.withTemporaryWorkflow(input, verify)).resolves.toBe(findings);
-	expect(verify).toHaveBeenCalledWith('temporary');
+	expect(temporary).toMatchObject({
+		id: 'temporary',
+		name: baseline.original.name,
+		nodes: graph.nodes,
+		connections: graph.connections,
+		settings: baseline.original.settings,
+		pinData: baseline.original.pinData,
+		staticData: original.staticData,
+		isArchived: true,
+		activeVersionId: null,
+	});
+	temporary.nodes[0].parameters.value = 'runtime';
+	temporary.staticData!.changed = true;
+	temporary.pinData!.Step[0].json.value = 'runtime';
+
 	expect(finder.findWorkflowForUser).toHaveBeenCalledWith('original', user, [
 		'workflow:read',
 		'workflow:update',
@@ -125,39 +124,52 @@ it('runs the exact candidate on an isolated workflow and keeps its findings afte
 	expect(original.staticData).toEqual(staticDataBefore);
 	expect(baseline).toEqual(baselineBefore);
 	expect(graph).toEqual(graphBefore);
-	expect(executions.hardDeleteByWorkflowId).toHaveBeenCalledWith('temporary');
-	expect(workflows.deleteTemporary).toHaveBeenCalledWith('temporary');
 });
 
-it('cleans up when verification throws', async () => {
-	await expect(
-		service.withTemporaryWorkflow(input, async () => {
-			throw new Error('Execution failed');
-		}),
-	).rejects.toThrow('Execution failed');
-	expect(workflows.deleteTemporary).toHaveBeenCalledWith('temporary');
+it.each(['deleted', 'disabled'])('rejects an actor whose account was %s', async (state) => {
+	users.findByIdWithRole.mockResolvedValue(
+		state === 'deleted' ? null : mock<User>({ id: user.id, disabled: true }),
+	);
+	await expect(service.create(input)).rejects.toThrow('access');
+	expect(finder.findWorkflowForUser).not.toHaveBeenCalled();
+	expect(workflows.createTemporary).not.toHaveBeenCalled();
+});
+
+it('uses the current user and role for access and policy checks', async () => {
+	const currentUser = mock<User>({
+		id: user.id,
+		disabled: false,
+		role: { slug: 'global:member' },
+	});
+	users.findByIdWithRole.mockResolvedValue(currentUser);
+	await service.create(input);
+	expect(users.findByIdWithRole).toHaveBeenCalledWith(user.id);
+	expect(finder.findWorkflowForUser.mock.calls[0][1]).toBe(currentUser);
+	expect(policy.enforceWorkflowSave).toHaveBeenCalledWith(expect.anything(), {
+		kind: 'user',
+		user: currentUser,
+	});
 });
 
 it('retains the marker when execution data cleanup fails', async () => {
 	executions.hardDeleteByWorkflowId.mockRejectedValue(new Error('Storage unavailable'));
-	await expect(service.withTemporaryWorkflow(input, async () => 'findings')).resolves.toBe(
-		'findings',
-	);
+	await expect(service.cleanup('temporary')).resolves.toBeUndefined();
 	expect(workflows.deleteTemporary).not.toHaveBeenCalled();
 	expect(logger.warn).toHaveBeenCalled();
 });
 
 it('defers deletion while an execution is still settling', async () => {
 	workflows.canDelete.mockResolvedValue(false);
-	await service.withTemporaryWorkflow(input, async () => 'cancelled');
+	await service.cleanup('temporary');
 	expect(executions.hardDeleteByWorkflowId).not.toHaveBeenCalled();
 	expect(workflows.deleteTemporary).not.toHaveBeenCalled();
 });
 
 it('stops unfinished executions through the existing execution service before deletion', async () => {
 	workflows.findUnfinishedExecutionIds.mockResolvedValue(['waiting']);
-	await service.withTemporaryWorkflow(input, async () => 'waiting');
+	await service.cleanup('temporary');
 	expect(executionService.stop).toHaveBeenCalledWith('waiting', ['temporary']);
+	expect(workflows.deleteTemporary).toHaveBeenCalledWith('temporary');
 	expect(executionService.stop.mock.invocationCallOrder[0]).toBeLessThan(
 		executions.hardDeleteByWorkflowId.mock.invocationCallOrder[0],
 	);
@@ -189,7 +201,7 @@ it.each(['access', 'project'])(
 	async (change) => {
 		if (change === 'access') finder.findWorkflowForUser.mockResolvedValue(null);
 		else original.shared = [];
-		await expect(service.withTemporaryWorkflow(input, async () => {})).rejects.toThrow('access');
+		await expect(service.create(input)).rejects.toThrow('access');
 		expect(workflows.createTemporary).not.toHaveBeenCalled();
 	},
 );
@@ -198,7 +210,7 @@ it('creates the snapshot with the content policy clearance in one transaction', 
 	const clearance = mock<Awaited<ReturnType<PolicyEnforcementService['enforceWorkflowSave']>>>();
 	policy.enforceWorkflowSave.mockResolvedValue(clearance);
 	const ctx: OperationContext = { policyCleared: clearance };
-	await service.withTemporaryWorkflow(input, async () => {});
+	await service.create(input);
 	expect(workflows.createTemporary).toHaveBeenCalledWith(
 		expect.objectContaining({ nodes: graph.nodes }),
 		'original',

@@ -338,7 +338,6 @@ export class SelfHealingAgentService {
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
 			allowSendingParameterValues: shareParameters,
-			builderDelegateEnabled: false,
 		});
 		context.runId = options.runId;
 		context.threadId = options.threadId;
@@ -447,7 +446,6 @@ export class SelfHealingAgentService {
 		const agent = await createSelfHealingAgent({
 			modelId,
 			context,
-			memory: this.memory,
 			thinkingEnabled: this.config.instanceAi.thinkingEnabled,
 			abortSignal: signal,
 			verifyCandidate: async (args) => {

@@ -1,7 +1,7 @@
 import type { Workspace, WorkspaceFilesystem } from '@n8n/agents';
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
 import type { InstanceAiContext, InstanceAiExecutionService } from '@n8n/instance-ai';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
@@ -88,9 +88,7 @@ describe('SelfHealingCandidateService', () => {
 		source = candidateSource('Repaired process');
 		filesystem.readFile.mockImplementation(async () => source);
 		suggestions.requireEditor.mockResolvedValue(user);
-		temporaryWorkflows.withTemporaryWorkflow.mockImplementation(async (_input, verify) => {
-			return await verify('temporary-1');
-		});
+		temporaryWorkflows.create.mockResolvedValue(mock<WorkflowEntity>({ id: 'temporary-1' }));
 		executionService.run.mockResolvedValue({
 			executionId: 'verification-1',
 			status: 'success',
@@ -136,7 +134,7 @@ describe('SelfHealingCandidateService', () => {
 			validation: { success: true },
 			verification: { status: 'not_run' },
 		});
-		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+		expect(temporaryWorkflows.create).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
@@ -158,7 +156,7 @@ describe('SelfHealingCandidateService', () => {
 			validation: { success: true },
 			verification: { status: 'not_run' },
 		});
-		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+		expect(temporaryWorkflows.create).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
@@ -172,7 +170,7 @@ describe('SelfHealingCandidateService', () => {
 			'The workflow credentials are unavailable.',
 		);
 
-		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+		expect(temporaryWorkflows.create).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
@@ -185,7 +183,7 @@ describe('SelfHealingCandidateService', () => {
 			validation: { success: false, reason: 'workflow_json_parse_failed' },
 			verification: { status: 'not_run' },
 		});
-		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+		expect(temporaryWorkflows.create).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
@@ -218,12 +216,34 @@ describe('SelfHealingCandidateService', () => {
 			expect(options).toMatchObject({ isVerificationRun: true, abortSignal: input.abortSignal });
 		}
 		expect(
-			temporaryWorkflows.withTemporaryWorkflow.mock.calls[1][0].graph.nodes.find(
-				(node) => node.id === 'process-1',
-			)?.name,
+			temporaryWorkflows.create.mock.calls[1][0].graph.nodes.find((node) => node.id === 'process-1')
+				?.name,
 		).toBe('Second repair');
+		expect(temporaryWorkflows.cleanup).toHaveBeenCalledTimes(2);
+		expect(temporaryWorkflows.cleanup).toHaveBeenCalledWith('temporary-1');
 		expect(input.baseline).toEqual(baseline);
 		expect(suggestions.createSuggestion).not.toHaveBeenCalled();
+	});
+
+	it('cleans up the temporary workflow when verification throws', async () => {
+		executionService.run.mockRejectedValue(new Error('Execution failed'));
+
+		await expect(service.verify(input)).resolves.toMatchObject({
+			verification: { status: 'error', success: false, error: 'Execution failed' },
+		});
+
+		expect(temporaryWorkflows.cleanup).toHaveBeenCalledExactlyOnceWith('temporary-1');
+	});
+
+	it('does not run verification or cleanup when temporary workflow creation fails', async () => {
+		temporaryWorkflows.create.mockRejectedValue(new Error('Creation failed'));
+
+		await expect(service.verify(input)).resolves.toMatchObject({
+			verification: { status: 'error', success: false, error: 'Creation failed' },
+		});
+
+		expect(executionService.run).not.toHaveBeenCalled();
+		expect(temporaryWorkflows.cleanup).not.toHaveBeenCalled();
 	});
 
 	it('passes the selected webhook and its input when the candidate also has a schedule trigger', async () => {
@@ -392,20 +412,20 @@ describe('SelfHealingCandidateService', () => {
 		await expect(service.verify(input)).rejects.toThrow('Workflow edit access is required.');
 
 		expect(filesystem.readFile).not.toHaveBeenCalled();
-		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+		expect(temporaryWorkflows.create).not.toHaveBeenCalled();
 	});
 
-	it('rechecks edit access before execution after planning completes', async () => {
-		suggestions.requireEditor
-			.mockResolvedValueOnce(user)
-			.mockRejectedValueOnce(new ForbiddenError('Workflow edit access is required.'));
+	it('does not execute when temporary workflow creation rejects access', async () => {
+		temporaryWorkflows.create.mockRejectedValue(
+			new ForbiddenError('Workflow edit and execution access is required.'),
+		);
 
 		const result = await service.verify(input);
 
 		expect(result).toMatchObject({
-			verification: { success: false, error: 'Workflow edit access is required.' },
+			verification: { success: false, error: 'Workflow edit and execution access is required.' },
 		});
-		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+		expect(temporaryWorkflows.cleanup).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 });

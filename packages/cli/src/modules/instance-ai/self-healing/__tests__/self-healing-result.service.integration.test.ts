@@ -463,20 +463,6 @@ it.each([0, null])('preserves report text and measured usage with credits=%s', a
 	expect(detail.usage).toEqual(usage);
 });
 
-it('omits token counts from previously stored usage', async () => {
-	const { input, user, project, original, result } = await fixture();
-	const storedUsage = {
-		...input.usage,
-		promptTokens: 1000,
-		completionTokens: 200,
-		totalTokens: 1200,
-	};
-	await results.update(result.id, { usage: storedUsage });
-
-	const detail = await service.getDetail(user, project.id, original.id, result.id);
-	expect(detail.usage).toEqual(input.usage);
-});
-
 it('keeps the report and unknown usage after the execution is removed', async () => {
 	const usage = {
 		credits: null,

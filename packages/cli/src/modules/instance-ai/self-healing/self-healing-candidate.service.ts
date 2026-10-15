@@ -157,28 +157,30 @@ export class SelfHealingCandidateService {
 			return { ...blocker, status: 'not_run' };
 		}
 
-		// Planning can take time. Recheck access before creating a snapshot.
-		await this.suggestions.requireEditor(baseline.backgroundUserId, baseline.workflowId);
 		abortSignal.throwIfAborted();
 
-		return await this.temporaryWorkflows.withTemporaryWorkflow(
-			{ user, baseline, graph: candidate.workflow },
-			async (workflowId) => {
-				const verification = await runWorkflowVerification({
-					executionService: context.executionService,
-					workflowId,
-					triggerNodeName: input.triggerNodeName,
-					inputData: input.inputData,
-					buildOutcome,
-					prepared: preparation.prepared,
-					stateBefore: undefined,
-					runId,
-					abortSignal,
-				});
+		const temporaryWorkflow = await this.temporaryWorkflows.create({
+			user,
+			baseline,
+			graph: candidate.workflow,
+		});
+		try {
+			const verification = await runWorkflowVerification({
+				executionService: context.executionService,
+				workflowId: temporaryWorkflow.id,
+				triggerNodeName: input.triggerNodeName,
+				inputData: input.inputData,
+				buildOutcome,
+				prepared: preparation.prepared,
+				stateBefore: undefined,
+				runId,
+				abortSignal,
+			});
 
-				return await this.summarizeVerification(input, candidate, verification);
-			},
-		);
+			return await this.summarizeVerification(input, candidate, verification);
+		} finally {
+			await this.temporaryWorkflows.cleanup(temporaryWorkflow.id);
+		}
 	}
 
 	private async summarizeVerification(

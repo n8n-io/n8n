@@ -76,6 +76,7 @@ export class SelfHealingInvestigationService {
 		const claimed = await this.claim(input, baseline);
 		if ('kind' in claimed) return claimed;
 
+		// Return the investigation ID without waiting for the agent to finish.
 		void this.run(claimed, actor).catch((error: unknown) => {
 			this.logger.error('Self-healing investigation failed.', {
 				investigationId: claimed.id,
@@ -89,10 +90,23 @@ export class SelfHealingInvestigationService {
 		input: Pick<StartInvestigation, 'workflowId' | 'executionId'>,
 		ctx: OperationContext = {},
 	): Promise<ExistingWork | null> {
-		const investigation =
-			(await this.investigations.getForExecution(input.workflowId, input.executionId, ctx)) ??
-			(await this.investigations.getUnfinishedForWorkflow(input.workflowId, ctx));
-		if (investigation) return { kind: 'investigation', investigationId: investigation.id };
+		const executionInvestigation = await this.investigations.getForExecution(
+			input.workflowId,
+			input.executionId,
+			ctx,
+		);
+		if (executionInvestigation) {
+			return { kind: 'investigation', investigationId: executionInvestigation.id };
+		}
+
+		const unfinishedInvestigation = await this.investigations.getUnfinishedForWorkflow(
+			input.workflowId,
+			ctx,
+		);
+		if (unfinishedInvestigation) {
+			return { kind: 'investigation', investigationId: unfinishedInvestigation.id };
+		}
+
 		const suggestion = await this.suggestionRepository.getPendingForWorkflow(input.workflowId, ctx);
 		return suggestion ? { kind: 'suggestion', suggestionId: suggestion.id } : null;
 	}
@@ -126,7 +140,8 @@ export class SelfHealingInvestigationService {
 				{
 					threadId: investigation.threadId,
 					runId: investigation.runId,
-					onComplete: async (run, signal) => await this.accept(investigation, run, signal),
+					onComplete: async (run, signal) =>
+						await this.handleRunCompletion(investigation, run, signal),
 				},
 			);
 		} catch (error) {
@@ -135,7 +150,7 @@ export class SelfHealingInvestigationService {
 		}
 	}
 
-	private async accept(
+	private async handleRunCompletion(
 		investigation: SelfHealingInvestigation,
 		run: SelfHealingRunResult,
 		signal: AbortSignal,
