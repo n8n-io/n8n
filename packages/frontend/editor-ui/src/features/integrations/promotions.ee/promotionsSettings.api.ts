@@ -6,6 +6,8 @@ import type {
 	ContinueApplySelectionDto,
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
+	ListPromotionRepositoriesQueryDto,
+	ListPromotionBranchesQueryDto,
 	PromotionApplyConfigPublicDto,
 	PromotionCheckoutPublicDto,
 	PromotionConnectionPublicDto,
@@ -17,6 +19,8 @@ import type {
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
+	PromotionRepositoryListPublicDto,
+	PromotionBranchListPublicDto,
 	PromotionPromoteConfigPublicDto,
 	UpdatePromotionConnectionDto,
 	UpdatePromotionProviderDto,
@@ -34,6 +38,31 @@ export type PromotionConnection = PromotionConnectionPublicDto;
 export type { PromotionConnectionSummary };
 
 const promotionsApiRoot = '/promotions';
+
+export const fetchPromotionRepositories = async (
+	context: PublicApiContext,
+	providerId: string,
+	query: Partial<ListPromotionRepositoriesQueryDto> = {},
+): Promise<PromotionRepositoryListPublicDto> =>
+	await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories`,
+		data: query,
+	});
+
+export const fetchPromotionBranches = async (
+	context: PublicApiContext,
+	providerId: string,
+	repositoryId: string,
+	query: Partial<ListPromotionBranchesQueryDto> = {},
+): Promise<PromotionBranchListPublicDto> =>
+	await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories/${encodeURIComponent(repositoryId)}/branches`,
+		data: query,
+	});
 
 async function fetchAllPages<T>(
 	fetchPage: (cursor?: string) => Promise<{ data: T[]; nextCursor: string | null }>,

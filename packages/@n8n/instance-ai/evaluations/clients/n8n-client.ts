@@ -1000,6 +1000,17 @@ export class N8nClient {
 		});
 	}
 
+	/** Send the thread's connection tests for one credential type to a provider stand-in. */
+	async setThreadCredentialTestTarget(
+		threadId: string,
+		target: { credentialType: string; baseUrl: string; urlField: string },
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-test-target', {
+			method: 'POST',
+			body: { threadId, ...target },
+		});
+	}
+
 	/**
 	 * Seed an existing thread with a previously exported conversation: the
 	 * referenced workflows are recreated (node credentials stripped server-side),

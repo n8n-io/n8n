@@ -16,6 +16,8 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		bodyFlush?: boolean;
+		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -30,6 +32,8 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		bodyFlush: false,
+		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -69,6 +73,8 @@ watch(
 		:show-footer="showFooter"
 		:show-cancel="showCancel"
 		:body-scrollable="!isPickerStep"
+		:body-flush="bodyFlush"
+		:stable-height="stableHeight"
 		:busy="busy"
 		:size="size"
 		:stacked="stacked"
@@ -79,6 +85,9 @@ watch(
 		@update:title="emit('update:title', $event)"
 		@back="emit('back')"
 	>
+		<template v-if="$slots.titlePrefix" #titlePrefix>
+			<slot name="titlePrefix" />
+		</template>
 		<template #headerActions>
 			<slot name="headerActions" />
 		</template>

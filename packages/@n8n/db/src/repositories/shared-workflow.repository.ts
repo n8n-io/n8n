@@ -41,15 +41,22 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		return rows.map(({ workflowId }) => workflowId);
 	}
 
-	async findWorkflowIdsAccessibleToUser(
-		userId: string,
-		workflowRoleSlugs: string[],
-		projectRoleSlugs: string[],
-	): Promise<string[]> {
+	async findWorkflowIdsAccessibleToUser({
+		userId,
+		workflowRoleSlugs,
+		projectRoleSlugs,
+		projectId,
+	}: {
+		userId: string;
+		workflowRoleSlugs: string[];
+		projectRoleSlugs: string[];
+		projectId?: string;
+	}): Promise<string[]> {
 		const rows = await this.find({
 			where: {
 				role: In(workflowRoleSlugs),
 				project: {
+					id: projectId ?? undefined,
 					projectRelations: {
 						userId,
 						role: { slug: In(projectRoleSlugs) },

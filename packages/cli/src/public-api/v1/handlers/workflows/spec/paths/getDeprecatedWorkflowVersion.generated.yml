@@ -5,9 +5,6 @@ summary: Retrieves a specific version of a workflow
 description: 'Deprecated: use GET /workflows/{workflowId}/versions/{workflowVersionId} instead. Retrieves a specific version of a workflow from workflow history.'
 x-required-scope: workflow:read
 deprecated: true
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

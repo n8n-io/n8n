@@ -90,6 +90,7 @@ import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
+import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
@@ -193,9 +194,6 @@ const createSkillInputSchema = z
 		name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
 		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
 		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
-		allowedTools: agentSkillSchema.shape.allowedTools
-			.optional()
-			.describe('Exact target-agent tool names this skill is allowed to use.'),
 		references: agentSkillSchema.shape.references
 			.optional()
 			.describe(
@@ -234,7 +232,6 @@ const updateSkillFieldsSchema = z
 				'Targeted replacements in the current instructions, applied in order. Prefer this to ' +
 					'`instructions` for a partial change. Do not pass both.',
 			),
-		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
 		references: agentSkillSchema.shape.references
 			.unwrap()
 			.refine((references) => references.length > 0, 'Pass null to clear references.')
@@ -259,7 +256,7 @@ const updateSkillInputSchema = z
 				'skillHash from the immediately preceding agent-context with type "skill" result for this skill.',
 			),
 		updates: updateSkillFieldsSchema.describe(
-			'Only the fields to change. Pass null for allowedTools or references to remove that field; empty arrays are invalid.',
+			'Only the fields to change. Pass null for references to remove them; an empty array is invalid.',
 		),
 	})
 	.strict();
@@ -414,6 +411,7 @@ export class AgentsBuilderToolsService {
 		private readonly telemetry: Telemetry,
 		private readonly agentContextAdapter: InstanceAiAgentContextAdapterService,
 		private readonly collaborationService: CollaborationService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -1144,8 +1142,10 @@ export class AgentsBuilderToolsService {
 				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
 					'agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type "skill" ' +
 					'result. To change part of the body, pass instructionEdits with oldText/newText pairs ' +
-					'instead of rewriting instructions. Pass null for allowedTools to remove the tool restriction, ' +
-					'or null for references to remove all references; empty arrays are invalid. Returns ' +
+					'instead of rewriting instructions. Pass null for references to remove all references; an ' +
+					'empty array is invalid. The skill is shared: the update saves its next version, and every ' +
+					'agent draft that follows the latest version runs that version. Published versions keep ' +
+					'the version they pinned. Returns ' +
 					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
 					'saves nothing: fix oldText so it matches exactly one place and retry with the same ' +
 					'baseSkillHash. On a stale skill error, ' +
@@ -1155,10 +1155,9 @@ export class AgentsBuilderToolsService {
 			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
-				const { allowedTools, references, instructionEdits, ...requiredUpdates } = updates;
+				const { references, instructionEdits, ...requiredUpdates } = updates;
 				const normalizedUpdates = {
 					...requiredUpdates,
-					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
 					...(references !== undefined ? { references: references ?? undefined } : {}),
 				};
 
@@ -1209,7 +1208,7 @@ export class AgentsBuilderToolsService {
 					'applicable section filled in with concrete, specific content. If you do not have enough domain ' +
 					"detail to write a genuinely useful skill, derive it from the user's goal as stated assumptions " +
 					'listed in your summary; ask the user clarifying questions only when even a reasonable ' +
-					'assumption is impossible. Use allowedTools only with exact target-agent tool names. Use references ' +
+					'assumption is impossible. Use references ' +
 					'only for markdown supporting files under the references/ directory — references are not ' +
 					'automatically loaded, so instructions must say exactly when to load each one by path; scripts and ' +
 					'non-markdown linked files are not supported. Do not invent tool names or reference paths. Batch ' +
@@ -1306,7 +1305,7 @@ export class AgentsBuilderToolsService {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new Error('Agent not found');
 
-		const config = composeJsonConfig(agent);
+		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
 		return snapshotFromConfig(config);
 	}
 

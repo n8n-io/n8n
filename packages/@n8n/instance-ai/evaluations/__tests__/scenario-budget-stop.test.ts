@@ -107,3 +107,27 @@ describe('server-side budget stop', () => {
 		expect(String(failure)).not.toMatch(/eval budget|operation was aborted/i);
 	});
 });
+
+// Nothing ran, so the verifier must not judge an empty artifact.
+describe('server-side framework issue', () => {
+	const issue = 'FRAMEWORK ISSUE: mock hints failed: Eval model provider call failed (HTTP 401)';
+
+	it('throws out of a workflow scenario', async () => {
+		const client = mock<N8nClient>();
+		client.executeWithLlmMock.mockResolvedValue(execResult([issue]));
+
+		await expect(executeScenario(client, 'wf-1', scenario, [], silentLogger)).rejects.toThrow(
+			issue,
+		);
+	});
+
+	it('throws out of an agent scenario', async () => {
+		const client = mock<N8nClient>();
+		client.getPersonalProjectId.mockResolvedValue('proj-1');
+		client.executeAgentWithLlmMock.mockResolvedValue(agentResult([issue]));
+
+		await expect(
+			executeAgentScenario(client, 'agent-1', scenario, 'context', silentLogger),
+		).rejects.toThrow(issue);
+	});
+});

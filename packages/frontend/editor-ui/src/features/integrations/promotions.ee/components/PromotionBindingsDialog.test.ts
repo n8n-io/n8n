@@ -132,7 +132,7 @@ it('lists destructive changes after the blocking conflicts and keeps apply block
 	expect(getByText(/destination project is not a team project/)).toBeInTheDocument();
 	expect(
 		getByText(
-			'Changes to these data tables remove, rename or retype columns. The values in those columns are removed. Rows and other columns are kept.',
+			'Changes to these data tables remove or retype columns. The values in those columns are removed. Rows and other columns are kept.',
 		),
 	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();
@@ -161,10 +161,10 @@ it('asks to confirm data deletion when only destructive changes block apply', as
 	expect(
 		getByRole('heading', { level: 2, name: 'Review destructive changes' }),
 	).toBeInTheDocument();
-	expect(getByText('Check the column changes before you apply')).toBeInTheDocument();
+	expect(getByText('Check these changes before you apply')).toBeInTheDocument();
 	expect(
 		getByText(
-			"Changes to this data table remove, rename or retype columns. The values in the changed columns can't be restored. Rows and other columns are kept.",
+			"Changes to this data table remove or retype columns. The values in the changed columns can't be restored. Rows and other columns are kept.",
 		),
 	).toBeInTheDocument();
 	expect(getByText('Orders')).toBeInTheDocument();

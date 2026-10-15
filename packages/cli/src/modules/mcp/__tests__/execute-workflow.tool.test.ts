@@ -23,7 +23,7 @@ import { McpService } from '@/modules/mcp/mcp.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

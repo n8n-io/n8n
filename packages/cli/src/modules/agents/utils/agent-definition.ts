@@ -1,18 +1,37 @@
-import type { AgentTaskConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentSkill, AgentTaskConfig } from '@n8n/api-types';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
+import { toAgentDocument, type AgentSkillRefs } from '../json-config/agent-document';
 
 /** Published chat settings stay in schema. Credential integrations stay on the agent. */
-export interface AgentDefinition extends Pick<Agent, 'schema' | 'tools' | 'skills'> {
+export interface AgentDefinition extends Pick<Agent, 'tools'> {
+	/** The JSON document, with the skill refs. */
+	schema: AgentJsonConfig | null;
+	/** Skill bodies from the skills hub, keyed by skill id. */
+	skills: Record<string, AgentSkill>;
 	tasks: ReadonlyMap<string, AgentTaskConfig>;
 }
 
-/** Keep configuration and inline bodies from the same draft or version. */
+/**
+ * Skill refs that a caller is about to save. A pre-save check passes them in
+ * place of the stored refs, so that it checks the state that it will write.
+ */
+export interface PendingSkillRefs {
+	skillRefs: AgentSkillRefs;
+}
+
+/** Keep configuration, inline bodies and skill bodies from the same draft or version. */
 export function getAgentDefinitionContent(
-	source: Pick<AgentHistory, 'schema' | 'tools' | 'skills'>,
+	source: Pick<AgentHistory, 'schema' | 'tools'>,
+	skillRefs: AgentSkillRefs,
+	skills: Record<string, AgentSkill>,
 ) {
-	return { schema: source.schema, tools: source.tools ?? {}, skills: source.skills ?? {} };
+	return {
+		schema: source.schema ? toAgentDocument(source.schema, skillRefs) : null,
+		tools: source.tools ?? {},
+		skills,
+	};
 }
 
 export function getAgentTaskBody(task: AgentTaskConfig) {

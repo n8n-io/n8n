@@ -437,6 +437,34 @@ describe('spawn', () => {
 		);
 	});
 
+	it('settles a guardrail-stopped run as failed with the stop reason', async () => {
+		const { backgroundRunner, runner, jobService, context } = setup();
+		runner.run.mockResolvedValue(
+			completedRunResult({
+				status: 'failed',
+				result: {
+					runId: 'run-1',
+					messages: [],
+					finishReason: 'guardrail',
+					guardrail: { code: 'budget.session' },
+					getState: () => ({}),
+				},
+			} as unknown as Partial<SubAgentRunResult>),
+		);
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(jobService.settle).toHaveBeenCalledWith(
+			expect.any(String),
+			{
+				status: 'failed',
+				error: 'The sub-agent run was stopped: the session cost cap is spent.',
+			},
+			{ status: 'running', timeoutAt: expect.any(Date) },
+		);
+	});
+
 	it.each(['suspended', 'paused'] as const)(
 		'stops the execution timer without completing a %s child',
 		async (status) => {

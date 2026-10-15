@@ -228,7 +228,7 @@ function example(state: Example): Story {
 					<N8nSetupPanel :items="items" :status="status" v-model:active-item-id="active">
 						<template #icon><N8nIcon icon="plug" size="small" /></template>
 						<template #action>
-								<N8nButton size="small" variant="subtle" @click="connected = true; active = state.field ? 'service' : undefined">Connect</N8nButton>
+								<N8nButton size="small" variant="outline" @click="connected = true; active = state.field ? 'service' : undefined">Connect</N8nButton>
 						</template>
 						<template #detail>
 								<div style="display: flex; flex-direction: column; gap: var(--spacing--xs)">

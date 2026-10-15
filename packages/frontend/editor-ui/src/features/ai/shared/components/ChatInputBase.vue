@@ -16,6 +16,8 @@ import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 const props = withDefaults(
 	defineProps<{
+		/** Blocks workflow canvas shortcuts while the textarea has focus. Defaults to true. */
+		blockCanvasShortcuts?: boolean;
 		modelValue: string;
 		placeholder?: string;
 		isStreaming: boolean;
@@ -25,6 +27,11 @@ const props = withDefaults(
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
+		/**
+		 * Shows the built-in attach button. A host that renders its own attach
+		 * button sets this to false. Files can still be dropped or pasted.
+		 */
+		showAttachButton?: boolean;
 		/** Also shows the attach button. Without it, files can still be dropped or pasted. */
 		acceptedMimeTypes?: string;
 		/**
@@ -44,8 +51,10 @@ const props = withDefaults(
 		maxLength?: number;
 	}>(),
 	{
+		blockCanvasShortcuts: true,
 		placeholder: undefined,
 		showStopButton: undefined,
+		showAttachButton: true,
 		acceptedMimeTypes: undefined,
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
@@ -267,6 +276,7 @@ defineExpose({
 
 		<N8nChatInput
 			ref="inputRef"
+			:block-canvas-shortcuts="blockCanvasShortcuts"
 			:model-value="modelValue"
 			:placeholder="placeholder"
 			:streaming="showStopButton ?? isStreaming"
@@ -294,7 +304,7 @@ defineExpose({
 			<template #right-actions>
 				<slot name="right-actions" />
 				<N8nTooltip
-					v-if="showAttach && acceptedMimeTypes !== undefined"
+					v-if="showAttach && showAttachButton && acceptedMimeTypes !== undefined"
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>

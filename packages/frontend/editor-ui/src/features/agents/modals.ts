@@ -4,11 +4,13 @@ import {
 	AGENT_CONFIRMATION_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_PUBLISHED_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_SUB_AGENTS_MODAL_KEY,
 	AGENT_TASK_MODAL_KEY,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	AGENT_DUPLICATE_MODAL_KEY,
 } from './constants';
@@ -22,6 +24,7 @@ export const AGENTS_MODALS: ModalDefinition[] = [
 			data: {
 				tools: [],
 				mcpServers: [],
+				projectId: '',
 				onConfirm: () => {},
 			},
 		},
@@ -113,6 +116,26 @@ export const AGENTS_MODALS: ModalDefinition[] = [
 		key: AGENT_CONFIRMATION_MODAL_KEY,
 		component: async () => await import('./components/AgentConfirmationModal.vue'),
 		initialState: { open: false },
+	},
+	{
+		key: AGENT_PUBLISHED_MODAL_KEY,
+		component: async () => await import('./components/AgentPublishedModal.vue'),
+		initialState: {
+			open: false,
+			data: {
+				agentId: '',
+			},
+		},
+	},
+	{
+		key: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+		component: async () => await import('./components/AgentUnpublishedWorkflowsModal.vue'),
+		initialState: {
+			open: false,
+			data: {
+				workflows: [],
+			},
+		},
 	},
 	{
 		key: AGENT_DUPLICATE_MODAL_KEY,

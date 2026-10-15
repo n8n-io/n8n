@@ -356,6 +356,7 @@ const InstanceAiInputStub = defineComponent({
 		contextualSuggestion: { type: String, required: false, default: null },
 		placeholder: { type: String, required: false },
 		mentionsEnabled: { type: Boolean, required: false },
+		isOutOfCredits: { type: Boolean, required: false },
 		attachOnlyMimeTypes: { type: String, required: false },
 	},
 	emits: ['submit'],
@@ -492,6 +493,11 @@ const InstanceAiInputStub = defineComponent({
 				),
 				h(
 					'span',
+					{ 'data-test-id': 'instance-ai-input-out-of-credits' },
+					String(Boolean(props.isOutOfCredits)),
+				),
+				h(
+					'span',
 					{ 'data-test-id': 'instance-ai-input-attach-only' },
 					props.attachOnlyMimeTypes ?? 'unset',
 				),
@@ -591,8 +597,7 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		store.deleteThread.mockResolvedValue(true);
 		store.creditsQuota = 100;
-		store.showCreditWarning = false;
-		store.quotaLocked = false;
+		store.isLowCredits = false;
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		experimentMocks.splitBelowInputVariant.value = false;
@@ -913,7 +918,7 @@ describe('InstanceAiEmptyView', () => {
 	// fuse onto a sidebar input reads as a stray inset box floating above it.
 	it('renders the credit banner as a self-contained card in the split layout', () => {
 		experimentMocks.splitBelowInputVariant.value = true;
-		store.showCreditWarning = true;
+		store.isLowCredits = true;
 
 		const { getByTestId } = renderView();
 
@@ -1029,8 +1034,19 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
 	});
 
+	it('blocks the composer when credits are gone and does not let the banner be dismissed', () => {
+		store.isOutOfCredits = true;
+		store.isLowCredits = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-out-of-credits')).toHaveTextContent('true');
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
+	});
+
 	it('keeps the free nudge mounted and reveals it after the credit warning is dismissed', async () => {
-		store.showCreditWarning = true;
+		store.isLowCredits = true;
 
 		const { getByTestId } = renderView();
 		const nudge = getByTestId('instance-ai-free-nudge-stub');
@@ -1041,6 +1057,25 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(nudge).toHaveAttribute('data-eligible', 'true');
+	});
+
+	it('keeps the free nudge ineligible when credits run out after the warning was dismissed', async () => {
+		store.isLowCredits = true;
+
+		const { getByTestId, queryByTestId } = renderView();
+		const nudge = getByTestId('instance-ai-free-nudge-stub');
+
+		await fireEvent.click(getByTestId('credit-banner-dismiss'));
+		await flushPromises();
+
+		expect(nudge).toHaveAttribute('data-eligible', 'true');
+
+		store.isOutOfCredits = true;
+		await flushPromises();
+
+		expect(nudge).toHaveAttribute('data-eligible', 'false');
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
 	it('tracks personalized prompt suggestions exposure for the control variant', () => {
@@ -1223,6 +1258,38 @@ describe('InstanceAiEmptyView', () => {
 			params: { threadId: 'thread-placeholder' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps the submitted prompt in the composer while the thread is created', async () => {
+		const sync = createDeferredPromise<undefined>();
+		store.syncThread.mockReturnValue(sync.promise);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await nextTick();
+
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+
+		sync.resolve(undefined);
+		await flushPromises();
+	});
+
+	it('keeps the submitted prompt in the composer until the send is accepted', async () => {
+		store.syncThread.mockResolvedValue(undefined);
+		const send = createDeferredPromise<boolean>();
+		vi.mocked(thread.sendMessage).mockReturnValue(send.promise);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(thread.sendMessage).toHaveBeenCalled();
+		expect(replaceMock).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
+
+		send.resolve(true);
+		await flushPromises();
+		expect(replaceMock).toHaveBeenCalled();
 	});
 
 	it('stays on the empty view and restores the draft when the send is refused', async () => {

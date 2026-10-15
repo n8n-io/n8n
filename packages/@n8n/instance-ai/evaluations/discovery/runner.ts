@@ -73,7 +73,6 @@ import type {
 	TaskStorage,
 } from '../../src/types';
 import { buildKnowledgeBaseWorkspaceBundle } from '../../src/knowledge-base/materialize-knowledge-base';
-import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
@@ -213,7 +212,8 @@ export async function runOrchestratorTurn(
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
-			...(isAgentFeatureEnabled() ? { builderDelegate: createStubBuilderDelegate() } : {}),
+			// The Agents module is a default module, so the eval runs with a builder.
+			builderDelegate: createStubBuilderDelegate(),
 			workspace: createStubWorkspace(knowledgeBase.files),
 			workspaceRoot: stubWorkspaceRoot,
 		};

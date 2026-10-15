@@ -2,11 +2,14 @@ import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import {
+	getWorkflowNodeDimensions,
+	isStickyNoteType,
+	resolveNodePorts,
 	validateWorkflow,
 	workflow as workflowBuilder,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
-import { normalizeNodeShape } from 'n8n-workflow';
+import { normalizeNodeShape, type INodeTypes } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
@@ -14,6 +17,7 @@ import { detectPythonCodeConstraints } from './detect-python-code-constraints';
 import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
+import { findStickyNoteWraps, rewrapStickyNotes } from './sticky-note-wrapping';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
@@ -186,6 +190,45 @@ function fillMissingNodePositions(json: WorkflowJSON): void {
 	});
 }
 
+/**
+ * The sandbox has no node types, so its layout sizes each node from its wires only. A node
+ * with an unwired port (an AI node's Tools port, a Switch route) is drawn bigger on the canvas
+ * and overlaps its neighbours. When a node type gives another size, lay the nodes out again.
+ */
+async function layOutWithNodeTypes(
+	json: WorkflowJSON,
+	nodeTypes: INodeTypes | undefined,
+): Promise<void> {
+	if (!nodeTypes) return;
+	const nodePorts = await resolveNodePorts(json, nodeTypes);
+	const wired = getWorkflowNodeDimensions(json);
+	const declared = getWorkflowNodeDimensions(json, nodePorts);
+	const sameSize = [...declared].every(
+		([name, size]) =>
+			size.width === wired.get(name)?.width && size.height === wired.get(name)?.height,
+	);
+	if (sameSize) return;
+
+	// The layout leaves sticky notes out, so each note follows the nodes it wrapped.
+	const wraps = findStickyNoteWraps(json, wired);
+	const nodes = json.nodes
+		.filter((node) => !isStickyNoteType(node.type))
+		.map(({ position: _sandboxPosition, ...node }) => node as WorkflowJSON['nodes'][number]);
+	let laidOut: WorkflowJSON;
+	try {
+		laidOut = workflowBuilder.fromJSON({ ...json, nodes }).toJSON({ tidyUp: true, nodePorts });
+	} catch {
+		// The sandbox layout is still usable.
+		return;
+	}
+
+	const positions = new Map(laidOut.nodes.map((node) => [node.name, node.position]));
+	for (const node of json.nodes) {
+		node.position = positions.get(node.name) ?? node.position;
+	}
+	rewrapStickyNotes(wraps, declared);
+}
+
 function parseSandboxWarnings(value: unknown): ValidationWarning[] {
 	if (!Array.isArray(value)) return [];
 
@@ -354,6 +397,8 @@ async function compileTypeScriptWorkflowSource(
 			summary: 'Workflow source failed during sandbox execution.',
 		};
 	}
+
+	await layOutWithNodeTypes(buildOutput.workflow, context.nodeTypesProvider);
 
 	return {
 		success: true,

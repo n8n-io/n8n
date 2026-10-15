@@ -2,6 +2,7 @@ import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { isRecord } from '@n8n/utils/is-record';
 // AI root node types (single source in @n8n/workflow-sdk mock-data) — lets
 // the typo guard accept a no-sub-node Agent.
 import { isAiRootNodeType } from '@n8n/workflow-sdk';
@@ -603,7 +604,7 @@ export const TRIGGER_CONTENT_CORRECTION =
 const SYSTEM_PROMPT = `You are a test data planner for n8n workflow automation. Your job is to create a consistent data context, trigger output data, and per-node hints that will guide an API mock server to generate realistic, coherent responses across all nodes in a workflow.
 
 RULES:
-1. Create a "globalContext" that defines the shared world — user IDs, entity names, channel names, email addresses, and relationships that ALL nodes should reference consistently.
+1. Create a "globalContext" that defines the shared world — user IDs, entity names, channel names, email addresses, and relationships that ALL nodes should reference consistently. State it as plain facts. Never describe a response layout, JSON, field paths, or what an n8n node outputs.
 2. Create a "triggerContent" object that represents the exact output the workflow's trigger/start node would produce. This is used as pin data (the node's output), so it must match what downstream nodes reference:
    - Look at the trigger node's type to determine the output structure
    - For webhook triggers: include { headers: {}, query: {}, body: { ...fields } } since downstream nodes reference $json.body.fieldName
@@ -613,13 +614,13 @@ RULES:
    - CRITICAL: apart from a Manual Trigger, triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
    - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
-   - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
-3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
-4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
-5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, the items in A's hint should match what B expects.
+   - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. For a PDF or text file whose words the scenario states, also add "text": "<those words as plain text>" to its entry — the harness writes them into the file. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
+3. Create a "nodeHints" object with one entry per node that calls an external service. Each hint states the DATA the service holds for that node: the records, field values, counts, IDs, dates and statuses, using entities from the global context. One node can send several requests (for example it reads a sheet's metadata and rows, then appends a row). Write each hint in two parts: "Before the node runs:" with what the service already holds, then "The node writes:" with what the node adds, changes or sends (or "nothing"). A read that happens before the write sees only the "Before the node runs" data.
+4. A hint states data, never a response layout. Do not write JSON, braces, field paths, wrapper keys, status envelopes or "return {...}". Do not describe what the n8n node outputs after its own processing (simplified records, rows keyed by column header, parsed JSON, fields such as json.data or output[0].content[0].text). The mock server writes each response in the real API's wire format and only needs the facts. Write facts as plain sentences, e.g. "Sheet 'Leads' has columns Name, Email, Status and 2 rows: Ann Lee, ann@x.example, new; Bo Chan, bo@x.example, won."
+5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, A's hint lists the items B needs. Expressions such as $json.field read the node's OUTPUT, not the API response: use them to know which facts matter, not how to lay them out.
 6. Use realistic but clearly fake values (e.g., "jane@example.com", "U_abc123").
 7. **If a "Test Scenario" section is provided, it OVERRIDES your default data generation.** Use the exact names, emails, numeric magnitudes (amounts, percentages, counts, thresholds), and conditions described in the scenario. If the scenario says "no name field", do NOT include a name. If it says "email is not-an-email", use that exact value. The scenario defines the test — follow it precisely.
-8. **Allocate scenario error conditions explicitly.** When the Test Scenario describes an error, failure, or missing-data condition for a SPECIFIC subset of the workflow's requests (one channel out of three, one user, one record), the affected node's hint MUST make it unambiguous: name the exact entity and identifier (channel name/ID, user ID), state the exact API error response the mock must return for requests targeting that entity (e.g. Slack conversations.history for #product → { "ok": false, "error": "channel_not_found" }), and state that requests for all OTHER entities succeed normally. The mock server handles one request at a time and can only distinguish requests by their parameters — an error condition left implicit ("one channel fails") never gets simulated, and the scenario cannot be evaluated.
+8. **Allocate scenario error conditions explicitly.** When the Test Scenario describes an error, failure, or missing-data condition for a SPECIFIC subset of the workflow's requests (one channel out of three, one user, one record), the affected node's hint MUST make it unambiguous: name the exact entity and identifier (channel name/ID, user ID), name the request that fails and the error as the API reports it (the HTTP status and the API's own error code or message, e.g. Slack conversations.history for #product fails with error channel_not_found), without writing the error body, and state that requests for all OTHER entities succeed normally. The mock server handles one request at a time and can only distinguish requests by their parameters — an error condition left implicit ("one channel fails") never gets simulated, and the scenario cannot be evaluated.
 9. **Dates and timestamps.** The user prompt ends with a "## Date anchors" block listing today's real date plus relative anchors. EVERY date or timestamp you emit — in globalContext, triggerContent, and nodeHints — MUST be derived from those anchors, never from training data. Workflows compare mock data against the real execution clock ($now, Date.now()): a "recent" record dated months ago gets silently filtered out and the test fails. When the scenario describes a relative window ("issues from the last 2 weeks", "yesterday's orders"), compute concrete dates from the anchors and place records safely INSIDE the window (e.g. 2-5 days ago), never on its boundary. State those concrete dates in globalContext and nodeHints so every node's mock uses the same ones.
 10. Return ONLY valid JSON, no explanation or markdown fencing.`;
 
@@ -673,7 +674,9 @@ function buildUserPrompt(
 	sections.push('  "nodeHints": {');
 	for (let i = 0; i < Math.min(nodeNames.length, 3); i++) {
 		const comma = i < Math.min(nodeNames.length, 3) - 1 ? ',' : '';
-		sections.push(`    "${nodeNames[i]}": "What data to return..."${comma}`);
+		sections.push(
+			`    "${nodeNames[i]}": "Data this node's service holds and what the node writes..."${comma}`,
+		);
 	}
 	if (nodeNames.length > 3) sections.push('    ...');
 	sections.push('  }', '}', '```');
@@ -702,6 +705,14 @@ const HINT_LLM_TIMEOUT_MS = 300_000;
 function isManualTriggerNode(workflow: IWorkflowBase, nodeName?: string): boolean {
 	const node = workflow.nodes.find((n) => n.name === nodeName);
 	return node?.type === MANUAL_TRIGGER_NODE_TYPE && !node.disabled;
+}
+
+/** The model sometimes answers with an n8n item (`{ json, binary }`) instead of the item's json. */
+function unwrapItemShape(content: object): object {
+	if (!isRecord(content)) return content;
+	const { json, ...rest } = content;
+	if (!isRecord(json) || Object.keys(rest).some((key) => key !== 'binary')) return content;
+	return rest.binary === undefined ? json : { ...json, binary: rest.binary };
 }
 
 /** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
@@ -759,12 +770,13 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 			) {
 				reason = `invalid nodeHints structure (raw: ${text.slice(0, 200)})`;
 			} else {
-				const triggerContent =
+				const triggerContent = unwrapItemShape(
 					typeof parsed.triggerContent === 'object' &&
-					parsed.triggerContent !== null &&
-					!Array.isArray(parsed.triggerContent)
+						parsed.triggerContent !== null &&
+						!Array.isArray(parsed.triggerContent)
 						? parsed.triggerContent
-						: {};
+						: {},
+				);
 				// The model answers a bool as a word often enough to read both spellings.
 				const triggerEmitsNoItems =
 					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
