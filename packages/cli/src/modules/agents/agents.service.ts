@@ -73,7 +73,12 @@ type CreateAgentOptions = {
 	/** Create with this config instead of the empty draft, so eval thread seeding
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
+	/** Skill bodies keyed by the ref ids of `schema`. A ref to a skills hub skill
+	 *  stays a ref; a ref with only a body gets a new hub skill in this project. */
 	skills?: Record<string, AgentSkill>;
+	/** Creates the hub skills of refs with only a body when `user` is not set.
+	 *  Without either, those refs are dropped. */
+	skillCreator?: User;
 	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
 	 *  validated when the source agent was authored). */
 	tools?: Record<string, unknown>;
@@ -148,6 +153,7 @@ export class AgentsService {
 			defaultModel,
 			schema,
 			skills,
+			skillCreator,
 			tools,
 			user,
 		}: CreateAgentOptions,
@@ -167,7 +173,6 @@ export class AgentsService {
 			projectId,
 			schema: storedConfig,
 			...(integrations.length > 0 ? { integrations } : {}),
-			...(skills ? { skills } : {}),
 			...(tools ? { tools: tools as Agent['tools'] } : {}),
 			versionId: uuid(),
 			availableInMCP,
@@ -179,7 +184,13 @@ export class AgentsService {
 			// client-minted id names instead of letting the primary key reject it.
 			await this.transactionRunner.run({}, async (ctx) => {
 				await this.agentRepository.insertNew(agent, ctx);
-				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, ctx);
+				await this.agentSkillRefs.createDraftRefs(
+					agent,
+					skillRefs,
+					skills ?? {},
+					user ?? skillCreator ?? null,
+					ctx,
+				);
 			});
 			saved = agent;
 		} catch (error) {
@@ -285,10 +296,10 @@ export class AgentsService {
 
 		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
 
-		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
-		const skills = (skillRefs ?? []).map((skill) => ({
+		const draftSkills = await this.agentSkillRefs.readDraft(entity, {});
+		const skills = (draftSkills.skillRefs ?? []).map((skill) => ({
 			id: skill.id,
-			name: entity.skills[skill.id]?.name ?? skill.id,
+			name: draftSkills.skills[skill.id]?.name ?? skill.id,
 		}));
 
 		const tasks = await this.getCapabilityTasks(entity);
@@ -459,13 +470,12 @@ export class AgentsService {
 		return await this.agentExecutionService.findN8nChatThreadForAgents(user.id, agentIds, threadId);
 	}
 
-	/** The agents overview list: every project the user belongs to, no scope check. */
-	async findByUserMembershipPaginated(
+	/** The agents overview list: every project where the user holds `agent:list`. */
+	async findListableByUserPaginated(
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
-		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
-		const projectIds = projectRelations.map((pr) => pr.projectId);
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 

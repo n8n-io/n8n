@@ -1,6 +1,7 @@
 import { ListTagsQueryDto, publicApiUploadedFileSchema, Z } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -33,7 +34,6 @@ import {
 	WidgetBodyDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
-import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -73,6 +73,103 @@ describe('PublicApiControllerRegistry', () => {
 		});
 		lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
+	});
+
+	it('answers 405 for a known path that no controller serves with the method', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const app = activate();
+
+		await request(app).put('/api/v1/widgets').expect(405, { message: 'PUT method not allowed' });
+		await request(app).get('/api/v1/widgets').expect(200, { ok: true });
+	});
+
+	it('answers 405 for a nested path with an ID that no controller serves with the method', async () => {
+		@Service()
+		class PartsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(PartsPublicController as Controller, '/widgets/:widgetId/parts');
+
+		const app = activate();
+
+		await request(app)
+			.put('/api/v1/widgets/w-1/parts')
+			.expect(405, { message: 'PUT method not allowed' });
+		await request(app).get('/api/v1/widgets/w-1/parts').expect(200, { ok: true });
+	});
+
+	it('lists every method the path serves in the Allow header of its 405 response', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			list() {
+				return { ok: true };
+			}
+
+			@Post('/')
+			@ApiResponse(201)
+			create() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).put('/api/v1/widgets').expect(405).expect('Allow', 'GET, POST');
+	});
+
+	it('lists the methods of every route template that matches the URL in Allow', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/:widgetId/:versionId')
+			@ApiResponse(200)
+			version() {
+				return { ok: true };
+			}
+
+			@Post('/:widgetId/archive')
+			@ApiResponse(200)
+			archive() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate())
+			.put('/api/v1/widgets/w-1/archive')
+			.expect(405)
+			.expect('Allow', 'GET, POST');
+	});
+
+	it('rejects HEAD with 405 without running the GET handler, and omits HEAD from Allow', async () => {
+		const handler = vi.fn(() => ({ ok: true }));
+
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return handler();
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).head('/api/v1/widgets').expect(405).expect('Allow', 'GET');
+		await request(activate()).head('/api/v1/WIDGETS').expect(405).expect('Allow', 'GET');
+		expect(handler).not.toHaveBeenCalled();
 	});
 
 	it('emits the Deprecation header for a route marked @Deprecated', async () => {

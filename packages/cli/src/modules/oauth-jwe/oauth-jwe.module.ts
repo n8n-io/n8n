@@ -3,8 +3,7 @@ import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { JwksRegistry } from '@/jwks/jwks.registry';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { JwksRegistry, OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 
 @BackendModule({ name: 'oauth-jwe' })
 export class OAuthJweModule implements ModuleInterface {

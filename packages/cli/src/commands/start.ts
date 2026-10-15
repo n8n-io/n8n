@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { EventService, UrlService, RoleCacheService } from '@n8n/backend-services';
+import { EventService, UrlService, RoleCacheService, JwtService } from '@n8n/backend-services';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
@@ -39,8 +39,6 @@ import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
-import { JwtService } from '@/services/jwt.service';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
 import { WaitTracker } from '@/wait-tracker';
 
@@ -417,8 +415,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await this.server.start();
-
-		Container.get(WorkflowHistoryCompactionService).init();
 
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.

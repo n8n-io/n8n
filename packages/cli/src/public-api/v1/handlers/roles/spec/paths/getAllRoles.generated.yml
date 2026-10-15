@@ -4,9 +4,6 @@ tags:
 summary: Retrieve all roles
 description: Returns all roles grouped by type (global and project). Set `withUsageCount` to include how many users and projects use each role.
 x-required-scope: role:list
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

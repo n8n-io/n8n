@@ -21,12 +21,15 @@ import {
 	vectorSearchParameters,
 	jobOperations,
 	jobParameters,
+	lakebaseOperations,
 	lakebaseParameters,
 } from './resources';
 
 import { router } from './actions/router';
 import { authenticationProperty, databricksCredentials } from './authentication';
 import { DATABRICKS_NODE_VERSION } from './constants';
+import * as loadOptions from './methods/loadOptions';
+import * as resourceMapping from './methods/resourceMapping';
 import * as listSearch from './methods/listSearch';
 
 export class Databricks implements INodeType {
@@ -106,6 +109,7 @@ export class Databricks implements INodeType {
 			modelServingOperations,
 			vectorSearchOperations,
 			jobOperations,
+			lakebaseOperations,
 			...filesParameters,
 			...genieParameters,
 			...unityCatalogParameters,
@@ -117,7 +121,7 @@ export class Databricks implements INodeType {
 		],
 	};
 
-	methods = { listSearch };
+	methods = { listSearch, loadOptions, resourceMapping };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await router.call(this);

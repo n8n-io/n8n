@@ -2,7 +2,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 
 /**
  * Context is established by whichever instance runs the workflow — main, queue worker or

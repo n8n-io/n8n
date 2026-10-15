@@ -91,10 +91,6 @@ export default defineConfig(
 							message: 'Call a service instead of reaching the repository.',
 						},
 						{
-							rule: 'require-public-api-controller',
-							message: 'Migrate to `@PublicApiController`.',
-						},
-						{
 							rule: 'no-unsealed-workflow-entity-write',
 							message: 'Route the write through a token-gated `WorkflowRepository` method.',
 						},
@@ -151,25 +147,6 @@ export default defineConfig(
 		ignores: ['./src/public-api/**/__tests__/**/*.ts'],
 		rules: {
 			'n8n-local-rules/no-repository-in-public-api-handler': 'error',
-		},
-	},
-	{
-		// Public API guardrail: new endpoints must be `@PublicApiController` classes, not `export =` tuples.
-		files: [
-			'./src/public-api/v1/handlers/**/*.handler.ts',
-			'./src/public-api/v1/handlers/**/*.handler.ee.ts',
-		],
-		rules: {
-			'n8n-local-rules/require-public-api-controller': 'error',
-		},
-	},
-	{
-		// Ratchet allowlist: legacy `export =` handler tuples pending migration to
-		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
-		// must fail CI. Entries are removed as each handler becomes a controller.
-		files: ['./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts'],
-		rules: {
-			'n8n-local-rules/require-public-api-controller': 'off',
 		},
 	},
 	{
@@ -231,8 +208,6 @@ export default defineConfig(
 		// JwtService itself: verifying tokens signed by a foreign key, which JwtService cannot
 		// verify. Do NOT add a file for any other reason.
 		files: [
-			// Owns the signing key and derives every audience from a purpose.
-			'./src/services/jwt.service.ts',
 			// Verifies subject tokens with a foreign key from the trusted-key store,
 			// against the audience that key is registered for.
 			'./src/modules/token-exchange/services/token-exchange.service.ts',

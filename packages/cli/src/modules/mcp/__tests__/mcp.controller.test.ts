@@ -37,7 +37,7 @@ import {
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { McpCallerAuth } from '@n8n/backend-services/auth';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
 
