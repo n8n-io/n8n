@@ -2331,7 +2331,7 @@ export function createWorkflowsTool(
 					if (!options.sourceGuidance) return result;
 
 					const conflictNote =
-						result.status === 'conflict'
+						'status' in result && result.status === 'conflict'
 							? 'The source file contains unbuilt edits and was left untouched. '
 							: '';
 					return { ...result, note: conflictNote + options.sourceGuidance };
