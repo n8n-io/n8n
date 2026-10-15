@@ -68,6 +68,9 @@ const config: KnipConfig = {
 		'.github/scripts': {
 			entry: ['**/*.mjs'],
 			ignoreDependencies: [
+				// docker/edit-image-native-smoke-check.mjs requires these from the n8n install under test.
+				'@napi-rs/canvas',
+				'@napi-rs/image',
 				// docker/kafka-native-smoke-check.mjs requires it from the n8n install under test.
 				'@confluentinc/kafka-javascript',
 				// The generate-sbom script runs the cdxgen binary; the package is not installed here.

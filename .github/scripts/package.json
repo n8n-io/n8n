@@ -16,8 +16,6 @@
   "dependencies": {
     "@actions/github": "9.0.0",
     "@cyclonedx/cdxgen": "12.4.0",
-    "@napi-rs/canvas": "catalog:",
-    "@napi-rs/image": "catalog:",
     "ajv": "8.20.0",
     "conventional-changelog": "7.2.0",
     "minimatch": "10.2.4",
