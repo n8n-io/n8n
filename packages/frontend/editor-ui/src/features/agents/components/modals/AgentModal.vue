@@ -285,11 +285,6 @@ function onOpenAutoFocus(event: Event) {
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--lg);
 	color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
-
-	&:hover .editIcon,
-	&:focus-within .editIcon {
-		opacity: 1;
-	}
 }
 
 .title {
@@ -307,9 +302,7 @@ function onOpenAutoFocus(event: Event) {
 
 .editIcon {
 	flex-shrink: 0;
-	opacity: 0;
 	color: var(--color--text--tint-1);
-	transition: opacity var(--duration--snappy) ease;
 }
 
 .headerActions {
@@ -396,12 +389,6 @@ function onOpenAutoFocus(event: Event) {
 		:global(.button) {
 			flex: 1;
 		}
-	}
-}
-
-@media (hover: none) {
-	.editIcon {
-		opacity: 1;
 	}
 }
 </style>
