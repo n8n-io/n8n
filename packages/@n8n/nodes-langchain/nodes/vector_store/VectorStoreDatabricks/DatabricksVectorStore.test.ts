@@ -403,6 +403,47 @@ describe('DatabricksVectorStore', () => {
 			]);
 		});
 
+		it('shares one endpoint read between concurrent filtered queries', async () => {
+			const store = await managedStore();
+			replyByUrl();
+
+			await Promise.all([
+				store.similaritySearchWithScore('hello', 2, { source: 'hr' }),
+				store.similaritySearchWithScore('hello', 2, { source: 'it' }),
+			]);
+
+			expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+				`${host}/api/2.0/vector-search/endpoints/ep`,
+				`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`,
+				`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`,
+			]);
+		});
+
+		it('remembers a refused endpoint read instead of repeating it', async () => {
+			const store = await managedStore();
+			fetchMock.mockResolvedValue(json({ error_code: 'PERMISSION_DENIED' }, 403));
+			const search = async () => await store.similaritySearch('hello', 2, { source: 'hr' });
+
+			await expect(search()).rejects.toThrow('Check that you can read endpoint ep');
+			await expect(search()).rejects.toThrow('Check that you can read endpoint ep');
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries the endpoint read after a transport error', async () => {
+			const store = await managedStore();
+			fetchMock.mockRejectedValueOnce(new Error('ECONNRESET'));
+
+			await expect(store.similaritySearch('hello', 2, { source: 'hr' })).rejects.toThrow(
+				'ECONNRESET',
+			);
+			replyByUrl();
+			await store.similaritySearch('hello', 2, { source: 'hr' });
+
+			expect(fetchMock).toHaveBeenCalledTimes(3);
+			expect(urlOf(1)).toBe(`${host}/api/2.0/vector-search/endpoints/ep`);
+		});
+
 		it.each([
 			{
 				label: 'the call filter on a STORAGE_OPTIMIZED endpoint',

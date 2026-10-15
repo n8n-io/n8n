@@ -22,8 +22,11 @@ export type DatabricksIndexInfo = {
 	sourceTable?: string;
 	/** Vector search endpoint that serves the index */
 	endpointName?: string;
-	/** STANDARD or STORAGE_OPTIMIZED. Read on the first filtered query only; undefined when that GET fails */
-	endpointType?: string;
+	/**
+	 * STANDARD or STORAGE_OPTIMIZED. The first filtered query starts the GET and caches the promise,
+	 * so concurrent and later queries share one read. Resolves undefined when the GET is refused
+	 */
+	endpointType?: Promise<string | undefined>;
 };
 
 export interface DatabricksVectorStoreConfig {
@@ -451,11 +454,16 @@ export class DatabricksVectorStore extends VectorStore {
 	private async assertFilterable(): Promise<void> {
 		const { name, endpointName } = this.index;
 		// The node shares one index description per run, so the GET happens once per run, and only
-		// for filtered queries: the column dropdown and unfiltered runs never pay for it
+		// for filtered queries: the column dropdown and unfiltered runs never pay for it. Caching the
+		// promise keeps concurrent tool calls on one GET; a refused read caches as unknown. A transport
+		// error evicts, like the describe cache in the node, so one blip does not poison the run
 		this.index.endpointType ??= endpointName
-			? await this.readEndpointType(endpointName)
-			: undefined;
-		const { endpointType } = this.index;
+			? this.readEndpointType(endpointName).catch((error: unknown) => {
+					this.index.endpointType = undefined;
+					throw error;
+				})
+			: Promise.resolve(undefined);
+		const endpointType = await this.index.endpointType;
 		if (endpointType === 'STANDARD') return;
 
 		const endpoint = sanitizeMessage(endpointName ?? '(unknown)');
