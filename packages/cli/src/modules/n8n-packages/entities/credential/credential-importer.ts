@@ -1,11 +1,19 @@
 import { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { credentialDiffers, isUpdateCandidate } from './credential-conflict-policy';
+import {
+	credentialDiffers,
+	credentialOwnerProjectId,
+	isUpdateCandidate,
+	mergeIntoStored,
+	plannedCredentialUpdates,
+} from './credential-conflict-policy';
 import { CredentialMatcherFactory } from './credential-matcher-factory';
 import {
 	credentialBlockingFailures,
@@ -13,7 +21,7 @@ import {
 	credentialsToStub,
 } from './credential-missing-mode';
 import type {
-	CredentialApplyResult,
+	CredentialBindResult,
 	CredentialBindingRequest,
 	CredentialImportPlan,
 	CredentialMatch,
@@ -77,6 +85,7 @@ export class CredentialImporter {
 			match: CredentialMatch;
 			packageCredential: SerializedCredential;
 			destination: CredentialsEntity;
+			ownerProjectId: string;
 		}> = [];
 
 		for (const [sourceId, targetId] of resolution.successes) {
@@ -92,6 +101,8 @@ export class CredentialImporter {
 			}
 			const destination = destinations.get(targetId);
 			if (!destination || !isUpdateCandidate(destination, request.updateScope)) continue;
+			const ownerProjectId = credentialOwnerProjectId(destination);
+			if (ownerProjectId === undefined) continue;
 
 			inScope.push({
 				match: {
@@ -102,6 +113,7 @@ export class CredentialImporter {
 				},
 				packageCredential,
 				destination,
+				ownerProjectId,
 			});
 		}
 
@@ -119,7 +131,7 @@ export class CredentialImporter {
 		const updates: CredentialUpdateCandidate[] = [];
 		const forbidden: CredentialMatch[] = [];
 
-		for (const { match, packageCredential, destination } of inScope) {
+		for (const { match, packageCredential, destination, ownerProjectId } of inScope) {
 			if (!updatableIds.has(match.targetId)) {
 				forbidden.push(match);
 				continue;
@@ -127,6 +139,8 @@ export class CredentialImporter {
 
 			const candidate: CredentialUpdateCandidate = {
 				...match,
+				targetType: destination.type,
+				ownerProjectId,
 				name: packageCredential.name,
 				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
 			};
@@ -174,11 +188,26 @@ export class CredentialImporter {
 		}
 	}
 
+	/**
+	 * Prepares each planned update without writing it, so that a validation error stops the
+	 * import before its first write. Errors of `prepareUpdateData` propagate unchanged: external
+	 * secrets permission and provider access, entity validation, OAuth URLs.
+	 */
+	async assertCanUpdate(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+		plan: CredentialImportPlan,
+	): Promise<void> {
+		for (const [, [update]] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
+			await this.prepareUpdate(context.user, update);
+		}
+	}
+
 	async apply(
 		context: ImportContext,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
-	): Promise<CredentialApplyResult> {
+	): Promise<CredentialBindResult> {
 		const bindings: ImportBindingMap = new Map(resolution.successes);
 		const matched = [...resolution.successes.keys()];
 		const stubbed: string[] = [];
@@ -223,6 +252,96 @@ export class CredentialImporter {
 
 		return { bindings, matched, stubbed, seeded, incomplete };
 	}
+
+	/**
+	 * Writes the planned updates under `overwrite`, one write for each destination credential.
+	 * Loads, decrypts and merges again, and skips a credential that no longer differs: another
+	 * scope of the import or a concurrent edit already wrote the same values. Returns the
+	 * source ids of the credentials it wrote.
+	 */
+	async applyUpdates(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+		plan: CredentialImportPlan,
+	): Promise<string[]> {
+		const updated: string[] = [];
+
+		for (const [targetId, group] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
+			const prepared = await this.prepareUpdate(context.user, group[0]);
+			if (prepared === null) continue;
+
+			// Like the credential UI route. `createEncryptedData` sets only the id, name, type and
+			// data, and the update writes only the set columns: sharing, `isGlobal`,
+			// `isResolvable` and the description stay.
+			const encrypted = await this.credentialsService.createEncryptedData({
+				id: targetId,
+				name: prepared.name,
+				type: prepared.type,
+				data: prepared.data,
+			});
+			const saved = await this.credentialsService.update(
+				targetId,
+				encrypted,
+				{ kind: 'user', user: context.user },
+				prepared.data,
+				{ user: context.user },
+			);
+			if (saved === null) throw credentialNotFound(group[0]);
+
+			updated.push(...group.map(({ sourceId }) => sourceId));
+		}
+
+		return updated;
+	}
+
+	/**
+	 * The data that one update writes, prepared like the credential UI prepares a save. `null`
+	 * when the stored credential already holds what the package writes. The decrypted data
+	 * stays with the caller and is never logged.
+	 */
+	private async prepareUpdate(
+		user: User,
+		update: CredentialUpdateCandidate,
+	): Promise<{ name: string; type: string; data: ICredentialDataDecryptedObject } | null> {
+		// `prepareUpdateData` reads the owner project from the `shared` relation.
+		const credential = await this.credentialsFinder.findById(update.targetId, {
+			includeSharedProject: true,
+		});
+		if (!credential) throw credentialNotFound(update);
+
+		const stored = await this.credentialsService.decrypt(credential, true);
+		if (!credentialDiffers({ name: credential.name, data: stored }, update)) return null;
+
+		const merged = mergeIntoStored(stored, update.data ?? {});
+		// `prepareUpdateData` adds the stored token back, except when the update points a
+		// client-credentials grant at another client. A token in the input skips that decision.
+		delete merged.oauthTokenData;
+
+		// The default merge, not `partial`: `partial` adds all stored values back, which also
+		// keeps the token that the client-credentials decision drops. `merged` already holds
+		// the stored values.
+		const prepared = await this.credentialsService.prepareUpdateData(
+			user,
+			{ name: update.name, type: credential.type, data: merged },
+			credential,
+		);
+		if (!isCredentialData(prepared.data)) {
+			throw new UnexpectedError(`Prepared data of credential "${credential.id}" is not an object`);
+		}
+
+		return { name: prepared.name, type: credential.type, data: prepared.data };
+	}
+}
+
+function credentialNotFound(update: CredentialUpdateCandidate): NotFoundError {
+	return new NotFoundError(
+		`Credential "${update.targetName}" (${update.targetId}) does not exist. The import cannot update it.`,
+	);
+}
+
+/** `prepareUpdateData` returns the decrypted data in `data`, which the entity types as a string. */
+function isCredentialData(data: unknown): data is ICredentialDataDecryptedObject {
+	return isRecord(data);
 }
 
 /** Non-empty bundled expression data per source id; empty data means an empty stub. */
