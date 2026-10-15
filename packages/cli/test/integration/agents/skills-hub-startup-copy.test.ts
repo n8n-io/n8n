@@ -177,6 +177,44 @@ describe('SkillsHubStartupCopy', () => {
 		expect(await skills.findAgentSkillVersions(agent.id)).toEqual(before);
 	});
 
+	it('logs the start, each copied agent and a summary with scanned and skipped agents', async () => {
+		const logger = Container.get(Logger);
+		const info = vi.spyOn(logger, 'info');
+		const debug = vi.spyOn(logger, 'debug');
+		const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+		await legacyVersion(agent, [{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+
+		await copy.copyAll();
+		await copy.copyAll();
+
+		expect(info).toHaveBeenCalledWith('Started copying inline agent skills into the skills hub');
+		const copiedLogs = debug.mock.calls.filter(
+			([message]) => message === 'Copied the inline skills of an agent into the skills hub',
+		);
+		expect(copiedLogs).toEqual([
+			[
+				expect.any(String),
+				expect.objectContaining({ agentId: agent.id, publishedVersions: 1, draft: true }),
+			],
+		]);
+		const summaries = info.mock.calls.filter(
+			([message]) => message === 'Copied inline agent skills into the skills hub',
+		);
+		expect(summaries).toEqual([
+			[
+				expect.any(String),
+				expect.objectContaining({
+					scanned: 1,
+					skipped: 0,
+					agents: 1,
+					durationMs: expect.any(Number),
+				}),
+			],
+			[expect.any(String), expect.objectContaining({ scanned: 1, skipped: 1, agents: 0 })],
+		]);
+		vi.restoreAllMocks();
+	});
+
 	it('does not copy a ref that was switched off', async () => {
 		const agent = await legacyAgent(
 			[
