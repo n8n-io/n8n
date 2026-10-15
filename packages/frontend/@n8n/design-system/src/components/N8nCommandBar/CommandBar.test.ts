@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 
 import N8nCommandBar from './CommandBar.vue';
 import type { CommandBarItem, CommandBarSection, CommandBarTab } from './types';
@@ -65,6 +66,35 @@ describe('N8nCommandBar', () => {
 
 		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
+
+	it('focuses the search input when it opens', async () => {
+		await renderCommandBar();
+
+		await waitFor(() => expect(getInput()).toHaveFocus());
+	});
+
+	// CONTEXT-317: A click inside the open command bar can blur the search input.
+	it.each(['a', '?', '{ArrowDown}', '{ArrowUp}', '{ArrowLeft}', '{ArrowRight}'])(
+		'restores search input focus with %s after clicking a section header',
+		async (key) => {
+			const user = userEvent.setup();
+			const wrapper = await renderCommandBar();
+			const input = getInput();
+			await waitFor(() => expect(input).toHaveFocus());
+
+			await user.click(screen.getByText('Recent', { selector: '[role="presentation"]' }));
+
+			expect(input).not.toHaveFocus();
+			expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+
+			await user.keyboard(key);
+
+			expect(screen.getByTestId('command-bar')).toBeInTheDocument();
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+			await waitFor(() => expect(input).toHaveFocus());
+		},
+	);
 
 	it('renders section headers before their items', async () => {
 		await renderCommandBar();

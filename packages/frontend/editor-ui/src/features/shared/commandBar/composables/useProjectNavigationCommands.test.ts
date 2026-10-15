@@ -225,6 +225,13 @@ describe('useProjectNavigationCommands', () => {
 			});
 		});
 
+		it('uses the plus icon for project creation', () => {
+			// CONTEXT-317: Resource creation actions must use the same plus icon.
+			expect(findCreateCommand()).toMatchObject({
+				icon: { props: { icon: 'plus' } },
+			});
+		});
+
 		it.each(['hasPermissionToCreateProjects', 'canCreateProjects'] as const)(
 			'hides the create command when %s is false',
 			(flag) => {
