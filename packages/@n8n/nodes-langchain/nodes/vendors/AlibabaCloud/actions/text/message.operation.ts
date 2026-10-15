@@ -256,7 +256,8 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-const TEXT_ONLY_PATTERNS = ['coder', 'math'];
+// DeepSeek V4 Pro and V4 Flash (incl. dated snapshots) are text-only; V4.1 Flash has vision.
+const TEXT_ONLY_PATTERNS = ['coder', 'math', 'deepseek-v4-pro', 'deepseek-v4-flash'];
 
 function isMultimodalModel(model: string): boolean {
 	const lower = model.toLowerCase();
