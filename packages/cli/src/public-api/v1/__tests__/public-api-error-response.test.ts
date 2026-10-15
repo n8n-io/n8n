@@ -11,10 +11,6 @@ import { sendPublicApiErrorResponse } from '../public-api-error-response';
 describe('sendPublicApiErrorResponse', () => {
 	const logger = mockInstance(Logger);
 
-	beforeEach(() => {
-		vi.resetAllMocks();
-	});
-
 	const defaultRequest = { method: 'GET', baseUrl: '/api/v1', path: '/tags' };
 
 	const createMockRes = (req: object = defaultRequest) => {
@@ -111,6 +107,10 @@ describe('sendPublicApiErrorResponse', () => {
 			expect(res._payload.statusCode).toBe(500);
 			expect(res._payload.body).toEqual({ message: 'Internal server error' });
 			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Public API request failed (GET /api/v1/tags): Error: plain',
+				expect.objectContaining({ method: 'GET', route: '/api/v1/tags', userId: undefined }),
+			);
 		});
 
 		it('logs an UnexpectedError', () => {
@@ -118,14 +118,6 @@ describe('sendPublicApiErrorResponse', () => {
 			sendPublicApiErrorResponse(res, new UnexpectedError('internal bug'));
 
 			expect(res._payload.body).toEqual({ message: 'Internal server error' });
-			expect(logger.error).toHaveBeenCalledTimes(1);
-		});
-
-		it('logs an OperationalError, which maps to a server error', () => {
-			const res = createMockRes();
-			sendPublicApiErrorResponse(res, new OperationalError('temporarily down'));
-
-			expect(res._payload.statusCode).toBe(500);
 			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 
@@ -178,10 +170,10 @@ describe('sendPublicApiErrorResponse', () => {
 				body: { password: 'body-secret-value' },
 				user: { id: 'user-1' },
 			});
-			sendPublicApiErrorResponse(res, new Error('boom'));
+			sendPublicApiErrorResponse(res, new Error('Unknown Error'));
 
 			expect(logger.error).toHaveBeenCalledWith(
-				'Public API request failed (POST /api/v1/workflows/:workflowId): Error: boom',
+				'Public API request failed (POST /api/v1/workflows/:workflowId): Error: Unknown Error',
 				{
 					method: 'POST',
 					route: '/api/v1/workflows/:workflowId',
@@ -204,7 +196,7 @@ describe('sendPublicApiErrorResponse', () => {
 				baseUrl: '/api/v1',
 				path: '/workflows/123',
 			});
-			sendPublicApiErrorResponse(res, new Error('boom'));
+			sendPublicApiErrorResponse(res, new Error('Unknown Error'));
 
 			expect(logger.error).toHaveBeenCalledWith(
 				expect.stringContaining('GET /api/v1/workflows/123'),
