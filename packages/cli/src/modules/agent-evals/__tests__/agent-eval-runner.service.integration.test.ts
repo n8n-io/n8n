@@ -85,6 +85,9 @@ async function createAgent(projectId: string): Promise<Agent> {
 }
 
 beforeAll(async () => {
+	// The contention test needs two concurrent repository transactions. CI
+	// otherwise uses one connection to detect accidental nested transactions.
+	Container.get(GlobalConfig).database.postgresdb.poolSize = 2;
 	await testModules.loadModules(['data-table', 'agents']);
 	await testDb.init();
 	owner = await createUserShell(GLOBAL_OWNER_ROLE);
