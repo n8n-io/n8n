@@ -11,8 +11,7 @@ import type { NodeMigration } from '../node-migration';
  *   code and have no effect at run time.
  *
  * Refuses when:
- * - `jsCode` is empty: the node has no generated code to carry over, and it already
- *   fails at run time.
+ * - `jsCode` is empty: the node has no generated code to carry over.
  *
  * Accepted changes:
  * - The prompt text is lost. It has no effect at run time.
@@ -23,7 +22,7 @@ export const aiTransformToCode: NodeMigration = {
 		const jsCode = node.parameters.jsCode;
 		if (!jsCode) {
 			throw new Error(
-				'This AI Transform node has no generated code yet. Open it and click "Generate code" (or replace it with a Code node manually) before migrating.',
+				'This AI Transform node never generated any code, so there is nothing to carry over. Replace it with a Code node and write the code for its instructions by hand.',
 			);
 		}
 
