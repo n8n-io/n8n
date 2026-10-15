@@ -44,6 +44,7 @@ export const AI_ROOT_NODE_TYPES: readonly string[] = [
 	'@n8n/n8n-nodes-langchain.alibabaCloud',
 	'@n8n/n8n-nodes-langchain.miniMax',
 	'@n8n/n8n-nodes-langchain.moonshot',
+	'@n8n/n8n-nodes-langchain.databricksAiAgent',
 ] as const;
 
 const AI_ROOT_NODE_TYPE_SET = new Set<string>(AI_ROOT_NODE_TYPES);
