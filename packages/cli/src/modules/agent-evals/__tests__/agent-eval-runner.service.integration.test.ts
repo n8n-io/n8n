@@ -5,6 +5,7 @@ import {
 	AgentEvalDatasetRepository,
 	AgentEvalResultRepository,
 	AgentEvalRunRepository,
+	AgentEvalRun,
 	GLOBAL_OWNER_ROLE,
 	type User,
 } from '@n8n/db';
@@ -128,7 +129,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		const [result] = await results.seedResults([{ runId: run.id }]);
 		await results.markAsError(result.id, 'execution_failed');
 		const oldCounts = await results.countByStatus(run.id);
-		expect(await results.claimForRerun(result.id)).toBe(true);
+		expect(await results.claimForRerun(result.id, result.runId)).toBe(true);
 		const oldMetrics = { total: 1, pending: 0, success: 0, error: 1, cancelled: 0 };
 		expect((await runs.markAsCompleted(run.id, oldMetrics, oldCounts)).affected).toBe(0);
 		await results.markAsCompleted(result.id, { output: { finalText: 'Updated answer' } });
@@ -143,6 +144,88 @@ describe('AgentEvalRunnerService (integration)', () => {
 			metrics: currentMetrics,
 		});
 	});
+
+	it('repairs a failed original attempt without overwriting a newer rerun', async () => {
+		const project = await createTeamProject();
+		const agent = await createAgent(project.id);
+		const dataset = await Container.get(AgentEvalDatasetRepository).createDataset({
+			name: 'ds',
+			agentId: agent.id,
+			datasetSource: 'data_table',
+			datasetRef: { dataTableId: 'table' },
+			columnMapping: { input: 'question' },
+		});
+		const run = await Container.get(AgentEvalRunRepository).createRun({ datasetId: dataset.id });
+		const results = Container.get(AgentEvalResultRepository);
+		const [result, queued] = await results.seedResults([{ runId: run.id }, { runId: run.id }]);
+		const originalAt = new Date('2025-01-01T00:00:00.000Z');
+		await results.markAsRunning(result.id, originalAt);
+		await results.markUnfinishedAsError(result.id, originalAt, 'Original write failed');
+		expect((await results.findById(result.id))?.status).toBe('error');
+		expect(await results.claimForRerun(result.id, run.id)).toBe(true);
+		await results.markUnfinishedAsError(result.id, originalAt, 'Late repair');
+		expect((await results.findById(result.id))?.status).toBe('running');
+		await results.markUnfinishedAsError(queued.id, undefined, 'Dispatch failed');
+		expect((await results.findById(queued.id))?.status).toBe('error');
+	});
+
+	it.runIf(process.env.DB_TYPE === 'postgresdb')(
+		'serializes a rerun claim with a terminal statement already waiting on the run lock',
+		async () => {
+			const project = await createTeamProject();
+			const agent = await createAgent(project.id);
+			const dataset = await Container.get(AgentEvalDatasetRepository).createDataset({
+				name: 'ds',
+				agentId: agent.id,
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'table' },
+				columnMapping: { input: 'question' },
+			});
+			const runs = Container.get(AgentEvalRunRepository);
+			const results = Container.get(AgentEvalResultRepository);
+			const run = await runs.createRun({ datasetId: dataset.id });
+			await runs.markAsRunning(run.id);
+			const [result] = await results.seedResults([{ runId: run.id }]);
+			await results.markAsCompleted(result.id, { output: {} });
+			const oldCounts = await results.countByStatus(run.id);
+			const connection = Container.get(DataSource);
+			const blocker = connection.createQueryRunner();
+			const pending: Array<Promise<unknown>> = [];
+			await blocker.startTransaction();
+			try {
+				await blocker.manager.update(AgentEvalRun, { id: run.id }, { id: run.id });
+				const claim = results.claimForRerun(result.id, run.id);
+				pending.push(claim);
+				const waitForLocks = async (count: number) => {
+					await vi.waitFor(
+						async () => {
+							const [row] = await connection.query(`SELECT count(*)::int AS count
+							FROM pg_stat_activity WHERE datname = current_database()
+							AND wait_event_type = 'Lock' AND query LIKE 'UPDATE %agent_eval_run%'`);
+							expect(row.count).toBe(count);
+						},
+						{ timeout: 2_000 },
+					);
+				};
+				// The claim must hold this same lock before it can change the result.
+				await waitForLocks(1);
+				const settling = runs.markAsCompleted(run.id, { success: 1 }, oldCounts);
+				pending.push(settling);
+				await waitForLocks(2);
+				await blocker.commitTransaction();
+				expect(await claim).toBe(true);
+				// Its first statement started before the claim committed. The count
+				// statement must use a fresh snapshot after it acquires the lock.
+				expect((await settling).affected).toBe(0);
+				expect((await runs.findById(run.id))?.status).toBe('running');
+				expect((await results.findById(result.id))?.status).toBe('running');
+			} finally {
+				if (blocker.isTransactionActive) await blocker.rollbackTransaction();
+				await blocker.release();
+				await Promise.allSettled(pending);
+			}
+		},
+	);
 
 	it('keeps an original batch running until a targeted rerun has settled', async () => {
 		const project = await createTeamProject();

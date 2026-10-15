@@ -407,6 +407,39 @@ describe('AgentEvalRunnerService', () => {
 			);
 		});
 
+		it.each(['cancellation poll', 'original write'])(
+			'waits for active reruns after a %s failure',
+			async (failure) => {
+				seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				if (failure === 'cancellation poll') {
+					runRepository.isCancellationRequested
+						.mockResolvedValueOnce(false)
+						.mockResolvedValueOnce(false)
+						.mockRejectedValueOnce(new Error('Poll failed'))
+						.mockResolvedValue(false);
+				} else {
+					resultRepository.markAsCompleted.mockRejectedValueOnce(new Error('Write failed'));
+					resultRepository.markAsError.mockRejectedValueOnce(new Error('Error write failed'));
+				}
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await vi.waitFor(() => expect(resultRepository.countByStatus).toHaveBeenCalled());
+				// A failed original write may already have been repaired. This running
+				// count is a newer targeted attempt and must not be ignored.
+				expect(runRepository.markAsError).not.toHaveBeenCalled();
+				expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+				resultRepository.countByStatus.mockResolvedValue(counts({ success: 1 }));
+				await finished;
+				expect(runRepository.markAsError).toHaveBeenCalledWith(
+					'run-1',
+					'case_dispatch_failed',
+					expect.anything(),
+					expect.objectContaining({ success: 1, pending: 0 }),
+					counts({ success: 1 }),
+				);
+			},
+		);
+
 		it('honors a cancellation received while a targeted rerun is finishing', async () => {
 			seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
@@ -427,14 +460,25 @@ describe('AgentEvalRunnerService', () => {
 			seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
 			evalAgentExecutionService.executeWithLlmMock.mockRejectedValue(new Error('Execution failed'));
 			resultRepository.markAsError.mockRejectedValue(new Error('Result write failed'));
+			resultRepository.markUnfinishedAsError
+				.mockRejectedValueOnce(new Error('Repair failed'))
+				.mockImplementationOnce(async () => {
+					resultRepository.countByStatus.mockResolvedValue(counts({ error: 1 }));
+				});
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 			expect(runRepository.markAsError).toHaveBeenCalledWith(
 				'run-1',
 				'case_dispatch_failed',
 				expect.anything(),
-				expect.objectContaining({ pending: 1 }),
-				undefined,
+				expect.objectContaining({ pending: 0, error: 1 }),
+				counts({ error: 1 }),
+			);
+			expect(resultRepository.markUnfinishedAsError).toHaveBeenCalledTimes(2);
+			expect(resultRepository.markUnfinishedAsError).toHaveBeenLastCalledWith(
+				'res-0',
+				expect.any(Date),
+				'Result write failed',
 			);
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
@@ -631,7 +675,7 @@ describe('AgentEvalRunnerService', () => {
 				'case_dispatch_failed',
 				expect.anything(),
 				expect.anything(),
-				undefined,
+				counts({ success: 1, error: 1 }),
 			);
 		});
 
@@ -1010,6 +1054,9 @@ describe('AgentEvalRunnerService', () => {
 				.mockRejectedValueOnce(new Error('db down'))
 				.mockResolvedValue(undefined as never);
 
+			resultRepository.markUnfinishedAsError.mockImplementationOnce(async () => {
+				resultRepository.countByStatus.mockResolvedValue(counts({ cancelled: 1, error: 1 }));
+			});
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
@@ -1017,8 +1064,8 @@ describe('AgentEvalRunnerService', () => {
 			expect(resultRepository.markAsCancelled).toHaveBeenCalledTimes(2);
 			expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
 				'run-1',
-				expect.objectContaining({ total: 2, cancelled: 1, pending: 1 }),
-				undefined,
+				expect.objectContaining({ total: 2, cancelled: 1, error: 1, pending: 0 }),
+				counts({ cancelled: 1, error: 1 }),
 			);
 			expect(runRepository.markAsError).not.toHaveBeenCalled();
 		});
@@ -1038,6 +1085,9 @@ describe('AgentEvalRunnerService', () => {
 				.mockResolvedValue(false);
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
 
+			resultRepository.markUnfinishedAsError.mockImplementationOnce(async () => {
+				resultRepository.countByStatus.mockResolvedValue(counts({ success: 1, error: 1 }));
+			});
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
@@ -1046,8 +1096,8 @@ describe('AgentEvalRunnerService', () => {
 				'run-1',
 				'case_dispatch_failed',
 				expect.objectContaining({ errors: ['db down'] }),
-				expect.objectContaining({ total: 2, success: 1 }),
-				undefined,
+				expect.objectContaining({ total: 2, success: 1, error: 1, pending: 0 }),
+				counts({ success: 1, error: 1 }),
 			);
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
@@ -1070,7 +1120,7 @@ describe('AgentEvalRunnerService', () => {
 				'case_dispatch_failed',
 				expect.objectContaining({ errors: ['db down'] }),
 				expect.objectContaining({ total: 1, success: 1 }),
-				undefined,
+				counts({ success: 1 }),
 			);
 			// Not the tally-less `run_failed` path.
 			expect(runRepository.markAsError).not.toHaveBeenCalledWith(
@@ -1410,7 +1460,7 @@ describe('AgentEvalRunnerService', () => {
 				'already running',
 			);
 
-			expect(resultRepository.claimForRerun).toHaveBeenCalledWith('res-1');
+			expect(resultRepository.claimForRerun).toHaveBeenCalledWith('res-1', 'run-1');
 			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 
@@ -1484,7 +1534,7 @@ describe('AgentEvalRunnerService', () => {
 				'What is 2+2?',
 				{ onProgress: expect.any(Function) },
 			);
-			expect(resultRepository.markAsRunning).toHaveBeenCalledWith('res-1');
+			expect(resultRepository.markAsRunning).toHaveBeenCalledWith('res-1', expect.any(Date));
 			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
 				'res-1',
 				expect.objectContaining({ output: expect.objectContaining({ finalText: 'the answer' }) }),

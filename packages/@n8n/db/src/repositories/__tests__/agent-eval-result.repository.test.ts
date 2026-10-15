@@ -1,12 +1,17 @@
 import { Container } from '@n8n/di';
+import { TransactionRunner } from '../../services/transaction';
 import type { Mock } from 'vitest';
 
+import { AgentEvalRun } from '../../entities/agent-eval-run.ee';
 import { AgentEvalResult } from '../../entities/agent-eval-result.ee';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { AgentEvalResultRepository } from '../agent-eval-result.repository.ee';
 
 describe('AgentEvalResultRepository', () => {
 	const entityManager = mockEntityManager(AgentEvalResult);
+	Container.set(TransactionRunner, {
+		run: async (ctx, fn) => await fn(ctx),
+	} satisfies TransactionRunner);
 	const repo = Container.get(AgentEvalResultRepository);
 
 	beforeEach(() => {
@@ -185,20 +190,34 @@ describe('AgentEvalResultRepository', () => {
 	});
 
 	describe('claimForRerun', () => {
+		it('locks the parent run before claiming a result', async () => {
+			entityManager.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: [] });
+			await repo.claimForRerun('res-1', 'run-1');
+			expect(entityManager.update.mock.calls[0]).toEqual([
+				AgentEvalRun,
+				{ id: 'run-1' },
+				{ id: 'run-1' },
+			]);
+			expect(entityManager.update.mock.calls[1]?.[1]).toMatchObject({
+				id: 'res-1',
+				runId: 'run-1',
+			});
+		});
+
 		it('claims only a settled row, clearing the previous attempt', async () => {
-			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+			entityManager.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: [] });
 
-			await expect(repo.claimForRerun('res-1')).resolves.toBe(true);
+			await expect(repo.claimForRerun('res-1', 'run-1')).resolves.toBe(true);
 
-			const [, where, patch] = entityManager.update.mock.calls[0] ?? [];
+			const [, where, patch] = entityManager.update.mock.calls[1] ?? [];
 			expect(where).toMatchObject({ id: 'res-1' });
 			expect(patch).toMatchObject({ status: 'running', output: null, errorCode: null });
 		});
 
 		it('reports false when no row matched, because it was already running or claimed', async () => {
-			entityManager.update.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: [] });
+			entityManager.update.mockResolvedValue({ affected: 0, generatedMaps: [], raw: [] });
 
-			await expect(repo.claimForRerun('res-1')).resolves.toBe(false);
+			await expect(repo.claimForRerun('res-1', 'run-1')).resolves.toBe(false);
 		});
 	});
 

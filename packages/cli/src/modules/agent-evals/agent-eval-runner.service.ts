@@ -246,7 +246,7 @@ export class AgentEvalRunnerService {
 
 		// Atomic, unlike the caller's snapshot status check: of two concurrent
 		// requests for the same result, only one wins the claim and executes.
-		if (!(await this.resultRepository.claimForRerun(result.id))) {
+		if (!(await this.resultRepository.claimForRerun(result.id, result.runId))) {
 			throw new BadRequestError(`Agent eval result ${result.id} is already running.`);
 		}
 
@@ -371,6 +371,7 @@ export class AgentEvalRunnerService {
 			};
 
 			const deadline = this.startRunDeadline(abort);
+			const originalAttempts = new Map<string, Date>();
 
 			// The stop reads/writes around `runCase` sit outside its safety net, so
 			// collect their throws instead of letting one reject the whole pool.
@@ -406,7 +407,10 @@ export class AgentEvalRunnerService {
 									await stopCase(resultRow);
 									return;
 								}
-								const usage = await this.runCase(resultRow, resolvedCase, ctx);
+								const usage = await this.runCase(resultRow, resolvedCase, {
+									...ctx,
+									onAttemptStarted: (runAt) => originalAttempts.set(resultRow.id, runAt),
+								});
 								if (usage) {
 									totalUsage.inputTokens += usage.inputTokens;
 									totalUsage.outputTokens += usage.outputTokens;
@@ -421,10 +425,13 @@ export class AgentEvalRunnerService {
 			deadline.clear();
 
 			const dispatchFailures: string[] = [];
-			for (const settlement of settlements) {
+			const unfinishedOriginals = new Map<string, string>();
+			for (const [index, settlement] of settlements.entries()) {
 				if (settlement.status !== 'rejected') continue;
 				const reason: unknown = settlement.reason;
-				dispatchFailures.push(reason instanceof Error ? reason.message : String(reason));
+				const message = reason instanceof Error ? reason.message : String(reason);
+				dispatchFailures.push(message);
+				unfinishedOriginals.set(seeded[index].id, message);
 			}
 			let wasCancelled = cancelObserved;
 
@@ -439,6 +446,20 @@ export class AgentEvalRunnerService {
 			// Fence the terminal write against those attempts, including other mains.
 			const settlementDeadline = Date.now() + RESULT_SETTLEMENT_TIMEOUT_MS;
 			while (true) {
+				for (const [resultId, message] of unfinishedOriginals) {
+					try {
+						await this.resultRepository.markUnfinishedAsError(
+							resultId,
+							originalAttempts.get(resultId),
+							message,
+						);
+						unfinishedOriginals.delete(resultId);
+					} catch (error) {
+						this.logger.warn(`[AgentEvalRunner] Could not settle original case ${resultId}`, {
+							error,
+						});
+					}
+				}
 				if (!wasCancelled) {
 					try {
 						wasCancelled = await this.runRepository.isCancellationRequested(runId);
@@ -463,12 +484,12 @@ export class AgentEvalRunnerService {
 					}
 					break;
 				}
-				if (dispatchFailures.length === 0 && (counts.new > 0 || counts.running > 0)) {
+				if (counts.new > 0 || counts.running > 0) {
 					await sleep(RESULT_SETTLEMENT_POLL_MS);
 					continue;
 				}
-				// Failed writes can leave an original row pending. Report that failure instead of waiting for it.
-				const finalCounts = dispatchFailures.length === 0 ? counts : undefined;
+				// Dispatch failures use the same claim fence as successful completion.
+				const finalCounts = counts;
 
 				let settled;
 				// Every branch records the tally under `metrics`, so pollers never find a
@@ -646,10 +667,13 @@ export class AgentEvalRunnerService {
 			user: User;
 			timeoutMs?: number;
 			source?: AgentRunSource;
+			onAttemptStarted?: (runAt: Date) => void;
 		},
 	): Promise<CaseUsage | undefined> {
 		try {
-			const runAt = await this.resultRepository.markAsRunning(resultRow.id);
+			const attemptStartedAt = new Date();
+			ctx.onAttemptStarted?.(attemptStartedAt);
+			const runAt = await this.resultRepository.markAsRunning(resultRow.id, attemptStartedAt);
 
 			const execResult = await this.evalAgentExecutionService.executeWithLlmMock(
 				ctx.agentId,

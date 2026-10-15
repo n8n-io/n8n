@@ -1,9 +1,11 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import type { IDataObject } from 'n8n-workflow';
 
 import { AgentEvalRun, AgentEvalResult } from '../entities';
+import { TransactionRunner } from '../services/transaction';
+import { BaseRepository } from './base-repository';
 import type { AgentEvalResultStatusCounts } from './agent-eval-result.repository.ee';
 
 type CreateAgentEvalRunAttrs = {
@@ -13,9 +15,9 @@ type CreateAgentEvalRunAttrs = {
 };
 
 @Service()
-export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
-	constructor(dataSource: DataSource) {
-		super(AgentEvalRun, dataSource.manager);
+export class AgentEvalRunRepository extends BaseRepository<AgentEvalRun> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentEvalRun, dataSource.manager, transactionRunner);
 	}
 
 	async createRun(attrs: CreateAgentEvalRunAttrs): Promise<AgentEvalRun> {
@@ -109,26 +111,32 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		counts?: AgentEvalResultStatusCounts,
 	) {
 		if (!counts) return await this.update(id, attributes);
-		const query = this.createQueryBuilder()
-			.update()
-			.set(attributes)
-			.where({ id, status: 'running' });
-		if (attributes.status !== 'cancelled') query.andWhere({ cancelRequested: false });
-		for (const status of ['new', 'running', 'success', 'error', 'cancelled'] as const) {
-			const countQuery = this.manager
-				.createQueryBuilder(AgentEvalResult, 'result')
-				.select('COUNT(*)')
-				.where('result.runId = :runId')
-				.andWhere(`result.status = :status_${status}`)
-				.getQuery();
-			const expected = status === 'new' || status === 'running' ? 0 : counts[status];
-			query.andWhere(`(${countQuery}) = :count_${status}`, {
-				runId: id,
-				[`status_${status}`]: status,
-				[`count_${status}`]: expected,
-			});
-		}
-		return await query.execute();
+		return await this.runInTransaction({}, async (manager) => {
+			// Acquire the claim lock in a separate statement. Postgres must take a new
+			// snapshot for the count predicates after a concurrent claim commits.
+			await manager.update(AgentEvalRun, { id }, { id });
+			const query = manager
+				.createQueryBuilder(AgentEvalRun, 'run')
+				.update()
+				.set(attributes)
+				.where({ id, status: 'running' });
+			if (attributes.status !== 'cancelled') query.andWhere({ cancelRequested: false });
+			for (const status of ['new', 'running', 'success', 'error', 'cancelled'] as const) {
+				const countQuery = manager
+					.createQueryBuilder(AgentEvalResult, 'result')
+					.select('COUNT(*)')
+					.where('result.runId = :runId')
+					.andWhere(`result.status = :status_${status}`)
+					.getQuery();
+				const expected = status === 'new' || status === 'running' ? 0 : counts[status];
+				query.andWhere(`(${countQuery}) = :count_${status}`, {
+					runId: id,
+					[`status_${status}`]: status,
+					[`count_${status}`]: expected,
+				});
+			}
+			return await query.execute();
+		});
 	}
 
 	/**

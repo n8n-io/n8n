@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { TransactionRunner } from '../../services/transaction';
 import type { Mock } from 'vitest';
 
 import { AgentEvalRun } from '../../entities/agent-eval-run.ee';
@@ -7,6 +8,9 @@ import { AgentEvalRunRepository } from '../agent-eval-run.repository.ee';
 
 describe('AgentEvalRunRepository', () => {
 	const entityManager = mockEntityManager(AgentEvalRun);
+	Container.set(TransactionRunner, {
+		run: async (ctx, fn) => await fn(ctx),
+	} satisfies TransactionRunner);
 	const repo = Container.get(AgentEvalRunRepository);
 
 	beforeEach(() => {
