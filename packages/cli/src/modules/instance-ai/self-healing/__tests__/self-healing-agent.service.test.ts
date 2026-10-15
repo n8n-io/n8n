@@ -86,7 +86,7 @@ const validOutput = {
 
 describe('SelfHealingAgentService', () => {
 	const config = mock<GlobalConfig>({
-		instanceAi: { selfHealingEnabled: true, thinkingEnabled: false },
+		instanceAi: { workflowSuggestionsEnabled: true, thinkingEnabled: false },
 		ai: {},
 	});
 	const logger = mock<Logger>();
@@ -125,7 +125,7 @@ describe('SelfHealingAgentService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		config.instanceAi.selfHealingEnabled = true;
+		config.instanceAi.workflowSuggestionsEnabled = true;
 		controller = new AbortController();
 		files = new Map();
 		filesystem.writeFile.mockImplementation(async (path, content) => {
@@ -255,7 +255,7 @@ describe('SelfHealingAgentService', () => {
 					hostRunId: 'host-run',
 				}),
 			}),
-			expect.objectContaining({ captureStreamErrors: true }),
+			expect.objectContaining({ signal: controller.signal }),
 		);
 	});
 
@@ -342,6 +342,19 @@ describe('SelfHealingAgentService', () => {
 		expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 
+	it('omits cancelled output when accounting outlasts the run', async () => {
+		credits.claimRunUsage.mockImplementationOnce(async () => {
+			controller.abort();
+			return 0.25;
+		});
+		const result = await service.execute(input, options);
+		expect(result).toMatchObject({ status: 'cancelled', reason: 'shutdown' });
+		expect(result.output).toBeUndefined();
+		expect(result.candidate).toBeUndefined();
+		expect(result.finishReason).toBeUndefined();
+		expect(result.usage.credits).toBe(0.25);
+	});
+
 	it('claims usage after cancellation', async () => {
 		stream.status = 'cancelled';
 		stream.finishReason = 'other';
@@ -351,7 +364,10 @@ describe('SelfHealingAgentService', () => {
 			reason: 'shutdown',
 			usage: { credits: 0.25 },
 		});
-		expect(result.candidate?.filePath).toBe(validOutput.candidateFilePath);
+		expect(result.output).toBeUndefined();
+		expect(result.candidate).toBeUndefined();
+		expect(result.finishReason).toBeUndefined();
+		expect(result.validationError).toBeUndefined();
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
 			user,
 			options.threadId,
@@ -393,6 +409,39 @@ describe('SelfHealingAgentService', () => {
 		expect(options.sandbox.destroySandbox).toHaveBeenCalledWith('internal-thread', 'actor');
 	});
 
+	it('finalizes a stream read failure and releases its incomplete workspace', async () => {
+		const failure = new Error('Connection closed');
+		vi.mocked(streamAgentRun).mockRejectedValueOnce(failure);
+		credits.claimRunUsage.mockResolvedValueOnce(undefined);
+
+		const result = await service.execute(input, options);
+
+		expect(result).toMatchObject({
+			status: 'errored',
+			error: failure,
+			usage: { credits: null, turns: null },
+		});
+		expect(result.output).toBeUndefined();
+		expect(result.candidate).toBeUndefined();
+		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
+			user,
+			options.threadId,
+			options.runId,
+			[],
+			'errored',
+		);
+		expect(options.onFinish).toHaveBeenCalledWith(result, 'test/model', undefined);
+		expect(options.tracing.finalizeRunTracing).toHaveBeenCalledWith(
+			options.runId,
+			undefined,
+			expect.objectContaining({ status: 'error' }),
+		);
+		expect(options.sandbox.destroySandbox).toHaveBeenCalledExactlyOnceWith(
+			options.threadId,
+			user.id,
+		);
+	});
+
 	it('returns setup errors without inventing an investigation outcome', async () => {
 		models.resolveAgentModelConfig.mockRejectedValueOnce(new Error('Model unavailable'));
 		const result = await service.execute(input, options);
@@ -425,7 +474,7 @@ describe('SelfHealingAgentService', () => {
 	});
 
 	it('rejects a disabled gate at admission', () => {
-		config.instanceAi.selfHealingEnabled = false;
+		config.instanceAi.workflowSuggestionsEnabled = false;
 		expect(() => service.assertEnabled()).toThrow('disabled');
 		expect(models.resolveAgentModelConfig).not.toHaveBeenCalled();
 	});

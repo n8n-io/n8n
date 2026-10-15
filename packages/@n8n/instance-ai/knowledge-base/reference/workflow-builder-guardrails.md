@@ -55,6 +55,13 @@ synthetic failure records for the same source/effect.
 
 ## Preserve List Semantics
 
+Preserve item pairing when a downstream node reads an upstream value. Use
+`$('Source').item.json.field` or `nodeJson(sourceNode, 'field')` for per-item
+values. Do not replace these with `.first()` or `$input.first()` to make a
+check pass. Those calls reuse item 0 for every item. Use them only when the
+value is shared, such as a single configuration row. Check repairs with at
+least two distinct input items when the workflow processes multiple items.
+
 HTTP and app nodes may return one n8n item per record, a top-level array, or an
 envelope such as `records`, `body`, or `data`. Before per-record filtering,
 upserting, or posting, check the actual item shape. Preserve itemized flow or
