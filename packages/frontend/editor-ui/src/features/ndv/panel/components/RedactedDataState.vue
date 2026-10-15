@@ -8,6 +8,8 @@ import { EXECUTION_DATA_REDACTION_DOCS_URL } from '@/app/constants';
 defineProps<{
 	title: string;
 	isDynamicCredentials: boolean;
+	/** The execution is redacted because a sub-workflow it called has a redaction policy. */
+	isSubWorkflowRedaction?: boolean;
 	canReveal: boolean;
 	/** A credential the viewer cannot use but can share with themselves to see the data. */
 	credentialToShare?: { id: string; name: string };
@@ -29,6 +31,9 @@ const i18n = useI18n();
 		</template>
 		<template v-if="isDynamicCredentials">
 			{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
+		</template>
+		<template v-else-if="isSubWorkflowRedaction">
+			{{ i18n.baseText('ndv.redacted.subWorkflow.description') }}
 		</template>
 		<template v-else-if="canReveal">
 			{{ i18n.baseText('ndv.redacted.description.sentence1') }}<br />

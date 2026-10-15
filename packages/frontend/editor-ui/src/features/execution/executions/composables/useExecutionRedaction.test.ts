@@ -99,6 +99,36 @@ describe('useExecutionRedaction()', () => {
 			expect(isDynamicCredentials.value).toBe(true);
 			expect(canReveal.value).toBe(false);
 		});
+
+		it('should detect the sub-workflow redaction reason', () => {
+			setActiveExecution({
+				data: {
+					redactionInfo: {
+						isRedacted: true,
+						reason: 'sub_workflow_redaction_policy',
+						canReveal: true,
+					},
+				},
+			} as never);
+
+			const { isSubWorkflowRedaction, isDynamicCredentials, canReveal } = useExecutionRedaction();
+
+			expect(isSubWorkflowRedaction.value).toBe(true);
+			expect(isDynamicCredentials.value).toBe(false);
+			expect(canReveal.value).toBe(true);
+		});
+
+		it('should not flag the sub-workflow redaction for another reason', () => {
+			setActiveExecution({
+				data: {
+					redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+				},
+			} as never);
+
+			const { isSubWorkflowRedaction } = useExecutionRedaction();
+
+			expect(isSubWorkflowRedaction.value).toBe(false);
+		});
 	});
 
 	describe('credentialToShare', () => {

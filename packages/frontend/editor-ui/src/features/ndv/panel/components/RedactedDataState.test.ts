@@ -50,6 +50,41 @@ describe('RedactedDataState', () => {
 		expect(getByText('workflow settings')).toBeInTheDocument();
 	});
 
+	describe('redaction by a sub-workflow', () => {
+		const description =
+			'This execution is redacted because a sub-workflow it called has a redaction policy.';
+
+		it('says a sub-workflow caused the redaction and keeps the reveal button', () => {
+			const { getByText, queryByText, getByTestId } = renderComponent({
+				props: {
+					title: 'Redacted',
+					isDynamicCredentials: false,
+					isSubWorkflowRedaction: true,
+					canReveal: true,
+				},
+			});
+
+			expect(getByText(description)).toBeInTheDocument();
+			// The calling workflow's settings do not control this redaction.
+			expect(queryByText('workflow settings')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-reveal-redacted-data')).toBeInTheDocument();
+		});
+
+		it('shows no reveal button without permission', () => {
+			const { getByText, queryByTestId } = renderComponent({
+				props: {
+					title: 'Redacted',
+					isDynamicCredentials: false,
+					isSubWorkflowRedaction: true,
+					canReveal: false,
+				},
+			});
+
+			expect(getByText(description)).toBeInTheDocument();
+			expect(queryByTestId('ndv-reveal-redacted-data')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('a credential the viewer can share with themselves', () => {
 		const props = {
 			title: 'Redacted',
