@@ -244,7 +244,10 @@ describe('credential type availability policy instance controller admin happy pa
 		const response = await testServer
 			.authAgentFor(owner)
 			.put(`/credential-type-policies/scopes/${scopeId}/attachments`)
-			.send({ attachments: [{ policyId, priority: 0, isFloor: false }] });
+			.send({
+				attachments: [{ policyId, priority: 0, isFloor: false }],
+				version: instancePut.body.data.version,
+			});
 
 		expect(response.statusCode).toBe(200);
 		expect(emitSpy).toHaveBeenCalledWith(
@@ -269,7 +272,7 @@ describe('credential type availability policy instance controller admin happy pa
 		const response = await testServer
 			.authAgentFor(owner)
 			.put(`/credential-type-policies/scopes/${nodeScopeId}/attachments`)
-			.send({ attachments: [] });
+			.send({ attachments: [], version: nodeInstancePut.body.data.version });
 
 		expect(response.statusCode).toBe(404);
 

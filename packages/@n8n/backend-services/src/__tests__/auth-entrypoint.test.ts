@@ -1,3 +1,5 @@
+import * as auth from '../auth';
+
 vi.mock('../services/cache/cache.service', () => {
 	throw new Error('The auth entry point must not load cache services');
 });
@@ -11,9 +13,7 @@ vi.mock('@n8n/db', () => {
 });
 
 describe('auth entry point', () => {
-	it('loads auth registries and proxies without cache, Redis, or persistence services', async () => {
-		const auth = await import('../auth');
-
+	it('loads auth registries and proxies without cache, Redis, or persistence services', () => {
 		for (const service of [
 			auth.AuthStrategyRegistry,
 			auth.ProtectedResourceRegistry,

@@ -312,6 +312,16 @@ describe('POST /rest/consent/approve', () => {
 		);
 	});
 
+	test('rejects a scope list with duplicates', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.post('/consent/approve')
+			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
+			.send({ approved: true, scopes: ['workflow:read', 'workflow:read'] });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should handle consent denial and return error redirect URL', async () => {
 		const response = await testServer
 			.authAgentFor(owner)

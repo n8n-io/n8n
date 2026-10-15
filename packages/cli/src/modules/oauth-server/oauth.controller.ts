@@ -13,6 +13,7 @@ import {
 	StaticRouterMetadata,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { AuthenticationService } from '@n8n/inbound-auth';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
 import { UrlService } from '@n8n/backend-services';
@@ -148,6 +149,7 @@ export class OAuthController {
 		private readonly urlService: UrlService,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly localServer: OAuthServerLocalAuthorizationServer,
+		private readonly authenticationService: AuthenticationService,
 	) {}
 
 	// Add CORS headers for OAuth discovery endpoints
@@ -251,7 +253,7 @@ export class OAuthController {
 			return;
 		}
 
-		res.json(this.buildProtectedResourceMetadata(resource));
+		res.json(await this.buildProtectedResourceMetadata(resource));
 	}
 
 	@Options('/.well-known/oauth-protected-resource', {
@@ -296,15 +298,29 @@ export class OAuthController {
 			return;
 		}
 
-		res.json(this.buildProtectedResourceMetadata(resource));
+		res.json(await this.buildProtectedResourceMetadata(resource));
 	}
 
-	private buildProtectedResourceMetadata(resource: ProtectedResource): Record<string, unknown> {
-		const baseUrl = this.urlService.getInstanceBaseUrl();
+	private async buildProtectedResourceMetadata(
+		resource: ProtectedResource,
+	): Promise<Record<string, unknown>> {
+		const authorizationServers =
+			resource.surface === 'public-api'
+				? (
+						await this.authenticationService.advertise({
+							surface: resource.surface,
+							resource: {
+								url: resource.getResourceUrl(),
+								acceptedAudiences: resource.getAudiences(),
+							},
+						})
+					).authorizationServers
+				: [this.urlService.getInstanceBaseUrl()];
+
 		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),
 			bearer_methods_supported: ['header'],
-			authorization_servers: [baseUrl],
+			authorization_servers: authorizationServers,
 		};
 
 		if (resource.scopes.length > 0) {
