@@ -8,6 +8,11 @@ import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 import { TransactionRunner } from '../services/transaction';
 import { BaseRepository } from './base-repository';
 
+export type IdempotencyKeyForClaim = Pick<
+	IdempotencyKey,
+	'createdAt' | 'fingerprint' | 'status' | 'responseStatus' | 'responseBody'
+>;
+
 @Service()
 export class IdempotencyKeyRepository extends BaseRepository<IdempotencyKey> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -41,8 +46,23 @@ export class IdempotencyKeyRepository extends BaseRepository<IdempotencyKey> {
 		return id;
 	}
 
-	async findByUserIdAndKey(userId: string, idempotencyKey: string): Promise<IdempotencyKey | null> {
-		return await this.findOne({ where: { userId, idempotencyKey } });
+	async findByUserIdAndKey(
+		userId: string,
+		idempotencyKey: string,
+	): Promise<IdempotencyKeyForClaim | null> {
+		const row = await this.findOne({
+			select: ['createdAt', 'fingerprint', 'status', 'responseStatus', 'responseBody'],
+			where: { userId, idempotencyKey },
+		});
+		if (!row) return null;
+
+		return {
+			createdAt: row.createdAt,
+			fingerprint: row.fingerprint,
+			status: row.status,
+			responseStatus: row.responseStatus,
+			responseBody: row.responseBody,
+		};
 	}
 
 	async deleteByUserIdAndKeyOlderThan(

@@ -1,4 +1,4 @@
-import type { IdempotencyKey, IdempotencyKeyRepository } from '@n8n/db';
+import type { IdempotencyKeyForClaim, IdempotencyKeyRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { CLEANUP_BATCH_SIZE, IdempotencyKeyService } from '@/public-api/idempotency-key.service';
@@ -48,18 +48,14 @@ describe('IdempotencyKeyService', () => {
 			fingerprint: 'fingerprint-a',
 		};
 
-		const stored = (overrides: Partial<IdempotencyKey> = {}): IdempotencyKey =>
-			({
-				id: 'row-1',
-				userId: input.userId,
-				idempotencyKey: input.idempotencyKey,
-				fingerprint: input.fingerprint,
-				status: 'completed',
-				responseStatus: 200,
-				responseBody: { id: 'wf' },
-				createdAt: new Date(),
-				...overrides,
-			}) as IdempotencyKey;
+		const stored = (overrides: Partial<IdempotencyKeyForClaim> = {}): IdempotencyKeyForClaim => ({
+			fingerprint: input.fingerprint,
+			status: 'completed',
+			responseStatus: 200,
+			responseBody: { id: 'wf' },
+			createdAt: new Date(),
+			...overrides,
+		});
 
 		it('returns the new row when the insert wins', async () => {
 			idempotencyKeyRepository.insertProcessing.mockResolvedValue('row-1');
