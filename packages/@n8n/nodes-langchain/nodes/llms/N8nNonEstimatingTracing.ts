@@ -7,7 +7,12 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
-import { logAiEvent, redactHeaderValues, stripNonXHeaders } from '@n8n/ai-utilities';
+import {
+	extractRespondingModel,
+	logAiEvent,
+	redactHeaderValues,
+	stripNonXHeaders,
+} from '@n8n/ai-utilities';
 import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
@@ -62,7 +67,14 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		output.generations = output.generations.map((gen) =>
-			gen.map((g) => pick(g, ['text', 'generationInfo'])),
+			gen.map((g) => {
+				const picked = pick(g, ['text', 'generationInfo']);
+				const model = extractRespondingModel(g);
+
+				return model === undefined
+					? picked
+					: { ...picked, generationInfo: { ...picked.generationInfo, model_name: model } };
+			}),
 		);
 
 		const tokenUsageEstimate = {

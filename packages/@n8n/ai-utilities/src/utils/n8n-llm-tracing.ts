@@ -12,6 +12,7 @@ import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { extractRespondingModel } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
 import { stripNonXHeaders } from './strip-non-x-headers';
@@ -159,7 +160,14 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		output.generations = output.generations.map((gen) =>
-			gen.map((g) => pick(g, ['text', 'generationInfo'])),
+			gen.map((g) => {
+				const picked = pick(g, ['text', 'generationInfo']);
+				const model = extractRespondingModel(g);
+
+				return model === undefined
+					? picked
+					: { ...picked, generationInfo: { ...picked.generationInfo, model_name: model } };
+			}),
 		);
 
 		const tokenUsageEstimate = {
