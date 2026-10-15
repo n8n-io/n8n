@@ -76,7 +76,7 @@ describe('SelfHealingInvestigationService', () => {
 			baseline,
 			threadId: 'private-thread',
 			runId: 'run',
-			acceptedOutput: null,
+			pendingResult: null,
 			resultId: null,
 			finishedAt: null,
 			createdAt: new Date(Date.now() - 300_000),
@@ -100,8 +100,8 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.getForExecution.mockResolvedValue(null);
 		investigations.getUnfinishedForWorkflow.mockResolvedValue(null);
 		investigations.createInvestigation.mockResolvedValue(investigation);
-		investigations.storeAcceptedOutput.mockImplementation(async (_id, output) => {
-			investigation.acceptedOutput = output;
+		investigations.storePendingResult.mockImplementation(async (_id, output) => {
+			investigation.pendingResult = output;
 		});
 		suggestionRepository.getPendingForWorkflow.mockResolvedValue(null);
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
@@ -132,7 +132,7 @@ describe('SelfHealingInvestigationService', () => {
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 	});
 
-	it('uses server references and persists accepted output before completion', async () => {
+	it('uses server references and persists pending result before completion', async () => {
 		expect(await startAndFinish()).toEqual({
 			kind: 'investigation',
 			investigationId: investigation.id,
@@ -145,12 +145,12 @@ describe('SelfHealingInvestigationService', () => {
 			},
 			expect.objectContaining({ threadId: investigation.threadId, runId: investigation.runId }),
 		);
-		expect(investigations.storeAcceptedOutput).toHaveBeenCalledWith(
+		expect(investigations.storePendingResult).toHaveBeenCalledWith(
 			investigation.id,
 			expect.objectContaining({ output: run.output, usage: run.usage }),
 		);
 		expect(results.complete).toHaveBeenCalledWith({ investigationId: investigation.id });
-		expect(investigations.storeAcceptedOutput.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(investigations.storePendingResult.mock.invocationCallOrder[0]).toBeLessThan(
 			results.complete.mock.invocationCallOrder[0],
 		);
 	});
@@ -166,7 +166,7 @@ describe('SelfHealingInvestigationService', () => {
 
 		await startAndFinish();
 
-		expect(investigation.acceptedOutput?.output).toEqual({
+		expect(investigation.pendingResult?.output).toEqual({
 			outcome: 'needs_you',
 			summary: 'The response contained [REDACTED].',
 			report: 'Check the HTTP Request node. Authorization: [REDACTED]',
@@ -186,9 +186,9 @@ describe('SelfHealingInvestigationService', () => {
 
 		await startAndFinish();
 
-		expect(investigation.acceptedOutput?.output[field]).toHaveLength(limit);
-		expect(investigation.acceptedOutput?.output[field]).not.toContain('token=x');
-		expect(selfHealingOutputSchema.safeParse(investigation.acceptedOutput?.output).success).toBe(
+		expect(investigation.pendingResult?.output[field]).toHaveLength(limit);
+		expect(investigation.pendingResult?.output[field]).not.toContain('token=x');
+		expect(selfHealingOutputSchema.safeParse(investigation.pendingResult?.output).success).toBe(
 			true,
 		);
 	});
@@ -211,7 +211,7 @@ describe('SelfHealingInvestigationService', () => {
 				}),
 			};
 			await startAndFinish();
-			expect(investigation.acceptedOutput?.candidate).toEqual({
+			expect(investigation.pendingResult?.candidate).toEqual({
 				graph: { nodes: [], connections: {} },
 			});
 		},
@@ -252,19 +252,19 @@ describe('SelfHealingInvestigationService', () => {
 
 			await startAndFinish();
 
-			const accepted = investigation.acceptedOutput;
-			expect(accepted?.output.outcome).toBe(outcome);
-			expect(accepted?.candidate?.graph).toEqual(graph);
+			const pendingResult = investigation.pendingResult;
+			expect(pendingResult?.output.outcome).toBe(outcome);
+			expect(pendingResult?.candidate?.graph).toEqual(graph);
 			if (missing) {
-				expect(accepted?.output.summary).toContain('credentials');
-				expect(accepted?.output.summary).not.toBe(output.summary);
-				expect(accepted?.output.report).toContain('Fetch Order');
-				expect(accepted?.output.report).toContain('[REDACTED]');
-				expect(accepted?.output.report).not.toContain(value);
-				expect(accepted?.output.report).toContain('httpHeaderAuth');
-				expect(accepted?.output.report).not.toContain('credential was created');
+				expect(pendingResult?.output.summary).toContain('credentials');
+				expect(pendingResult?.output.summary).not.toBe(output.summary);
+				expect(pendingResult?.output.report).toContain('Fetch Order');
+				expect(pendingResult?.output.report).toContain('[REDACTED]');
+				expect(pendingResult?.output.report).not.toContain(value);
+				expect(pendingResult?.output.report).toContain('httpHeaderAuth');
+				expect(pendingResult?.output.report).not.toContain('credential was created');
 			} else {
-				expect(accepted?.output).toEqual(output);
+				expect(pendingResult?.output).toEqual(output);
 			}
 			expect(results.complete).toHaveBeenCalledWith({ investigationId: investigation.id });
 		},
@@ -277,8 +277,8 @@ describe('SelfHealingInvestigationService', () => {
 			report: 'The credential needs to be reconnected.',
 		};
 		await startAndFinish();
-		expect(investigation.acceptedOutput?.output.outcome).toBe('needs_you');
-		expect(investigation.acceptedOutput?.candidate).toBeUndefined();
+		expect(investigation.pendingResult?.output.outcome).toBe('needs_you');
+		expect(investigation.pendingResult?.candidate).toBeUndefined();
 	});
 
 	it.each(['cancelled', 'errored', 'suspended'] as const)(
@@ -293,8 +293,8 @@ describe('SelfHealingInvestigationService', () => {
 			};
 			run.candidate = { filePath: 'candidate.workflow.ts', compile: vi.fn() };
 			await startAndFinish();
-			expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id);
-			expect(investigations.storeAcceptedOutput).not.toHaveBeenCalled();
+			expect(investigations.finishIfNoPendingResult).toHaveBeenCalledWith(investigation.id);
+			expect(investigations.storePendingResult).not.toHaveBeenCalled();
 			expect(run.candidate?.compile).not.toHaveBeenCalled();
 			expect(results.complete).not.toHaveBeenCalled();
 		},
@@ -305,7 +305,7 @@ describe('SelfHealingInvestigationService', () => {
 		async (finishReason) => {
 			run.finishReason = finishReason;
 			await startAndFinish();
-			expect(investigations.storeAcceptedOutput).not.toHaveBeenCalled();
+			expect(investigations.storePendingResult).not.toHaveBeenCalled();
 			expect(results.complete).not.toHaveBeenCalled();
 		},
 	);
@@ -349,10 +349,10 @@ describe('SelfHealingInvestigationService', () => {
 		controller.abort(new Error('Run cancelled'));
 		checked.resolve();
 		await expect(execution).rejects.toThrow('Run cancelled');
-		expect(investigations.storeAcceptedOutput).not.toHaveBeenCalled();
+		expect(investigations.storePendingResult).not.toHaveBeenCalled();
 		expect(results.complete).not.toHaveBeenCalled();
 		await vi.waitFor(() =>
-			expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id),
+			expect(investigations.finishIfNoPendingResult).toHaveBeenCalledWith(investigation.id),
 		);
 	});
 
@@ -379,8 +379,8 @@ describe('SelfHealingInvestigationService', () => {
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 	});
 
-	it('retries accepted output without a model or workspace', async () => {
-		investigation.acceptedOutput = {
+	it('retries pending result without a model or workspace', async () => {
+		investigation.pendingResult = {
 			output: run.output!,
 			usage: run.usage,
 			completedAt: new Date().toISOString(),
@@ -391,10 +391,10 @@ describe('SelfHealingInvestigationService', () => {
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 	});
 
-	it('keeps accepted output when the completion transaction fails', async () => {
+	it('keeps pending result when the completion transaction fails', async () => {
 		results.complete.mockRejectedValue(new Error('Database unavailable.'));
 		await expect(service.finalize(investigation.id)).rejects.toThrow('Database unavailable.');
-		expect(investigations.rejectAcceptedOutput).not.toHaveBeenCalled();
+		expect(investigations.rejectPendingResult).not.toHaveBeenCalled();
 	});
 
 	it.each([new ConflictError('Changed.'), new ForbiddenError('No access.')])(
@@ -402,7 +402,7 @@ describe('SelfHealingInvestigationService', () => {
 		async (error) => {
 			results.complete.mockRejectedValue(error);
 			await expect(service.finalize(investigation.id)).rejects.toBe(error);
-			expect(investigations.rejectAcceptedOutput).toHaveBeenCalledWith(investigation.id);
+			expect(investigations.rejectPendingResult).toHaveBeenCalledWith(investigation.id);
 		},
 	);
 
@@ -411,7 +411,7 @@ describe('SelfHealingInvestigationService', () => {
 		events.getRunFinish.mockResolvedValue({ status: 'interrupted', reason: 'crash_interrupted' });
 		await service.reconcile();
 		expect(sweeper.sweepRun).toHaveBeenCalledWith(investigation.threadId, investigation.runId);
-		expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id);
+		expect(investigations.finishIfNoPendingResult).toHaveBeenCalledWith(investigation.id);
 		expect(results.complete).not.toHaveBeenCalled();
 	});
 
@@ -420,14 +420,14 @@ describe('SelfHealingInvestigationService', () => {
 		runtime.isRunLive.mockReturnValue(true);
 		await service.reconcile();
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
-		expect(investigations.finishIfNoAcceptedOutput).not.toHaveBeenCalled();
+		expect(investigations.finishIfNoPendingResult).not.toHaveBeenCalled();
 	});
 
 	it('releases a claim when the process stopped before creating the private thread', async () => {
 		investigations.listUnfinished.mockResolvedValue([investigation]);
 		events.lastFactAt.mockResolvedValue(null);
 		await service.reconcile();
-		expect(investigations.finishIfNoAcceptedOutput).toHaveBeenCalledWith(investigation.id);
+		expect(investigations.finishIfNoPendingResult).toHaveBeenCalledWith(investigation.id);
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
 	});
 

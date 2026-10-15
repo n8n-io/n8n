@@ -6,7 +6,7 @@ import { DataSource, IsNull, Not } from '@n8n/typeorm';
 
 import {
 	SelfHealingInvestigation,
-	type AcceptedSelfHealingOutput,
+	type PendingSelfHealingResult,
 } from './self-healing-investigation.entity';
 
 @Service()
@@ -51,29 +51,29 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 				workflowId: input.baseline.workflowId,
 				projectId: input.baseline.projectId,
 				backgroundUserId: input.baseline.backgroundUserId,
-				acceptedOutput: null,
+				pendingResult: null,
 				resultId: null,
 				finishedAt: null,
 			}),
 		);
 	}
 
-	async storeAcceptedOutput(
+	async storePendingResult(
 		id: string,
-		acceptedOutput: AcceptedSelfHealingOutput,
+		pendingResult: PendingSelfHealingResult,
 		ctx: OperationContext = {},
 	) {
 		await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
-			{ id, finishedAt: IsNull(), acceptedOutput: IsNull() },
-			{ acceptedOutput },
+			{ id, finishedAt: IsNull(), pendingResult: IsNull() },
+			{ pendingResult },
 		);
 	}
 
-	async finishIfNoAcceptedOutput(id: string, ctx: OperationContext = {}) {
+	async finishIfNoPendingResult(id: string, ctx: OperationContext = {}) {
 		await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
-			{ id, finishedAt: IsNull(), acceptedOutput: IsNull() },
+			{ id, finishedAt: IsNull(), pendingResult: IsNull() },
 			{ finishedAt: new Date() },
 		);
 	}
@@ -81,18 +81,18 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 	async completeWithResult(id: string, resultId: string, ctx: OperationContext) {
 		const updated = await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
-			{ id, finishedAt: IsNull(), resultId: IsNull(), acceptedOutput: Not(IsNull()) },
-			{ resultId, finishedAt: new Date(), acceptedOutput: null },
+			{ id, finishedAt: IsNull(), resultId: IsNull(), pendingResult: Not(IsNull()) },
+			{ resultId, finishedAt: new Date(), pendingResult: null },
 		);
 		if (updated.affected !== 1) {
 			throw new ConflictError('The self-healing investigation has already finished.');
 		}
 	}
 
-	async rejectAcceptedOutput(id: string, ctx: OperationContext = {}) {
+	async rejectPendingResult(id: string, ctx: OperationContext = {}) {
 		await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
-			{ id, finishedAt: IsNull(), resultId: IsNull(), acceptedOutput: Not(IsNull()) },
+			{ id, finishedAt: IsNull(), resultId: IsNull(), pendingResult: Not(IsNull()) },
 			{ finishedAt: new Date() },
 		);
 	}

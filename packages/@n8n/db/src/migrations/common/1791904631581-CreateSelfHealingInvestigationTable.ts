@@ -22,8 +22,8 @@ export class CreateSelfHealingInvestigationTable1791904631581 implements Reversi
 				column('baseline').json.notNull.comment(
 					'Workflow snapshot and version checks captured at admission',
 				),
-				column('acceptedOutput').json.comment(
-					'Accepted report, runtime usage, and compiled candidate for completion retries',
+				column('pendingResult').json.comment(
+					'Report, runtime usage, and compiled candidate pending final result storage',
 				),
 				column('resultId').varchar(36).comment('Result saved by atomic investigation completion'),
 				column('finishedAt')

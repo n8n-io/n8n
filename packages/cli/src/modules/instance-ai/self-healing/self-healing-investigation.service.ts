@@ -21,7 +21,7 @@ import { WorkflowSuggestionRepository } from '../workflow-suggestions/database/w
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type {
 	SelfHealingInvestigation,
-	AcceptedSelfHealingOutput,
+	PendingSelfHealingResult,
 } from './database/self-healing-investigation.entity';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import type { SelfHealingRunResult } from './self-healing-agent.service';
@@ -130,8 +130,8 @@ export class SelfHealingInvestigationService {
 				},
 			);
 		} catch (error) {
-			// Accepted output survives a failed transaction and needs no workspace on retry.
-			await this.investigations.finishIfNoAcceptedOutput(investigation.id);
+			// The pending result survives a failed transaction and needs no workspace on retry.
+			await this.investigations.finishIfNoPendingResult(investigation.id);
 			throw error;
 		}
 	}
@@ -142,11 +142,11 @@ export class SelfHealingInvestigationService {
 		signal: AbortSignal,
 	) {
 		if (run.status !== 'completed' || run.finishReason !== 'stop' || !run.output) {
-			await this.investigations.finishIfNoAcceptedOutput(investigation.id);
+			await this.investigations.finishIfNoPendingResult(investigation.id);
 			return;
 		}
 		const output = run.output;
-		const accepted: AcceptedSelfHealingOutput = {
+		const pendingResult: PendingSelfHealingResult = {
 			output,
 			usage: run.usage,
 			completedAt: new Date().toISOString(),
@@ -164,7 +164,7 @@ export class SelfHealingInvestigationService {
 				const missingCredentials = Object.entries(
 					candidate.credentialResolution.mockedCredentialsByNode,
 				).map(([node, types]) => `${node}: ${types.join(', ')}`);
-				accepted.output = {
+				pendingResult.output = {
 					...output,
 					outcome: 'needs_you',
 					summary: 'Connect the missing credentials to complete this repair.',
@@ -174,25 +174,25 @@ export class SelfHealingInvestigationService {
 						'Continue in chat to connect the credentials and verify the repair.',
 				};
 			}
-			accepted.candidate = {
+			pendingResult.candidate = {
 				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
 			};
 		}
 		const outputFields = selfHealingOutputSchema.innerType().shape;
-		accepted.output = {
-			...accepted.output,
-			summary: scrubSecretsInText(accepted.output.summary).slice(
+		pendingResult.output = {
+			...pendingResult.output,
+			summary: scrubSecretsInText(pendingResult.output.summary).slice(
 				0,
 				outputFields.summary.maxLength ?? undefined,
 			),
-			report: scrubSecretsInText(accepted.output.report).slice(
+			report: scrubSecretsInText(pendingResult.output.report).slice(
 				0,
 				outputFields.report.maxLength ?? undefined,
 			),
 		};
 		await this.suggestions.requireCurrentBaseline(investigation.baseline);
 		signal.throwIfAborted();
-		await this.investigations.storeAcceptedOutput(investigation.id, accepted);
+		await this.investigations.storePendingResult(investigation.id, pendingResult);
 		await this.finalize(investigation.id);
 	}
 
@@ -202,7 +202,7 @@ export class SelfHealingInvestigationService {
 			return await this.results.complete({ investigationId });
 		} catch (error) {
 			if (error instanceof ConflictError || error instanceof ForbiddenError) {
-				await this.investigations.rejectAcceptedOutput(investigationId);
+				await this.investigations.rejectPendingResult(investigationId);
 			}
 			throw error;
 		}
@@ -223,7 +223,7 @@ export class SelfHealingInvestigationService {
 	}
 
 	private async reconcileInvestigation(investigation: SelfHealingInvestigation) {
-		if (investigation.acceptedOutput) {
+		if (investigation.pendingResult) {
 			await this.finalize(investigation.id);
 			return;
 		}
@@ -234,13 +234,13 @@ export class SelfHealingInvestigationService {
 			return;
 		}
 		if (!(await this.events.lastFactAt(threadId, runId))) {
-			await this.investigations.finishIfNoAcceptedOutput(investigation.id);
+			await this.investigations.finishIfNoPendingResult(investigation.id);
 			return;
 		}
 		await this.sweeper.sweepRun(threadId, runId);
 		await this.eventLog.flush(threadId);
 		if (await this.events.getRunFinish(threadId, runId)) {
-			await this.investigations.finishIfNoAcceptedOutput(investigation.id);
+			await this.investigations.finishIfNoPendingResult(investigation.id);
 		}
 	}
 

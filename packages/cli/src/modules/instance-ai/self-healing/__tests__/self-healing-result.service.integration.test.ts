@@ -172,7 +172,7 @@ async function prepareInvestigation(
 			ctx,
 		);
 	});
-	await investigations.storeAcceptedOutput(investigation.id, {
+	await investigations.storePendingResult(investigation.id, {
 		output: {
 			outcome,
 			summary: input.summary,
@@ -326,12 +326,12 @@ it('rolls back all completion writes and retries from accepted data', async () =
 	expect(investigation).toMatchObject({
 		resultId: null,
 		finishedAt: null,
-		acceptedOutput: { output: content },
+		pendingResult: { output: content },
 	});
 	const result = await service.complete({ investigationId: investigation.id });
 	expect(await investigations.get(investigation.id)).toMatchObject({
 		resultId: result.id,
-		acceptedOutput: null,
+		pendingResult: null,
 	});
 	const url = `/projects/${project.id}/workflows/${original.id}/self-healing-results/${result.id}`;
 	const response = await testServer.authAgentFor(user).get(url).expect(200);
@@ -350,22 +350,22 @@ it('rejects a changed baseline when finalizing an accepted report', async () => 
 	expect((await investigations.get(investigation.id)).finishedAt).toBeNull();
 });
 
-it('keeps the first accepted output and protects it from technical cleanup', async () => {
+it('keeps the first pending result and protects it from technical cleanup', async () => {
 	const { investigation } = await prepareInvestigation('could_not_fix', false);
 	const first = await investigations.get(investigation.id);
-	await investigations.storeAcceptedOutput(investigation.id, {
+	await investigations.storePendingResult(investigation.id, {
 		output: { outcome: 'could_not_fix', summary: 'Changed', report: 'Changed' },
 		usage: { credits: null, turns: null, durationSeconds: null },
 		completedAt: new Date().toISOString(),
 	});
-	await investigations.finishIfNoAcceptedOutput(investigation.id);
+	await investigations.finishIfNoPendingResult(investigation.id);
 	expect(await investigations.get(investigation.id)).toMatchObject({
-		acceptedOutput: first.acceptedOutput,
+		pendingResult: first.pendingResult,
 		finishedAt: null,
 	});
-	await investigations.rejectAcceptedOutput(investigation.id);
+	await investigations.rejectPendingResult(investigation.id);
 	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
-		'no accepted output',
+		'no pending result',
 	);
 	expect(await results.count()).toBe(0);
 });
@@ -387,7 +387,7 @@ it.each([
 		expect(await investigations.get(investigation.id)).toMatchObject({
 			resultId: result.id,
 			finishedAt: expect.any(Date),
-			acceptedOutput: null,
+			pendingResult: null,
 		});
 		expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
 		const response = await testServer.authAgentFor(user).get(url);
@@ -431,7 +431,7 @@ it('preserves a needs_you report when the candidate has no changes', async () =>
 	expect(await investigations.get(investigation.id)).toMatchObject({
 		resultId: result.id,
 		finishedAt: expect.any(Date),
-		acceptedOutput: null,
+		pendingResult: null,
 	});
 });
 

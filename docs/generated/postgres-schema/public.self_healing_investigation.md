@@ -4,13 +4,13 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| acceptedOutput | json |  | true |  |  | Accepted report, runtime usage, and compiled candidate for completion retries |
 | backgroundUserId | uuid |  | false |  | [public.user](public.user.md) | User who enabled the investigation |
 | baseline | json |  | false |  |  | Workflow snapshot and version checks captured at admission |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | executionId | varchar(36) |  | false |  |  | Original execution reference retained after pruning; supports both execution engines |
 | finishedAt | timestamp(3) with time zone |  | true |  |  | When the investigation released its workflow claim |
 | id | varchar(36) |  | false |  |  |  |
+| pendingResult | json |  | true |  |  | Report, runtime usage, and compiled candidate pending final result storage |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Workflow owner project at admission |
 | resultId | varchar(36) |  | true |  | [public.self_healing_result](public.self_healing_result.md) | Result saved by atomic investigation completion |
 | runId | uuid |  | false |  |  | Assistant run ID; technical status stays in run events |
@@ -60,13 +60,13 @@ erDiagram
 "public.self_healing_investigation" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.self_healing_investigation" {
-  json acceptedOutput
   uuid backgroundUserId FK
   json baseline
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
+  json pendingResult
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   uuid runId

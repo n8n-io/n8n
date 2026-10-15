@@ -82,16 +82,16 @@ export class SelfHealingResultService {
 	}
 
 	private async prepareInvestigation(investigation: SelfHealingInvestigation) {
-		if (investigation.finishedAt || !investigation.acceptedOutput) {
-			throw new ConflictError('The investigation has no accepted output to complete.');
+		if (investigation.finishedAt || !investigation.pendingResult) {
+			throw new ConflictError('The investigation has no pending result to complete.');
 		}
-		const { baseline, acceptedOutput: accepted } = investigation;
-		const { output, candidate } = accepted;
+		const { baseline, pendingResult } = investigation;
+		const { output, candidate } = pendingResult;
 		const content = selfHealingResultContentSchema.parse({
 			outcome: output.outcome,
 			summary: output.summary,
 			report: output.report,
-			usage: accepted.usage,
+			usage: pendingResult.usage,
 		});
 		const needsYouWithoutChanges =
 			output.outcome === 'needs_you' &&
@@ -115,7 +115,7 @@ export class SelfHealingResultService {
 			investigation.workflowId,
 			investigation.executionId,
 		);
-		return { content, completedAt: new Date(accepted.completedAt), suggestion };
+		return { content, completedAt: new Date(pendingResult.completedAt), suggestion };
 	}
 
 	async getDetail(

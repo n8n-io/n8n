@@ -265,13 +265,13 @@ erDiagram
   varchar_36_ workflowId PK
 }
 "self_healing_investigation" {
-  TEXT acceptedOutput
   varchar backgroundUserId FK
   TEXT baseline
   datetime_3_ createdAt
   varchar_36_ executionId
   datetime_3_ finishedAt
   varchar_36_ id PK
+  TEXT pendingResult
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   varchar runId

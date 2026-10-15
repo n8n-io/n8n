@@ -16,7 +16,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
 
 import { SelfHealingResult } from './self-healing-result.entity';
 
-export type AcceptedSelfHealingOutput = {
+export type PendingSelfHealingResult = {
 	output: SelfHealingOutput;
 	usage: SelfHealingResultUsage;
 	candidate?: {
@@ -66,7 +66,7 @@ export class SelfHealingInvestigation extends WithTimestampsAndStringId {
 	baseline: WorkflowSuggestionBaseline;
 
 	@JsonColumn({ nullable: true })
-	acceptedOutput: AcceptedSelfHealingOutput | null;
+	pendingResult: PendingSelfHealingResult | null;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	resultId: string | null;

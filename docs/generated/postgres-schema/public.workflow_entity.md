@@ -266,13 +266,13 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.self_healing_investigation" {
-  json acceptedOutput
   uuid backgroundUserId FK
   json baseline
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId
   timestamp_3__with_time_zone finishedAt
   varchar_36_ id
+  json pendingResult
   varchar_36_ projectId FK
   varchar_36_ resultId FK
   uuid runId
