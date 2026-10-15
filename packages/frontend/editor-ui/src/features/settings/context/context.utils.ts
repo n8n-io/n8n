@@ -57,7 +57,7 @@ export function isContextEnabled(): boolean {
 /**
  * `isContextEnabled` for the route guard. A deep link can arrive before PostHog has
  * evaluated the flags, so it waits for them instead of sending the user away. The skills
- * setting comes from the backend and is already known.
+ * setting comes from the backend env var and is already known.
  */
 export async function isContextEnabledOnceEvaluated(): Promise<boolean> {
 	return isContextSkillsEnabled() || (await isContextPreferencesEnabledOnceEvaluated());
@@ -162,9 +162,8 @@ export function canWriteInstanceSkillScope(): boolean {
 }
 
 /**
- * The backend reads the `125_context_skills` flag for the instance once at startup and
- * reports the result here. The skills routes answer 404 while it is off, so the editor
- * follows the backend value rather than its own per-user flag evaluation.
+ * The backend reads `N8N_AGENTS_SKILLS_HUB_ENABLED` once at startup and reports it here.
+ * The skills routes answer 404 while it is off, so the editor follows the same value.
  */
 export function isContextSkillsEnabled(): boolean {
 	return useSettingsStore().moduleSettings.agents?.skillsHubEnabled === true;
