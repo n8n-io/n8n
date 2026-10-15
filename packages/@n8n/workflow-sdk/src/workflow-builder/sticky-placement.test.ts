@@ -129,6 +129,24 @@ describe('sticky note placement with tidyUp', () => {
 		}
 	});
 
+	it('keeps a sticky without anchors or an explicit position clear of workflow nodes', () => {
+		const { start, fetch, compute } = buildChain();
+		const builder = workflow('wf', 'Test')
+			.add(start.to(fetch).to(compute))
+			.add(sticky('## Workflow notes', { name: 'Workflow notes' }));
+
+		// CONTEXT-238: MCP regenerates node IDs before it serializes the workflow with tidyUp.
+		builder.regenerateNodeIds();
+		const json = builder.toJSON({ tidyUp: true });
+
+		const box = stickyBox(json, 'Workflow notes');
+		const overlappingNodes = [start, fetch, compute]
+			.filter(({ name }) => overlaps(box, nodeBox(json, name)))
+			.map(({ name }) => name);
+
+		expect(overlappingNodes).toEqual([]);
+	});
+
 	it('keeps an explicit position and size the caller passed', () => {
 		const { start, fetch } = buildChain();
 		const note = sticky('## Pinned', [start, fetch], {
