@@ -1,5 +1,6 @@
 import type { CredentialResolution, CredentialResolutionFailure } from './credential.types';
 import type { CredentialMissingMode } from '../../n8n-packages.types';
+import { getWorkflowConsumerIds } from '../../spec/requirement-consumers';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export function canStubNotFoundFailure(failure: CredentialResolutionFailure): boolean {
@@ -10,14 +11,17 @@ export function canStubNotFoundFailure(failure: CredentialResolutionFailure): bo
  * Classifies which unresolved credential references block the import, per missing-mode
  * policy. Read-only — never writes.
  */
+const rescueStubbable = (resolution: CredentialResolution): CredentialResolutionFailure[] =>
+	resolution.failures.filter((failure) => !canStubNotFoundFailure(failure));
+
 /* eslint-disable @typescript-eslint/naming-convention -- API credential missing mode keys */
 const BLOCKING_FAILURES: Record<
 	CredentialMissingMode,
 	(resolution: CredentialResolution) => CredentialResolutionFailure[]
 > = {
 	'must-preexist': (resolution) => resolution.failures,
-	'create-stub': (resolution) =>
-		resolution.failures.filter((failure) => !canStubNotFoundFailure(failure)),
+	'create-stub': rescueStubbable,
+	'create-with-values': rescueStubbable,
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -26,6 +30,31 @@ export function credentialBlockingFailures(
 	resolution: CredentialResolution,
 ): CredentialResolutionFailure[] {
 	return BLOCKING_FAILURES[mode](resolution);
+}
+
+export function credentialsToStub(
+	mode: CredentialMissingMode,
+	resolution: CredentialResolution,
+): CredentialResolutionFailure[] {
+	if (!credentialMissingModeCreates(mode)) return [];
+
+	return [
+		...new Map(
+			resolution.failures
+				.filter((failure) => canStubNotFoundFailure(failure))
+				.map((failure) => [failure.sourceId, failure] as const),
+		).values(),
+	];
+}
+
+/** Whether the mode fills an unresolved reference by creating the credential. */
+export function credentialMissingModeCreates(mode: CredentialMissingMode): boolean {
+	return mode === 'create-stub' || mode === 'create-with-values';
+}
+
+/** Whether the mode seeds created credentials from the package's bundled expression data. */
+export function credentialMissingModeUsesPackageData(mode: CredentialMissingMode): boolean {
+	return mode === 'create-with-values';
 }
 
 /** Package workflow ids that should not be published because they use stubbed credentials. */
@@ -38,7 +67,7 @@ export function workflowsBlockedFromPublish(
 	for (const requirement of requirements ?? []) {
 		if (!stubbedSourceIds.has(requirement.id)) continue;
 
-		for (const sourceWorkflowId of requirement.usedByWorkflows) {
+		for (const sourceWorkflowId of getWorkflowConsumerIds(requirement)) {
 			blocked.add(sourceWorkflowId);
 		}
 	}

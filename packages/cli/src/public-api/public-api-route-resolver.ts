@@ -2,6 +2,7 @@ import type { ZodClass } from '@n8n/api-types';
 import type {
 	ApiKeyScopeRequirement,
 	Arg,
+	BinaryResponse,
 	Controller,
 	DeprecationInfo,
 	ErrorResponse,
@@ -22,18 +23,6 @@ import {
 	JSON_REQUEST_BODY_MEDIA,
 	REQUEST_BODY_HANDLERS,
 } from '@/public-api/media-types/request-body';
-
-export const HTTP_METHODS = [
-	'get',
-	'post',
-	'put',
-	'patch',
-	'delete',
-	'options',
-	'head',
-	'trace',
-] as const;
-export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export type ParamArg = { type: 'param'; key: string; schema?: ZodTypeAny };
 export type BodyArg = {
@@ -83,6 +72,8 @@ export interface ResolvedPublicApiRoute {
 	requestBodyHandler?: RequestBodyHandler;
 	requestQueryDto?: ZodClass;
 	responseDto?: ResponseDtoClass;
+	/** Mutually exclusive with `responseDto`. */
+	binaryResponse?: BinaryResponse;
 	/** Success status declared via `@ApiResponse` - always present, see `resolveSuccessStatus`. */
 	successStatus: SuccessStatus;
 	apiKeyScope?: ApiKeyScopeRequirement;
@@ -215,25 +206,8 @@ export function scopesInRequirement(requirement: ApiKeyScopeRequirement): readon
 }
 
 /**
- * Parses the comma-joined `x-required-scope` form back into a requirement. Legacy eov routes tag
- * their middleware with a flat string (see `publicApiCompositeScope`), which doesn't record whether
- * the scopes are any/all - the one composite route today defers the choice to the handler based on
- * the request payload, so a caller holding any listed scope can use it. `anyOf` matches that.
- */
-export function scopeRequirementFromString(serialized: string): ApiKeyScopeRequirement {
-	const scopes = serialized
-		.split(',')
-		.map((scope) => scope.trim())
-		.filter(Boolean) as ApiKeyScope[];
-
-	return scopes.length === 1 ? scopes[0] : { anyOf: scopes };
-}
-
-/**
- * Renders an `ApiKeyScopeRequirement` as the flat, comma-joined string the hand-written
- * `x-required-scope` YAML convention already uses (see `scope-parity.test.ts`'s `requiredScope`
- * parsing) — `anyOf`/`allOf` semantics aren't distinguished there today, so this doesn't invent a
- * new format, just matches the existing one.
+ * Renders an `ApiKeyScopeRequirement` as the flat, comma-joined string of the spec's
+ * `x-required-scope`. The string does not show if the scopes are `anyOf` or `allOf`.
  */
 export function scopeRequirementToString(requirement: ApiKeyScopeRequirement): string {
 	if (typeof requirement === 'string') {
@@ -296,6 +270,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				requestBodyHandler,
 				requestQueryDto,
 				responseDto: route.responseDto,
+				binaryResponse: route.binaryResponse,
 				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),
 				apiKeyScope: route.apiKeyScope,
 				summary: route.summary,

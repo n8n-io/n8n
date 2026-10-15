@@ -20,6 +20,12 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	anthropic: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// GooglePalmApi.credentials.ts    → apiKey, host (base URL)
 	google: (c) => ({ apiKey: c.apiKey, baseURL: c.host }),
+	'google-vertex': (c) => ({
+		project: (c.project ?? '__custom__') === '__custom__' ? c.projectId : c.project,
+		clientEmail: c.email,
+		privateKey: c.privateKey,
+		location: c.region,
+	}),
 	// XAiApi.credentials.ts           → apiKey, url (hidden, base URL)
 	xai: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// GroqApi.credentials.ts          → apiKey only
@@ -31,7 +37,14 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	// MistralCloudApi.credentials.ts  → apiKey only
 	mistral: (c) => ({ apiKey: c.apiKey }),
 	// VercelAiGatewayApi.credentials.ts → apiKey, url (base URL)
-	vercel: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	vercel: (c) => ({
+		apiKey: c.apiKey,
+		// The credential URL serves the OpenAI-compatible API. Let the SDK select its native URL.
+		baseURL:
+			typeof c.url === 'string' && /^https:\/\/ai-gateway\.vercel\.sh\/v1\/?$/i.test(c.url)
+				? undefined
+				: c.url,
+	}),
 	// OpenRouterApi.credentials.ts → apiKey, url (hidden, base URL)
 	openrouter: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// NvidiaApi.credentials.ts → apiKey, url (base URL)

@@ -1,4 +1,4 @@
-import type { Config } from '@oclif/core';
+import { Config } from '@oclif/core';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import type { N8nClient } from '../client';
@@ -197,6 +197,53 @@ describe('promotion-connection apply command', () => {
 		expect(message).toContain(
 			`n8n-cli promotion-connection apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
+		expect(message).not.toContain('--confirm-destructive-changes');
+		expect(exit).toHaveBeenCalledWith(4);
+	});
+
+	it('exits 4 and tells how to confirm a destructive data table change', async () => {
+		const { run, logToStderr, exit } = runApply({
+			...BLOCKED_RESULT,
+			preflight: {
+				...BLOCKED_RESULT.preflight,
+				conflicts: [{ kind: 'data-table', code: 'destructive-change' }],
+			},
+		});
+
+		await run();
+
+		const message = logToStderr.mock.calls[0][0];
+		expect(message).toContain(
+			`n8n-cli promotion-connection apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}\n` +
+				'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
+		);
+		expect(exit).toHaveBeenCalledWith(4);
+	});
+
+	it('exits 4 and lists the projects that a confirmed Apply deletes', async () => {
+		const { run, logToStderr, exit } = runApply({
+			...BLOCKED_RESULT,
+			preflight: {
+				...BLOCKED_RESULT.preflight,
+				conflicts: [
+					{
+						kind: 'project',
+						code: 'project-deletion',
+						project: { id: 'proj-2', name: 'Sales' },
+					},
+				],
+			},
+		});
+
+		await run();
+
+		const message = logToStderr.mock.calls[0][0];
+		expect(message).toContain(
+			'Apply deletes these projects with everything in them:\n' + '  Sales (proj-2)',
+		);
+		expect(message).toContain(
+			"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
+		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
 
@@ -257,8 +304,32 @@ describe('promotion-connection apply-continue command', () => {
 
 		await command.run();
 
-		expect(continueApplyPackage).toHaveBeenCalledWith('conn-1', EXPECTED_SOURCE);
+		expect(continueApplyPackage).toHaveBeenCalledWith('conn-1', EXPECTED_SOURCE, undefined);
 		expect(exit).toHaveBeenCalledWith(3);
+	});
+
+	it('sends the confirmation of destructive data table changes', async () => {
+		const command = new PromotionConnectionApplyContinue(
+			[
+				'conn-1',
+				`--expected-config-id=${EXPECTED_SOURCE.configId}`,
+				`--expected-branch=${EXPECTED_SOURCE.branchName}`,
+				`--expected-commit-sha=${SHA}`,
+				'--confirm-destructive-changes',
+				'--format=table',
+			],
+			await Config.load(process.cwd()),
+		);
+		const internals = command as unknown as ApplyInternals;
+		const continueApplyPackage = vi.fn().mockResolvedValue(APPLY_RESULT);
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			continueApplyPackage,
+		} as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+
+		await command.run();
+
+		expect(continueApplyPackage).toHaveBeenCalledWith('conn-1', EXPECTED_SOURCE, true);
 	});
 });
 
@@ -470,7 +541,43 @@ describe('promotion-connection apply-selection-continue command', () => {
 
 		await command.run();
 
-		expect(continueApplyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1'], EXPECTED_SOURCE);
+		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			['wf-1'],
+			EXPECTED_SOURCE,
+			undefined,
+		);
 		expect(exit).toHaveBeenCalledWith(3);
+	});
+
+	it('sends the confirmation of destructive data table changes', async () => {
+		const command = new PromotionConnectionApplySelectionContinue(
+			[
+				'proj-1',
+				'-w',
+				'wf-1',
+				`--expected-config-id=${EXPECTED_SOURCE.configId}`,
+				`--expected-branch=${EXPECTED_SOURCE.branchName}`,
+				`--expected-commit-sha=${SHA}`,
+				'--confirm-destructive-changes',
+				'--format=table',
+			],
+			await Config.load(process.cwd()),
+		);
+		const internals = command as unknown as ApplyInternals;
+		const continueApplyProjectSelection = vi.fn().mockResolvedValue(APPLY_RESULT);
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			continueApplyProjectSelection,
+		} as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+
+		await command.run();
+
+		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			['wf-1'],
+			EXPECTED_SOURCE,
+			true,
+		);
 	});
 });

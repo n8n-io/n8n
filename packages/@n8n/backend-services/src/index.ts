@@ -17,6 +17,13 @@ export {
 export { RoleService } from './services/role.service';
 export { ProjectScopeService } from './services/project-scope.service';
 export {
+	FavoriteResourceResolverRegistry,
+	type FavoriteResourceMeta,
+	type FavoriteResourceResolver,
+	type ResolvedFavoriteResourceType,
+} from './services/favorite-resource-resolver.registry';
+export { WorkflowProjectService } from './services/workflow-project.service';
+export {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
 } from './services/ownership-transfer-handler.registry';
@@ -30,7 +37,6 @@ export { UrlService } from './services/url.service';
 export {
 	classifyRestError,
 	isResponseError,
-	type RestErrorClassifierContext,
 	type RestErrorDescriptor,
 	RestErrorKind,
 } from './errors/rest-error-classifier';
@@ -49,3 +55,22 @@ export {
 	type Jwk,
 	type SkippedJwk,
 } from './services/oauth-discovery-client';
+
+export {
+	type PurposedSignOptions,
+	type PurposedVerifyOptions,
+	JwtService,
+	type JwtPayload,
+} from './services/jwt.service';
+export {
+	TOKEN_PURPOSES,
+	type TokenPurpose,
+	API_KEY_PURPOSES,
+	LEGACY_UNBOUND_PURPOSES,
+} from './services/token-purposes';
+
+export {
+	WorkflowPublishedDataService,
+	type PublishedWorkflowData,
+	type PublishedWorkflowDataForExecution,
+} from './workflows/workflow-published-data.service';

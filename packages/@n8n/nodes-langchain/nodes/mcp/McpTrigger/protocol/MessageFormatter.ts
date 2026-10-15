@@ -1,5 +1,7 @@
 import type { CredentialCheckResult } from 'n8n-workflow';
 
+import { isToolErrorResult } from '@utils/tool-error-result';
+
 import type { McpToolResult } from './types';
 
 /**
@@ -40,29 +42,8 @@ export class MessageFormatter {
 		return isError ? { isError: true, content } : { content };
 	}
 
-	/**
-	 * Detect whether a tool result represents an error.
-	 *
-	 * In direct mode, N8nTool catches errors and returns `e.toString()` producing
-	 * strings like `"NodeApiError: Bad request"`. ToolHttpRequest catches HTTP errors
-	 * and returns `"There was an error: \"...\"" or `"HTTP 401 There was an error: \"...\""`.
-	 *
-	 * In queue mode, the job processor wraps errors as `{ error: { message, name } }`.
-	 */
 	static isErrorResult(result: unknown): boolean {
-		if (typeof result === 'object' && result !== null && 'error' in result) {
-			const { error } = result as { error: unknown };
-			return (
-				typeof error === 'object' &&
-				error !== null &&
-				'message' in error &&
-				typeof (error as { message: unknown }).message === 'string'
-			);
-		}
-		if (typeof result === 'string') {
-			return /^(\w+Error: |HTTP \d{3} There was an error: |There was an error: )/.test(result);
-		}
-		return false;
+		return isToolErrorResult(result);
 	}
 
 	static formatError(error: Error): McpToolResult {

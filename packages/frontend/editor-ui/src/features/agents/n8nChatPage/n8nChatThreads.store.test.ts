@@ -6,14 +6,21 @@ import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 
 const mockListN8nChatThreads = vi.fn();
 const mockGetN8nChatThread = vi.fn();
+const mockDeleteN8nChatThread = vi.fn();
+const mockShowError = vi.fn();
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'push-1' } }),
 }));
 
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: mockShowError }),
+}));
+
 vi.mock('../composables/useAgentApi', () => ({
 	listN8nChatThreads: (...args: unknown[]) => mockListN8nChatThreads(...args),
 	getN8nChatThread: (...args: unknown[]) => mockGetN8nChatThread(...args),
+	deleteN8nChatThread: (...args: unknown[]) => mockDeleteN8nChatThread(...args),
 }));
 
 const makeThread = (id: string, updatedAt: string): AgentN8nChatThreadSummary => ({
@@ -149,6 +156,94 @@ describe('useAgentN8nChatThreadsStore', () => {
 
 			expect(store.recentThreads).toEqual([thread1]);
 			expect(store.threadsById.has('2')).toBe(false);
+		});
+	});
+
+	describe('deleteThread', () => {
+		it('deletes a known thread via the API and drops it from recentThreads', async () => {
+			const thread = makeThread('1', '2025-01-02T00:00:00.000Z');
+			mockListN8nChatThreads.mockResolvedValueOnce({ data: [thread], nextCursor: null });
+			mockDeleteN8nChatThread.mockResolvedValueOnce({ success: true });
+			const store = useAgentN8nChatThreadsStore();
+			await store.fetchRecent(10);
+
+			const result = await store.deleteThread(thread);
+
+			expect(mockDeleteN8nChatThread).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: 'push-1' },
+				'project-1',
+				'agent-1',
+				'1',
+			);
+			expect(result).toBe(true);
+			expect(store.recentThreads).toEqual([]);
+			expect(store.threadsById.has('1')).toBe(false);
+			expect(store.deletedThreadIds.has('1')).toBe(true);
+		});
+
+		it('also drops the thread from openedThreads', async () => {
+			const thread = makeThread('1', '2025-01-02T00:00:00.000Z');
+			mockGetN8nChatThread.mockResolvedValueOnce(thread);
+			mockDeleteN8nChatThread.mockResolvedValueOnce({ success: true });
+			const store = useAgentN8nChatThreadsStore();
+			await store.loadThread('1');
+
+			await store.deleteThread(thread);
+
+			expect(store.openedThreads).toEqual([]);
+		});
+
+		it('keeps a deleted thread hidden when an older list response lands after the delete', async () => {
+			const thread = makeThread('1', '2025-01-02T00:00:00.000Z');
+			let resolveList:
+				| ((page: { data: AgentN8nChatThreadSummary[]; nextCursor: null }) => void)
+				| undefined;
+			mockListN8nChatThreads.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						resolveList = resolve;
+					}),
+			);
+			mockDeleteN8nChatThread.mockResolvedValueOnce({ success: true });
+			const store = useAgentN8nChatThreadsStore();
+			const fetching = store.fetchRecent(10);
+
+			await store.deleteThread(thread);
+			resolveList?.({ data: [thread], nextCursor: null });
+			await fetching;
+
+			expect(store.knownThreads).toEqual([]);
+		});
+
+		it('deletes a thread the store never loaded, e.g. one found past the recent page', async () => {
+			const thread = makeThread('far', '2020-01-01T00:00:00.000Z');
+			mockDeleteN8nChatThread.mockResolvedValueOnce({ success: true });
+			const store = useAgentN8nChatThreadsStore();
+
+			const result = await store.deleteThread(thread);
+
+			expect(mockDeleteN8nChatThread).toHaveBeenCalledWith(
+				{ baseUrl: '/rest', pushRef: 'push-1' },
+				'project-1',
+				'agent-1',
+				'far',
+			);
+			expect(result).toBe(true);
+			expect(store.deletedThreadIds.has('far')).toBe(true);
+		});
+
+		it('shows an error toast and keeps the thread when the API call fails', async () => {
+			const thread = makeThread('1', '2025-01-02T00:00:00.000Z');
+			mockListN8nChatThreads.mockResolvedValueOnce({ data: [thread], nextCursor: null });
+			mockDeleteN8nChatThread.mockRejectedValueOnce(new Error('network down'));
+			const store = useAgentN8nChatThreadsStore();
+			await store.fetchRecent(10);
+
+			const result = await store.deleteThread(thread);
+
+			expect(result).toBe(false);
+			expect(mockShowError).toHaveBeenCalledWith(expect.any(Error), 'Problem deleting session');
+			expect(store.recentThreads).toEqual([thread]);
 		});
 	});
 });

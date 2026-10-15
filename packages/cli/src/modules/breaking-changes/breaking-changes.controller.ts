@@ -1,20 +1,38 @@
 import {
+	AssignMigrationOwnerDto,
 	BreakingChangeLightReportResult,
 	BreakingChangeReportQueryDto,
 	BreakingChangeRuleDetailResult,
 	BreakingChangeVersion,
+	MigrationNotifyResult,
+	MigrationWorkflowOwnerResponse,
+	NotifyMigrationOwnersRequestDto,
 	UpdateMigrationFindingStatusRequestDto,
+	UpdateMigrationFindingStatusesRequestDto,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { AuthenticatedRequest, type User } from '@n8n/db';
-import { Body, Get, RestController, GlobalScope, Query, Patch, Post, Param } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Param,
+	Patch,
+	Post,
+	Put,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
+import { MigrationFindingNotificationService } from './notifications/migration-finding-notification.service';
+import { MigrationOwnerAssignmentService } from './owners/migration-owner-assignment.service';
 import {
 	MigrationFindingQueryService,
 	type ReportScope,
@@ -35,6 +53,9 @@ export class BreakingChangesController {
 		private readonly ruleRegistry: RuleRegistry,
 		private readonly triageService: MigrationFindingTriageService,
 		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly eventService: EventService,
+		private readonly ownerAssignmentService: MigrationOwnerAssignmentService,
+		private readonly notificationService: MigrationFindingNotificationService,
 	) {}
 
 	/**
@@ -64,7 +85,14 @@ export class BreakingChangesController {
 		const version = query.version ?? DEFAULT_TARGET_VERSION;
 		const scope = await this.scopeFor(req.user);
 		await this.syncService.syncIfStale(version);
-		return await this.queryService.getLightReport(version, scope);
+		const report = await this.queryService.getLightReport(version, scope);
+		this.eventService.emit('migration-report-viewed', {
+			user: req.user,
+			targetVersion: version,
+			refreshed: false,
+			report,
+		});
+		return report;
 	}
 
 	/** Re-scans every workflow, updates the finding table, and returns the fresh overview. */
@@ -82,7 +110,14 @@ export class BreakingChangesController {
 			throw new ForbiddenError('Only a user who can edit every workflow can refresh the report');
 		}
 		await this.syncService.sync(version);
-		return await this.queryService.getLightReport(version, scope);
+		const report = await this.queryService.getLightReport(version, scope);
+		this.eventService.emit('migration-report-viewed', {
+			user: req.user,
+			targetVersion: version,
+			refreshed: true,
+			report,
+		});
+		return report;
 	}
 
 	/**
@@ -110,6 +145,34 @@ export class BreakingChangesController {
 		return await this.queryService.getRuleFindings(version, ruleId, scope);
 	}
 
+	/** Sets the status a user picks for the findings of one rule on many workflows. */
+	@Patch('/report/:ruleId/workflows')
+	@GlobalScope('breakingChanges:migrate')
+	async updateFindingStatuses(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('ruleId') ruleId: string,
+		@Body body: UpdateMigrationFindingStatusesRequestDto,
+	): Promise<void> {
+		await this.triageService.setStatuses(ruleId, body.workflowIds, body.status);
+	}
+
+	/**
+	 * Emails the owners of the given workflows about the rule's finding on them.
+	 * A repeated call is a reminder. The response names the workflows that were
+	 * notified and the ones that were skipped, with the reason.
+	 */
+	@Post('/report/:ruleId/workflows/notify')
+	@GlobalScope('breakingChanges:migrate')
+	async notifyOwners(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('ruleId') ruleId: string,
+		@Body body: NotifyMigrationOwnersRequestDto,
+	): Promise<MigrationNotifyResult> {
+		return await this.notificationService.notifyOwners(ruleId, body.workflowIds, req.user);
+	}
+
 	/** Sets the status a user picks for the finding of one rule on one workflow. */
 	@Patch('/report/:ruleId/workflows/:workflowId')
 	@GlobalScope('breakingChanges:migrate')
@@ -121,6 +184,31 @@ export class BreakingChangesController {
 		@Body body: UpdateMigrationFindingStatusRequestDto,
 	): Promise<void> {
 		await this.triageService.setStatus(ruleId, workflowId, body.status);
+	}
+
+	/** Makes the given user the owner of the workflow's findings. */
+	@Put('/workflows/:workflowId/owner')
+	@GlobalScope('breakingChanges:migrate')
+	async assignOwner(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body body: AssignMigrationOwnerDto,
+	): Promise<MigrationWorkflowOwnerResponse> {
+		const owner = await this.ownerAssignmentService.assign(workflowId, body.userId, req.user);
+		return { owner };
+	}
+
+	/** Drops the assigned owner. The response carries the heuristic's suggestion, if any. */
+	@Delete('/workflows/:workflowId/owner')
+	@GlobalScope('breakingChanges:migrate')
+	async unassignOwner(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<MigrationWorkflowOwnerResponse> {
+		const owner = await this.ownerAssignmentService.unassign(workflowId);
+		return { owner };
 	}
 
 	/**

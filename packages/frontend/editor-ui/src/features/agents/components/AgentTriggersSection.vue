@@ -4,11 +4,14 @@ import type {
 	AgentConfigValidationIssue,
 	AgentJsonConfig,
 	AgentJsonTaskConfig,
+	TeamsFileAccessConsentState,
 } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { agentsEventBus } from '../agents.eventBus';
 import {
 	agentChannelPlatforms,
@@ -24,6 +27,7 @@ import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
+import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 const props = withDefaults(
 	defineProps<{
@@ -161,26 +165,31 @@ function channelRuntimeErrorMessage(channel: string): string {
 	return runtimeErrors.value[channel] || i18n.baseText('agents.channels.modal.notRunning.tooltip');
 }
 
+// n8n Chat always shows, even when it is not in the agent config.
 const channelRows = computed(() =>
-	props.connectedTriggers
-		.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE || isN8nChatEnabled.value)
-		.map((channel) => {
-			const integration = channelList.value.find(({ type }) => type === channel);
-			const credentialId = connectedCredentials.value[channel];
-			// A channel that is configured correctly but failed to start is just as
-			// broken from here as a misconfigured one, so it uses the same affordance.
-			const invalidReasons = [
-				...(channelIssueMessages.value.get(channel) ?? []),
-				...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
-			];
-			return {
-				type: channel,
-				label: integration?.label ?? channel,
-				icon: channelIcon(integration?.icon),
-				credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
-				invalidReasons,
-			};
-		}),
+	[
+		...(isN8nChatEnabled.value ? [N8N_CHAT_INTEGRATION_TYPE] : []),
+		...props.connectedTriggers.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE),
+	].map((channel) => {
+		const integration = channelList.value.find(({ type }) => type === channel);
+		const credentialId = connectedCredentials.value[channel];
+		// A channel that is configured correctly but failed to start is just as
+		// broken from here as a misconfigured one, so it uses the same affordance.
+		const invalidReasons = [
+			...(channelIssueMessages.value.get(channel) ?? []),
+			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+		];
+		return {
+			type: channel,
+			label: integration?.label ?? channel,
+			icon: channelIcon(integration?.icon),
+			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
+			invalidReasons,
+			// The status fetch can confirm n8n Chat before `connectedTriggers` does.
+			connected:
+				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),
+		};
+	}),
 );
 
 async function loadChannelDetails() {
@@ -191,10 +200,12 @@ async function loadChannelDetails() {
 	if (!props.agentUnsaved) {
 		await fetchStatus(withN8nChat(integrations).map(({ type }) => type));
 	}
+	openTeamsAfterFileAccessConsent(integrations);
 
 	try {
 		const credentials = await credentialsStore.fetchUsableCredentials({
 			projectId: props.projectId,
+			forAgent: true,
 		});
 		credentialNamesById.value = Object.fromEntries(
 			credentials.map((credential) => [credential.id, credential.name]),
@@ -239,9 +250,10 @@ function openChannelModal() {
 	channelModalOpen.value = true;
 }
 
-function openChannelEdit(channelType: string) {
+function openChannelEdit(channelType: string, connected: boolean) {
 	const hasEditableChannelView = channelList.value.some(({ type }) => type === channelType);
-	channelModalView.value = hasEditableChannelView ? `${channelType}_edit` : 'list';
+	const mode = connected ? 'edit' : 'setup';
+	channelModalView.value = hasEditableChannelView ? `${channelType}_${mode}` : 'list';
 	channelModalOpen.value = true;
 }
 
@@ -250,6 +262,39 @@ function handleChannelConnected(channelType: string) {
 	emit('update:connected-triggers', channels);
 	emit('trigger-added', { triggerType: channelType, triggers: channels });
 	void loadChannelDetails();
+}
+
+const FILE_ACCESS_CONSENT_STATE: TeamsFileAccessConsentState = 'teams-file-access';
+const route = useRoute();
+const router = useRouter();
+const toast = useToast();
+
+/**
+ * Microsoft returns an administrator here after the Teams file access consent,
+ * with `state` passed back unchanged. The Teams settings show the result. The
+ * other query values are Microsoft's and only cleared, never shown. Runs after
+ * the status fetch: the agent's channels can load later than this page, and
+ * until then a connected Teams reads as not connected and opens the setup.
+ */
+function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) {
+	// Optional: the section also renders outside the router, as in tests.
+	if (route?.query.state !== FILE_ACCESS_CONSENT_STATE) return;
+	if (!integrations.some(({ type }) => type === 'teams')) return;
+	const { state, admin_consent, tenant, error, error_description, error_subcode, ...query } =
+		route.query;
+	void router.replace({ query });
+	fileAccessJustApproved.value = admin_consent === 'True';
+	// Microsoft's own error text arrives in the address, so only fixed text is shown.
+	if (error) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.channels.teams.fileAccessConsentFailed'),
+		});
+	}
+	openChannelEdit(
+		'teams',
+		props.connectedTriggers.includes('teams') || integrationStatus.isConfigured('teams'),
+	);
 }
 
 defineExpose({ openChannelModal });
@@ -278,16 +323,17 @@ function handleChannelDisconnected(channelType: string) {
 			<AgentItemContextMenu
 				v-for="channel in channelRows"
 				:key="channel.type"
-				:disabled="props.disabled || removingChannel"
+				:disabled="props.disabled || removingChannel || !channel.connected"
 				@remove="requestDisconnect(channel.type, connectedCredentials[channel.type] ?? '')"
 			>
 				<AgentChipButton
 					:icon="channel.icon"
+					:deactivated="!channel.connected"
 					:invalid="channel.invalidReasons.length > 0"
 					:invalid-reasons="channel.invalidReasons"
 					:disabled="props.disabled || removingChannel"
 					:class="$style.channelChip"
-					@click="openChannelEdit(channel.type)"
+					@click="openChannelEdit(channel.type, channel.connected)"
 				>
 					{{ channel.label }}
 				</AgentChipButton>

@@ -173,6 +173,7 @@ export default defineConfig({
 		{
 			files: [
 				'fixtures/langsmith.ts',
+				'fixtures/cli.ts',
 				'fixtures/quarantine.ts',
 				'tests/cli-workflows/workflow-tests.spec.ts',
 				'tests/e2e/chat-hub/fixtures.ts',

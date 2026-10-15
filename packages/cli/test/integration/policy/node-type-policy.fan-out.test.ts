@@ -82,6 +82,7 @@ describe('node type policy document fan-out', () => {
 				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 			scopes.push(scope);

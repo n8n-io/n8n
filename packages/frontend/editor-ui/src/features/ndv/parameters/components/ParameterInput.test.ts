@@ -301,6 +301,37 @@ describe('ParameterInput.vue', () => {
 		expect(description).toHaveClass('option-description--clamped');
 	});
 
+	test('should match the search in an options dropdown against the label and the value', async () => {
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'modelName',
+				parameter: createTestNodeProperties({
+					displayName: 'Model',
+					name: 'modelName',
+					type: 'options',
+					options: [
+						{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+						{ name: 'Gemini 2.5 Flash', value: 'models/gemini-2.5-flash' },
+					],
+					default: 'models/gemini-2.5-flash',
+				}),
+				modelValue: 'models/gemini-2.5-flash',
+			},
+		});
+		const select = container.querySelector('input') as HTMLInputElement;
+		const optionHeadlines = () =>
+			Array.from(baseElement.querySelectorAll('.option-headline')).map((el) =>
+				el.textContent?.trim(),
+			);
+
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+		await fireEvent.update(select, 'gemini-2.5-pro');
+		await waitFor(() => expect(optionHeadlines()).toEqual(['Gemini 2.5 Pro']));
+
+		await fireEvent.update(select, '2.5 flash');
+		await waitFor(() => expect(optionHeadlines()).toEqual(['Gemini 2.5 Flash']));
+	});
+
 	test('should pass option disabled state to N8nOption', async () => {
 		const options = [
 			{ name: 'Connected Chat Trigger Node', value: 'auto', disabled: true },
@@ -612,6 +643,27 @@ describe('ParameterInput.vue', () => {
 		await waitFor(() =>
 			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]),
 		);
+	});
+
+	test('shows an object held by a string parameter as JSON with an issue', async () => {
+		const { container, getByTestId } = renderComponent({
+			props: {
+				path: 'channelId',
+				parameter: createTestNodeProperties({
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'string',
+				}),
+				modelValue: { __rl: true, mode: 'id', value: 'C0123' },
+			},
+		});
+
+		await waitFor(() =>
+			expect(container.querySelector('input')).toHaveValue(
+				'{"__rl":true,"mode":"id","value":"C0123"}',
+			),
+		);
+		expect(getByTestId('parameter-issues')).toBeInTheDocument();
 	});
 
 	test('should normalize a numeric string and emit numbers from a credential number parameter', async () => {

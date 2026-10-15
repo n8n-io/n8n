@@ -4,9 +4,6 @@ tags:
 summary: Retrieve a role
 description: Returns a single role with its scopes. Set `withUsageCount` to include how many users and projects use the role.
 x-required-scope: role:read
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
