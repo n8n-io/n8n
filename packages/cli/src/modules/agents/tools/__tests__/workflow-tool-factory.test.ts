@@ -11,7 +11,12 @@ import type {
 	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	ManualExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -35,6 +40,15 @@ import {
 import type { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
+
+const { subWorkflowExecute, getBase } = vi.hoisted(() => ({
+	subWorkflowExecute: vi.fn(),
+	getBase: vi.fn(),
+}));
+vi.mock('@/workflow-execute-additional-data', () => ({
+	executeWorkflow: subWorkflowExecute,
+	getBase,
+}));
 
 const parentPrincipalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 
@@ -318,52 +332,262 @@ describe('executeWorkflow → execution classification', () => {
 });
 
 describe('executeWorkflow → eval instrumentation', () => {
+	const findSingleExecution = vi.fn();
+
 	beforeEach(() => {
+		vi.clearAllMocks();
+		findSingleExecution.mockResolvedValue({
+			status: 'success',
+			data: { resultData: { runData: {} } },
+		});
 		Container.set(ExecutionPersistence, {
-			findSingleExecution: vi
-				.fn()
-				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+			findSingleExecution,
 		} as unknown as ExecutionPersistence);
+		getBase.mockResolvedValue({ userId: 'user-1' });
+		subWorkflowExecute.mockResolvedValue({ executionId: 'exec-1', data: [null] });
 	});
 
 	afterEach(() => {
 		Container.reset();
 	});
 
-	it('sets configureAdditionalData on the run data when instrumented', async () => {
-		const run = vi.fn().mockResolvedValue('exec-1');
+	it('runs an instrumented tool in process and never through the workflow runner', async () => {
+		const run = vi.fn();
+
+		const result = await executeWorkflow(
+			workflow,
+			triggerNode,
+			{ input: 'hello' },
+			buildContext(run, { instrumentToolAdditionalData: vi.fn(), userId: 'user-1' }),
+			false,
+			'Lookup_workflow',
+		);
+
+		expect(run).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ executionId: 'exec-1', status: 'success' });
+		expect(findSingleExecution).toHaveBeenCalledWith('exec-1', expect.anything());
+	});
+
+	it('passes the tool run data and its own project to the sub-workflow path', async () => {
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{ input: 'hello' },
+			buildContext(vi.fn(), { instrumentToolAdditionalData: vi.fn(), userId: 'user-1' }),
+			false,
+			'Lookup_workflow',
+		);
+
+		expect(getBase).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: 'user-1', workflowId: 'wf-1', projectId: 'p1' }),
+		);
+		const [workflowInfo, , options] = subWorkflowExecute.mock.calls[0];
+		expect(workflowInfo).toEqual({ id: 'wf-1' });
+		expect(options).toMatchObject({
+			parentProjectId: 'p1',
+			executionMode: 'manual',
+			loadedWorkflowData: expect.objectContaining({ id: 'wf-1' }),
+			loadedRunData: expect.objectContaining({
+				executionMode: 'manual',
+				pinData: { [triggerNode.name]: [{ json: { input: 'hello' } }] },
+			}),
+		});
+	});
+
+	it('limits the sub-execution to the tool timeout', async () => {
+		const before = Date.now();
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			buildContext(vi.fn(), { instrumentToolAdditionalData: vi.fn() }),
+			false,
+			'Lookup_workflow',
+		);
+
+		const { executionTimeoutTimestamp } = getBase.mock.calls[0][0] as {
+			executionTimeoutTimestamp: number;
+		};
+		expect(executionTimeoutTimestamp).toBeGreaterThanOrEqual(before + 120_000);
+		expect(executionTimeoutTimestamp).toBeLessThanOrEqual(Date.now() + 120_000);
+	});
+
+	it('decorates the sub-execution additionalData with the eval instrumentation', async () => {
 		const instrumentToolAdditionalData = vi.fn();
 
 		await executeWorkflow(
 			workflow,
 			triggerNode,
-			{ input: 'hello' },
-			buildContext(run, { instrumentToolAdditionalData }),
+			{},
+			buildContext(vi.fn(), { instrumentToolAdditionalData }),
 			false,
 			'Lookup_workflow',
 		);
 
-		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
-		expect(runData.configureAdditionalData).toBeDefined();
-
+		const [, , options] = subWorkflowExecute.mock.calls[0];
 		const additionalData = {};
-		void runData.configureAdditionalData!(additionalData as never);
+		void options.configureAdditionalData(additionalData);
 		expect(instrumentToolAdditionalData).toHaveBeenCalledWith(additionalData, {
 			toolName: 'Lookup_workflow',
 			toolKind: 'workflow',
 		});
 	});
 
-	it('leaves the run data untouched when not instrumented', async () => {
+	it('reports a failed sub-execution from its stored execution', async () => {
+		subWorkflowExecute.mockRejectedValue(
+			Object.assign(new Error('Tool node failed'), { executionId: 'exec-2' }),
+		);
+		findSingleExecution.mockResolvedValue({
+			status: 'error',
+			data: { resultData: { runData: {}, error: { message: 'Tool node failed' } } },
+		});
+
+		const result = await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			buildContext(vi.fn(), { instrumentToolAdditionalData: vi.fn() }),
+			false,
+			'Lookup_workflow',
+		);
+
+		expect(result).toMatchObject({
+			executionId: 'exec-2',
+			status: 'error',
+			error: 'Tool node failed',
+		});
+	});
+
+	it('rethrows a failure that has no stored execution', async () => {
+		subWorkflowExecute.mockRejectedValue(new Error('Workflow does not exist.'));
+
+		await expect(
+			executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildContext(vi.fn(), { instrumentToolAdditionalData: vi.fn() }),
+				false,
+				'Lookup_workflow',
+			),
+		).rejects.toThrow('Workflow does not exist.');
+	});
+
+	it('still checks the project caller policy before the run', async () => {
+		const context = buildContext(vi.fn(), { instrumentToolAdditionalData: vi.fn() });
+
+		await executeWorkflow(workflow, triggerNode, {}, context, false, 'Lookup_workflow');
+
+		expect(context.subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(workflow, 'p1');
+	});
+
+	describe('abort and timeout', () => {
+		const stopExecution = vi.fn();
+		const buildInProcessContext = (abortSignal?: AbortSignal) => ({
+			...buildContext(vi.fn(), {
+				instrumentToolAdditionalData: vi.fn(),
+				activeExecutions: {
+					has: vi.fn().mockReturnValue(false),
+					stopExecution,
+				} as unknown as ActiveExecutions,
+			}),
+			abortSignal,
+		});
+		// A run that has started, has an execution ID, and does not finish.
+		const startHangingRun = () =>
+			subWorkflowExecute.mockImplementation(async (_info, _additionalData, options) => {
+				await options.configureAdditionalData({ executionId: 'exec-1' });
+				return await new Promise(() => {});
+			});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('stops the execution and rethrows the reason when the agent run aborts', async () => {
+			startHangingRun();
+			const controller = new AbortController();
+			const reason = new Error('Eval case cancelled');
+
+			const result = executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildInProcessContext(controller.signal),
+				false,
+				'Lookup_workflow',
+			);
+			await vi.waitFor(() => expect(subWorkflowExecute).toHaveBeenCalled());
+			await sleep(0);
+			controller.abort(reason);
+
+			await expect(result).rejects.toBe(reason);
+			expect(stopExecution).toHaveBeenCalledWith(
+				'exec-1',
+				expect.any(ManualExecutionCancelledError),
+			);
+		});
+
+		it('stops the execution and reports an error when the tool timeout passes', async () => {
+			vi.useFakeTimers();
+			startHangingRun();
+
+			const result = executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildInProcessContext(),
+				false,
+				'Lookup_workflow',
+			);
+			await vi.advanceTimersByTimeAsync(120_000);
+
+			await expect(result).resolves.toEqual({
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'Execution timed out after 120000ms and was cancelled',
+			});
+			expect(stopExecution).toHaveBeenCalledWith(
+				'exec-1',
+				expect.any(TimeoutExecutionCancelledError),
+			);
+		});
+
+		it('does not stop a run that finishes in time', async () => {
+			// The run has an execution ID, so a leftover abort handler would stop it.
+			subWorkflowExecute.mockImplementation(async (_info, _additionalData, options) => {
+				await options.configureAdditionalData({ executionId: 'exec-1' });
+				return { executionId: 'exec-1', data: [null] };
+			});
+			const controller = new AbortController();
+
+			const result = await executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildInProcessContext(controller.signal),
+				false,
+				'Lookup_workflow',
+			);
+			controller.abort();
+
+			expect(result).toMatchObject({ executionId: 'exec-1', status: 'success' });
+			expect(stopExecution).not.toHaveBeenCalled();
+		});
+	});
+
+	it('uses the workflow runner when not instrumented', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
 
 		await executeWorkflow(workflow, triggerNode, {}, buildContext(run), false);
 
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(subWorkflowExecute).not.toHaveBeenCalled();
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
 	});
 
-	it('leaves the run data untouched when instrumented but no tool name is bound', async () => {
+	it('uses the workflow runner when instrumented but no tool name is bound', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
 
 		await executeWorkflow(
@@ -374,8 +598,8 @@ describe('executeWorkflow → eval instrumentation', () => {
 			false,
 		);
 
-		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
-		expect(runData.configureAdditionalData).toBeUndefined();
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(subWorkflowExecute).not.toHaveBeenCalled();
 	});
 });
 

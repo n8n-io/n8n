@@ -23,6 +23,7 @@ import type {
 	INode,
 	IPinData,
 	IRun,
+	IWorkflowExecuteAdditionalData,
 	IWorkflowExecutionDataProcess,
 	RelatedAgentRun,
 	WorkflowExecuteMode,
@@ -33,6 +34,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	ManualExecutionCancelledError,
 	OperationalError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
@@ -503,13 +505,13 @@ export async function executeWorkflow(
 	};
 
 	// Eval runs decorate the sub-execution's additionalData (HTTP mock handler,
-	// mocked credentials helper). The closure does not survive queue
-	// serialization — eval callers refuse queue mode upfront.
+	// mocked credentials helper). That closure cannot cross a queue boundary, so
+	// an eval run never goes through `WorkflowRunner`, which may enqueue.
 	const instrument = context.instrumentToolAdditionalData;
 	if (instrument && instrumentedToolName) {
-		runData.configureAdditionalData = (additionalData) => {
-			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' });
-		};
+		return await executeInProcess(workflow, runData, context, allOutputs, (additionalData) =>
+			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' }),
+		);
 	}
 
 	const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
@@ -625,6 +627,91 @@ async function withWorkflowCancellation<T>(
 		throw error;
 	} finally {
 		signal.removeEventListener('abort', onAbort);
+	}
+}
+
+/**
+ * Runs the tool workflow in this process through the sub-workflow path, which
+ * is never enqueued — also in queue mode. The path reads the result from the
+ * execution store, the same as a manual run through `WorkflowRunner`.
+ *
+ * Like the regular path, it stops the execution when the agent run aborts and
+ * when the tool timeout passes. The engine alone checks its deadline only
+ * between nodes, so a hung node needs this hard stop.
+ *
+ * Not covered yet: a Respond to Webhook response does not reach the tool,
+ * because only `WorkflowRunner` connects the response promise.
+ */
+async function executeInProcess(
+	workflow: WorkflowEntity,
+	runData: IWorkflowExecutionDataProcess,
+	context: WorkflowToolRunContext,
+	allOutputs: boolean,
+	configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) => void,
+): Promise<WorkflowToolExecutionResult> {
+	const { activeExecutions, abortSignal } = context;
+	const { executeWorkflow: runSubWorkflow, getBase } = await import(
+		'@/workflow-execute-additional-data.js'
+	);
+	const additionalData = await getBase({
+		userId: context.userId,
+		workflowId: workflow.id,
+		projectId: context.projectId,
+		workflowSettings: workflow.settings ?? undefined,
+		// The sub-workflow deadline is the earlier of this and the workflow's own.
+		executionTimeoutTimestamp: Date.now() + DEFAULT_TIMEOUT_MS,
+	});
+
+	// The sub-workflow path sets the execution ID before it calls the hook.
+	let executionId: string | undefined;
+	const settled = runSubWorkflow({ id: workflow.id }, additionalData, {
+		parentProjectId: context.projectId,
+		loadedWorkflowData: runData.workflowData,
+		loadedRunData: runData,
+		executionMode: context.executionMode,
+		configureAdditionalData: (integratedAdditionalData) => {
+			executionId = integratedAdditionalData.executionId;
+			configureAdditionalData(integratedAdditionalData);
+		},
+	}).then(
+		(result) => result.executionId,
+		(error: unknown) => {
+			// A failed run throws, but its execution is stored. Report it like any other result.
+			const failedExecutionId = isRecord(error) ? error.executionId : undefined;
+			if (typeof failedExecutionId === 'string') return failedExecutionId;
+			throw error;
+		},
+	);
+	// The race below reports the outcome. This keeps a late failure from going unhandled.
+	settled.catch(() => {});
+
+	let timeoutId: NodeJS.Timeout | undefined;
+	let onAbort: (() => void) | undefined;
+	const interrupted = new Promise<'timeout'>((resolve, reject) => {
+		timeoutId = setTimeout(() => resolve('timeout'), DEFAULT_TIMEOUT_MS);
+		onAbort = () => {
+			if (executionId) {
+				activeExecutions.stopExecution(executionId, new ManualExecutionCancelledError(executionId));
+			}
+			reject(abortSignal?.reason);
+		};
+		abortSignal?.addEventListener('abort', onAbort, { once: true });
+	});
+	interrupted.catch(() => {});
+
+	try {
+		abortSignal?.throwIfAborted();
+		const outcome = await Promise.race([settled, interrupted]);
+		if (outcome === 'timeout') {
+			const message = `Execution timed out after ${DEFAULT_TIMEOUT_MS}ms and was cancelled`;
+			if (!executionId) throw new Error(message);
+			activeExecutions.stopExecution(executionId, new TimeoutExecutionCancelledError(executionId));
+			return { executionId, status: 'error', error: message };
+		}
+		return await extractResult(outcome, allOutputs);
+	} finally {
+		clearTimeout(timeoutId);
+		if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
 	}
 }
 
