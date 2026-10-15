@@ -97,10 +97,12 @@ erDiagram
   integer timeoutSeconds
 }
 "public.app_artifact" {
+  timestamp_3__with_time_zone createdAt
   integer id
   integer sizeBytes
   text storageKey
   varchar_2_ storedAt
+  timestamp_3__with_time_zone updatedAt
   varchar_16_ uploadStatus
 }
 ```

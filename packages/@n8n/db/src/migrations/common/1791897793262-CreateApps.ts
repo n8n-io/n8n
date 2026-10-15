@@ -41,7 +41,7 @@ export class CreateApps1791897793262 implements ReversibleMigration {
 				.notNull.default("'pending'")
 				.withEnumCheck(['pending', 'completed'])
 				.comment('Upload state: pending or completed'),
-		);
+		).withTimestamps;
 
 		await createTable('app_version')
 			.withColumns(
