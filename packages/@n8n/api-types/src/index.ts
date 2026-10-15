@@ -981,3 +981,12 @@ export { compareExecutionListItems } from './dto/executions/compare-execution-li
 export type * from './workflow-suggestions';
 export * from './self-healing-results';
 export * from './model-priority';
+
+export {
+	RsaPublicJwkSchema,
+	EcPublicJwkSchema,
+	PublicJwkSchema,
+	type PublicJwk,
+	JwksResponseSchema,
+	type JwksResponse,
+} from './schemas/jwks.schema';

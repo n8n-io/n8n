@@ -170,7 +170,7 @@ describe('AgentChatMessageList', () => {
 		});
 		const callout = wrapper.get('[data-testid="agent-chat-retry-error"]');
 		const retry = callout.get('[data-testid="agent-chat-retry"]');
-		expect(wrapper.findComponent({ name: 'N8nButton' }).props('variant')).toBe('subtle');
+		expect(wrapper.findComponent({ name: 'N8nButton' }).props('variant')).toBe('outline');
 		await retry.trigger('click');
 		expect(wrapper.emitted('retry')).toBeUndefined();
 		await wrapper.setProps({ retryDisabled: false });

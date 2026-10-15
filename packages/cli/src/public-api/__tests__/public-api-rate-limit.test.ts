@@ -1,4 +1,5 @@
 import type { EventService } from '@n8n/backend-services';
+import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -19,7 +20,6 @@ import { markPublicApiController } from '@/public-api/__tests__/public-api-contr
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { RateLimitService } from '@/services/rate-limit.service';
-import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 type RateLimitConfig = GlobalConfig['publicApi']['rateLimit'];

@@ -85,7 +85,6 @@ packages/cli/src/security-audit/                        @n8n-io/catalysts
 packages/cli/src/modules/workflow-index/                @n8n-io/catalysts
 packages/cli/src/modules/breaking-changes/              @n8n-io/catalysts
 packages/cli/src/workflows/publication/                 @n8n-io/catalysts required
-packages/cli/src/modules/otel/                          @n8n-io/ligo
 
 packages/cli/src/auth/                                  @n8n-io/iam
 packages/cli/src/credentials/                           @n8n-io/iam
@@ -119,7 +118,7 @@ packages/cli/src/modules/data-table/                    @n8n-io/knowledge
 packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
 packages/cli/src/chat/                                  @n8n-io/ai
 packages/cli/src/tool-generation/                       @n8n-io/ai
-packages/cli/src/modules/workflow-builder/              @n8n-io/ai-assistant
+packages/modules/workflow-builder/                     @n8n-io/ai-assistant
 packages/cli/src/modules/mcp/                           @n8n-io/context
 packages/modules/quick-connect/                        @n8n-io/ai
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
@@ -255,6 +254,27 @@ packages/@n8n/inbound-auth/                             @n8n-io/iam
 
 packages/modules/type-availability-policies/            @n8n-io/governance-and-observability
 packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-observability
+packages/modules/otel/                                  @n8n-io/governance-and-observability
+packages/cli/src/modules/otel/                          @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/otel.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/shared/otel.mapper.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/node-type-policies.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/controllers/credential-type-policies.public.controller.ts @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/handlers/node-type-policies/ @n8n-io/governance-and-observability
+packages/cli/src/public-api/v1/handlers/credential-type-policies/ @n8n-io/governance-and-observability
+packages/cli/src/modules/policy-infrastructure/         @n8n-io/governance-and-observability
+packages/cli/src/policy/                                @n8n-io/governance-and-observability
+packages/@n8n/decorators/src/policy-check/              @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/dto/otel/                   @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/dto/type-availability-policies/ @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/node-type-availability.ts   @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/credential-type-availability.ts @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/schemas/policy-check-failure.schema.ts @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/schemas/policy-violation.schema.ts @n8n-io/governance-and-observability
+packages/@n8n/telemetry/src/events/policies.ts          @n8n-io/governance-and-observability
+packages/@n8n/telemetry/src/events/type-availability-policies.ts @n8n-io/governance-and-observability
+packages/workflow/src/errors/policy-refusal.ts          @n8n-io/governance-and-observability
+packages/frontend/editor-ui/src/app/composables/usePolicyViolationToast.ts @n8n-io/governance-and-observability
 
 # CI/CD
 

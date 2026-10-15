@@ -15,6 +15,8 @@ import {
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
+import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
+
 // Discovery of the local source must fail, not succeed with made-up documents.
 class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
 	async getMetadata(): Promise<AuthorizationServerMetadata> {
@@ -73,6 +75,14 @@ export class InboundAuthCoreModule implements ModuleInterface {
 
 		const { InboundAuthPipeline } = await import('./authentication-pipeline.js');
 		Container.set(AuthenticationPipeline, Container.get(InboundAuthPipeline));
+
+		// Only main serves the public API. The strategy resolves the pipeline, so it registers last.
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			const { PublicApiProtectedResource } = await import('./public-api-protected-resource.js');
+			const { PublicApiOAuthStrategy } = await import('./public-api-oauth.strategy.js');
+			Container.get(ProtectedResourceRegistry).register(Container.get(PublicApiProtectedResource));
+			Container.get(AuthStrategyRegistry).register(Container.get(PublicApiOAuthStrategy));
+		}
 	}
 
 	// Ungated: the runner skips a cluster-scoped task on webhook and worker instances itself.

@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { SsrfBridge } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ClientOAuth2 } from '@n8n/client-oauth2';
 import { type CredentialsEntity, type User } from '@n8n/db';
@@ -12,7 +13,6 @@ import { mock } from 'vitest-mock-extended';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalHooks } from '@/external-hooks';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
 

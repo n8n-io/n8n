@@ -1,5 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService } from '@n8n/backend-services';
+import { EventService, UrlService, WorkflowPublishedDataService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, type NodesConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
@@ -64,7 +64,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 const EXECUTION_ID = '123';
@@ -733,6 +733,75 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(response.data).toEqual([null]);
 				expect(response.usedDynamicCredentials).toBeUndefined();
 				expect(response.dynamicCredentialsResolvedUserId).toBeUndefined();
+			});
+
+			describe('credentials the sub-workflow references', () => {
+				beforeEach(() => {
+					credentialsPermissionChecker.getCredentialIdsForNodes.mockReturnValue(['child-cred']);
+				});
+
+				afterEach(() => {
+					delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+				});
+
+				const runSubWorkflow = async () =>
+					await executeWorkflow(
+						mock<IExecuteWorkflowInfo>(),
+						mock<IWorkflowExecuteAdditionalData>(),
+						mock<ExecuteWorkflowOptions>({
+							loadedWorkflowData: undefined,
+							doNotWaitToFinish: false,
+						}),
+					);
+
+				it('reports them to the caller with credential sharing on', async () => {
+					process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(getMockRunWithCredentialFlags({})),
+					);
+
+					const response = await runSubWorkflow();
+
+					expect(response.usedCredentialIds).toEqual(['child-cred']);
+				});
+
+				it('rides them on the error when the sub-workflow fails', async () => {
+					process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							mock<IRun>({
+								data: {
+									subWorkflowOutput: undefined,
+									resultData: {
+										runData: { [LAST_NODE_EXECUTED]: [{ startTime: 100 }] },
+										lastNodeExecuted: LAST_NODE_EXECUTED,
+										error: { message: 'child failed', name: 'NodeOperationError' },
+									},
+									executionData: { runtimeData: {} },
+								},
+								finished: false,
+								mode: 'manual',
+								startedAt: new Date(),
+								status: 'error',
+								waitTill: undefined,
+							}),
+						),
+					);
+
+					await expect(runSubWorkflow()).rejects.toMatchObject({
+						dynamicCredentialsUsage: { usedCredentialIds: ['child-cred'] },
+					});
+				});
+
+				it('reports nothing with credential sharing off', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(getMockRunWithCredentialFlags({})),
+					);
+
+					const response = await runSubWorkflow();
+
+					expect(response.usedCredentialIds).toBeUndefined();
+				});
 			});
 
 			describe('failed sub-workflow', () => {
