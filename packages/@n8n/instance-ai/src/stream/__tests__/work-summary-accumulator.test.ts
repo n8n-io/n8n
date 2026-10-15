@@ -85,13 +85,13 @@ describe('WorkSummaryAccumulator', () => {
 
 	it('retains a semantic config mutation marker from the tool result', () => {
 		const accumulator = new WorkSummaryAccumulator();
-		accumulator.observe(toolCallEvent('tc-1', 'update_skill'));
+		accumulator.observe(toolCallEvent('tc-1', 'agent_update_skill'));
 		accumulator.observe(toolResultEvent('tc-1', { ok: true, configMutated: true }));
 
 		expect(accumulator.toSummary().toolCalls).toEqual([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'update_skill',
+				toolName: 'agent_update_skill',
 				succeeded: true,
 				configMutated: true,
 			},

@@ -44,7 +44,30 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list_workflows');
 		expect(getToolNameTranslationKey('list_skills')).toBe('instanceAi.tools.list_skills');
 		expect(getToolNameTranslationKey('read_skill')).toBe('instanceAi.tools.read_skill');
-		expect(getToolNameTranslationKey('update_skill')).toBe('instanceAi.tools.update_skill');
+		expect(getToolNameTranslationKey('agent_update_skill')).toBe(
+			'instanceAi.tools.agent_update_skill',
+		);
+	});
+
+	it('resolves legacy builder tool names to the current translation key', () => {
+		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.get_node_types');
+		expect(getToolNameTranslationKey('write_config')).toBe('instanceAi.tools.agent_write_config');
+		expect(getToolNameTranslationKey(' ask_questions ')).toBe('instanceAi.tools.ask_questions');
+
+		const translator = {
+			baseText: (key: BaseTextKey) =>
+				key === 'instanceAi.tools.agent_write_config' ? 'Writing agent config' : key,
+		};
+		expect(resolveToolNameForDisplay('write_config', translator)).toBe('Writing agent config');
+		expect(resolveToolNameForDisplay('agent_write_config', translator)).toBe(
+			'Writing agent config',
+		);
+	});
+
+	it('formats the tool name when no translation exists', () => {
+		const identity = { baseText: (key: BaseTextKey) => key };
+		expect(resolveToolNameForDisplay('agent_finish_setup', identity)).toBe('Agent finish setup');
+		expect(resolveToolNameForDisplay('finish_setup', identity)).toBe('Finish setup');
 	});
 
 	it('returns an empty string for missing or blank names', () => {

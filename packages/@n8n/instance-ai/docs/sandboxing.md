@@ -4,8 +4,8 @@ Instance AI uses a remote sandbox workspace to build workflows from
 `@n8n/workflow-sdk` source. The sandbox keeps file writes and command execution
 off the n8n host. Workflow building is unavailable when sandboxing is disabled.
 
-Agent building is separate. `build-agent` delegates to
-`AgentsBuilderService` in the agents module and does not use the Instance AI
+Agent building is separate. The orchestrator builds Agents with the
+agents-module builder tools (`agent_*`). These tools do not use the Instance AI
 sandbox.
 
 ## Architecture

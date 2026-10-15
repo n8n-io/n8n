@@ -305,7 +305,7 @@ Because these are plain outcome expectations, scoring, the gate, the PR comment,
 
 Discovery reads the build's SSE tool-result stream (in `outcome/event-parser.ts`, alongside workflow/data-table id capture):
 
-- **agent** — the build-agent sub-agent announces itself with an `agent-spawned` event carrying `targetResource: { type: 'agent', id }`; that `id` is the ref. (The `build-agent` tool result carries no id.)
+- **agent** — a successful `agent_select` result, or any tool result stamped `configMutated: true`, carries the `agentId`; that id is the ref. Threads from before the builder ran in the orchestrator announce the target through an `agent-spawned` event carrying `targetResource: { type: 'agent', id }`.
 - **config-eval** — the `eval-config` tool's `create` action returns `{ config }`; the ref is the owning workflow id from the call args (config-evals are fetched per-workflow).
 
 Not yet covered: an automatic "unexpected artifact" fail (a build producing an artifact the case never mentions). That's parked until the signals exist, to be added later as a binary check or per-dataset rather than as a case-schema field.
@@ -1142,8 +1142,8 @@ an invalid attachment before the run starts.
 
 An Agent attachment supplies identity only. It does not copy the Agent configuration into
 the orchestrator prompt. To inspect or change the attached Agent, the assistant must pass
-the remapped id to `build-agent`. Agent Builder then reads the current configuration. An
-Agent-content case must use process and outcome expectations that verify this delegation
+the remapped id to `agent_select`. The assistant then reads the current configuration. An
+Agent-content case must use process and outcome expectations that verify this selection
 and the resulting repair. The attachment checks only that the eval reproduces the editor
 handoff.
 

@@ -786,6 +786,51 @@ describe('instanceAi.reducer', () => {
 			expect(runState).toBeUndefined();
 		});
 
+		test('createRunStateFromTree rewrites legacy builder tool names in a snapshot', () => {
+			const tree = {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed' as const,
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-1',
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: false,
+						renderHint: 'builder' as const,
+					},
+				],
+				children: [
+					{
+						agentId: 'agent-child',
+						role: 'agent-builder',
+						status: 'completed' as const,
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-2',
+								toolName: 'write_config',
+								args: {},
+								isLoading: false,
+							},
+						],
+						children: [],
+						timeline: [],
+					},
+				],
+				timeline: [],
+			};
+
+			const runState = createRunStateFromTree(tree);
+
+			expect(runState?.toolCallsById['tc-1']?.toolName).toBe('build-workflow');
+			expect(tree.toolCalls[0].toolName).toBe('build-workflow');
+			expect(tree.children[0].toolCalls[0].toolName).toBe('agent_write_config');
+		});
+
 		test('createRunStateFromTree preserves planItems', () => {
 			const runState = createRunStateFromTree({
 				agentId: 'agent-root',

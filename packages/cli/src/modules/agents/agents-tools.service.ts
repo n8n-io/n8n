@@ -15,6 +15,7 @@ import {
 	unsupportedEphemeralNodeOperationMessage,
 } from '@/node-execution';
 
+import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
 type NodeRequest =
@@ -124,7 +125,7 @@ export class AgentsToolsService {
 	}
 
 	private buildSearchNodesTool(): BuiltTool {
-		return new Tool('search_nodes')
+		return new Tool(BUILDER_TOOLS.SEARCH_NODES)
 			.description(
 				'Search for n8n nodes by name or service. Use this to find nodes that can be executed. ' +
 					'Returns tool node IDs, display names, versions, and descriptions. ' +
@@ -141,7 +142,7 @@ export class AgentsToolsService {
 	}
 
 	private buildGetNodeTypesTool(): BuiltTool {
-		return new Tool('get_node_types')
+		return new Tool(BUILDER_TOOLS.GET_NODE_TYPES)
 			.description(
 				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
 					'discovery results (search_nodes or agent-context integrations with kind "node"). Returns ' +
@@ -181,7 +182,7 @@ export class AgentsToolsService {
 		credentialProvider: CredentialProvider,
 		usageHint: string,
 	): BuiltTool {
-		return new Tool('list_credentials')
+		return new Tool(BUILDER_TOOLS.LIST_CREDENTIALS)
 			.description(
 				'List the credentials available to the user. Returns an array of credential names and types. ' +
 					'Accepts an optional `types` filter to return only credentials matching the given types. ' +

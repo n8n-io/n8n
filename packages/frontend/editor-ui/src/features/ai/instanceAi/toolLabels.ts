@@ -1,14 +1,15 @@
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
+import { AGENT_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
 const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task-control']);
-const SKILL_TOOLS = new Set([
-	'create_skills',
+const SKILL_TOOLS = new Set<string>([
+	AGENT_BUILDER_TOOL_NAMES.CREATE_SKILLS,
 	'list_skills',
 	'read_skill',
-	'update_skill',
+	AGENT_BUILDER_TOOL_NAMES.UPDATE_SKILL,
 	'load_skill',
 ]);
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
@@ -117,7 +118,8 @@ function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined 
 	}
 }
 
-export function getToolIcon(toolName: string): IconName {
+export function getToolIcon(rawToolName: string): IconName {
+	const toolName = resolveBuilderToolName(rawToolName);
 	if (toolName === 'complete-checkpoint') return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
@@ -131,8 +133,8 @@ export function getToolIcon(toolName: string): IconName {
 		toolName === 'executions' ||
 		toolName === 'nodes' ||
 		toolName === 'templates' ||
-		toolName === 'search_nodes' ||
-		toolName === 'get_node_types'
+		toolName === AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES ||
+		toolName === AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
@@ -160,8 +162,9 @@ export function getToolIcon(toolName: string): IconName {
 export function useToolLabel() {
 	const i18n = useI18n();
 
-	function getToolLabel(toolName: string, args?: Record<string, unknown>): string {
-		if (toolName === 'build-agent') {
+	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
+		const toolName = resolveBuilderToolName(rawToolName);
+		if (toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT) {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
 			if (operationKey) return i18n.baseText(operationKey);
 		}
@@ -210,7 +213,7 @@ export function useToolLabel() {
 		}
 		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
-		return translated === key ? toolName : translated;
+		return translated === key ? rawToolName : translated;
 	}
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {

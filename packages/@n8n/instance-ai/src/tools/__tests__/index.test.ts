@@ -55,8 +55,12 @@ vi.mock('../mcp-servers.tool', () => ({
 	createMcpServersTool: vi.fn(() => ({ id: 'mcp-servers' })),
 }));
 
-vi.mock('../orchestration/build-agent.tool', () => ({
-	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
+vi.mock('../orchestration/select-agent.tool', () => ({
+	createSelectAgentTool: vi.fn(() => ({ id: 'agent_select' })),
+}));
+
+vi.mock('../orchestration/builder-tools', () => ({
+	createAgentBuilderTools: vi.fn(() => [{ name: 'agent_write_config', id: 'agent_write_config' }]),
 }));
 
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
@@ -278,11 +282,12 @@ describe('domain tool construction', () => {
 		expect(orchestrationTools.has('eval-data')).toBe(false);
 	});
 
-	it('registers build-agent only when a builder delegate is present on the domain context', () => {
+	it('registers the agent builder tools only when a builder delegate is present on the domain context', () => {
 		const withoutDelegate = createOrchestrationTools(
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
 		);
-		expect(withoutDelegate.has('build-agent')).toBe(false);
+		expect(withoutDelegate.has('agent_select')).toBe(false);
+		expect(withoutDelegate.has('agent_write_config')).toBe(false);
 
 		const withDelegate = createOrchestrationTools(
 			makeContext({
@@ -290,8 +295,10 @@ describe('domain tool construction', () => {
 			} as Partial<InstanceAiContext>) as never,
 		);
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
-			'build-agent': { id: 'build-agent' },
+			agent_select: { id: 'agent_select' },
+			agent_write_config: { id: 'agent_write_config' },
 		});
+		expect(withDelegate.has('build-agent')).toBe(false);
 	});
 
 	it('registers get-session only when a preview session and resolver are present', () => {

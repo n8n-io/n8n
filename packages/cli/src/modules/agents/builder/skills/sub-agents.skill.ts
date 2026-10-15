@@ -11,8 +11,8 @@ export function subAgentsSkill(): RuntimeSkill {
 		name: 'Agent Builder Sub-Agents',
 		description:
 			'Use when configuring inline or saved sub-agent delegation for the target agent, selecting same-project sub-agents, or changing subAgents.maxChildren.',
-		recommendedTools: ['agent-context', 'ask_questions', 'patch_config'],
-		allowedTools: ['agent-context', 'ask_questions', 'patch_config', 'write_config'],
+		recommendedTools: ['agent-context', 'ask_questions', 'agent_patch_config'],
+		allowedTools: ['agent-context', 'ask_questions', 'agent_patch_config', 'agent_write_config'],
 		instructions: `\
 ## Purpose
 
@@ -73,7 +73,7 @@ Example patch flow:
 3. If the user's request does not make the routing rule clear, ask when each
    selected saved subagent should be used.
 4. \`agent-context({ type: "config" })\`.
-5. \`patch_config(...)\` adding selected
+5. \`agent_patch_config(...)\` adding selected
    \`{ "agentId": "<returned-agent-id>", "useWhen": "Use for ..." }\` refs to
    \`/subAgents/agents\`.
 

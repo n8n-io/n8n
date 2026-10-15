@@ -84,7 +84,7 @@ describe('get_resource_locator_options tool', () => {
 		expect(result).toEqual({
 			ok: false,
 			code: 'missing_credentials',
-			message: expect.stringContaining('ask_credential'),
+			message: expect.stringContaining('agent_ask_credential'),
 			credentialSlots: [
 				{
 					credentialType: 'linearOAuth2Api',

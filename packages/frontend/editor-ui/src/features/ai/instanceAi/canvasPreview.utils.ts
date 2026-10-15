@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -93,12 +94,12 @@ export interface CallAgentResult {
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the message
- * and response from the latest completed `call_agent` test run against
+ * and response from the latest completed `agent_call` test run against
  * `targetAgentId` — the builder's own "Testing agent" step already runs a
  * representative message against the draft agent, so a caller needing a real
  * input/output pair for preview purposes can reuse it instead of generating
  * and running its own. Scoped to `targetAgentId` (resolved the same way as
- * `getLatestAgentArtifactResult`) so a `call_agent` result from an earlier
+ * `getLatestAgentArtifactResult`) so a `agent_call` result from an earlier
  * agent built in this thread is never mistaken for the one just built.
  */
 export function getLatestCallAgentResult(
@@ -108,7 +109,7 @@ export function getLatestCallAgentResult(
 	return walkAgentTargetedResult(node, undefined, (tc, callTarget) => {
 		if (callTarget?.agentId !== targetAgentId) return undefined;
 		if (
-			tc.toolName !== 'call_agent' ||
+			tc.toolName !== AGENT_BUILDER_TOOL_NAMES.CALL_AGENT ||
 			tc.isLoading ||
 			!tc.result ||
 			typeof tc.result !== 'object'
@@ -168,8 +169,8 @@ export interface AgentBuilderTarget {
  * Walks an agent tree depth-first (most recent last) and returns the agentId
  * (node id) and targetAgentId of the latest agent-builder sub-agent that was
  * spawned with a concrete `targetResource.id`. Used to open the canvas
- * preview at spawn time, before the first build-agent tool call returns a
- * result — mirrors getLatestBuilderTarget for workflows.
+ * preview at spawn time in threads from before the builder ran inline —
+ * mirrors getLatestBuilderTarget for workflows.
  */
 export function getLatestAgentBuilderTarget(
 	node: InstanceAiAgentNode,
@@ -552,10 +553,26 @@ function matchAgentArtifactToolCall(
 	tc: InstanceAiToolCallState,
 	callTarget: AgentArtifactTarget | undefined,
 ): AgentArtifactResult | undefined {
-	if (tc.isLoading || !tc.result || typeof tc.result !== 'object' || !callTarget) return undefined;
-	if (tc.toolName !== 'build-agent') return undefined;
+	if (tc.isLoading || !isRecord(tc.result)) return undefined;
+	const result = tc.result;
 
-	const result = tc.result as Record<string, unknown>;
+	// The orchestrator runs the builder tools itself, so their results carry the agent identity.
+	if (typeof result.agentId === 'string') {
+		const ownTarget: AgentArtifactTarget = {
+			agentId: result.agentId,
+			...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+		};
+		if (tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT) {
+			return result.ok === true && result.agentChange === 'created'
+				? { ...ownTarget, toolCallId: tc.toolCallId, kind: 'created' }
+				: undefined;
+		}
+		if (result.configMutated === true) {
+			return { ...ownTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
+		}
+	}
+
+	if (tc.toolName !== AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT || !callTarget) return undefined;
 	if (result.agentChange === 'created') {
 		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
 	}

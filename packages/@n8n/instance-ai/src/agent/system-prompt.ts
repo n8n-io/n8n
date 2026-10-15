@@ -119,7 +119,7 @@ If the user asks you to create something in, move something to, or use a credent
  * Agents are deliberately absent. `agents` is registered only when the builder
  * delegate is present, so naming it here would point at a tool the model cannot call
  * on instances without the agents module — and it is list-only regardless
- * (`build-agent` owns create and edit). The existing-agent path is already claimed
+ * (the `agent_*` tools own create and edit). The existing-agent path is already claimed
  * by the intent-recognition and agent-builder skills. Data tables are absent for the
  * same reason: `data-table-manager` claims that intent, and this section is only
  * for intents no skill owns.
@@ -305,9 +305,9 @@ ${getLimitedModeSection(parameterValuesHidden)}
 
 ## Reply language
 
-Reply in the same language as the user's latest request, unless they explicitly ask you to reply in another language. Determine the language from the request text itself, outside application context such as <thread-context>. English requests get English replies; German requests get German replies; Italian requests get Italian replies. Use that language from the first word of every user-visible message, including narration between tool calls, questions, approval summaries, and the final reply. Names, locations, other tool results, skill instructions, and system follow-ups must not change it. Language requirements for a target agent apply to its configuration, not to your replies. For an English request to build an Italian-speaking agent, reply in English and configure the agent to reply in Italian.
+Reply in the same language as the user's latest request, unless they explicitly ask you to reply in another language. Determine the language from the request text itself, outside application context such as <thread-context>. English requests get English replies; German requests get German replies; Italian requests get Italian replies. Use that language from the first word of every user-visible message, including narration between tool calls, questions, approval summaries, and the final reply. Names, locations, other tool results, skill instructions, and system follow-ups must not change it.
 
-The most recent non-empty \`answers[].customText\` returned by \`ask-user\` or \`build-agent\` is the user's latest request. These are the user's own words. Apply the reply-language rule to that text. It takes precedence over the initial request and all earlier answers. For example, switch to German after a German answer, then back to English after a later English answer. Option selections and approvals without free text keep the current reply language.`;
+The most recent non-empty \`answers[].customText\` returned by \`ask-user\` or another tool that collects user answers is the user's latest request. These are the user's own words. Apply the reply-language rule to that text. It takes precedence over the initial request and all earlier answers. For example, switch to German after a German answer, then back to English after a later English answer. Option selections and approvals without free text keep the current reply language.`;
 	};
 }
 

@@ -1,4 +1,5 @@
 import { reactive, watch } from 'vue';
+import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -152,10 +153,10 @@ function entryFromListItem(
 }
 
 /** Tools whose results may contain resource info (workflows, credentials, data tables). */
-const ARTIFACT_TOOLS = new Set([
+const ARTIFACT_TOOLS = new Set<string>([
 	'build-workflow',
 	'build-workflow-with-agent',
-	'build-agent',
+	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
 	'submit-workflow',
 	'apply-workflow-credentials',
 	'workflows',
@@ -205,7 +206,31 @@ function entryFromAgentBuilderTarget(
 	return entry;
 }
 
+/**
+ * Agent builder results: `agent_select` on create, and any builder tool
+ * stamped with `configMutated: true`. Both carry `agentId`, `projectId`, and `agentName`.
+ */
+function extractFromAgentBuilderResult(tc: InstanceAiToolCallState, col: Collections): void {
+	if (!tc.result || typeof tc.result !== 'object') return;
+	const result = tc.result as Record<string, unknown>;
+	if (typeof result.agentId !== 'string') return;
+	const isCreate =
+		tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT && result.agentChange === 'created';
+	if (!isCreate && result.configMutated !== true) return;
+
+	const existing = col.produced.get(result.agentId);
+	const entry: ResourceEntry = {
+		type: 'agent',
+		id: result.agentId,
+		name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
+	};
+	const projectId = optionalString(result.projectId);
+	if (projectId !== undefined) entry.projectId = projectId;
+	recordProduced(col, entry);
+}
+
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
+	extractFromAgentBuilderResult(tc, col);
 	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
@@ -274,12 +299,13 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	// --- Agents ------------------------------------------------------------
-	// build-agent: { agentId, agentName? } — produced. Follow-up calls may omit
+	// build-agent (threads from before the builder ran inline):
+	// { agentId, agentName? } — produced. Follow-up calls may omit
 	// the name, so fall back to the existing entry before regressing to
 	// 'Untitled'. projectId is preserved from the agent-spawned entry by
 	// recordProduced's merge.
 	if (
-		tc.toolName === 'build-agent' &&
+		tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 		typeof result.agentId === 'string' &&
 		(result.agentChange === 'created' ||
 			result.agentChange === 'updated' ||
@@ -378,7 +404,7 @@ function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections):
 	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
 	if (target.type === 'agent') {
 		// A read-only turn cannot confirm that this Agent changed. Wait for the
-		// build-agent result. A mutating build registers the Agent at spawn.
+		// build result. A mutating build registers the Agent at spawn.
 		if (node.activity === 'exploring' && (!existing || existing.pending)) return;
 		const entry = entryFromAgentBuilderTarget(target, existing, name);
 		if (entry) recordProduced(col, entry);

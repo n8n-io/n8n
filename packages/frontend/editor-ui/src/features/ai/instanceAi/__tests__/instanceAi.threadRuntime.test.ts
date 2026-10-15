@@ -2816,12 +2816,12 @@ describe('createThreadRuntime - session always-allow', () => {
 
 	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
-		runtime.addAlwaysAllowKey('configure_channel', {});
+		runtime.addAlwaysAllowKey('agent_configure_channel', {});
 
 		pushPendingApproval(runtime, {
 			messageId: 'msg-channel',
 			requestId: 'req-channel',
-			toolName: 'configure_channel',
+			toolName: 'agent_configure_channel',
 			args: {},
 			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
 		});

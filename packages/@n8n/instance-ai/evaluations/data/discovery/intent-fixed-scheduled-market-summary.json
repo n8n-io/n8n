@@ -13,7 +13,7 @@
 		],
 		"noneOfToolCalls": [
 			{
-				"toolName": "build-agent"
+				"toolName": "agent_select"
 			},
 			{
 				"toolName": "load_skill",

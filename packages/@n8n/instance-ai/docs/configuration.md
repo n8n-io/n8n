@@ -179,10 +179,10 @@ listed in `N8N_ENABLED_MODULES`. `N8N_AI_ENABLED` controls older global AI
 features and does not gate Instance AI.
 
 The `agents` module is also in the default module set. When it is active and
-the Settings > Agents switch is on, the Assistant gets the `build-agent` and
-`agent-context` tools, the `agent-builder` and `intent-recognition` skills, and
-Agent preview handoff. When an admin turns the switch off, the Assistant loses
-all of these at once. A run that is building an Agent fails at its next step.
+the Settings > Agents switch is on, the Assistant gets the `agent_select` tool,
+the Agent Builder tools (`agent_*`), the `agent-context` tool, the
+`agent-builder` and `intent-recognition` skills, and Agent preview handoff.
+When an admin turns the switch off, the Assistant loses all of these at once. A run that is building an Agent fails at its next step.
 To remove the module, add `agents` to `N8N_DISABLED_MODULES`.
 
 Chat and the main UI are gated by `InstanceAiSettingsService.isInstanceAiEnabled()`.
@@ -210,8 +210,8 @@ N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse,database=https://
 ```
 
 Each MCP server's tools are merged with the native tools and made available to
-the orchestrator agent. The embedded Agent Builder receives the same validated,
-approval-wrapped MCP tools; specialized background agents do not.
+the orchestrator agent, also while it builds an Agent. Specialized background
+agents do not receive them.
 
 ## Storage
 

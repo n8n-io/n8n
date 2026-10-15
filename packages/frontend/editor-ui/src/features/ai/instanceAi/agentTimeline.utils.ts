@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
@@ -143,7 +144,7 @@ export function buildTimelineBlocks(
 				// Keep the explanation before a confirmation outside the trace.
 				tc.confirmation === undefined &&
 				!(
-					tc.toolName === 'build-agent' &&
+					tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 				)
 			) {
@@ -227,7 +228,7 @@ export function buildTimelineBlocks(
 		const tc = toolCallsById[entry.toolCallId];
 		if (!tc) return;
 		if (
-			tc.toolName === 'build-agent' &&
+			tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 			hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 		) {
 			return;

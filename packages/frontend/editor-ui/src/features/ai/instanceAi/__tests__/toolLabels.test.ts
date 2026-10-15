@@ -7,6 +7,7 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
 				'instanceAi.tools.read_config': 'Reading agent config',
+				'instanceAi.tools.agent_write_config': 'Writing agent config',
 				'instanceAi.tools.resolve_integration': 'Adding integration',
 				'instanceAi.tools.build-agent': 'Working with agent',
 				'instanceAi.tools.build-agent.exploring': 'Exploring agent',
@@ -122,10 +123,10 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns book-open for skill tools', () => {
-		expect(getToolIcon('create_skills')).toBe('book-open');
+		expect(getToolIcon('agent_create_skills')).toBe('book-open');
 		expect(getToolIcon('list_skills')).toBe('book-open');
 		expect(getToolIcon('read_skill')).toBe('book-open');
-		expect(getToolIcon('update_skill')).toBe('book-open');
+		expect(getToolIcon('agent_update_skill')).toBe('book-open');
 		expect(getToolIcon('load_skill')).toBe('book-open');
 	});
 
@@ -143,6 +144,11 @@ describe('getToolIcon', () => {
 
 	test('returns wrench as default', () => {
 		expect(getToolIcon('unknown-tool')).toBe('wrench');
+	});
+
+	test('resolves legacy builder tool names to the current icon', () => {
+		expect(getToolIcon('create_skills')).toBe('book-open');
+		expect(getToolIcon('update_skill')).toBe('book-open');
 	});
 });
 
@@ -202,6 +208,13 @@ describe('useToolLabel', () => {
 				command: 'node $N8N_SKILL_DIR/scripts/import-rows.mjs',
 			}),
 		).toBe('Running import rows script');
+	});
+
+	test('getToolLabel resolves legacy builder tool names to the current label', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('build-agent')).toBe('Working with agent');
+		expect(getToolLabel('build-agent', { operation: 'exploring' })).toBe('Exploring agent');
+		expect(getToolLabel('write_config')).toBe('Writing agent config');
 	});
 
 	test('getToolLabel falls back to raw tool name when not found', () => {

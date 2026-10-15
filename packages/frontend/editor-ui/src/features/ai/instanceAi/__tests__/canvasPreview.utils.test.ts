@@ -210,7 +210,7 @@ describe('getLatestCallAgentResult', () => {
 			targetResource: { type: 'agent', id: 'agent-1' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'call_agent',
+					toolName: 'agent_call',
 					isLoading: true,
 					args: { message: 'Summarize the thread' },
 					result: undefined,
@@ -225,7 +225,7 @@ describe('getLatestCallAgentResult', () => {
 			targetResource: { type: 'agent', id: 'agent-1' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'call_agent',
+					toolName: 'agent_call',
 					args: { message: 'Summarize the thread' },
 					result: { status: 'error', code: 'agent_misconfigured' },
 				}),
@@ -240,7 +240,7 @@ describe('getLatestCallAgentResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-call-1',
-					toolName: 'call_agent',
+					toolName: 'agent_call',
 					args: { message: 'Summarize the thread about the outage' },
 					result: {
 						status: 'completed',
@@ -264,13 +264,13 @@ describe('getLatestCallAgentResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-call-1',
-					toolName: 'call_agent',
+					toolName: 'agent_call',
 					args: { message: 'first try' },
 					result: { status: 'completed', response: 'old answer', executionId: 'exec-1' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-call-2',
-					toolName: 'call_agent',
+					toolName: 'agent_call',
 					args: { message: 'second try' },
 					result: { status: 'completed', response: 'new answer', executionId: 'exec-2' },
 				}),
@@ -291,7 +291,7 @@ describe('getLatestCallAgentResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
-					toolName: 'call_agent',
+					toolName: 'agent_call',
 					args: { message: 'child message' },
 					result: { status: 'completed', response: 'child answer', executionId: 'exec-1' },
 				}),
@@ -315,7 +315,7 @@ describe('getLatestCallAgentResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-call-a',
-					toolName: 'call_agent',
+					toolName: 'agent_call',
 					args: { message: 'test agent A' },
 					result: { status: 'completed', response: 'A answer', executionId: 'exec-a' },
 				}),
@@ -481,6 +481,60 @@ describe('getLatestAgentBuilderTarget', () => {
 });
 
 describe('getLatestAgentArtifactResult', () => {
+	test('reads a created agent from the select-agent result', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-select',
+					toolName: 'agent_select',
+					args: { name: 'Support' },
+					result: { ok: true, agentId: 'agent-9', projectId: 'project-1', agentChange: 'created' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
+			agentId: 'agent-9',
+			projectId: 'project-1',
+			toolCallId: 'tc-select',
+			kind: 'created',
+		});
+	});
+
+	test('returns no artifact when select-agent only selects an existing agent', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'agent_select',
+					args: { agentRef: 'support' },
+					result: { ok: true, agentId: 'agent-9', projectId: 'project-1', agentChange: 'none' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toBeUndefined();
+	});
+
+	test('reads a mutated agent from a builder tool result stamped configMutated', () => {
+		const orchestrator = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-patch',
+					toolName: 'agent_patch_config',
+					args: {},
+					result: { ok: true, configMutated: true, agentId: 'agent-9', projectId: 'project-1' },
+				}),
+			],
+		});
+
+		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
+			agentId: 'agent-9',
+			projectId: 'project-1',
+			toolCallId: 'tc-patch',
+			kind: 'mutated',
+		});
+	});
+
 	test('returns no artifact for an explicit unchanged result', () => {
 		const orchestrator = makeAgentNode({
 			toolCalls: [
@@ -636,13 +690,13 @@ describe('getLatestAgentConfigMutation', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-write',
-					toolName: 'write_config',
+					toolName: 'agent_write_config',
 					isLoading: false,
 					result: { ok: true, configMutated: true, agentId: 'agent-1' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-patch',
-					toolName: 'patch_config',
+					toolName: 'agent_patch_config',
 					isLoading: false,
 					result: { ok: true, configMutated: true, agentId: 'agent-1' },
 				}),
@@ -657,13 +711,17 @@ describe('getLatestAgentConfigMutation', () => {
 
 	test('ignores loading calls and results without the configMutated marker', () => {
 		const inFlight = makeAgentNode({
-			toolCalls: [makeToolCall({ toolName: 'write_config', isLoading: true })],
+			toolCalls: [makeToolCall({ toolName: 'agent_write_config', isLoading: true })],
 		});
 		expect(getLatestAgentConfigMutation(inFlight)).toBeUndefined();
 
 		const unstamped = makeAgentNode({
 			toolCalls: [
-				makeToolCall({ toolName: 'write_config', isLoading: false, result: { ok: true } }),
+				makeToolCall({
+					toolName: 'agent_write_config',
+					isLoading: false,
+					result: { ok: true },
+				}),
 				makeToolCall({ toolName: 'read_config', isLoading: false, result: { ok: true } }),
 			],
 		});
@@ -676,7 +734,7 @@ describe('getLatestAgentConfigMutation', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-nested',
-					toolName: 'patch_config',
+					toolName: 'agent_patch_config',
 					isLoading: false,
 					result: { ok: true, configMutated: true, agentId: 'agent-1' },
 				}),

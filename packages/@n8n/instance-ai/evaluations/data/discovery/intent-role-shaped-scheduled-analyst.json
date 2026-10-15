@@ -12,7 +12,7 @@
 				"argsContainAny": ["agent-builder"]
 			},
 			{
-				"toolName": "build-agent"
+				"toolName": "agent_select"
 			}
 		],
 		"noneOfToolCalls": [

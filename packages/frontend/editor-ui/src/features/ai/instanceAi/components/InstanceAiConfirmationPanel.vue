@@ -684,7 +684,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
 				/>
 
-				<!-- Chat-channel setup (agent-builder configure_channel) — presence-based -->
+				<!-- Chat-channel setup (agent-builder agent_configure_channel) — presence-based -->
 				<InstanceAiChannelSetup
 					v-else-if="chunk.item.toolCall.confirmation.channelConfig"
 					:key="'channel-' + chunk.item.toolCall.confirmation.requestId"

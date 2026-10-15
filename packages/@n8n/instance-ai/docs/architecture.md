@@ -163,7 +163,7 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent support** (`agent/`) — shared protocol for embedded specialist agents
-- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `task-control`, `complete-checkpoint`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `build-agent`, `get-session`
+- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `task-control`, `complete-checkpoint`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `agent_select`, `get-session`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
 - **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
@@ -375,8 +375,8 @@ To keep the orchestrator's context lean, tools are stratified into two tiers:
   `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `ask-user`, `workflows`,
   `executions`, `credentials`, `data-tables`, `nodes`, `build-workflow`,
   `research`, and `n8n-docs`. `verify-built-workflow`, `parse-file`, `agents`,
-  `build-agent`, and `mcp-servers` are also direct when their required runtime
-  context or feature is available.
+  `agent_select`, the Agent Builder tools (`agent_*`), and `mcp-servers` are also
+  direct when their required runtime context or feature is available.
 - **Deferred tools** (behind ToolSearchProcessor): everything else, including
   `create-tasks` and the rest of the orchestration surface — discovered
   on-demand via `search_tools` and activated via `load_tool`
@@ -408,9 +408,8 @@ The cli's `InstanceAiService` holds one manager instance and passes it to
    instances are tracked so `mcpManager.disconnect()` (called during service
    shutdown) closes SSE / stdio connections cleanly.
 
-The embedded Agent Builder receives the same per-run, approval-wrapped MCP tool
-registry as the orchestrator. Builder-native tool names remain reserved, so an
-MCP connector cannot shadow configuration or lifecycle tools.
+Agent Builder tool names are claimed native names, so an MCP connector cannot
+shadow configuration or lifecycle tools.
 
 The local Computer Use server is separate from external MCP configuration. Its
 browser tools are available directly to the orchestrator and are guided by the

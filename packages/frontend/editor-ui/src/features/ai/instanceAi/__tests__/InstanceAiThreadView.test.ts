@@ -2534,7 +2534,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',
-							toolName: 'call_agent',
+							toolName: 'agent_call',
 							args: { message: 'Summarize the thread about the outage' },
 							isLoading: false,
 							result: {
@@ -2871,7 +2871,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',
-							toolName: 'call_agent',
+							toolName: 'agent_call',
 							args: { message: 'Summarize the thread about the outage' },
 							isLoading: false,
 							result: {
