@@ -209,13 +209,17 @@ watch(
 	{ immediate: true },
 );
 
+function isSettledCheck(row: CheckRow) {
+	return row.status !== 'waiting' && row.status !== 'idle';
+}
+
 function canChangeResult(resultId: string) {
 	return (
 		!props.disabled &&
 		!props.rerunning &&
 		!showingPreviousRun.value &&
 		!isApplyingSuggestions.value &&
-		rows.value.some((row) => row.id === resultId && row.status !== 'waiting')
+		rows.value.some((row) => row.id === resultId && isSettledCheck(row))
 	);
 }
 
@@ -246,7 +250,7 @@ const applyingAll = ref(false);
 // composable's concern, not this button's.
 const applicableSuggestionIds = computed(() =>
 	rows.value
-		.filter((row) => row.fixSuggestion !== null && row.status !== 'waiting')
+		.filter((row) => row.fixSuggestion !== null && isSettledCheck(row))
 		.map((row) => row.id),
 );
 
@@ -540,7 +544,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:what-to-check="row.whatToCheck"
 				:fix-suggestion="row.fixSuggestion"
 				:applying-suggestion="applyingSuggestionIds.includes(row.id)"
-				:disabled="disabled || rerunning || showingPreviousRun || isApplyingSuggestions"
+				:disabled="!canChangeResult(row.id)"
 				:running-check="row.status === 'waiting'"
 				hide-revise
 				view="complete"

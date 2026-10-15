@@ -80,6 +80,46 @@ describe('AgentEvalAddCheckPanel', () => {
 		vi.clearAllMocks();
 	});
 
+	it.each([
+		['drafting a rule', 'deferRun'],
+		['saving a rule', 'busy'],
+		['saving a prepared case', 'deferRun'],
+		['saving a prepared case', 'busy'],
+	] as const)('remembers a run that starts and finishes while %s (%s)', async (phase, runProp) => {
+		const user = userEvent.setup();
+		const { store, findAllByTestId, getByTestId, rerender, emitted } = renderPanel();
+		await findAllByTestId('agent-eval-add-check-prepared-add');
+		let finish!: () => void;
+		const pending = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		if (phase === 'drafting a rule') {
+			vi.mocked(store.generateDraftCases).mockImplementationOnce(async () => {
+				await pending;
+				return { cases: [draft(9)] };
+			});
+		} else {
+			vi.mocked(store.createCase).mockImplementationOnce(async () => {
+				await pending;
+				return { rowId: 9, input: 'new message', whatToCheck: 'new rule' };
+			});
+		}
+		if (phase === 'saving a prepared case') {
+			await user.click((await findAllByTestId('agent-eval-add-check-prepared-add'))[0]);
+		} else {
+			await user.type(getByTestId('agent-eval-add-check-rule-input'), 'Be polite{Enter}');
+		}
+
+		await rerender({ [runProp]: true });
+		await rerender({ [runProp]: false });
+		finish();
+		await waitFor(() => expect(emitted('added')).toEqual([[true]]));
+
+		// The next addition has no overlap with that finished run.
+		await user.click((await findAllByTestId('agent-eval-add-check-prepared-add'))[0]);
+		await waitFor(() => expect(emitted('added')).toEqual([[true], [false]]));
+	});
+
 	it.each([true, false])(
 		'defers additions if a run is active at either end of the save (initial: %s)',
 		async (initiallyRunning) => {

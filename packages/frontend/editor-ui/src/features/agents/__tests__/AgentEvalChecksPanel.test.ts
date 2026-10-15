@@ -2,7 +2,7 @@ import { configure, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import { ResponseError } from '@n8n/rest-api-client';
 
@@ -86,8 +86,15 @@ const { addCheckPanelMounts } = vi.hoisted(() => ({ addCheckPanelMounts: { count
 vi.mock('../components/AgentEvalAddCheckPanel.vue', () => ({
 	default: {
 		name: 'AgentEvalAddCheckPanel',
-		setup() {
+		setup(props: { deferRun: boolean }) {
 			addCheckPanelMounts.count++;
+			const deferredAtStart = ref(false);
+			return {
+				deferredAtStart,
+				startAdding: () => {
+					deferredAtStart.value = props.deferRun;
+				},
+			};
 		},
 		props: {
 			projectId: {},
@@ -95,17 +102,20 @@ vi.mock('../components/AgentEvalAddCheckPanel.vue', () => ({
 			caseSource: {},
 			disabled: { type: Boolean },
 			busy: { type: Boolean },
+			deferRun: { type: Boolean },
 		},
 		emits: ['close', 'added'],
 		template: `<div
 			data-testid="add-check-panel-stub"
 			:data-busy="busy"
+			:data-defer-run="deferRun"
 			:data-disabled="disabled"
 			:data-dataset="caseSource && caseSource.datasetId"
 		>
 			<button @click="$emit('close')">close panel</button>
-			<button @click="$emit('added')">added a check</button>
-			<button @click="$emit('added', true)">added after run finished</button>
+			<button @click="$emit('added', deferRun)">added a check</button>
+			<button @click="startAdding">start adding a check</button>
+			<button @click="$emit('added', deferredAtStart)">added after run finished</button>
 		</div>`,
 	},
 }));
@@ -314,6 +324,11 @@ describe('AgentEvalChecksPanel', () => {
 			}
 
 			live.value = loadedReview([result('n1', 'new')]);
+
+			await vi.waitFor(() =>
+				expect(getByTestId('agent-eval-check-n1')).toHaveAttribute('data-disabled', 'true'),
+			);
+			live.value = loadedReview([result('n1', 'success')]);
 
 			await vi.waitFor(() =>
 				expect(getByTestId('agent-eval-check-n1')).toHaveAttribute('data-disabled', 'false'),
@@ -723,7 +738,7 @@ describe('AgentEvalChecksPanel', () => {
 			expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1', 'c3']);
 		});
 
-		it('applies settled suggestions during a batch and leaves running checks out', async () => {
+		it('applies settled suggestions during a batch and leaves queued and running checks out', async () => {
 			const user = userEvent.setup();
 			const order: string[] = [];
 			const { getByTestId, store } = render(
@@ -731,6 +746,7 @@ describe('AgentEvalChecksPanel', () => {
 					results: [
 						failedWith('c1', 'Be brief'),
 						{ ...failedWith('c2', 'Wait'), status: 'running' },
+						{ ...failedWith('c3', 'Still queued'), status: 'new' },
 					],
 				},
 				true,
@@ -876,7 +892,8 @@ describe('AgentEvalChecksPanel', () => {
 				loading: false,
 				loadingMore: false,
 			});
-			vi.mocked(store.isRunInFlight).mockReturnValue(options.inFlight ?? false);
+			const inFlight = ref(options.inFlight ?? false);
+			vi.mocked(store.isRunInFlight).mockImplementation(() => inFlight.value);
 			vi.mocked(store.isStartingRun).mockReturnValue(false);
 			vi.mocked(store.getDatasets).mockReturnValue([
 				{ ...dataset, columnMapping: options.columnMapping ?? dataset.columnMapping },
@@ -887,6 +904,7 @@ describe('AgentEvalChecksPanel', () => {
 					props: { disabled: options.disabled, rerunning: options.rerunning },
 				}),
 				store,
+				inFlight,
 			};
 		};
 
@@ -998,8 +1016,13 @@ describe('AgentEvalChecksPanel', () => {
 
 		it('keeps an addition deferred after the original run finishes', async () => {
 			const user = userEvent.setup();
-			const { getByTestId, getByText, emitted } = renderWithDataset();
+			const { getByTestId, getByText, emitted, inFlight } = renderWithDataset({ inFlight: true });
 			await user.click(getByTestId('agent-eval-checks-add-check'));
+			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-defer-run', 'true');
+			await user.click(getByText('start adding a check'));
+			inFlight.value = false;
+			await nextTick();
+			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-defer-run', 'false');
 			await user.click(getByText('added after run finished'));
 			expect(emitted('rerun')).toBeUndefined();
 			expect(getByTestId('agent-eval-checks-saved-next-run')).toBeVisible();
@@ -1191,6 +1214,33 @@ describe('AgentEvalChecksPanel', () => {
 			expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't remove the test case");
 		});
 	});
+
+	it.each(['new', 'running'] as const)(
+		'blocks mutations on a %s check during a batch',
+		async (status) => {
+			const user = userEvent.setup();
+			const { getByTestId, store } = render({ results: [result('c1', status)] }, true);
+			const row = getByTestId('agent-eval-check-c1');
+			expect(row).toHaveAttribute('data-disabled', 'true');
+			for (const action of [
+				'actually fine',
+				'run check',
+				'save rule',
+				'delete check',
+				'apply suggestion',
+			]) {
+				// Guard handlers as well as controls against an event already in flight.
+				await user.click(within(row).getByText(action));
+			}
+			expect(store.acceptResult).not.toHaveBeenCalled();
+			expect(store.rerunResult).not.toHaveBeenCalled();
+			expect(store.updateCaseRule).not.toHaveBeenCalled();
+			expect(store.deleteCase).not.toHaveBeenCalled();
+			expect(store.deleteResult).not.toHaveBeenCalled();
+			expect(store.applySuggestions).not.toHaveBeenCalled();
+			expect(showError).not.toHaveBeenCalled();
+		},
+	);
 
 	it('passes current tool progress to a running check without an answer', () => {
 		const { getByTestId } = render(
