@@ -6,6 +6,20 @@ export const CHAT_MESSAGE_ROLE = {
 export type ChatMessageRole = (typeof CHAT_MESSAGE_ROLE)[keyof typeof CHAT_MESSAGE_ROLE];
 
 /**
+ * Where an assistant message shows a host event:
+ * - `start`: above the text and tool steps of the message, in arrival order.
+ * - `end`: below the text and tool steps of the message, in arrival order.
+ * - `transient`: after the `end` events, only while the turn runs or waits for
+ *   the user and the message has no text. A finished turn hides it.
+ */
+export const HOST_EVENT_PLACEMENT = {
+	START: 'start',
+	END: 'end',
+	TRANSIENT: 'transient',
+} as const;
+export type HostEventPlacement = (typeof HOST_EVENT_PLACEMENT)[keyof typeof HOST_EVENT_PLACEMENT];
+
+/**
  * Status of an assistant message during/after streaming.
  * Used by `useAgentChatStream`, `agentChatMessages`, and templates.
  */

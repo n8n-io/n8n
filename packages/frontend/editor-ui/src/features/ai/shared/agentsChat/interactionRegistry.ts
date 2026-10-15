@@ -1,6 +1,6 @@
 import type { Component, ComputedRef, InjectionKey } from 'vue';
 
-import { TOOL_CALL_STATE } from './constants';
+import { HOST_EVENT_PLACEMENT, TOOL_CALL_STATE, type HostEventPlacement } from './constants';
 import type {
 	AgentsChatHostEvent,
 	AgentsChatInteraction,
@@ -74,14 +74,8 @@ export interface AgentsChatInteractionExtension<TInput = unknown> {
 	hostEventPlacement?: AgentsChatHostEventPlacement;
 }
 
-/**
- * Where an assistant message shows a host event:
- * - `start`: above the text and tool steps of the message, in arrival order.
- * - `end`: below the text and tool steps of the message, in arrival order.
- * - `transient`: after the `end` events, only while the turn runs or waits for
- *   the user and the message has no text. A finished turn hides it.
- */
-export type AgentsChatHostEventPlacement = 'start' | 'end' | 'transient';
+/** Where an assistant message shows a host event. See `HOST_EVENT_PLACEMENT`. */
+export type AgentsChatHostEventPlacement = HostEventPlacement;
 
 /** A host event and the assistant message that carries it. */
 export interface AgentsChatHostEventSource {
@@ -162,7 +156,7 @@ export function findHostEventRenderer(
 	if (!extension?.hostEventComponent) return undefined;
 	return {
 		component: extension.hostEventComponent,
-		placement: extension.hostEventPlacement ?? 'start',
+		placement: extension.hostEventPlacement ?? HOST_EVENT_PLACEMENT.START,
 	};
 }
 

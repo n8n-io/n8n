@@ -48,7 +48,12 @@ import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
 import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
 import { isRetryableChatError } from '../utils/errors';
 import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
-import { CHAT_MESSAGE_ROLE, CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
+import {
+	CHAT_MESSAGE_ROLE,
+	CHAT_MESSAGE_STATUS,
+	HOST_EVENT_PLACEMENT,
+	TOOL_CALL_STATE,
+} from '../constants';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -208,8 +213,9 @@ const visibleMessages = computed(() => {
 		const hostEvents =
 			message.role === CHAT_MESSAGE_ROLE.ASSISTANT
 				? message.hostEvents.filter((event) => {
-						const placement = findHostEventRenderer(event, extensions)?.placement;
-						return placement === 'transient' ? live : placement !== undefined;
+						const renderer = findHostEventRenderer(event, extensions);
+						if (!renderer) return false;
+						return renderer.placement !== HOST_EVENT_PLACEMENT.TRANSIENT || live;
 					})
 				: [];
 		if (hostEvents.length === message.hostEvents.length) return [message];
