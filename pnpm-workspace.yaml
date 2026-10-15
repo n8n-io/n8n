@@ -65,7 +65,7 @@ catalog:
   '@ai-sdk/mistral': ^4.0.14
   '@ai-sdk/moonshotai': ^3.0.35
   '@ai-sdk/openai': ^4.0.20
-  '@ai-sdk/openai-compatible': ^3.0.14
+  '@ai-sdk/openai-compatible': ^3.0.44
   '@ai-sdk/otel': ^1.0.66
   '@ai-sdk/provider-utils': ^5.0.27
   '@ai-sdk/xai': ^4.0.18
@@ -160,7 +160,6 @@ catalog:
   '@types/mime-types': 3.0.1
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
-  '@types/nodemailer': 8.0.1
   '@types/oracledb': 6.10.3
   '@types/proxy-from-env': ^1.0.4
   '@types/qs': 6.9.15
@@ -242,7 +241,7 @@ catalog:
   mysql2: 3.23.1
   nanoid: 3.3.18
   nock: 14.0.14
-  nodemailer: 8.0.10
+  nodemailer: 10.0.14
   openai: 6.46.0
   oracledb: 6.10.0
   oxlint: 1.78.0
@@ -291,6 +290,7 @@ catalog:
   zod-to-json-schema: 3.23.3
   knip: ^6.35.1
   openapi-types: 12.1.3
+  google-auth-library: 10.9.1
 
 catalogMode: strict
 
@@ -397,7 +397,7 @@ overrides:
   pdf-parse: 'catalog:'
   pdfjs-dist: 'catalog:'
   tmp: 0.2.7
-  nodemailer: 8.0.10
+  nodemailer: 10.0.14
   validator: 'catalog:'
   zod: 3.25.76
   # Scoped to knip so the repo-wide zod 3 pin stays for everything else.
@@ -483,7 +483,11 @@ overrides:
   proxy-addr: 2.0.8
   source-map-js: 1.2.2
   '@grpc/grpc-js@<1.14.5': 1.14.5
+  # The editor schema and DOM parser must use the same model classes.
+  prosemirror-model: 1.25.12
   'prosemirror-view@<1.42.3': 1.42.3
+  # The @icetee/ftp patch replaces xregexp with native RegExp.
+  '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   'toml@<4.2.0': 4.2.0
 
 patchedDependencies:
@@ -509,6 +513,8 @@ patchedDependencies:
   imapflow@1.7.1: patches/imapflow@1.7.1.patch
   '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
   '@chat-adapter/whatsapp@4.37.0': patches/@chat-adapter__whatsapp@4.37.0.patch
+  '@icetee/ftp@0.3.15': patches/@icetee__ftp@0.3.15.patch
+  xml2js@0.6.2: patches/xml2js@0.6.2.patch
 
 allowBuilds:
   '@biomejs/biome': false

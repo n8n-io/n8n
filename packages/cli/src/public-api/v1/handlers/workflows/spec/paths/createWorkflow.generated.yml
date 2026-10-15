@@ -4,9 +4,6 @@ tags:
 summary: Create a workflow
 description: Create a workflow in your instance.
 x-required-scope: workflow:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:
@@ -23,7 +20,13 @@ requestBody:
             example: Workflow 1
           active:
             type: boolean
+            description: Deprecated. Check whether `activeVersionId` is not null instead.
             readOnly: true
+            deprecated: true
+          activeVersionId:
+            type: string
+            readOnly: true
+            nullable: true
           createdAt:
             type: string
             format: date-time
@@ -576,6 +579,8 @@ responses:
               nullable: true
             active:
               type: boolean
+              description: Deprecated. Check whether `activeVersionId` is not null instead.
+              deprecated: true
             activeVersionId:
               type: string
               nullable: true

@@ -5,6 +5,21 @@ import {
 } from '../credential-field-mapping';
 
 describe('mapCredentialForProvider', () => {
+	it.each([
+		'https://ai-gateway.vercel.sh/v4/ai',
+		'https://gateway.example.com/v4/ai',
+		'https://gateway.example.com/v1',
+	])('preserves a custom Vercel credential URL %s', (url) => {
+		expect(mapCredentialForProvider('vercel', { apiKey: 'key', url })).toEqual({
+			apiKey: 'key',
+			baseURL: url,
+		});
+	});
+
+	it('uses the native Vercel SDK endpoint when the credential has no URL', () => {
+		expect(mapCredentialForProvider('vercel', { apiKey: 'key' })).toEqual({ apiKey: 'key' });
+	});
+
 	describe.each([
 		['moonshotai', 'https://api.moonshot.cn/v1'],
 		['minimax', 'https://api.minimaxi.com/v1'],

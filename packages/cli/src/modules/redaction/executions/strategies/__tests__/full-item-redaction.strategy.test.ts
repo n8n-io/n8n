@@ -1,7 +1,7 @@
 import type { IRunExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import type { RedactableExecution } from '@n8n/backend-services';
 
 import type { RedactionContext } from '../../execution-redaction.interfaces';
 import { FullItemRedactionStrategy } from '../full-item-redaction.strategy';
@@ -12,6 +12,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	userCanReveal: false,
 	enforceDynCredRedaction: false,
 	enforceCredentialUsabilityRedaction: false,
+	inaccessibleCredentialIds: [],
 	memo: new Map(),
 	...overrides,
 });
@@ -235,11 +236,19 @@ describe('FullItemRedactionStrategy', () => {
 				],
 			});
 
-			await strategy.apply(execution, makeContext({ enforceCredentialUsabilityRedaction: true }));
+			await strategy.apply(
+				execution,
+				makeContext({
+					enforceCredentialUsabilityRedaction: true,
+					inaccessibleCredentialIds: ['alice-gmail'],
+				}),
+			);
 
 			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
 			expect(item.redaction?.reason).toBe('credential_inaccessible');
 			expect(execution.data.redactionInfo?.reason).toBe('credential_inaccessible');
+			// Names the credentials, so the editor can link to where access is granted.
+			expect(execution.data.redactionInfo?.credentialIds).toEqual(['alice-gmail']);
 		});
 
 		it('prefers "dynamic_credentials" over "credential_inaccessible" when both are set', async () => {

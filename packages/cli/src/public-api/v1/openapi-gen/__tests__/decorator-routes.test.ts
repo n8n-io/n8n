@@ -172,7 +172,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape.widgetId).toBeInstanceOf(z.ZodString);
 	});
 
-	it('bare route: omits every optional field, but always adds success/auth responses and eov routing headers', () => {
+	it('bare route: omits every optional field, but always adds success/auth responses', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
@@ -194,11 +194,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
 		});
-		expect(operation.config['x-eov-operation-id']).toBe('unreachable');
-		expect(operation.config['x-eov-operation-handler']).toBe(
-			'v1/handlers/decorator-routed.handler',
-		);
-		expect(operation.config['x-decorator-routed']).toBe(true);
+		expect(Object.keys(operation.config).filter((key) => key.startsWith('x-'))).toEqual([]);
 	});
 
 	it('documents a bare-array response DTO as an array schema, not an object envelope', () => {
@@ -372,5 +368,69 @@ describe('getDecoratorGeneratedOperations', () => {
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
 		expect(getSharedResponseSchemas().has(WidgetResponseDto)).toBe(false);
+	});
+
+	it('documents a binary success response', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, {
+				mediaType: 'application/gzip',
+				description: 'An archive.',
+				headers: {
+					'X-Example': { description: 'A header.' },
+				},
+			})
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[200]).toEqual({
+			description: 'An archive.',
+			headers: {
+				'X-Example': {
+					description: 'A header.',
+					required: true,
+					schema: { type: 'string' },
+				},
+			},
+			content: {
+				'application/gzip': {
+					schema: { type: 'string', format: 'binary' },
+				},
+			},
+		});
+	});
+
+	it('defaults the binary response description to "Operation successful." and omits headers when none are declared', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, { mediaType: 'application/gzip' })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[200]).toEqual({
+			description: 'Operation successful.',
+			content: {
+				'application/gzip': {
+					schema: { type: 'string', format: 'binary' },
+				},
+			},
+		});
+	});
+
+	it('does not include a binary route in getSharedResponseSchemas', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200, { mediaType: 'application/gzip' })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		expect(getSharedResponseSchemas().size).toBe(0);
 	});
 });

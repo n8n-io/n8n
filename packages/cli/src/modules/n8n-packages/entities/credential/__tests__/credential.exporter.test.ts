@@ -8,7 +8,7 @@ import type { CredentialsFinderService } from '@n8n/backend-services';
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialExporter } from '../credential.exporter';
 import { CredentialSerializer } from '../credential.serializer';
-import type { WorkflowCredentialRequirement } from '../credential.types';
+import type { CredentialRequirement, WorkflowCredentialRequirement } from '../credential.types';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -59,6 +59,50 @@ function makeExporter() {
 }
 
 describe('CredentialExporter', () => {
+	it.each([
+		{ selection: 'agent-only', usedBy: [{ kind: 'agent', id: 'wf-1' }] },
+		{
+			selection: 'agent-first',
+			usedBy: [
+				{ kind: 'agent', id: 'wf-1' },
+				{ kind: 'workflow', id: 'wf-1' },
+			],
+		},
+		{
+			selection: 'workflow-first',
+			usedBy: [
+				{ kind: 'workflow', id: 'wf-1' },
+				{ kind: 'agent', id: 'wf-1' },
+			],
+		},
+	])(
+		'preserves credential metadata and attribution for $selection consumers',
+		async ({ selection, usedBy }) => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(null);
+			const agent = { agentId: 'wf-1', projectId: 'proj-1', credentialId: 'cred_1' };
+			const requirements: CredentialRequirement[] = [agent, agent];
+			if (selection === 'agent-first') requirements.push(makeRequirement());
+			if (selection === 'workflow-first') requirements.unshift(makeRequirement());
+			const before = structuredClone(requirements);
+			const result = await exporter.export({
+				user,
+				requirements,
+				writer: new CapturingWriter(),
+				credentialExportPolicy: 'no-values',
+			});
+			expect(result.entries).toEqual([]);
+			expect(result.requirements).toEqual([
+				{
+					id: 'cred_1',
+					...(selection === 'agent-only' ? {} : { name: 'My Credential', type: 'httpHeaderAuth' }),
+					usedBy,
+				},
+			]);
+			expect(requirements).toEqual(before);
+		},
+	);
+
 	describe('empty input', () => {
 		it('returns empty result and writes nothing when given no requirements', async () => {
 			const { exporter, finder } = makeExporter();
@@ -103,7 +147,7 @@ describe('CredentialExporter', () => {
 					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 
@@ -119,7 +163,7 @@ describe('CredentialExporter', () => {
 			});
 		});
 
-		it('dedupes by credential id and aggregates usedByWorkflows when requirements come from multiple workflows', async () => {
+		it('dedupes by credential id and aggregates workflow consumers when requirements come from multiple workflows', async () => {
 			const { exporter, finder } = makeExporter();
 			finder.findCredentialForUser.mockResolvedValue(makeCredential());
 			const writer = new CapturingWriter();
@@ -129,6 +173,7 @@ describe('CredentialExporter', () => {
 				requirements: [
 					makeRequirement({ workflowId: 'wf-a' }),
 					makeRequirement({ workflowId: 'wf-b' }),
+					makeRequirement({ workflowId: 'wf-a' }),
 				],
 				writer,
 				credentialExportPolicy: 'expression-values-only',
@@ -143,7 +188,10 @@ describe('CredentialExporter', () => {
 					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-a', 'wf-b'],
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-a' },
+						{ kind: 'workflow', id: 'wf-b' },
+					],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);
@@ -208,7 +256,7 @@ describe('CredentialExporter', () => {
 					id: 'cred_unavailable',
 					name: 'Stale node name',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 			expect(writer.files).toEqual([]);
@@ -246,13 +294,13 @@ describe('CredentialExporter', () => {
 					id: 'cred_1',
 					name: 'My Credential',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 				{
 					id: 'cred_unavailable',
 					name: 'Unavailable',
 					type: 'slackOAuth2Api',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);

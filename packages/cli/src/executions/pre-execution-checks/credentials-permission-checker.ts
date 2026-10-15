@@ -480,7 +480,7 @@ export class CredentialsPermissionChecker {
 	getCredentialIdsForNodes(nodes: INode[]): string[] {
 		const ids = new Set<string>();
 		for (const node of nodes) {
-			if (node.disabled || !node.credentials) continue;
+			if (node.disabled === true || !node.credentials) continue;
 
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 
@@ -495,7 +495,7 @@ export class CredentialsPermissionChecker {
 
 	private mapCredIdsToNodes(nodes: INode[]) {
 		return nodes.reduce<{ [credentialId: string]: INode[] }>((map, node) => {
-			if (node.disabled || !node.credentials) return map;
+			if (node.disabled === true || !node.credentials) return map;
 
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 

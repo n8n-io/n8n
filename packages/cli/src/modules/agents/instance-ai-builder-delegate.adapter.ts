@@ -145,11 +145,17 @@ export class InstanceAiBuilderDelegateAdapterService {
 				throw new ForbiddenError('You do not have permission to access agents in this project.');
 			}
 		};
+		// Checked on every call, not when the delegate is created: a run that started
+		// before an admin turned Agents off must lose access at its next step.
+		const assertAccess = async (...scopes: Scope[]): Promise<void> => {
+			await this.agentsSettingsService.assertEnabled();
+			await assertProjectScope(...scopes);
+		};
 
 		return {
 			createAgent: async (name, options) => {
 				// Adopting also needs `agent:update` — see the port's `adoptOnCollision` docs.
-				await assertProjectScope(
+				await assertAccess(
 					...(options?.adoptOnCollision
 						? (['agent:create', 'agent:update'] as const)
 						: (['agent:create'] as const)),
@@ -163,8 +169,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			streamBuild: async (agentId, message, session) => {
-				await this.agentsSettingsService.assertEnabled();
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.buildAgent(
@@ -185,7 +190,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			resumeBuild: async (agentId, resume, session) => {
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.resumeBuild(
@@ -208,7 +213,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			findOpenSuspensions: async (agentId, session) => {
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 					agentId,
 					session.threadId,
@@ -225,11 +230,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			resolveAgentName: async (agentId) => {
-				await assertProjectScope('agent:read');
+				await assertAccess('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
 			},
 			readAgentArtifact: async (agentId) => {
-				await assertProjectScope('agent:read');
+				await assertAccess('agent:read');
 				// No JSON config yet (freshly created) is an empty snapshot, not an error.
 				// Anything else propagates: the callers already treat a throw as "no
 				// snapshot", and it gets logged there instead of vanishing here.

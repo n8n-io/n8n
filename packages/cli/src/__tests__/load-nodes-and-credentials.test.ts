@@ -2,13 +2,15 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { Module } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Service } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
+import { Container, Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
 import { CUSTOM_NODES_PACKAGE_NAME, CustomDirectoryLoader, DirectoryLoader } from 'n8n-core';
 import type {
 	ICredentialType,
 	INodeProperties,
+	INodeType,
 	INodeTypeDescription,
 	KnownNodesAndCredentials,
 	NodeLoader,
@@ -287,6 +289,80 @@ describe('LoadNodesAndCredentials', () => {
 					operation: 'get',
 				}),
 			).toEqual({ type: 'object' });
+		});
+
+		describe('parameter variants', () => {
+			const rawSchema = { type: 'object', title: 'raw' };
+			const plainSchema = { type: 'object' };
+			const lookupRef = {
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				resource: 'account',
+				operation: 'get',
+			};
+
+			const provideNode = (nodeType: Partial<INodeType>) => {
+				const type = { description: { properties: [] }, ...nodeType } as INodeType;
+				vi.spyOn(instance, 'getNode').mockReturnValue({ sourcePath: 'Test.node.js', type });
+			};
+
+			beforeEach(() => {
+				const accountDir = join(nodesDir, 'Test', '__schema__', 'v1.0.0', 'account');
+				writeFileSync(join(accountDir, 'get.simple-false.json'), JSON.stringify(rawSchema));
+				writeFileSync(
+					join(accountDir, 'get.custom.json'),
+					JSON.stringify({ type: 'object', title: 'custom' }),
+				);
+			});
+
+			it('should pick the variant file that matches the node parameters', () => {
+				provideNode({});
+
+				expect(
+					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: false } }),
+				).toEqual(rawSchema);
+			});
+
+			it('should use the property default when the parameter is absent', () => {
+				provideNode({
+					description: {
+						properties: [
+							{
+								name: 'simple',
+								type: 'boolean',
+								default: false,
+								displayOptions: { show: { resource: ['account'], operation: ['get'] } },
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				});
+
+				expect(instance.createOutputSchemaLookup()({ ...lookupRef, parameters: {} })).toEqual(
+					rawSchema,
+				);
+			});
+
+			it('should use the plain file when the parameter keeps its default', () => {
+				provideNode({
+					description: {
+						properties: [{ name: 'simple', type: 'boolean', default: true }],
+					} as unknown as INodeTypeDescription,
+				});
+
+				expect(instance.createOutputSchemaLookup()({ ...lookupRef, parameters: {} })).toEqual(
+					plainSchema,
+				);
+			});
+
+			it('should still resolve the plain schema when the node cannot be loaded', () => {
+				vi.spyOn(instance, 'getNode').mockImplementation(() => {
+					throw new Error('not loadable');
+				});
+
+				expect(
+					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: true } }),
+				).toEqual(plainSchema);
+			});
 		});
 
 		it('should return undefined for unknown nodes or missing schemas', () => {
@@ -1070,6 +1146,73 @@ describe('LoadNodesAndCredentials', () => {
 			await instance.collectTypes();
 
 			expect(mockLoader.releaseTypes).toHaveBeenCalled();
+		});
+	});
+
+	describe('concurrent rebuilds', () => {
+		class TwoStepLoader extends DirectoryLoader {
+			packageName = 'testPackage';
+
+			betweenSteps = async () => await new Promise<void>((resolve) => setImmediate(resolve));
+
+			override async loadAll() {
+				this.types.nodes = [
+					{ name: 'testNode', properties: [] } as unknown as INodeTypeDescription,
+				];
+				await this.betweenSteps();
+				this.types.credentials = [
+					{ name: 'testApi', properties: [] } as unknown as ICredentialType,
+				];
+			}
+		}
+
+		let instance: LoadNodesAndCredentials;
+		let loader: TwoStepLoader;
+		let snapshots: Array<{ nodes: number; credentials: number }>;
+
+		const fullSnapshot = { nodes: 1, credentials: 1 };
+
+		beforeEach(() => {
+			Container.set(Logger, mock<Logger>());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			instance.excludeNodes = [];
+			loader = new TwoStepLoader('/test/two-step');
+			instance.loaders = { testPackage: loader };
+
+			snapshots = [];
+			instance.addPostProcessor(async () => {
+				snapshots.push({
+					nodes: instance.types.nodes.length,
+					credentials: instance.types.credentials.length,
+				});
+			});
+
+			instance.releaseTypes();
+		});
+
+		it('should give each concurrent rebuild the full set of types', async () => {
+			await Promise.all([instance.postProcessLoaders(), instance.postProcessLoaders()]);
+
+			expect(snapshots).toEqual([fullSnapshot, fullSnapshot]);
+		});
+
+		it('should keep the full set of types when types are released during a rebuild', async () => {
+			loader.betweenSteps = async () => instance.releaseTypes();
+
+			await instance.postProcessLoaders();
+
+			expect(snapshots).toEqual([fullSnapshot]);
+		});
+
+		it('should not deadlock when a post-processor calls collectTypes() during a rebuild', async () => {
+			instance.addPostProcessor(async () => {
+				await instance.collectTypes();
+			});
+
+			const types = await instance.collectTypes();
+
+			expect(types.nodes).toHaveLength(1);
+			expect(types.credentials).toHaveLength(1);
 		});
 	});
 });

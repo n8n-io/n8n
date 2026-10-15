@@ -390,7 +390,6 @@ function getConfiguredSkillSource(
 	>();
 
 	for (const ref of refs) {
-		if (ref.enabled === false) continue;
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
@@ -405,7 +404,6 @@ function getConfiguredSkillSource(
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
-			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
 			linkedFiles,
 		});
 	}

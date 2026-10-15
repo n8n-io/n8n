@@ -37,6 +37,12 @@ import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
+import {
+	IdempotencyKey,
+	idempotencyKeyStatuses,
+	IDEMPOTENCY_KEY_TTL_MS,
+	type IdempotencyKeyStatus,
+} from './idempotency-key';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { PollerState } from './poller-state';
@@ -124,6 +130,10 @@ export {
 	type AgentEvalResultStatus,
 	AgentEvalRating,
 	type AgentEvalVote,
+	IdempotencyKey,
+	idempotencyKeyStatuses,
+	IDEMPOTENCY_KEY_TTL_MS,
+	type IdempotencyKeyStatus,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
@@ -219,6 +229,7 @@ export const entities = {
 	AgentEvalRun,
 	AgentEvalResult,
 	AgentEvalRating,
+	IdempotencyKey,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,

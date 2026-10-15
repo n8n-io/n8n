@@ -68,9 +68,9 @@ applicable sections are filled with real content (the actual steps, rules,
 examples, and edge cases). Derive missing domain detail from the user's
 stated goal as stated assumptions, and list them in your summary. Use
 \`ask_questions\` only when even a reasonable assumption is impossible — never
-during an initial build: mark the task \`blocked\` instead, per the Initial
-Build rules in your system prompt. Never create a placeholder or vague
-skill.
+during an initial build: add the open decision to the pending setup
+instead, per the Initial Build rules in your system prompt. Never create a
+placeholder or vague skill.
 
 ## Workflow
 
@@ -94,9 +94,9 @@ skill.
   when you rewrite most of the body. If an edit fails, nothing changed: fix
   \`oldText\` so it matches exactly one place and retry with the same
   \`baseSkillHash\`.
-  Do not create a replacement skill. Pass \`null\` for \`allowedTools\` to remove the tool
-  restriction or for \`references\` to remove all references; do not pass empty
-  arrays. When replacing \`references\`, first read the content of every existing
+  Do not create a replacement skill. Pass \`null\` for \`references\` to remove
+  all references; do not pass an empty array. The skill can be shared with other
+  agents: an update saves its next version for every agent that uses it. When replacing \`references\`, first read the content of every existing
   reference that must be preserved, because the field is replaced as a whole.
 - Only call \`create_skills\` when no attached skill owns the capability. Fill the
   domain detail you need, deriving missing detail from the goal as stated
@@ -118,8 +118,6 @@ skill.
 
 ## Extended fields
 
-- Use \`allowedTools\` only for exact tool names already attached to the target
-  agent that this skill may use.
 - Add \`references\` for longer markdown-only supporting files under
   \`references/...\`, such as rubrics, examples, policies, templates, or
   checklists. References are not automatically loaded when the skill loads.
