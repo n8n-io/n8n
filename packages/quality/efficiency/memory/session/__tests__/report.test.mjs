@@ -114,6 +114,17 @@ describe('recording reports', () => {
 		report.session.settings.workload = null;
 		expect(compareReports(report, report).comparable).toBe(false);
 	});
+	it('compares fixed lightweight sessions and rejects different capture sources', async () => {
+		const { input, session } = await fixture();
+		session.settings.metricsOnly = false;
+		session.settings.capture = { metrics: true, requests: true, allocations: false };
+		await writeFile(input, JSON.stringify(session));
+		const before = await buildReport(input);
+		expect(before.comparison.eligible).toBe(true);
+		const after = structuredClone(before);
+		after.session.settings.capture.allocations = true;
+		expect(compareReports(before, after).issues).toContain('Different allocations capture');
+	});
 	it('preserves readable samples after a truncated timeline row', async () => {
 		const { input } = await fixture();
 		await appendFile(join(input, '..', 'timeline.ndjson'), '\n{"memory":');

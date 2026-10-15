@@ -28,6 +28,16 @@
 			<p><a id="backend" hidden data-i18n="openBackend"></a></p>
 			<p id="backend-status" role="status"><span id="backend-spinner" class="button-icon icon-spinner" aria-hidden="true" hidden></span><span id="backend-status-message"></span></p>
 			<p id="error" role="alert"></p>
+			<details id="capture-options" hidden>
+				<summary data-i18n="captureSettings"></summary>
+				<p data-i18n="captureSettingsDescription"></p>
+				<div class="capture-settings">
+					<div><label><input id="capture-metrics" type="checkbox" aria-describedby="metrics-help" /><span data-i18n="captureMetrics"></span></label><p id="metrics-help" data-i18n="captureMetricsHelp"></p><div class="metric-interval"><label for="metrics-interval" data-i18n="metricsInterval"></label><select id="metrics-interval"><option value="1000">1 s</option><option value="2000">2 s</option><option value="5000">5 s</option><option value="10000">10 s</option></select></div></div>
+					<div><label><input id="capture-requests" type="checkbox" aria-describedby="requests-help" /><span data-i18n="captureRequests"></span></label><p id="requests-help" data-i18n="captureRequestsHelp"></p></div>
+					<div><label><input id="capture-allocations" type="checkbox" aria-describedby="allocations-help" /><span data-i18n="captureAllocations"></span></label><p id="allocations-help" data-i18n="captureAllocationsHelp"></p></div>
+				</div>
+				<p id="capture-unavailable" hidden></p>
+			</details>
 			<div class="dashboard-toolbar">
 				<div id="layout-actions" hidden>
 					<label for="add-card-select" data-i18n="addCardLabel"></label>
@@ -50,7 +60,7 @@
 					<h2 data-i18n="markersAndSnapshots"></h2>
 					<p id="recording-status" role="status"></p>
 					<form id="marker-form"><label for="marker" data-i18n="markerLabel"></label><input id="marker" maxlength="500" required /><button data-i18n="addMarker"></button></form>
-					<button id="snapshot" type="button" data-i18n="takeSnapshot"></button>
+					<button id="snapshot" type="button" data-i18n="takeSnapshot"></button><p data-i18n="snapshotCaptureHelp"></p>
 				</section>
 				<section id="allocations-section"><h2 data-i18n="allocations"></h2><p data-i18n="samplingDescription"></p><label for="profile" data-i18n="profileLabel"></label><select id="profile"></select><div id="allocations"></div></section>
 				<section id="constructors-section" hidden><h2 data-i18n="constructors"></h2><p data-i18n="snapshotDescription"></p><div id="constructors"></div></section>

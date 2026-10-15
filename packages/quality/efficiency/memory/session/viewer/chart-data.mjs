@@ -61,8 +61,9 @@ export function createTimeMapping(points, session, hideGaps) {
 	for (let index = 1; index < points.length; index++) {
 		const previous = points[index - 1];
 		const current = points[index];
-		if (current.elapsedMs - previous.elapsedMs > intervalMs * 2.5)
-			gaps.push({ start: previous.elapsedMs + intervalMs, end: current.elapsedMs });
+		const sampleIntervalMs = previous.intervalMs ?? intervalMs;
+		if (current.elapsedMs - previous.elapsedMs > sampleIntervalMs * 2.5)
+			gaps.push({ start: previous.elapsedMs + sampleIntervalMs, end: current.elapsedMs });
 	}
 	const merged = mergeGaps(gaps);
 	const toDisplay = (elapsedMs) => {
@@ -85,7 +86,7 @@ export function createTimeMapping(points, session, hideGaps) {
 	const isBreak = (previous, current) =>
 		previous.segmentId !== current.segmentId ||
 		intervalId(previous) !== intervalId(current) ||
-		current.elapsedMs - previous.elapsedMs > intervalMs * 2.5 ||
+		current.elapsedMs - previous.elapsedMs > (previous.intervalMs ?? intervalMs) * 2.5 ||
 		merged.some((gap) => gap.start < current.elapsedMs && gap.end > previous.elapsedMs);
 	return { toDisplay, isBreak, gaps: merged, intervalMs };
 }
@@ -135,6 +136,10 @@ export function prepareChartData({ report, favorites = new Set(), selectedReques
 		.map((marker) => ({ ...marker, x: mapping.toDisplay(marker.elapsedMs) }));
 	let first = points[0]?.elapsedMs ?? 0;
 	let last = points.at(-1)?.elapsedMs ?? first + mapping.intervalMs;
+	for (const marker of markers) {
+		first = Math.min(first, marker.elapsedMs);
+		last = Math.max(last, marker.elapsedMs);
+	}
 	for (const request of requests) {
 		if (!favorites.has(endpointKey(request)) && requestKey(request) !== selectedRequest) continue;
 		first = Math.min(first, request.elapsedMs);

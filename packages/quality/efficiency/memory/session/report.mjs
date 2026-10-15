@@ -210,11 +210,15 @@ export async function buildReport(input, { timeline = false, verifyArtifacts = t
 		issues.push('Required memory samples are missing');
 	if (session.gaps.length) issues.push('Capture has gaps');
 	if (session.pauses?.length) issues.push('Capture includes recording pauses');
+	if (session.captureChanges?.length) issues.push('Capture settings changed during recording');
 	if (session.recordingIntervals?.length > 1)
 		issues.push('Capture spans multiple recording intervals');
 	if (session.segments.length !== 1) issues.push('Capture spans multiple process segments');
 	if (!session.metadata.node) issues.push('Backend runtime is not verified');
-	if (!session.settings.metricsOnly && !session.profiles.length)
+	if (
+		(session.settings.capture?.allocations ?? !session.settings.metricsOnly) &&
+		!session.profiles.length
+	)
 		issues.push('Allocation profiles are missing');
 	let requests;
 	try {
@@ -315,6 +319,15 @@ export function compareReports(before, after) {
 	}
 	if (!before.session.settings.workload || !after.session.settings.workload)
 		issues.push('Specify --workload for both recordings');
+	for (const key of ['metrics', 'requests', 'allocations']) {
+		const enabled = (session) =>
+			session.settings.capture?.[key] ??
+			(key === 'metrics' ||
+				(key === 'requests'
+					? Boolean(session.settings.requestTracking)
+					: !session.settings.metricsOnly));
+		if (enabled(before.session) !== enabled(after.session)) issues.push(`Different ${key} capture`);
+	}
 	if (
 		JSON.stringify(before.session.metadata.configuration) !==
 		JSON.stringify(after.session.metadata.configuration)

@@ -161,7 +161,11 @@ function showRequests() {
 		element('favorite-endpoints').append(favoriteButton(key, label));
 	}
 	element('requests-status').textContent = t(
-		requests?.enabled ? 'requestHistory' : 'requestCaptureUnavailable',
+		report.live && report.status?.capture?.requests === false
+			? 'requestCaptureDisabled'
+			: requests?.enabled
+				? 'requestHistory'
+				: 'requestCaptureUnavailable',
 	);
 	table(
 		'requests',
@@ -239,6 +243,13 @@ async function showAllocations() {
 			mib(site.bytes),
 			`${site.url}:${site.line}:${site.column}`,
 		]),
+		{
+			emptyText: t(
+				report.live && report.status?.capture?.allocations === false
+					? 'allocationCaptureDisabled'
+					: 'noSamples',
+			),
+		},
 	);
 }
 
@@ -267,6 +278,7 @@ async function refresh() {
 			: '';
 	dashboard.setAvailable('controls', Boolean(report.live));
 	element('recording-actions').hidden = !report.live;
+	element('capture-options').hidden = !report.live;
 	for (const id of [
 		'timeline-section',
 		'statistics-section',
@@ -328,6 +340,7 @@ async function refresh() {
 				settings: report.session.settings,
 				recordingIntervals: report.session.recordingIntervals,
 				pauses: report.session.pauses,
+				captureChanges: report.session.captureChanges,
 			},
 			null,
 			2,
@@ -343,6 +356,7 @@ async function refresh() {
 	const files = report.session
 		? [
 				'session.json',
+				report.session.timeline,
 				...(report.session.requests ? [report.session.requests] : []),
 				...report.session.profiles.map((profile) => profile.file),
 				...report.session.snapshots.map((snapshot) => snapshot.file),
@@ -395,24 +409,81 @@ element('marker-form').addEventListener('submit', async (event) => {
 });
 element('snapshot').addEventListener('click', async () => {
 	if (!window.confirm(t('snapshotWarning'))) return;
-	element('snapshot').disabled = true;
+	controlPending = true;
+	updateControls();
 	try {
 		await control('snapshot');
 		await refresh();
 	} catch (error) {
 		element('error').textContent = error.message;
+	} finally {
+		controlPending = false;
+		updateControls();
 	}
 });
 function updateControls() {
-	const phase = report.status?.phase;
+	const phase = report.status?.phase ?? report.session?.status ?? 'replay';
 	const ready = report.live && report.status?.ready && !controlPending;
+	const capture = report.status?.capture;
+	const disabled =
+		capture &&
+		!['metrics', 'requests', 'allocations'].some(
+			(key) => capture[key] && report.status?.capabilities?.[key],
+		);
+	element('phase').textContent = t(phase === 'measurement' && disabled ? 'captureDisabled' : phase);
 	element('start-recording').disabled = !ready || phase !== 'paused';
 	element('pause-recording').disabled = !ready || phase !== 'measurement';
 	element('finish-session').disabled = !report.live || controlPending;
 	element('snapshot').disabled = !ready || !report.status?.capabilities?.snapshots;
 	element('recording-status').textContent = t(
-		phase === 'paused' ? 'recordingPaused' : 'recordingActive',
+		phase === 'paused'
+			? 'recordingPaused'
+			: disabled
+				? 'captureDisabledDescription'
+				: 'recordingActive',
 	);
+	for (const key of ['metrics', 'requests', 'allocations']) {
+		const input = element(`capture-${key}`);
+		if (!controlPending)
+			input.checked = Boolean(capture?.[key] && report.status?.capabilities?.[key]);
+		input.disabled = !ready || !report.status?.capabilities?.[key];
+	}
+	const interval = element('metrics-interval');
+	if (capture && !controlPending) {
+		if (![...interval.options].some((option) => option.value === String(capture.intervalMs))) {
+			const option = document.createElement('option');
+			option.value = String(capture.intervalMs);
+			option.textContent = `${seconds(capture.intervalMs)} s`;
+			interval.append(option);
+		}
+		interval.value = String(capture.intervalMs);
+	}
+	interval.disabled = !ready || !capture?.metrics;
+	const unavailable = !report.status?.capabilities?.allocations
+		? 'captureInspectorUnavailable'
+		: !report.status?.capabilities?.requests
+			? 'captureRequestsUnavailable'
+			: undefined;
+	element('capture-unavailable').hidden = !report.live || !report.status?.ready || !unavailable;
+	element('capture-unavailable').textContent = unavailable ? t(unavailable) : '';
+}
+for (const key of ['metrics', 'requests', 'allocations', 'intervalMs']) {
+	const input = element(key === 'intervalMs' ? 'metrics-interval' : `capture-${key}`);
+	input.addEventListener('change', async () => {
+		const value = key === 'intervalMs' ? Number(input.value) : input.checked;
+		controlPending = true;
+		updateControls();
+		try {
+			const result = await control('configure', { [key]: value });
+			report.status.capture = result.capture;
+			await refresh();
+		} catch (error) {
+			element('error').textContent = error.message;
+		} finally {
+			controlPending = false;
+			updateControls();
+		}
+	});
 }
 for (const [id, action] of [
 	['start-recording', 'resume'],

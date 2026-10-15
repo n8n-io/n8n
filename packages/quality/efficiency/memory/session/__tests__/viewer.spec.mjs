@@ -1,4 +1,4 @@
-import { mkdir, writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test, expect } from 'n8n-playwright/test';
@@ -7,9 +7,15 @@ import { serveViewer } from '../viewer.mjs';
 
 test('edits a persistent dashboard and controls recording', async ({ page }) => {
 	const directory = await mkdtemp(join(tmpdir(), 'n8n-memory-viewer-'));
-	const status = { phase: 'measurement', ready: true, capabilities: {} };
+	const status = {
+		phase: 'measurement',
+		ready: true,
+		capabilities: { metrics: true, requests: true, allocations: true, snapshots: true },
+		capture: { metrics: true, requests: true, allocations: false, intervalMs: 1000 },
+	};
 	const actions = [];
 	let viewer;
+	let replay;
 	const errors = [];
 	page.on('pageerror', (error) => errors.push(error.message));
 	try {
@@ -86,17 +92,23 @@ test('edits a persistent dashboard and controls recording', async ({ page }) => 
 		viewer = await serveViewer({
 			input: join(directory, 'session.json'),
 			getStatus: () => status,
-			controls: Object.fromEntries(
-				['pause', 'resume', 'stop'].map((action) => [
-					action,
-					async () => {
-						actions.push(action);
-						status.phase =
-							action === 'pause' ? 'paused' : action === 'resume' ? 'measurement' : 'complete';
-						return { accepted: true };
-					},
-				]),
-			),
+			controls: {
+				configure: async (body) => {
+					Object.assign(status.capture, body);
+					return { capture: status.capture };
+				},
+				...Object.fromEntries(
+					['pause', 'resume', 'stop'].map((action) => [
+						action,
+						async () => {
+							actions.push(action);
+							status.phase =
+								action === 'pause' ? 'paused' : action === 'resume' ? 'measurement' : 'complete';
+							return { accepted: true };
+						},
+					]),
+				),
+			},
 		});
 		await page.setViewportSize({ width: 1440, height: 1000 });
 		await page.goto(viewer.url);
@@ -252,9 +264,55 @@ test('edits a persistent dashboard and controls recording', async ({ page }) => 
 		await expect(requests).toHaveAttribute('gs-y', '0');
 		await page.locator('#reset-layout').click();
 		await page.locator('#toggle-layout').click();
+		await page.getByText('Capture settings', { exact: true }).click();
+		const metrics = page.getByRole('checkbox', { name: 'Memory metrics', exact: true });
+		const requestsToggle = page.getByRole('checkbox', { name: 'API request timings', exact: true });
+		const allocationsToggle = page.getByRole('checkbox', {
+			name: 'Allocation sampling',
+			exact: true,
+		});
+		await expect(metrics).toBeChecked();
+		await expect(requestsToggle).toBeChecked();
+		await expect(allocationsToggle).not.toBeChecked();
+		await allocationsToggle.check();
+		await expect.poll(() => status.capture.allocations).toBe(true);
+		await page.reload();
+		await page.getByText('Capture settings', { exact: true }).click();
+		await expect(allocationsToggle).toBeChecked();
+		await allocationsToggle.uncheck();
+		await expect.poll(() => status.capture.allocations).toBe(false);
+		await requestsToggle.uncheck();
+		await expect(page.locator('#requests-status')).toContainText('API request capture is off');
+		await expect(page.locator('#requests tbody tr')).toHaveCount(2);
+		await metrics.uncheck();
+		await expect(page.locator('#phase')).toHaveText('Collection off');
+		await expect(page.getByLabel('Metric interval', { exact: true })).toBeDisabled();
+		await metrics.check();
+		await page.getByLabel('Metric interval', { exact: true }).selectOption('5000');
+		await expect.poll(() => status.capture.intervalMs).toBe(5000);
+		await requestsToggle.check();
+		status.capabilities.allocations = false;
+		status.capabilities.requests = false;
+		status.capabilities.snapshots = false;
+		await expect(allocationsToggle).toBeDisabled();
+		await expect(requestsToggle).toBeDisabled();
+		await expect(page.locator('#snapshot')).toBeDisabled();
+		await expect(page.locator('#capture-unavailable')).toContainText(
+			'Start a new session without --metrics-only',
+		);
+		await metrics.uncheck();
+		await expect(page.locator('#phase')).toHaveText('Collection off');
+		await metrics.check();
+		status.capabilities.allocations = true;
+		status.capabilities.requests = true;
+		status.capabilities.snapshots = true;
+		await expect(allocationsToggle).toBeEnabled();
 		await page.locator('#pause-recording').click();
 		await expect(page.locator('#phase')).toHaveText('Recording paused');
 		await expect(page.locator('#pause-recording')).toBeDisabled();
+		await allocationsToggle.check();
+		await expect(page.locator('#phase')).toHaveText('Recording paused');
+		await expect.poll(() => status.capture.allocations).toBe(true);
 		await page.locator('#start-recording').click();
 		await expect(page.locator('#phase')).toHaveText('Recording');
 		await page.setViewportSize({ width: 390, height: 844 });
@@ -268,9 +326,20 @@ test('edits a persistent dashboard and controls recording', async ({ page }) => 
 		);
 		await page.locator('#finish-session').click();
 		await expect(page.locator('#controls')).toBeHidden();
+		await expect(page.locator('#capture-options')).toBeHidden();
 		expect(actions).toEqual(['pause', 'resume', 'stop']);
+		const input = join(directory, 'session.json');
+		const session = JSON.parse(await readFile(input, 'utf8'));
+		session.status = 'complete';
+		await writeFile(input, JSON.stringify(session));
+		replay = await serveViewer({ input });
+		await page.goto(replay.url);
+		await expect(page.locator('#phase')).toHaveText('Complete');
+		await expect(page.locator('#capture-options')).toBeHidden();
+		await expect(page.locator('#recording-actions')).toBeHidden();
 		expect(errors).toEqual([]);
 	} finally {
+		await replay?.close();
 		await viewer?.close();
 		await rm(directory, { recursive: true, force: true });
 	}

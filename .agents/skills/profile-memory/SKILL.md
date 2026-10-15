@@ -30,7 +30,7 @@ options below. Read `editorUrl` from status. The command starts the backend,
 compiler, and frontend. It measures the backend.
 
 ```bash
-pnpm --silent profile:memory record --duration 120s --warmup 30s --workload workflow-execution --no-open --json --output .context/memory-profiles/before
+pnpm --silent profile:memory record --allocations --duration 120s --warmup 30s --workload workflow-execution --no-open --json --output .context/memory-profiles/before
 ```
 
 Choose a representative workload and name it with `--workload`. Wait until this
@@ -39,6 +39,11 @@ command returns `ready: true` before you start the workload:
 ```bash
 pnpm --silent profile:memory status --session .context/memory-profiles/before --json
 ```
+
+Normal sessions collect metrics and API timings without allocation sampling.
+Use `--allocations` for allocation-site evidence. The live viewer can change
+each source and the metric interval. Keep settings fixed during controlled
+before-and-after recordings. Comparisons reject sessions with settings changes.
 
 Add markers with `mark --session <directory> --label <action> --json`. Stop early
 with `stop --session <directory> --json`. Use `pause` and `resume` with the same

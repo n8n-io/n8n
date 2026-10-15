@@ -92,6 +92,12 @@ export async function stopOwnedProcess(child) {
 }
 
 export async function record(options) {
+	const capture = {
+		metrics: true,
+		requests: !options.metricsOnly,
+		allocations: !options.metricsOnly && Boolean(options.allocations),
+		intervalMs: options.intervalMs,
+	};
 	const directory = resolve(options.output);
 	await mkdir(dirname(directory), { recursive: true, mode: 0o700 });
 	await mkdir(directory, { mode: 0o700 });
@@ -123,6 +129,7 @@ export async function record(options) {
 			workload: options.workload ?? null,
 			frontend: Boolean(options.frontend),
 			requestTracking: false,
+			capture: { ...capture },
 		},
 		metadata: {
 			commit: await git('rev-parse', 'HEAD'),
@@ -141,6 +148,7 @@ export async function record(options) {
 		segments: [],
 		recordingIntervals: [],
 		pauses: [],
+		captureChanges: [],
 		profiles: [],
 		snapshots: [],
 		markers: [],
@@ -159,6 +167,7 @@ export async function record(options) {
 		viewerUrl: null,
 		pid: null,
 		capabilities: { metrics: false, allocations: false, snapshots: false, requests: false },
+		capture,
 	};
 	let child;
 	let childError;
@@ -189,7 +198,7 @@ export async function record(options) {
 	let metricsUrl;
 	let startupDeadline;
 	let requestLog;
-	const requestLeaseMs = Math.max(180_000, options.intervalMs * 3);
+	const requestLeaseMs = () => Math.max(180_000, capture.intervalMs * 3);
 	const controller = new AbortController();
 	const stop = () => {
 		stopped = true;
@@ -265,7 +274,7 @@ export async function record(options) {
 		await persist();
 	};
 	const startSampling = async () => {
-		if (!client || sampling || options.metricsOnly) return;
+		if (!client || sampling || !capture.allocations) return;
 		await client.request('HeapProfiler.startSampling', {
 			samplingInterval: options.samplingIntervalBytes,
 			includeObjectsCollectedByMajorGC: options.churn,
@@ -334,7 +343,7 @@ export async function record(options) {
 		}
 	};
 	const startRequests = async () => {
-		if (!requestTracking || !client || !recordingInterval) return;
+		if (!capture.requests || !requestTracking || !client || !recordingInterval) return;
 		const interval = recordingInterval;
 		const processSegment = segment;
 		await client.trackRequests((request) => {
@@ -350,7 +359,7 @@ export async function record(options) {
 				requestLog,
 				`${JSON.stringify({ ...request, segmentId: processSegment.id, recordingId: interval.id, phase: 'measurement', elapsedMs: request.startedAtMs - startedAtMs })}\n`,
 			);
-		}, requestLeaseMs);
+		}, requestLeaseMs());
 	};
 	const startCapture = async () => {
 		const { timestampMs, elapsedMs } = event();
@@ -360,6 +369,7 @@ export async function record(options) {
 			endedAtMs: null,
 			startElapsedMs: elapsedMs,
 			endElapsedMs: null,
+			capture: { ...capture },
 		};
 		session.recordingIntervals.push(recordingInterval);
 		recordingClock = performance.now();
@@ -386,33 +396,66 @@ export async function record(options) {
 		if (!response.ok) throw new Error(`${url.pathname} returned ${response.status}`);
 		return await response.text();
 	};
+	const pauseCapture = async () => {
+		if (finalized || stopped) throw new Error('Recording has stopped');
+		if (!measurementStartedAtMs) throw new Error('Wait for recording readiness');
+		if (status.recording) {
+			try {
+				await client?.stopRequests();
+				if (sampling && !client?.closed) await checkpoint(true);
+			} catch (error) {
+				disconnect();
+				throw error;
+			} finally {
+				// Close the connection if sampling could not stop.
+				if (sampling) disconnect();
+				closeInterval();
+				const { timestampMs, elapsedMs } = event();
+				session.pauses.push({
+					startedAtMs: timestampMs,
+					endedAtMs: null,
+					startElapsedMs: elapsedMs,
+					endElapsedMs: null,
+					durationMs: null,
+				});
+				status.phase = 'paused';
+				await persist();
+			}
+		}
+		return { accepted: true, recording: false, recordingId: null };
+	};
 	const controls = {
 		mark: async (body) => await serialize(async () => await mark(body)),
-		pause: async () =>
+		pause: async () => await serialize(pauseCapture),
+		configure: async (body) =>
 			await serialize(async () => {
 				if (finalized || stopped) throw new Error('Recording has stopped');
-				if (!measurementStartedAtMs) throw new Error('Wait for recording readiness');
-				if (status.recording) {
-					try {
-						await client?.stopRequests();
-						if (sampling && !client?.closed) await checkpoint(true);
-					} finally {
-						// Close the connection if sampling could not stop.
-						if (sampling) disconnect();
-						closeInterval();
-						const { timestampMs, elapsedMs } = event();
-						session.pauses.push({
-							startedAtMs: timestampMs,
-							endedAtMs: null,
-							startElapsedMs: elapsedMs,
-							endElapsedMs: null,
-							durationMs: null,
-						});
-						status.phase = 'paused';
-						await persist();
+				if (!status.ready) throw new Error('Wait for recording readiness');
+				if (!body || typeof body !== 'object' || Array.isArray(body))
+					throw new Error('Supply capture settings');
+				for (const [key, value] of Object.entries(body)) {
+					if (key === 'intervalMs') {
+						if (!Number.isInteger(value) || value < 50 || value > 60_000)
+							throw new Error('Use a metric interval from 50 to 60000 milliseconds');
+					} else if (!['metrics', 'requests', 'allocations'].includes(key)) {
+						throw new Error('Unknown capture setting');
+					} else {
+						if (typeof value !== 'boolean') throw new Error('Capture settings must be boolean');
+						if (value && !status.capabilities[key])
+							throw new Error(
+								`Capture is unavailable: ${key}. Start a new session with Inspector enabled`,
+							);
 					}
 				}
-				return { accepted: true, recording: false, recordingId: null };
+				if (!Object.entries(body).some(([key, value]) => capture[key] !== value))
+					return { capture: { ...capture } };
+				const recording = status.recording;
+				if (recording) await pauseCapture();
+				Object.assign(capture, body);
+				session.captureChanges.push({ ...event(), capture: { ...capture } });
+				if (recording) await startCapture();
+				await persist();
+				return { capture: { ...capture } };
 			}),
 		resume: async () =>
 			await serialize(async () => {
@@ -612,48 +655,51 @@ export async function record(options) {
 						return;
 					}
 					if (stopped) return;
-					const raw = await requestText(metricsUrl);
-					await client?.refreshRequests(requestLeaseMs);
-					const metrics = parseMemoryMetrics(raw);
-					if (options.metricsOnly) {
-						if (!metrics.processStartedAtMs)
-							throw new Error('Metrics-only capture requires process_start_time_seconds');
-						if (!segment || segment.startedAtMs !== metrics.processStartedAtMs) {
-							if (segment) segment.endedAtMs = Date.now();
-							segment = {
-								id: `process-${session.segments.length + 1}`,
-								pid: null,
-								startedAtMs: metrics.processStartedAtMs,
-								observedAtMs: Date.now(),
-								endedAtMs: null,
-							};
-							session.segments.push(segment);
+					await client?.refreshRequests(requestLeaseMs());
+					if (capture.metrics) {
+						const raw = await requestText(metricsUrl);
+						const metrics = parseMemoryMetrics(raw);
+						if (options.metricsOnly) {
+							if (!metrics.processStartedAtMs)
+								throw new Error('Metrics-only capture requires process_start_time_seconds');
+							if (!segment || segment.startedAtMs !== metrics.processStartedAtMs) {
+								if (segment) segment.endedAtMs = Date.now();
+								segment = {
+									id: `process-${session.segments.length + 1}`,
+									pid: null,
+									startedAtMs: metrics.processStartedAtMs,
+									observedAtMs: Date.now(),
+									endedAtMs: null,
+								};
+								session.segments.push(segment);
+							}
+						} else if (
+							metrics.processStartedAtMs &&
+							Math.abs(metrics.processStartedAtMs - segment.startedAtMs) > 2000
+						) {
+							throw new Error('Metrics and Inspector refer to different processes');
 						}
-					} else if (
-						metrics.processStartedAtMs &&
-						Math.abs(metrics.processStartedAtMs - segment.startedAtMs) > 2000
-					) {
-						throw new Error('Metrics and Inspector refer to different processes');
-					}
-					const file = `raw/${String(++sampleCount).padStart(6, '0')}.prom`;
-					await writeFile(join(directory, file), raw, { mode: 0o600 });
-					const sample = {
-						...event(),
-						phase: measurementStartedAtMs ? 'measurement' : 'warmup',
-						segmentId: segment.id,
-						recordingId: recordingInterval?.id ?? null,
-						raw: file,
-						memory: metrics.values,
-					};
-					await appendFile(join(directory, session.timeline), `${JSON.stringify(sample)}\n`);
-					if (sample.phase === 'measurement') measurementSampleCount++;
+						const file = `raw/${String(++sampleCount).padStart(6, '0')}.prom`;
+						await writeFile(join(directory, file), raw, { mode: 0o600 });
+						const sample = {
+							...event(),
+							phase: measurementStartedAtMs ? 'measurement' : 'warmup',
+							segmentId: segment.id,
+							recordingId: recordingInterval?.id ?? null,
+							intervalMs: capture.intervalMs,
+							raw: file,
+							memory: metrics.values,
+						};
+						await appendFile(join(directory, session.timeline), `${JSON.stringify(sample)}\n`);
+						if (sample.phase === 'measurement') measurementSampleCount++;
+						status.lastSampleAtMs = sample.timestampMs;
+					} else await requestText(healthUrl);
 					if (
 						measurementStartedAtMs &&
 						performance.now() - lastProfileAtMs >= options.profileIntervalMs
 					)
 						await checkpoint();
 					status.ready = Boolean(measurementStartedAtMs);
-					status.lastSampleAtMs = sample.timestampMs;
 					await persist();
 				});
 			} catch (error) {
@@ -671,7 +717,7 @@ export async function record(options) {
 			)
 				break;
 			await delay(
-				Math.max(1, options.intervalMs - (performance.now() - iterationAtMs)),
+				Math.max(1, capture.intervalMs - (performance.now() - iterationAtMs)),
 				undefined,
 				{
 					signal: controller.signal,

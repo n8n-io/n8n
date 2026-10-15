@@ -76,6 +76,7 @@ function settings(output, target, overrides = {}) {
 		inspector: target.inspector,
 		open: false,
 		metricsOnly: false,
+		allocations: true,
 		churn: false,
 		workload: 'test-workload',
 		durationMs: 350,
@@ -90,6 +91,135 @@ function settings(output, target, overrides = {}) {
 }
 
 describe('backend recording', () => {
+	it('records metrics and API timings without allocation sampling by default', async () => {
+		const target = await backend();
+		const output = join(await temporary(), 'recording');
+		const calls = vi.spyOn(InspectorClient.prototype, 'request');
+		const recording = record(
+			settings(output, target, { allocations: undefined, durationMs: 60_000 }),
+		);
+		try {
+			await waitFor(async () => (await controlSession(output, 'status')).ready);
+			await fetch(`${target.url}/allocate`);
+			await waitFor(
+				async () => (await buildReport(join(output, 'session.json'))).measurementSampleCount >= 2,
+			);
+		} finally {
+			await controlSession(output, 'stop');
+		}
+		const report = await recording;
+		expect(report.session.status).toBe('complete');
+		expect(report.requests.completed).toBe(1);
+		expect(report.session.profiles).toHaveLength(0);
+		expect(calls.mock.calls.some(([method]) => method === 'HeapProfiler.startSampling')).toBe(
+			false,
+		);
+		expect(report.comparison.issues).not.toContain('Allocation profiles are missing');
+	});
+	it('switches capture sources independently and records each settings change', async () => {
+		const target = await backend();
+		const probe = await InspectorClient.connect(target.inspector);
+		const output = join(await temporary(), 'recording');
+		const calls = vi.spyOn(InspectorClient.prototype, 'request');
+		const recording = record(settings(output, target, { allocations: false, durationMs: 60_000 }));
+		try {
+			await waitFor(async () => (await controlSession(output, 'status')).ready);
+			await fetch(`${target.url}/allocate`);
+			await controlSession(output, 'configure', {
+				metrics: false,
+				requests: false,
+				allocations: true,
+			});
+			const timeline = await readFile(join(output, 'timeline.ndjson'), 'utf8');
+			const events = await readFile(join(output, 'requests.ndjson'), 'utf8');
+			expect(
+				await probe.evaluate(
+					"process.getBuiltinModule('node:diagnostics_channel').channel('n8n.memory-profiler.requests').hasSubscribers",
+				),
+			).toBe(false);
+			await fetch(`${target.url}/allocate`);
+			await waitFor(
+				async () => (await buildReport(join(output, 'session.json'))).session.profiles.length > 0,
+			);
+			expect(await readFile(join(output, 'timeline.ndjson'), 'utf8')).toBe(timeline);
+			expect(await readFile(join(output, 'requests.ndjson'), 'utf8')).toBe(events);
+			await controlSession(output, 'configure', { allocations: false });
+			const profileCount = (await buildReport(join(output, 'session.json'))).session.profiles
+				.length;
+			await delay(200);
+			expect((await buildReport(join(output, 'session.json'))).session.profiles).toHaveLength(
+				profileCount,
+			);
+			expect(
+				calls.mock.calls.filter(([method]) => method === 'HeapProfiler.stopSampling'),
+			).toHaveLength(1);
+			await controlSession(output, 'pause');
+			await controlSession(output, 'configure', { metrics: true, requests: true, intervalMs: 100 });
+			expect((await controlSession(output, 'status')).recording).toBe(false);
+			await fetch(`${target.url}/allocate`);
+			expect(await readFile(join(output, 'requests.ndjson'), 'utf8')).toBe(events);
+			await controlSession(output, 'resume');
+			await fetch(`${target.url}/allocate`);
+			await waitFor(
+				async () => (await readFile(join(output, 'timeline.ndjson'), 'utf8')) !== timeline,
+			);
+			const status = await controlSession(output, 'status');
+			expect(status.capture).toEqual({
+				metrics: true,
+				requests: true,
+				allocations: false,
+				intervalMs: 100,
+			});
+			expect(
+				await probe.evaluate(
+					"process.getBuiltinModule('node:diagnostics_channel').channel('n8n.memory-profiler.requests').hasSubscribers",
+				),
+			).toBe(true);
+		} finally {
+			probe.close();
+			await controlSession(output, 'stop');
+		}
+		const report = await recording;
+		expect(report.requests.completed).toBe(2);
+		expect(report.session.captureChanges).toHaveLength(3);
+		expect(report.session.recordingIntervals).toHaveLength(4);
+		expect(report.session.recordingIntervals[1].capture).toMatchObject({
+			metrics: false,
+			requests: false,
+			allocations: true,
+		});
+		expect(report.comparison.issues).toContain('Capture settings changed during recording');
+	});
+	it('rejects unsupported and invalid capture settings without changing active collection', async () => {
+		const target = await backend();
+		const output = join(await temporary(), 'recording');
+		const recording = record(settings(output, target, { metricsOnly: true, durationMs: 60_000 }));
+		try {
+			await waitFor(async () => (await controlSession(output, 'status')).ready);
+			for (const body of [
+				{ allocations: true },
+				{ requests: true },
+				{ metrics: 'false' },
+				{ intervalMs: 0 },
+				{ intervalMs: 60_001 },
+				{ snapshots: true },
+				null,
+			])
+				await expect(controlSession(output, 'configure', body)).rejects.toThrow();
+			const status = await controlSession(output, 'status');
+			expect(status.recording).toBe(true);
+			expect(status.capture).toEqual({
+				metrics: true,
+				requests: false,
+				allocations: false,
+				intervalMs: 50,
+			});
+		} finally {
+			await controlSession(output, 'stop');
+		}
+		const report = await recording;
+		expect(report.session.captureChanges).toHaveLength(0);
+	});
 	it('accepts a signal error when the owned process group has exited', async () => {
 		const child = spawn(process.execPath, ['-e', ''], { detached: true, stdio: 'ignore' });
 		children.push(child);

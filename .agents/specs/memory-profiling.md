@@ -53,7 +53,20 @@ HTTP Inspector discovery can follow restarts on a fixed port. Capabilities and
 process coverage must remain visible. Metrics-only mode cannot verify runtime
 and configuration, so controlled comparisons reject it.
 
-Use sampling profiles of live objects by default. Offer allocation-churn mode as
+Start Inspector sessions with metrics and API timings enabled. Leave allocation
+sampling disabled unless `--allocations` is set. Expose independent capture
+toggles and the metric interval in the live viewer. Stop the selected collector
+when disabled. Save the final allocation checkpoint before stopping sampling.
+Keep snapshots explicit. Disable unavailable controls and explain the required
+launch settings. Metrics-only launches cannot enable Inspector features live.
+
+Save capture settings on each recording interval and preserve a settings-change
+history. Start a new interval when live settings change. Changes made while
+paused apply on resume. Reject changed-setting sessions in comparisons. Preserve
+old sessions without capture settings. Use each metric sample's interval to
+identify gaps when polling rates change. Keep markers visible without new metrics.
+
+Use sampling profiles of live objects when enabled. Offer allocation-churn mode as
 an explicit option. Save source locations with each checkpoint. Keep snapshots
 explicit because they pause the backend. Use DevTools for detailed object graphs
 and retention paths. The viewer can summarize standalone V8 files.
@@ -149,6 +162,7 @@ continues the implementation and reports the missing measurement.
 - [x] Configurable card dashboard with persistent layouts and builder controls.
 - [x] Bounded collection, warm-up, status, markers, and early stop.
 - [x] Inspector sampling and native profile checkpoints.
+- [x] Independent live capture controls, metric intervals, and settings history.
 - [x] Raw scrapes and streamed timeline.
 - [x] Attach mode, restart segments, and process ownership.
 - [x] Local live/replay viewer and standalone V8 summaries.

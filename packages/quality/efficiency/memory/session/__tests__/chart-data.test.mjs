@@ -104,6 +104,19 @@ describe('memory timeline', () => {
 		expect(formatElapsed(120_000)).toBe('2 min');
 		expect(formatElapsed(7_200_000)).toBe('2 h');
 	});
+	it('uses each sample interval and keeps markers visible without new metric samples', () => {
+		const data = prepareChartData({
+			report: {
+				timeline: [point(1000), { ...point(6000), intervalMs: 5000 }, point(11000)],
+				session: {
+					settings: { intervalMs: 1000 },
+					markers: [{ elapsedMs: 15000, label: 'Metrics off' }],
+				},
+			},
+		});
+		expect(data.lines.rss.filter((entry) => entry[1] === null)).toHaveLength(1);
+		expect(data.max).toBeGreaterThanOrEqual(15000);
+	});
 });
 
 describe('chart preferences', () => {

@@ -27,6 +27,34 @@ to save the recording and stop owned servers. The interactive viewer stays open
 for analysis. Frontend memory stays outside the profile.
 This command uses the normal local n8n data configuration.
 
+Sessions start with memory metrics and API timings enabled. Allocation sampling
+starts disabled. Open **Capture settings** above the dashboard to switch each
+source on or off. Choose a metric interval from 1 to 10 seconds. A longer
+interval reduces polling work. Allocation sampling adds CPU and memory work.
+Enable it for a short investigation. Heap snapshots remain explicit actions.
+
+Turning off allocation sampling saves a final checkpoint. Turning off API
+timings removes the request subscription. Turning off metrics stops recorder
+scrapes. Existing data stays available. Health checks, Inspector, and the
+backend's metric collectors can remain active. Disabling capture does not
+remove all overhead from the running development environment.
+
+Each settings change starts a new recording interval. The session saves the
+settings history. The graph breaks memory lines at interval boundaries.
+Comparisons reject recordings whose capture settings changed. Changes made
+while paused apply when recording resumes.
+
+Start with allocation sampling enabled by adding `--allocations`:
+
+```bash
+pnpm dev:profile --allocations
+```
+
+Use `--metrics-only` to launch without Inspector. This mode cannot enable API
+timings, allocation sampling, or snapshots from the UI. Start a new session
+without that flag to use these features. An attached backend also needs
+`N8N_MEMORY_PROFILING=true` for API timings.
+
 Use `--port 5678 --editor-port 8080` to select fixed ports. Use recording options
 such as `--duration 120s`, `--no-open`, and `--json` for an unattended run.
 Read `backendUrl` and `editorUrl` from the session status. Start a browser workload
@@ -134,7 +162,7 @@ Use the same database and workload for before-and-after comparisons.
 ## Agent recording
 
 ```bash
-pnpm --silent profile:memory record --duration 120s --warmup 30s --workload workflow-execution --no-open --json --output .context/memory-profiles/before
+pnpm --silent profile:memory record --allocations --duration 120s --warmup 30s --workload workflow-execution --no-open --json --output .context/memory-profiles/before
 ```
 
 Start this command through a persistent process tool. Use another command to
@@ -308,8 +336,9 @@ V8 allocation samples do not explain all native allocations or every byte of RSS
 The report maps allocation frames to TypeScript when local source maps exist.
 Mapped locations are saved with each checkpoint for replay without source files.
 
-By default, allocation samples describe objects that remain alive when a profile
-is read. Use `--churn` to include allocations that GC has already collected.
+When sampling is enabled, allocation samples describe objects that remain alive
+when a profile is read. Use `--allocations --churn` to include allocations that GC
+has already collected.
 Allocation sites show where objects were created. Heap retention paths show why
 objects remain alive.
 

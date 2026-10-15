@@ -132,6 +132,33 @@ header {
 	padding-inline-start: var(--space-medium);
 	border-inline-start: thin solid var(--border);
 }
+#capture-options {
+	margin-bottom: var(--space-medium);
+	padding: var(--space-medium);
+	border: thin solid var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--surface);
+}
+#capture-options summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+.capture-settings {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--spacing--3xl) * 4)), 1fr));
+	gap: var(--space-large);
+}
+.capture-settings label,
+.metric-interval {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-small);
+}
+.capture-settings p,
+#capture-unavailable {
+	color: var(--secondary-text);
+	font-size: var(--font-size--sm);
+}
 h1,
 h2,
 .eyebrow {
