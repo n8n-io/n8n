@@ -277,7 +277,7 @@ function onMenuSelect(id: string) {
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	height: var(--n8n--agent-builder-header-height, var(--height--4xl));
+	height: var(--n8n--agent-builder-header-height, var(--height--2xl));
 	overflow-x: auto;
 	overflow-y: hidden;
 	scrollbar-width: thin;
@@ -287,6 +287,7 @@ function onMenuSelect(id: string) {
 .left {
 	display: flex;
 	align-items: center;
+	margin-inline-start: calc(var(--spacing--sm) * -1);
 	flex: 0 0 auto;
 	min-width: max-content;
 }
