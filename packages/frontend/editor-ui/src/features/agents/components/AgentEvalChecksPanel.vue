@@ -455,6 +455,7 @@ onBeforeUnmount(store.stopPollingRun);
 					type="button"
 					size="small"
 					:variant="statusFilter === option.key ? 'brand' : 'outline'"
+					:aria-pressed="statusFilter === option.key"
 					:data-testid="`agent-eval-checks-filter-${option.key}`"
 					@click="setStatusFilter(option.key)"
 				>

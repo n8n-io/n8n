@@ -58,7 +58,7 @@ describe('Agent skills in the skills hub', () => {
 	const broadcaster = mockInstance(AgentUpdateBroadcaster);
 
 	beforeAll(async () => {
-		await setSkillsHubFlag(true);
+		setSkillsHubFlag(true);
 		mockInstance(Telemetry);
 		mockInstance(AgentRuntimeCacheService);
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
@@ -291,19 +291,19 @@ describe('Agent skills in the skills hub', () => {
 		await saveInstructions(skill, 'Newer text.');
 		const version = published.activeVersion!;
 
-		await setSkillsHubFlag(false);
+		setSkillsHubFlag(false);
 		try {
 			// With the flag off, the legacy reader uses the columns that publish wrote.
 			const { skillRefs: refs, skills } = await skillRefs.readVersion(version, {});
 			expect(refs).toEqual([{ type: 'skill', id: skill }]);
 			expect(await instructionsOf(skills)).toEqual({ [skill]: 'Published text.' });
 		} finally {
-			await setSkillsHubFlag(true);
+			setSkillsHubFlag(true);
 		}
 	});
 
 	it('keeps skills on the agent row when the skills hub is off', async () => {
-		await setSkillsHubFlag(false);
+		setSkillsHubFlag(false);
 		try {
 			const agent = await createAgent([]);
 			const context = { user: editor, modifiedBy: 'builder' as const };
@@ -335,7 +335,7 @@ describe('Agent skills in the skills hub', () => {
 			expect(await Container.get(SkillRepository).findByIds([created.id])).toEqual([]);
 			expect(await skillRefs.refsForDraft(row, {})).toEqual([{ type: 'skill', id: created.id }]);
 		} finally {
-			await setSkillsHubFlag(true);
+			setSkillsHubFlag(true);
 		}
 	});
 
