@@ -152,6 +152,28 @@ describe('createIdempotencyMiddleware', () => {
 		expect(store.claim.mock.calls[2]?.[0].fingerprint).not.toBe(first);
 	});
 
+	it('fingerprints raw JSON bytes that parse to the same body', async () => {
+		store.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+
+		await request(app())
+			.post('/api/v1/workflows')
+			.set('Idempotency-Key', 'abc')
+			.set('Content-Type', 'application/json')
+			.send('{"name":"Other"}')
+			.expect(200);
+
+		await request(app())
+			.post('/api/v1/workflows')
+			.set('Idempotency-Key', 'abc')
+			.set('Content-Type', 'application/json')
+			.send('{ "name" : "Other" }')
+			.expect(200);
+
+		const compact = store.claim.mock.calls[0]?.[0].fingerprint;
+		const spaced = store.claim.mock.calls[1]?.[0].fingerprint;
+		expect(spaced).not.toBe(compact);
+	});
+
 	it('replays an empty body instead of JSON null', async () => {
 		store.claim.mockResolvedValue({
 			outcome: 'replay',
