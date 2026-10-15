@@ -89,6 +89,10 @@ let pollTimer: ReturnType<typeof setTimeout> | undefined;
 let unmounted = false;
 // Set when the status check found no saved agent. Picking a credential saves it.
 let waitingForAgent = false;
+// Set once `ensureAgentPersisted` resolves. A 404 for a request sent before then is out of date.
+let agentSaved = false;
+// Starting a new reset-and-poll run bumps this, so an older run stops at its next step.
+let webhookRun = 0;
 // A failing reset is retried on every poll tick, so say so only once.
 let resetErrorShown = false;
 
@@ -152,12 +156,13 @@ async function runCredentialCheck() {
 		try {
 			await props.ensureAgentPersisted?.();
 		} catch (error) {
-			if (request !== latestCheck) return;
+			if (request !== latestCheck || unmounted) return;
 			checking.value = false;
 			credentialCheck.value = { status: 'failed', reason: 'unreachable' };
 			toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
 			return;
 		}
+		agentSaved = true;
 		if (!verifyToken.value) void loadVerifyToken();
 		resumeWebhookPolling();
 	}
@@ -182,10 +187,14 @@ async function runCredentialCheck() {
 watch(credentialId, runCredentialCheck, { immediate: true });
 
 // Saving the picked credential keeps its ID, so the watch above does not see the edit.
+// Pinia removes this listener when the component unmounts.
 listenForCredentialChanges({
 	store: useCredentialsStore(),
 	onCredentialUpdated: async (credential) => {
-		if (credential.id === credentialId.value) await runCredentialCheck();
+		if (credential.id !== credentialId.value) return;
+		// The edit can point the credential at another Meta app, like picking another credential.
+		if (props.mode === 'setup') restartWebhookCheck();
+		await runCredentialCheck();
 	},
 });
 
@@ -193,25 +202,41 @@ listenForCredentialChanges({
 // Webhook handshake (step 4)
 // ---------------------------------------------------------------------------
 
-async function pollWebhookStatus() {
+function isWebhookRunStale(run: number) {
+	return unmounted || run !== webhookRun;
+}
+
+function isAgentMissing(error: unknown) {
+	return error instanceof ResponseError && error.httpStatusCode === 404;
+}
+
+async function pollWebhookStatus(run: number) {
+	const savedBeforeRequest = agentSaved;
 	try {
 		const status = await getWhatsAppWebhookStatus(
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
 		);
+		if (isWebhookRunStale(run)) return;
 		webhookVerified.value = status.verified;
 	} catch (error) {
-		// A new agent has no row until a credential is picked, so polling now would
-		// only repeat the same 404. `resumeWebhookPolling` starts it again.
-		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+		if (isWebhookRunStale(run)) return;
+		if (isAgentMissing(error)) {
+			// The agent was saved while this request was out, so ask again.
+			if (agentSaved && !savedBeforeRequest) {
+				void pollWebhookStatus(run);
+				return;
+			}
+			// A new agent has no row until a credential is picked, so polling now would
+			// only repeat the same 404. `resumeWebhookPolling` starts it again.
 			waitingForAgent = true;
 			return;
 		}
 	}
-	if (!webhookVerified.value && !unmounted) {
+	if (!webhookVerified.value) {
 		pollTimer = setTimeout(() => {
-			void pollWebhookStatus();
+			void pollWebhookStatus(run);
 		}, WEBHOOK_POLL_MS);
 	}
 }
@@ -221,13 +246,19 @@ async function pollWebhookStatus() {
  * earlier app would confirm step 4 at once. Clearing it first means only a
  * handshake from now on counts.
  */
-async function resetThenPollWebhookStatus() {
+async function resetThenPollWebhookStatus(run: number) {
+	const savedBeforeRequest = agentSaved;
 	try {
 		await resetWhatsAppWebhookStatus(rootStore.restApiContext, props.projectId, props.agentId);
 	} catch (error) {
-		if (unmounted) return;
-		// A new agent has no row yet, so it has no record to clear either.
-		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+		if (isWebhookRunStale(run)) return;
+		if (isAgentMissing(error)) {
+			// The agent was saved while this request was out, so clear its record now.
+			if (agentSaved && !savedBeforeRequest) {
+				void resetThenPollWebhookStatus(run);
+				return;
+			}
+			// A new agent has no row yet, so it has no record to clear either.
 			waitingForAgent = true;
 			return;
 		}
@@ -237,23 +268,40 @@ async function resetThenPollWebhookStatus() {
 		}
 		// Polling now could read the earlier record and enable Connect, so retry the reset instead.
 		pollTimer = setTimeout(() => {
-			void resetThenPollWebhookStatus();
+			void resetThenPollWebhookStatus(run);
 		}, WEBHOOK_POLL_MS);
 		return;
 	}
-	if (!unmounted) await pollWebhookStatus();
+	if (!isWebhookRunStale(run)) await pollWebhookStatus(run);
 }
 
 function resumeWebhookPolling() {
 	if (!waitingForAgent || unmounted) return;
 	waitingForAgent = false;
-	void pollWebhookStatus();
+	void pollWebhookStatus(webhookRun);
 }
+
+function restartWebhookCheck() {
+	clearTimeout(pollTimer);
+	waitingForAgent = false;
+	webhookVerified.value = false;
+	void resetThenPollWebhookStatus(++webhookRun);
+}
+
+// Another credential can belong to another Meta app, and the handshake from the
+// previous app says nothing about the new one.
+let previousCredentialId = credentialId.value;
+watch(credentialId, (id) => {
+	if (!id) return;
+	const previous = previousCredentialId;
+	previousCredentialId = id;
+	if (props.mode === 'setup' && previous && previous !== id) restartWebhookCheck();
+});
 
 onMounted(() => {
 	void loadVerifyToken();
 	// Only the setup shows this step. A connected channel has its own adapter answer Meta.
-	if (props.mode === 'setup') void resetThenPollWebhookStatus();
+	if (props.mode === 'setup') void resetThenPollWebhookStatus(webhookRun);
 });
 
 onBeforeUnmount(() => {
@@ -333,11 +381,20 @@ watch(
 
 /**
  * Built on the saved settings, because connecting replaces the settings object
- * wholesale. The setup leaves the defaults unset, so they apply at runtime.
+ * wholesale. Only the values the user changed are written, so a setting that
+ * was never set keeps following the defaults at runtime.
  */
-const currentSettings = computed<AgentWhatsAppIntegrationSettings | undefined>(() =>
-	props.mode === 'edit' ? { ...props.savedSettings, ...settings.value } : props.savedSettings,
-);
+const currentSettings = computed<AgentWhatsAppIntegrationSettings | undefined>(() => {
+	if (props.mode !== 'edit') return props.savedSettings;
+	const inEffect = resolveWhatsAppSettings(props.savedSettings);
+	const { typingIndicator, downloadMedia, mediaRetentionDays } = settings.value;
+	return {
+		...props.savedSettings,
+		...(typingIndicator !== inEffect.typingIndicator && { typingIndicator }),
+		...(downloadMedia !== inEffect.downloadMedia && { downloadMedia }),
+		...(mediaRetentionDays !== inEffect.mediaRetentionDays && { mediaRetentionDays }),
+	};
+});
 
 // Connecting closes the modal, so the toast is the only place left for the next step.
 async function afterSave() {
