@@ -39,9 +39,10 @@ other triggers in separate calls when needed. A successful run of an unrelated
 trigger does not prove the repair. Use the verification
 result as evidence. A successful static check alone does not prove that the
 workflow runs correctly. If a check fails, inspect the evidence before another
-edit. Each result identifies the candidate it checked. After any edit, check
-the candidate again. Report simulated nodes, missing credentials, and nodes that the check did not
-reach. Stop if the same approach fails twice.
+edit. After any edit, check the candidate again. Report simulated nodes, missing
+credentials, and nodes that the check did not reach. Stop if the same approach
+fails twice.
+Each result identifies the candidate it checked.
 
 Return structured output. Use `fix_ready` only for a verified candidate.
 Use `needs_you` when a person must provide information or resolve a blocker.
