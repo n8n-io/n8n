@@ -77,7 +77,11 @@ import {
 	isOpenAiResponsesUrl,
 	normalizeOpenAiResponsesMockResponse,
 } from './openai-responses-envelope';
-import { DATA_TABLE_NODE_TYPES, generateDataTableRows } from './data-table-rows';
+import {
+	DATA_TABLE_NODE_TYPES,
+	generateDataTableRows,
+	resolveDataTableNodeId,
+} from './data-table-rows';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
@@ -119,18 +123,6 @@ interface CalledAgentRun {
 	mocks: Map<string, Promise<CalledAgentMocks>>;
 	/** Agent sessions this run has already called. */
 	sessions: Set<string>;
-}
-
-/** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
-function dataTableLocator(node: INode): { mode: 'name' | 'id'; value: string } | undefined {
-	const locator = node.parameters?.dataTableId as
-		| { mode?: unknown; value?: unknown }
-		| string
-		| undefined;
-	const value = typeof locator === 'string' ? locator : locator?.value;
-	if (typeof value !== 'string' || value.length === 0) return undefined;
-	const byName = typeof locator !== 'string' && locator?.mode === 'name';
-	return { mode: byName ? 'name' : 'id', value };
 }
 
 // ---------------------------------------------------------------------------
@@ -450,7 +442,7 @@ export class EvalExecutionService {
 			const seeded = new Set(seededDataTableIds);
 			const nodesByTableId = new Map<string, INode[]>();
 			for (const node of nodes) {
-				const tableId = await this.resolveDataTableNodeId(node, projectId);
+				const tableId = await resolveDataTableNodeId(this.dataTableService, node, projectId);
 				if (!tableId || seeded.has(tableId)) continue;
 				nodesByTableId.set(tableId, [...(nodesByTableId.get(tableId) ?? []), node]);
 			}
@@ -461,7 +453,7 @@ export class EvalExecutionService {
 			).filter((table) => table.projectId === projectId);
 			if (tables.length === 0) return;
 
-			const { rowsByTable, warnings } = await timings.time(
+			const { rowsByTable, warnings, timestampedTables } = await timings.time(
 				'data-table-rows',
 				undefined,
 				async () =>
@@ -476,6 +468,12 @@ export class EvalExecutionService {
 						scenarioHints,
 					}),
 			);
+			if (timestampedTables.length > 0) {
+				const names = timestampedTables.map((name) => `"${name}"`).join(', ');
+				throw new OperationalError(
+					`the scenario gives rows of ${names} a createdAt or updatedAt time, and the eval cannot set those columns`,
+				);
+			}
 			for (const warning of warnings) this.logger.warn(`[EvalMock] ${warning}`);
 			hints.warnings.push(...warnings);
 
@@ -494,22 +492,6 @@ export class EvalExecutionService {
 				cause: error,
 			});
 		}
-	}
-
-	/** The table a Data Table node binds. `name` mode is looked up in the
-	 *  project the way the node does, case-insensitively. */
-	private async resolveDataTableNodeId(
-		node: INode,
-		projectId: string,
-	): Promise<string | undefined> {
-		const locator = dataTableLocator(node);
-		if (!locator) return undefined;
-		if (locator.mode !== 'name') return locator.value;
-		const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
-			locator.value,
-		]);
-		const wanted = locator.value.toLowerCase();
-		return (matches.find((m) => m.name.toLowerCase() === wanted) ?? matches.at(0))?.id;
 	}
 
 	// ── Phase 2: Mock execution ────────────────────────────────────────────

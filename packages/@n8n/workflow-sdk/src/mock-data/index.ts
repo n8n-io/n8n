@@ -24,7 +24,9 @@ export {
 } from './context';
 export {
 	literalParameter,
+	readDataTableLocator,
 	readDataTableReadParameters,
+	type DataTableLocator,
 	type DataTableReadCondition,
 	type DataTableReadParameters,
 } from './data-table-read';

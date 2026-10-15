@@ -69,6 +69,21 @@ describe('generateDataTableRows', () => {
 		]);
 	});
 
+	it('names the tables whose rows set createdAt or updatedAt, and keeps those times out of the rows', async () => {
+		extractTextMock.mockReturnValue(
+			'{ "Sent Posts": [{ "title": "Old post", "createdAt": "2026-10-01T09:00:00.000Z" }], "Log": [{ "line": "x", "updatedAt": "2026-10-02T09:00:00.000Z" }] }',
+		);
+
+		const result = await generateDataTableRows({ tables, globalContext: '', nodeHints: {} });
+
+		expect(result.rowsByTable).toEqual({
+			'Sent Posts': [{ title: 'Old post' }],
+			Log: [{ line: 'x' }],
+		});
+		expect(result.timestampedTables).toEqual(['Sent Posts', 'Log']);
+		expect(result.warnings).toEqual([]);
+	});
+
 	it('sets a non-scalar value of a known column to null', async () => {
 		extractTextMock.mockReturnValue('{ "Sent Posts": [{ "title": { "text": "Post A" } }] }');
 
@@ -113,7 +128,7 @@ describe('generateDataTableRows', () => {
 	it('does not call the model without tables', async () => {
 		const result = await generateDataTableRows({ tables: [], globalContext: '', nodeHints: {} });
 
-		expect(result).toEqual({ rowsByTable: {}, warnings: [] });
+		expect(result).toEqual({ rowsByTable: {}, warnings: [], timestampedTables: [] });
 		expect(createEvalAgentMock).not.toHaveBeenCalled();
 	});
 });

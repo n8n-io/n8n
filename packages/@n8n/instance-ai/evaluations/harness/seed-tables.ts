@@ -8,6 +8,7 @@
 
 import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { readDataTableLocator } from '@n8n/workflow-sdk';
 
 import {
 	freshSeedNameSuffix,
@@ -177,18 +178,12 @@ export function workflowDataTableKeys(
 	const keys = new Set<string>();
 	for (const node of workflow?.nodes ?? []) {
 		if (node.disabled || !DATA_TABLE_NODE_TYPES.has(node.type)) continue;
-		const locator = isRecord(node.parameters) ? node.parameters.dataTableId : undefined;
-		const value = isRecord(locator) ? locator.value : locator;
-		if (typeof value !== 'string' || value.length === 0) continue;
-		const name =
-			isRecord(locator) && locator.mode === 'name'
-				? value
-				: isRecord(locator)
-					? locator.cachedResultName
-					: undefined;
-		keys.add(
-			typeof name === 'string' && name.length > 0 ? `name:${name.toLowerCase()}` : `id:${value}`,
+		const locator = readDataTableLocator(
+			isRecord(node.parameters) ? node.parameters.dataTableId : undefined,
 		);
+		if (!locator) continue;
+		const name = locator.mode === 'name' ? locator.value : locator.cachedName;
+		keys.add(name ? `name:${name.toLowerCase()}` : `id:${locator.value}`);
 	}
 	return [...keys].sort();
 }

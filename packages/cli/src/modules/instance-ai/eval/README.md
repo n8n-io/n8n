@@ -36,7 +36,9 @@ these things.
 Before each scenario, `prepareDataTables` in `execution.service.ts`:
 
 1. Finds every Data Table that the workflow's enabled Data Table nodes bind,
-   by id or by name, in the workflow's own project.
+   by id or by name, in the workflow's own project. A name is looked up with
+   the node's own query, so the case does not matter and a part of the name
+   matches.
 2. Skips the tables in `seededDataTableIds`. The CLI already filled them with
    the rows from the scenario's `seedDataTables`.
 3. Asks the mock model for the starting rows of the other tables, in one call
@@ -47,7 +49,9 @@ Before each scenario, `prepareDataTables` in `execution.service.ts`:
 Rows in a table that the workflow writes use the value formats of the
 workflow's write nodes, because such a table only holds rows that the workflow
 wrote. A node whose table does not exist runs as it is and fails, as it would
-for a user. A failure to prepare the tables is a framework issue.
+for a user. A failure to prepare the tables is a framework issue. So is a
+scenario that gives rows a `createdAt` or `updatedAt` time: the table sets
+those columns itself, so the eval cannot start from that state.
 
 The CLI queues the runs that bind one table on one lane (`workflowDataTableKeys`
 in `harness/seed-tables.ts`), so two scenarios never reset each other's rows.

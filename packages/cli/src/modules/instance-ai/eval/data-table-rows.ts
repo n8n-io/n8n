@@ -8,13 +8,33 @@
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
-import { buildDateAnchors } from '@n8n/workflow-sdk';
+import { buildDateAnchors, readDataTableLocator } from '@n8n/workflow-sdk';
 import { type DataTableRows, type INode, jsonParse, OperationalError } from 'n8n-workflow';
+
+import type { DataTableService } from '@/modules/data-table/data-table.service';
 
 export const DATA_TABLE_NODE_TYPES = new Set([
 	'n8n-nodes-base.dataTable',
 	'n8n-nodes-base.dataTableTool',
 ]);
+
+/** The table a Data Table node binds: the id it carries, or the table its name finds at
+ *  run time. The query is the node's own (`resolveDataTableId` in nodes-base): any case,
+ *  a part of the name matches, and the most recently updated table wins. */
+export async function resolveDataTableNodeId(
+	dataTableService: Pick<DataTableService, 'getManyAndCount'>,
+	node: INode,
+	projectId: string,
+): Promise<string | undefined> {
+	const locator = readDataTableLocator(node.parameters?.dataTableId);
+	if (!locator) return undefined;
+	if (locator.mode !== 'name') return locator.value;
+	const { data } = await dataTableService.getManyAndCount({
+		filter: { projectId, name: locator.value.toLowerCase() },
+		take: 1,
+	});
+	return data.at(0)?.id;
+}
 
 const DATA_TABLE_ROWS_LLM_TIMEOUT_MS = 180_000;
 const MAX_ATTEMPTS = 2;
@@ -37,7 +57,12 @@ export interface GeneratedDataTableRows {
 	/** Rows by table name. A table the model left out starts empty. */
 	rowsByTable: Record<string, DataTableRows>;
 	warnings: string[];
+	/** Tables whose rows the scenario gives a createdAt or updatedAt time. The table
+	 *  sets those columns itself, so the eval cannot start from that state. */
+	timestampedTables: string[];
 }
+
+const SYSTEM_TIMESTAMP_COLUMNS = new Set(['createdAt', 'updatedAt']);
 
 const SYSTEM_PROMPT = `You prepare the stored data for one test run of an n8n workflow. The workflow uses n8n Data Tables. Return the rows each table holds at the moment the run starts.
 
@@ -46,7 +71,7 @@ Rules:
 2. Return only rows that exist BEFORE the run. Do not add a row that the workflow itself writes during the run, unless the scenario says that the row already exists.
 3. When the scenario says nothing about a table: a table that the workflow only writes to starts empty, and a table that the workflow reads gets the few rows that the data context implies. Never add a row that contradicts the scenario, for example a record that the scenario calls new.
 4. A table that the workflow writes to holds rows that the workflow wrote on earlier runs. Give those rows the value formats that the workflow's write nodes use, for example the same spelling and casing of a status, also when the scenario quotes the value in another spelling or casing. Keep the facts the scenario states: which records exist, their status, their dates.
-5. Use only the listed columns. Do not return id, createdAt or updatedAt: the table sets them.
+5. Use only the listed columns, and never return id. Leave out createdAt and updatedAt too: the table sets them. Return one of them only when a node that reads the table filters or sorts on it, and the Test Scenario says when the row was created or last changed. Give that time as an ISO 8601 timestamp.
 6. A string column takes a string, a number column a number, a boolean column true or false, and a date column an ISO 8601 timestamp. Use null for an empty value.
 
 Return only a JSON object with one key for each listed table: { "<table name>": [ { "<column>": <value> } ] }`;
@@ -98,6 +123,7 @@ function parseRows(text: string, tables: ScenarioDataTable[]): GeneratedDataTabl
 
 	const rowsByTable: Record<string, DataTableRows> = {};
 	const warnings: string[] = [];
+	const timestampedTables: string[] = [];
 	for (const table of tables) {
 		const rows = parsed[table.name];
 		if (rows === undefined || rows === null) continue;
@@ -106,10 +132,15 @@ function parseRows(text: string, tables: ScenarioDataTable[]): GeneratedDataTabl
 		}
 		const typeByColumn = new Map(table.columns.map((column) => [column.name, column.type]));
 		const dropped = new Set<string>();
+		let timestamped = false;
 		rowsByTable[table.name] = rows.filter(isRecord).map((row) => {
 			const kept: DataTableRows[number] = {};
 			for (const [key, value] of Object.entries(row)) {
 				const type = typeByColumn.get(key);
+				if (type === undefined && SYSTEM_TIMESTAMP_COLUMNS.has(key)) {
+					timestamped ||= value !== null && value !== undefined;
+					continue;
+				}
 				if (type === undefined) {
 					dropped.add(key);
 					continue;
@@ -128,20 +159,21 @@ function parseRows(text: string, tables: ScenarioDataTable[]): GeneratedDataTabl
 			}
 			return kept;
 		});
+		if (timestamped) timestampedTables.push(table.name);
 		if (dropped.size > 0) {
 			warnings.push(
 				`Data table rows for "${table.name}" named unknown columns, dropped: ${[...dropped].join(', ')}`,
 			);
 		}
 	}
-	return { rowsByTable, warnings };
+	return { rowsByTable, warnings, timestampedTables };
 }
 
 /** One LLM call for every table, so the tables agree with each other and with the HTTP mocks. */
 export async function generateDataTableRows(
 	options: GenerateDataTableRowsOptions,
 ): Promise<GeneratedDataTableRows> {
-	if (options.tables.length === 0) return { rowsByTable: {}, warnings: [] };
+	if (options.tables.length === 0) return { rowsByTable: {}, warnings: [], timestampedTables: [] };
 
 	const agent = createEvalAgent('eval-data-table-rows', {
 		instructions: SYSTEM_PROMPT,

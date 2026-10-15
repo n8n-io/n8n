@@ -1942,7 +1942,11 @@ describe('EvalExecutionService', () => {
 
 		beforeEach(() => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
-			generateDataTableRowsMock.mockResolvedValue({ rowsByTable: {}, warnings: [] });
+			generateDataTableRowsMock.mockResolvedValue({
+				rowsByTable: {},
+				warnings: [],
+				timestampedTables: [],
+			});
 		});
 
 		it('empties every table the workflow uses and inserts the generated rows', async () => {
@@ -1955,9 +1959,10 @@ describe('EvalExecutionService', () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				makeWorkflowEntity({ nodes: [makeStartNode(), read, write] }) as never,
 			);
-			dataTableService.findDataTablesByNamesInProject.mockResolvedValue([
-				{ id: 'dt-2', name: 'Sent Posts' },
-			]);
+			dataTableService.getManyAndCount.mockResolvedValue({
+				data: [{ id: 'dt-2', name: 'Sent Posts' }],
+				count: 1,
+			} as never);
 			dataTableService.findDataTablesByIds.mockResolvedValue([
 				table('dt-1', 'Posts'),
 				table('dt-2', 'Sent Posts'),
@@ -1965,10 +1970,15 @@ describe('EvalExecutionService', () => {
 			generateDataTableRowsMock.mockResolvedValue({
 				rowsByTable: { Posts: [{ title: 'Post A' }] },
 				warnings: [],
+				timestampedTables: [],
 			});
 
 			await service.executeWithLlmMock('wf-1', makeUser(), { scenarioHints: 'Post A was sent' });
 
+			expect(dataTableService.getManyAndCount).toHaveBeenCalledWith({
+				filter: { projectId: 'proj-1', name: 'sent posts' },
+				take: 1,
+			});
 			expect(dataTableService.findDataTablesByIds).toHaveBeenCalledWith(['dt-1', 'dt-2']);
 			expect(generateDataTableRowsMock).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -2046,6 +2056,31 @@ describe('EvalExecutionService', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		it('reports rows that need a createdAt or updatedAt time as a framework failure, before it touches a table', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						dataTableNode('Read', { __rl: true, mode: 'id', value: 'dt-1' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([table('dt-1', 'Posts')] as never);
+			generateDataTableRowsMock.mockResolvedValue({
+				rowsByTable: { Posts: [{ title: 'Old post' }] },
+				warnings: [],
+				timestampedTables: ['Posts'],
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.errors).toEqual([
+				'FRAMEWORK ISSUE: Data Table preparation failed: the scenario gives rows of "Posts" a createdAt or updatedAt time, and the eval cannot set those columns',
+			]);
+			expect(dataTableService.clearRows).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
 		it('passes dropped-column warnings on to the verification hints', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				makeWorkflowEntity({
@@ -2059,6 +2094,7 @@ describe('EvalExecutionService', () => {
 			generateDataTableRowsMock.mockResolvedValue({
 				rowsByTable: {},
 				warnings: ['Data table rows for "Posts" named unknown columns, dropped: url'],
+				timestampedTables: [],
 			});
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
@@ -2091,7 +2127,7 @@ describe('EvalExecutionService', () => {
 			dataTableService.findDataTablesByIds.mockResolvedValue([table('dt-1', 'Posts')] as never);
 			generateDataTableRowsMock.mockImplementation(async () => {
 				await new Promise((resolve) => setTimeout(resolve, 20));
-				return { rowsByTable: {}, warnings: [] };
+				return { rowsByTable: {}, warnings: [], timestampedTables: [] };
 			});
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());

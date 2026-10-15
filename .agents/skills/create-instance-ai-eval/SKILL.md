@@ -648,7 +648,10 @@ nodes get LLM-generated pin data). So:
   inserts the starting rows that the mock model derives from your `dataSetup`.
   Then every Data Table node runs for real, so change-detection / dedup /
   "last seen" scenarios *can* be exercised, and a read sees what the same run
-  wrote before it — describe the stored rows in `dataSetup`. The generated rows
+  wrote before it — describe the stored rows in `dataSetup`. Do not make a
+  scenario depend on a row's `createdAt` or `updatedAt` time ("a row created a
+  week ago"): the table sets those columns, so the harness reports such a
+  scenario as a framework issue. The generated rows
   are steered, not byte-exact, so don't assert exact values off them. For exact
   rows, declare the table in the scenario's `seedDataTables`: the harness inserts
   those rows as written. One caveat: **dedup / change-detection built on workflow

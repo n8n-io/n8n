@@ -1,6 +1,10 @@
 import { buildSchemaContexts, findOutputParserTargets } from './context';
 import { buildDateAnchors } from './date-anchors';
-import { describeDataTableRead, readDataTableReadParameters } from './data-table-read';
+import {
+	describeDataTableRead,
+	readDataTableLocator,
+	readDataTableReadParameters,
+} from './data-table-read';
 import { workflowToMermaid } from './mermaid';
 import { parsePinDataResponse, repairStructuredOutput } from './parse';
 import { buildNodeSchemaSection, buildPinDataUserPrompt } from './prompt';
@@ -216,6 +220,25 @@ describe('Data Table read parameters', () => {
 		expect(section).toContain(
 			'OUTPUTS only the table rows its filter selects — `country` eq "FR"; at most 1 row(s)',
 		);
+	});
+});
+
+describe('readDataTableLocator', () => {
+	it('reads an id, a name and the name an id locator caches', () => {
+		expect(readDataTableLocator('dt-1')).toEqual({ mode: 'id', value: 'dt-1' });
+		expect(
+			readDataTableLocator({ __rl: true, mode: 'list', value: 'dt-1', cachedResultName: 'Posts' }),
+		).toEqual({ mode: 'id', value: 'dt-1', cachedName: 'Posts' });
+		expect(readDataTableLocator({ __rl: true, mode: 'name', value: 'posts' })).toEqual({
+			mode: 'name',
+			value: 'posts',
+		});
+	});
+
+	it('reads nothing from a locator without a value', () => {
+		expect(readDataTableLocator(undefined)).toBeUndefined();
+		expect(readDataTableLocator('')).toBeUndefined();
+		expect(readDataTableLocator({ __rl: true, mode: 'id', value: '' })).toBeUndefined();
 	});
 });
 

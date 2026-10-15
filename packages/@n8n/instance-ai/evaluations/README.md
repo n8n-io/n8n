@@ -39,7 +39,7 @@ Each run:
 - **Mocked nodes** — anything that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion…). The request is intercepted before it leaves the process; an LLM generates the response.
 - **Pinned nodes** — nodes that don't go through the HTTP layer (triggers/webhooks, LangChain/AI nodes, database nodes). They receive LLM-generated pin data.
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute on the mocked data.
-- **Data Table nodes** — run for real against the real table. Before each scenario, the server empties every Data Table the workflow uses and inserts starting rows that an LLM writes from the scenario. A table declared in the scenario's `seedDataTables` gets those exact rows instead. Two runs that use the same table run one after the other.
+- **Data Table nodes** — run for real against the real table. Before each scenario, the server empties every Data Table the workflow uses and inserts starting rows that an LLM writes from the scenario. A table declared in the scenario's `seedDataTables` gets those exact rows instead. Two runs that use the same table run one after the other. A scenario that gives rows a `createdAt` or `updatedAt` time is a framework issue: the table sets those columns itself.
 
 ~95% of node types are covered. See [Known limitations](#known-limitations) for the gaps.
 
