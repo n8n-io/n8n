@@ -8,11 +8,10 @@ defineProps<{ items: AgentsChatHostEventItem[] }>();
 </script>
 
 <template>
-	<div v-if="items.length" :class="$style.hostEvents">
+	<div v-if="items.length">
 		<div
 			v-for="item in items"
 			:key="hostEventIdentity(item.event)"
-			:class="$style.hostEvent"
 			data-testid="agent-chat-host-event"
 			:data-placement="item.placement"
 		>
@@ -20,15 +19,3 @@ defineProps<{ items: AgentsChatHostEventItem[] }>();
 		</div>
 	</div>
 </template>
-
-<style lang="scss" module>
-.hostEvents {
-	display: flex;
-	flex-direction: column;
-}
-
-.hostEvent {
-	margin-top: var(--spacing--2xs);
-	margin-bottom: var(--spacing--2xs);
-}
-</style>

@@ -67,7 +67,7 @@ export interface AgentsChatInteractionExtension<TInput = unknown> {
 	matchHostEvent?(event: AgentsChatHostEvent): boolean;
 	/**
 	 * Renders a matched host event. It gets the `event` and the assistant
-	 * `message` that carries it as props.
+	 * `message` that carries it as props. The chat adds no spacing around it.
 	 */
 	hostEventComponent?: Component;
 	/** Where the assistant message shows a matched host event. The default is `start`. */
