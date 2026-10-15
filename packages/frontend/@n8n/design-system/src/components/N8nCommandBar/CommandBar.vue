@@ -373,7 +373,7 @@ onBeforeUnmount(() => {
 					<span>{{ emptyText }}</span>
 					<N8nButton
 						v-if="isFilteredByTab"
-						variant="subtle"
+						variant="outline"
 						size="small"
 						data-test-id="command-bar-search-all"
 						@mousedown.prevent

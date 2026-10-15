@@ -454,7 +454,7 @@ onBeforeUnmount(store.stopPollingRun);
 					:key="option.key"
 					type="button"
 					size="small"
-					:variant="statusFilter === option.key ? 'outline' : 'subtle'"
+					variant="outline"
 					:data-testid="`agent-eval-checks-filter-${option.key}`"
 					@click="setStatusFilter(option.key)"
 				>
@@ -482,7 +482,7 @@ onBeforeUnmount(store.stopPollingRun);
 					{{ i18n.baseText('agents.builder.agentEvals.suggestion.applyAll') }}
 				</N8nButton>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					:disabled="disabled || rerunning"
 					:loading="rerunning || inFlight"
@@ -553,7 +553,7 @@ onBeforeUnmount(store.stopPollingRun);
 		</N8nButton>
 
 		<div v-if="hasMore" :class="$style.loadMore">
-			<N8nButton variant="subtle" size="small" :loading="review.loadingMore" @click="onLoadMore">
+			<N8nButton variant="outline" size="small" :loading="review.loadingMore" @click="onLoadMore">
 				{{ i18n.baseText('agents.builder.agentEvals.review.loadMore') }}
 			</N8nButton>
 		</div>
