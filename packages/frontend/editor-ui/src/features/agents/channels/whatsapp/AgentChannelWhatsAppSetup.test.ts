@@ -330,6 +330,61 @@ describe('AgentChannelWhatsAppSetup', () => {
 			await waitFor(() => expect(getByTestId('whatsapp-credential-verified')).toBeVisible());
 		});
 
+		it('clears the handshake and checks again when the picked credential is saved', async () => {
+			vi.mocked(getWhatsAppWebhookStatus).mockResolvedValueOnce({ verified: true });
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getByTestId('whatsapp-webhook-verified')).toBeVisible());
+
+			await saveCredential('cred-1');
+			await flushPromises();
+
+			expect(resetWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
+			expect(queryByTestId('whatsapp-webhook-verified')).toBeNull();
+		});
+
+		it('does not clear the handshake when the credential is saved in edit mode', async () => {
+			renderComponent({ props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }) });
+			await waitFor(() => expect(checkWhatsAppCredential).toHaveBeenCalledTimes(1));
+
+			await saveCredential('cred-1');
+			await flushPromises();
+
+			expect(checkWhatsAppCredential).toHaveBeenCalledTimes(2);
+			expect(resetWhatsAppWebhookStatus).not.toHaveBeenCalled();
+		});
+
+		it('stops listening for credential saves once the view is gone', async () => {
+			const { unmount } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(checkWhatsAppCredential).toHaveBeenCalledTimes(1));
+
+			unmount();
+			await saveCredential('cred-1');
+			await flushPromises();
+
+			expect(checkWhatsAppCredential).toHaveBeenCalledTimes(1);
+			expect(resetWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+		});
+
+		it('shows no error when saving the agent fails after the view is gone', async () => {
+			let rejectPersist!: (error: Error) => void;
+			const ensureAgentPersisted = vi.fn(
+				async () => await new Promise<void>((_resolve, reject) => (rejectPersist = reject)),
+			);
+			const { unmount } = renderComponent({
+				props: props({ modelValue: 'cred-1', ensureAgentPersisted }),
+			});
+			await flushPromises();
+			expect(ensureAgentPersisted).toHaveBeenCalled();
+
+			unmount();
+			rejectPersist(new Error('save failed'));
+			await flushPromises();
+
+			expect(showError).not.toHaveBeenCalled();
+		});
+
 		it('does not check again when a different credential is saved', async () => {
 			renderComponent({ props: props({ modelValue: 'cred-1' }) });
 			await waitFor(() => expect(checkWhatsAppCredential).toHaveBeenCalledTimes(1));
@@ -505,6 +560,89 @@ describe('AgentChannelWhatsAppSetup', () => {
 			expect(ensureAgentPersisted).toHaveBeenCalled();
 			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
 			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
+		});
+
+		it('clears the handshake again when the agent is saved before the reset finds it missing', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			let rejectReset!: (error: Error) => void;
+			vi.mocked(resetWhatsAppWebhookStatus).mockReturnValueOnce(
+				new Promise((_resolve, reject) => (rejectReset = reject)),
+			);
+			vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: true });
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+			const { getByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', ensureAgentPersisted }),
+			});
+			await flushPromises();
+			expect(ensureAgentPersisted).toHaveBeenCalled();
+
+			rejectReset(new ResponseError('Agent not found', { httpStatusCode: 404 }));
+			await flushPromises();
+
+			expect(resetWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
+		});
+
+		it('polls again when the agent is saved before the poll finds it missing', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			let rejectStatus!: (error: Error) => void;
+			vi.mocked(getWhatsAppWebhookStatus)
+				.mockReturnValueOnce(new Promise((_resolve, reject) => (rejectStatus = reject)))
+				.mockResolvedValue({ verified: true });
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+			const { getByTestId, rerender } = renderComponent({
+				props: props({ ensureAgentPersisted }),
+			});
+			await flushPromises();
+
+			await rerender(props({ modelValue: 'cred-1', ensureAgentPersisted }));
+			await flushPromises();
+			rejectStatus(new ResponseError('Agent not found', { httpStatusCode: 404 }));
+			await flushPromises();
+
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
+			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
+		});
+
+		it('clears the handshake and checks again when another credential is picked', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			vi.mocked(getWhatsAppWebhookStatus).mockResolvedValueOnce({ verified: true });
+			const { getByTestId, queryByTestId, rerender } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await flushPromises();
+			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
+
+			const reset = deferred<{ verified: boolean }>();
+			vi.mocked(resetWhatsAppWebhookStatus).mockReturnValueOnce(reset.promise);
+			await rerender(props({ modelValue: 'cred-2' }));
+			await flushPromises();
+
+			expect(resetWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
+			expect(queryByTestId('whatsapp-webhook-verified')).toBeNull();
+
+			reset.resolve({ verified: false });
+			await flushPromises();
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
+			expect(queryByTestId('whatsapp-webhook-verified')).toBeNull();
+
+			await vi.advanceTimersByTimeAsync(POLL_MS);
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(3);
+		});
+
+		it('keeps one poll running when the credential changes while polling', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			const { rerender } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await flushPromises();
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+
+			await rerender(props({ modelValue: 'cred-2' }));
+			await flushPromises();
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
+
+			await vi.advanceTimersByTimeAsync(POLL_MS);
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(3);
 		});
 
 		it('does not start a second poll when a credential is picked while polling', async () => {
@@ -737,17 +875,19 @@ describe('AgentChannelWhatsAppSetup', () => {
 			expect(currentSettings(empty.getByTestId)).toBeUndefined();
 		});
 
-		it('fills in the defaults in edit mode', async () => {
+		it('leaves unchanged settings unset in edit mode, so they follow the defaults', async () => {
 			const { getByTestId } = renderHost({
 				props: { viewProps: props({ mode: 'edit', connected: true }) },
 			});
 			await flushPromises();
+			expect(currentSettings(getByTestId)).toEqual({});
 
-			expect(currentSettings(getByTestId)).toEqual({
-				typingIndicator: true,
-				downloadMedia: true,
-				mediaRetentionDays: 30,
-			});
+			await fireEvent.click(getByTestId('whatsapp-typing-indicator'));
+			await waitFor(() => expect(currentSettings(getByTestId)).toEqual({ typingIndicator: false }));
+
+			// Changing a setting back to its default leaves it unset again.
+			await fireEvent.click(getByTestId('whatsapp-typing-indicator'));
+			await waitFor(() => expect(currentSettings(getByTestId)).toEqual({}));
 		});
 
 		it('merges the saved settings with the edited ones in edit mode', async () => {
@@ -760,12 +900,7 @@ describe('AgentChannelWhatsAppSetup', () => {
 				props: { viewProps: props({ mode: 'edit', connected: true, savedSettings }) },
 			});
 			await flushPromises();
-			expect(currentSettings(getByTestId)).toEqual({
-				sessionIdleTimeoutMinutes: 15,
-				typingIndicator: true,
-				downloadMedia: false,
-				mediaRetentionDays: 90,
-			});
+			expect(currentSettings(getByTestId)).toEqual(savedSettings);
 
 			await fireEvent.click(getByTestId('whatsapp-typing-indicator'));
 
@@ -807,13 +942,7 @@ describe('AgentChannelWhatsAppSetup', () => {
 				}),
 			});
 
-			await waitFor(() =>
-				expect(currentSettings(getByTestId)).toEqual({
-					typingIndicator: true,
-					downloadMedia: false,
-					mediaRetentionDays: 30,
-				}),
-			);
+			await waitFor(() => expect(currentSettings(getByTestId)).toEqual({ downloadMedia: false }));
 		});
 	});
 
