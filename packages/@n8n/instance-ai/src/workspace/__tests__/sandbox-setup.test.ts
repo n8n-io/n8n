@@ -68,6 +68,8 @@ import type { Mock } from 'vitest';
 
 import { makeBuilderTemplatesTarGz } from '../../knowledge-base/__tests__/builder-templates-archive.fixtures';
 import { buildKnowledgeBaseWorkspaceBundle } from '../../knowledge-base/materialize-knowledge-base';
+import { buildRuntimeSkillWorkspaceBundle } from '../../skills/materialize-runtime-skills';
+import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
@@ -316,6 +318,9 @@ describe('setupSandboxWorkspace', () => {
 			expect.any(String),
 			{ recursive: true },
 		);
+		expect(writeFile.mock.calls.map(([path]) => path)).toContain(
+			'/home/daytona/workspace/skills/workflow-builder/SKILL.md',
+		);
 
 		const markerCallIndex = writeFile.mock.calls.findIndex(
 			([path]) => path === '/home/daytona/workspace/.sandbox-initialized',
@@ -356,7 +361,7 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('upgrades the knowledge base when sandbox was initialized before templates existed', async () => {
+	it('upgrades the knowledge base and skills when the sandbox is already initialized', async () => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -401,9 +406,10 @@ describe('setupSandboxWorkspace', () => {
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
 		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
+		expect(writtenPaths).toContain('/sandbox/skills/workflow-builder/SKILL.md');
 	});
 
-	it('reads only the knowledge base manifest when the prebaked bundle matches', async () => {
+	it('reads only the bundle manifests when the prebaked bundles match', async () => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -423,7 +429,13 @@ describe('setupSandboxWorkspace', () => {
 			root: '/sandbox',
 			logger: context.logger,
 		});
-		const files = new Map(knowledgeBase.files);
+		const skills = await buildRuntimeSkillWorkspaceBundle({
+			source: loadInstanceAiRuntimeSkillSource(),
+			root: '/sandbox',
+			logger: context.logger,
+		});
+		if (!skills) throw new Error('Expected runtime skill bundle');
+		const files = new Map([...knowledgeBase.files, ...skills.files]);
 		files.set('/sandbox/.sandbox-initialized', '2024-01-01T00:00:00.000Z');
 		const writeFile = vi.fn<
 			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
@@ -442,12 +454,12 @@ describe('setupSandboxWorkspace', () => {
 		);
 
 		expect(initialized).toBe(false);
-		expect(readFile.mock.calls.map(([path]) => path)).toEqual([
-			'/sandbox/.sandbox-initialized',
-			knowledgeBase.manifestPath,
-		]);
+		expect(readFile.mock.calls.map(([path]) => path).sort()).toEqual(
+			['/sandbox/.sandbox-initialized', knowledgeBase.manifestPath, skills.manifestPath].sort(),
+		);
 		expect(writeFile).not.toHaveBeenCalled();
 		expect(verifiedBundles.get(knowledgeBase.manifestPath)).toBe(knowledgeBase.contentHash);
+		expect(verifiedBundles.get(skills.manifestPath)).toBe(skills.skillsHash);
 	});
 
 	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {

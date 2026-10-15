@@ -334,6 +334,7 @@ export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsM
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSourceForBuildMode);
 export const loadInstanceAiPromptSkills: typeof RuntimeSkillsMod.loadInstanceAiPromptSkills =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiPromptSkills);
+export type { PromptProfile } from './prompts/prompt-profiles';
 export const resolvePromptProfile: typeof PromptProfilesMod.resolvePromptProfile = lazyFunction(
 	() => loadPromptProfiles().resolvePromptProfile,
 );
@@ -343,8 +344,8 @@ export const assertInstanceAiPromptVersion: typeof PromptProfilesMod.assertInsta
 export const describePromptProfile: typeof PromptProfilesMod.describePromptProfile = lazyFunction(
 	() => loadPromptProfiles().describePromptProfile,
 );
-export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
-	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
+export const serveRuntimeSkillsFromWorkspace: typeof MaterializeRuntimeSkillsMod.serveRuntimeSkillsFromWorkspace =
+	lazyFunction(() => loadMaterializeRuntimeSkills().serveRuntimeSkillsFromWorkspace);
 export {
 	CONFIG_EVALS_SKILL_ID,
 	disabledInstanceAiSkillIds,

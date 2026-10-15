@@ -109,8 +109,8 @@ entry that they already resolved.
 ## Workspace Initialization
 
 Initialization is lazy and idempotent. A marker file prevents repeated base
-setup. Knowledge-base content is refreshed when an existing sandbox is
-reattached. Initial setup creates or materializes:
+setup. Knowledge-base content and runtime skills are refreshed when an
+existing sandbox is reattached. Initial setup creates or materializes:
 
 | Path                   | Purpose                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------ |
@@ -121,6 +121,7 @@ reattached. Initial setup creates or materializes:
 | `src/`                 | Workflow source files                                                                      |
 | `chunks/`              | Reusable source modules                                                                    |
 | `knowledge-base/`      | Best-practice, template, and SDK reference material                                        |
+| `skills/`              | Runtime skills (`registry.json` and `<skill>/SKILL.md`)                                    |
 | `.sandbox-initialized` | Setup marker                                                                               |
 
 The Daytona image or versioned snapshot includes the stable workspace files
@@ -141,6 +142,11 @@ setup write the same set, so a sandbox from an image or snapshot of the same
 n8n version reuses it. A bundle from an older image or snapshot has a
 different hash, so setup writes it again one time. `load_skill` serves only
 the skills that the profile, the flags and the enabled modules allow.
+
+`load_skill` does not read from the sandbox and does not wait for it. It
+serves the skill text from memory, with the sandbox paths of the skill files.
+Setup writes the skills before the workspace is available to a sandbox command,
+so the files exist when the agent reads them.
 
 With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
 

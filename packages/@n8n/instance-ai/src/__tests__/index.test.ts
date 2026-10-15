@@ -83,7 +83,7 @@ vi.mock('../skills/materialize-runtime-skills', () => ({
 	N8N_SKILLS_DIR_ENV: 'N8N_SKILLS_DIR',
 	N8N_SKILL_DIR_ENV: 'N8N_SKILL_DIR',
 	N8N_WORKSPACE_DIR_ENV: 'N8N_WORKSPACE_DIR',
-	createLazyWorkspaceRuntimeSkillSource: () => 'lazy-skill-source',
+	serveRuntimeSkillsFromWorkspace: () => 'workspace-skill-source',
 }));
 vi.mock('../utils/eval-agents', () => ({
 	createEvalAgent: () => 'eval-agent',
@@ -225,7 +225,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.TraceWriter)).toBeInstanceOf(entrypoint.TraceWriter);
 
 		expect(call(entrypoint.loadInstanceAiRuntimeSkillSource)).toBe('runtime-skill-source');
-		expect(call(entrypoint.createLazyWorkspaceRuntimeSkillSource)).toBe('lazy-skill-source');
+		expect(call(entrypoint.serveRuntimeSkillsFromWorkspace)).toBe('workspace-skill-source');
 		expect(entrypoint.INSTANCE_AI_SKILLS_DIR).toBe('/instance-ai-skills');
 		expect(entrypoint.SANDBOX_RUNTIME_SKILLS_DIR).toBe('/sandbox-skills');
 		expect(entrypoint.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE).toBe('registry.json');

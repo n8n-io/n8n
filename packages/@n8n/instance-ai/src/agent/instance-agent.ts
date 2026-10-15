@@ -14,7 +14,6 @@ import {
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { hasRuntimeSkills, warmRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -252,19 +251,12 @@ export async function createInstanceAgent(
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
 	const runtimeSkills = orchestrationContext?.runtimeSkills;
-	if (hasRuntimeSkills(runtimeSkills)) {
-		agent.skills(runtimeSkills);
-		warmRuntimeSkills(runtimeSkills, {
-			logger: orchestrationContext?.logger,
-			tracing: orchestrationContext?.tracing,
-		});
-	}
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
 	attachRuntimeWorkspaceCapabilities(agent, {
 		workspace: orchestrationContext?.workspace,
-		runtimeSkills: orchestrationContext?.runtimeSkills,
+		runtimeSkills,
 	});
 
 	if (options.memory) {
