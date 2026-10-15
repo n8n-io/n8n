@@ -139,6 +139,7 @@ const channelActionInFlight = computed(
 		channelViewRef.value?.loading === true,
 );
 const integrationLabel = computed(() => currentIntegration.value.label);
+const canFinish = computed(() => channelViewRef.value?.canFinish === true);
 
 const connectedDescription = computed(() => {
 	if (!isIntegrationConnected(props.integrationType)) return '';
@@ -200,10 +201,14 @@ async function skipSetup() {
 	}
 }
 
-async function saveChannelConfig() {
-	if (isBlocked() || channelActionInFlight.value) return;
+/**
+ * Saves without resolving: the recommended Teams flow binds its credential
+ * mid-flow and still has steps after it.
+ */
+async function writeChannelConfig(): Promise<boolean> {
+	if (isBlocked() || channelActionInFlight.value) return false;
 	const credentialId = currentChannelCredentialId.value;
-	if (!credentialId || channelViewRef.value?.validationError) return;
+	if (!credentialId || channelViewRef.value?.validationError) return false;
 
 	connectionInFlight.value = true;
 	try {
@@ -214,12 +219,23 @@ async function saveChannelConfig() {
 			...(approval ? { approval } : {}),
 		});
 		notifyAgentUpdated();
-		finish(true);
+		return true;
 	} catch {
 		// useAgentIntegrationStatus exposes the configuration error to the setup component.
+		return false;
 	} finally {
 		connectionInFlight.value = false;
 	}
+}
+
+async function saveChannelConfig() {
+	// A view with steps past the connect resolves the card itself, through `done`.
+	if ((await writeChannelConfig()) && !channelViewRef.value?.keepOpenAfterConnect) finish(true);
+}
+
+/** Done is also the save for a setup that reopened past the step that binds the credential. */
+async function finishSetup() {
+	if (await writeChannelConfig()) finish(true);
 }
 
 function handlePlatformConnected() {
@@ -288,6 +304,12 @@ watch(
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 				{{ cardTitle }}
 			</N8nText>
+			<component
+				:is="currentPlatform.headerContent?.setupModal"
+				v-if="currentPlatform.headerContent?.setupModal && !catalogLoading"
+				:runtime="currentRuntime"
+				:disabled="channelActionInFlight"
+			/>
 		</header>
 
 		<div :class="$style.bodyWrapper">
@@ -344,11 +366,25 @@ watch(
 				@edit="editCredential"
 				@connect="saveChannelConfig"
 				@connected="handlePlatformConnected"
+				@persist="writeChannelConfig"
+				@done="finishSetup"
 			/>
 		</div>
 
 		<footer :class="$style.footer">
 			<N8nButton
+				v-if="canFinish"
+				variant="solid"
+				size="medium"
+				:disabled="channelActionInFlight"
+				data-testid="channel-setup-card-done"
+				@click="finishSetup"
+			>
+				{{ i18n.baseText('generic.done') }}
+			</N8nButton>
+			<!-- Skipping removes the channel, which would orphan the one the setup just provisioned. -->
+			<N8nButton
+				v-else
 				variant="ghost"
 				size="medium"
 				:disabled="channelActionInFlight"
