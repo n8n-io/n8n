@@ -9,6 +9,8 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { selfHealingOutputSchema } from '@n8n/instance-ai';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { randomUUID } from 'node:crypto';
 
 import { DurableEventLog } from '../event-bus/durable-event-log';
@@ -176,6 +178,18 @@ export class SelfHealingInvestigationService {
 				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
 			};
 		}
+		const outputFields = selfHealingOutputSchema.innerType().shape;
+		accepted.output = {
+			...accepted.output,
+			summary: scrubSecretsInText(accepted.output.summary).slice(
+				0,
+				outputFields.summary.maxLength ?? undefined,
+			),
+			report: scrubSecretsInText(accepted.output.report).slice(
+				0,
+				outputFields.report.maxLength ?? undefined,
+			),
+		};
 		await this.suggestions.requireCurrentBaseline(investigation.baseline);
 		signal.throwIfAborted();
 		await this.investigations.storeAcceptedOutput(investigation.id, accepted);

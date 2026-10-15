@@ -57,7 +57,15 @@ export class InstanceAiModule implements ModuleInterface {
 		sweeper.setResumeHost(Container.get(InstanceAiService));
 		void sweeper
 			.sweep()
-			.then(async () => await Container.get(SelfHealingInvestigationService).reconcile())
+			.then(async () => {
+				try {
+					await Container.get(SelfHealingInvestigationService).reconcile();
+				} catch (error) {
+					sweepLogger.error('Self-healing investigation reconciliation failed on startup', {
+						error,
+					});
+				}
+			})
 			.catch((error: unknown) => {
 				sweepLogger.error('Interrupted-run sweep failed on startup', { error });
 			});
@@ -74,7 +82,10 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiCheckpointPruningTask } = await import(
 			'./instance-ai-checkpoint-pruning.task.js'
 		);
-		return [InstanceAiCheckpointPruningTask];
+		const { SelfHealingReconciliationTask } = await import(
+			'./self-healing/self-healing-reconciliation.task.js'
+		);
+		return [InstanceAiCheckpointPruningTask, SelfHealingReconciliationTask];
 	}
 
 	async settings() {

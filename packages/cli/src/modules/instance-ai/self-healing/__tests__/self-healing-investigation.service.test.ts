@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { Project, SharedWorkflowRepository, TransactionRunner, User } from '@n8n/db';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
-import type { CredentialResolutionResult } from '@n8n/instance-ai';
+import { selfHealingOutputSchema, type CredentialResolutionResult } from '@n8n/instance-ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
@@ -124,6 +124,14 @@ describe('SelfHealingInvestigationService', () => {
 		return response;
 	}
 
+	it('does not admit an investigation when self-healing is disabled', async () => {
+		config.selfHealingEnabled = false;
+
+		await expect(service.start(input)).rejects.toThrow('Self-healing investigations are disabled.');
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
 	it('uses server references and persists accepted output before completion', async () => {
 		expect(await startAndFinish()).toEqual({
 			kind: 'investigation',
@@ -144,6 +152,44 @@ describe('SelfHealingInvestigationService', () => {
 		expect(results.complete).toHaveBeenCalledWith({ investigationId: investigation.id });
 		expect(investigations.storeAcceptedOutput.mock.invocationCallOrder[0]).toBeLessThan(
 			results.complete.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('normalizes final report text before storage', async () => {
+		const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
+		const output = {
+			outcome: 'needs_you' as const,
+			summary: `The response contained ${value}.`,
+			report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
+		};
+		run.output = output;
+
+		await startAndFinish();
+
+		expect(investigation.acceptedOutput?.output).toEqual({
+			outcome: 'needs_you',
+			summary: 'The response contained [REDACTED].',
+			report: 'Check the HTTP Request node. Authorization: [REDACTED]',
+		});
+		expect(output.report).toContain(value);
+	});
+
+	it.each([
+		['summary', 500],
+		['report', 50_000],
+	] as const)('keeps %s within its limit after text replacement', async (field, limit) => {
+		const output = selfHealingOutputSchema.parse({
+			...run.output,
+			[field]: 'token=x '.repeat(Math.floor(limit / 8)).padEnd(limit, '.'),
+		});
+		run.output = output;
+
+		await startAndFinish();
+
+		expect(investigation.acceptedOutput?.output[field]).toHaveLength(limit);
+		expect(investigation.acceptedOutput?.output[field]).not.toContain('token=x');
+		expect(selfHealingOutputSchema.safeParse(investigation.acceptedOutput?.output).success).toBe(
+			true,
 		);
 	});
 
@@ -177,6 +223,7 @@ describe('SelfHealingInvestigationService', () => {
 	])(
 		'saves $outcome when simulated credentials are missing=$missing',
 		async ({ missing, outcome }) => {
+			const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
 			const output = {
 				outcome: 'fix_ready' as const,
 				summary: 'The workflow is fixed.',
@@ -193,7 +240,9 @@ describe('SelfHealingInvestigationService', () => {
 					credentialResolution: mock<CredentialResolutionResult>({
 						mockedNodeNames: ['Fetch Order'],
 						mockedCredentialTypes: missing ? ['httpHeaderAuth'] : [],
-						mockedCredentialsByNode: missing ? { 'Fetch Order': ['httpHeaderAuth'] } : {},
+						mockedCredentialsByNode: missing
+							? { [`Fetch Order ${value}`]: ['httpHeaderAuth'] }
+							: {},
 						resolvedCredentialsByNode: missing
 							? {}
 							: { 'Fetch Order': [{ type: 'openAiApi', id: null, name: 'Gateway credits' }] },
@@ -210,6 +259,8 @@ describe('SelfHealingInvestigationService', () => {
 				expect(accepted?.output.summary).toContain('credentials');
 				expect(accepted?.output.summary).not.toBe(output.summary);
 				expect(accepted?.output.report).toContain('Fetch Order');
+				expect(accepted?.output.report).toContain('[REDACTED]');
+				expect(accepted?.output.report).not.toContain(value);
 				expect(accepted?.output.report).toContain('httpHeaderAuth');
 				expect(accepted?.output.report).not.toContain('credential was created');
 			} else {

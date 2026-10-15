@@ -271,28 +271,75 @@ it('commits concurrent finalization only once', async () => {
 });
 
 it('rolls back all completion writes and retries from accepted data', async () => {
-	const { investigation } = await prepareInvestigation();
+	const { input, original, graph, user, project } = await prepareFixture('fix_ready');
+	const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
+	let completedRun: Promise<SelfHealingRunResult> | undefined;
+	runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
+		const run: SelfHealingRunResult = {
+			threadId: lifecycle.threadId,
+			runId: lifecycle.runId,
+			status: 'completed',
+			finishReason: 'stop',
+			output: {
+				outcome: 'fix_ready',
+				summary: `Updated the request using ${value}.`,
+				report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
+				candidateFilePath: 'candidate.workflow.ts',
+			},
+			usage: input.usage,
+			candidate: {
+				filePath: 'candidate.workflow.ts',
+				compile: async () => ({
+					success: true,
+					workflow: { ...original, ...graph },
+					warnings: [],
+					credentialResolution: {
+						mockedNodeNames: [],
+						mockedCredentialTypes: [],
+						mockedCredentialsByNode: {},
+						heldForNewCredentialTypes: [],
+						resolvedCredentialsByNode: {},
+					},
+				}),
+			},
+		};
+		completedRun = lifecycle.onComplete(run, new AbortController().signal).then(() => run);
+		return await completedRun;
+	});
 	const completeWithResult = investigations.completeWithResult.bind(investigations);
 	vi.spyOn(investigations, 'completeWithResult').mockImplementationOnce(async (...args) => {
 		await completeWithResult(...args);
 		throw new Error('Completion unavailable.');
 	});
-	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
-		'Completion unavailable.',
-	);
+	const started = await Container.get(SelfHealingInvestigationService).start(input);
+	if (started.kind !== 'investigation') throw new Error('Expected an investigation.');
+	await vi.waitFor(() => expect(completedRun).toBeDefined());
+	await expect(completedRun).rejects.toThrow('Completion unavailable.');
+	const investigation = await investigations.get(started.investigationId);
 	expect(await results.count()).toBe(0);
 	expect(await suggestions.count()).toBe(0);
 	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(0);
-	expect(await investigations.get(investigation.id)).toMatchObject({
+	const content = {
+		summary: 'Updated the request using [REDACTED].',
+		report: 'Check the HTTP Request node. Authorization: [REDACTED]',
+	};
+	expect(investigation).toMatchObject({
 		resultId: null,
 		finishedAt: null,
-		acceptedOutput: expect.any(Object),
+		acceptedOutput: { output: content },
 	});
 	const result = await service.complete({ investigationId: investigation.id });
 	expect(await investigations.get(investigation.id)).toMatchObject({
 		resultId: result.id,
 		acceptedOutput: null,
 	});
+	const url = `/projects/${project.id}/workflows/${original.id}/self-healing-results/${result.id}`;
+	const response = await testServer.authAgentFor(user).get(url).expect(200);
+	expect(response.body.data).toMatchObject({
+		...content,
+		suggestion: { payload: { explanation: content.summary } },
+	});
+	expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1);
 });
 
 it('rejects a changed baseline when finalizing an accepted report', async () => {
@@ -413,7 +460,7 @@ it('rechecks the background user after execution validation', async () => {
 });
 
 it.each([0, null])('preserves report text and measured usage with credits=%s', async (credits) => {
-	const report = 'Configure the password parameter before retrying: password=example-value.';
+	const report = 'Configure the credential for the HTTP Request node before retrying.';
 	const usage = {
 		credits,
 		turns: 1,

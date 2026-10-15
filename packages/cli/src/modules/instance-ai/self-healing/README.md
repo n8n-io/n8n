@@ -19,7 +19,8 @@ It passes the execution ID to the agent. The agent reads details through the exi
 The execution must remain saved and readable. M3 will define how to retain only the triggering
 execution when saving is disabled or pruning runs. Investigation inputs contain no execution payload.
 
-The call returns an investigation ID or an existing pending suggestion ID.
+The call returns `{ kind: 'investigation', investigationId }` or
+`{ kind: 'suggestion', suggestionId }` for an existing pending suggestion.
 A workflow can have one unfinished investigation or pending suggestion.
 Repeated starts for the same failed execution return the original investigation, including after completion.
 Automatic triggers and eligibility for a new failure remain the caller's responsibility.
@@ -103,6 +104,8 @@ No suggestion row is created by verification.
 ## Store a result
 
 The runtime validates final output. The producer compiles the named workspace file.
+It applies the shared text filter to the final summary and report before storage.
+It keeps both fields within their output limits after replacement.
 It stores the accepted output, runtime usage, and compiled graph on the investigation.
 A credit-claim failure leaves unknown credits and does not discard valid output.
 
@@ -114,14 +117,18 @@ Successful completion clears the temporary accepted output.
 Retries use the stored graph and report. They do not need the workspace or another model run.
 Changed baselines and lost access stop completion without creating a result.
 
-Startup and the existing prune task retry accepted output and reconcile interrupted claims.
+Startup retries accepted output and reconciles interrupted claims after the interrupted-run sweep.
+A separate scheduled task retries this work at the configured prune interval.
+Recovery failures do not block Assistant data pruning or temporary workflow cleanup.
+Recovery remains available when new investigations are disabled.
 Technical status and termination reasons stay in the existing Assistant run events.
 Completion releases the investigation claim. A pending suggestion then prevents new investigations.
 Apply, discard, dismissal, and outdated reconciliation use the existing suggestion lifecycle.
 Call `complete()` only for accepted investigation outcomes. Technical failures without an accepted result stay
 in internal run records and do not create a report or suggestion.
-The investigation instructions must keep sensitive values out of reports, summaries, and
-suggestion explanations and error context. Persistence does not scrub these fields.
+The investigation instructions must keep sensitive values out of reports, summaries,
+suggestion explanations, and error context. The text filter handles recognized patterns.
+It does not remove arbitrary private information.
 
 | Outcome         | Suggestion | Actions                                      |
 | --------------- | ---------- | -------------------------------------------- |
