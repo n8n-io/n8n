@@ -1476,9 +1476,10 @@ describe('AgentEvalChecksPanel', () => {
 		await vi.waitFor(() =>
 			expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument(),
 		);
-		expect(
-			getByTestId('agent-eval-checks-filter-all').closest('[role="radio"]'),
-		).toHaveAttribute('aria-checked', 'true');
+		expect(getByTestId('agent-eval-checks-filter-all').closest('[role="radio"]')).toHaveAttribute(
+			'aria-checked',
+			'true',
+		);
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
 	});
 });
