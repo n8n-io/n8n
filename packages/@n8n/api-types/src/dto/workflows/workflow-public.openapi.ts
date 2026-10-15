@@ -131,6 +131,13 @@ export const workflowCreateFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
+export const workflowListFieldDocs = {
+	parentFolderId: {
+		description: 'ID of the folder that contains the workflow, or null at the project root.',
+		example: 'X8ovzm8lTQjcXRZQ',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
 export const workflowUpdateFieldDocs = {
 	description: {
 		description: 'Description of the workflow',

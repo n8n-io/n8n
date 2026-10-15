@@ -266,6 +266,7 @@ export class WorkflowsPublicController {
 				includePinnedData: !query.excludePinnedData,
 				includeTags: this.workflowTagsEnabled,
 				includeActiveVersion: true,
+				includeParentFolder: true,
 			},
 		);
 
@@ -294,6 +295,7 @@ export class WorkflowsPublicController {
 				meta: toPublicJson(workflow.meta),
 				...(query.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
 				...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
+				parentFolderId: workflow.parentFolder?.id ?? null,
 				shared: workflow.shared.map(toPublicListSharedWorkflow),
 				activeVersion: workflow.activeVersion
 					? toPublicActiveVersionWithoutHistory(workflow.activeVersion)
