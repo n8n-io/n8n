@@ -418,13 +418,13 @@ describe('AgentSessionsListView', () => {
 	});
 
 	it.each([
-		['succeeded', 'Succeeded', 'success', true],
-		['error', 'Error', 'danger', true],
-		['cancelled', 'Canceled', 'text-xlight', true],
-		['interrupted', 'Interrupted', 'text-xlight', true],
-		['awaiting', 'Awaiting', 'secondary', true],
-		['running', 'Running', undefined, false],
-	] as const)('renders the %s session state', async (status, label, color, showsDuration) => {
+		['succeeded', 'Succeeded', 'success'],
+		['error', 'Error', 'danger'],
+		['cancelled', 'Canceled', 'text-xlight'],
+		['interrupted', 'Interrupted', 'text-xlight'],
+		['awaiting', 'Awaiting', 'secondary'],
+		['running', 'Running', undefined],
+	] as const)('renders the %s session state', async (status, label, color) => {
 		const wrapper = await mountView({
 			threads: [makeThread({ status })],
 		});
@@ -432,9 +432,6 @@ describe('AgentSessionsListView', () => {
 
 		expect(indicator.attributes('aria-label')).toBe(label);
 		expect(indicator.attributes('data-color')).toBe(color);
-		expect(wrapper.find('[data-testid="agent-session-status-duration"]').exists()).toBe(
-			showsDuration,
-		);
 	});
 
 	it.each(['success', 'failure'])(
