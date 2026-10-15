@@ -111,6 +111,7 @@ function drawSessionTimeline() {
 
 async function selectRequest(request) {
 	selectedRequest = requestKey(request);
+	showRequestDetails(request);
 	const checkpoint = profileForRequest(report.session.profiles, request);
 	element('profile').value = checkpoint
 		? String(report.session.profiles.indexOf(checkpoint))
@@ -120,6 +121,33 @@ async function selectRequest(request) {
 		await showAllocations();
 	} catch (error) {
 		element('error').textContent = error.message;
+	}
+}
+
+function showRequestDetails(request) {
+	element('request-details-panel').hidden = !request;
+	if (!request) return;
+	element('request-detail-identity').textContent = `${request.method} ${request.route}`;
+	const payload = (value) => {
+		if (value?.omitted) return t(`payloadOmitted.${value.omitted}`);
+		if (typeof value?.text !== 'string') return t('payloadNotCaptured');
+		try {
+			return JSON.stringify(JSON.parse(value.text), null, 2);
+		} catch {
+			return value.text;
+		}
+	};
+	for (const key of ['request', 'response']) {
+		const details = request[key];
+		element(`${key}-content`).textContent = details
+			? [
+					details.url ? `${t('requestUrl')}: ${details.url}` : '',
+					`${t('requestHeaders')}:\n${payload(details.headers)}`,
+					`${t('requestBody')}:\n${payload(details.body)}`,
+				]
+					.filter(Boolean)
+					.join('\n\n')
+			: t('payloadNotCaptured');
 	}
 }
 
@@ -166,7 +194,8 @@ function showRequests() {
 			: requests?.enabled
 				? 'requestHistory'
 				: 'requestCaptureUnavailable',
-	);
+	).replace('{limit}', String(requests?.historyLimit ?? 500));
+	showRequestDetails(requests?.recent.find((request) => requestKey(request) === selectedRequest));
 	table(
 		'requests',
 		[
@@ -179,7 +208,7 @@ function showRequests() {
 			t('requestDuration'),
 		],
 		(requests?.recent ?? [])
-			.slice(-200)
+			.slice()
 			.reverse()
 			.map((request) => {
 				const focus = document.createElement('button');
@@ -395,6 +424,7 @@ element('profile').addEventListener('change', async () => {
 element('request-search').addEventListener('input', showRequests);
 element('all-requests').addEventListener('click', () => {
 	selectedRequest = undefined;
+	showRequestDetails();
 	drawSessionTimeline();
 });
 element('marker-form').addEventListener('submit', async (event) => {
@@ -442,12 +472,20 @@ function updateControls() {
 				? 'captureDisabledDescription'
 				: 'recordingActive',
 	);
-	for (const key of ['metrics', 'requests', 'allocations']) {
+	for (const key of ['metrics', 'requests', 'allocations', 'requestDetails', 'responseDetails']) {
 		const input = element(`capture-${key}`);
 		if (!controlPending)
 			input.checked = Boolean(capture?.[key] && report.status?.capabilities?.[key]);
-		input.disabled = !ready || !report.status?.capabilities?.[key];
+		input.disabled =
+			!ready ||
+			!report.status?.capabilities?.[key] ||
+			(['requestDetails', 'responseDetails'].includes(key) &&
+				(!capture?.requests || !report.status?.capabilities?.requests));
 	}
+	const limit = element('request-limit');
+	if (!controlPending && document.activeElement !== limit)
+		limit.value = String(capture?.requestLimit ?? 500);
+	limit.disabled = !ready || !report.status?.capabilities?.requests;
 	const interval = element('metrics-interval');
 	if (capture && !controlPending) {
 		if (![...interval.options].some((option) => option.value === String(capture.intervalMs))) {
@@ -463,14 +501,33 @@ function updateControls() {
 		? 'captureInspectorUnavailable'
 		: !report.status?.capabilities?.requests
 			? 'captureRequestsUnavailable'
-			: undefined;
+			: !report.status?.capabilities?.requestDetails
+				? 'captureDetailsUnavailable'
+				: undefined;
 	element('capture-unavailable').hidden = !report.live || !report.status?.ready || !unavailable;
 	element('capture-unavailable').textContent = unavailable ? t(unavailable) : '';
 }
-for (const key of ['metrics', 'requests', 'allocations', 'intervalMs']) {
-	const input = element(key === 'intervalMs' ? 'metrics-interval' : `capture-${key}`);
+for (const key of [
+	'metrics',
+	'requests',
+	'allocations',
+	'intervalMs',
+	'requestLimit',
+	'requestDetails',
+	'responseDetails',
+]) {
+	const input = element(
+		key === 'intervalMs'
+			? 'metrics-interval'
+			: key === 'requestLimit'
+				? 'request-limit'
+				: `capture-${key}`,
+	);
 	input.addEventListener('change', async () => {
-		const value = key === 'intervalMs' ? Number(input.value) : input.checked;
+		if (!input.reportValidity()) return;
+		const value = ['intervalMs', 'requestLimit'].includes(key)
+			? Number(input.value)
+			: input.checked;
 		controlPending = true;
 		updateControls();
 		try {

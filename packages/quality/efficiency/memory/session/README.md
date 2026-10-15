@@ -225,8 +225,8 @@ outside the backend. Attach mode needs `N8N_MEMORY_PROFILING=true` on the backen
 Check `capabilities.requests` in status to confirm that capture is active.
 
 Each call records its method, route template, API type, process, start time,
-duration, response status, and disconnect state. Headers, query strings, bodies,
-and route parameter values are excluded. Calls that fail before route matching
+duration, response status, and disconnect state. The default capture excludes
+headers, query strings, bodies, and route parameter values. Calls that fail before route matching
 use a `/(unmatched)` label. Calls that have not finished use `/(pending)`.
 Request capture starts after warm-up. It stops during a recording pause and when
 the recorder detaches. A call that spans a pause can remain unfinished in the
@@ -239,11 +239,37 @@ recording interval. The viewer does not select a checkpoint from another interva
 Overlapping requests share process memory. Timing alone does not identify which
 request allocated memory. A checkpoint can also include earlier allocations.
 
-Reports retain the latest 1,000 calls and summarize up to 1,000 endpoint patterns.
-They return the 50 patterns with the most total request time. The viewer table
-shows the latest 200 calls. Download `requests.ndjson` for all recorded events.
-JSON reports include started, completed, aborted, unfinished, and invalid event
-counts. Old recordings still open without request data.
+The recorder keeps the latest 500 calls in a rolling window. Open **Capture
+settings** to change **API history limit** from 1 to 5,000 calls. The limit applies
+to the saved artifact, report, table, and graph. Older calls and their details
+are removed. Increasing the limit keeps more new calls. It cannot restore old
+calls. Lowering the limit also trims the saved window while capture is paused.
+The recorder saves the window on each update and at final shutdown.
+Download `requests.ndjson` for the retained start and completion events.
+
+Enable **Capture request details** to include the URL, query values, headers,
+and body. Enable **Capture response details** to include response headers and
+the body. Both options start off. Changes apply to new calls. Select a call's
+start time or graph event to read its details. Saved sessions preserve them.
+An attached backend needs the current profiling middleware for these options.
+
+Detail capture adds CPU and memory work. Each body and header block has a
+64 KiB limit. Bodies with more than 2,000 values or 128 response chunks can also
+exceed the capture limit. Response capture buffers at most 32 concurrent calls.
+The viewer explains omitted content. Binary, event-stream, and encoded response
+bodies are omitted. The middleware uses the shared redactor for common secret
+fields. Other sensitive data can remain. Keep recordings local.
+
+Use the same options from the CLI:
+
+```bash
+pnpm dev:profile --request-limit 500 --request-details --response-details
+```
+
+Reports summarize up to 1,000 endpoint patterns from the saved window. They return
+the 50 patterns with the most total request time. JSON reports include started,
+completed, aborted, unfinished, and invalid event counts for the saved events.
+Old recordings still open without request data.
 
 ## Dashboard
 
@@ -261,7 +287,7 @@ to zoom. Vertical scrolling over the chart scrolls the page. Endpoint favorites
 appear as request spans with endpoint labels in the legend. Use the pin to show
 an endpoint on the graph. A vertical line marks each pinned call's start time
 across the memory plot. Its color matches the request event.
-The graph uses the latest 1,000 calls.
+The graph uses the same retained API history as the table.
 Search the request table to filter all displayed columns and highlight matches.
 Search ignores case. The table shows durations as whole milliseconds.
 

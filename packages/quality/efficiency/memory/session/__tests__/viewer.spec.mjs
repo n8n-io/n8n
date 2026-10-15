@@ -5,13 +5,81 @@ import { test, expect } from 'n8n-playwright/test';
 
 import { serveViewer } from '../viewer.mjs';
 
+test('shows 500 API calls by default and uses the saved history limit', async ({ page }) => {
+	const directory = await mkdtemp(join(tmpdir(), 'n8n-memory-viewer-limit-'));
+	let viewer;
+	try {
+		const input = join(directory, 'session.json');
+		const session = {
+			schemaVersion: 1,
+			kind: 'n8n-memory-session',
+			status: 'complete',
+			timeline: 'timeline.ndjson',
+			requests: 'requests.ndjson',
+			settings: { requestTracking: true, capture: { requestLimit: 500 } },
+			metadata: {},
+			segments: [],
+			profiles: [],
+			snapshots: [],
+			markers: [],
+			gaps: [],
+			errors: [],
+		};
+		await writeFile(input, JSON.stringify(session));
+		await writeFile(join(directory, 'timeline.ndjson'), '');
+		await writeFile(
+			join(directory, 'requests.ndjson'),
+			Array.from({ length: 505 }, (_, id) =>
+				JSON.stringify({
+					id,
+					segmentId: 'process-1',
+					api: 'internal',
+					method: 'GET',
+					event: 'finish',
+					route: `/rest/call-${id}`,
+					elapsedMs: id * 100,
+					durationMs: 10,
+					statusCode: 200,
+				}),
+			).join('\n'),
+		);
+		viewer = await serveViewer({ input });
+		await page.goto(viewer.url);
+		await expect(page.locator('#requests tbody tr')).toHaveCount(500);
+		await expect(page.locator('#requests-status')).toContainText('latest 500 calls');
+		session.settings.capture.requestLimit = 600;
+		await writeFile(input, JSON.stringify(session));
+		await page.reload();
+		await expect(page.locator('#requests tbody tr')).toHaveCount(505);
+		await expect(page.locator('#requests-status')).toContainText('latest 600 calls');
+	} finally {
+		await viewer?.close();
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
 test('edits a persistent dashboard and controls recording', async ({ page }) => {
 	const directory = await mkdtemp(join(tmpdir(), 'n8n-memory-viewer-'));
 	const status = {
 		phase: 'measurement',
 		ready: true,
-		capabilities: { metrics: true, requests: true, allocations: true, snapshots: true },
-		capture: { metrics: true, requests: true, allocations: false, intervalMs: 1000 },
+		capabilities: {
+			metrics: true,
+			requests: true,
+			allocations: true,
+			snapshots: true,
+			requestDetails: true,
+			responseDetails: true,
+		},
+		capture: {
+			metrics: true,
+			requests: true,
+			allocations: false,
+			intervalMs: 1000,
+			requestLimit: 500,
+			requestDetails: false,
+			responseDetails: false,
+		},
 	};
 	const actions = [];
 	let viewer;
@@ -84,6 +152,15 @@ test('edits a persistent dashboard and controls recording', async ({ page }) => 
 					elapsedMs: 7500,
 					durationMs: 50.49,
 					statusCode: 200,
+					request: {
+						url: '/rest/workflows/example?name=sample',
+						headers: { text: '{"x-input":"example"}' },
+						body: { text: '{"input":"<script>example</script>"}' },
+					},
+					response: {
+						headers: { text: '{"content-type":"application/json"}' },
+						body: { text: '{"output":"recorded-response"}' },
+					},
 				},
 			]
 				.map((request) => JSON.stringify(request))
@@ -274,6 +351,32 @@ test('edits a persistent dashboard and controls recording', async ({ page }) => 
 		await expect(metrics).toBeChecked();
 		await expect(requestsToggle).toBeChecked();
 		await expect(allocationsToggle).not.toBeChecked();
+		const requestDetails = page.getByRole('checkbox', {
+			name: 'Capture request details',
+			exact: true,
+		});
+		const responseDetails = page.getByRole('checkbox', {
+			name: 'Capture response details',
+			exact: true,
+		});
+		await expect(requestDetails).not.toBeChecked();
+		await expect(responseDetails).not.toBeChecked();
+		await expect(page.getByLabel('API history limit', { exact: true })).toHaveValue('500');
+		await page.getByLabel('API history limit', { exact: true }).fill('750');
+		await page.getByLabel('API history limit', { exact: true }).press('Tab');
+		await expect.poll(() => status.capture.requestLimit).toBe(750);
+		await requestDetails.check();
+		await expect.poll(() => status.capture.requestDetails).toBe(true);
+		await expect(responseDetails).not.toBeChecked();
+		await responseDetails.check();
+		await expect.poll(() => status.capture.responseDetails).toBe(true);
+		await page.locator('#requests .request-start').first().click();
+		await expect(page.locator('#request-content')).toContainText(
+			'/rest/workflows/example?name=sample',
+		);
+		await expect(page.locator('#request-content')).toContainText('<script>example</script>');
+		await expect(page.locator('#response-content')).toContainText('recorded-response');
+		await expect(page.locator('#request-content script')).toHaveCount(0);
 		await allocationsToggle.check();
 		await expect.poll(() => status.capture.allocations).toBe(true);
 		await page.reload();

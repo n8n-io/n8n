@@ -1,8 +1,8 @@
 import { afterEach, expect, it } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { requestReport } from '../requests.mjs';
+import { requestReport, RequestHistory, requestLimit } from '../requests.mjs';
 
 const directories = [];
 afterEach(async () => {
@@ -25,6 +25,44 @@ const event = {
 	elapsedMs: 100,
 	startedAtMs: 1000,
 };
+
+it('keeps 500 calls by default and saves a bounded rolling artifact', async () => {
+	const filename = await fixture([]);
+	const history = new RequestHistory(filename);
+	for (let id = 0; id < 505; id++) {
+		history.add({ ...event, id, event: 'start' });
+		history.add({
+			...event,
+			id,
+			event: 'finish',
+			statusCode: 200,
+			durationMs: 5,
+			response: { body: { text: String(id) } },
+		});
+	}
+	await history.flush();
+	const report = await requestReport(filename, true);
+	expect(report.recent).toHaveLength(500);
+	expect(report.recent[0].id).toBe(5);
+	expect(report.completed).toBe(500);
+	history.setLimit(2);
+	await history.flush();
+	expect((await readFile(filename, 'utf8')).trim().split('\n')).toHaveLength(4);
+	history.setLimit(4);
+	await history.flush();
+	expect((await requestReport(filename, true, 4)).recent).toHaveLength(2);
+});
+
+it('does not restore an evicted in-flight call when it completes', async () => {
+	const filename = await fixture([]);
+	const history = new RequestHistory(filename, 1);
+	history.add({ ...event, event: 'start' });
+	history.add({ ...event, id: 2, event: 'start' });
+	history.add({ ...event, event: 'finish', statusCode: 200, durationMs: 5 });
+	await Promise.all([history.flush(), history.flush()]);
+	expect((await requestReport(filename, true)).recent.map((call) => call.id)).toEqual([2]);
+	for (const value of [0, -1, 5001, 1.5, null, '500']) expect(() => requestLimit(value)).toThrow();
+});
 
 it('joins request starts and completions and summarizes routes', async () => {
 	const filename = await fixture([

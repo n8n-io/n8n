@@ -143,18 +143,37 @@ header {
 	cursor: pointer;
 	font-weight: 600;
 }
-.capture-settings {
+.capture-settings,
+.api-capture-settings {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--spacing--3xl) * 4)), 1fr));
 	gap: var(--space-large);
 }
+.request-payloads {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--spacing--3xl) * 4)), 1fr));
+	gap: var(--space-medium);
+}
+.request-payloads > div {
+	min-width: 0;
+}
+.request-payloads pre {
+	max-height: calc(var(--spacing--3xl) * 4);
+	overflow: auto;
+}
+#request-limit {
+	width: calc(var(--spacing--3xl) * 2);
+}
 .capture-settings label,
+.api-capture-settings label,
 .metric-interval {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--space-small);
 }
 .capture-settings p,
+.api-capture-settings p,
+.capture-payload-help,
 #capture-unavailable {
 	color: var(--secondary-text);
 	font-size: var(--font-size--sm);
@@ -462,4 +481,10 @@ a {
 		flex: 1;
 		min-width: 0;
 	}
+}
+
+.api-capture-settings {
+	border-top: thin solid var(--border);
+	margin-top: var(--space-medium);
+	padding-top: var(--space-medium);
 }

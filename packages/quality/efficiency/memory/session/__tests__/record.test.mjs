@@ -91,6 +91,52 @@ function settings(output, target, overrides = {}) {
 }
 
 describe('backend recording', () => {
+	it('saves a rolling request window and changes each detail opt-in live', async () => {
+		const target = await backend();
+		const observer = await InspectorClient.connect(target.inspector);
+		const output = join(await temporary(), 'recording');
+		const recording = record(
+			settings(output, target, { allocations: false, requestLimit: 2, durationMs: 60_000 }),
+		);
+		try {
+			await waitFor(async () => (await controlSession(output, 'status')).ready);
+			expect((await controlSession(output, 'status')).capture).toMatchObject({
+				requestDetails: false,
+				responseDetails: false,
+			});
+			await controlSession(output, 'configure', { requestDetails: true });
+			for (let index = 0; index < 3; index++) await fetch(`${target.url}/allocate`);
+			const report = await waitFor(async () => {
+				const value = await buildReport(join(output, 'session.json'));
+				return value.requests.completed === 2 && value;
+			});
+			expect(report.requests.recent.map((call) => call.id)).toEqual([2, 3]);
+			expect(report.requests.recent[0].request.body.text).toContain('sample-request');
+			expect(report.requests.recent[0]).not.toHaveProperty('response');
+			await controlSession(output, 'configure', {
+				requestLimit: 1,
+				requestDetails: false,
+				responseDetails: true,
+			});
+			await observer.trackRequests(() => {}, 180_000, { requestDetails: true });
+			await fetch(`${target.url}/allocate`);
+			await waitFor(
+				async () => (await buildReport(join(output, 'session.json'))).requests.recent[0]?.id === 4,
+			);
+		} finally {
+			await observer.stopRequests();
+			observer.close();
+			await controlSession(output, 'stop');
+		}
+		const report = await recording;
+		expect(report.requests.historyLimit).toBe(1);
+		expect(report.requests.recent).toHaveLength(1);
+		expect(report.requests.recent[0]).not.toHaveProperty('request');
+		expect(report.requests.recent[0].response.body.text).toBe('ok');
+		expect(
+			(await readFile(join(output, 'requests.ndjson'), 'utf8')).trim().split('\n'),
+		).toHaveLength(2);
+	});
 	it('records metrics and API timings without allocation sampling by default', async () => {
 		const target = await backend();
 		const output = join(await temporary(), 'recording');
@@ -164,7 +210,7 @@ describe('backend recording', () => {
 				async () => (await readFile(join(output, 'timeline.ndjson'), 'utf8')) !== timeline,
 			);
 			const status = await controlSession(output, 'status');
-			expect(status.capture).toEqual({
+			expect(status.capture).toMatchObject({
 				metrics: true,
 				requests: true,
 				allocations: false,
@@ -208,7 +254,7 @@ describe('backend recording', () => {
 				await expect(controlSession(output, 'configure', body)).rejects.toThrow();
 			const status = await controlSession(output, 'status');
 			expect(status.recording).toBe(true);
-			expect(status.capture).toEqual({
+			expect(status.capture).toMatchObject({
 				metrics: true,
 				requests: false,
 				allocations: false,

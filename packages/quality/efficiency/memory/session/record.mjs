@@ -8,9 +8,9 @@ import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { StringDecoder } from 'node:string_decoder';
-import { openSync, closeSync, writeSync } from 'node:fs';
 
 import { InspectorClient } from './inspector.mjs';
+import { RequestHistory, requestLimit } from './requests.mjs';
 import {
 	allocationSites,
 	buildReport,
@@ -31,7 +31,7 @@ const configurationKeys = [
 	'N8N_RUNNERS_ENABLED',
 	'N8N_DEFAULT_BINARY_DATA_MODE',
 ];
-const identityExpression = `({pid:process.pid,entry:process.argv[1],startedAtMs:Date.now()-process.uptime()*1000,node:process.version,platform:process.platform,arch:process.arch,hostname:process.getBuiltinModule('node:os').hostname(),role:process.argv[2]||'main',requestTracking:globalThis[Symbol.for('n8n.memory-profiler.requests')]===true,configuration:{...Object.fromEntries(${JSON.stringify(configurationKeys)}.filter(k=>process.env[k]!==undefined).map(k=>[k,process.env[k]])),heapLimitBytes:process.getBuiltinModule('node:v8').getHeapStatistics().heap_size_limit}})`;
+const identityExpression = `({pid:process.pid,entry:process.argv[1],startedAtMs:Date.now()-process.uptime()*1000,node:process.version,platform:process.platform,arch:process.arch,hostname:process.getBuiltinModule('node:os').hostname(),role:process.argv[2]||'main',requestTracking:globalThis[Symbol.for('n8n.memory-profiler.requests')]===true,requestDetails:globalThis[Symbol.for('n8n.memory-profiler.capture')] instanceof Map,configuration:{...Object.fromEntries(${JSON.stringify(configurationKeys)}.filter(k=>process.env[k]!==undefined).map(k=>[k,process.env[k]])),heapLimitBytes:process.getBuiltinModule('node:v8').getHeapStatistics().heap_size_limit}})`;
 
 async function git(...args) {
 	try {
@@ -97,6 +97,9 @@ export async function record(options) {
 		requests: !options.metricsOnly,
 		allocations: !options.metricsOnly && Boolean(options.allocations),
 		intervalMs: options.intervalMs,
+		requestLimit: requestLimit(options.requestLimit),
+		requestDetails: Boolean(options.requestDetails),
+		responseDetails: Boolean(options.responseDetails),
 	};
 	const directory = resolve(options.output);
 	await mkdir(dirname(directory), { recursive: true, mode: 0o700 });
@@ -197,7 +200,7 @@ export async function record(options) {
 	let healthUrl;
 	let metricsUrl;
 	let startupDeadline;
-	let requestLog;
+	let requestHistory;
 	const requestLeaseMs = () => Math.max(180_000, capture.intervalMs * 3);
 	const controller = new AbortController();
 	const stop = () => {
@@ -216,6 +219,7 @@ export async function record(options) {
 		return await result;
 	};
 	const persist = async () => {
+		await requestHistory?.flush();
 		await writeJson(manifest, session);
 		await writeJson(join(directory, 'status.json'), status);
 	};
@@ -290,6 +294,8 @@ export async function record(options) {
 		status.capabilities.allocations = false;
 		status.capabilities.snapshots = false;
 		status.capabilities.requests = false;
+		status.capabilities.requestDetails = false;
+		status.capabilities.responseDetails = false;
 	};
 	const connect = async (endpoint) => {
 		const candidate = await InspectorClient.connect(endpoint, options.requestTimeoutMs);
@@ -336,6 +342,8 @@ export async function record(options) {
 		status.capabilities.snapshots = true;
 		requestTracking = Boolean(identity.requestTracking);
 		status.capabilities.requests = requestTracking;
+		status.capabilities.requestDetails = Boolean(identity.requestDetails);
+		status.capabilities.responseDetails = Boolean(identity.requestDetails);
 		if (requestTracking) session.settings.requestTracking = true;
 		if (status.recording) {
 			await startSampling();
@@ -346,20 +354,27 @@ export async function record(options) {
 		if (!capture.requests || !requestTracking || !client || !recordingInterval) return;
 		const interval = recordingInterval;
 		const processSegment = segment;
-		await client.trackRequests((request) => {
-			if (
-				stopped ||
-				!status.recording ||
-				recordingInterval !== interval ||
-				segment !== processSegment ||
-				request.startedAtMs < interval.startedAtMs
-			)
-				return;
-			writeSync(
-				requestLog,
-				`${JSON.stringify({ ...request, segmentId: processSegment.id, recordingId: interval.id, phase: 'measurement', elapsedMs: request.startedAtMs - startedAtMs })}\n`,
-			);
-		}, requestLeaseMs());
+		await client.trackRequests(
+			(request) => {
+				if (
+					stopped ||
+					!status.recording ||
+					recordingInterval !== interval ||
+					segment !== processSegment ||
+					request.startedAtMs < interval.startedAtMs
+				)
+					return;
+				requestHistory.add({
+					...request,
+					segmentId: processSegment.id,
+					recordingId: interval.id,
+					phase: 'measurement',
+					elapsedMs: request.startedAtMs - startedAtMs,
+				});
+			},
+			requestLeaseMs(),
+			{ requestDetails: capture.requestDetails, responseDetails: capture.responseDetails },
+		);
 	};
 	const startCapture = async () => {
 		const { timestampMs, elapsedMs } = event();
@@ -437,7 +452,13 @@ export async function record(options) {
 					if (key === 'intervalMs') {
 						if (!Number.isInteger(value) || value < 50 || value > 60_000)
 							throw new Error('Use a metric interval from 50 to 60000 milliseconds');
-					} else if (!['metrics', 'requests', 'allocations'].includes(key)) {
+					} else if (key === 'requestLimit') {
+						requestLimit(value);
+					} else if (
+						!['metrics', 'requests', 'allocations', 'requestDetails', 'responseDetails'].includes(
+							key,
+						)
+					) {
 						throw new Error('Unknown capture setting');
 					} else {
 						if (typeof value !== 'boolean') throw new Error('Capture settings must be boolean');
@@ -452,6 +473,7 @@ export async function record(options) {
 				const recording = status.recording;
 				if (recording) await pauseCapture();
 				Object.assign(capture, body);
+				requestHistory.setLimit(capture.requestLimit);
 				session.captureChanges.push({ ...event(), capture: { ...capture } });
 				if (recording) await startCapture();
 				await persist();
@@ -503,7 +525,7 @@ export async function record(options) {
 			}),
 	};
 	try {
-		requestLog = openSync(join(directory, session.requests), 'wx', 0o600);
+		requestHistory = new RequestHistory(join(directory, session.requests), capture.requestLimit);
 		await persist();
 		viewer = await serveViewer({ input: manifest, controls, getStatus: () => status });
 		status.viewerUrl = viewer.url;
@@ -750,7 +772,6 @@ export async function record(options) {
 		closePause();
 		if (measurementStartedAtMs) session.measurementEndedAtMs = Date.now();
 		disconnect();
-		if (requestLog !== undefined) closeSync(requestLog);
 		const cleanup = await Promise.allSettled([stopOwnedProcess(child), stopOwnedProcess(frontend)]);
 		for (const result of cleanup) {
 			if (result.status === 'rejected') {

@@ -2,6 +2,8 @@ import { createServer } from 'node:http';
 import { channel } from 'node:diagnostics_channel';
 
 Reflect.set(globalThis, Symbol.for('n8n.memory-profiler.requests'), true);
+const captures = new Map();
+Reflect.set(globalThis, Symbol.for('n8n.memory-profiler.capture'), captures);
 
 const startedAtMs = Date.now() - process.uptime() * 1000;
 let retained = [];
@@ -31,6 +33,18 @@ const server = createServer((request, response) => {
 			statusCode: 200,
 			aborted: false,
 			durationMs: Date.now() - event.startedAtMs,
+			...([...captures.values()].some((capture) => capture.requestDetails)
+				? {
+						request: {
+							url: '/allocate',
+							headers: { text: '{}' },
+							body: { text: '{"input":"sample-request"}' },
+						},
+					}
+				: {}),
+			...([...captures.values()].some((capture) => capture.responseDetails)
+				? { response: { headers: { text: '{}' }, body: { text: 'ok' } } }
+				: {}),
 		});
 		return;
 	}

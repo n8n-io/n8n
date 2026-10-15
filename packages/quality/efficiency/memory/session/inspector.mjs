@@ -105,7 +105,7 @@ export class InspectorClient {
 		}
 	}
 
-	async trackRequests(sink, leaseMs = 180_000) {
+	async trackRequests(sink, leaseMs = 180_000, capture = {}) {
 		this.#requestSink = sink;
 		await this.request('Runtime.enable');
 		await this.request('Runtime.addBinding', { name: this.#binding });
@@ -113,13 +113,18 @@ export class InspectorClient {
 			const channel = process.getBuiltinModule('node:diagnostics_channel').channel('n8n.memory-profiler.requests');
 			const key = ${JSON.stringify(`${this.#binding}State`)};
 			const state = { expiresAt: Date.now() + ${leaseMs} };
+			const captures = globalThis[Symbol.for('n8n.memory-profiler.capture')];
+			if (captures instanceof Map) captures.set(key, { ...${JSON.stringify(capture)}, state });
 			const callback = event => {
-				try { globalThis[${JSON.stringify(this.#binding)}](JSON.stringify(event)); }
+				const payload = { ...event };
+				if (!${Boolean(capture.requestDetails)}) delete payload.request;
+				if (!${Boolean(capture.responseDetails)}) delete payload.response;
+				try { globalThis[${JSON.stringify(this.#binding)}](JSON.stringify(payload)); }
 				catch { state.dispose(); }
 			};
 			const timer = setInterval(() => { if (Date.now() > state.expiresAt) state.dispose(); }, 10_000);
 			timer.unref();
-			state.dispose = () => { channel.unsubscribe(callback); clearInterval(timer); delete globalThis[key]; delete globalThis[${JSON.stringify(this.#binding)}]; };
+			state.dispose = () => { channel.unsubscribe(callback); clearInterval(timer); captures?.delete(key); delete globalThis[key]; delete globalThis[${JSON.stringify(this.#binding)}]; };
 			globalThis[key] = state;
 			channel.subscribe(callback);
 		})()`);

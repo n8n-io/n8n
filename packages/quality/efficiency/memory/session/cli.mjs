@@ -7,6 +7,7 @@ import { writeFile } from 'node:fs/promises';
 import { controlSession, record, repositoryRoot } from './record.mjs';
 import { buildReport, compareReports, markdownReport, SCHEMA_VERSION } from './report.mjs';
 import { openViewer, serveViewer } from './viewer.mjs';
+import { requestLimit } from './requests.mjs';
 
 const options = {
 	help: { type: 'boolean', short: 'h' },
@@ -16,6 +17,9 @@ const options = {
 	frontend: { type: 'boolean' },
 	'metrics-only': { type: 'boolean' },
 	allocations: { type: 'boolean' },
+	'request-limit': { type: 'string', default: '500' },
+	'request-details': { type: 'boolean' },
+	'response-details': { type: 'boolean' },
 	churn: { type: 'boolean' },
 	duration: { type: 'string' },
 	warmup: { type: 'string', default: '0s' },
@@ -164,6 +168,9 @@ export async function main(args = process.argv.slice(2)) {
 				open: !values['no-open'] && !json,
 				metricsOnly: Boolean(values['metrics-only']),
 				allocations: Boolean(values.allocations),
+				requestLimit: requestLimit(Number(values['request-limit'])),
+				requestDetails: Boolean(values['request-details']),
+				responseDetails: Boolean(values['response-details']),
 				churn: Boolean(values.churn),
 				workload: values.workload,
 				durationMs: values.duration ? duration(values.duration, 'duration') : null,

@@ -36,6 +36,13 @@
 					<div><label><input id="capture-requests" type="checkbox" aria-describedby="requests-help" /><span data-i18n="captureRequests"></span></label><p id="requests-help" data-i18n="captureRequestsHelp"></p></div>
 					<div><label><input id="capture-allocations" type="checkbox" aria-describedby="allocations-help" /><span data-i18n="captureAllocations"></span></label><p id="allocations-help" data-i18n="captureAllocationsHelp"></p></div>
 				</div>
+				<div class="api-capture-settings">
+					<div><div class="metric-interval"><label for="request-limit" data-i18n="requestLimit"></label><input id="request-limit" type="number" min="1" max="5000" step="1" required aria-describedby="request-limit-help" /></div>
+						<p id="request-limit-help" data-i18n="requestLimitHelp"></p></div>
+					<div><label><input id="capture-requestDetails" type="checkbox" aria-describedby="request-details-help" /><span data-i18n="captureRequestDetails"></span></label><p id="request-details-help" data-i18n="captureRequestDetailsHelp"></p></div>
+					<div><label><input id="capture-responseDetails" type="checkbox" aria-describedby="response-details-help" /><span data-i18n="captureResponseDetails"></span></label><p id="response-details-help" data-i18n="captureResponseDetailsHelp"></p></div>
+				</div>
+				<p class="capture-payload-help" data-i18n="capturePayloadHelp"></p>
 				<p id="capture-unavailable" hidden></p>
 			</details>
 			<div class="dashboard-toolbar">
@@ -55,7 +62,9 @@
 					<div class="chart-options"><label><input id="hide-gaps" type="checkbox" /><span data-i18n="hideGaps"></span></label><button id="all-requests" type="button" data-i18n="showFullTimeline" hidden></button></div>
 					<p data-i18n="axisDescription"></p>
 				</section>
-				<section id="requests-section"><h2 data-i18n="requests"></h2><p data-i18n="requestsDescription"></p><p id="requests-status"></p><div id="favorite-endpoints"></div><label class="sr-only" for="request-search" data-i18n="searchRequests"></label><input id="request-search" type="search" autocomplete="off" spellcheck="false" /><div id="requests"></div></section>
+				<section id="requests-section"><h2 data-i18n="requests"></h2><p data-i18n="requestsDescription"></p><p id="requests-status"></p><div id="favorite-endpoints"></div><label class="sr-only" for="request-search" data-i18n="searchRequests"></label><input id="request-search" type="search" autocomplete="off" spellcheck="false" /><div id="requests"></div>
+					<details id="request-details-panel" hidden open><summary data-i18n="selectedCallDetails"></summary><p id="request-detail-identity"></p><div class="request-payloads"><div><h3 data-i18n="requestDetails"></h3><pre id="request-content"></pre></div><div><h3 data-i18n="responseDetails"></h3><pre id="response-content"></pre></div></div></details>
+				</section>
 				<section id="controls" hidden>
 					<h2 data-i18n="markersAndSnapshots"></h2>
 					<p id="recording-status" role="status"></p>

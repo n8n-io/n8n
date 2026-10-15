@@ -225,6 +225,8 @@ export async function buildReport(input, { timeline = false, verifyArtifacts = t
 		requests = await requestReport(
 			session.requests ? artifactPath(directory, session.requests) : undefined,
 			Boolean(session.settings.requestTracking),
+			session.captureChanges?.at(-1)?.capture.requestLimit ??
+				session.settings.capture?.requestLimit,
 		);
 		if (requests.invalidEvents) issues.push(`Invalid request events: ${requests.invalidEvents}`);
 	} catch {
@@ -319,13 +321,13 @@ export function compareReports(before, after) {
 	}
 	if (!before.session.settings.workload || !after.session.settings.workload)
 		issues.push('Specify --workload for both recordings');
-	for (const key of ['metrics', 'requests', 'allocations']) {
+	for (const key of ['metrics', 'requests', 'allocations', 'requestDetails', 'responseDetails']) {
 		const enabled = (session) =>
 			session.settings.capture?.[key] ??
 			(key === 'metrics' ||
 				(key === 'requests'
 					? Boolean(session.settings.requestTracking)
-					: !session.settings.metricsOnly));
+					: key === 'allocations' && !session.settings.metricsOnly));
 		if (enabled(before.session) !== enabled(after.session)) issues.push(`Different ${key} capture`);
 	}
 	if (

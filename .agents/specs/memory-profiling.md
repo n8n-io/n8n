@@ -61,7 +61,7 @@ Keep snapshots explicit. Disable unavailable controls and explain the required
 launch settings. Metrics-only launches cannot enable Inspector features live.
 
 Save capture settings on each recording interval and preserve a settings-change
-history. Start a new interval when live settings change. Changes made while
+history. Start a new interval when live settings change. Collector changes made while
 paused apply on resume. Reject changed-setting sessions in comparisons. Preserve
 old sessions without capture settings. Use each metric sample's interval to
 identify gaps when polling rates change. Keep markers visible without new metrics.
@@ -106,7 +106,7 @@ Show favorite calls on the graph with endpoint labels and timing.
 Draw a vertical line at each pinned call's start time across the memory plot.
 Use the same color for the line and its request event.
 Select a call to inspect nearby samples and a checkpoint from the same interval and process.
-Keep all captured calls in the request table and raw artifact. Persist favorites
+Keep the retained calls in the request table and raw artifact. Persist favorites
 in browser storage. A saved recording uses the same controls.
 Use borderless pins for endpoint favorites and borderless start-time buttons.
 Search all displayed request columns without case sensitivity. Highlight matching
@@ -129,9 +129,20 @@ Enable a request middleware only for profiling launches. Cover configured intern
 and public API prefixes. Publish request start and completion through a Node
 diagnostics channel. The recorder subscribes through Inspector and writes events
 outside the backend. Record method, route template, status, duration, process,
-and time. Exclude headers, query strings, bodies, and parameter values.
+and time. Exclude headers, query strings, bodies, and parameter values by default.
+Expose separate request and response detail opt-ins in the live viewer and CLI.
+Request details include the URL, query values, headers, and body. Response details
+include headers and the body. Redact common secret fields with the shared utility.
+Bound each body and header block to 64 KiB. Omit larger or unsupported bodies.
+Bound concurrent response capture to 32 requests. Preserve response callbacks and
+backpressure. Do not intercept writes when response capture is off.
 
-Keep all events in `requests.ndjson`. Bound report and viewer request history.
+Keep a rolling window of 500 calls in `requests.ndjson`, reports, and the viewer.
+Expose a live history limit from 1 to 5,000 calls. Save it in capture settings.
+Evict older calls and their payloads. A lower limit also trims paused sessions.
+Increasing the limit cannot restore old calls.
+Write the retained events atomically outside the backend. Save new events on
+the next recorder update and final shutdown. Counts describe the saved window.
 Show request spans on the memory timeline. Let the developer select a request
 to focus nearby samples and an allocation checkpoint. Explain that time overlap
 does not prove allocation ownership. Detach subscriptions when recording ends.
@@ -163,6 +174,7 @@ continues the implementation and reports the missing measurement.
 - [x] Bounded collection, warm-up, status, markers, and early stop.
 - [x] Inspector sampling and native profile checkpoints.
 - [x] Independent live capture controls, metric intervals, and settings history.
+- [x] Rolling API history and separate request and response detail opt-ins.
 - [x] Raw scrapes and streamed timeline.
 - [x] Attach mode, restart segments, and process ownership.
 - [x] Local live/replay viewer and standalone V8 summaries.
