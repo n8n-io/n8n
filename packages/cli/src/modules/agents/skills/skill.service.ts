@@ -576,6 +576,18 @@ export class SkillService {
 		return await this.canAccess(user, skill, 'update');
 	}
 
+	/**
+	 * A move takes the skill out of its scope, as a delete does, so it needs the delete
+	 * permission there. A custom role can grant update without delete.
+	 */
+	async assertCanMove(user: User, skillId: string): Promise<void> {
+		const [skill] = await this.skillRepository.findByIds([skillId]);
+		if (!skill) throw new NotFoundError('Skill not found');
+		if (!(await this.canAccess(user, skill, 'delete'))) {
+			throw new ForbiddenError('You are not allowed to move this skill out of its scope.');
+		}
+	}
+
 	async assertCanEdit(user: User, skillIds: string[], ctx: OperationContext = {}): Promise<void> {
 		const skills = await this.skillRepository.findByIds(skillIds, ctx);
 		const names = await this.latestNames(

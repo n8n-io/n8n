@@ -241,6 +241,7 @@ export class AgentSkillsService {
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
 		if (nextAvailability) {
 			await this.skillService.assertCanEdit(context.user, [skillId]);
+			await this.skillService.assertCanMove(context.user, skillId);
 			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
 		}
 

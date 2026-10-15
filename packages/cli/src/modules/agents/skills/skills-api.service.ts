@@ -99,11 +99,7 @@ export class SkillsApiService {
 			target !== undefined &&
 			(target.projectId !== skill.projectId || target.agentId !== skill.agentId);
 
-		// A move takes the skill out of its scope, as a delete does, so it needs both rights
-		// there. A custom role can grant update without delete.
-		if (moves && !(await this.skillService.canAccess(user, skill, 'delete'))) {
-			throw new ForbiddenError('You are not allowed to move this skill out of its scope.');
-		}
+		if (moves) await this.skillService.assertCanMove(user, skillId);
 
 		if (!moves) {
 			const { followingAgentIds: _following, ...saved } = await this.skillService.save(
