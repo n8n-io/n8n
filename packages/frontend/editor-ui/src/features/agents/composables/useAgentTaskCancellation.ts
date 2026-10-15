@@ -22,6 +22,15 @@ export function useAgentTaskCancellation(target: {
 	let revision = 0;
 	let disposed = false;
 
+	function applyState(result: AgentTaskCancellationState | null) {
+		const previous = state.value;
+		if (previous && result?.planId === previous.planId) {
+			if (result.requestedAt < previous.requestedAt) return;
+			if (result.plan && previous.plan && result.plan.revision < previous.plan.revision) return;
+		}
+		state.value = result;
+	}
+
 	async function refresh() {
 		const threadId = target.threadId();
 		if (
@@ -40,7 +49,7 @@ export function useAgentTaskCancellation(target: {
 				target.agentId(),
 				threadId,
 			);
-			if (!disposed && current === revision) state.value = result;
+			if (!disposed && current === revision) applyState(result);
 		} catch {
 			// A new conversation has no persisted thread yet. Keep the last confirmed state.
 		}
@@ -61,7 +70,7 @@ export function useAgentTaskCancellation(target: {
 					planId: target.planId(),
 				},
 			);
-			if (!disposed && current === revision) state.value = result;
+			if (!disposed && current === revision) applyState(result);
 		} finally {
 			if (!disposed && threadId === target.threadId()) {
 				sending.value = false;

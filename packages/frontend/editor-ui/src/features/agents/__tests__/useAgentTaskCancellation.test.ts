@@ -1,3 +1,4 @@
+import { planView, planSnapshot } from './fixtures/agent-plan';
 import type { AgentTaskCancellationState, PushMessage } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { flushPromises } from '@vue/test-utils';
@@ -110,4 +111,28 @@ it('does not apply an old cancellation response to another conversation', async 
 	await pending;
 	expect(state.state.value).toBeNull();
 	expect(state.isStopping.value).toBe(false);
+});
+
+it('rejects a lower plan revision and an older stop from later reads', async () => {
+	const plan = planView({ revision: 3 });
+	const current = {
+		...stopped,
+		planId: plan.planId,
+		plan: planSnapshot(plan),
+	};
+	vi.mocked(getAgentTaskCancellation).mockResolvedValue(current);
+	const state = create();
+	await flushPromises();
+	vi.mocked(getAgentTaskCancellation).mockResolvedValue({
+		...current,
+		plan: { ...current.plan, revision: 2 },
+	});
+	await state.refresh();
+	expect(state.state.value?.plan?.revision).toBe(3);
+	vi.mocked(getAgentTaskCancellation).mockResolvedValue({
+		...current,
+		requestedAt: '2026-09-30T10:00:00.000Z',
+	});
+	await state.refresh();
+	expect(state.state.value?.requestedAt).toBe(current.requestedAt);
 });

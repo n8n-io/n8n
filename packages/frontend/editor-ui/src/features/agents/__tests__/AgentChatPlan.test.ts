@@ -1,3 +1,4 @@
+import type { AgentPlanWorkState } from '@n8n/api-types';
 import { N8nAiActivityStepGroup, N8nIcon } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
@@ -16,6 +17,84 @@ vi.mock('@n8n/i18n', () => ({
 		},
 	}),
 }));
+
+describe('AgentChatPlan task continuation', () => {
+	const stoppedIds = [planTask(1).id, planTask(2).id, planTask(3).id];
+	const workState: AgentPlanWorkState = {
+		stoppedTaskIds: stoppedIds,
+		stoppingTaskIds: [],
+		fullyStopped: false,
+		stoppedAt: null,
+		taskStateAvailable: true,
+	};
+	it('shows only Groove as active and restores only Crisp after selective continuation', async () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				expanded: true,
+				workState,
+				plan: planView({
+					document: {
+						title: 'Research',
+						presentation: { label: 'Researching Groove' },
+						items: [1, 2, 3, 4].map((id) => planTask(id, 'in_progress')),
+					},
+				}),
+			},
+		});
+		expect(wrapper.findAll('[data-status="stopped"]')).toHaveLength(3);
+		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(1);
+		expect(wrapper.get('button').text()).toContain('Researching Groove');
+		await wrapper.setProps({
+			workState: { ...workState, stoppedTaskIds: [stoppedIds[0], stoppedIds[2]] },
+		});
+		expect(wrapper.findAll('[data-status="stopped"]')).toHaveLength(2);
+		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(2);
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		wrapper.unmount();
+	});
+
+	it('derives a group from its children and preserves terminal rows', () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				expanded: true,
+				workState,
+				plan: planView({
+					document: {
+						title: 'Research',
+						items: [
+							{
+								...planTask(10, 'in_progress'),
+								kind: 'group',
+								tasks: [planTask(1, 'in_progress'), planTask(2, 'done'), planTask(3, 'failed')],
+							},
+							planTask(4, 'cancelled'),
+						],
+					},
+				}),
+			},
+		});
+		expect(wrapper.findAll('[data-status="stopped"]')).toHaveLength(2);
+		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(0);
+		for (const status of ['done', 'failed', 'cancelled'])
+			expect(wrapper.findAll(`[data-status="${status}"]`)).toHaveLength(1);
+		wrapper.unmount();
+	});
+
+	it('shows unknown state for old plans without task history', () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				expanded: true,
+				stopped: true,
+				workState: { ...workState, stoppedTaskIds: [], taskStateAvailable: false },
+				plan: planView(),
+			},
+		});
+		expect(wrapper.findAll('[data-status="stopped"]')).toHaveLength(0);
+		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(0);
+		expect(wrapper.text()).toContain('agents.chat.plan.taskStateUnavailable');
+		wrapper.unmount();
+	});
+});
 
 describe('AgentChatPlan timer', () => {
 	const startedAt = '2026-10-01T10:00:00.000Z';
@@ -42,6 +121,23 @@ describe('AgentChatPlan timer', () => {
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
 		await wrapper.get('button').trigger('click');
 		expect(wrapper.text()).toContain('agents.chat.tasks.reportFailed');
+		wrapper.unmount();
+	});
+
+	it('includes stopped intervals in elapsed time after selected work resumes', async () => {
+		const workState: AgentPlanWorkState = {
+			stoppedTaskIds: [planTask(1).id],
+			stoppingTaskIds: [],
+			fullyStopped: true,
+			stoppedAt: '2026-10-01T10:00:30.000Z',
+			taskStateAvailable: true,
+		};
+		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt }), workState } });
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		await vi.advanceTimersByTimeAsync(90_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		await wrapper.setProps({ workState: { ...workState, fullyStopped: false, stoppedAt: null } });
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('1:30');
 		wrapper.unmount();
 	});
 

@@ -301,6 +301,23 @@ const currentPlanStop = computed(() =>
 		? planStop.value
 		: null,
 );
+const planWorkState = computed(() => {
+	if (!planStopActive.value || !currentPlan.value) return undefined;
+	const saved = currentPlanStop.value?.plan;
+	const work = saved?.workState ?? currentPlan.value.workState;
+	if (!work) return undefined;
+	const unfinished = currentPlan.value.document.items
+		.flatMap((item) => (item.kind === 'group' && item.tasks.length ? item.tasks : [item]))
+		.filter((item) => item.status === 'pending' || item.status === 'in_progress');
+	// A newer tool snapshot can add work before the server refresh arrives.
+	return {
+		...work,
+		fullyStopped:
+			work.fullyStopped &&
+			unfinished.length > 0 &&
+			unfinished.every((item) => work.stoppedTaskIds.includes(item.id)),
+	};
+});
 const planExpanded = ref(false);
 watch(
 	[
@@ -547,7 +564,9 @@ const tasksStopping = computed(
 		isStopping.value ||
 		stoppingPlan.value ||
 		currentPlanStop.value?.status === 'stopping' ||
-		backgroundStoppingIds.value.size > 0,
+		(planWorkState.value
+			? planWorkState.value.stoppingTaskIds.length > 0
+			: backgroundStoppingIds.value.size > 0),
 );
 const canRetryStop = computed(
 	() =>
@@ -586,6 +605,7 @@ const tasksStopped = computed(() => {
 	return Boolean(latest?.pauseRequested);
 });
 const planStopped = computed(() => {
+	if (planWorkState.value?.taskStateAvailable) return planWorkState.value.fullyStopped;
 	if (currentPlanStop.value) return currentPlanStop.value.status === 'stopped';
 	if (!planStopActive.value || !tasksStopped.value || currentPlan.value?.closed) return false;
 	const startedAt = Date.parse(currentPlan.value?.startedAt ?? '');
@@ -1756,12 +1776,13 @@ onBeforeUnmount(() => {
 				v-if="hasPendingApprovals && currentPlan && planStopActive"
 				v-model:expanded="planExpanded"
 				:plan="currentPlan"
+				:work-state="planWorkState"
 				:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
 				:show-stop="showPlanStop"
 				:can-stop="canStopPlan"
 				:stopping="planStopActive && stopDisabled"
 				:stopped="planStopped"
-				:stopped-at="currentPlanStop?.requestedAt"
+				:stopped-at="planWorkState?.stoppedAt ?? currentPlanStop?.requestedAt"
 				:report-failed="currentPlanStop?.reportFailed"
 				:stop-failed="canRetryStop && canStopPlan && !isStopping"
 				@stop="stopBackgroundJobs"
@@ -1822,6 +1843,7 @@ onBeforeUnmount(() => {
 							v-model:expanded="planExpanded"
 							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
 							:plan="currentPlan"
+							:work-state="planWorkState"
 							:trace-route="
 								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 							"
@@ -1829,7 +1851,7 @@ onBeforeUnmount(() => {
 							:can-stop="canStopPlan"
 							:stopping="planStopActive && stopDisabled"
 							:stopped="planStopped"
-							:stopped-at="currentPlanStop?.requestedAt"
+							:stopped-at="planWorkState?.stoppedAt ?? currentPlanStop?.requestedAt"
 							:report-failed="currentPlanStop?.reportFailed"
 							:stop-failed="canRetryStop && canStopPlan && !isStopping"
 							@stop="stopBackgroundJobs"

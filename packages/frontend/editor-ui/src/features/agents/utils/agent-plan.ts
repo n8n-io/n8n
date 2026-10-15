@@ -23,6 +23,15 @@ const groupSchema = z.object({
 	tasks: z.array(taskSchema),
 });
 const planSchema = z.object({
+	workState: z
+		.object({
+			stoppedTaskIds: z.array(z.string().uuid()),
+			stoppingTaskIds: z.array(z.string().uuid()),
+			fullyStopped: z.boolean(),
+			stoppedAt: z.string().datetime().nullable(),
+			taskStateAvailable: z.boolean(),
+		})
+		.optional(),
 	planId: z.string().uuid(),
 	revision: z.number().int().positive(),
 	closed: z.boolean(),
