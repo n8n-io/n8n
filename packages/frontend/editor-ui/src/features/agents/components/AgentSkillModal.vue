@@ -79,9 +79,12 @@ const { showError } = useToast();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
-const existingNameKeys = computed(
-	() => new Set((props.data.existingSkillNames ?? []).map(skillNameKey)),
-);
+const existingNameKeys = computed(() => {
+	const names = props.data.getAttachedSkills
+		? props.data.getAttachedSkills().map(({ name }) => name)
+		: (props.data.existingSkillNames ?? []);
+	return new Set(names.map(skillNameKey));
+});
 
 function getDefaultSkillName(): string {
 	const baseName = i18n.baseText('agents.builder.skills.defaultName' as BaseTextKey);

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -750,6 +751,34 @@ describe('AgentSkillModal', () => {
 				expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ availableTo }));
 			},
 		);
+
+		it('checks a new skill name against the skills attached after the picker opened', async () => {
+			listAttachableSkills.mockResolvedValue([]);
+			const attached = ref<Array<{ id: string; name: string }>>([]);
+			const onConfirm = vi.fn();
+			const { container, getByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+				getAttachedSkills: () => attached.value,
+				onConfirm,
+			});
+
+			attached.value = [{ id: 'brand', name: 'P-Brand voice' }];
+			await fireEvent.click(getByTestId('agent-skill-picker-create'));
+			await fireEvent.click(getByTestId('agent-skill-add-manually'));
+			await fireEvent.update(getTitleInput(container), 'p brand voice');
+			await fireEvent.update(
+				getByTestId('agent-skill-description-input').querySelector('input')!,
+				'Use for replies',
+			);
+			await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Be kind');
+			await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(getByTestId('agent-modal-title-error')).toHaveTextContent(
+				'agents.builder.skills.validation.nameDuplicate',
+			);
+		});
 
 		it('offers only this project and this agent to a user who may not create global skills', async () => {
 			listAttachableSkills.mockResolvedValue([]);
