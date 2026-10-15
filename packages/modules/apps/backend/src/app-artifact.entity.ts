@@ -1,8 +1,8 @@
-import type { ExecutionDataStorageLocation } from '@n8n/db';
-import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { WithTimestamps, type ExecutionDataStorageLocation } from '@n8n/db';
+import { Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'app_artifact' })
-export class AppArtifact extends BaseEntity {
+export class AppArtifact extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;
 

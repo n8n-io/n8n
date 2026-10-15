@@ -103,10 +103,12 @@ erDiagram
   INT timeoutSeconds
 }
 "app_artifact" {
+  datetime_3_ createdAt
   INTEGER id
   INTEGER sizeBytes
   TEXT storageKey
   varchar_2_ storedAt
+  datetime_3_ updatedAt
   varchar_16_ uploadStatus
 }
 ```
