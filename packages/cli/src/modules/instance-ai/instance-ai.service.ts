@@ -57,6 +57,7 @@ import {
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
 	loadInstanceAiPromptSkills,
+	loadInstanceAiRuntimeSkillSource,
 	resolvePromptProfile,
 	describePromptProfile,
 	setTracePromptVersion,
@@ -174,6 +175,7 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import { isAgentsAccessEnabled } from './agents-access';
 import {
 	INSTANCE_CONTEXT_CURSOR,
 	InstanceContextService,
@@ -190,7 +192,6 @@ import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
 import { InstanceAiConversationHistoryService } from './instance-ai-conversation-history.service';
-import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import {
 	getAgentErrorSeverity,
@@ -564,9 +565,7 @@ function createInertAbortSignal(): AbortSignal {
 export function isAssistantCreditBalanceExhausted(credits: {
 	creditsQuota: number;
 	creditsClaimed: number;
-	quotaLocked?: boolean;
 }): boolean {
-	if (credits.quotaLocked) return true;
 	return credits.creditsQuota >= 0 && credits.creditsClaimed >= credits.creditsQuota;
 }
 
@@ -1110,18 +1109,9 @@ export class InstanceAiService {
 		return this.modelService.isProxyEnabled();
 	}
 
-	/**
-	 * Get current credit usage from the AI service proxy.
-	 *
-	 * Doubles as the reconcile point for the activation lock: this runs on every page load, so a
-	 * lock call that was lost to a failed request, an evicted record or a process restart is
-	 * re-asserted here without any scheduled job.
-	 */
+	/** Get current credit usage from the AI service proxy. */
 	async getCredits(user: User): Promise<InstanceAiCredits> {
-		await this.creditService.ensureQuotaLockApplied(user);
-
-		const credits = await this.modelService.getCredits(user);
-		return maskCreditsForDisplay(credits, this.settingsService.isActivationCapped());
+		return await this.modelService.getCredits(user);
 	}
 
 	/**
@@ -1216,13 +1206,8 @@ export class InstanceAiService {
 	): Promise<unknown> {
 		if (!isMaskedStreamFailure(error)) return error;
 		try {
-			const { creditsQuota, creditsClaimed, quotaLocked } =
-				await this.modelService.getCredits(user);
-			// The activation lock refuses use while the quota still has credits left, so the numbers
-			// alone wouldn't explain the failure. Read from the proxy, not from n8n's own trigger
-			// state: that only says the lock *should* apply, so a lock call that failed would turn
-			// any unrelated stream death into a spurious upgrade wall.
-			if (!quotaLocked && (creditsQuota < 0 || creditsClaimed < creditsQuota)) return error;
+			const { creditsQuota, creditsClaimed } = await this.modelService.getCredits(user);
+			if (creditsQuota < 0 || creditsClaimed < creditsQuota) return error;
 		} catch (creditsError) {
 			this.logger.debug('Masked stream failure credit re-check failed; keeping original error', {
 				error: getErrorMessage(creditsError),
@@ -2607,7 +2592,6 @@ export class InstanceAiService {
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
 		instanceContextGates?: InstanceContextGates,
 		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
-		resumeAgentBuild = false,
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
@@ -2626,8 +2610,6 @@ export class InstanceAiService {
 		);
 		const userGateway = this.gatewayService.findGateway(user.id);
 
-		// There's another ensure lock check at `getCredits`, which only fires when the frontend mounts.
-		await this.creditService.ensureQuotaLockApplied(user);
 		// Stop before this run resolves a model. A cached proxy token stays valid
 		// after the balance hits zero, so a later token request would not 403.
 		await this.assertAssistantCreditsAvailable(user);
@@ -2692,6 +2674,8 @@ export class InstanceAiService {
 			getCredentialIdAllowlist: () => this.evalCredentialAllowlists.get(threadId),
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
+			getCredentialTestTarget: (credentialType: string) =>
+				this.evalCredentialAllowlists.getTestTarget(threadId, credentialType),
 			configEvalsEnabled,
 			setupPanelVariant,
 			mcpConnectionsAvailable,
@@ -2704,7 +2688,6 @@ export class InstanceAiService {
 			aiPreferencesEnabled,
 			modelId,
 			allowSendingParameterValues,
-			resumeAgentBuild,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -2852,6 +2835,8 @@ export class InstanceAiService {
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
 			instanceContextEnabled,
+			// The agent-building skills need the build-agent tool, which needs a builder delegate.
+			agentBuildingEnabled: context.builderDelegate !== undefined,
 		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
 		const selectedRuntimeSkills = selectedSkills.source;
@@ -2918,6 +2903,9 @@ export class InstanceAiService {
 				});
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
 					source: allRuntimeSkills,
+					// The sandbox stores every bundled skill, the same set the image and
+					// snapshot bake, so the prebaked skills bundle is reused.
+					bundleSource: loadInstanceAiRuntimeSkillSource(),
 					workspace: runtimeSkillWorkspace,
 					resolveVerifiedBundles: async () => (await getSandboxEntry())?.verifiedBundles,
 					logger: this.logger,
@@ -3021,12 +3009,12 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Resolve the agents execution service only when the `agents` module is
-	 * active. Mirrors the builder-delegate gate so agent-preview handoff is
-	 * absent (rather than exploding) when agents are disabled.
+	 * Resolve the agents execution service only when the Assistant can use
+	 * Agents. Mirrors the builder-delegate gate so agent-preview handoff is
+	 * absent (rather than exploding) when Agents are off.
 	 */
 	private getAgentExecutionService(): AgentExecutionService | null {
-		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		if (!isAgentsAccessEnabled()) return null;
 		try {
 			return Container.get(AgentExecutionService);
 		} catch {
@@ -3043,7 +3031,7 @@ export class InstanceAiService {
 		if (!projectId) return;
 		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) return;
 
-		if (!Container.get(ModuleRegistry).isActive('agents')) return;
+		if (!isAgentsAccessEnabled()) return;
 		context.agentContextService = Container.get(InstanceAiAgentContextAdapterService).createReader(
 			user,
 			projectId,
@@ -3062,6 +3050,10 @@ export class InstanceAiService {
 		await resolveAgentPreviewSession(context);
 		const projectId = context.projectId;
 		if (!context.agentPreviewSession || !projectId) return;
+		if (!isAgentsAccessEnabled()) {
+			context.agentPreviewSession = undefined;
+			return;
+		}
 		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
 			context.agentPreviewSession = undefined;
 			return;
@@ -5343,7 +5335,6 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 		instanceContextGates?: InstanceContextGates,
-		resumeAgentBuild = false,
 	): Promise<{
 		agent: InstanceAgent;
 		modelId: ModelConfig;
@@ -5358,8 +5349,6 @@ export class InstanceAiService {
 			pushRef,
 			undefined,
 			instanceContextGates,
-			undefined,
-			resumeAgentBuild,
 		);
 		const agent = await this.createAgentFromEnvironment(
 			environment,
@@ -5373,19 +5362,6 @@ export class InstanceAiService {
 			modelId: environment.modelId,
 			orchestrationContext: environment.orchestrationContext,
 		};
-	}
-
-	private isAgentBuilderSuspension(
-		toolName: string | undefined,
-		suspendPayload: Record<string, unknown> | undefined,
-	): boolean {
-		if (toolName !== 'build-agent') return false;
-		const builderCheckpoint = suspendPayload?.builderCheckpoint;
-		return (
-			isRecord(builderCheckpoint) &&
-			typeof builderCheckpoint.runId === 'string' &&
-			typeof builderCheckpoint.toolCallId === 'string'
-		);
 	}
 
 	/**
@@ -5451,8 +5427,6 @@ export class InstanceAiService {
 				this.threadPushRef.get(orphan.threadId),
 				undefined,
 				instanceContext,
-				undefined,
-				this.isAgentBuilderSuspension(toolName, suspendPayload),
 			);
 		} catch (error: unknown) {
 			return { kind: 'env-failure', error };
@@ -5773,7 +5747,6 @@ export class InstanceAiService {
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
 		instanceContextGates?: InstanceContextGates,
-		resumeAgentBuild = false,
 	): Promise<
 		| {
 				agent: InstanceAgent;
@@ -5792,7 +5765,6 @@ export class InstanceAiService {
 				messageGroupId,
 				this.threadPushRef.get(threadId),
 				instanceContextGates,
-				resumeAgentBuild,
 			);
 			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
 			return {
@@ -5932,7 +5904,6 @@ export class InstanceAiService {
 				runHandoff,
 				messageGroupId,
 				instanceContext,
-				this.isAgentBuilderSuspension(toolName, suspendPayload),
 			);
 			if (!rebuilt) {
 				const rebuildFailure = 'Agent rebuild failed';

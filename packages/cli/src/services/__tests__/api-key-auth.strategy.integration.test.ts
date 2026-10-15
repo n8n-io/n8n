@@ -14,7 +14,7 @@ import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { retryUntil } from '@test-integration/retry-until';
 
 import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
-import { JwtService } from '../jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { API_KEY_ISSUER } from '../public-api-key.service';
 
 const mockReqWith = (apiKey: string): AuthenticatedRequest =>

@@ -313,6 +313,12 @@ function getAssistantRunContent(groupId: string): string {
 	return lines.join('\n\n');
 }
 
+function canIncreaseForNotice(notice: NonNullable<ChatMessage['budgetNotices']>[number]) {
+	return (
+		props.canIncreaseBudget && (notice.agentId === undefined || notice.agentId === props.agentId)
+	);
+}
+
 interface RecallMemoryOutputEntry {
 	id: string;
 	content: string;
@@ -599,7 +605,7 @@ watch(
 						v-for="notice in group.budgetNotices"
 						:key="notice.id"
 						:code="notice.code"
-						:can-increase="canIncreaseBudget"
+						:can-increase="canIncreaseForNotice(notice)"
 						:pending="budgetIncreasePending"
 						@increase="emit('increase-budget', $event)"
 					/>
@@ -746,7 +752,7 @@ watch(
 							v-for="notice in group.message.budgetNotices ?? []"
 							:key="notice.id"
 							:code="notice.code"
-							:can-increase="canIncreaseBudget"
+							:can-increase="canIncreaseForNotice(notice)"
 							:pending="budgetIncreasePending"
 							@increase="emit('increase-budget', $event)"
 						/>

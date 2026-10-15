@@ -15,6 +15,7 @@ export * from './sanitize-agent-json-config';
 export * from './sanitize-agent-tool-name';
 export * from './slack';
 export type * from './teams';
+export type * from './whatsapp';
 export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
@@ -25,11 +26,14 @@ export * from './sub-agent.schema';
 export * from './types';
 export * from './workflow-wait';
 export type {
+	AgentBudgetNotice,
+	AgentBudgetNoticeCode,
 	AgentSseEvent,
 	AgentSseMessage,
 	ForwardedChildChunkWire,
 	ToolSuspendedPayload,
 } from '../agent-sse';
+export { isAgentBudgetNoticeCode } from '../agent-sse';
 export { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '../agent-builder-tool-node-types';
 // ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
 // ./agent-interaction.schema (re-exported below via `export *`).

@@ -247,6 +247,11 @@ export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto'
 export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
+	ListCallableSubworkflowsQueryDto,
+	type CallableSubworkflow,
+	type CallableSubworkflowsResponse,
+} from './workflows/list-callable-subworkflows-query.dto';
+export {
 	WorkflowPublicDto,
 	CreatedWorkflowPublicDto,
 	WorkflowListPublicDto,
@@ -732,6 +737,18 @@ export {
 	type PromotionProviderType,
 	type PromotionSshKeyType,
 } from './promotions/promotion-provider.dto';
+export {
+	ListPromotionBranchesQueryDto,
+	ListPromotionRepositoriesQueryDto,
+	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
+	PromotionBranchListPublicDto,
+	PromotionRepositoryListPublicDto,
+	promotionBranchSchema,
+	promotionRepositoryIdParamSchema,
+	promotionRepositorySchema,
+	type PromotionBranch,
+	type PromotionRepository,
+} from './promotions/promotion-repository.dto';
 export {
 	PromotionApplyConfigPublicDto,
 	PromotionPromoteConfigPublicDto,

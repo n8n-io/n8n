@@ -50,7 +50,7 @@ describe('Expression - fast native evaluation parity', () => {
 				parameters: {
 					value1: 'hello',
 					value2: '={{ $json.item.name }}',
-					value3: '={{ $json.item.names.first() }}',
+					value3: '={{ Object.keys($json.item.names) }}',
 				},
 			},
 		],
@@ -68,7 +68,7 @@ describe('Expression - fast native evaluation parity', () => {
 	sparse[0] = 1;
 	sparse[2] = 3;
 
-	const makeItem = () => ({
+	const makeItem = (oversized = true) => ({
 		pairedItem: { item: 0 },
 		binary: {
 			file: { data: 'aGVsbG8=', mimeType: 'text/plain', fileName: 'hello.txt', fileSize: '5 B' },
@@ -80,19 +80,24 @@ describe('Expression - fast native evaluation parity', () => {
 				active: true,
 				disabled: false,
 				nothing: null,
+				when: '2024-01-02T03:04:05.000Z',
 				my_object: { addresses: { primary: '123 Main St' } },
 				names: ['bar', 'baz'],
 				mixed: ['a', 1],
 				empty: [] as number[],
 				sparse,
-				manyZeros: new Array<number>(MAX_STEPS + 1).fill(0),
-				filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
-				big: 'y'.repeat(20_000),
-				bigger: 'y'.repeat(150_000),
-				manyEmpty: new Array<string>(20_000).fill(''),
-				manyBig: new Array<string>(2_000).fill('z'.repeat(1_000)),
-				huge: 'h'.repeat(MAX_RESULT_LENGTH + 1),
-				hugeArr: new Array<number>(MAX_RESULT_LENGTH + 1).fill(0),
+				...(oversized
+					? {
+							manyZeros: new Array<number>(MAX_STEPS + 1).fill(0),
+							filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
+							big: 'y'.repeat(20_000),
+							bigger: 'y'.repeat(150_000),
+							manyEmpty: new Array<string>(20_000).fill(''),
+							manyBig: new Array<string>(2_000).fill('z'.repeat(1_000)),
+							huge: 'h'.repeat(MAX_RESULT_LENGTH + 1),
+							hugeArr: new Array<number>(MAX_RESULT_LENGTH + 1).fill(0),
+						}
+					: {}),
 				re: /o/g,
 			},
 		},
@@ -116,6 +121,15 @@ describe('Expression - fast native evaluation parity', () => {
 			},
 		});
 	const runExecutionData = runDataFor([item]);
+	// A node reference hands the whole item to the engine, so under quickjs
+	// every oversized value crosses the bridge. Node reference cases get an
+	// item without them.
+	const slimItem = makeItem(false);
+	const slimRunData = runDataFor([slimItem]);
+	const fixtureFor = (expr: string) =>
+		/\$\(|\$input|\$node\[/.test(expr)
+			? { data: slimRunData, items: [slimItem] }
+			: { data: runExecutionData, items: [item] };
 	// `$vars` comes in through additionalKeys; `$('Source').item` resolves the
 	// paired item through executeData.source.
 	const additionalKeys = { $vars: { region: 'eu' } };
@@ -138,8 +152,8 @@ describe('Expression - fast native evaluation parity', () => {
 	const evaluate = (
 		expr: string,
 		native: boolean,
-		data = runExecutionData,
-		items: Array<ReturnType<typeof makeItem>> = [item],
+		data = fixtureFor(expr).data,
+		items: Array<ReturnType<typeof makeItem>> = fixtureFor(expr).items,
 	) => {
 		Expression.setNativeEvaluation(native);
 		try {
@@ -165,17 +179,18 @@ describe('Expression - fast native evaluation parity', () => {
 	// apart, since a bailout returns the engine's value either way.
 	const nativeOutcome = (expr: string) => {
 		const node = workflow.getNode('Current');
+		const { data, items } = fixtureFor(expr);
 		const proxy = new WorkflowDataProxy(
 			workflow,
-			runExecutionData,
+			data,
 			0,
 			0,
 			'Current',
-			[item],
+			items,
 			node?.parameters ?? {},
 			'manual',
 			additionalKeys,
-			executeDataFor([item]),
+			executeDataFor(items),
 		).getDataProxy();
 
 		Expression.setNativeEvaluation(true);
@@ -285,6 +300,19 @@ describe('Expression - fast native evaluation parity', () => {
 	});
 
 	describe('errors match the engine', () => {
+		test('an extension error is the one extend() throws', () => {
+			const expr = '={{ $json.item.name.first() }}';
+			const capture = (native: boolean): Error => {
+				try {
+					evaluate(expr, native);
+				} catch (error) {
+					return error as Error;
+				}
+				throw new Error('expected an error');
+			};
+			expect(capture(true).message).toEqual(capture(false).message);
+		});
+
 		// No execution data for the source node: every `$json` read throws.
 		const emptyRunData = runDataFor([]);
 
@@ -331,6 +359,21 @@ describe('Expression - fast native evaluation parity', () => {
 		});
 	});
 
+	// The quickjs bridge turns a nested -0 into 0 (a top-level -0 survives).
+	// Native keeps it, as vm and legacy do. Pinned so a change is visible.
+	test('nested -0 survives natively; the quickjs bridge turns it into 0', () => {
+		const zeros = { json: { item: { obj: { x: -0 }, arr: [-0], top: -0 } } };
+		const data = runDataFor([zeros as never]);
+		const run = (expr: string, native: boolean) => evaluate(expr, native, data, [zeros as never]);
+		const quickjs = Expression.getActiveImplementation() === 'quickjs';
+
+		expect(run('={{ $json.item.obj }}', true)).toStrictEqual({ x: -0 });
+		expect(run('={{ $json.item.arr }}', true)).toStrictEqual([-0]);
+		expect(run('={{ $json.item.obj }}', false)).toStrictEqual({ x: quickjs ? 0 : -0 });
+		expect(run('={{ $json.item.arr }}', false)).toStrictEqual([quickjs ? 0 : -0]);
+		expect(Object.is(run('={{ $json.item.top }}', false), -0)).toBe(true);
+	});
+
 	test('object results are copies, never the live execution data', () => {
 		const fresh = makeItem();
 		const result = evaluate('={{ $json.item.my_object }}', true, runDataFor([fresh]), [fresh]);
@@ -348,7 +391,12 @@ describe('Expression - fast native evaluation parity', () => {
 	describe('non-JSON values and inherited members', () => {
 		const exotic = {
 			json: {
-				item: { fn: () => 1, sym: Symbol('s'), dt: DateTime.fromISO('2026-01-02T03:04:05Z') },
+				item: {
+					fn: () => 1,
+					sym: Symbol('s'),
+					dt: DateTime.fromISO('2026-01-02T03:04:05Z'),
+					names: ['bar'],
+				},
 			},
 		};
 		const exoticRunData = runDataFor([exotic as never]);
@@ -432,6 +480,28 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeOn('{{ $json.rows.at(0).length }}', rows)).toEqual({
 				handled: true,
 				value: 600_000,
+			});
+		});
+
+		// Few elements, much content: an element count would charge almost
+		// nothing for work that compares or stringifies every character.
+		test('element-comparing methods are charged by element content', () => {
+			const big = 'x'.repeat(MAX_RESULT_LENGTH);
+			const fits = MAX_WORK / MAX_RESULT_LENGTH - 1;
+			const list = (count: number) => ({ $json: { list: new Array<string>(count).fill(big) } });
+			for (const method of ['includes', 'indexOf', 'lastIndexOf']) {
+				const expr = `{{ $json.list.${method}("y") }}`;
+				expect(nativeOn(expr, list(fits + 2))).toEqual({ handled: false });
+				expect(nativeOn(expr, list(fits)).handled).toBe(true);
+			}
+			// Twice the content times log2 of the count: 3 elements cost 12
+			// receivers, 2 cost 8.
+			expect(nativeOn('{{ $json.list.toSorted().length }}', list(3))).toEqual({
+				handled: false,
+			});
+			expect(nativeOn('{{ $json.list.toSorted().length }}', list(2))).toEqual({
+				handled: true,
+				value: 2,
 			});
 		});
 
@@ -639,6 +709,27 @@ describe('Expression - fast native evaluation parity', () => {
 			const $json = { list: Object.assign(['a'], { join: null }) };
 			expect(nativeOn('{{ $json.list.join() }}', { $json })).toEqual({ handled: false });
 			expect(nativeOn('{{ $json.list.at(0) }}', { $json })).toEqual({ handled: true, value: 'a' });
+		});
+
+		// extendSyntax rewrites the call into extend() dispatch regardless.
+		test('an own property does not shadow an extension', () => {
+			const $json = { list: Object.assign(['a'], { last: null }) };
+			expect(nativeOn('{{ $json.list.last() }}', { $json })).toEqual({ handled: true, value: 'a' });
+		});
+
+		// In combined binary mode the host copies every item per all() call, so a
+		// body calling it per visit is charged for the items each call returns.
+		test('node reference calls in a callback body are charged per item', () => {
+			const items = new Array<number>(MAX_RESULT_LENGTH).fill(0);
+			const $input = { all: () => items };
+			const visits = (count: number) => ({
+				$json: { list: new Array<number>(count).fill(0) },
+				$input,
+			});
+			const expr = '{{ $json.list.some(n => $input.all().length === -1) }}';
+			const fits = MAX_WORK / MAX_RESULT_LENGTH - 1;
+			expect(nativeOn(expr, visits(fits + 2))).toEqual({ handled: false });
+			expect(nativeOn(expr, visits(fits))).toEqual({ handled: true, value: false });
 		});
 	});
 

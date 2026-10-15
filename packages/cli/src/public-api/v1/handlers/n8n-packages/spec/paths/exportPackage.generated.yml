@@ -29,9 +29,6 @@ description: |
   Knowledge base files and runtime data are excluded. Agent package imports
   remain unavailable.
 x-required-scope: project:export,workflow:export,agent:export
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:
