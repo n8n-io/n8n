@@ -15,10 +15,7 @@ import { versionDescription } from './actions/versionDescription';
 import {
 	getTeams as loadTeams,
 	getUsers as loadUsers,
-	getStates,
 	getLabels as loadLabels,
-	getProjects,
-	getCycles,
 } from '../shared/methods/loadOptions';
 import {
 	getInitiatives,
@@ -82,10 +79,7 @@ export class LinearV2 implements INodeType {
 			// resource locators can't express — they hold a single value.
 			getTeams: loadTeams,
 			getUsers: loadUsers,
-			getStates,
 			getLabels: loadLabels,
-			getProjects,
-			getCycles,
 		},
 		listSearch: {
 			getInitiatives,

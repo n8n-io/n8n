@@ -57,7 +57,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { issueId, first: 50 },
+		variables: { issueId },
 	};
 
 	const attachments = await linearApiRequestAllItems.call(

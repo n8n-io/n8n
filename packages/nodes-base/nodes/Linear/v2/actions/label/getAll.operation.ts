@@ -57,7 +57,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const labels = await linearApiRequestAllItems.call(this, 'data.issueLabels', body, limit);

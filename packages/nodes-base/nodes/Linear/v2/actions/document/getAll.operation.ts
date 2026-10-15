@@ -55,7 +55,7 @@ export async function execute(
 				pageInfo { hasNextPage endCursor }
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const documents = await linearApiRequestAllItems.call(this, 'data.documents', body, limit);

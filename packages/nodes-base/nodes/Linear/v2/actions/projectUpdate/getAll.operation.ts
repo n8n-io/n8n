@@ -55,7 +55,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { projectId, first: 50 },
+		variables: { projectId },
 	};
 
 	const updates = await linearApiRequestAllItems.call(

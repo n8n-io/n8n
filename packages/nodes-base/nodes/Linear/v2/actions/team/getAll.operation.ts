@@ -59,7 +59,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const teams = await linearApiRequestAllItems.call(this, 'data.teams', body, limit);

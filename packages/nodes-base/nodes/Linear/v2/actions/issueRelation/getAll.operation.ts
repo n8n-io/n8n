@@ -51,7 +51,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const relations = await linearApiRequestAllItems.call(this, 'data.issueRelations', body, limit);

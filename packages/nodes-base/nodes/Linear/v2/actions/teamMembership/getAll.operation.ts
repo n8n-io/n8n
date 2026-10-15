@@ -62,7 +62,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { teamId, first: 50 },
+		variables: { teamId },
 	};
 
 	const memberships = await linearApiRequestAllItems.call(

@@ -63,7 +63,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const projects = await linearApiRequestAllItems.call(this, 'data.projects', body, limit);

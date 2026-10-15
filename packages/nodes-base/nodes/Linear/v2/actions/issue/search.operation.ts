@@ -64,7 +64,6 @@ export async function execute(
 		}`,
 		variables: {
 			term: searchQuery,
-			first: 50,
 		},
 	};
 

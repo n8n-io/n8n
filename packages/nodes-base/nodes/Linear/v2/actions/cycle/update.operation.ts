@@ -73,10 +73,5 @@ export async function execute(
 	};
 
 	const responseData = await linearApiRequest.call(this, body);
-	const cycleUpdate = (
-		responseData as { data: { cycleUpdate: { success: boolean; cycle: IDataObject } } }
-	).data.cycleUpdate;
-	const result = cycleUpdate?.cycle ?? (cycleUpdate as unknown as IDataObject);
-
-	return result;
+	return (responseData as { data: { cycleUpdate: { cycle: IDataObject } } }).data.cycleUpdate.cycle;
 }

@@ -51,7 +51,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const views = await linearApiRequestAllItems.call(this, 'data.customViews', body, limit);

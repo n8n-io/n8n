@@ -106,7 +106,6 @@ export async function execute(
 			}
 		}`,
 		variables: {
-			first: 50,
 			...(Object.keys(filter).length > 0 ? { filter } : {}),
 		},
 	};

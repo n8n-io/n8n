@@ -1,7 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const LINEAR_API_URL = 'https://api.linear.app/graphql';
-
 export const PRIORITY_OPTIONS = [
 	{ name: 'No Priority', value: 0 },
 	{ name: 'Urgent', value: 1 },

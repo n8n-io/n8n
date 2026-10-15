@@ -58,7 +58,7 @@ export async function execute(
 				pageInfo { hasNextPage endCursor }
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const cycles = await linearApiRequestAllItems.call(this, 'data.cycles', body, limit);

@@ -51,7 +51,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const releases = await linearApiRequestAllItems.call(this, 'data.releases', body, limit);

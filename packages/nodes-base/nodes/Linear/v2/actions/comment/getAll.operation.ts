@@ -67,7 +67,6 @@ export async function execute(
 		}`,
 		variables: {
 			issueId,
-			first: 50,
 		},
 	};
 

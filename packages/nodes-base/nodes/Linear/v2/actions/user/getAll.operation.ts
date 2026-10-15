@@ -60,7 +60,7 @@ export async function execute(
 				}
 			}
 		}`,
-		variables: { first: 50 },
+		variables: {},
 	};
 
 	const users = await linearApiRequestAllItems.call(this, 'data.users', body, limit);
