@@ -811,9 +811,15 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			expect(awsApiRequestRESTSpy).toHaveBeenCalledWith('test-bucket.s3', 'GET', '', '', {
-				location: '',
-			});
+			expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
+				'test-bucket.s3', 
+				'GET', 
+				requestPath``, 
+				'', 
+				{
+					location: '',
+				}
+			);
 		});
 
 		it('should call getPresignedS3Url with correct arguments', async () => {
@@ -824,10 +830,10 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				'GET',
 				'test-bucket',
-				'path/to/file.txt',
+				requestPath`/path/to/file.txt`,
 				'eu-central-1',
 				7200,
-				'attachment; filename="file.txt"',
+				"attachment; filename=\"file.txt\"; filename*=UTF-8''file.txt",
 			);
 		});
 
@@ -839,10 +845,10 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				'GET',
 				'test-bucket',
-				'path/to/file.txt',
+				requestPath`/path/to/file.txt`,
 				'eu-central-1',
 				3600,
-				'attachment; filename="file.txt"',
+				"attachment; filename=\"file.txt\"; filename*=UTF-8''file.txt",
 			);
 		});
 
@@ -851,16 +857,52 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			expect(awsApiRequestRESTSpy).toHaveBeenCalledWith('s3', 'GET', '/my.bucket.com', '', {
-				location: '',
-			});
+			expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
+				's3', 
+				'GET', 
+				requestPath`/my.bucket.com`, 
+				'', 
+				{
+					location: '',
+				}
+			);
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				'GET',
 				'my.bucket.com',
-				'path/to/file.txt',
+				requestPath`/my.bucket.com/path/to/file.txt`,
 				'eu-central-1',
 				3600,
-				'attachment; filename="file.txt"',
+				"attachment; filename=\"file.txt\"; filename*=UTF-8''file.txt",
+			);
+		});
+
+		it('should handle special characters in file names', async () => {
+			setupParams({ bucketName: 'test-bucket', fileKey: 'sample_file%#? name.json' });
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
+				'GET',
+				'test-bucket',
+				requestPath`/sample_file%25%23%3F%20name.json`,
+				'eu-central-1',
+				3600,
+				"attachment; filename=\"sample_file%#? name.json\"; filename*=UTF-8''sample_file%25%23%3F%20name.json",
+			);
+		});
+
+		it('should handle non-ascii characters in file names in content disposition', async () => {
+			setupParams({ bucketName: 'test-bucket', fileKey: 'sample_file имя файла.json' });
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
+				'GET',
+				'test-bucket',
+				requestPath`/sample_file%20%D0%B8%D0%BC%D1%8F%20%D1%84%D0%B0%D0%B9%D0%BB%D0%B0.json`,
+				'eu-central-1',
+				3600,
+				"attachment; filename=\"sample_file ___ _____.json\"; filename*=UTF-8''sample_file%20%D0%B8%D0%BC%D1%8F%20%D1%84%D0%B0%D0%B9%D0%BB%D0%B0.json",
 			);
 		});
 
@@ -873,10 +915,12 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(String),
-				expect.any(String),
+				expect.objectContaining({
+					value: '/path/to/file.txt',
+				}),
 				expect.any(String),
 				604800,
-				'attachment; filename="file.txt"',
+				"attachment; filename=\"file.txt\"; filename*=UTF-8''file.txt",
 			);
 		});
 
@@ -893,7 +937,9 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(String),
-				expect.any(String),
+				expect.objectContaining({
+					value: '/path/to/file.txt',
+				}),
 				expect.any(String),
 				604800,
 				undefined,
@@ -916,7 +962,7 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 
 			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
 			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
-				'Bucket name is required to generate a presigned URL',
+				'Bucket name should be a non-empty string',
 			);
 		});
 
