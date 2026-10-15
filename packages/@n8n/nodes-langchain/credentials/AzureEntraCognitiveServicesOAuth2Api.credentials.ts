@@ -65,7 +65,7 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			default: '',
 			displayOptions: { show: { endpointType: ['foundry'] } },
 			description:
-				'Optional. The Microsoft Foundry project that owns your deployments. n8n uses it to list the deployments.',
+				'Optional. The Microsoft Foundry project that owns your deployments. n8n uses it to list the deployments. The project overview page in the Foundry portal shows the name.',
 		},
 		{
 			displayName: 'Endpoint',
