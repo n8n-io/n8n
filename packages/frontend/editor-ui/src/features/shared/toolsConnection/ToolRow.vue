@@ -243,12 +243,7 @@ function handleConnect() {
 				:anchor="rowRef"
 				:side-offset="48"
 			/>
-			<N8nTooltip
-				v-else-if="isDisabled"
-				:content="item.disabledReason ?? ''"
-				:disabled="!item.disabledReason"
-				placement="top"
-			>
+			<N8nTooltip v-else-if="isDisabled" :disabled="!item.disabledReason" placement="top">
 				<span
 					:class="$style.disabledMarker"
 					role="img"
@@ -258,6 +253,7 @@ function handleConnect() {
 				>
 					<N8nIcon icon="info" :size="14" color="text-light" />
 				</span>
+				<template #content>{{ item.disabledReason }}</template>
 			</N8nTooltip>
 			<N8nSwitch2
 				v-else-if="item.kind === 'skill'"

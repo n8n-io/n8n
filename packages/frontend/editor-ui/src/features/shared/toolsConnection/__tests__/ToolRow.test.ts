@@ -337,6 +337,28 @@ describe('ToolRow', () => {
 			disabledReason: "Contains nodes that aren't supported as agent tools (Wait, Form)",
 		};
 
+		it('shows the disabled reason as plain text', () => {
+			const { getByTestId } = renderRow({
+				props: {
+					item: { ...disabledWorkflow, disabledReason: 'Rename <img src=x>_tag first' },
+				},
+				pinia: createTestingPinia(),
+				global: {
+					stubs: {
+						N8nTooltip: {
+							props: ['content'],
+							template:
+								'<span><slot /><span data-test-id="stub-tooltip-content"><span v-html="content" /><slot name="content" /></span></span>',
+						},
+					},
+				},
+			});
+
+			const content = getByTestId('stub-tooltip-content');
+			expect(content.querySelector('img')).toBeNull();
+			expect(content).toHaveTextContent('Rename <img src=x>_tag first');
+		});
+
 		it('renders a disabled marker instead of a connect/install action', () => {
 			const { getByTestId, queryByTestId } = render(disabledWorkflow);
 
