@@ -28,6 +28,10 @@ Use `localhost` for generated viewer, backend, and editor URLs.
 Keep the profiler URL in the launch output. Disable terminal clearing in the
 profiling compiler watcher.
 
+Profiling launches inherit database settings from the environment. Support SQLite
+and PostgreSQL. Document PostgreSQL setup and explicit environment-file loading
+in the recording guide. Exclude database process memory from the profile.
+
 The backend dev command starts the backend and compiler. It uses the existing
 editor build. The root `dev:profile` command also starts the frontend dev server.
 Choose available ports and configure the frontend proxy for the backend port.

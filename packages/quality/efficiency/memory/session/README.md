@@ -82,6 +82,55 @@ The recorder uses the normal local n8n data configuration. Use `N8N_USER_FOLDER`
 to select a separate development instance when needed. Keep sensitive values
 in environment variables. The recorder stores only selected configuration fields.
 
+### PostgreSQL
+
+Profiling launches inherit exported database settings. To start a local
+PostgreSQL container, run this command from the repository root with Docker running:
+
+```bash
+pnpm --filter n8n-containers services --services postgres
+```
+
+The command writes connection settings to `packages/cli/bin/.env`. Load that file
+before starting the profiler:
+
+```bash
+pnpm exec node --env-file=packages/cli/bin/.env --run dev:profile
+```
+
+This runs the `dev:profile` script with the generated settings. The profiler does
+not load `packages/cli/bin/.env` automatically. No n8n Docker image rebuild is
+needed. Finish the profiling session before stopping the PostgreSQL container.
+
+To use an existing development database, save its settings in a local,
+gitignored file such as `.context/profiling-postgres.env`:
+
+```dotenv
+DB_TYPE=postgresdb
+DB_POSTGRESDB_HOST=localhost
+DB_POSTGRESDB_PORT=5432
+DB_POSTGRESDB_DATABASE=n8n
+DB_POSTGRESDB_USER=n8n
+DB_POSTGRESDB_PASSWORD=replace-with-local-password
+```
+
+Set the values for your database. Add `DB_POSTGRESDB_SCHEMA` or
+`DB_POSTGRESDB_SSL_*` settings if the database needs them. Keep the password in
+the environment file. Then run:
+
+```bash
+pnpm exec node --env-file=.context/profiling-postgres.env --run dev:profile
+```
+
+For a bounded recording without development servers, use the same settings:
+
+```bash
+pnpm --silent exec node --env-file=.context/profiling-postgres.env --run profile:memory -- record --duration 120s --warmup 30s --no-open --json
+```
+
+The profile measures the n8n backend. It excludes PostgreSQL process memory.
+Use the same database and workload for before-and-after comparisons.
+
 ## Agent recording
 
 ```bash
