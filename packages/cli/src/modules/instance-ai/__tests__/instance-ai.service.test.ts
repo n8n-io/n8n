@@ -64,7 +64,7 @@ vi.mock('@n8n/instance-ai', async () => {
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		),
-		serveRuntimeSkillsFromWorkspace: vi.fn(({ source }) => source),
+		bindRuntimeSkillsToWorkspace: vi.fn((source) => source),
 		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({ registry: { skills: [] } })),
 		setupSandboxWorkspace: vi.fn(),
 		traceSandboxOperation: vi.fn(
@@ -268,10 +268,9 @@ import {
 	createWorkspace,
 	createInstanceAiTraceContext,
 	disabledInstanceAiSkillIds,
+	bindRuntimeSkillsToWorkspace,
 	loadInstanceAiPromptSkills,
-	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
-	serveRuntimeSkillsFromWorkspace,
 	streamAgentRun,
 	isQuotaExhaustedError,
 	setupSandboxWorkspace,
@@ -806,7 +805,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		);
-		(serveRuntimeSkillsFromWorkspace as Mock).mockImplementation(({ source }) => source);
+		(bindRuntimeSkillsToWorkspace as Mock).mockImplementation((source) => source);
 		(loadInstanceAiPromptSkills as Mock).mockImplementation(() => ({
 			disabledTools: [],
 			source: {
@@ -1088,14 +1087,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
-		// Skills point at the copy that sandbox setup writes. The sandbox stores every
-		// bundled skill, the same set that the image and snapshot bake.
-		const catalog = (loadInstanceAiPromptSkills as Mock).mock.results[0]?.value.source;
-		expect(serveRuntimeSkillsFromWorkspace).toHaveBeenCalledWith({
-			source: catalog,
-			storedSource: (loadInstanceAiRuntimeSkillSource as Mock).mock.results[0]?.value,
-			root: '/home/daytona/workspace',
-		});
+		expect(bindRuntimeSkillsToWorkspace).toHaveBeenCalledWith(
+			(loadInstanceAiPromptSkills as Mock).mock.results[0]?.value.source,
+			'/home/daytona/workspace',
+		);
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
@@ -1173,7 +1168,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect((setupSandboxWorkspace as Mock).mock.calls[0]?.[0]).toBe(workspace);
 
 		(createLazyRuntimeWorkspace as Mock).mockClear();
-		(serveRuntimeSkillsFromWorkspace as Mock).mockClear();
+		(bindRuntimeSkillsToWorkspace as Mock).mockClear();
 		(createSandbox as Mock).mockClear();
 		(setupSandboxWorkspace as Mock).mockClear();
 		(loadInstanceAiPromptSkills as Mock).mockClear();
@@ -1192,12 +1187,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
-		// Without a sandbox the runtime skill catalog is used as-is, with local paths.
+		// Without a sandbox the skills are used as-is.
 		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
-		expect(serveRuntimeSkillsFromWorkspace).not.toHaveBeenCalled();
+		expect(bindRuntimeSkillsToWorkspace).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});

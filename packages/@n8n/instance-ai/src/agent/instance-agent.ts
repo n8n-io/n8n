@@ -101,10 +101,7 @@ export async function createInstanceAgent(
 	const domainContext: InstanceAiContext = {
 		...context,
 		tracing: orchestrationContext?.tracing,
-		runtimeSkillCatalog:
-			orchestrationContext?.runtimeSkillCatalog ??
-			context.runtimeSkillCatalog ??
-			orchestrationContext?.runtimeSkills,
+		runtimeSkillCatalog: context.runtimeSkillCatalog ?? orchestrationContext?.runtimeSkills,
 	};
 	if (orchestrationContext) {
 		orchestrationContext.domainContext = domainContext;

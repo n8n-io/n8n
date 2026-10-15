@@ -455,29 +455,6 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
-	it('passes the selected catalog to domain tools before workspace materialization', async () => {
-		const runtimeSkillCatalog = {
-			registry: { schemaVersion: 1, skillsHash: 'selected-skills', skills: [] },
-			loadSkill: vi.fn(),
-		};
-		const runtimeSkills = {
-			registry: { schemaVersion: 1, skillsHash: 'workspace-skills', skills: [] },
-			loadSkill: vi.fn(),
-		};
-
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {},
-			orchestrationContext: { runId: 'skills-test', runtimeSkillCatalog, runtimeSkills },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(),
-		} as never);
-
-		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
-			expect.objectContaining({ runtimeSkillCatalog }),
-		);
-	});
-
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
 		createOrchestratorDomainTools.mockReturnValueOnce(
 			new Map([['workflows', { id: 'workflows' }]]),

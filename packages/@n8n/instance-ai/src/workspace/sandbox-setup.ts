@@ -26,9 +26,6 @@
  *       templates/
  *         index.json                  # curated template catalog
  *         *.ts                        # SDK workflow examples
- *     skills/
- *       registry.json                 # skill catalog with sandbox paths
- *       <skill>/SKILL.md              # skill instructions and linked files
  */
 
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -58,8 +55,6 @@ import {
 } from './sandbox-typescript';
 import { joinWorkspacePath } from './workspace-paths';
 import { materializeKnowledgeBaseIntoWorkspace } from '../knowledge-base/materialize-knowledge-base';
-import { materializeRuntimeSkillsIntoWorkspace } from '../skills/materialize-runtime-skills';
-import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
 import { traceSandboxOperation, sandboxFileBytes } from '../tracing/sandbox-tracing';
 
 export { TSCONFIG_JSON } from './sandbox-typescript';
@@ -72,7 +67,6 @@ type SandboxWorkspaceSetupStep =
 	| 'list-node-types'
 	| 'write-workspace-files'
 	| 'materialize-knowledge-base'
-	| 'materialize-runtime-skills'
 	| 'install-dependencies'
 	| 'link-workspace-sdk'
 	| 'write-initialization-marker';
@@ -493,39 +487,6 @@ async function materializeKnowledgeBaseStep(
 }
 
 /**
- * Write every bundled skill, the same set that the image and snapshot bake.
- * Runs serve their skills with these paths before setup finishes.
- */
-async function materializeRuntimeSkillsStep(
-	workspace: SandboxWorkspace,
-	root: string,
-	context: InstanceAiContext,
-	verifiedBundles: VerifiedWorkspaceBundles | undefined,
-): Promise<void> {
-	await setupStep('materialize-runtime-skills', async () => {
-		await materializeRuntimeSkillsIntoWorkspace({
-			source: loadInstanceAiRuntimeSkillSource(),
-			workspace,
-			verifiedBundles,
-			root,
-			logger: context.logger,
-		});
-	});
-}
-
-async function materializeWorkspaceBundles(
-	workspace: SandboxWorkspace,
-	root: string,
-	context: InstanceAiContext,
-	verifiedBundles: VerifiedWorkspaceBundles | undefined,
-): Promise<void> {
-	await Promise.all([
-		materializeKnowledgeBaseStep(workspace, root, context, verifiedBundles),
-		materializeRuntimeSkillsStep(workspace, root, context, verifiedBundles),
-	]);
-}
-
-/**
  * Initialize the sandbox workspace for the workflow builder agent.
  * Idempotent — skips if already initialized (checks marker file).
  *
@@ -554,7 +515,7 @@ export async function setupSandboxWorkspace(
 				async () => await readWorkspaceFile(workspace, markerFile),
 			);
 			if (marker !== null) {
-				await materializeWorkspaceBundles(workspace, root, context, options.verifiedBundles);
+				await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
 				return false;
 			}
 
@@ -581,7 +542,7 @@ export async function setupSandboxWorkspace(
 				'write-workspace-files',
 				async () => await writeWorkspaceFiles(workspace, root, files),
 			);
-			await materializeWorkspaceBundles(workspace, root, context, options.verifiedBundles);
+			await materializeKnowledgeBaseStep(workspace, root, context, options.verifiedBundles);
 
 			// npm install (must run after package.json is in place)
 			await setupStep('install-dependencies', async () => {

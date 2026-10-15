@@ -74,16 +74,7 @@ vi.mock('../stream/map-chunk', () => ({ mapAgentChunkToEvent: () => ({ type: 'ev
 vi.mock('../skills/runtime-skills', () => ({
 	INSTANCE_AI_SKILLS_DIR: '/instance-ai-skills',
 	loadInstanceAiRuntimeSkillSource: () => 'runtime-skill-source',
-}));
-vi.mock('../skills/materialize-runtime-skills', () => ({
-	SANDBOX_RUNTIME_SKILLS_DIR: '/sandbox-skills',
-	SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: 'registry.json',
-	RUNTIME_SKILL_MANIFEST_FILE: 'manifest.json',
-	RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION: 1,
-	N8N_SKILLS_DIR_ENV: 'N8N_SKILLS_DIR',
-	N8N_SKILL_DIR_ENV: 'N8N_SKILL_DIR',
-	N8N_WORKSPACE_DIR_ENV: 'N8N_WORKSPACE_DIR',
-	serveRuntimeSkillsFromWorkspace: () => 'workspace-skill-source',
+	bindRuntimeSkillsToWorkspace: () => 'workspace-skill-source',
 }));
 vi.mock('../utils/eval-agents', () => ({
 	createEvalAgent: () => 'eval-agent',
@@ -225,15 +216,8 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.TraceWriter)).toBeInstanceOf(entrypoint.TraceWriter);
 
 		expect(call(entrypoint.loadInstanceAiRuntimeSkillSource)).toBe('runtime-skill-source');
-		expect(call(entrypoint.serveRuntimeSkillsFromWorkspace)).toBe('workspace-skill-source');
+		expect(call(entrypoint.bindRuntimeSkillsToWorkspace)).toBe('workspace-skill-source');
 		expect(entrypoint.INSTANCE_AI_SKILLS_DIR).toBe('/instance-ai-skills');
-		expect(entrypoint.SANDBOX_RUNTIME_SKILLS_DIR).toBe('/sandbox-skills');
-		expect(entrypoint.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE).toBe('registry.json');
-		expect(entrypoint.RUNTIME_SKILL_MANIFEST_FILE).toBe('manifest.json');
-		expect(entrypoint.RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION).toBe(1);
-		expect(entrypoint.N8N_SKILLS_DIR_ENV).toBe('N8N_SKILLS_DIR');
-		expect(entrypoint.N8N_SKILL_DIR_ENV).toBe('N8N_SKILL_DIR');
-		expect(entrypoint.N8N_WORKSPACE_DIR_ENV).toBe('N8N_WORKSPACE_DIR');
 
 		expect(call(entrypoint.formatPreviousAttempts)).toBe('previous attempts');
 		expect(construct(entrypoint.ThreadIterationLogStorage)).toBeInstanceOf(

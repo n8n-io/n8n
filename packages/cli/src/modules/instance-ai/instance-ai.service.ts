@@ -2835,9 +2835,9 @@ export class InstanceAiService {
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
 		});
-		const promptMetadata = describePromptProfile(selectedPrompt, skills.catalog);
+		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
 		this.runState.setPromptConfiguration(threadId, promptMetadata);
-		let runtimeSkills = skills.catalog;
+		let runtimeSkills = skills.source;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
@@ -2850,22 +2850,14 @@ export class InstanceAiService {
 			);
 
 			if (sandboxConfig.enabled) {
-				const promptWorkspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
-				workspaceRoot = promptWorkspaceRoot;
-				runtimeSkills = this.skillsService.serveFromSandbox(skills.catalog, promptWorkspaceRoot);
+				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
+				runtimeSkills = this.skillsService.bindToWorkspace(skills.source, workspaceRoot);
 
 				const scopeWorkspaceForAgent = async (
 					workspace: Workspace | undefined,
 				): Promise<Workspace | undefined> => {
 					if (!workspace) return undefined;
 					const root = await getWorkspaceRoot(workspace);
-					if (root !== promptWorkspaceRoot) {
-						// Skill paths and the system prompt use the prompt root.
-						this.logger.warn('Sandbox workspace root differs from the prompt workspace root', {
-							root,
-							promptWorkspaceRoot,
-						});
-					}
 					return createScopedWorkspace(workspace, root);
 				};
 
@@ -2946,7 +2938,6 @@ export class InstanceAiService {
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
 			runtimeSkills,
-			runtimeSkillCatalog: skills.catalog,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			touchRun: () => this.runState.touchActiveRun(threadId),

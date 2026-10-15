@@ -109,8 +109,8 @@ entry that they already resolved.
 ## Workspace Initialization
 
 Initialization is lazy and idempotent. A marker file prevents repeated base
-setup. Knowledge-base content and runtime skills are refreshed when an
-existing sandbox is reattached. Initial setup creates or materializes:
+setup. Knowledge-base content is refreshed when an existing sandbox is
+reattached. Initial setup creates or materializes:
 
 | Path                   | Purpose                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------ |
@@ -121,7 +121,6 @@ existing sandbox is reattached. Initial setup creates or materializes:
 | `src/`                 | Workflow source files                                                                      |
 | `chunks/`              | Reusable source modules                                                                    |
 | `knowledge-base/`      | Best-practice, template, and SDK reference material                                        |
-| `skills/`              | Runtime skills (`registry.json` and `<skill>/SKILL.md`)                                    |
 | `.sandbox-initialized` | Setup marker                                                                               |
 
 The Daytona image or versioned snapshot includes the stable workspace files
@@ -129,24 +128,15 @@ and installed dependencies. The node-type catalog is written after sandbox
 creation because it is instance-specific and too large for the Daytona image
 request.
 
-The knowledge base and runtime skills each have a manifest with a content
-hash. Setup compares the manifest hash with the expected hash. When the
-hashes do not match, setup writes the bundle again and writes the manifest
-last. A matching manifest is trusted, and setup reads no other bundle file.
-Each cached sandbox entry keeps the result, so later runs do not read the
-manifest again.
+The knowledge base has a manifest with a content hash. Setup compares the
+manifest hash with the expected hash. When the hashes do not match, setup
+writes the bundle again and writes the manifest last. A matching manifest is
+trusted, and setup reads no other bundle file. Each cached sandbox entry keeps
+the result, so later runs do not read the manifest again.
 
-The runtime skills bundle contains every bundled skill, whatever the prompt
-profile, skill flags or enabled modules. The image, the snapshot and the
-setup write the same set, so a sandbox from an image or snapshot of the same
-n8n version reuses it. A bundle from an older image or snapshot has a
-different hash, so setup writes it again one time. `load_skill` serves only
-the skills that the profile, the flags and the enabled modules allow.
-
-`load_skill` does not read from the sandbox and does not wait for it. It
-serves the skill text from memory, with the sandbox paths of the skill files.
-Setup writes the skills before the workspace is available to a sandbox command,
-so the files exist when the agent reads them.
+Runtime skills are not stored in the sandbox. `load_skill` serves the skill
+text from memory. It replaces `${N8N_WORKSPACE_DIR}` with the workspace root,
+so the skills can point at the knowledge base.
 
 With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
 
@@ -230,20 +220,19 @@ the user's machine under daemon permissions.
 Sandbox isolation does not grant product authorization. Backend services still
 apply RBAC, project scope, session grants, and HITL confirmation rules.
 
-The workspace is for Instance AI build and runtime-skill work. It is not a
-general user workload platform.
+The workspace is for Instance AI build work. It is not a general user
+workload platform.
 
 ## Tracing
 
 Sandbox operations use the active Instance AI trace. Each span inherits the
-thread metadata. The sandbox does not retain a turn's trace handle. Skill
-preparation runs inside the agent's lazy build and uses the same trace context.
+thread metadata. The sandbox does not retain a turn's trace handle.
 
 | Operation                              | Trace data                                                                                |
 | -------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Acquire and start                      | Provider, sandbox ID, cached reuse, shared acquisition, duration, and errors              |
 | Initialize workspace                   | Marker check, node catalog, base files, dependency installation, and optional SDK linking |
-| Sync skills and knowledge base         | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result         |
+| Sync knowledge base                    | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result         |
 | Read, write, and edit files            | File operations under the existing tool span, paths, byte counts, and errors              |
 | Execute commands and compile workflows | Command size, exit code, timeout or cancellation, compile result, and bounded diagnostics |
 | Retry and fallback                     | File path, failed attempt, retry delay, and command fallback                              |

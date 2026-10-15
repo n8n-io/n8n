@@ -1,6 +1,6 @@
 /**
  * Prepares and caches a Daytona Image descriptor with config files,
- * node_modules, and runtime skills pre-installed, and resolves a versioned
+ * node_modules, and the knowledge base pre-installed, and resolves a versioned
  * named snapshot (`n8n/instance-ai:<n8nVersion>`) for sandbox creation.
  *
  * `snapshotName` derives the versioned snapshot name for the running n8n
@@ -13,7 +13,6 @@
  */
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytona/sdk';
-import type { RuntimeSkillSource } from '@n8n/agents';
 import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/agents/sandbox';
 import { sleep } from '@n8n/utils/sleep';
 
@@ -29,8 +28,6 @@ import {
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS, NPM_INSTALL_FLAGS } from './sandbox-setup';
 import { loadWorkflowDiagnosticsWorker, WORKFLOW_DIAGNOSTICS_FILENAME } from './sandbox-typescript';
 import { stageWorkspaceFilesForImage } from './snapshot-image-context';
-import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
-import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
 
 export interface CreateSnapshotOptions {
 	timeout?: number;
@@ -181,16 +178,12 @@ function lastUsedTime(snapshot: DaytonaSnapshot): number {
 export class SnapshotManager {
 	private cachedImage: Promise<Image> | null = null;
 
-	private runtimeSkillBundlePromise: ReturnType<typeof buildRuntimeSkillWorkspaceBundle> | null =
-		null;
-
 	private knowledgeBaseBundlePromise: Promise<KnowledgeBaseWorkspaceBundle> | null = null;
 
 	constructor(
 		private readonly baseImage: string | undefined,
 		private readonly logger: Logger,
 		private readonly n8nVersion: string | undefined,
-		private readonly runtimeSkillSource?: RuntimeSkillSource,
 		private readonly templatesService?: BuilderTemplatesService,
 	) {}
 
@@ -202,15 +195,10 @@ export class SnapshotManager {
 
 	private async prepareImage(): Promise<Image> {
 		const base = this.baseImage ?? 'daytonaio/sandbox:0.5.0';
-		const runtimeSkillBundle = await this.runtimeSkillBundle();
 		const knowledgeBaseBundle = await this.knowledgeBaseBundle();
-		const cacheKey =
-			this.n8nVersion ?? `${runtimeSkillBundle?.skillsHash}-${knowledgeBaseBundle.contentHash}`;
+		const cacheKey = this.n8nVersion ?? knowledgeBaseBundle.contentHash;
 
-		const workspaceFiles = new Map<string, string>([
-			...(runtimeSkillBundle?.files ?? []),
-			...(knowledgeBaseBundle?.files ?? []),
-		]);
+		const workspaceFiles = new Map<string, string>(knowledgeBaseBundle.files);
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/tsconfig.json`, TSCONFIG_JSON);
 		workspaceFiles.set(`${DAYTONA_WORKSPACE_ROOT}/build.mjs`, BUILD_MJS);
@@ -238,8 +226,6 @@ export class SnapshotManager {
 		this.logger.info('Builder image descriptor prepared', {
 			base,
 			dockerfileLength: image.dockerfile.length,
-			runtimeSkillsHash: runtimeSkillBundle?.skillsHash,
-			runtimeSkillFiles: runtimeSkillBundle?.files.size ?? 0,
 			knowledgeBaseHash: knowledgeBaseBundle.contentHash,
 			knowledgeBaseFiles: knowledgeBaseBundle.files.size,
 			stagingDir,
@@ -749,16 +735,6 @@ export class SnapshotManager {
 		return `n8n/instance-ai:${this.n8nVersion}`;
 	}
 
-	private async runtimeSkillBundle(): ReturnType<typeof buildRuntimeSkillWorkspaceBundle> {
-		this.runtimeSkillBundlePromise ??= buildRuntimeSkillWorkspaceBundle({
-			source: this.runtimeSkillSource ?? loadInstanceAiRuntimeSkillSource(),
-			root: DAYTONA_WORKSPACE_ROOT,
-			logger: this.logger,
-		});
-
-		return await this.runtimeSkillBundlePromise;
-	}
-
 	private async knowledgeBaseBundle(): Promise<KnowledgeBaseWorkspaceBundle> {
 		this.knowledgeBaseBundlePromise ??= this.buildKnowledgeBaseBundle();
 		return await this.knowledgeBaseBundlePromise;
@@ -784,7 +760,6 @@ export class SnapshotManager {
 	 */
 	invalidate(): void {
 		this.cachedImage = null;
-		this.runtimeSkillBundlePromise = null;
 		this.knowledgeBaseBundlePromise = null;
 	}
 }

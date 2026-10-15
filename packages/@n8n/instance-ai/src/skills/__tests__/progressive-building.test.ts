@@ -1,16 +1,11 @@
 import { createSkillLoadTool, filterRuntimeSkillSource } from '@n8n/agents';
-import { mock } from 'vitest-mock-extended';
 
 import { getSystemPrompt } from '../../agent/system-prompt';
-import type { Logger } from '../../logger';
-import { buildRuntimeSkillWorkspaceBundle } from '../materialize-runtime-skills';
 import {
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
 } from '../runtime-skills';
 import { disabledInstanceAiSkillIds } from '../skill-gates';
-
-const logger = mock<Logger>();
 
 describe('progressive workflow skill variants', () => {
 	it('excludes planning and changes only the workflow-building and post-build instructions', async () => {
@@ -50,7 +45,7 @@ describe('progressive workflow skill variants', () => {
 		await expect(loadInstanceAiRuntimeSkillSourceForBuildMode(undefined)).resolves.toBe(control);
 	});
 
-	it('serves the selected skills through both workspace files and load_skill', async () => {
+	it('serves the selected skills through load_skill', async () => {
 		const policy = await loadInstanceAiRuntimeSkillSource().loadSkill('progressive-building');
 		if (!policy) throw new Error('Expected the progressive policy');
 		const excluded = disabledInstanceAiSkillIds({
@@ -66,38 +61,24 @@ describe('progressive workflow skill variants', () => {
 			await loadInstanceAiRuntimeSkillSourceForBuildMode('progressive'),
 			excluded,
 		);
-		const root = '/home/daytona/workspace';
-		const [controlBundle, progressiveBundle] = await Promise.all(
-			[control, progressive].map(
-				async (source) => await buildRuntimeSkillWorkspaceBundle({ source, root, logger }),
-			),
-		);
-		if (!controlBundle || !progressiveBundle) throw new Error('Expected skill bundles');
+		const loadProgressive = createSkillLoadTool(progressive);
+		const loadControl = createSkillLoadTool(control);
 
-		expect(progressiveBundle.manifest.skillsHash).not.toBe(controlBundle.manifest.skillsHash);
-		const skillPaths = {
-			'workflow-builder': `${root}/skills/workflow-builder/SKILL.md`,
-			'post-build-flow': `${root}/skills/workflow-builder/references/post-build-flow.md`,
-		};
-		for (const [skillId, skillPath] of Object.entries(skillPaths)) {
-			expect(progressiveBundle.files.get(skillPath)).toContain('# Progressive building');
-			expect(controlBundle.files.get(skillPath)).not.toContain('# Progressive building');
-			const loadTool = createSkillLoadTool(progressiveBundle.source);
-			const loaded = await loadTool.handler?.({ skillId }, {});
-			expect(loaded).toHaveProperty('value.0.text', expect.stringContaining(policy.instructions));
+		for (const skillId of ['workflow-builder', 'post-build-flow']) {
+			await expect(loadProgressive.handler?.({ skillId }, {})).resolves.toHaveProperty(
+				'value.0.text',
+				expect.stringContaining(policy.instructions),
+			);
+			await expect(loadControl.handler?.({ skillId }, {})).resolves.toHaveProperty(
+				'value.0.text',
+				expect.not.stringContaining('# Progressive building'),
+			);
 		}
 
-		const reference = `${root}/skills/workflow-builder/references/trigger-input-data-shapes.md`;
-		expect(progressiveBundle.files.get(reference)).toBeTruthy();
-		expect(progressiveBundle.files.get(reference)).toBe(controlBundle.files.get(reference));
-		expect(controlBundle.files.has(`${root}/skills/planning/SKILL.md`)).toBe(true);
-		expect(progressiveBundle.files.has(`${root}/skills/planning/SKILL.md`)).toBe(false);
-		await expect(progressive.loadSkill('planning')).resolves.toBeNull();
-		await expect(
-			createSkillLoadTool(progressiveBundle.source).handler?.({ skillId: 'planning' }, {}),
-		).resolves.toMatchObject({ success: false });
+		await expect(loadProgressive.handler?.({ skillId: 'planning' }, {})).resolves.toMatchObject({
+			success: false,
+		});
 		await expect(progressive.loadSkill('progressive-building')).resolves.toBeNull();
-		expect(progressiveBundle.files.has(`${root}/skills/progressive-building/SKILL.md`)).toBe(false);
 	});
 
 	it('keeps the progressive policy out of the general system prompt', () => {
