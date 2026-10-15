@@ -33,6 +33,7 @@ import type { AgentChatAttachment } from '../entities/agent-chat-attachment.enti
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentTestRunService } from '../agent-test-run.service';
+import { AgentChatRelayService } from '../agent-chat-relay.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -104,8 +105,8 @@ function makeController() {
 		backgroundJobService,
 		chatExecutionService,
 		messageQueue,
-		previewStreams,
 		agentsConfig,
+		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
 	);
 
 	return {
