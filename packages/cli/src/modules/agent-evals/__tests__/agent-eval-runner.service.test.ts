@@ -164,10 +164,9 @@ describe('AgentEvalRunnerService', () => {
 		moduleRegistry.isActive.mockReturnValue(true);
 		datasetRepository = mock<AgentEvalDatasetRepository>();
 		runRepository = mock<AgentEvalRunRepository>();
-		const updated = { affected: 1, raw: [], generatedMaps: [] };
-		runRepository.markAsCompleted.mockResolvedValue(updated);
-		runRepository.markAsCancelled.mockResolvedValue(updated);
-		runRepository.markAsError.mockResolvedValue(updated);
+		runRepository.markAsCompleted.mockResolvedValue(true);
+		runRepository.markAsCancelled.mockResolvedValue(true);
+		runRepository.markAsError.mockResolvedValue(true);
 		resultRepository = mock<AgentEvalResultRepository>();
 		agentRepository = mock<AgentRepository>();
 		dataTableService = mock<DataTableService>();
@@ -345,6 +344,21 @@ describe('AgentEvalRunnerService', () => {
 	});
 
 	describe('running cases', () => {
+		it('retries stale settlement until the repository confirms completion', async () => {
+			seedFor([{ id: 'row-1', question: 'First' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			runRepository.markAsCompleted.mockResolvedValueOnce(false).mockResolvedValue(true);
+			runRepository.findById
+				.mockResolvedValueOnce(mock({ id: 'run-1', status: 'running' }))
+				.mockResolvedValue(mock({ id: 'run-1', status: 'completed' }));
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(runRepository.markAsCompleted).toHaveBeenCalledTimes(2);
+			expect(runRepository.findById).toHaveBeenCalledOnce();
+		});
+
 		it('keeps one config snapshot when instructions change with a queued case', async () => {
 			seedFor(
 				[

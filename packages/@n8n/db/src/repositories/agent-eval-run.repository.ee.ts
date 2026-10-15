@@ -44,7 +44,7 @@ export class AgentEvalRunRepository extends BaseRepository<AgentEvalRun> {
 		id: string,
 		metrics: IDataObject | null,
 		counts?: AgentEvalResultStatusCounts,
-	) {
+	): Promise<boolean> {
 		return await this.settleWithResultCounts(
 			id,
 			{
@@ -67,7 +67,7 @@ export class AgentEvalRunRepository extends BaseRepository<AgentEvalRun> {
 		errorDetails?: IDataObject | null,
 		metrics?: IDataObject | null,
 		counts?: AgentEvalResultStatusCounts,
-	) {
+	): Promise<boolean> {
 		return await this.settleWithResultCounts(
 			id,
 			{
@@ -91,7 +91,7 @@ export class AgentEvalRunRepository extends BaseRepository<AgentEvalRun> {
 		id: string,
 		metrics: IDataObject | null = null,
 		counts?: AgentEvalResultStatusCounts,
-	) {
+	): Promise<boolean> {
 		return await this.settleWithResultCounts(
 			id,
 			{
@@ -109,8 +109,11 @@ export class AgentEvalRunRepository extends BaseRepository<AgentEvalRun> {
 		id: string,
 		attributes: QueryDeepPartialEntity<AgentEvalRun>,
 		counts?: AgentEvalResultStatusCounts,
-	) {
-		if (!counts) return await this.update(id, attributes);
+	): Promise<boolean> {
+		if (!counts) {
+			const result = await this.update(id, attributes);
+			return (result.affected ?? 0) > 0;
+		}
 		return await this.runInTransaction({}, async (manager) => {
 			// Acquire the claim lock in a separate statement. Postgres must take a new
 			// snapshot for the count predicates after a concurrent claim commits.
@@ -135,7 +138,8 @@ export class AgentEvalRunRepository extends BaseRepository<AgentEvalRun> {
 					[`count_${status}`]: expected,
 				});
 			}
-			return await query.execute();
+			const result = await query.execute();
+			return (result.affected ?? 0) > 0;
 		});
 	}
 

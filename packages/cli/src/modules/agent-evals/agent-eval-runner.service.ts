@@ -528,7 +528,7 @@ export class AgentEvalRunnerService {
 					}
 					settled = await this.runRepository.markAsCompleted(runId, metrics, finalCounts);
 				}
-				if ((settled.affected ?? 0) > 0) break;
+				if (settled) break;
 				const current = await this.runRepository.findById(runId);
 				if (!current || current.status !== 'running') break;
 				await sleep(RESULT_SETTLEMENT_POLL_MS);
