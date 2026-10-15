@@ -6,7 +6,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import simpleGit, { GitError, type SimpleGit } from 'simple-git';
+import { GitError, simpleGit, type SimpleGit } from 'simple-git';
 
 import { Git } from '../Git.node';
 import { ALLOWED_CONFIG_KEYS } from '../descriptions';
@@ -40,7 +40,7 @@ const mockGit = {
 jest.mock('simple-git', () => ({
 	__esModule: true,
 	GitError: jest.requireActual<{ GitError: typeof GitError }>('simple-git').GitError,
-	default: jest.fn(() => mockGit),
+	simpleGit: jest.fn(() => mockGit),
 }));
 
 const mockSimpleGit = jest.mocked(simpleGit);
