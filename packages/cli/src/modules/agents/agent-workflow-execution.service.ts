@@ -165,6 +165,8 @@ function createWorkflowAgentExecutionError(message: string, cause?: Error): Oper
 	});
 }
 
+const WORKFLOW_AGENT_CLOSE_TIMEOUT_MS = 10_000;
+
 /**
  * Executes agents invoked from inside a workflow execution (the AI Agent node
  * or a "Message an Agent" tool call): non-streaming runs against isolated
@@ -659,14 +661,30 @@ export class AgentWorkflowExecutionService {
 
 	/**
 	 * Release the isolated agent after the run. `close()` disconnects its MCP
-	 * clients. A close failure must not replace the run result or error.
+	 * clients. Stop waiting after 10 seconds so a hung close cannot hold the
+	 * run result or the original error. A close failure is logged and does not
+	 * replace that result.
 	 */
 	private async closeAgentQuietly(agent: BuiltAgent): Promise<void> {
-		await agent.close().catch((error) => {
+		const close = agent.close();
+		void close.catch(() => {});
+
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		const timeout = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(() => {
+				reject(new Error(`Agent close timed out after ${WORKFLOW_AGENT_CLOSE_TIMEOUT_MS}ms`));
+			}, WORKFLOW_AGENT_CLOSE_TIMEOUT_MS);
+		});
+
+		try {
+			await Promise.race([close, timeout]);
+		} catch (error) {
 			this.logger.warn('Failed to close workflow agent after execution', {
 				error: error instanceof Error ? error.message : String(error),
 			});
-		});
+		} finally {
+			clearTimeout(timeoutId);
+		}
 	}
 
 	private async executeForWorkflowInternal(

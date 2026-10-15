@@ -1691,5 +1691,30 @@ describe('AgentWorkflowExecutionService', () => {
 				});
 			},
 		);
+
+		it.each(['stored', 'inline'] as const)(
+			'returns the %s run result when close does not settle',
+			async (source) => {
+				vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+				try {
+					const { service, runtime, logger } = arrange(source);
+					runtime.agent.close.mockReturnValue(new Promise(() => {}));
+
+					const pending = execute(source, service);
+					await vi.advanceTimersByTimeAsync(10_000);
+					const result = await pending;
+
+					expect(result.finishReason).toBe('stop');
+					expect(logger.warn).toHaveBeenCalledWith(
+						'Failed to close workflow agent after execution',
+						{
+							error: 'Agent close timed out after 10000ms',
+						},
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 	});
 });
