@@ -55,8 +55,9 @@ export function emitPackageImportedEvent(
 	const matchedCredentialIds = credentialResults.flatMap(({ matched, bindings }) =>
 		matched.map((sourceId) => bindings.get(sourceId)!),
 	);
-	const createdCredentialIds = credentialResults.flatMap(({ stubbed, seeded, bindings }) =>
-		[...stubbed, ...seeded].map((sourceId) => bindings.get(sourceId)!),
+	const createdCredentialIds = credentialResults.flatMap(
+		({ stubbed, seeded, incomplete, bindings }) =>
+			[...stubbed, ...seeded, ...incomplete].map((sourceId) => bindings.get(sourceId)!),
 	);
 
 	const dataTablePlans = scopes.map(({ imported }) => imported.dataTablePlan);

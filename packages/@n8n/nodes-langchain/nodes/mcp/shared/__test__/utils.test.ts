@@ -19,6 +19,7 @@ import {
 	connectMcpClient,
 	connectMcpClientForCredential,
 	getAuthHeaders,
+	isMcpContentArray,
 	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../utils';
@@ -49,6 +50,12 @@ const createTestEgressFilter = (): NodeEgressFilter => ({
 describe('utils', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	describe('isMcpContentArray', () => {
+		it('should reject sparse arrays', () => {
+			expect(isMcpContentArray(new Array(1))).toBe(false);
+		});
 	});
 
 	describe('tryRefreshOAuth2Token', () => {

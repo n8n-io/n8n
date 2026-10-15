@@ -6,18 +6,15 @@
  * manifest fields: changing one produces a new app package either way.
  */
 import { computed, ref } from 'vue';
-import { useClipboard } from '@n8n/composables/useClipboard';
-import { useToast } from '@n8n/composables/useToast';
 import {
+	N8nActionDropdown,
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
-	N8nIconButton,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSwitch2,
 } from '@n8n/design-system';
-import type { TeamsFileAccessCheck } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	ENTRA_APP_REGISTRATIONS_URL,
@@ -25,6 +22,7 @@ import {
 	readsSharedConversations as readsShared,
 	type TeamsAvailability,
 } from './constants';
+import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
 
 export type { TeamsAvailability } from './constants';
 
@@ -36,8 +34,9 @@ const props = withDefaults(
 		/** Client ID of the app the channel runs on, once a credential is picked. */
 		appId?: string | null;
 		fileAccessConsentUrl?: string | null;
-		/** Checked only where the channel is saved; unchecked shows the request. */
-		fileAccessStatus?: TeamsFileAccessCheck['status'] | 'checking' | null;
+		/** What to say about file access. Only the saved channel can check it, so the setup always asks. */
+		fileAccessState?: 'request' | 'approved' | 'hidden';
+		organization?: string;
 		/**
 		 * Microsoft returns to the agent page, which reopens the settings. The
 		 * setup does not keep its progress, so there the consent opens a new tab.
@@ -50,7 +49,8 @@ const props = withDefaults(
 		startCollapsed: false,
 		appId: null,
 		fileAccessConsentUrl: null,
-		fileAccessStatus: null,
+		fileAccessState: 'request',
+		organization: '',
 		openConsentInPlace: false,
 		hideFileAccess: false,
 	},
@@ -115,59 +115,36 @@ const readsSharedConversations = computed(() => readsShared(value.value));
 
 /**
  * Files attached in a shared conversation live in SharePoint or OneDrive, which
- * only an app permission that an administrator grants can read.
+ * only an app permission that an administrator grants can read. An app the
+ * recommended setup made takes a one-step consent; one made by hand needs the
+ * permission added first, so it gets the full instructions.
  */
 const fileAccess = computed(() => {
-	if (props.hideFileAccess) return null;
-	if (!readsSharedConversations.value) return null;
-	if (props.fileAccessStatus === 'approved' || props.fileAccessStatus === 'checking') return null;
+	if (props.hideFileAccess || !readsSharedConversations.value) return null;
+	if (props.fileAccessState === 'approved') return 'approved' as const;
+	if (props.fileAccessState === 'hidden') return null;
 	if (props.fileAccessConsentUrl) {
 		return {
-			text: 'agents.channels.teams.setup.availability.fileAccessConsent' as const,
-			link: 'agents.channels.teams.setup.availability.fileAccessConsentLink' as const,
+			hint: 'agents.channels.teams.setup.availability.fileAccessNotApproved' as const,
 			url: props.fileAccessConsentUrl,
 		};
 	}
 	return {
-		text: 'agents.channels.teams.setup.availability.fileAccessPermission' as const,
-		...(props.appId
-			? {
-					link: 'agents.channels.teams.setup.availability.fileAccessPermissionLink' as const,
-					url: entraApiPermissionsUrl(props.appId),
-				}
-			: {
-					link: 'agents.channels.teams.setup.availability.fileAccessRegistrationsLink' as const,
-					url: ENTRA_APP_REGISTRATIONS_URL,
-				}),
+		hint: 'agents.channels.teams.setup.availability.fileAccessPermission' as const,
+		url: props.appId ? entraApiPermissionsUrl(props.appId) : ENTRA_APP_REGISTRATIONS_URL,
 	};
 });
 
-const fileAccessApproved = computed(
-	() => readsSharedConversations.value && props.fileAccessStatus === 'approved',
-);
-const fileAccessChecking = computed(
-	() => readsSharedConversations.value && props.fileAccessStatus === 'checking',
+const fileAccessRequest = computed(() =>
+	fileAccess.value && fileAccess.value !== 'approved' ? fileAccess.value : null,
 );
 
-const clipboard = useClipboard();
-const toast = useToast();
-
-/** A button, not a link: the callout paints every link inside it as text. */
-function openFileAccess() {
-	if (!fileAccess.value) return;
-	if (props.openConsentInPlace && fileAccess.value.url === props.fileAccessConsentUrl) {
-		window.location.assign(fileAccess.value.url);
-	} else {
-		window.open(fileAccess.value.url, '_blank', 'noopener');
-	}
-}
-
-/** The person setting this up is often not the administrator who approves it. */
-async function copyFileAccessLink() {
-	if (!fileAccess.value) return;
-	await clipboard.copy(fileAccess.value.url);
-	toast.showMessage({ type: 'success', title: i18n.baseText('generic.copiedToClipboard') });
-}
+const { items: fileAccessMenuItems, onSelect: onFileAccessMenu } = useTeamsFileAccessMenu({
+	url: () => fileAccessRequest.value?.url ?? '',
+	organization: () => props.organization,
+	openInPlace: () =>
+		props.openConsentInPlace && fileAccessRequest.value?.url === props.fileAccessConsentUrl,
+});
 
 /** A collapsed panel still has to say what it is set to. */
 const summary = computed(() => {
@@ -223,45 +200,33 @@ const summary = computed(() => {
 					</N8nSettingsRow>
 				</template>
 			</N8nSettingsRow>
+			<div v-if="fileAccess" :class="$style.fileAccess">
+				<N8nCallout v-if="fileAccessRequest" theme="warning" data-testid="teams-file-access">
+					{{ i18n.baseText(fileAccessRequest.hint) }}
+					<template #trailingContent>
+						<!-- Left teleported: the row group clips anything that overflows it. -->
+						<N8nActionDropdown
+							:items="fileAccessMenuItems"
+							placement="bottom-end"
+							@select="onFileAccessMenu"
+						>
+							<template #activator>
+								<N8nButton variant="ghost" size="small" data-testid="teams-file-access-menu">
+									{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
+									<N8nIcon icon="chevron-down" size="small" />
+								</N8nButton>
+							</template>
+						</N8nActionDropdown>
+					</template>
+				</N8nCallout>
+				<N8nCallout v-else theme="success" data-testid="teams-file-access-approved">
+					<strong :class="$style.lead">
+						{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApproved') }}
+					</strong>
+					{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApprovedHint') }}
+				</N8nCallout>
+			</div>
 		</N8nSettingsRowGroup>
-		<N8nCallout v-if="fileAccess" theme="info" data-testid="teams-file-access">
-			{{ i18n.baseText(fileAccess.text) }}
-			<template #trailingContent>
-				<div :class="$style.fileAccessActions">
-					<N8nButton
-						variant="outline"
-						size="small"
-						data-testid="teams-file-access-link"
-						@click="openFileAccess"
-					>
-						{{ i18n.baseText(fileAccess.link) }}
-					</N8nButton>
-					<N8nIconButton
-						icon="copy"
-						variant="ghost"
-						size="small"
-						:title="i18n.baseText('agents.channels.teams.setup.availability.fileAccessCopy')"
-						:aria-label="i18n.baseText('agents.channels.teams.setup.availability.fileAccessCopy')"
-						data-testid="teams-file-access-copy"
-						@click="copyFileAccessLink"
-					/>
-				</div>
-			</template>
-		</N8nCallout>
-		<N8nCallout
-			v-if="fileAccessChecking"
-			theme="secondary"
-			iconless
-			data-testid="teams-file-access-checking"
-		>
-			<span :class="$style.checking">
-				<N8nIcon icon="spinner" spin size="small" />
-				{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessChecking') }}
-			</span>
-		</N8nCallout>
-		<N8nCallout v-if="fileAccessApproved" theme="success" data-testid="teams-file-access-approved">
-			{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApproved') }}
-		</N8nCallout>
 	</div>
 </template>
 
@@ -273,16 +238,13 @@ const summary = computed(() => {
 	width: 100%;
 }
 
-.checking {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+.fileAccess {
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 }
 
-.fileAccessActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
+/* The reset makes `strong` medium, which barely shows against regular text. */
+.lead {
+	font-weight: var(--font-weight--bold);
 }
 
 /*

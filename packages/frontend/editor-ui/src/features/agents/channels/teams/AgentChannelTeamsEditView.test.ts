@@ -9,6 +9,7 @@ import AgentChannelTeamsEditView from './AgentChannelTeamsEditView.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { checkTeamsFileAccess, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 import { fileAccessJustApproved } from './fileAccessConsent';
+import { ActionDropdownTestStub } from '../../__tests__/utils/ActionDropdownTestStub';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -48,6 +49,7 @@ const managedRuntime = (overrides: Record<string, unknown> = {}) =>
 				adminConsentUrl: null,
 			},
 		},
+		managerCredentialId: ref('m-1'),
 		connectedCredentialId: ref(''),
 		catalogState: ref(null),
 		installed: ref(false),
@@ -87,6 +89,7 @@ const viewProps = {
 		managedSetup: {
 			value: { managedSetupAvailable: false, managerCredentials: [], adminConsentUrl: null },
 		},
+		managerCredentialId: ref(''),
 	} as unknown as TeamsChannelRuntime,
 };
 
@@ -111,7 +114,10 @@ const Host = defineComponent({
 	`,
 });
 
-const stubs = { AgentIntegrationCredentialConnection: { template: '<div />' } };
+const stubs = {
+	AgentIntegrationCredentialConnection: { template: '<div />' },
+	ActionDropdown: ActionDropdownTestStub,
+};
 
 const renderHost = createComponentRenderer(Host, { global: { stubs } });
 
@@ -129,6 +135,8 @@ describe('AgentChannelTeamsEditView', () => {
 			credentialClaimedBy: null,
 			provisionedByN8n: true,
 			fileAccessConsentUrl: null,
+			azureBot: null,
+			appOutdated: false,
 			defaultDisplayName: 'Support Bot',
 			defaultDescription: 'Chat with Support Bot, an agent powered by n8n.',
 		});
@@ -137,20 +145,63 @@ describe('AgentChannelTeamsEditView', () => {
 	});
 
 	describe('file access', () => {
-		it('confirms the approval instead of asking for it again', async () => {
+		it('says nothing about an approval given earlier', async () => {
 			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
 
-			const { findByTestId, queryByTestId } = renderView({
+			const { queryByTestId } = renderView({
 				props: { ...viewProps, savedSettings: { teamChannels: true } },
 				pinia: createTestingPinia(),
 			});
+			await flushPromises();
 
-			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
-			expect(queryByTestId('teams-file-access')).toBeNull();
 			expect(checkTeamsFileAccess).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
+			expect(queryByTestId('teams-file-access')).toBeNull();
+			expect(queryByTestId('teams-file-access-approved')).toBeNull();
 		});
 
-		it('keeps asking while the approval is missing', async () => {
+		it('never shows the request for an approved app while the settings load', async () => {
+			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
+			const state = await getTeamsSetupState({} as never, 'p', 'a');
+			let resolveSetup = () => {};
+			vi.mocked(getTeamsSetupState).mockReturnValue(
+				new Promise((resolve) => (resolveSetup = () => resolve(state))),
+			);
+			const seen: boolean[] = [];
+			const { queryByTestId, rerender } = renderView({
+				props: { ...viewProps, modelValue: '', savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			seen.push(Boolean(queryByTestId('teams-file-access')));
+			// The modal hands the credential over after mount.
+			await rerender({ ...viewProps, modelValue: 'cred-1', savedSettings: { teamChannels: true } });
+			await flushPromises();
+			seen.push(Boolean(queryByTestId('teams-file-access')));
+			resolveSetup();
+			await flushPromises();
+			seen.push(Boolean(queryByTestId('teams-file-access')));
+
+			expect(seen).toEqual([false, false, false]);
+		});
+
+		it('asks once the check says the approval is missing, not before the setup loads', async () => {
+			const state = await getTeamsSetupState({} as never, 'p', 'a');
+			let resolveSetup = () => {};
+			vi.mocked(getTeamsSetupState).mockReturnValue(
+				new Promise((resolve) => (resolveSetup = () => resolve(state))),
+			);
+			const { queryByTestId, findByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			await flushPromises();
+			expect(queryByTestId('teams-file-access')).toBeNull();
+
+			resolveSetup();
+
+			expect(await findByTestId('teams-file-access')).toBeVisible();
+		});
+
+		it('asks while the approval is missing', async () => {
 			const { findByTestId, queryByTestId } = renderView({
 				props: { ...viewProps, savedSettings: { teamChannels: true } },
 				pinia: createTestingPinia(),
@@ -160,83 +211,72 @@ describe('AgentChannelTeamsEditView', () => {
 			expect(queryByTestId('teams-file-access-approved')).toBeNull();
 		});
 
-		it('shows neither request nor approval while checking', async () => {
+		it('shows nothing while checking', async () => {
 			vi.mocked(checkTeamsFileAccess).mockReturnValue(new Promise(() => {}));
+
+			const { queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			await flushPromises();
+
+			expect(queryByTestId('teams-file-access')).toBeNull();
+			expect(queryByTestId('teams-file-access-approved')).toBeNull();
+		});
+
+		it('confirms the approval once, when Microsoft returns from it', async () => {
+			fileAccessJustApproved.value = true;
 
 			const { findByTestId, queryByTestId } = renderView({
 				props: { ...viewProps, savedSettings: { teamChannels: true } },
 				pinia: createTestingPinia(),
 			});
 
-			expect(await findByTestId('teams-file-access-checking')).toBeVisible();
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
 			expect(queryByTestId('teams-file-access')).toBeNull();
-			expect(queryByTestId('teams-file-access-approved')).toBeNull();
-		});
-
-		it('checks again until a fresh approval reaches Microsoft', async () => {
-			vi.useFakeTimers();
-			vi.mocked(checkTeamsFileAccess)
-				.mockResolvedValueOnce({ status: 'notApproved' })
-				.mockResolvedValueOnce({ status: 'approved' });
-
-			const { findByTestId } = renderView({
-				props: { ...viewProps, savedSettings: { teamChannels: true } },
-				pinia: createTestingPinia(),
-			});
-			await vi.advanceTimersByTimeAsync(10_000);
-
-			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
-			expect(checkTeamsFileAccess).toHaveBeenCalledTimes(2);
-			vi.useRealTimers();
-		});
-
-		it('waits before the first check after Microsoft returns from an approval', async () => {
-			vi.useFakeTimers();
-			fileAccessJustApproved.value = true;
-			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
-
-			const { findByTestId } = renderView({
-				props: { ...viewProps, savedSettings: { teamChannels: true } },
-				pinia: createTestingPinia(),
-			});
-			await vi.advanceTimersByTimeAsync(9_000);
 			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
-			expect(await findByTestId('teams-file-access-checking')).toBeVisible();
-
-			await vi.advanceTimersByTimeAsync(1_000);
-			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
 			expect(fileAccessJustApproved.value).toBe(false);
-			vi.useRealTimers();
 		});
 
-		it('still waits after an approval when the saved settings arrive late', async () => {
-			vi.useFakeTimers();
+		it('checks a credential picked after the approval', async () => {
 			fileAccessJustApproved.value = true;
-			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
 
-			const { rerender } = renderView({
+			const { findByTestId, queryByTestId, rerender } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+
+			await rerender({ ...viewProps, modelValue: 'cred-2', savedSettings: { teamChannels: true } });
+			await flushPromises();
+
+			expect(checkTeamsFileAccess).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-2');
+			expect(queryByTestId('teams-file-access-approved')).toBeNull();
+			expect(await findByTestId('teams-file-access')).toBeVisible();
+		});
+
+		it('keeps the approval for when the saved settings arrive late', async () => {
+			fileAccessJustApproved.value = true;
+
+			const { rerender, findByTestId } = renderView({
 				props: { ...viewProps, savedSettings: undefined },
 				pinia: createTestingPinia(),
 			});
 			await rerender({ ...viewProps, savedSettings: { teamChannels: true } });
-			await vi.advanceTimersByTimeAsync(9_000);
-			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
 
-			await vi.advanceTimersByTimeAsync(1_000);
-			expect(checkTeamsFileAccess).toHaveBeenCalledTimes(1);
-			vi.useRealTimers();
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
 		});
 
 		it('falls back to the request when the check fails', async () => {
 			vi.mocked(checkTeamsFileAccess).mockRejectedValue(new Error('offline'));
 
-			const { findByTestId, queryByTestId } = renderView({
+			const { findByTestId } = renderView({
 				props: { ...viewProps, savedSettings: { teamChannels: true } },
 				pinia: createTestingPinia(),
 			});
 
 			expect(await findByTestId('teams-file-access')).toBeVisible();
-			expect(queryByTestId('teams-file-access-checking')).toBeNull();
 		});
 
 		it('checks nothing while the agent reads only direct messages', async () => {
@@ -307,8 +347,6 @@ describe('AgentChannelTeamsEditView', () => {
 				expect.objectContaining({ teamChannels: true }),
 			),
 		);
-		// The upload is a step in Teams, so the step is said rather than assumed.
-		expect(getByTestId('teams-managed-app-downloaded')).toBeVisible();
 	});
 
 	/**
@@ -354,29 +392,50 @@ describe('AgentChannelTeamsEditView', () => {
 			await fireEvent.click(getByTestId('teams-scope-groups'));
 		};
 
-		it('says a managed channel publishes, before anything is changed', async () => {
-			const { getByTestId } = renderView({
+		it('flags an app the agent has moved on from since it was handed over, until it is again', async () => {
+			const state = await getTeamsSetupState({} as never, 'p', 'a');
+			vi.mocked(getTeamsSetupState).mockResolvedValueOnce({ ...state, appOutdated: true });
+			vi.mocked(getTeamsSetupState).mockResolvedValue({ ...state, appOutdated: false });
+
+			const { getByTestId, findByTestId, queryByTestId } = renderView({
 				props: { ...viewProps, runtime: managedRuntime() },
 				pinia: createTestingPinia(),
 			});
 
+			expect(await findByTestId('teams-managed-app-outdated')).toBeVisible();
+
+			await fireEvent.click(getByTestId('teams-settings-download'));
+
 			await waitFor(() =>
-				expect(noticeOf(getByTestId)).toBe(
-					'agents.channels.teams.settings.updateNoticeManagedUnchanged',
-				),
+				expect(queryByTestId('teams-managed-app-outdated')).not.toBeInTheDocument(),
 			);
 		});
 
-		it('says the save publishes the new version once something changed', async () => {
-			const { getByTestId } = renderView({
+		it('shows no notice on a managed channel, and flags the older version once changed', async () => {
+			const { getByTestId, queryByTestId } = renderView({
 				props: { ...viewProps, runtime: managedRuntime() },
 				pinia: createTestingPinia(),
 			});
 
-			await waitFor(() => expect(getByTestId('teams-availability')).toBeVisible());
+			await waitFor(() => expect(getByTestId('teams-managed-app')).toBeVisible());
+			expect(queryByTestId('teams-update-notice')).not.toBeInTheDocument();
+			expect(queryByTestId('teams-managed-app-outdated')).not.toBeInTheDocument();
+
 			await changeAvailability(getByTestId);
 
-			expect(noticeOf(getByTestId)).toBe('agents.channels.teams.settings.updateNoticeManaged');
+			expect(queryByTestId('teams-update-notice')).not.toBeInTheDocument();
+			expect(getByTestId('teams-managed-app-outdated')).toBeVisible();
+		});
+
+		it('does not flag an older version when the credential arrives after mount', async () => {
+			const { getByTestId, queryByTestId, rerender } = renderView({
+				props: { ...viewProps, modelValue: '', runtime: managedRuntime() },
+				pinia: createTestingPinia(),
+			});
+			await rerender({ ...viewProps, modelValue: 'cred-1', runtime: managedRuntime() });
+
+			await waitFor(() => expect(getByTestId('teams-managed-app')).toBeVisible());
+			expect(queryByTestId('teams-managed-app-outdated')).not.toBeInTheDocument();
 		});
 
 		// The manual route says the same thing throughout: the package is handed
@@ -389,6 +448,8 @@ describe('AgentChannelTeamsEditView', () => {
 				credentialClaimedBy: null,
 				provisionedByN8n: false,
 				fileAccessConsentUrl: null,
+				azureBot: null,
+				appOutdated: false,
 				defaultDisplayName: 'Support Bot',
 				defaultDescription: 'An agent built with n8n.',
 			});
@@ -419,6 +480,8 @@ describe('AgentChannelTeamsEditView', () => {
 			deployToAzureUrl: null,
 			credentialClaimedBy: null,
 			provisionedByN8n: false,
+			azureBot: null,
+			appOutdated: false,
 			fileAccessConsentUrl: null,
 			defaultDisplayName: 'Support Bot',
 			defaultDescription: 'An agent built with n8n.',

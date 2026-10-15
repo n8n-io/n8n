@@ -306,7 +306,7 @@ describe('TeamsEntraProvisioningService', () => {
 			),
 		});
 
-		await expect(service.provision(options)).rejects.toThrow(/not allowed to register/);
+		await expect(service.provision(options)).rejects.toThrow(/doesn’t let you register apps/);
 	});
 
 	it('refuses a personal Microsoft account', async () => {
@@ -434,7 +434,7 @@ describe('TeamsEntraProvisioningService', () => {
 					failed(403, 'Authorization_RequestDenied'),
 			});
 
-			await expect(service.provision(options)).rejects.toThrow(/not allowed to register/);
+			await expect(service.provision(options)).rejects.toThrow(/doesn’t let you register apps/);
 		});
 	});
 
@@ -548,16 +548,23 @@ describe('TeamsEntraProvisioningService', () => {
 								publishedTeamsAppId: 'teams-app-1',
 								publishedTeamsAppState: 'published',
 								publishedTeamsAppAt: '2026-10-01T00:00:00Z',
+								azureBotName: 'support-bot-1',
+								azureSubscriptionId: 'sub-1',
+								teamsAppFingerprint: 'fingerprint-1',
 							}
 						: {}) as never,
 			);
 
 			await service.provision(options);
 
-			const written = credentialsService.createEncryptedData.mock.calls[0][0].data as Record<
-				string,
-				unknown
-			>;
+			// The manager credential is written first; this is about the channel's.
+			const written = credentialsService.createEncryptedData.mock.calls.find(
+				([credential]) => credential.id === 'bot-cred-1',
+			)?.[0].data as Record<string, unknown>;
+			expect(written.clientId).toBe(APP_ID);
+			expect(written.azureBotName).toBeUndefined();
+			expect(written.azureSubscriptionId).toBeUndefined();
+			expect(written.teamsAppFingerprint).toBe('fingerprint-1');
 			expect(written.publishedTeamsAppId).toBeUndefined();
 			expect(written.publishedTeamsAppState).toBeUndefined();
 			expect(written.publishedTeamsAppAt).toBeUndefined();

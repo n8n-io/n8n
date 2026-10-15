@@ -10,6 +10,7 @@ import type {
 import { mockDeep } from 'vitest-mock-extended';
 
 import { resolveLakebaseSchemaUrl, resolveLakebaseTableUrl } from '../actions/lakebase/helpers';
+import { OPENAPI_SETTING_PATH } from '../actions/lakebase/openApiDocument';
 
 // The shared Lakebase transport waits before its schema-cache retry
 vi.mock('@n8n/utils/sleep', () => ({
@@ -501,9 +502,8 @@ describe('listSearch -> getLakebaseTables', () => {
 		expect(error.message).toBe(
 			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',
 		);
-		expect(error.description).toBe(
-			'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.',
-		);
+		// Pins that the user is told where the setting lives, not the wording around it
+		expect(error.description).toContain(OPENAPI_SETTING_PATH);
 	});
 
 	it('rethrows other Data API errors untouched', async () => {

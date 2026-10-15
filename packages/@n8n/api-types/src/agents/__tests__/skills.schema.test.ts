@@ -2,6 +2,7 @@ import {
 	CreateSkillDto,
 	ListSkillsQueryDto,
 	SaveSkillDto,
+	SkillNewNameQueryDto,
 	SKILLS_MAX_PAGE_SIZE,
 } from '../skills.schema';
 
@@ -80,4 +81,16 @@ describe('SaveSkillDto', () => {
 			expect(SaveSkillDto.safeParse(payload).success).toBe(false);
 		},
 	);
+});
+
+describe('SkillNewNameQueryDto', () => {
+	it('trims the requested name', () => {
+		expect(SkillNewNameQueryDto.parse({ scope: 'instance', name: '  New skill ' }).name).toBe(
+			'New skill',
+		);
+	});
+
+	it('refuses a name of only spaces', () => {
+		expect(SkillNewNameQueryDto.safeParse({ scope: 'instance', name: '   ' }).success).toBe(false);
+	});
 });
