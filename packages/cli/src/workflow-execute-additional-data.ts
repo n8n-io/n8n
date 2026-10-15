@@ -133,7 +133,7 @@ export function getRunData(
  */
 async function fetchWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
-	parentWorkflowId: string,
+	parentWorkflowId: string | undefined,
 	parentWorkflowSettings?: IWorkflowSettings,
 ) {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
@@ -171,7 +171,7 @@ async function fetchWorkflowData(
 			WorkflowHelpers.validateWorkflowStructure(workflowData);
 			// An inline sub-workflow is part of the parent that embeds it, not a
 			// workflow of its own, so it runs under the parent workflow's id.
-			workflowData.id = parentWorkflowId;
+			if (parentWorkflowId !== undefined) workflowData.id = parentWorkflowId;
 			workflowData.settings ??= parentWorkflowSettings;
 		}
 		return workflowData;
@@ -185,7 +185,7 @@ async function fetchWorkflowData(
  */
 export async function getDraftWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
-	parentWorkflowId: string,
+	parentWorkflowId: string | undefined,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
 	const workflowData = await fetchWorkflowData(
@@ -203,7 +203,7 @@ export async function getDraftWorkflowData(
  */
 export async function getPublishedWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
-	parentWorkflowId: string,
+	parentWorkflowId: string | undefined,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
 	// For a workflow loaded from the database, read the published version from the
@@ -306,6 +306,14 @@ function resolveSubworkflowDeadline(
 		return Math.min(parentDeadline, subWorkflowDeadline);
 	}
 	return parentDeadline ?? subWorkflowDeadline;
+}
+
+/** The policy check of a stored sub-workflow needs a parent workflow when there is no parent project. */
+function requireParentWorkflowId(options: ExecuteWorkflowOptions): string {
+	if (options.parentWorkflowId === undefined) {
+		throw new UnexpectedError('A sub-workflow execution needs a parent workflow ID.');
+	}
+	return options.parentWorkflowId;
 }
 
 /**
@@ -650,12 +658,23 @@ async function startExecution(
 				additionalData.userId,
 			);
 		}
-		await Container.get(SubworkflowPolicyChecker).check(
-			workflow,
-			options.parentWorkflowId,
-			options.node,
-			additionalData.userId,
-		);
+		const subworkflowPolicyChecker = Container.get(SubworkflowPolicyChecker);
+		if (options.parentProjectId !== undefined) {
+			// A project-scoped caller, such as an agent, has no parent workflow.
+			await subworkflowPolicyChecker.checkForProject(
+				workflow,
+				options.parentProjectId,
+				additionalData.userId,
+			);
+		} else if (workflow.id) {
+			// `check()` skips a sub-workflow without an ID, so only this case needs a parent ID.
+			await subworkflowPolicyChecker.check(
+				workflow,
+				requireParentWorkflowId(options),
+				options.node,
+				additionalData.userId,
+			);
+		}
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -697,6 +716,7 @@ async function startExecution(
 		}
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
+		await options.configureAdditionalData?.(additionalDataIntegrated);
 
 		const executionsConfig = Container.get(ExecutionsConfig);
 
