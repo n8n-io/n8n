@@ -676,6 +676,48 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		hasScopeSpy.mockReturnValue(false);
 	});
 
+	it('saves a new agent before it opens the picker', async () => {
+		let releasePersist: () => void = () => {};
+		const persisted = new Promise<void>((resolve) => {
+			releasePersist = resolve;
+		});
+		const { uiStore, actions } = setup({ ensureAgentPersisted: async () => await persisted });
+		useSettingsStore().moduleSettings.agents = {
+			enabled: true,
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled: false,
+			skillsHubEnabled: true,
+		};
+
+		void actions.onOpenAddSkillModal();
+		await flushPromises();
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open).toBeFalsy();
+
+		releasePersist();
+		await flushPromises();
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY].open).toBe(true);
+	});
+
+	it('reports a failed agent save and keeps the picker closed', async () => {
+		const error = new Error('create failed');
+		const { uiStore, actions } = setup({
+			ensureAgentPersisted: async () => await Promise.reject(error),
+		});
+		useSettingsStore().moduleSettings.agents = {
+			enabled: true,
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled: false,
+			skillsHubEnabled: true,
+		};
+
+		await actions.onOpenAddSkillModal();
+
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open).toBeFalsy();
+		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.builder.skills.picker.loadError');
+	});
+
 	it('opens the add modal with the picker data', () => {
 		hasScopeSpy.mockReturnValue(true);
 		const { modalData } = setupHub();

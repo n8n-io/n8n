@@ -443,7 +443,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleConfigUpdate({ tasks: nextTasks });
 	}
 
-	function onOpenAddSkillModal() {
+	async function onOpenAddSkillModal() {
 		telemetry?.trackOpenedAddSkillModal?.();
 
 		// Capture the target at open time: the modal can outlive an agent/node
@@ -454,6 +454,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		const targetAgentId = agentId.value;
 		const isCurrentTarget = () =>
 			projectId.value === targetProjectId && agentId.value === targetAgentId;
+
+		if (hubSkillsEnabled.value && ensureAgentPersisted) {
+			try {
+				await ensureAgentPersisted();
+			} catch (error) {
+				showError(error, locale.baseText('agents.builder.skills.picker.loadError'));
+				return;
+			}
+			if (!isCurrentTarget()) return;
+		}
 
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
