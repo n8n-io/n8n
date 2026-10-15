@@ -383,8 +383,8 @@ describe('SelfHealingAgentService', () => {
 			stream,
 		);
 		const finished = vi.mocked(options.onFinish).mock.calls[0][0];
-		expect(finished.output).toBeUndefined();
-		expect(finished.candidate).toBeUndefined();
+		expect(finished).not.toHaveProperty('output');
+		expect(finished).not.toHaveProperty('candidate');
 		expect(finished.finishReason).toBeUndefined();
 	});
 
