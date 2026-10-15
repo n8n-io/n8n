@@ -86,7 +86,7 @@ function applyClaim(res: Response, claim: IdempotencyClaim, onClaimed: () => voi
 }
 
 function sendStored(res: Response, status: number, body: unknown): void {
-	if (status === 204) {
+	if (status === 204 || body === null) {
 		res.status(status).send();
 		return;
 	}

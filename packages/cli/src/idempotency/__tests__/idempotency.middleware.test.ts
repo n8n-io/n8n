@@ -151,4 +151,21 @@ describe('createIdempotencyMiddleware', () => {
 
 		expect(store.claim.mock.calls[2]?.[0].fingerprint).not.toBe(first);
 	});
+
+	it('replays an empty body instead of JSON null', async () => {
+		store.claim.mockResolvedValue({
+			outcome: 'replay',
+			responseStatus: 201,
+			responseBody: null,
+		});
+
+		const response = await request(app())
+			.post('/api/v1/workflows')
+			.set('Idempotency-Key', 'abc')
+			.send({ name: 'A' })
+			.expect(201);
+
+		expect(response.text).toBe('');
+		expect(calls).toBe(0);
+	});
 });

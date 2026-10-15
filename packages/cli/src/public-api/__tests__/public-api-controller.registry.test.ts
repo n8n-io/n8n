@@ -1142,6 +1142,27 @@ describe('PublicApiControllerRegistry', () => {
 			expect(idempotencyKeyService.release).not.toHaveBeenCalled();
 		});
 
+		it('stores an empty 201 and sends no body', async () => {
+			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
+
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(201)
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(201);
+
+			expect(response.text).toBe('');
+			expect(idempotencyKeyService.complete).toHaveBeenCalledWith('row-1', 201, null);
+		});
+
 		it('does not claim a key when controller middleware rejects the request', async () => {
 			@Service()
 			class WidgetsPublicController {
