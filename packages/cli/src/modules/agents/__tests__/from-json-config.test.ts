@@ -259,6 +259,30 @@ describe('buildFromJson()', () => {
 		expect(snap.model.name).toBe('claude-sonnet-4-5');
 	});
 
+	it.each([
+		[false, false],
+		[true, true],
+		[null, undefined],
+		[undefined, undefined],
+	])('restores custom tool strict %s as %s', async (strict, expected) => {
+		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{ search_tool: makeToolDescriptor({ strict }) },
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const tool = (agent as unknown as { tools: BuiltTool[] }).tools.find(
+			({ name }) => name === 'search',
+		);
+
+		expect(tool?.strict).toBe(expected);
+	});
+
 	it('executes a custom tool handler and message transform', async () => {
 		const descriptor = makeToolDescriptor({
 			name: 'my_search',

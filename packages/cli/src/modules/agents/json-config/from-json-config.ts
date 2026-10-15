@@ -471,6 +471,7 @@ async function resolveToolRef(
 						}
 					: {}),
 				providerOptions: descriptor.providerOptions as Record<string, JSONObject> | undefined,
+				...(typeof descriptor.strict === 'boolean' ? { strict: descriptor.strict } : {}),
 			};
 
 			if (ref.requireApproval) {

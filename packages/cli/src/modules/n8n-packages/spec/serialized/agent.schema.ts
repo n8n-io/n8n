@@ -29,6 +29,7 @@ const toolDescriptorSchema = z
 		requireApproval: z.boolean(),
 		outputTrust: z.literal('untrusted').nullish(),
 		providerOptions: z.record(z.unknown()).nullable(),
+		strict: z.boolean().nullish(),
 	})
 	.strict() satisfies z.ZodType<ToolDescriptor>;
 

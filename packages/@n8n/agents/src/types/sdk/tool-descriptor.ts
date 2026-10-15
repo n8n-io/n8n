@@ -19,4 +19,6 @@ export interface ToolDescriptor {
 	requireApproval: boolean;
 	outputTrust?: 'untrusted' | null;
 	providerOptions: Record<string, unknown> | null;
+	/** Provider strict mode set with `Tool.strict()`. Older descriptors have no value. */
+	strict?: boolean | null;
 }

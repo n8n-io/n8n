@@ -27,6 +27,18 @@ describe('Tool.describe()', () => {
 		expect(descriptor.requireApproval).toBe(false);
 		expect(descriptor.providerOptions).toBeNull();
 		expect(descriptor.systemInstruction).toBeNull();
+		expect(descriptor.strict).toBeNull();
+	});
+
+	it('persists strict through describe()', () => {
+		const descriptor = new Tool('search')
+			.description('Search the web')
+			.input(z.object({ query: z.string() }))
+			.strict(false)
+			.handler(async ({ query }) => await Promise.resolve({ result: query }))
+			.describe();
+
+		expect(descriptor.strict).toBe(false);
 	});
 
 	it('persists systemInstruction through describe() so it survives JSON-config round-trip', () => {

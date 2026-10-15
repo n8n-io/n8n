@@ -495,6 +495,7 @@ export class Tool<
 			requireApproval: this.requireApprovalValue ?? false,
 			outputTrust: this.outputTrustValue ?? null,
 			providerOptions: this.providerOptionsValue ?? null,
+			strict: this.strictValue ?? null,
 		};
 	}
 }

@@ -249,6 +249,7 @@ describe('N8nPackageParser.getAgents', () => {
 		['hasSuspend', 'true'],
 		['outputTrust', 'trusted'],
 		['providerOptions', []],
+		['strict', 'false'],
 		['runtimeState', {}],
 	])('validates the inline tool descriptor field %s', async (field, value) => {
 		const tool = agent.tools.shared_tool;
@@ -259,6 +260,15 @@ describe('N8nPackageParser.getAgents', () => {
 		await expect(parser.getAgents(memoryReader(fixture))).rejects.toThrow(
 			`${agentPath} failed schema validation`,
 		);
+	});
+
+	it.each([false, null])('accepts tool descriptor strict %s', async (strict) => {
+		const tool = agent.tools.shared_tool;
+		agent.tools = { shared_tool: { ...tool, descriptor: { ...tool.descriptor, strict } } };
+
+		const [parsed] = await parser.getAgents(memoryReader(fixture));
+
+		expect(parsed.tools.shared_tool.descriptor.strict).toBe(strict);
 	});
 
 	it('rejects an Agent ID that does not match the manifest', async () => {
