@@ -252,7 +252,10 @@ describe('WorkflowCard', () => {
 		});
 
 		beforeEach(() => {
-			(router.resolve as unknown as Mock).mockReturnValue({ href: FOLDER_PATH, fullPath: FOLDER_PATH });
+			(router.resolve as unknown as Mock).mockReturnValue({
+				href: FOLDER_PATH,
+				fullPath: FOLDER_PATH,
+			});
 		});
 
 		it('renders the parent-folder breadcrumb link', () => {
