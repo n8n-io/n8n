@@ -97,7 +97,23 @@ describe('IdempotencyKeyService', () => {
 		it('returns mismatch before it replays a different request', async () => {
 			idempotencyKeyRepository.insertProcessing.mockResolvedValue(null);
 			idempotencyKeyRepository.findByUserIdAndKey.mockResolvedValue(
-				stored({ fingerprint: 'fingerprint-b', status: 'processing', responseStatus: null }),
+				stored({ fingerprint: 'fingerprint-b' }),
+			);
+
+			const claim = await service.claim(input);
+
+			expect(claim).toEqual({ outcome: 'mismatch' });
+		});
+
+		it('returns mismatch when a different request is still in flight', async () => {
+			idempotencyKeyRepository.insertProcessing.mockResolvedValue(null);
+			idempotencyKeyRepository.findByUserIdAndKey.mockResolvedValue(
+				stored({
+					fingerprint: 'fingerprint-b',
+					status: 'processing',
+					responseStatus: null,
+					responseBody: null,
+				}),
 			);
 
 			const claim = await service.claim(input);
