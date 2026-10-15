@@ -490,6 +490,7 @@ overrides:
   'pdf-parse>@napi-rs/canvas': ^1.0.0
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
+  'toml@<4.2.0': 4.2.0
 
 patchedDependencies:
   bull@4.16.4: patches/bull@4.16.4.patch
