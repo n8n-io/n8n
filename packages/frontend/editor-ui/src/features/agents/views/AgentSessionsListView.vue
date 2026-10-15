@@ -34,6 +34,22 @@ import type { ActionDropdownItem, IconColor, IconName } from '@n8n/design-system
 
 type OriginPresentation = { icon: IconName; label: string };
 
+/** One flat row of the session tree, ready to render in the list. */
+interface SessionTreeRow {
+	thread: AgentExecutionThread;
+	/** 0 for a root session. */
+	depth: number;
+	/** True when this row is the last child of its parent. */
+	isLast: boolean;
+	/** True when this row has children below it. */
+	hasChildren: boolean;
+	/**
+	 * One entry for each ancestor level (length is `depth - 1`).
+	 * True when the ancestor at that level has more siblings below, so the rail must continue.
+	 */
+	guides: boolean[];
+}
+
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
@@ -85,6 +101,59 @@ watch(
 	{ immediate: true },
 );
 
+function byCreatedAt(a: AgentExecutionThread, b: AgentExecutionThread) {
+	return a.createdAt.localeCompare(b.createdAt);
+}
+
+/**
+ * Groups sub-agent sessions under their parent session and flattens the result in display order.
+ * A session whose parent is not in the list (other agent, other page, filtered out) stays a root.
+ * Roots keep the store order. Children sort by start time.
+ */
+function buildSessionTree(threads: AgentExecutionThread[]): SessionTreeRow[] {
+	const ids = new Set(threads.map((thread) => thread.id));
+	const childrenByParent = new Map<string, AgentExecutionThread[]>();
+	const roots: AgentExecutionThread[] = [];
+
+	for (const thread of threads) {
+		const parentId = thread.parentThreadId;
+		if (parentId && parentId !== thread.id && ids.has(parentId)) {
+			const siblings = childrenByParent.get(parentId) ?? [];
+			siblings.push(thread);
+			childrenByParent.set(parentId, siblings);
+		} else {
+			roots.push(thread);
+		}
+	}
+
+	const rows: SessionTreeRow[] = [];
+	const visited = new Set<string>();
+
+	function visit(thread: AgentExecutionThread, depth: number, isLast: boolean, guides: boolean[]) {
+		/** Protects against a parent cycle in bad data. */
+		if (visited.has(thread.id)) return;
+		visited.add(thread.id);
+
+		const children = (childrenByParent.get(thread.id) ?? []).sort(byCreatedAt);
+		rows.push({ thread, depth, isLast, hasChildren: children.length > 0, guides });
+
+		/** Roots do not draw a rail, so only levels deeper than 1 add a guide. */
+		const childGuides = depth === 0 ? [] : [...guides, !isLast];
+		children.forEach((child, index) => {
+			visit(child, depth + 1, index === children.length - 1, childGuides);
+		});
+	}
+
+	roots.forEach((root) => visit(root, 0, true, []));
+	/** Sessions in a parent cycle are never reached from a root, so show them as roots. */
+	for (const thread of threads) {
+		if (!visited.has(thread.id)) visit(thread, 0, true, []);
+	}
+	return rows;
+}
+
+const sessionRows = computed(() => buildSessionTree(sessionsStore.threads));
+
 function onVisibilityChange() {
 	/** Refresh after a hidden tab becomes visible. Keep the loaded pages. */
 	if (disposed || !managesStoreLifecycle || !sessionsStore.autoRefresh) return;
@@ -119,7 +188,6 @@ onBeforeUnmount(() => {
 
 const formatRelativeDate = useRelativeTimestamp();
 
-/** Builds the tooltip text, e.g. "Oct 18 13:23 • 24.9s". Omits the duration while the session runs. */
 function formatDateTooltip(thread: AgentExecutionThread): string {
 	const { date, time } = convertToDisplayDate(thread.updatedAt);
 	const dateLabel = `${date} ${time.slice(0, 5)}`;
@@ -202,7 +270,7 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 	switch (source) {
 		case 'instance-ai':
 			return {
-				icon: 'flask-conical',
+				icon: 'n8n-assistant',
 				label: i18n.baseText('agentSessions.origin.instanceAi'),
 			};
 		case 'mcp':
@@ -378,38 +446,80 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 				</div>
 			</li>
 			<li
-				v-for="thread in sessionsStore.threads"
+				v-for="row in sessionRows"
 				v-else
-				:key="thread.id"
+				:key="row.thread.id"
 				:class="$style.listRow"
-				:data-status="thread.status"
+				:data-status="row.thread.status"
+				:data-depth="row.depth"
 				data-test-id="agent-session-list-item"
 			>
 				<RouterLink
 					:class="$style.sessionLink"
 					:to="{
 						name: AGENT_SESSION_DETAIL_VIEW,
-						params: { projectId, agentId, threadId: thread.id },
+						params: { projectId, agentId, threadId: row.thread.id },
 					}"
 				>
 					<div :class="$style.listStart">
+						<div
+							v-if="row.depth > 0"
+							:class="$style.rail"
+							aria-hidden="true"
+							data-test-id="agent-session-rail"
+						>
+							<svg
+								v-for="(continues, level) in row.guides"
+								:key="level"
+								:class="$style.railCell"
+								:data-continues="continues"
+								data-test-id="agent-session-rail-guide"
+								viewBox="0 0 24 40"
+								preserveAspectRatio="none"
+							>
+								<path v-if="continues" d="M12 0 V40" />
+							</svg>
+							<svg
+								:class="$style.railCell"
+								:data-branch="row.isLast ? 'last' : 'middle'"
+								data-test-id="agent-session-rail-branch"
+								viewBox="0 0 24 40"
+								preserveAspectRatio="none"
+							>
+								<path
+									:d="
+										row.isLast ? 'M12 0 V14 Q12 20 18 20 H24' : 'M12 0 V40 M12 14 Q12 20 18 20 H24'
+									"
+								/>
+							</svg>
+						</div>
 						<div :class="$style.listIconContainer">
+							<svg
+								v-if="row.hasChildren"
+								:class="$style.railStub"
+								data-test-id="agent-session-rail-stub"
+								viewBox="0 0 24 10"
+								preserveAspectRatio="none"
+								aria-hidden="true"
+							>
+								<path d="M12 0 V10" />
+							</svg>
 							<N8nSpinner
-								v-if="thread.status === 'running'"
-								:aria-label="statusLabel(thread.status)"
+								v-if="row.thread.status === 'running'"
+								:aria-label="statusLabel(row.thread.status)"
 								size="medium"
 								data-testid="agent-session-status-indicator"
 							/>
 							<N8nIcon
-								v-else-if="thread.status"
-								:icon="getStatusIcon(thread.status)"
-								:color="getStatusIconColor(thread.status)"
-								:aria-label="statusLabel(thread.status)"
+								v-else-if="row.thread.status"
+								:icon="getStatusIcon(row.thread.status)"
+								:color="getStatusIconColor(row.thread.status)"
+								:aria-label="statusLabel(row.thread.status)"
 								size="medium"
 								data-testid="agent-session-status-indicator"
 							/>
 						</div>
-						<div v-if="thread.status === 'running'" :class="$style.activityLabel">
+						<div v-if="row.thread.status === 'running'" :class="$style.activityLabel">
 							<Transition
 								type="transition"
 								:enter-active-class="$style.labelEnterActive"
@@ -418,44 +528,46 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 								:leave-to-class="$style.labelLeaveTo"
 							>
 								<N8nText
-									:key="rowTitle(thread)"
+									:key="rowTitle(row.thread)"
 									step="sm"
 									color="text-dark"
 									:class="[$style.activityWord, $style.shimmer]"
 									bold
 								>
-									{{ rowTitle(thread) }}
+									{{ rowTitle(row.thread) }}
 								</N8nText>
 							</Transition>
 						</div>
 						<N8nText v-else step="sm" color="text-dark" bold data-test-id="agent-session-title">
-							{{ threadTitleOf(thread) }}
+							{{ threadTitleOf(row.thread) }}
 						</N8nText>
 					</div>
-					<div :class="$style.listEnd">
+					<div v-if="row.thread.status !== 'running'" :class="$style.listEnd">
 						<N8nBadge
-							:leading-icon="originPresentation(thread).icon"
+							:leading-icon="originPresentation(row.thread).icon"
 							data-test-id="agent-session-origin-pill"
 						>
-							{{ originPresentation(thread).label }}
+							{{ originPresentation(row.thread).label }}
 						</N8nBadge>
-						<N8nTooltip :content="formatDateTooltip(thread)" placement="top">
+						<N8nTooltip :content="formatDateTooltip(row.thread)" placement="top">
 							<N8nText step="sm" bold color="text-light" data-test-id="agent-session-updated-at">
-								{{ formatRelativeDate(thread.updatedAt) }}
+								{{ formatRelativeDate(row.thread.updatedAt) }}
 							</N8nText>
 						</N8nTooltip>
 						<N8nText step="sm" bold color="text-light" data-test-id="agent-session-token-usage">
-							{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t
+							{{
+								(row.thread.totalPromptTokens + row.thread.totalCompletionTokens).toLocaleString()
+							}}t
 						</N8nText>
 					</div>
 				</RouterLink>
-				<div :class="$style.actionGroup">
+				<div v-if="row.thread.status !== 'running'" :class="$style.actionGroup">
 					<N8nActionDropdown
 						placement="bottom-end"
-						:items="rowActions(thread)"
+						:items="rowActions(row.thread)"
 						activator-icon="ellipsis"
 						data-test-id="agent-session-actions"
-						@select="onAction($event, thread)"
+						@select="onAction($event, row.thread)"
 					/>
 				</div>
 			</li>
@@ -498,6 +610,9 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 }
 
 .listContainer {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
 	margin: 0;
 	list-style: none;
 	background-color: var(--background--surface);
@@ -508,9 +623,14 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 }
 
 .listRow {
+	/** Gap between the rail, status icon and title. The rail geometry depends on it. */
+	--list-start-gap: var(--spacing--2xs);
+	/** Rails extend over this border so lines join across rows. */
+	--list-row-border-width: 1px;
+
 	display: flex;
 	align-items: stretch;
-	border: 1px solid transparent;
+	border: var(--list-row-border-width) solid transparent;
 	border-radius: var(--radius);
 
 	&:hover:not(:has(.actionGroup:hover)) {
@@ -541,11 +661,12 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 .listEnd {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--list-start-gap, var(--spacing--2xs));
 }
 
 .listStart {
 	min-width: 0;
+	align-self: stretch;
 }
 
 .listEnd {
@@ -554,7 +675,47 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	gap: var(--spacing--sm);
 }
 
+/**
+ * Each rail cell is one indent step wide: icon width plus the row gap.
+ * Half-gap negative margins put the cell centre line under the parent's status icon.
+ */
+.rail {
+	--rail-cell-width: calc(var(--height--2xs) + var(--list-start-gap));
+
+	display: flex;
+	align-self: stretch;
+	flex-shrink: 0;
+	margin-inline: calc(var(--list-start-gap) / -2);
+	margin-block: calc(-1 * var(--list-row-border-width));
+}
+
+.railCell,
+.railStub {
+	fill: none;
+	stroke: light-dark(var(--color--neutral-200), var(--color--neutral-700));
+	stroke-width: 1px;
+	overflow: visible;
+
+	path {
+		vector-effect: non-scaling-stroke;
+	}
+}
+
+.railCell {
+	width: var(--rail-cell-width);
+	height: 100%;
+}
+
+.railStub {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	width: 100%;
+	height: calc((var(--height--2xl) - var(--height--2xs)) / 2 + var(--list-row-border-width));
+}
+
 .listIconContainer {
+	position: relative;
 	flex-shrink: 0;
 	display: grid;
 	place-items: center;
@@ -590,6 +751,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--4xs);
+	padding-inline: var(--spacing--4xs);
 	width: var(--height--2xl);
 }
 

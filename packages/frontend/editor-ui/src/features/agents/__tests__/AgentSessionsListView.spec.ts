@@ -91,6 +91,7 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<span><span :data-icon="leadingIcon" /><slot /></span>',
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
+	N8nTooltip: { props: ['content', 'placement'], template: '<span><slot /></span>' },
 	N8nCheckbox: {
 		props: ['modelValue', 'label'],
 		emits: ['update:modelValue'],
@@ -471,7 +472,7 @@ describe('AgentSessionsListView', () => {
 		[{ source: 'linear' }, 'Linear', 'linear'],
 		[{ source: 'discord' }, 'Discord', 'discord'],
 		[{ source: 'whatsapp' }, 'WhatsApp', 'whatsapp'],
-		[{ source: 'instance-ai' }, 'n8n Assistant', 'flask-conical'],
+		[{ source: 'instance-ai' }, 'n8n Assistant', 'n8n-assistant'],
 		[{ source: 'mcp' }, 'MCP', 'flask-conical'],
 		[{ source: null }, 'Preview', 'flask-conical'],
 		[{ source: 'chat' }, 'Preview', 'flask-conical'],
@@ -495,4 +496,196 @@ describe('AgentSessionsListView', () => {
 			expect(originPill.get('[data-icon]').attributes('data-icon')).toBe(expectedIcon);
 		},
 	);
+	describe('sub-agent tree', () => {
+		/** Builds a session whose title equals its id, so rows are easy to identify. */
+		function makeNode(
+			id: string,
+			parentThreadId: string | null = null,
+			createdAt = '2026-07-20T10:00:00.000Z',
+		) {
+			return makeThread({
+				id,
+				title: id,
+				parentThreadId,
+				parentAgentId: parentThreadId ? 'agent-1' : null,
+				createdAt,
+			});
+		}
+
+		function rows(wrapper: Awaited<ReturnType<typeof mountView>>) {
+			return wrapper.findAll('[data-test-id="agent-session-list-item"]');
+		}
+
+		function rowOrder(wrapper: Awaited<ReturnType<typeof mountView>>) {
+			return rows(wrapper).map((row) => [
+				row.get('[data-test-id="agent-session-title"]').text(),
+				row.attributes('data-depth'),
+			]);
+		}
+
+		function rowById(wrapper: Awaited<ReturnType<typeof mountView>>, id: string) {
+			const row = rows(wrapper).find(
+				(item) => item.get('[data-test-id="agent-session-title"]').text() === id,
+			);
+			if (!row) throw new Error(`Row ${id} not found`);
+			return row;
+		}
+
+		it('renders a child directly after its parent, even when the store lists it first', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('child', 'parent'), makeNode('other'), makeNode('parent')],
+			});
+
+			expect(rowOrder(wrapper)).toEqual([
+				['other', '0'],
+				['parent', '0'],
+				['child', '1'],
+			]);
+		});
+
+		it('sorts children by start time and keeps the store order for roots', async () => {
+			const wrapper = await mountView({
+				threads: [
+					makeNode('root-b'),
+					makeNode('late', 'root-b', '2026-07-20T10:03:00.000Z'),
+					makeNode('early', 'root-b', '2026-07-20T10:01:00.000Z'),
+					makeNode('root-a'),
+				],
+			});
+
+			expect(rowOrder(wrapper)).toEqual([
+				['root-b', '0'],
+				['early', '1'],
+				['late', '1'],
+				['root-a', '0'],
+			]);
+		});
+
+		it('nests grandchildren under their own parent', async () => {
+			const wrapper = await mountView({
+				threads: [
+					makeNode('root'),
+					makeNode('child-a', 'root', '2026-07-20T10:01:00.000Z'),
+					makeNode('child-b', 'root', '2026-07-20T10:02:00.000Z'),
+					makeNode('grandchild', 'child-a'),
+				],
+			});
+
+			expect(rowOrder(wrapper)).toEqual([
+				['root', '0'],
+				['child-a', '1'],
+				['grandchild', '2'],
+				['child-b', '1'],
+			]);
+		});
+
+		it('renders a session as a root when its parent is not loaded', async () => {
+			const wrapper = await mountView({ threads: [makeNode('orphan', 'missing-parent')] });
+
+			expect(rowOrder(wrapper)).toEqual([['orphan', '0']]);
+			expect(wrapper.find('[data-test-id="agent-session-rail"]').exists()).toBe(false);
+		});
+
+		it('renders each session once when parent links form a cycle', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('self', 'self'), makeNode('a', 'b'), makeNode('b', 'a')],
+			});
+
+			const titles = rowOrder(wrapper).map(([title]) => title);
+			expect(titles).toHaveLength(new Set(titles).size);
+			expect(titles).toEqual(expect.arrayContaining(['self', 'a', 'b']));
+		});
+
+		it('draws one rail cell for each level of depth and none for roots', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('root'), makeNode('child', 'root'), makeNode('grandchild', 'child')],
+			});
+
+			expect(rowById(wrapper, 'root').find('[data-test-id="agent-session-rail"]').exists()).toBe(
+				false,
+			);
+
+			const child = rowById(wrapper, 'child');
+			expect(child.findAll('[data-test-id="agent-session-rail-guide"]')).toHaveLength(0);
+			expect(child.findAll('[data-test-id="agent-session-rail-branch"]')).toHaveLength(1);
+
+			const grandchild = rowById(wrapper, 'grandchild');
+			expect(grandchild.findAll('[data-test-id="agent-session-rail-guide"]')).toHaveLength(1);
+			expect(grandchild.findAll('[data-test-id="agent-session-rail-branch"]')).toHaveLength(1);
+		});
+
+		it('draws a middle branch for earlier children and a last branch for the final child', async () => {
+			const wrapper = await mountView({
+				threads: [
+					makeNode('root'),
+					makeNode('first', 'root', '2026-07-20T10:01:00.000Z'),
+					makeNode('second', 'root', '2026-07-20T10:02:00.000Z'),
+				],
+			});
+
+			function branchOf(id: string) {
+				return rowById(wrapper, id)
+					.get('[data-test-id="agent-session-rail-branch"]')
+					.attributes('data-branch');
+			}
+
+			expect(branchOf('first')).toBe('middle');
+			expect(branchOf('second')).toBe('last');
+		});
+
+		it('continues an ancestor rail only while that ancestor has siblings below', async () => {
+			const wrapper = await mountView({
+				threads: [
+					makeNode('root'),
+					makeNode('child-a', 'root', '2026-07-20T10:01:00.000Z'),
+					makeNode('child-b', 'root', '2026-07-20T10:02:00.000Z'),
+					makeNode('under-a', 'child-a'),
+					makeNode('under-b', 'child-b'),
+				],
+			});
+
+			function guideOf(id: string) {
+				return rowById(wrapper, id)
+					.get('[data-test-id="agent-session-rail-guide"]')
+					.attributes('data-continues');
+			}
+
+			expect(guideOf('under-a')).toBe('true');
+			expect(guideOf('under-b')).toBe('false');
+		});
+
+		it('draws the stub under the status icon only for parents', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('root'), makeNode('child', 'root'), makeNode('lonely')],
+			});
+
+			function hasStub(id: string) {
+				return rowById(wrapper, id).find('[data-test-id="agent-session-rail-stub"]').exists();
+			}
+
+			expect(hasStub('root')).toBe(true);
+			expect(hasStub('child')).toBe(false);
+			expect(hasStub('lonely')).toBe(false);
+		});
+
+		it('keeps the link and parent action on child rows', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('root'), makeNode('child', 'root')],
+			});
+			const child = rowById(wrapper, 'child');
+
+			expect(child.getComponent({ name: 'RouterLink' }).props('to')).toEqual({
+				name: 'AgentSessionDetailView',
+				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'child' },
+			});
+
+			child.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
+			await flushPromises();
+
+			expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+				name: 'AgentSessionDetailView',
+				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'root' },
+			});
+		});
+	});
 });

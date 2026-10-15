@@ -1517,7 +1517,7 @@
 	"agentSessions.tokenUsage": "Token Usage",
 	"agentSessions.testChat": "Test chat",
 	"agentSessions.origin": "Origin",
-	"agentSessions.origin.preview": "Preview",
+	"agentSessions.origin.preview": "Test",
 	"agentSessions.origin.instanceAi": "n8n Assistant",
 	"agentSessions.origin.mcp": "MCP",
 	"agentSessions.origin.subAgent": "Sub-agent",
