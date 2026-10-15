@@ -43,6 +43,18 @@ describe('AzureOpenAiApi Credential', () => {
 		);
 	});
 
+	it('gates an optional project field behind the foundry endpoint type', () => {
+		const project = azureOpenAiApi.properties.find((p) => p.name === 'project');
+		expect(project).toEqual(
+			expect.objectContaining({
+				type: 'string',
+				default: '',
+				displayOptions: expect.objectContaining({ show: { endpointType: ['foundry'] } }),
+			}),
+		);
+		expect(project?.required).toBeFalsy();
+	});
+
 	it('exposes apiKey as a required field independent of endpoint type', () => {
 		expect(azureOpenAiApi.properties).toEqual(
 			expect.arrayContaining([expect.objectContaining({ name: 'apiKey', required: true })]),

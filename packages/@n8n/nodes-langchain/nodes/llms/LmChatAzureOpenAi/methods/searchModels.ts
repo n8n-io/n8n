@@ -11,6 +11,7 @@ import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 interface AzureResourceCredential {
 	endpointType?: 'classic' | 'foundry';
 	foundryEndpoint?: string;
+	project?: string;
 }
 
 /**
@@ -35,7 +36,7 @@ function classicCredentialError(node: INode): NodeOperationError {
 function missingProjectError(node: INode): NodeOperationError {
 	return new NodeOperationError(
 		node,
-		'Enter the Project to list its deployments. Or select By ID and enter the deployment name.',
+		'Enter the Project in the node or in the credential to list its deployments. Or select By ID and enter the deployment name.',
 	);
 }
 
@@ -47,11 +48,13 @@ export async function searchModels(
 		'authentication',
 		AuthenticationType.ApiKey,
 	) as AuthenticationType;
-	const project = this.getNodeParameter('project', '') as string;
+	// The node's own Project overrides the credential's, so existing workflows keep their value.
+	const nodeProject = this.getNodeParameter('project', '') as string;
 	const egressFilter = this.helpers.getSecureEgressFilter();
 
 	let baseURL: string;
 	let headers: Record<string, string>;
+	let project: string;
 
 	if (authenticationMethod === AuthenticationType.ApiKey) {
 		const credential = await this.getCredentials<AzureResourceCredential & { apiKey: string }>(
@@ -61,6 +64,7 @@ export async function searchModels(
 			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
+		project = nodeProject || credential.project || '';
 		if (!project) throw missingProjectError(this.getNode());
 		headers = { 'api-key': credential.apiKey };
 	} else {
@@ -71,6 +75,7 @@ export async function searchModels(
 			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
+		project = nodeProject || credential.project || '';
 		// Checked before the token request, so an empty Project does not cost a call to Entra.
 		if (!project) throw missingProjectError(this.getNode());
 		// Mints a token for the Foundry audience, which this call needs.
