@@ -5,15 +5,7 @@ import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import {
-	AuthenticationPipeline,
-	AuthenticationService,
-	extractBearer,
-	inboundFrom,
-	TrustedSourceStore,
-	type Inbound,
-	type RejectReason,
-} from '@n8n/inbound-auth';
+import { ResourceAdmission, TrustedSourceStore } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -85,7 +77,6 @@ import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
-import { logAuthenticationOutcome } from '@/modules/inbound-auth-core/authentication-outcome';
 import { OwnershipService } from '@/services/ownership.service';
 import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
@@ -791,13 +782,6 @@ export function prepareExecutionData(
 	return { runExecutionData, pinData };
 }
 
-/** The 401 challenge: the resource metadata the pipeline advertises, plus the reject reason. */
-async function challengeFor(inbound: Inbound, reason: RejectReason | 'insufficient_scope') {
-	const { challenges } = await Container.get(AuthenticationService).advertise(inbound);
-	const error = reason === 'insufficient_scope' ? 'insufficient_scope' : 'invalid_token';
-	return [...challenges, `error="${error}"`, `error_description="${reason}"`].join(', ');
-}
-
 /**
  * Only a binding-mode source has a `trusted_source_identity` row the worker gate can re-check.
  * A source that names the user by id has none, and a seal naming one would fail there.
@@ -896,45 +880,20 @@ async function prepareWebhookAdditionalData({
 		const resource = await Container.get(ProtectedResourceRegistry).getByResourceUrl(resourceUrl);
 		if (!resource) return { valid: false, reason: 'invalid_token' };
 
-		const inbound = inboundFrom(resource, {
-			method: req.method,
-			url: req.originalUrl,
-			headers: token ? { authorization: `Bearer ${token}` } : {},
-			ip: req.ip ?? '',
-		});
-		const logger = Container.get(Logger);
-		const outcome = { surface: resource.surface, resource: resourceUrl };
-
-		const extracted = extractBearer(inbound);
-		if (!extracted.ok) {
-			logAuthenticationOutcome(logger, { ...outcome, reason: extracted.reason });
+		const admission = Container.get(ResourceAdmission);
+		const admitted = await admission.admitBearer(
+			resource,
+			{ method: req.method, url: req.originalUrl, ip: req.ip ?? '' },
+			token,
+		);
+		if (!admitted.ok) {
 			return {
 				valid: false,
-				reason: 'invalid_token',
-				challenge: await challengeFor(inbound, extracted.reason),
+				reason: admitted.reason === 'insufficient_scope' ? 'insufficient_scope' : 'invalid_token',
+				challenge: await admission.challenge(admitted),
 			};
 		}
-
-		// The pipeline logs its own rejections.
-		const authenticated = await Container.get(AuthenticationPipeline).run(extracted.value);
-		if (!authenticated.ok) {
-			return {
-				valid: false,
-				reason: 'invalid_token',
-				challenge: await challengeFor(inbound, authenticated.reason),
-			};
-		}
-		const context = authenticated.value;
-
-		if (!(await resource.authorize(context.subject))) {
-			logAuthenticationOutcome(logger, { ...outcome, context, reason: 'insufficient_scope' });
-			return {
-				valid: false,
-				reason: 'insufficient_scope',
-				challenge: await challengeFor(inbound, 'insufficient_scope'),
-			};
-		}
-		logAuthenticationOutcome(logger, { ...outcome, context });
+		const { context } = admitted;
 
 		req.ctx = { ...req.ctx, security: context };
 		admittedBy = {

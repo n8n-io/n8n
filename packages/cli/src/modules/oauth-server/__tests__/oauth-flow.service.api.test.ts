@@ -8,10 +8,10 @@ import type { User } from '@n8n/db';
 import { WebhookRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
-	AuthenticationPipeline,
 	JwkSchema,
 	LocalAuthorizationServer,
 	TrustedSourceStore,
+	ResourceAdmission,
 	type Jwk,
 	type TrustedSource,
 	type TrustedSourceConfigInput,
@@ -270,7 +270,7 @@ const flowWithTokenEndpoint = (routes: Route[]) => {
 		Container.get(ProtectedResourceRegistry),
 		Container.get(CacheService),
 		Container.get(TrustedSourceStore),
-		Container.get(AuthenticationPipeline),
+		Container.get(ResourceAdmission),
 		outboundHttp,
 		Container.get(Logger),
 	);

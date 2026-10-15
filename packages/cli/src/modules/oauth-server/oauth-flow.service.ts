@@ -14,10 +14,8 @@ import {
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import {
-	AuthenticationPipeline,
 	deriveCapabilities,
-	extractBearer,
-	inboundFrom,
+	ResourceAdmission,
 	resolveOAuth2Endpoints,
 	TrustedSourceStore,
 	type Capability,
@@ -37,7 +35,6 @@ import { createHash, randomBytes } from 'node:crypto';
 import pkceChallenge from 'pkce-challenge';
 import { z } from 'zod';
 
-import { logAuthenticationOutcome } from '@/modules/inbound-auth-core/authentication-outcome';
 import { SYSTEM_TRUSTED_SOURCE_ID } from '@/modules/inbound-auth-core/system-trusted-source.seeder';
 
 import { OAuthServerService } from './oauth-server.service';
@@ -127,7 +124,7 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly cacheService: CacheService,
 		private readonly store: TrustedSourceStore,
-		private readonly pipeline: AuthenticationPipeline,
+		private readonly admission: ResourceAdmission,
 		outboundHttp: OutboundHttp,
 		logger: Logger,
 	) {
@@ -238,27 +235,17 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		if (!issued.ok) return { valid: false, reason: issued.reason };
 		const tokens = issued.value;
 
-		const extracted = extractBearer(
-			inboundFrom(resource, {
+		const admitted = await this.admission.admitBearer(
+			resource,
+			{
 				method: request?.method ?? 'GET',
 				url: request?.url ?? resourceUrl,
-				headers: { authorization: `Bearer ${tokens.accessToken}` },
 				ip: request?.ip ?? '',
-			}),
+			},
+			tokens.accessToken,
 		);
-		if (!extracted.ok) return { valid: false, reason: extracted.reason };
-
-		// The pipeline logs its own rejections.
-		const authenticated = await this.pipeline.run(extracted.value);
-		if (!authenticated.ok) return { valid: false, reason: authenticated.reason };
-		const context = authenticated.value;
-
-		const outcome = { surface: resource.surface, resource: resourceUrl, context };
-		if (!(await resource.authorize(context.subject))) {
-			logAuthenticationOutcome(this.logger, { ...outcome, reason: 'insufficient_scope' });
-			return { valid: false, reason: 'insufficient_scope' };
-		}
-		logAuthenticationOutcome(this.logger, outcome);
+		if (!admitted.ok) return { valid: false, reason: admitted.reason };
+		const { context } = admitted;
 
 		// The issuer reports the lifetime; the token's own `exp` stands in when it does not.
 		// Without either, a page could not schedule a refresh and would silently stop working,
