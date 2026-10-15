@@ -1,5 +1,10 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import {
+	EventService,
+	type ExecutionRedaction,
+	type ExecutionRedactionOptions,
+	type RedactableExecution,
+} from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -12,11 +17,7 @@ import {
 
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
-import type {
-	ExecutionRedaction,
-	ExecutionRedactionOptions,
-	RedactableExecution,
-} from '@/executions/execution-redaction';
+
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

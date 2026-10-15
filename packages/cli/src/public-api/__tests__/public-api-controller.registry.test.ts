@@ -1,6 +1,7 @@
 import { ListTagsQueryDto, publicApiUploadedFileSchema, Z } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
@@ -33,7 +34,6 @@ import {
 	WidgetBodyDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
-import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));

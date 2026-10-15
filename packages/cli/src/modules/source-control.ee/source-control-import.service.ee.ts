@@ -59,8 +59,8 @@ import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/wor
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import { WorkflowMutationHooksProxy, WorkflowPublishGuardProxy } from '@n8n/backend-services';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
