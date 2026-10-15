@@ -6,17 +6,55 @@
  * manifest fields: changing one produces a new app package either way.
  */
 import { computed, ref } from 'vue';
-import { N8nSettingsRow, N8nSettingsRowGroup, N8nSwitch2 } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSwitch2,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { TeamsAvailability } from './constants';
+import {
+	ENTRA_APP_REGISTRATIONS_URL,
+	entraApiPermissionsUrl,
+	readsSharedConversations as readsShared,
+	type TeamsAvailability,
+} from './constants';
+import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
 
 export type { TeamsAvailability } from './constants';
 
 const value = defineModel<TeamsAvailability>({ required: true });
 
-const props = withDefaults(defineProps<{ startCollapsed?: boolean }>(), {
-	startCollapsed: false,
-});
+const props = withDefaults(
+	defineProps<{
+		startCollapsed?: boolean;
+		/** Client ID of the app the channel runs on, once a credential is picked. */
+		appId?: string | null;
+		fileAccessConsentUrl?: string | null;
+		/** What to say about file access. Only the saved channel can check it, so the setup always asks. */
+		fileAccessState?: 'request' | 'approved' | 'hidden';
+		organization?: string;
+		/**
+		 * Microsoft returns to the agent page, which reopens the settings. The
+		 * setup does not keep its progress, so there the consent opens a new tab.
+		 */
+		openConsentInPlace?: boolean;
+		/** The managed setup asks for file access in a step of its own. */
+		hideFileAccess?: boolean;
+	}>(),
+	{
+		startCollapsed: false,
+		appId: null,
+		fileAccessConsentUrl: null,
+		fileAccessState: 'request',
+		organization: '',
+		openConsentInPlace: false,
+		hideFileAccess: false,
+	},
+);
 
 const i18n = useI18n();
 
@@ -73,6 +111,41 @@ const rows = computed(() => [
 	...(value.value.groupChats ? [READ_GROUPS] : []),
 ]);
 
+const readsSharedConversations = computed(() => readsShared(value.value));
+
+/**
+ * Files attached in a shared conversation live in SharePoint or OneDrive, which
+ * only an app permission that an administrator grants can read. An app the
+ * recommended setup made takes a one-step consent; one made by hand needs the
+ * permission added first, so it gets the full instructions.
+ */
+const fileAccess = computed(() => {
+	if (props.hideFileAccess || !readsSharedConversations.value) return null;
+	if (props.fileAccessState === 'approved') return 'approved' as const;
+	if (props.fileAccessState === 'hidden') return null;
+	if (props.fileAccessConsentUrl) {
+		return {
+			hint: 'agents.channels.teams.setup.availability.fileAccessNotApproved' as const,
+			url: props.fileAccessConsentUrl,
+		};
+	}
+	return {
+		hint: 'agents.channels.teams.setup.availability.fileAccessPermission' as const,
+		url: props.appId ? entraApiPermissionsUrl(props.appId) : ENTRA_APP_REGISTRATIONS_URL,
+	};
+});
+
+const fileAccessRequest = computed(() =>
+	fileAccess.value && fileAccess.value !== 'approved' ? fileAccess.value : null,
+);
+
+const { items: fileAccessMenuItems, onSelect: onFileAccessMenu } = useTeamsFileAccessMenu({
+	url: () => fileAccessRequest.value?.url ?? '',
+	organization: () => props.organization,
+	openInPlace: () =>
+		props.openConsentInPlace && fileAccessRequest.value?.url === props.fileAccessConsentUrl,
+});
+
 /** A collapsed panel still has to say what it is set to. */
 const summary = computed(() => {
 	const { teamChannels, readAllChannelMessages, groupChats, readAllGroupMessages } = value.value;
@@ -97,39 +170,83 @@ const summary = computed(() => {
 </script>
 
 <template>
-	<N8nSettingsRowGroup :class="$style.group">
-		<N8nSettingsRow
-			v-model="open"
-			:title="i18n.baseText('agents.channels.teams.setup.availability.whereTitle')"
-			:description="summary"
-			expandable
-			expand-label=""
-			collapse-label=""
-			:show-divider="false"
-			data-testid="teams-availability"
-		>
-			<template #expanded>
-				<N8nSettingsRow
-					v-for="row in rows"
-					:key="row.key"
-					:title="i18n.baseText(row.title)"
-					:description="i18n.baseText(row.hint)"
-				>
-					<template #action>
-						<N8nSwitch2
-							:model-value="value[row.key]"
-							:aria-label="i18n.baseText(row.title)"
-							:data-testid="row.testId"
-							@update:model-value="set({ [row.key]: $event })"
-						/>
+	<div :class="$style.availability">
+		<N8nSettingsRowGroup :class="$style.group">
+			<N8nSettingsRow
+				v-model="open"
+				:title="i18n.baseText('agents.channels.teams.setup.availability.whereTitle')"
+				:description="summary"
+				expandable
+				expand-label=""
+				collapse-label=""
+				:show-divider="false"
+				data-testid="teams-availability"
+			>
+				<template #expanded>
+					<N8nSettingsRow
+						v-for="row in rows"
+						:key="row.key"
+						:title="i18n.baseText(row.title)"
+						:description="i18n.baseText(row.hint)"
+					>
+						<template #action>
+							<N8nSwitch2
+								:model-value="value[row.key]"
+								:aria-label="i18n.baseText(row.title)"
+								:data-testid="row.testId"
+								@update:model-value="set({ [row.key]: $event })"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</template>
+			</N8nSettingsRow>
+			<div v-if="fileAccess" :class="$style.fileAccess">
+				<N8nCallout v-if="fileAccessRequest" theme="warning" data-testid="teams-file-access">
+					{{ i18n.baseText(fileAccessRequest.hint) }}
+					<template #trailingContent>
+						<!-- Left teleported: the row group clips anything that overflows it. -->
+						<N8nActionDropdown
+							:items="fileAccessMenuItems"
+							placement="bottom-end"
+							@select="onFileAccessMenu"
+						>
+							<template #activator>
+								<N8nButton variant="ghost" size="small" data-testid="teams-file-access-menu">
+									{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
+									<N8nIcon icon="chevron-down" size="small" />
+								</N8nButton>
+							</template>
+						</N8nActionDropdown>
 					</template>
-				</N8nSettingsRow>
-			</template>
-		</N8nSettingsRow>
-	</N8nSettingsRowGroup>
+				</N8nCallout>
+				<N8nCallout v-else theme="success" data-testid="teams-file-access-approved">
+					<strong :class="$style.lead">
+						{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApproved') }}
+					</strong>
+					{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApprovedHint') }}
+				</N8nCallout>
+			</div>
+		</N8nSettingsRowGroup>
+	</div>
 </template>
 
 <style module lang="scss">
+.availability {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	width: 100%;
+}
+
+.fileAccess {
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
+}
+
+/* The reset makes `strong` medium, which barely shows against regular text. */
+.lead {
+	font-weight: var(--font-weight--bold);
+}
+
 /*
  * The group paints the page surface, which in dark mode is darker than the
  * modal it sits in. Letting the modal show through keeps it flat in both themes.

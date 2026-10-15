@@ -64,6 +64,14 @@ describe('agent channel platform registry', () => {
 		expect(platform.disconnectConfirmationComponent).toBeDefined();
 	});
 
+	it('confirms every Teams removal', () => {
+		const platform = getAgentChannelPlatform('teams');
+		const runtime = { loading: ref(false), load: async () => {} };
+
+		expect(platform.shouldConfirmDisconnect?.(runtime, 'any', { isPublished: false })).toBe(true);
+		expect(platform.disconnectConfirmationComponent).toBeDefined();
+	});
+
 	it('registers n8n Chat with its "Make available" connect action', () => {
 		const platform = getAgentChannelPlatform('n8n_chat');
 		const action = platform.getConnectAction(

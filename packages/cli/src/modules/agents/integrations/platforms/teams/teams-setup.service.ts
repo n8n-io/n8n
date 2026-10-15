@@ -5,7 +5,9 @@ import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UrlService } from '@n8n/backend-services';
 
+import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
+import { botResourceId } from './teams-bot-provisioning.service';
 import { TeamsManifestService } from './teams-manifest.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -26,6 +28,10 @@ interface BotIdentity {
 	tenantId: string;
 	/** Written by the recommended setup, so a hand-made credential lacks it. */
 	provisionedForAgentId?: string;
+	azureBotName?: string;
+	azureSubscriptionId?: string;
+	/** The manifest n8n last handed over, as `TeamsManifestService.fingerprint` reads it. */
+	teamsAppFingerprint?: string;
 }
 
 @Service()
@@ -55,6 +61,8 @@ export class TeamsSetupService {
 			credentialId ? this.credentialClaimedBy(agent.id, credentialId) : null,
 		]);
 
+		const provisionedByN8n = identity?.provisionedForAgentId === agent.id;
+
 		return {
 			messagingEndpointUrl: this.messagingEndpointUrl(scope),
 			botId: identity?.clientId ?? null,
@@ -66,7 +74,10 @@ export class TeamsSetupService {
 					? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
 					: null,
 			credentialClaimedBy: claimedBy,
-			provisionedByN8n: identity?.provisionedForAgentId === agent.id,
+			provisionedByN8n,
+			fileAccessConsentUrl: provisionedByN8n ? this.fileAccessConsentUrl(scope, identity) : null,
+			azureBot: provisionedByN8n ? this.azureBot(identity) : null,
+			appOutdated: this.appOutdated(agent, identity),
 			...this.defaultIdentity(agent.name),
 		};
 	}
@@ -81,7 +92,7 @@ export class TeamsSetupService {
 		scope: AgentScope,
 		selectedCredentialId?: string,
 		selectedSettings?: AgentTeamsIntegrationSettings,
-	): Promise<Buffer> {
+	): Promise<{ archive: Buffer; fingerprint: string; credentialId: string }> {
 		const agent = await this.getAgent(scope);
 		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
 		const identity = credentialId
@@ -108,7 +119,7 @@ export class TeamsSetupService {
 			);
 		}
 
-		return await this.manifestService.buildPackage({
+		const options = {
 			agentName: agent.name,
 			agentId: agent.id,
 			botId: identity.clientId,
@@ -121,7 +132,15 @@ export class TeamsSetupService {
 			// The open form wins over what is stored: during setup nothing is stored
 			// yet, and in the settings view the fields sit above this button.
 			settings: selectedSettings ?? this.teamsSettingsOf(agent),
-		});
+		};
+		return {
+			archive: await this.manifestService.buildPackage(options),
+			fingerprint: this.manifestService.fingerprint(
+				this.manifestService.buildManifest(options),
+				agent.schema?.personalisation,
+			),
+			credentialId,
+		};
 	}
 
 	/**
@@ -269,7 +288,52 @@ export class TeamsSetupService {
 		const clientId = stringProperty(data, 'clientId');
 		const tenantId = stringProperty(data, 'tenantId');
 		const provisionedForAgentId = stringProperty(data, 'provisionedForAgentId');
-		return clientId && tenantId ? { clientId, tenantId, provisionedForAgentId } : null;
+		return clientId && tenantId
+			? {
+					clientId,
+					tenantId,
+					provisionedForAgentId,
+					azureBotName: stringProperty(data, 'azureBotName'),
+					azureSubscriptionId: stringProperty(data, 'azureSubscriptionId'),
+					teamsAppFingerprint: stringProperty(data, 'teamsAppFingerprint'),
+				}
+			: null;
+	}
+
+	/**
+	 * Whether the saved channel would build a different app than the one n8n last
+	 * handed over, for example after the agent was renamed. n8n sees the download
+	 * or the publish, not the upload in Teams, so this is as close as it gets.
+	 */
+	private appOutdated(agent: Agent, identity: BotIdentity | null): boolean {
+		if (!identity?.teamsAppFingerprint) return false;
+		const current = this.manifestService.buildManifest({
+			agentName: agent.name,
+			agentId: agent.id,
+			botId: identity.clientId,
+			versionAt: agent.updatedAt,
+			settings: this.teamsSettingsOf(agent),
+		});
+		return (
+			this.manifestService.fingerprint(current, agent.schema?.personalisation) !==
+			identity.teamsAppFingerprint
+		);
+	}
+
+	private azureBot(identity: BotIdentity | null): TeamsAgentSetupState['azureBot'] {
+		if (!identity?.azureBotName || !identity.azureSubscriptionId) return null;
+		const resource = botResourceId(identity.azureSubscriptionId, identity.azureBotName);
+		return {
+			name: identity.azureBotName,
+			portalUrl: `https://portal.azure.com/#@${identity.tenantId}/resource${resource}/overview`,
+		};
+	}
+
+	private fileAccessConsentUrl(scope: AgentScope, identity: BotIdentity | null): string | null {
+		const redirectUri = adminConsentRedirectUri(this.urlService.getInstanceBaseUrl(), scope);
+		return identity && redirectUri
+			? adminConsentUrl(identity.tenantId, identity.clientId, redirectUri)
+			: null;
 	}
 
 	private messagingEndpointUrl(scope: AgentScope): string {

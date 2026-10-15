@@ -4,9 +4,6 @@ tags:
 summary: Create a new data table
 description: Create a new data table in your personal project or a team project you have access to.
 x-required-scope: dataTable:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:
