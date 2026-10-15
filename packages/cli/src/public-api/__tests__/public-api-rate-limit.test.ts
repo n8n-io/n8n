@@ -3,7 +3,14 @@ import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { ApiResponse, ControllerRegistryMetadata, Get, Param, Post } from '@n8n/decorators';
+import {
+	ApiResponse,
+	ControllerRegistryMetadata,
+	Get,
+	Param,
+	Post,
+	RateLimitAccess,
+} from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
@@ -80,6 +87,13 @@ describe('Public API rate limiting', () => {
 			@Post('/')
 			@ApiResponse(200)
 			create() {
+				return { ok: true };
+			}
+
+			@Post('/search')
+			@ApiResponse(200)
+			@RateLimitAccess('read')
+			search() {
 				return { ok: true };
 			}
 		}
@@ -262,5 +276,14 @@ describe('Public API rate limiting', () => {
 		expect((await send(app, 'head', '/widgets')).status).toBe(405);
 
 		expect((await send(app, 'get', '/widgets')).status).toBe(200);
+	});
+
+	it('uses the access from @RateLimitAccess over the HTTP method', async () => {
+		const app = activate({ globalReadLimit: 1, globalWriteLimit: 100 });
+
+		await sendTimes(app, 1, 'post', '/widgets/search');
+
+		expect((await send(app, 'get', '/widgets')).status).toBe(429);
+		expect((await send(app, 'post', '/widgets')).status).toBe(200);
 	});
 });

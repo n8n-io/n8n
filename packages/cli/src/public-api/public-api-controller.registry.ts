@@ -221,7 +221,9 @@ export class PublicApiControllerRegistry {
 			}
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
-			middlewares.push(...this.rateLimitService.createRouteLimiters(route.method));
+			middlewares.push(
+				...this.rateLimitService.createRouteLimiters(route.method, route.rateLimitAccess),
+			);
 
 			// Path param validation must run before the scope checks, so that a malformed param always
 			// returns 400, rather than 404 or 403 depending on the caller's access.

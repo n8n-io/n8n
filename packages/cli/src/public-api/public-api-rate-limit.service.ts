@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { Method } from '@n8n/decorators';
+import type { Method, RateLimitAccessName } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
@@ -12,13 +12,17 @@ type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLim
 
 const READ_METHODS: ReadonlySet<Method> = new Set(['get', 'head']);
 
-type Access = 'read' | 'write';
-
-const resolveAccess = (method: Method): Access => (READ_METHODS.has(method) ? 'read' : 'write');
+const resolveAccess = (
+	method: Method,
+	accessFromDecorator?: RateLimitAccessName,
+): RateLimitAccessName => accessFromDecorator ?? (READ_METHODS.has(method) ? 'read' : 'write');
 
 @Service()
 export class PublicApiRateLimitService {
-	private readonly allEndpointsLimiterCache = new Map<Access, RequestHandler | undefined>();
+	private readonly allEndpointsLimiterCache = new Map<
+		RateLimitAccessName,
+		RequestHandler | undefined
+	>();
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -30,21 +34,21 @@ export class PublicApiRateLimitService {
 	}
 
 	/** Call once for each route, when the route is registered. */
-	createRouteLimiters(method: Method): RequestHandler[] {
+	createRouteLimiters(method: Method, accessFromDecorator?: RateLimitAccessName): RequestHandler[] {
 		if (!this.config.enabled) return [];
 
-		const access = resolveAccess(method);
+		const access = resolveAccess(method, accessFromDecorator);
 
 		return [this.createPerEndpointLimiter(access), this.getAllEndpointsLimiter(access)].filter(
 			(limiter) => limiter !== undefined,
 		);
 	}
 
-	private createPerEndpointLimiter(access: Access) {
+	private createPerEndpointLimiter(access: RateLimitAccessName) {
 		return this.createRateLimiter(this.getLimitsFromConfig(access).perEndpoint);
 	}
 
-	private getAllEndpointsLimiter(access: Access) {
+	private getAllEndpointsLimiter(access: RateLimitAccessName) {
 		if (!this.allEndpointsLimiterCache.has(access)) {
 			this.allEndpointsLimiterCache.set(
 				access,
@@ -54,9 +58,9 @@ export class PublicApiRateLimitService {
 		return this.allEndpointsLimiterCache.get(access);
 	}
 
-	private getLimitsFromConfig(access: Access): AccessRequestLimits {
+	private getLimitsFromConfig(access: RateLimitAccessName): AccessRequestLimits {
 		const { config } = this;
-		const limits: Record<Access, AccessRequestLimits> = {
+		const limits: Record<RateLimitAccessName, AccessRequestLimits> = {
 			read: {
 				perEndpoint: {
 					maxRequests: config.endpointReadLimit,
