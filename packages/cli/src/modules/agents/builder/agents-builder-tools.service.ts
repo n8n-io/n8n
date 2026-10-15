@@ -86,15 +86,20 @@ import {
 	buildFinishSetupTool,
 	buildResolveLlmTool,
 } from './interactive';
-import type { SetupFillResult } from './interactive/finish-setup.tool';
+import type {
+	NodeToolCredentialWriteResult,
+	ResolvedCredential,
+} from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { fillSetupGaps, findSetupGaps, type SetupValues } from '../json-config/agent-setup-gaps';
-import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
+import {
+	assignCredentialToNodeTools,
+	listAiGatewayManagedCredentialTypes,
+} from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
 import { SkillNameTakenError, skillNameTakenToolMessage } from '../skills/skill-name-taken.error';
@@ -605,11 +610,8 @@ export class AgentsBuilderToolsService {
 			agentId,
 			projectId,
 			track,
-			findSetupGaps: async () => {
-				const agent = await this.agentsService.findById(agentId, projectId);
-				return findSetupGaps(agent?.schema?.tools, this.nodeTypes);
-			},
-			fillSetupGaps: async (values) => await this.fillSetupGaps(agentId, projectId, user, values),
+			writeCredentialsToNodeTools: async (credentials) =>
+				await this.writeCredentialsToNodeTools(agentId, projectId, user, credentials),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
@@ -1383,32 +1385,33 @@ export class AgentsBuilderToolsService {
 		return { applied: true, config: saved.config, configHash: saved.configHash };
 	}
 
-	/**
-	 * Writes the values of a completed setup flow into the node-tool fields that
-	 * the current config leaves empty, and reports the fields still empty.
-	 */
-	private async fillSetupGaps(
+	private async writeCredentialsToNodeTools(
 		agentId: string,
 		projectId: string,
 		user: User,
-		values: SetupValues,
-	): Promise<SetupFillResult> {
-		const { config: current, configHash } = await this.getConfigSnapshot(agentId, projectId);
-		if (!current) return { filled: [], remaining: [], error: 'Agent has no JSON config yet.' };
-		const unchanged = (errors?: Array<{ message: string }>): SetupFillResult => ({
-			filled: [],
-			remaining: findSetupGaps(current.tools, this.nodeTypes),
-			...(errors ? { error: errors.map((e) => e.message).join('; ') } : {}),
+		credentials: ResolvedCredential[],
+	): Promise<NodeToolCredentialWriteResult> {
+		const failed = (errors: Array<{ message: string }>): NodeToolCredentialWriteResult => ({
+			credentialTypes: [],
+			error: errors.map((e) => e.message).join('; '),
 		});
-
 		const editorLock = await this.getEditorLockFailure(agentId);
-		if (editorLock) return unchanged(editorLock.errors);
+		if (editorLock) return failed(editorLock.errors);
+		const { config, configHash } = await this.getConfigSnapshot(agentId, projectId);
+		if (!config) return failed([{ message: 'Agent has no JSON config yet.' }]);
 
-		const { config: next, filled } = fillSetupGaps(current, this.nodeTypes, values);
-		if (filled.length === 0) return unchanged();
+		const tools = structuredClone(config.tools ?? []);
+		const credentialTypes: string[] = [];
+		for (const { credentialType, id, name } of credentials) {
+			if (assignCredentialToNodeTools(tools, this.nodeTypes, credentialType, { id, name }) > 0) {
+				credentialTypes.push(credentialType);
+			}
+		}
+		if (credentialTypes.length === 0) return { credentialTypes };
 
-		const validated = this.validateBuilderConfig(next, current);
-		if (!validated.ok) return unchanged(validated.errors);
+		const next = { ...config, tools };
+		const validated = this.validateBuilderConfig(next, config);
+		if (!validated.ok) return failed(validated.errors);
 		const saved = await this.saveBuilderConfig(
 			agentId,
 			projectId,
@@ -1417,13 +1420,8 @@ export class AgentsBuilderToolsService {
 			configHash,
 			next,
 		);
-		if (!saved.ok) return unchanged(saved.errors);
-
-		return {
-			filled,
-			remaining: findSetupGaps((saved.config ?? validated.config).tools, this.nodeTypes),
-			configHash: saved.configHash,
-		};
+		if (!saved.ok) return failed(saved.errors);
+		return { credentialTypes, configHash: saved.configHash };
 	}
 
 	private async getFreshConfigSnapshot(

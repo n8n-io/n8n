@@ -1,22 +1,15 @@
 import type { AgentJsonToolConfig, AiGatewayConfigDto, NodeToolConfig } from '@n8n/api-types';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
-import { resolveSupportedCredentialActivation } from 'n8n-workflow';
+import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow';
 
 import type { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility, HTTP_NODE_TYPES } from '@/services/ai-gateway-eligibility';
 
-import { findSetupGaps } from './agent-setup-gaps';
-import {
-	AI_GATEWAY_MANAGED_CREDENTIAL_FLAG,
-	getNodeToolDescription,
-	isCredentialDisplayed,
-	isCredentialSlotFilled,
-	resolveNodeParameters,
-	type NodeToolCredential,
-} from './node-tool-description';
-
 const N8N_CONNECT_CREDENTIAL_NAME = 'Gateway credits';
+const AI_GATEWAY_MANAGED_CREDENTIAL_FLAG = '__aiGatewayManaged';
+
+type NodeToolCredential = NonNullable<NodeToolConfig['credentials']>[string];
 
 function aiGatewayManagedCredential(): NodeToolCredential {
 	return {
@@ -37,6 +30,41 @@ function setAiGatewayManagedCredential(
 	if (activationParameters && Object.keys(activationParameters).length > 0) {
 		node.nodeParameters = { ...(node.nodeParameters ?? {}), ...activationParameters };
 	}
+}
+
+function resolveNodeParameters(
+	node: NodeToolConfig,
+	description: INodeTypeDescription,
+): INodeParameters {
+	const rawParameters = (node.nodeParameters ?? {}) as INodeParameters;
+
+	return (
+		NodeHelpers.getNodeParameters(
+			description.properties,
+			rawParameters,
+			true,
+			false,
+			{ typeVersion: node.nodeTypeVersion },
+			description,
+		) ?? rawParameters
+	);
+}
+
+function isCredentialDisplayed(
+	node: NodeToolConfig,
+	description: INodeTypeDescription,
+	credentialType: string,
+	resolvedParameters: INodeParameters,
+): boolean {
+	const credentialDefinition = description.credentials?.find((c) => c.name === credentialType);
+	if (!credentialDefinition) return true;
+
+	return NodeHelpers.displayParameter(
+		resolvedParameters,
+		credentialDefinition,
+		{ typeVersion: node.nodeTypeVersion },
+		description,
+	);
 }
 
 /** Returns whether node parameters were changed by slot activation. */
@@ -107,19 +135,71 @@ export function listAiGatewayManagedCredentialTypes(
 	nodeTypes: NodeTypes,
 ): string[] {
 	const managed = new Set<string>();
+	const unsatisfied = new Set<string>();
+
 	for (const tool of tools ?? []) {
-		if (tool.type !== 'node' || !getNodeToolDescription(tool.node, nodeTypes)) continue;
-		for (const [credentialType, ref] of Object.entries(tool.node.credentials ?? {})) {
+		if (tool.type !== 'node') continue;
+		const node = tool.node;
+
+		let description: INodeTypeDescription;
+		try {
+			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
+		} catch {
+			continue;
+		}
+
+		for (const [credentialType, ref] of Object.entries(node.credentials ?? {})) {
 			if (AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref) managed.add(credentialType);
+		}
+
+		const resolvedParameters = resolveNodeParameters(node, description);
+		for (const slot of getRequiredNodeCredentialSlots(description)) {
+			const credentialType = slot.credentialType;
+			const ref = node.credentials?.[credentialType];
+			if (ref && (ref.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref)) continue;
+			if (isCredentialDisplayed(node, description, credentialType, resolvedParameters)) {
+				unsatisfied.add(credentialType);
+			}
 		}
 	}
 
-	const unsatisfied = new Set(
-		findSetupGaps(tools, nodeTypes).flatMap((gap) =>
-			gap.kind === 'credential' ? [gap.credentialType] : [],
-		),
-	);
 	return [...managed].filter((credentialType) => !unsatisfied.has(credentialType));
+}
+
+/**
+ * Write a resolved credential into every node-tool slot of its type that is
+ * still empty and displayed for the node's current parameters. A slot with a
+ * real id or a managed marker is left alone. Returns the number of slots filled.
+ */
+export function assignCredentialToNodeTools(
+	tools: AgentJsonToolConfig[] | undefined,
+	nodeTypes: NodeTypes,
+	credentialType: string,
+	credential: { id: string; name: string },
+): number {
+	let assigned = 0;
+	for (const tool of tools ?? []) {
+		if (tool.type !== 'node') continue;
+		const node = tool.node;
+
+		let description: INodeTypeDescription;
+		try {
+			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
+		} catch {
+			continue;
+		}
+		if (!description.credentials?.some((c) => c.name === credentialType)) continue;
+
+		const existing = node.credentials?.[credentialType];
+		if (existing && (existing.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in existing)) continue;
+
+		const resolvedParameters = resolveNodeParameters(node, description);
+		if (!isCredentialDisplayed(node, description, credentialType, resolvedParameters)) continue;
+
+		node.credentials = { ...(node.credentials ?? {}), [credentialType]: { ...credential } };
+		assigned++;
+	}
+	return assigned;
 }
 
 function reconcileNode(
@@ -128,8 +208,10 @@ function reconcileNode(
 	aiGatewayConfig: AiGatewayConfigDto | undefined,
 	ownedCredentialTypes: ReadonlySet<string>,
 ): void {
-	const description = getNodeToolDescription(node, nodeTypes);
-	if (!description) {
+	let description: INodeTypeDescription;
+	try {
+		description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
+	} catch {
 		dropAiGatewayMarkers(node);
 		return;
 	}
@@ -180,7 +262,10 @@ function reconcileNode(
 
 	for (const slot of getRequiredNodeCredentialSlots(description)) {
 		const credentialType = slot.credentialType;
-		if (isCredentialSlotFilled(node.credentials?.[credentialType])) continue;
+		// A ref only occupies the slot with a real id or the managed flag —
+		// sanitization clears inaccessible ids to '', leaving the slot empty.
+		const existing = node.credentials?.[credentialType];
+		if (existing && (existing.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in existing)) continue;
 
 		// Own credential wins (same precedence as MCP and model slots): leave the
 		// slot empty so the builder resolves the user's credential instead.

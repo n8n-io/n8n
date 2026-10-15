@@ -5,7 +5,6 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
-import type { SetupGap } from '../../../json-config/agent-setup-gaps';
 import { buildFinishSetupTool } from '../finish-setup.tool';
 
 interface TestCtx {
@@ -319,18 +318,13 @@ describe('finish_setup tool', () => {
 		expect(ctx.suspend).not.toHaveBeenCalled();
 	});
 
-	it('completes without suspending when neither the input nor the config has pending setup', async () => {
+	it('rejects an input with no pending setup items', () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
 			credentialService: makeCredentialService([]),
-			findSetupGaps: async () => [],
 		});
-		const ctx = makeCtx();
 
-		const result = await tool.handler!({}, ctx as never);
-
-		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(result).toEqual({ completed: true });
+		expect((tool.inputSchema as unknown as z.ZodTypeAny).safeParse({}).success).toBe(false);
 	});
 
 	it('chains through questions, credentials, and multiple channels to a merged result', async () => {
@@ -416,195 +410,6 @@ describe('finish_setup tool', () => {
 		});
 	});
 
-	describe('setup gaps in the config', () => {
-		const credentialGap: SetupGap = {
-			kind: 'credential',
-			tool: 'Escalate',
-			credentialType: 'gmailOAuth2',
-		};
-		const recipientGap: SetupGap = {
-			kind: 'parameter',
-			tool: 'Escalate',
-			parameter: 'sendTo',
-			label: 'To',
-			askable: true,
-		};
-		const folderGap: SetupGap = {
-			kind: 'parameter',
-			tool: 'Escalate',
-			parameter: 'folder',
-			label: 'Folder',
-			askable: false,
-		};
-
-		it('asks for each gap, writes the answers, and returns only the model answers', async () => {
-			const fillSetupGaps = vi.fn().mockResolvedValue({
-				filled: [credentialGap, recipientGap],
-				remaining: [folderGap],
-				configHash: 'hash-2',
-			});
-			const tool = buildFinishSetupTool({
-				...BASE_DEPS,
-				credentialService: makeCredentialService([]),
-				findSetupGaps: async () => [credentialGap, recipientGap, folderGap],
-				fillSetupGaps,
-			});
-			const input = {
-				questions: [
-					{ id: 'tone', question: 'Which tone?', type: 'single' as const, options: ['Formal'] },
-				],
-			};
-
-			const questionsPayload = (await tool.handler!(input, makeCtx() as never)) as Record<
-				string,
-				unknown
-			>;
-			expect(questionsPayload.questions).toEqual([
-				{ id: 'tone', question: 'Which tone?', type: 'single', options: ['Formal'] },
-				{ id: 'setup:Escalate:sendTo', question: 'Escalate: To', type: 'text' },
-			]);
-
-			const credentialsPayload = (await tool.handler!(
-				input,
-				makeCtx({
-					resumeData: {
-						answers: [
-							{ questionId: 'tone', selectedOptions: ['Formal'] },
-							{
-								questionId: 'setup:Escalate:sendTo',
-								selectedOptions: [],
-								customText: ' support@acme.test ',
-							},
-						],
-					},
-					suspendPayload: questionsPayload,
-				}) as never,
-			)) as Record<string, unknown>;
-			expect(credentialsPayload.credentialRequests).toEqual([
-				{ credentialType: 'gmailOAuth2', reason: 'Used by Escalate', existingCredentials: [] },
-			]);
-
-			const result = await tool.handler!(
-				input,
-				makeCtx({
-					resumeData: { credentials: { gmailOAuth2: 'g1' } },
-					suspendPayload: credentialsPayload,
-				}) as never,
-			);
-
-			expect(fillSetupGaps).toHaveBeenCalledWith({
-				credentials: { gmailOAuth2: { id: 'g1', name: 'g1' } },
-				parameters: { 'Escalate:sendTo': 'support@acme.test' },
-			});
-			expect(result).toEqual({
-				completed: true,
-				answers: [{ questionId: 'tone', selectedOptions: ['Formal'] }],
-				credentials: { gmailOAuth2: { id: 'g1', name: 'g1' } },
-				filled: [credentialGap, recipientGap],
-				remaining: [folderGap],
-				configHash: 'hash-2',
-			});
-		});
-
-		it('merges a model request into the card of the same credential type', async () => {
-			const tool = buildFinishSetupTool({
-				...BASE_DEPS,
-				credentialService: makeCredentialService([]),
-				findSetupGaps: async () => [credentialGap],
-			});
-
-			const payload = (await tool.handler!(
-				{ credentialRequests: [{ credentialType: 'gmailOAuth2', purpose: 'Send escalations' }] },
-				makeCtx() as never,
-			)) as Record<string, unknown>;
-
-			expect(payload.credentialRequests).toEqual([
-				{ credentialType: 'gmailOAuth2', reason: 'Send escalations', existingCredentials: [] },
-			]);
-		});
-
-		it('writes an auto-resolved credential without showing a card', async () => {
-			const fillSetupGaps = vi.fn().mockResolvedValue({ filled: [credentialGap], remaining: [] });
-			const tool = buildFinishSetupTool({
-				...BASE_DEPS,
-				credentialService: makeCredentialService([
-					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
-				]),
-				findSetupGaps: async () => [credentialGap],
-				fillSetupGaps,
-			});
-			const ctx = makeCtx();
-
-			const result = await tool.handler!({}, ctx as never);
-
-			expect(ctx.suspend).not.toHaveBeenCalled();
-			expect(fillSetupGaps).toHaveBeenCalledWith({
-				credentials: { gmailOAuth2: { id: 'g1', name: 'Gmail account' } },
-				parameters: {},
-			});
-			expect(result).toEqual({
-				completed: true,
-				credentials: { gmailOAuth2: { id: 'g1', name: 'Gmail account' } },
-				filled: [credentialGap],
-			});
-		});
-
-		it('writes nothing for skipped cards and reports the gaps as remaining', async () => {
-			const fillSetupGaps = vi
-				.fn()
-				.mockResolvedValue({ filled: [], remaining: [credentialGap, recipientGap] });
-			const tool = buildFinishSetupTool({
-				...BASE_DEPS,
-				credentialService: makeCredentialService([]),
-				findSetupGaps: async () => [credentialGap, recipientGap],
-				fillSetupGaps,
-			});
-
-			const questionsPayload = await tool.handler!({}, makeCtx() as never);
-			const credentialsPayload = await tool.handler!(
-				{},
-				makeCtx({
-					resumeData: {
-						answers: [{ questionId: 'setup:Escalate:sendTo', selectedOptions: [], skipped: true }],
-					},
-					suspendPayload: questionsPayload,
-				}) as never,
-			);
-			const result = await tool.handler!(
-				{},
-				makeCtx({ resumeData: { skipped: true }, suspendPayload: credentialsPayload }) as never,
-			);
-
-			expect(fillSetupGaps).toHaveBeenCalledWith({ credentials: {}, parameters: {} });
-			expect(result).toEqual({
-				completed: true,
-				credentials: { gmailOAuth2: 'skipped' },
-				remaining: [credentialGap, recipientGap],
-			});
-		});
-
-		it('reports a failed write without failing the setup flow', async () => {
-			const tool = buildFinishSetupTool({
-				...BASE_DEPS,
-				credentialService: makeCredentialService([
-					{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
-				]),
-				fillSetupGaps: vi.fn().mockRejectedValue(new Error('locked')),
-			});
-
-			const result = await tool.handler!(
-				{ credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }] },
-				makeCtx() as never,
-			);
-
-			expect(result).toEqual({
-				completed: true,
-				credentials: { airtableApi: { id: 'c1', name: 'My Airtable' } },
-				setupError: 'locked',
-			});
-		});
-	});
-
 	it('throws for an unsupported channel type', async () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
@@ -616,5 +421,81 @@ describe('finish_setup tool', () => {
 			tool.handler!({ channels: [{ integrationType: 'carrier-pigeon' }] }, ctx as never),
 		).rejects.toThrow('Unsupported chat channel "carrier-pigeon"');
 		expect(ctx.suspend).not.toHaveBeenCalled();
+	});
+
+	describe('writing credentials to node tools', () => {
+		it('writes each resolved credential by its credential type', async () => {
+			const writeCredentialsToNodeTools = vi
+				.fn()
+				.mockResolvedValue({ credentialTypes: ['gmailOAuth2'], configHash: 'hash-2' });
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+				]),
+				writeCredentialsToNodeTools,
+			});
+
+			const result = await tool.handler!(
+				{
+					credentialRequests: [
+						{ credentialType: 'gmailOAuth2', purpose: 'Order emails', credentialSlot: 'gmail' },
+					],
+				},
+				makeCtx() as never,
+			);
+
+			expect(writeCredentialsToNodeTools).toHaveBeenCalledWith([
+				{ credentialType: 'gmailOAuth2', id: 'g1', name: 'Gmail account' },
+			]);
+			expect(result).toEqual({
+				completed: true,
+				credentials: { gmail: { id: 'g1', name: 'Gmail account' } },
+				credentialsWrittenToTools: ['gmailOAuth2'],
+				configHash: 'hash-2',
+			});
+		});
+
+		it('writes nothing when every credential is skipped', async () => {
+			const writeCredentialsToNodeTools = vi.fn();
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([]),
+				writeCredentialsToNodeTools,
+			});
+			const input = {
+				credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
+			};
+
+			const credentialsPayload = await tool.handler!(input, makeCtx() as never);
+			const result = await tool.handler!(
+				input,
+				makeCtx({ resumeData: { skipped: true }, suspendPayload: credentialsPayload }) as never,
+			);
+
+			expect(writeCredentialsToNodeTools).not.toHaveBeenCalled();
+			expect(result).toEqual({ completed: true, credentials: { airtableApi: 'skipped' } });
+		});
+
+		it('reports a failed write without failing the setup flow', async () => {
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
+				]),
+				writeCredentialsToNodeTools: vi.fn().mockRejectedValue(new Error('locked')),
+			});
+
+			const result = await tool.handler!(
+				{ credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }] },
+				makeCtx() as never,
+			);
+
+			expect(result).toEqual({
+				completed: true,
+				credentials: { airtableApi: { id: 'c1', name: 'My Airtable' } },
+				credentialWriteError: 'locked',
+			});
+		});
 	});
 });

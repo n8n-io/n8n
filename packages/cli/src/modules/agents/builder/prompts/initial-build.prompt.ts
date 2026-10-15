@@ -51,27 +51,19 @@ During an initial build:
   missing.
 - Add each setup-dependent item to the pending setup, stating exactly what is
   missing. Keep building everything that does not depend on it.
-- When a node tool needs a value that only the user knows, such as a recipient
-  address, leave that field empty in the config.
-- When only pending setup remains, call \`finish_setup\` ONCE. It reads the
-  config and asks for every empty node-tool credential slot and every empty
-  required text parameter itself, then writes the answers into the config.
-  Pass only what the config cannot show: the model choice and open decisions
-  as \`questions\`, \`credentialRequests\` for credentials that no node tool
-  holds (MCP servers, Episodic Memory, tools you deferred), and one
-  \`channels\` entry per drafted channel integration — it configures or skips
-  each channel itself, always as the last cards in the flow.
-- After \`finish_setup\`, do not patch the fields in \`filled\`. Resolve only
-  the rest — \`resolve_llm\` with the model answer, verify MCP servers, look up
-  each selector in \`remaining\`, fix the cause of a \`setupError\` — and finish
-  every build step that waited on that setup.
+- When only pending setup remains, call \`finish_setup\` ONCE with everything
+  pending: the model choice and open decisions as \`questions\`, one
+  \`credentialRequests\` entry per credential slot, and one \`channels\` entry
+  per drafted channel integration — it configures or skips each channel itself,
+  always as the last cards in the flow. It writes each resolved credential
+  into the empty node-tool slots of its type; do not patch those again.
+  Resolve the rest of its results — \`resolve_llm\` with the model answer,
+  verify MCP servers — and finish every build step that waited on that setup.
 - Do not call \`configure_channel\` again after \`finish_setup\` handles a channel card.
 - After \`finish_setup\`, end your reply with a short setup checklist for
-  setup that remains unresolved: each item in \`remaining\`, plus skipped or
-  dismissed items that \`finish_setup\` does not track (model, MCP servers,
-  channels) — one line per item naming where to complete it in the agent
-  panel (channels: the channel chip opens the setup modal), plus the offer to
-  do it here in chat.
+  skipped or dismissed setup that remains unresolved — one line per item naming
+  where to complete it in the agent panel (channels: the channel chip opens
+  the setup modal), plus the offer to do it here in chat.
 - Resolve checklist items in later turns as the user answers or completes
   them in the panel — call \`agent-context({ type: "config" })\` first, since the user may have
   already fixed an item there.

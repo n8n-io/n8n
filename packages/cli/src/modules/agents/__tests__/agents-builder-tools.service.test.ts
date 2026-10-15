@@ -608,22 +608,27 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
 		});
 
-		it('finish_setup asks for the empty fields of the config and writes the answers into it', async () => {
+		it('finish_setup writes the resolved credential into the empty node-tool slots of its type', async () => {
 			const { service, agentsService, nodeTypes } = makeService();
-			const gmailTool = (name: string, nodeParameters: Record<string, unknown>) => ({
+			const gmailTool = (
+				name: string,
+				credentials?: Record<string, { id: string; name: string }>,
+			) => ({
 				type: 'node' as const,
 				name,
 				description: name,
-				node: { nodeType: 'n8n-nodes-base.gmailTool', nodeTypeVersion: 2.2, nodeParameters },
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 2.2,
+					nodeParameters: {},
+					credentials,
+				},
 			});
-			const currentConfig: AgentJsonConfig = {
+			const ownCredential = { gmailOAuth2: { id: 'own', name: 'Own account' } };
+			let stored: AgentJsonConfig = {
 				...baseConfig,
-				tools: [
-					gmailTool('search_order_emails', { sendTo: '={{ $fromAI("to") }}' }),
-					gmailTool('escalate', { sendTo: '' }),
-				],
+				tools: [gmailTool('search'), gmailTool('reply'), gmailTool('archive', ownCredential)],
 			};
-			let stored = currentConfig;
 			agentsService.listChatIntegrations.mockReturnValue([]);
 			agentsService.findById.mockImplementation(async () => makeAgent(stored));
 			agentsService.updateConfig.mockImplementation(async (_agentId, _projectId, config) => {
@@ -645,9 +650,7 @@ describe('AgentsBuilderToolsService', () => {
 					defaults: {},
 					inputs: [],
 					outputs: [],
-					properties: [
-						{ displayName: 'To', name: 'sendTo', type: 'string', required: true, default: '' },
-					],
+					properties: [],
 					credentials: [{ name: 'gmailOAuth2' }],
 				},
 			} as unknown as ReturnType<NodeTypes['getByNameAndVersion']>);
@@ -656,54 +659,22 @@ describe('AgentsBuilderToolsService', () => {
 			]);
 
 			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
-			const suspendPayload = (await tool.handler!({}, {
-				...ctx,
-				suspend: vi.fn(async (payload: unknown) => payload),
-			} as never)) as Record<string, unknown>;
-			expect(suspendPayload.questions).toEqual([
-				{ id: 'setup:escalate:sendTo', question: 'escalate: To', type: 'text' },
-			]);
+			const result = await tool.handler!(
+				{ credentialRequests: [{ credentialType: 'gmailOAuth2', purpose: 'Order emails' }] },
+				ctx as never,
+			);
 
-			const result = await tool.handler!({}, {
-				...ctx,
-				suspendPayload,
-				resumeData: {
-					answers: [
-						{
-							questionId: 'setup:escalate:sendTo',
-							selectedOptions: [],
-							customText: 'support@acme.test',
-						},
-					],
-				},
-			} as never);
-
-			const credentials = { gmailOAuth2: { id: 'g1', name: 'Gmail account' } };
-			expect(stored.tools?.map((t) => (t.type === 'node' ? t.node : undefined))).toEqual([
-				expect.objectContaining({
-					credentials,
-					nodeParameters: { sendTo: '={{ $fromAI("to") }}' },
-				}),
-				expect.objectContaining({ credentials, nodeParameters: { sendTo: 'support@acme.test' } }),
-			]);
+			const resolved = { gmailOAuth2: { id: 'g1', name: 'Gmail account' } };
+			expect(
+				stored.tools?.map((t) => (t.type === 'node' ? t.node.credentials : undefined)),
+			).toEqual([resolved, resolved, ownCredential]);
 			expect(result).toEqual(
 				expect.objectContaining({
 					completed: true,
-					filled: [
-						{ kind: 'credential', tool: 'search_order_emails', credentialType: 'gmailOAuth2' },
-						{ kind: 'credential', tool: 'escalate', credentialType: 'gmailOAuth2' },
-						{
-							kind: 'parameter',
-							tool: 'escalate',
-							parameter: 'sendTo',
-							label: 'To',
-							askable: true,
-						},
-					],
+					credentialsWrittenToTools: ['gmailOAuth2'],
 					configHash: getAgentConfigHash(stored),
 				}),
 			);
-			expect(result).not.toHaveProperty('remaining');
 		});
 
 		it('patch_config saves a removed top-level field as removed', async () => {
