@@ -134,14 +134,14 @@ describe('AgentEvalRunnerService (integration)', () => {
 		const oldCounts = await results.countByStatus(run.id);
 		expect(await results.claimForRerun(result.id, result.runId)).toBe(true);
 		const oldMetrics = { total: 1, pending: 0, success: 0, error: 1, cancelled: 0 };
-		expect((await runs.markAsCompleted(run.id, oldMetrics, oldCounts)).affected).toBe(0);
+		expect(await runs.markAsCompleted(run.id, oldMetrics, oldCounts)).toBe(false);
 		await results.markAsCompleted(result.id, { output: { finalText: 'Updated answer' } });
-		expect((await runs.markAsCompleted(run.id, oldMetrics, oldCounts)).affected).toBe(0);
+		expect(await runs.markAsCompleted(run.id, oldMetrics, oldCounts)).toBe(false);
 		const currentCounts = await results.countByStatus(run.id);
 		const currentMetrics = { ...oldMetrics, success: 1, error: 0 };
 		await runs.requestCancellation(run.id);
-		expect((await runs.markAsCompleted(run.id, currentMetrics, currentCounts)).affected).toBe(0);
-		expect((await runs.markAsCancelled(run.id, currentMetrics, currentCounts)).affected).toBe(1);
+		expect(await runs.markAsCompleted(run.id, currentMetrics, currentCounts)).toBe(false);
+		expect(await runs.markAsCancelled(run.id, currentMetrics, currentCounts)).toBe(true);
 		expect(await runs.findById(run.id)).toMatchObject({
 			status: 'cancelled',
 			metrics: currentMetrics,
@@ -200,7 +200,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 				poolSize: 2,
 			}).initialize();
 			const blocker = control.createQueryRunner();
-			const pending: Array<Promise<unknown>> = [];
+			const pending: Promise<unknown>[] = [];
 			try {
 				await blocker.startTransaction();
 				await blocker.manager.update(AgentEvalRun, { id: run.id }, { id: run.id });
@@ -226,7 +226,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 				expect(await claim).toBe(true);
 				// Its first statement started before the claim committed. The count
 				// statement must use a fresh snapshot after it acquires the lock.
-				expect((await settling).affected).toBe(0);
+				expect(await settling).toBe(false);
 				expect((await runs.findById(run.id))?.status).toBe('running');
 				expect((await results.findById(result.id))?.status).toBe('running');
 			} finally {
