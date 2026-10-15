@@ -36,6 +36,16 @@ const i18n = useI18n();
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
 const startTime = computed(() => Date.parse(props.plan.startedAt ?? ''));
+const tasks = computed(() =>
+	props.plan.document.items.flatMap((item) =>
+		item.kind === 'group' && item.tasks.length > 0 ? item.tasks : [item],
+	),
+);
+const isFinished = computed(
+	() =>
+		tasks.value.length > 0 &&
+		tasks.value.every((task) => task.status !== 'pending' && task.status !== 'in_progress'),
+);
 const { pause, resume } = useIntervalFn(
 	() => {
 		now.value = Date.now();
@@ -47,6 +57,7 @@ watch(
 	() =>
 		Number.isFinite(startTime.value) &&
 		!props.plan.closed &&
+		!isFinished.value &&
 		!isStopped.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
@@ -58,11 +69,13 @@ watch(
 	{ immediate: true },
 );
 const elapsed = computed(() => {
-	const endTime = props.plan.closed
-		? Date.parse(props.plan.closedAt ?? '')
-		: isStopped.value
-			? Date.parse(props.workState?.stoppedAt ?? props.stoppedAt ?? '') || now.value
-			: now.value;
+	const endTime = isFinished.value
+		? Date.parse(props.plan.finishedAt ?? props.plan.closedAt ?? '') || now.value
+		: props.plan.closed
+			? Date.parse(props.plan.closedAt ?? '')
+			: isStopped.value
+				? Date.parse(props.workState?.stoppedAt ?? props.stoppedAt ?? '') || now.value
+				: now.value;
 	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime)) return null;
 	return formatAgentElapsedTime(endTime - startTime.value);
 });
@@ -100,6 +113,7 @@ function displayStatus(item: PlanItem): DisplayStatus {
 const isRunning = computed(
 	() =>
 		!props.plan.closed &&
+		!isFinished.value &&
 		!isStopped.value &&
 		props.plan.document.items
 			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
@@ -126,14 +140,11 @@ const statusIcons = {
 	unavailable: 'circle-help',
 } as const;
 const summary = computed(() => {
-	const tasks = props.plan.document.items.flatMap((item) =>
-		item.kind === 'group' && item.tasks.length > 0 ? item.tasks : [item],
-	);
 	return i18n.baseText('agents.chat.plan.progress', {
-		adjustToNumber: tasks.length,
+		adjustToNumber: tasks.value.length,
 		interpolate: {
-			done: tasks.filter((task) => task.status === 'done').length,
-			total: tasks.length,
+			done: tasks.value.filter((task) => task.status === 'done').length,
+			total: tasks.value.length,
 		},
 	});
 });

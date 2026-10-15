@@ -72,7 +72,7 @@ export function useAgentTaskCancellation(target: {
 			);
 			if (!disposed && current === revision) applyState(result);
 		} finally {
-			if (!disposed && threadId === target.threadId()) {
+			if (!disposed && current === revision) {
 				sending.value = false;
 				await refresh();
 			}

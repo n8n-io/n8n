@@ -503,6 +503,7 @@ describe('selectLatestAgentPlan', () => {
 		const latest = planView({
 			revision: 2,
 			startedAt: '2026-10-01T10:00:00.000Z',
+			finishedAt: '2026-10-01T10:01:00.000Z',
 			closedAt: null,
 			document: {
 				...planView().document,

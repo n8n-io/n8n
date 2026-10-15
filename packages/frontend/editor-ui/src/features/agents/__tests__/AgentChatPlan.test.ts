@@ -141,7 +141,7 @@ describe('AgentChatPlan timer', () => {
 		wrapper.unmount();
 	});
 
-	it('starts only with stored timing and keeps counting while the parent reviews completed work', async () => {
+	it('starts with stored timing and freezes when the last task finishes', async () => {
 		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt: null }) } });
 		try {
 			expect(wrapper.find('[data-testid="agent-chat-plan-timer"]').exists()).toBe(false);
@@ -154,12 +154,14 @@ describe('AgentChatPlan timer', () => {
 			await wrapper.setProps({
 				plan: planView({
 					startedAt,
+					finishedAt: '2026-10-01T10:00:30.000Z',
 					revision: 3,
 					document: { title: 'Plan', items: [planTask(1, 'done')] },
 				}),
 			});
 			await vi.advanceTimersByTimeAsync(5_000);
-			expect(timer().text()).toBe('0:36');
+			expect(timer().text()).toBe('0:30');
+			expect(vi.getTimerCount()).toBe(0);
 			await wrapper.setProps({
 				plan: planView({
 					startedAt,
@@ -174,6 +176,57 @@ describe('AgentChatPlan timer', () => {
 		} finally {
 			wrapper.unmount();
 		}
+	});
+
+	it('restores a finished open plan and resumes the timer when new work is added', async () => {
+		vi.setSystemTime(new Date('2026-10-02T10:00:00.000Z'));
+		const plan = planView({
+			startedAt,
+			finishedAt: '2026-10-01T10:00:30.000Z',
+			document: {
+				title: 'Finished, with gaps',
+				items: [
+					{
+						...planTask(10, 'in_progress'),
+						kind: 'group',
+						tasks: [planTask(1, 'done'), planTask(2, 'failed')],
+					},
+					{ ...planTask(11, 'cancelled'), kind: 'group', tasks: [] },
+				],
+			},
+		});
+		const wrapper = mount(AgentChatPlan, { props: { plan } });
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		expect(wrapper.findComponent(N8nIcon).props('spin')).toBe(false);
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		expect(vi.getTimerCount()).toBe(0);
+
+		await wrapper.setProps({
+			plan: {
+				...plan,
+				finishedAt: null,
+				document: {
+					...plan.document,
+					items: [...plan.document.items, planTask(3, 'pending')],
+				},
+			},
+		});
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('24:00:05');
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('24:00:06');
+		wrapper.unmount();
+	});
+
+	it('freezes older completed snapshots without a saved finish time', async () => {
+		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt }) } });
+		await vi.advanceTimersByTimeAsync(10_000);
+		await wrapper.setProps({
+			plan: planView({ startedAt, document: { title: 'Done', items: [planTask(1, 'done')] } }),
+		});
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:10');
+		wrapper.unmount();
 	});
 
 	it('restores elapsed time on remount and rolls over into hours', async () => {

@@ -163,7 +163,7 @@ function mountSteps(
 
 describe('AgentChatToolSteps', () => {
 	it.each([
-		{ state: TOOL_CALL_STATE.CANCELLED, canceled: true, output: 'Tool call canceled' },
+		{ state: TOOL_CALL_STATE.CANCELLED, output: 'Tool call canceled' },
 		{
 			state: TOOL_CALL_STATE.ERROR,
 			output: 'Error: Tool call stopped by guardrail: tasks-cancelled',
