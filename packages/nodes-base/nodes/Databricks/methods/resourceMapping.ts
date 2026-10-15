@@ -4,6 +4,8 @@ import { resolveSelectedLakebaseSchema } from '../actions/lakebase/helpers';
 import { isOpenApiUnavailable, OPENAPI_DISABLED_NOTICE } from '../actions/lakebase/openApiDocument';
 import { fetchLakebaseColumns, type LakebaseColumn } from '../actions/lakebase/schema';
 
+const TIME_FORMATS = new Set(['time', 'time without time zone', 'time with time zone']);
+
 const DATE_FORMATS = new Set([
 	'date',
 	'date-time',
@@ -14,6 +16,7 @@ const DATE_FORMATS = new Set([
 function fieldTypeOf(column: LakebaseColumn): FieldType {
 	if (column.enum) return 'options';
 	if (column.format && DATE_FORMATS.has(column.format)) return 'dateTime';
+	if (column.format && TIME_FORMATS.has(column.format)) return 'time';
 
 	switch (column.type) {
 		case 'integer':

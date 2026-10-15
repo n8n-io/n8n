@@ -64,6 +64,19 @@ describe('Lakebase -> column mapping', () => {
 		return context;
 	};
 
+	it.each([
+		['time without time zone', 'time'],
+		['time with time zone', 'time'],
+		['timestamp without time zone', 'dateTime'],
+		['date', 'dateTime'],
+	])('maps the %s format to the %s field type', async (format, expected) => {
+		vi.mocked(fetchLakebaseColumns).mockResolvedValue([column({ name: 'at', format })]);
+
+		const { fields } = await getLakebaseMappingColumns.call(setup());
+
+		expect(fields[0]).toEqual(expect.objectContaining({ type: expected }));
+	});
+
 	it('lists the table columns as mappable fields', async () => {
 		vi.mocked(fetchLakebaseColumns).mockResolvedValue([column({ name: 'sku' })]);
 
