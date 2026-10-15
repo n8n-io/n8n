@@ -53,7 +53,10 @@ export class SelfHealingCandidateService {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
 
-		const user = await this.suggestions.requireCurrentBaseline(baseline);
+		const user = await this.suggestions.requireEditor(
+			baseline.backgroundUserId,
+			baseline.workflowId,
+		);
 
 		const compiled = await compileCandidateWorkflow({
 			baseline,
@@ -154,8 +157,8 @@ export class SelfHealingCandidateService {
 			return { ...blocker, status: 'not_run' };
 		}
 
-		// Planning can take time. Recheck access and the baseline before creating a snapshot.
-		await this.suggestions.requireCurrentBaseline(baseline);
+		// Planning can take time. Recheck access before creating a snapshot.
+		await this.suggestions.requireEditor(baseline.backgroundUserId, baseline.workflowId);
 		abortSignal.throwIfAborted();
 
 		return await this.temporaryWorkflows.withTemporaryWorkflow(
@@ -164,6 +167,8 @@ export class SelfHealingCandidateService {
 				const verification = await runWorkflowVerification({
 					executionService: context.executionService,
 					workflowId,
+					triggerNodeName: input.triggerNodeName,
+					inputData: input.inputData,
 					buildOutcome,
 					prepared: preparation.prepared,
 					stateBefore: undefined,

@@ -2,6 +2,7 @@ import type { Workspace, WorkspaceFilesystem } from '@n8n/agents';
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import type { InstanceAiContext, InstanceAiExecutionService } from '@n8n/instance-ai';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -86,7 +87,7 @@ describe('SelfHealingCandidateService', () => {
 		enterpriseWorkflows.preventTampering.mockImplementation(async (workflow) => workflow);
 		source = candidateSource('Repaired process');
 		filesystem.readFile.mockImplementation(async () => source);
-		suggestions.requireCurrentBaseline.mockResolvedValue(user);
+		suggestions.requireEditor.mockResolvedValue(user);
 		temporaryWorkflows.withTemporaryWorkflow.mockImplementation(async (_input, verify) => {
 			return await verify('temporary-1');
 		});
@@ -225,6 +226,52 @@ describe('SelfHealingCandidateService', () => {
 		expect(suggestions.createSuggestion).not.toHaveBeenCalled();
 	});
 
+	it('passes the selected webhook and its input when the candidate also has a schedule trigger', async () => {
+		const workflow = structuredClone(baseline.original);
+		workflow.nodes[0].type = 'n8n-nodes-base.scheduleTrigger';
+		workflow.nodes.push(
+			{
+				...workflow.nodes[0],
+				id: 'webhook-1',
+				name: 'Incoming Order',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+			},
+			{ ...workflow.nodes[1], id: 'order-1', name: 'Process Order' },
+		);
+		workflow.connections['Incoming Order'] = {
+			main: [[{ node: 'Process Order', type: 'main', index: 0 }]],
+		};
+		source = JSON.stringify(workflow);
+		const inputData = {
+			body: { price: '12' },
+			query: { currency: 'EUR' },
+			headers: { 'content-type': 'application/json' },
+			params: {},
+		};
+		executionService.run.mockResolvedValueOnce({
+			executionId: 'webhook-verification',
+			status: 'success',
+			executedNodeNames: ['Incoming Order', 'Process Order'],
+			data: { 'Process Order': [{ price: 12 }] },
+		});
+
+		const result = await service.verify({ ...input, triggerNodeName: 'Incoming Order', inputData });
+
+		expect(executionService.run).toHaveBeenCalledWith(
+			'temporary-1',
+			inputData,
+			expect.objectContaining({ triggerNodeName: 'Incoming Order', isVerificationRun: true }),
+		);
+		expect(result).toMatchObject({
+			verification: {
+				success: true,
+				nodesExecuted: ['Incoming Order', 'Process Order'],
+				nodesNotReached: ['Start', 'Process'],
+			},
+		});
+	});
+
 	it('simulates a read-only node when the builder cannot resolve its credentials', async () => {
 		vi.stubEnv('N8N_INSTANCE_AI_MODEL_API_KEY', '');
 		vi.stubEnv('N8N_AI_ANTHROPIC_KEY', '');
@@ -318,15 +365,45 @@ describe('SelfHealingCandidateService', () => {
 		});
 	});
 
-	it('rechecks the baseline before execution after planning completes', async () => {
-		suggestions.requireCurrentBaseline
+	it.each([false, true])(
+		'verifies the captured candidate after the saved workflow changes (validationOnly: %s)',
+		async (validationOnly) => {
+			suggestions.requireCurrentBaseline.mockRejectedValue(
+				new ConflictError('The workflow no longer matches the published baseline.'),
+			);
+
+			const result = await service.verify({ ...input, validationOnly });
+
+			expect(result).toMatchObject({
+				validation: { success: true },
+				verification: validationOnly
+					? { status: 'not_run' }
+					: { status: 'success', success: true, nodesNotReached: [] },
+			});
+			expect(input.baseline).toEqual(baseline);
+		},
+	);
+
+	it('rejects verification when the actor no longer has edit access', async () => {
+		suggestions.requireEditor.mockRejectedValue(
+			new ForbiddenError('Workflow edit access is required.'),
+		);
+
+		await expect(service.verify(input)).rejects.toThrow('Workflow edit access is required.');
+
+		expect(filesystem.readFile).not.toHaveBeenCalled();
+		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('rechecks edit access before execution after planning completes', async () => {
+		suggestions.requireEditor
 			.mockResolvedValueOnce(user)
-			.mockRejectedValueOnce(new Error('The workflow baseline has changed.'));
+			.mockRejectedValueOnce(new ForbiddenError('Workflow edit access is required.'));
 
 		const result = await service.verify(input);
 
 		expect(result).toMatchObject({
-			verification: { success: false, error: 'The workflow baseline has changed.' },
+			verification: { success: false, error: 'Workflow edit access is required.' },
 		});
 		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
