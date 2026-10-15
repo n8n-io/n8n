@@ -1,4 +1,4 @@
-import { AGENT_SKILL_NAME_MAX_LENGTH, type AgentSkill } from '@n8n/api-types';
+import { AGENT_SKILL_NAME_MAX_LENGTH, skillNameKey, type AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
@@ -21,7 +21,7 @@ import {
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
 import { SkillNameTakenError } from './skill-name-taken.error';
-import { findIntroducedNameClashes, renameIntroducesClash, skillNameKey } from './skill-names';
+import { findIntroducedNameClashes, renameIntroducesClash } from './skill-names';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };

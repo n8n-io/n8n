@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import cloneDeep from 'lodash/cloneDeep';
+import isEqual from 'lodash/isEqual';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	skillNameKey,
+	type AgentSkillAvailability,
+	type SkillDetail,
+	type SkillListItem,
 } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nCallout,
@@ -11,19 +18,28 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { useUIStore } from '@/app/stores/ui.store';
+import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import type {
+	SkillConnectionItem,
+	ToolCategoryKey,
+	ToolConnectionItem,
+} from '@/features/shared/toolsConnection/types';
+import { getHubSkill, listAttachableSkills } from '../composables/useAgentApi';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
-import AgentModal from './modals/AgentModal.vue';
+import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -46,18 +62,22 @@ export type AgentSkillModalData = {
 	 * the modal is still open — skill names must be unique per agent.
 	 */
 	existingSkillNames?: string[];
+	hubSkillsEnabled?: boolean;
+	getAttachedSkills?: () => Array<{ id: string; name: string }>;
+	projectLabel?: string;
+	canCreateInstanceSkills?: boolean;
 	/**
-	 * Shows where the skill can be added. On create the user picks one and the value comes
-	 * back in `onConfirm`. Absent in the agent builder, where the agent fixes the scope.
+	 * Settings only: where the skill can be added. On create the user picks one and the
+	 * value comes back in `onConfirm`. The agent builder uses `availableTo` instead.
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
 	/**
-	 * Skills hub only: a default name that no skill in the scope has yet, as new workflows
+	 * Settings only: a default name that no skill in the scope has yet, as new workflows
 	 * get one. Called with the chosen scope value when the user starts a skill by hand.
 	 */
 	getDefaultName?: (scope: string) => Promise<string>;
-	/** Locks the scope field and explains why in a tooltip: a saved skill keeps its scope. */
+	/** Locks the scope field and explains why in a tooltip. */
 	scopeLockedReason?: string;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
@@ -68,8 +88,12 @@ export type AgentSkillModalData = {
 	onConfirm: (payload: {
 		id?: string;
 		skill: AgentSkill;
+		availableTo?: AgentSkillAvailability;
 		scope?: string;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
+	outdated?: boolean;
+	onUseLatestVersion?: (id: string) => void;
+	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (id: string) => void;
 };
 
@@ -80,35 +104,42 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const rootStore = useRootStore();
+const { showError } = useToast();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
-const agentModal = useTemplateRef<InstanceType<typeof AgentModal>>('agentModal');
+const agentModal = useTemplateRef<InstanceType<typeof AgentModalMultiStep>>('agentModal');
+
+const existingNameKeys = computed(() => {
+	const names = props.data.getAttachedSkills
+		? props.data.getAttachedSkills().map(({ name }) => name)
+		: (props.data.existingSkillNames ?? []);
+	return new Set(names.map(skillNameKey));
+});
 
 function getDefaultSkillName(): string {
 	const baseName = i18n.baseText('agents.builder.skills.defaultName' as BaseTextKey);
-	const existingNames = new Set(
-		(props.data.existingSkillNames ?? []).map((name) => name.trim().toLowerCase()),
-	);
-	if (!existingNames.has(baseName.toLowerCase())) return baseName;
+	if (!existingNameKeys.value.has(skillNameKey(baseName))) return baseName;
 
 	let suffix = 2;
-	while (existingNames.has(`${baseName} ${suffix}`.toLowerCase())) suffix += 1;
+	while (existingNameKeys.value.has(skillNameKey(`${baseName} ${suffix}`))) suffix += 1;
 	return `${baseName} ${suffix}`;
 }
 
-const skill = ref<AgentSkill>(
-	normalizeSkill({
-		name: props.data.skill?.name ?? getDefaultSkillName(),
-		description: props.data.skill?.description ?? '',
-		instructions: props.data.skill?.instructions ?? '',
-		...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
-	}),
-);
+const initialSkill = normalizeSkill({
+	name: props.data.skill?.name ?? getDefaultSkillName(),
+	description: props.data.skill?.description ?? '',
+	instructions: props.data.skill?.instructions ?? '',
+	...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
+});
+const skill = ref<AgentSkill>(cloneDeep(initialSkill));
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
-const step = ref<'upload' | 'manual' | 'edit'>(
-	props.data.skill || props.data.skillId ? 'edit' : 'upload',
+const isEditing = computed(() => !!props.data.skillId);
+const hasPicker = !props.data.skillId && !!props.data.hubSkillsEnabled && !!props.data.onAttach;
+const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
+	props.data.skill || props.data.skillId ? 'edit' : hasPicker ? 'select' : 'upload',
 );
 const isImporting = ref(false);
 const isSaving = ref(false);
@@ -153,18 +184,137 @@ function onAddManually() {
 watch(scope, () => {
 	if (step.value === 'manual') void refreshDefaultName();
 });
-const showScope = computed(() => !!props.data.scopeOptions?.length);
+const showScope = computed(() => !!props.data.scopeOptions?.length && step.value !== 'preview');
 const canChangeScope = computed(
 	() => showScope.value && !props.data.scopeLockedReason && !props.data.readOnly,
 );
 const selectedScopeIcon = computed(
 	() => props.data.scopeOptions?.find((option) => option.value === scope.value)?.icon,
 );
-const readOnly = computed(() => props.data.readOnly === true);
-/** Save sends a snapshot, so the editor is locked until the answer comes back. */
-const editorLocked = computed(() => readOnly.value || isSaving.value);
+const availableTo = ref<AgentSkillAvailability>('project');
 
-const isEditing = computed(() => !!props.data.skillId);
+const librarySkills = ref<SkillListItem[]>([]);
+const libraryLoading = ref(false);
+const attachedSkills = computed(() => props.data.getAttachedSkills?.() ?? []);
+const attachedSkillIds = computed(() => new Set(attachedSkills.value.map(({ id }) => id)));
+const attachingSkillIds = ref(new Set<string>());
+const pickerItems = computed<SkillConnectionItem[]>(() =>
+	librarySkills.value.map((librarySkill) => {
+		const attached = attachedSkillIds.value.has(librarySkill.id);
+		const attaching = attachingSkillIds.value.has(librarySkill.id);
+		const similarNameReason =
+			attached || attaching ? undefined : getSimilarNameReason(librarySkill.name);
+		return {
+			id: `skill:${librarySkill.id}`,
+			kind: 'skill',
+			skillId: librarySkill.id,
+			title: librarySkill.name,
+			description: librarySkill.description,
+			category: getPickerCategory(librarySkill),
+			status: 'none',
+			attached: attached || attaching,
+			attaching,
+			disabled: similarNameReason !== undefined,
+			...(similarNameReason ? { disabledReason: similarNameReason } : {}),
+		};
+	}),
+);
+
+const previewSkill = ref<SkillDetail | null>(null);
+const previewPath = ref(SKILL_FILE);
+const previewLoading = ref(false);
+const previewIsAdded = computed(
+	() => !!previewSkill.value && attachedSkillIds.value.has(previewSkill.value.id),
+);
+const showRemove = computed(() => {
+	if (!props.data.onRemove) return false;
+	return step.value === 'preview' ? previewIsAdded.value : isEditing.value;
+});
+const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>(() => {
+	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
+	if (isOutdated.value) return props.data.onUseLatestVersion ? 'useLatest' : undefined;
+	return isReadOnly.value ? undefined : 'save';
+});
+const modalTitle = computed(() => {
+	if (step.value === 'select') return i18n.baseText('agents.builder.skills.title');
+	if (step.value === 'upload') return i18n.baseText('agents.builder.skills.add');
+	if (step.value === 'preview') return previewSkill.value?.name ?? '';
+	return skill.value.name;
+});
+
+const skillAccess = ref<SkillDetail | null>(null);
+const skillAccessLoading = ref(false);
+const skillAccessFailed = ref(false);
+const isOutdated = computed(() => isEditing.value && !!props.data.outdated);
+const isReadOnly = computed(
+	() =>
+		props.data.readOnly === true ||
+		skillAccessLoading.value ||
+		skillAccessFailed.value ||
+		skillAccess.value?.canEdit === false ||
+		isOutdated.value,
+);
+const cannotEdit = computed(
+	() => props.data.readOnly === true || skillAccess.value?.canEdit === false || isOutdated.value,
+);
+/** Save sends a snapshot, so the editor is locked until the answer comes back. */
+const editorLocked = computed(() => isReadOnly.value || isSaving.value);
+const savedTarget = computed<AgentSkillAvailability | undefined>(() => {
+	if (!skillAccess.value) return undefined;
+	if (skillAccess.value.agentId) return 'agent';
+	return skillAccess.value.scope === 'instance' ? 'instance' : 'project';
+});
+const usedByOtherAgents = computed(() => {
+	const usage = skillAccess.value?.usedBy;
+	if (!usage) return false;
+	const isOtherAgent = ({ agentId }: { agentId: string }) => agentId !== props.data.agentId;
+	return usage.hiddenAgents > 0 || usage.drafts.some(isOtherAgent) || usage.pins.some(isOtherAgent);
+});
+const showAvailabilitySelect = computed(() => {
+	if (!props.data.hubSkillsEnabled || step.value === 'preview') return false;
+	if (!isEditing.value) return true;
+	return !!savedTarget.value && !cannotEdit.value;
+});
+const showInstanceTarget = computed(
+	() => !!props.data.canCreateInstanceSkills || savedTarget.value === 'instance',
+);
+const AVAILABILITY_ICONS = {
+	project: 'layers',
+	agent: 'bot',
+	instance: 'globe',
+} as const satisfies Record<AgentSkillAvailability, string>;
+const availabilityOptions = computed(() => [
+	{ value: 'project' as const, label: i18n.baseText('agents.builder.skills.availableTo.project') },
+	{ value: 'agent' as const, label: i18n.baseText('agents.builder.skills.availableTo.agent') },
+	...(showInstanceTarget.value
+		? [
+				{
+					value: 'instance' as const,
+					label: i18n.baseText('agents.builder.skills.availableTo.instance'),
+				},
+			]
+		: []),
+]);
+const removeLabel = computed(() =>
+	props.data.hubSkillsEnabled
+		? i18n.baseText('agents.builder.skills.detach')
+		: i18n.baseText('agents.builder.skills.remove'),
+);
+const footerHint = computed(() => {
+	const shownSkill = step.value === 'preview' ? previewSkill.value : skillAccess.value;
+	if (step.value === 'edit' && isOutdated.value) {
+		return i18n.baseText('agents.builder.skills.hint.outdated');
+	}
+	if (!shownSkill || (step.value !== 'preview' && step.value !== 'edit')) return '';
+	if (!shownSkill.canEdit) {
+		return shownSkill.scope === 'instance'
+			? i18n.baseText('agents.builder.skills.hint.readOnly.instance')
+			: i18n.baseText('agents.builder.skills.hint.readOnly.project');
+	}
+	if (step.value !== 'preview' || previewIsAdded.value) return '';
+	return i18n.baseText('agents.builder.skills.hint.addToEdit');
+});
+
 const canAddReference = computed(
 	() => (skill.value.references ?? []).length < AGENT_SKILL_REFERENCE_MAX_COUNT,
 );
@@ -187,11 +337,7 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 		errors.name = i18n.baseText('agents.builder.skills.validation.nameRequired');
 	} else if (name.length > 128) {
 		errors.name = i18n.baseText('agents.builder.skills.validation.nameMaxLength');
-	} else if (
-		(props.data.existingSkillNames ?? []).some(
-			(existingName) => existingName.trim().toLowerCase() === name.toLowerCase(),
-		)
-	) {
+	} else if (existingNameKeys.value.has(skillNameKey(name))) {
 		errors.name = i18n.baseText('agents.builder.skills.validation.nameDuplicate');
 	}
 
@@ -221,7 +367,116 @@ const visibleErrors = computed(() =>
 const visibleNameError = computed(
 	() => (submitted.value ? validationErrors.value.name : undefined) ?? serverNameError.value,
 );
-const canSave = computed(() => formIsValid.value && !validationErrors.value.name);
+const canSave = computed(
+	() => formIsValid.value && !validationErrors.value.name && !isReadOnly.value,
+);
+const hasChanges = computed(
+	() =>
+		!isEditing.value ||
+		!isEqual(skill.value, initialSkill) ||
+		(showAvailabilitySelect.value && availableTo.value !== savedTarget.value) ||
+		(canChangeScope.value && scope.value !== props.data.initialScope),
+);
+
+function getSimilarNameReason(name: string): string | undefined {
+	const key = skillNameKey(name);
+	const similarNames = attachedSkills.value
+		.map((attachedSkill) => attachedSkill.name)
+		.filter((attachedName) => skillNameKey(attachedName) === key);
+	if (similarNames.length === 0) return undefined;
+	return i18n.baseText('agents.builder.skills.picker.similarName', {
+		interpolate: { names: [...similarNames, name].map((value) => `"${value}"`).join(', ') },
+	});
+}
+
+function getPickerCategory(librarySkill: SkillListItem): 'project' | 'this-agent' | 'global' {
+	if (librarySkill.scope === 'instance') return 'global';
+	return librarySkill.agentId ? 'this-agent' : 'project';
+}
+
+async function loadLibrarySkills() {
+	libraryLoading.value = true;
+	try {
+		librarySkills.value = await listAttachableSkills(rootStore.restApiContext, props.data.agentId);
+	} catch (error) {
+		showError(error, i18n.baseText('agents.builder.skills.picker.loadError'));
+	} finally {
+		libraryLoading.value = false;
+	}
+}
+
+function targetForPickerCategory(category: ToolCategoryKey): AgentSkillAvailability {
+	if (category === 'project') return 'project';
+	if (category === 'global' && props.data.canCreateInstanceSkills) return 'instance';
+	return 'agent';
+}
+
+function onPickerCreate(category: ToolCategoryKey) {
+	availableTo.value = targetForPickerCategory(category);
+	step.value = 'upload';
+}
+
+async function loadSkillAccess(skillId: string) {
+	skillAccessLoading.value = true;
+	try {
+		skillAccess.value = await getHubSkill(rootStore.restApiContext, skillId);
+		availableTo.value = savedTarget.value ?? 'project';
+	} catch (error) {
+		skillAccess.value = null;
+		skillAccessFailed.value = true;
+		showError(error, i18n.baseText('agents.builder.skills.accessError'));
+	} finally {
+		skillAccessLoading.value = false;
+	}
+}
+
+function onPickerItemAttach(item: ToolConnectionItem) {
+	if (item.kind !== 'skill' || item.disabled || item.attached) return;
+	void attachLibrarySkill(item.skillId);
+}
+
+function onPickerItemDetach(item: ToolConnectionItem) {
+	if (item.kind !== 'skill' || !item.attached || item.attaching) return;
+	props.data.onRemove?.(item.skillId);
+}
+
+async function onPickerItemPreview(item: ToolConnectionItem) {
+	if (item.kind !== 'skill' || item.disabled) return;
+	previewLoading.value = true;
+	try {
+		previewSkill.value = await getHubSkill(rootStore.restApiContext, item.skillId);
+		previewPath.value = SKILL_FILE;
+		step.value = 'preview';
+	} catch (error) {
+		showError(error, i18n.baseText('agents.builder.skills.picker.previewError'));
+	} finally {
+		previewLoading.value = false;
+	}
+}
+
+async function attachLibrarySkill(skillId: string) {
+	const librarySkill = librarySkills.value.find((candidate) => candidate.id === skillId);
+	if (!librarySkill || !props.data.onAttach) return;
+	attachingSkillIds.value = new Set([...attachingSkillIds.value, skillId]);
+	try {
+		await props.data.onAttach(librarySkill);
+	} finally {
+		const remaining = new Set(attachingSkillIds.value);
+		remaining.delete(skillId);
+		attachingSkillIds.value = remaining;
+	}
+}
+
+function onPreviewAdd() {
+	if (!previewSkill.value) return;
+	void attachLibrarySkill(previewSkill.value.id);
+	step.value = 'select';
+}
+
+onMounted(() => {
+	if (hasPicker) void loadLibrarySkills();
+	if (props.data.skillId && props.data.hubSkillsEnabled) void loadSkillAccess(props.data.skillId);
+});
 
 function onSkillUploaded(importedSkill: AgentSkill) {
 	skill.value = normalizeSkill(importedSkill);
@@ -232,6 +487,10 @@ function onSkillUploaded(importedSkill: AgentSkill) {
 }
 
 function onBack() {
+	if (step.value === 'upload' || step.value === 'preview') {
+		step.value = 'select';
+		return;
+	}
 	skill.value = { name: getDefaultSkillName(), description: '', instructions: '' };
 	serverNameError.value = '';
 	selectedPath.value = SKILL_FILE;
@@ -241,6 +500,7 @@ function onBack() {
 }
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
+	if (isReadOnly.value) return;
 	if (updates.name !== undefined && updates.name !== skill.value.name) serverNameError.value = '';
 	skill.value = normalizeSkill({ ...skill.value, ...updates });
 	if (
@@ -310,7 +570,7 @@ function closeModal() {
 }
 
 async function onSave() {
-	if (readOnly.value || defaultNameLoading.value || isSaving.value) return;
+	if (defaultNameLoading.value || isSaving.value) return;
 	submitted.value = true;
 	if (!canSave.value) return;
 
@@ -321,12 +581,14 @@ async function onSave() {
 		...(skill.value.references ? { references: skill.value.references } : {}),
 	});
 
+	const targetChanged = !isEditing.value || availableTo.value !== savedTarget.value;
 	isSaving.value = true;
 	let result: AgentSkillConfirmResult;
 	try {
 		result = await props.data.onConfirm({
 			id: props.data.skillId,
 			skill: payload,
+			...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
 			...(canChangeScope.value ? { scope: scope.value } : {}),
 		});
 	} catch {
@@ -352,133 +614,267 @@ async function focusName() {
 
 // A new skill gets its name first, so the name takes the focus when it can be edited.
 watch(step, async (next) => {
-	if (next !== 'upload' && !isEditing.value && !readOnly.value) await focusName();
+	if ((next === 'manual' || next === 'edit') && !isEditing.value && !isReadOnly.value) {
+		await focusName();
+	}
 });
 
+function onUseLatestVersion() {
+	if (!props.data.skillId) return;
+	const skillId = props.data.skillId;
+	closeModal();
+	props.data.onUseLatestVersion?.(skillId);
+}
+
 function onRemove() {
-	if (!props.data.skillId || readOnly.value) return;
+	if (step.value === 'preview') {
+		if (previewSkill.value) props.data.onRemove?.(previewSkill.value.id);
+		step.value = 'select';
+		return;
+	}
+	if (!props.data.skillId) return;
 	props.data.onRemove?.(props.data.skillId);
 	closeModal();
 }
 </script>
 
 <template>
-	<AgentModal
+	<AgentModalMultiStep
 		ref="agentModal"
 		:open="modalOpen"
-		:title="step === 'upload' ? i18n.baseText('agents.builder.skills.add') : skill.name"
+		:step="step"
+		:title="modalTitle"
 		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
 		:title-max-length="128"
 		:title-error="visibleNameError"
-		:editable-title="step !== 'upload' && !readOnly"
-		:show-back="step === 'manual'"
-		:show-footer="step !== 'upload' && !readOnly"
-		:busy="isImporting || isSaving"
+		:editable-title="step === 'manual' || (step === 'edit' && !isReadOnly)"
+		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
+		:show-footer="step === 'manual' || step === 'edit' || step === 'preview'"
+		:body-flush="step !== 'select'"
+		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
-		body-flush
 		data-testid="agent-skill-modal"
 		@update:open="!$event && closeModal()"
 		@update:title="onSkillUpdate({ name: $event })"
 		@back="onBack"
 	>
-		<N8nCallout
-			v-if="readOnly"
-			theme="info"
-			:class="$style.missingContentCallout"
-			data-testid="agent-skill-read-only-callout"
-		>
-			{{ i18n.baseText('settings.context.skills.readOnly') }}
-		</N8nCallout>
-		<N8nCallout
-			v-if="openedWithMissingContent"
-			theme="warning"
-			:class="$style.missingContentCallout"
-			data-testid="agent-skill-missing-content-callout"
-		>
-			{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
-		</N8nCallout>
-		<div :class="$style.content">
-			<AgentSkillUpload
-				v-if="step === 'upload'"
-				v-model:busy="isImporting"
-				@uploaded="onSkillUploaded"
-				@add-manually="onAddManually"
-				@import:skill="onImportSkill"
+		<div v-if="hasPicker" v-show="step === 'select'" :class="$style.picker">
+			<ToolsConnectionModal
+				:open="modalOpen && step === 'select'"
+				:items="pickerItems"
+				:categories="['all', 'project', 'this-agent', 'global']"
+				:category-labels="data.projectLabel ? { project: data.projectLabel } : undefined"
+				:detail-item="null"
+				:search-placeholder="i18n.baseText('agents.builder.skills.picker.search.placeholder')"
+				:empty-message="
+					libraryLoading
+						? i18n.baseText('agents.builder.skills.picker.loading')
+						: i18n.baseText('agents.builder.skills.picker.empty')
+				"
+				:no-results-message="i18n.baseText('agents.builder.skills.picker.noResults')"
+				:create-action="{
+					label: i18n.baseText('agents.builder.skills.picker.create'),
+					description: i18n.baseText('agents.builder.skills.picker.create.description'),
+					testId: 'agent-skill-picker-create',
+				}"
+				embedded
+				show-connect-actions
+				persistent-scrollbar
+				data-testid="agent-skill-picker"
+				@connect="onPickerItemAttach"
+				@disconnect="onPickerItemDetach"
+				@open-detail="onPickerItemPreview"
+				@create="onPickerCreate"
 			/>
-			<template v-else>
-				<AgentSkillFileNav
-					:skill="skill"
-					:selected-path="selectedPath"
-					:add-reference-disabled="!canAddReference"
-					:read-only="editorLocked"
-					@add-reference="onAddReference"
-					@remove-reference="onRemoveReference"
-					@select="selectedPath = $event"
+		</div>
+		<div
+			v-if="step === 'preview' && previewSkill"
+			:class="$style.content"
+			data-testid="agent-skill-preview"
+		>
+			<AgentSkillFileNav
+				:skill="previewSkill.skill"
+				:selected-path="previewPath"
+				read-only
+				@select="previewPath = $event"
+			/>
+			<AgentSkillViewer
+				:skill="previewSkill.skill"
+				:selected-path="previewPath"
+				read-only
+				@select:path="previewPath = $event"
+			/>
+		</div>
+		<template v-else-if="step !== 'select'">
+			<N8nCallout
+				v-if="data.readOnly"
+				theme="info"
+				:class="$style.callout"
+				data-testid="agent-skill-read-only-callout"
+			>
+				{{ i18n.baseText('settings.context.skills.readOnly') }}
+			</N8nCallout>
+			<N8nCallout
+				v-if="openedWithMissingContent && !isReadOnly"
+				theme="warning"
+				:class="$style.callout"
+				data-testid="agent-skill-missing-content-callout"
+			>
+				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
+			</N8nCallout>
+			<div :class="$style.content">
+				<AgentSkillUpload
+					v-if="step === 'upload'"
+					v-model:busy="isImporting"
+					@uploaded="onSkillUploaded"
+					@add-manually="onAddManually"
+					@import:skill="onImportSkill"
 				/>
-				<AgentSkillViewer
-					:skill="skill"
-					:disabled="editorLocked"
-					:selected-path="selectedPath"
-					:errors="visibleErrors"
-					:show-validation-warnings="submitted || openedWithMissingContent"
-					@select:path="selectedPath = $event"
-					@update:skill="onSkillUpdate"
-					@update:valid="onValidUpdate"
-				>
-					<template v-if="showScope" #skillFileHeader>
-						<N8nInputLabel
-							:label="i18n.baseText('settings.context.skills.modal.scope.label')"
-							:tooltip-text="i18n.baseText('settings.context.skills.modal.scope.tooltip')"
-							size="small"
-							data-testid="agent-skill-scope"
-						>
-							<N8nTooltip
-								:disabled="!props.data.scopeLockedReason"
-								:content="props.data.scopeLockedReason"
-								placement="top"
+				<template v-else>
+					<AgentSkillFileNav
+						:skill="skill"
+						:selected-path="selectedPath"
+						:add-reference-disabled="!canAddReference"
+						:read-only="editorLocked"
+						@add-reference="onAddReference"
+						@remove-reference="onRemoveReference"
+						@select="selectedPath = $event"
+					/>
+					<AgentSkillViewer
+						:skill="skill"
+						:selected-path="selectedPath"
+						:disabled="editorLocked"
+						:read-only="cannotEdit"
+						:errors="visibleErrors"
+						:show-validation-warnings="submitted || openedWithMissingContent"
+						@select:path="selectedPath = $event"
+						@update:skill="onSkillUpdate"
+						@update:valid="onValidUpdate"
+					>
+						<template v-if="showScope" #fields-start>
+							<N8nInputLabel
+								:label="i18n.baseText('settings.context.skills.modal.scope.label')"
+								:tooltip-text="i18n.baseText('settings.context.skills.modal.scope.tooltip')"
+								size="small"
+								data-testid="agent-skill-scope"
 							>
-								<!-- A disabled select drops pointer events, so the tooltip needs its own target. -->
-								<div>
+								<N8nTooltip
+									:disabled="!data.scopeLockedReason"
+									:content="data.scopeLockedReason"
+									placement="top"
+								>
+									<!-- A disabled select drops pointer events, so the tooltip needs its own target. -->
+									<div>
+										<N8nSelect
+											v-model="scope"
+											size="large"
+											:disabled="!canChangeScope || isSaving"
+											:teleported="false"
+											data-testid="agent-skill-scope-select"
+										>
+											<template v-if="selectedScopeIcon" #prefix>
+												<N8nIcon :icon="selectedScopeIcon" />
+											</template>
+											<N8nOption
+												v-for="option in data.scopeOptions"
+												:key="option.value"
+												:value="option.value"
+												:label="option.label"
+											>
+												<span :class="$style.availabilityOption">
+													<N8nIcon :icon="option.icon" />
+													<span>{{ option.label }}</span>
+												</span>
+											</N8nOption>
+										</N8nSelect>
+									</div>
+								</N8nTooltip>
+							</N8nInputLabel>
+						</template>
+						<template v-else-if="showAvailabilitySelect" #fields-start>
+							<N8nInputLabel
+								:label="i18n.baseText('agents.builder.skills.availableTo.label')"
+								:tooltip-text="i18n.baseText('agents.builder.skills.availableTo.tooltip')"
+								show-tooltip
+								size="small"
+							>
+								<N8nTooltip
+									:content="i18n.baseText('agents.builder.skills.availableTo.locked')"
+									:disabled="!usedByOtherAgents"
+									placement="top"
+								>
 									<N8nSelect
-										v-model="scope"
-										size="large"
-										:disabled="!canChangeScope || isSaving"
+										v-model="availableTo"
 										:teleported="false"
-										data-testid="agent-skill-scope-select"
+										:disabled="usedByOtherAgents"
+										data-testid="agent-skill-availability-select"
 									>
-										<template v-if="selectedScopeIcon" #prefix>
-											<N8nIcon :icon="selectedScopeIcon" />
+										<template #prefix>
+											<N8nIcon
+												:icon="AVAILABILITY_ICONS[availableTo]"
+												:size="16"
+												color="text-dark"
+											/>
 										</template>
 										<N8nOption
-											v-for="option in props.data.scopeOptions"
+											v-for="option in availabilityOptions"
 											:key="option.value"
 											:value="option.value"
 											:label="option.label"
 										>
-											<span :class="$style.scopeOption">
-												<N8nIcon :icon="option.icon" />
-												<span>{{ option.label }}</span>
+											<span :class="$style.availabilityOption">
+												<N8nIcon :icon="AVAILABILITY_ICONS[option.value]" :size="16" />
+												{{ option.label }}
 											</span>
 										</N8nOption>
 									</N8nSelect>
-								</div>
-							</N8nTooltip>
-						</N8nInputLabel>
-					</template>
-				</AgentSkillViewer>
-			</template>
-		</div>
+								</N8nTooltip>
+							</N8nInputLabel>
+						</template>
+					</AgentSkillViewer>
+				</template>
+			</div>
+		</template>
 
-		<template v-if="isEditing && data.onRemove" #footerLeft>
+		<template v-if="showRemove" #footerLeft>
 			<N8nButton variant="ghost" data-testid="agent-skill-remove" @click="onRemove">
-				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-				{{ i18n.baseText('agents.builder.skills.remove') }}
+				<template #icon
+					><N8nIcon :icon="data.hubSkillsEnabled ? 'unlink' : 'trash-2'" :size="16"
+				/></template>
+				{{ removeLabel }}
 			</N8nButton>
 		</template>
-		<template #footerActions>
+		<template v-if="footerHint" #footerBeforeCancel>
+			<N8nText
+				size="small"
+				color="text-light"
+				:class="$style.footerHint"
+				data-testid="agent-skill-footer-hint"
+			>
+				{{ footerHint }}
+			</N8nText>
+		</template>
+		<template v-if="footerPrimaryAction" #footerActions>
 			<N8nButton
+				v-if="footerPrimaryAction === 'add'"
 				variant="solid"
-				:disabled="defaultNameLoading"
+				data-testid="agent-skill-preview-add"
+				@click="onPreviewAdd"
+			>
+				{{ i18n.baseText('agents.builder.skills.picker.add') }}
+			</N8nButton>
+			<N8nButton
+				v-else-if="footerPrimaryAction === 'useLatest'"
+				variant="solid"
+				data-testid="agent-skill-use-latest"
+				@click="onUseLatestVersion"
+			>
+				{{ i18n.baseText('agents.builder.skills.useLatest') }}
+			</N8nButton>
+			<N8nButton
+				v-else
+				variant="solid"
+				:disabled="!hasChanges || defaultNameLoading"
 				:loading="isSaving"
 				data-testid="agent-skill-create-save"
 				@click="onSave"
@@ -486,7 +882,7 @@ function onRemove() {
 				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>
-	</AgentModal>
+	</AgentModalMultiStep>
 </template>
 
 <style module>
@@ -500,11 +896,20 @@ function onRemove() {
 	display: flex;
 }
 
-.missingContentCallout {
+.picker {
+	width: min(calc(52rem - var(--spacing--lg) * 2), calc(100dvw - var(--spacing--lg) * 5));
+	height: 100%;
+}
+
+.callout {
 	margin: var(--spacing--md) var(--spacing--lg) 0;
 }
 
-.scopeOption {
+.footerHint {
+	text-align: right;
+}
+
+.availabilityOption {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);

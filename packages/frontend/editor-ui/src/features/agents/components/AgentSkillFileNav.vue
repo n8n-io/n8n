@@ -12,7 +12,6 @@ const props = withDefaults(
 		skill: AgentSkill;
 		selectedPath: string;
 		addReferenceDisabled?: boolean;
-		/** Hides the add and remove controls. */
 		readOnly?: boolean;
 	}>(),
 	{
