@@ -226,6 +226,40 @@ function onGlobalKeydown(event: KeyboardEvent) {
 	if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
 		event.preventDefault();
 		isOpen.value = !isOpen.value;
+		return;
+	}
+
+	const input = inputRef.value;
+	if (
+		!isOpen.value ||
+		!input ||
+		event.target === input ||
+		event.defaultPrevented ||
+		event.isComposing ||
+		event.metaKey ||
+		event.ctrlKey ||
+		event.altKey
+	) {
+		return;
+	}
+
+	const isPrintable = event.key.length === 1;
+	if (!isPrintable && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+		return;
+	}
+
+	input.focus();
+	onInputKeydown(event);
+	if (isPrintable) {
+		// The key event still targets the element that had focus before recovery.
+		event.preventDefault();
+		input.setRangeText(
+			event.key,
+			input.selectionStart ?? input.value.length,
+			input.selectionEnd ?? input.value.length,
+			'end',
+		);
+		query.value = input.value;
 	}
 }
 
