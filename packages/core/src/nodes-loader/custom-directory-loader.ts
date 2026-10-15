@@ -1,6 +1,6 @@
 import glob from 'fast-glob';
 import { jsonParse } from 'n8n-workflow';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { CUSTOM_NODES_PACKAGE_NAME } from './constants';
@@ -40,21 +40,31 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 			{ cwd: this.directory, absolute: true },
 		);
 		for (const packageFile of packageFiles) {
-			const { n8n } = jsonParse<n8n.PackageJson>(await readFile(packageFile, 'utf8'));
-			if (!n8n) {
-				this.logger.warn(`Skipping custom node package "${packageFile}": no n8n field found.`);
-				continue;
-			}
+			try {
+				const { n8n } = jsonParse<n8n.PackageJson>(await readFile(packageFile, 'utf8'));
+				if (!n8n) {
+					this.logger.debug(`Skipping custom node package "${packageFile}": no n8n field found.`);
+					continue;
+				}
 
-			const packageDirectory = path.dirname(packageFile);
-			if (Array.isArray(n8n.nodes)) {
-				nodes.push(...n8n.nodes.map((nodePath) => path.resolve(packageDirectory, nodePath)));
-			}
-			if (Array.isArray(n8n.credentials)) {
-				credentials.push(
-					...n8n.credentials.map((credentialPath) =>
-						path.resolve(packageDirectory, credentialPath),
-					),
+				const packageDirectory = path.dirname(packageFile);
+				const packageNodes = Array.isArray(n8n.nodes)
+					? n8n.nodes.map((nodePath) => path.resolve(packageDirectory, nodePath))
+					: [];
+				const packageCredentials = Array.isArray(n8n.credentials)
+					? n8n.credentials.map((credentialPath) => path.resolve(packageDirectory, credentialPath))
+					: [];
+
+				// Skip the whole package if a build has not produced all its manifest entries.
+				await Promise.all(
+					[...packageNodes, ...packageCredentials].map(async (filePath) => await access(filePath)),
+				);
+				nodes.push(...packageNodes);
+				credentials.push(...packageCredentials);
+			} catch (error) {
+				this.logger.warn(
+					`Skipping custom node package "${packageFile}": failed to read its manifest or find its files.`,
+					{ error },
 				);
 			}
 		}

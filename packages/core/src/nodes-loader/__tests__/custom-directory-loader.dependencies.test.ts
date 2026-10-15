@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -9,7 +9,7 @@ import { CustomDirectoryLoader } from '../custom-directory-loader';
 
 // NODE-6005: Dependency build files can use n8n node and credential file suffixes.
 describe('CustomDirectoryLoader dependencies', () => {
-	mockInstance(Logger);
+	const logger = mockInstance(Logger);
 
 	let tmpRoot: string;
 	let customDir: string;
@@ -71,6 +71,7 @@ describe('CustomDirectoryLoader dependencies', () => {
 	};
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		tmpRoot = mkdtempSync(path.join(tmpdir(), 'n8n-custom-dependencies-'));
 		customDir = path.join(tmpRoot, 'custom');
 		mkdirSync(customDir);
@@ -104,6 +105,93 @@ describe('CustomDirectoryLoader dependencies', () => {
 			expectCustomFilesLoaded(files);
 			expect(loadNode).not.toHaveBeenCalledWith(dependencyPath);
 			expect(loadCredential).not.toHaveBeenCalledWith(dependencyPath);
+		},
+	);
+
+	it('skips ordinary dependencies without a warning', async () => {
+		const files = writeCustomFiles(customDir);
+		writeDependency(customDir, 'node');
+
+		await loader.loadAll();
+
+		expectCustomFilesLoaded(files);
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(logger.debug).toHaveBeenCalledWith(
+			`Skipping custom node package "${path.join(customDir, 'node_modules/wmf/package.json')}": no n8n field found.`,
+		);
+	});
+
+	it('skips a broken manifest and loads another custom package', async () => {
+		const packageFile = writeFile(customDir, 'node_modules/a-broken/package.json', '{ "n8n":');
+		const packageDir = path.join(customDir, 'node_modules/z-working');
+		const files = writeCustomFiles(packageDir);
+		writeFile(
+			packageDir,
+			'package.json',
+			JSON.stringify({
+				name: 'z-working',
+				n8n: {
+					nodes: ['nodes/Foo.node.js'],
+					credentials: ['credentials/FooApi.credentials.js'],
+				},
+			}),
+		);
+
+		await expect(loader.loadAll()).resolves.toBeUndefined();
+
+		expectCustomFilesLoaded(files);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(packageFile), {
+			error: expect.any(Error),
+		});
+	});
+
+	it.each(['nodePath', 'credentialPath'] as const)(
+		'skips a linked package with a missing %s until it is built',
+		async (missingFile) => {
+			const looseFiles = writeCustomFiles(customDir);
+			const projectDir = path.join(tmpRoot, 'project');
+			const projectFiles = writeCustomFiles(path.join(projectDir, 'dist'));
+			unlinkSync(projectFiles[missingFile]);
+			writeFile(
+				projectDir,
+				'package.json',
+				JSON.stringify({
+					name: 'n8n-nodes-foo',
+					n8n: {
+						nodes: ['dist/nodes/Foo.node.js'],
+						credentials: ['dist/credentials/FooApi.credentials.js'],
+					},
+				}),
+			);
+			const packageLink = path.join(customDir, 'node_modules/n8n-nodes-foo');
+			mkdirSync(path.dirname(packageLink), { recursive: true });
+			symlinkSync(projectDir, packageLink, 'dir');
+			const linkedFiles = {
+				nodePath: path.join(packageLink, 'dist/nodes/Foo.node.js'),
+				credentialPath: path.join(packageLink, 'dist/credentials/FooApi.credentials.js'),
+			};
+			const loadNode = vi.spyOn(loader, 'loadNodeFromFile');
+			const loadCredential = vi.spyOn(loader, 'loadCredentialFromFile');
+
+			await expect(loader.loadAll()).resolves.toBeUndefined();
+
+			expectCustomFilesLoaded(looseFiles);
+			expect(loadNode).not.toHaveBeenCalledWith(linkedFiles.nodePath);
+			expect(loadCredential).not.toHaveBeenCalledWith(linkedFiles.credentialPath);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining(path.join(packageLink, 'package.json')),
+				{ error: expect.objectContaining({ code: 'ENOENT' }) },
+			);
+
+			writeCustomFiles(path.join(projectDir, 'dist'));
+			loader.reset();
+			vi.clearAllMocks();
+			await loader.loadAll();
+
+			expectCustomFilesLoaded(linkedFiles);
+			expect(logger.warn).not.toHaveBeenCalled();
 		},
 	);
 
