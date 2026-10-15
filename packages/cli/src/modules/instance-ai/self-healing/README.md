@@ -6,13 +6,13 @@ It also provides the result review API.
 ## Run an investigation
 
 Call `InstanceAiService.startSelfHealingRun(input, verifyCandidate)` from backend code.
-Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` before startup.
+Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup.
 Supply the acting `user`, captured `WorkflowSuggestionBaseline`, and failed `executionId`.
 The actor must match `baseline.backgroundUserId` and have current workflow read and edit access.
 The baseline project and execution must belong to `baseline.workflowId`.
 
 Supply a real verifier before model work starts. The verifier receives the actor, baseline,
-execution ID, workspace, abort signal, and the model arguments `{ filePath, validationOnly? }`.
+execution ID, workspace, abort signal, and the model arguments `{ filePath, validationOnly?, triggerNodeName?, inputData? }`.
 AST-1479 owns verifier implementation. Production has no successful placeholder verifier.
 
 `SelfHealingAgentService` creates `self-healing/candidate.workflow.ts` from the captured baseline.
@@ -120,10 +120,11 @@ Normal chat ownership and tool permissions apply. Do not copy the background con
 
 ## Availability
 
-Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to load review routes.
+Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to enable
+internal investigations and load review routes.
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
-The rollout flag is separate from `N8N_INSTANCE_AI_SELF_HEALING_ENABLED`. Saved review services
-do not check investigation enablement or Assistant model availability.
+The same rollout flag gates internal investigations. Saved review services
+do not depend on Assistant model availability.
 
 The inbox will provide result listing, pagination, counts, refresh, and seed examples.
 The review UI will provide review screens and chat and editor navigation.
