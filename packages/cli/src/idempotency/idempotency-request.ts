@@ -17,7 +17,17 @@ const IDEMPOTENT_POST_SEGMENTS = new Set([
 	'test-trace',
 ]);
 
-const rawBodies = new WeakMap<IncomingMessage, string>();
+type FingerprintRequest = {
+	method?: string;
+	url?: string;
+	originalUrl?: string;
+	body?: unknown;
+	files?: unknown;
+	rawBody?: Buffer;
+	encoding?: BufferEncoding;
+};
+
+const rawBodies = new WeakMap<object, string>();
 
 export type ParsedIdempotencyKey =
 	| { kind: 'absent' }
@@ -66,9 +76,7 @@ export function fingerprintParts(parts: {
 		.digest('hex');
 }
 
-export function requestFingerprint(
-	req: IncomingMessage & { body?: unknown; files?: unknown; originalUrl?: string },
-): string {
+export function requestFingerprint(req: FingerprintRequest): string {
 	const target = req.originalUrl || req.url || '';
 	const queryIndex = target.indexOf('?');
 	const path = queryIndex === -1 ? target : target.slice(0, queryIndex);
@@ -126,7 +134,7 @@ function uploadedFilesText(files: unknown): string {
 		.join('\n');
 }
 
-function requestBodyText(req: IncomingMessage & { body?: unknown; files?: unknown }): string {
+function requestBodyText(req: FingerprintRequest): string {
 	const remembered = rawBodies.get(req);
 	if (remembered !== undefined) return remembered;
 
