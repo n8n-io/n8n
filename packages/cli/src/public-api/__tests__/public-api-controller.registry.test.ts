@@ -1142,6 +1142,56 @@ describe('PublicApiControllerRegistry', () => {
 			expect(idempotencyKeyService.release).not.toHaveBeenCalled();
 		});
 
+		it('does not claim a key when controller middleware rejects the request', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Middleware()
+				reject(_req: express.Request, res: express.Response) {
+					res.status(400).json({ message: 'nope' });
+				}
+
+				@Post('/')
+				@ApiResponse(200)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' })
+				.expect(400);
+
+			expect(response.body).toEqual({ message: 'nope' });
+			expect(idempotencyKeyService.claim).not.toHaveBeenCalled();
+		});
+
+		it('does not claim a key when controller middleware forwards an error', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Middleware()
+				fail(_req: express.Request, _res: express.Response, next: express.NextFunction) {
+					next(new NotFoundError('missing'));
+				}
+
+				@Post('/')
+				@ApiResponse(200)
+				method() {
+					return { id: 'new' };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			await request(activate())
+				.post('/api/v1/widgets')
+				.set('Idempotency-Key', 'abc')
+				.send({ name: 'A' });
+
+			expect(idempotencyKeyService.claim).not.toHaveBeenCalled();
+		});
+
 		it('releases the key when the handler fails', async () => {
 			idempotencyKeyService.claim.mockResolvedValue({ outcome: 'claimed', id: 'row-1' });
 

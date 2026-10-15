@@ -267,7 +267,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createBodyMiddleware(bodyArg.media, bodyRequired, bodyArg.handler));
 			}
 
-			middlewares.push(idempotency, ...controllerMiddlewares, ...(route.middlewares ?? []));
+			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []), idempotency);
 
 			const finalHandler: RequestHandler = async (req, res, next) => {
 				try {
