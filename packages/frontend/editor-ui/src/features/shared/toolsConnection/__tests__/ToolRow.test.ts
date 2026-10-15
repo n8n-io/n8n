@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { defineComponent } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -7,6 +8,8 @@ import { createTestingPinia } from '@pinia/testing';
 import ToolRow from '../ToolRow.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	TOOL_ICON_AVATAR_RENDERER_KEY,
+	type AgentConnectionItem,
 	type McpServerConnectionItem,
 	type NodeConnectionItem,
 	type ServiceConnectionItem,
@@ -15,8 +18,18 @@ import {
 
 const renderRow = createComponentRenderer(ToolRow);
 
+/** Stand-in for the consumer-injected avatar tile — proves the socket without coupling. */
+const AvatarRendererStub = defineComponent({
+	props: {
+		personalisation: { type: Object, required: true },
+		size: { type: Number, required: true },
+	},
+	template: `<div data-test-id="avatar-stub">{{ personalisation.icon }}</div>`,
+});
+
 function render(
 	item:
+		| AgentConnectionItem
 		| McpServerConnectionItem
 		| NodeConnectionItem
 		| ServiceConnectionItem
@@ -241,6 +254,55 @@ describe('ToolRow', () => {
 		expect(img).toBeNull();
 	});
 
+	it('renders the injected avatar renderer when an agent row carries an avatar iconSource', () => {
+		const item: AgentConnectionItem = {
+			id: 'agent-1',
+			kind: 'agent',
+			agentId: 'agent-1',
+			title: 'Researcher',
+			status: 'none',
+			iconSource: {
+				type: 'avatar',
+				personalisation: {
+					icon: 'rocket',
+					gradient: { from: '#FF1500', to: '#FF6900', angle: 135, fromStop: 0, toStop: 100 },
+				},
+			},
+		};
+		const { getByTestId } = renderRow({
+			props: { item },
+			pinia: createTestingPinia(),
+			global: {
+				// Mirrors the agents feature providing its personalisation tile.
+				provide: { [TOOL_ICON_AVATAR_RENDERER_KEY as symbol]: AvatarRendererStub },
+			},
+		});
+
+		expect(getByTestId('avatar-stub')).toHaveTextContent('rocket');
+	});
+
+	it('degrades to the fallback icon when no avatar renderer is injected', () => {
+		const item: AgentConnectionItem = {
+			id: 'agent-1',
+			kind: 'agent',
+			agentId: 'agent-1',
+			title: 'Researcher',
+			status: 'none',
+			iconSource: {
+				type: 'avatar',
+				personalisation: {
+					icon: 'rocket',
+					gradient: { from: '#FF1500', to: '#FF6900', angle: 135, fromStop: 0, toStop: 100 },
+				},
+			},
+		};
+		const { getByTestId, queryByTestId, container } = render(item);
+
+		expect(queryByTestId('avatar-stub')).toBeNull();
+		expect(getByTestId('tools-connection-row-main')).toHaveTextContent('Researcher');
+		expect(container.querySelector('img')).toBeNull();
+	});
+
 	it('renders the placeholder icon when iconSource is absent', () => {
 		const { container } = render(baseNode);
 		const img = container.querySelector('img');
@@ -370,6 +432,16 @@ describe('ToolRow', () => {
 
 			expect(emitted()['open-detail']).toBeUndefined();
 			expect(emitted().connect).toBeUndefined();
+		});
+
+		it('opens the detail of a connected restricted row', async () => {
+			const { getByTestId, emitted } = render({ ...restrictedNode, status: 'connected' });
+
+			const main = getByTestId('tools-connection-row-main');
+			expect(main.getAttribute('aria-disabled')).toBeNull();
+			await fireEvent.click(main);
+
+			expect(emitted()['open-detail']?.[0]).toEqual([{ ...restrictedNode, status: 'connected' }]);
 		});
 
 		it('shows the lock, not the install action, for a restricted community node', () => {

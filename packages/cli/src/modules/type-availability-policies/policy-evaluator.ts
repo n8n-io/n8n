@@ -50,7 +50,12 @@ export type PackageResolver = (typeName: string) => string | null;
  */
 export const nodeTypePackageResolver: PackageResolver = (typeName) => typeName.split('.')[0];
 
-export type PolicedType = { readonly name: string; readonly baseName: string };
+/** `ancestors` lists what a credential type is built on through `extends`; empty for node types. */
+export type PolicedType = {
+	readonly name: string;
+	readonly baseName: string;
+	readonly ancestors?: readonly string[];
+};
 
 function selectorMatches(
 	selector: PolicySelector,
@@ -62,6 +67,8 @@ function selectorMatches(
 			return selector.value === type.name || selector.value === type.baseName;
 		case 'package':
 			return resolvePackage(type.name) === selector.value;
+		case 'extends':
+			return selector.value === type.name || (type.ancestors ?? []).includes(selector.value);
 	}
 }
 

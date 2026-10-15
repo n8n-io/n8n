@@ -9,6 +9,7 @@ import {
 	WorkflowPublishHistory,
 } from '../entities';
 import { BaseRepository } from './base-repository';
+import { chunkIds } from '../utils/chunk-ids';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import { WorkflowReviewRequest } from '../entities/workflow-review-request.ee';
 import type { OperationContext } from '../services/transaction';
@@ -28,6 +29,34 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		ctx: OperationContext,
 	) {
 		await this.managerFor(ctx).insert(WorkflowHistory, version);
+	}
+
+	/**
+	 * The authors of the newest versions per workflow, newest first and at most
+	 * `perWorkflow` each, keyed by workflow id. `authors` is the display name
+	 * recorded at save time, not a user id. Workflows without a version are absent.
+	 */
+	async findRecentAuthorsByWorkflowIds(
+		workflowIds: string[],
+		perWorkflow: number,
+	): Promise<Map<string, Array<{ authors: string; at: Date }>>> {
+		const recent = new Map<string, Array<{ authors: string; at: Date }>>();
+		if (workflowIds.length === 0 || perWorkflow <= 0) return recent;
+
+		for (const chunk of chunkIds([...new Set(workflowIds)])) {
+			const rows = await this.find({
+				select: ['versionId', 'workflowId', 'authors', 'createdAt'],
+				where: { workflowId: In(chunk) },
+				order: { createdAt: 'DESC' },
+			});
+			for (const row of rows) {
+				const entries = recent.get(row.workflowId) ?? [];
+				if (entries.length >= perWorkflow) continue;
+				entries.push({ authors: row.authors, at: row.createdAt });
+				recent.set(row.workflowId, entries);
+			}
+		}
+		return recent;
 	}
 
 	async deleteEarlierThan(date: Date) {

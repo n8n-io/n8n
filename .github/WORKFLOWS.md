@@ -236,14 +236,6 @@ parallelism). See the `--build-via-mcp` section in
 | PR merged to `release/*`           | `release-publish.yml`          |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
-### Manual Triggers (PR Comments)
-
-| Command            | Workflow                     | Permissions         |
-|--------------------|------------------------------|---------------------|
-| `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
-
-**Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
-
 ### Label Triggers
 
 | Label                 | Workflow                     | Effect                                             |
@@ -419,6 +411,7 @@ Run-workflow dropdown, which only a user with write access can pick.
 |-----------------------------|---------------------------------------------------------|
 | `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `test-image-efficiency.yml` | Measure n8n and runners image size and layer waste with Dive |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 | `sec-sync-bundle-branches.yml` | Sync both bundle branches on demand, including before a bundle cut |
 
@@ -453,10 +446,6 @@ test-sbom-nightly.yml
     └──────────────────────────▶  sbom-validation-callable.yml
 
 test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
-    └──────────────────────────▶  test-workflows-callable.yml
-
-PR Comment Dispatchers (triggered by /command in PR comments):
-test-workflows-pr-comment.yml
     └──────────────────────────▶  test-workflows-callable.yml
 ```
 
@@ -598,7 +587,7 @@ Push to master
 | Daily 03:00               | `sec-sync-bundle-branches.yml`    | Merge the base into `bundle/*` |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
-| Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
+| Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
 | Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
@@ -611,6 +600,7 @@ Push to master
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
+| Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
 
@@ -1266,12 +1256,6 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 ---
 
 ## Future Vision
-
-### Redundancy Review
-
-Comment trigger (`/test-workflows`) is a workaround.
-
-Long-term: Main CI should be reliable enough to not need these.
 
 ### Workflow Testability
 

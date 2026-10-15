@@ -101,6 +101,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...(isSelfDelegation && request.difficulty !== undefined
 						? { selfDelegationDifficulty: request.difficulty }
 						: {}),
+					...(request.parentOnGuardrailNotice !== undefined
+						? { onBudgetNotice: request.parentOnGuardrailNotice }
+						: {}),
 				},
 			);
 
@@ -129,6 +132,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				onChunk: helpers.emitChunk,
 				...(request.subAgentId === INLINE_SUB_AGENT_ID && request.difficulty !== undefined
 					? { selfDelegationDifficulty: request.difficulty }
+					: {}),
+				...(request.parentOnGuardrailNotice !== undefined
+					? { onBudgetNotice: request.parentOnGuardrailNotice }
 					: {}),
 			};
 			const result =

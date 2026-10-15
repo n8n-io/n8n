@@ -364,7 +364,7 @@ onMounted(async () => {
 						<TimeAgo :date="lastRefreshedAt" live />
 					</N8nText>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="small"
 						icon="refresh-cw"
 						data-test-id="promotion-refresh"
@@ -388,7 +388,7 @@ onMounted(async () => {
 							{{ i18n.baseText('promotions.modal.error.description') }}
 						</N8nText>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							data-test-id="promotion-retry"
 							:disabled="isSubmitting"
@@ -499,7 +499,7 @@ onMounted(async () => {
 					</N8nText>
 				</div>
 				<div :class="$style.footerRight">
-					<N8nButton variant="subtle" :disabled="isSubmitting" @click="onClose">
+					<N8nButton variant="outline" :disabled="isSubmitting" @click="onClose">
 						{{ i18n.baseText('promotions.modal.close') }}
 					</N8nButton>
 					<N8nButton

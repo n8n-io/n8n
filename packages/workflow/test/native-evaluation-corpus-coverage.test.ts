@@ -18,6 +18,7 @@
 
 import { getParsedExpression } from '@n8n/tournament';
 import { isNativelyEvaluable } from '../src/expressions/native-evaluation';
+import { RESERVED_NAMES } from '../src/expressions/native-evaluation/grammar';
 import { ALL_CORPORA } from './native-evaluation-corpus';
 
 // ── Shape tokenization ────────────────────────────────────────────────────
@@ -52,11 +53,23 @@ function memberFeature(o: AstRecord): string {
 	return `member:${kind}${o.optional === true ? '?' : ''}`;
 }
 
+// A call on a node reference (`$('Name').first()`, `$input.first()`) is the
+// proxy's own method; the same name on data (`$json.list.first()`) is an
+// extension. The receiver kind keeps the two apart.
+function isNodeRef(object: AstRecord | undefined): boolean {
+	if (object?.type === 'Identifier') return object.name === '$input';
+	const callee = object?.callee as AstRecord | undefined;
+	return object?.type === 'CallExpression' && callee?.type === 'Identifier' && callee.name === '$';
+}
+
 function callFeature(o: AstRecord): string {
-	const callee = o.callee as { property?: { type?: string; name?: unknown } } | undefined;
+	const callee = o.callee as
+		| { object?: AstRecord; property?: { type?: string; name?: unknown } }
+		| undefined;
 	const method = callee?.property?.type === 'Identifier' ? String(callee.property.name) : '?';
 	const arity = Array.isArray(o.arguments) ? o.arguments.length : 0;
-	return `call:${method}:${arity}${o.optional === true ? '?' : ''}`;
+	const receiver = isNodeRef(callee?.object) ? ':ref' : '';
+	return `call:${method}:${arity}${receiver}${o.optional === true ? '?' : ''}`;
 }
 
 function walk(node: unknown, feats: Set<string>): void {
@@ -71,7 +84,7 @@ function walk(node: unknown, feats: Set<string>): void {
 	switch (o.type) {
 		case 'Identifier':
 			// Grammar-level identifiers only; member names are data, not shape.
-			if (o.name === '$json' || o.name === '$parameter' || o.name === 'undefined') {
+			if (RESERVED_NAMES.has(String(o.name))) {
 				feats.add(`id:${String(o.name)}`);
 			}
 			break;
@@ -95,6 +108,12 @@ function walk(node: unknown, feats: Set<string>): void {
 			break;
 		case 'CallExpression':
 			feats.add(callFeature(o));
+			break;
+		case 'ArrayExpression':
+			feats.add(Array.isArray(o.elements) && o.elements.length === 0 ? 'array:empty' : 'array');
+			break;
+		case 'ArrowFunctionExpression':
+			feats.add('arrow');
 			break;
 		default:
 			break;
@@ -169,6 +188,22 @@ const CANDIDATES = [
 	// roots and member forms
 	'={{ $json.item.name }}',
 	'={{ $parameter.value1 }}',
+	'={{ $vars.region }}',
+	'={{ $binary.file.fileName }}',
+	'={{ $itemIndex }}',
+	'={{ $runIndex }}',
+	// node references
+	"={{ $('Source').item.json.item.name }}",
+	"={{ $('Source').first().json.item.name }}",
+	"={{ $('Source').last().json.item.name }}",
+	"={{ $('Source').all().length }}",
+	'={{ $input.item.json.item.name }}',
+	'={{ $input.first().json.item.name }}',
+	'={{ $input.last().json.item.name }}',
+	'={{ $input.all().length }}',
+	'={{ $node["Source"].json.item.name }}',
+	'={{ $node.Source.json.item.name }}',
+	'={{ $node["Source"].binary.file.mimeType }}',
 	'={{ $json.item?.name }}',
 	'={{ $json.item.my_object?.addresses }}',
 	"={{ $json.item['name'] }}",
@@ -221,6 +256,39 @@ const CANDIDATES = [
 	'={{ $json.item.names.flat(2) }}',
 	'={{ $json.item.names.toSorted() }}',
 	'={{ $json.item.names.toReversed() }}',
+	// expression extensions, a sample per receiver type
+	'={{ $json.item.names.first() }}',
+	'={{ $json.item.names.last() }}',
+	'={{ $json.item.name.isEmpty() }}',
+	'={{ $json.item.name.toJsonString() }}',
+	'={{ $json.item.my_object.hasField("addresses") }}',
+	'={{ $json.item.count.round(1) }}',
+	'={{ $json.item.active.toInt() }}',
+	// array literals
+	'={{ [1, "a", true, null] }}',
+	'={{ [] }}',
+	'={{ ["bar"].includes($json.item.name) }}',
+	// iterator methods with a callback
+	'={{ $json.item.names.some(n => n === "bar") }}',
+	'={{ $json.item.names.every(n => n === "bar") }}',
+	'={{ $json.item.names.find(n => n === "bar") }}',
+	'={{ $json.item.names.filter(n => n === "bar") }}',
+	'={{ $json.item.names.map(n => n.length) }}',
+	'={{ $json.item.names?.map(n => n) }}',
+	'={{ $json.item.names.map(n => $json.item.count) }}',
+	'={{ $json.item.names.map(n => n.missing?.deep ?? "d") }}',
+	// time roots, by getter and zero-argument method
+	'={{ $now.toMillis() }}',
+	'={{ $now.toSeconds() }}',
+	'={{ $now.toUnixInteger() }}',
+	'={{ $now.toISO() }}',
+	'={{ $now.toISODate() }}',
+	'={{ $now.toISOTime() }}',
+	'={{ $now.toString() }}',
+	'={{ $now?.toMillis() }}',
+	'={{ $now.year }}',
+	'={{ $now?.year }}',
+	'={{ $today.toISODate() }}',
 	// compound shapes
 	'={{ $json.item.name.trim().toUpperCase() }}',
 	'={{ $json.item.name.toUpperCase().length }}',

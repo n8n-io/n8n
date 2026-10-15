@@ -136,6 +136,7 @@ export class AgentsCredentialProvider
 		// used to limit available credentials to the user's access when calling agent builder
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(this.user, {
 			projectId: this.projectId,
+			excludePersonalRoute: true,
 		});
 	}
 

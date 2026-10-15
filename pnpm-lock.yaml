@@ -207,8 +207,8 @@ catalogs:
       specifier: ^4.0.20
       version: 4.0.20
     '@ai-sdk/openai-compatible':
-      specifier: ^3.0.14
-      version: 3.0.28
+      specifier: ^3.0.44
+      version: 3.0.44
     '@ai-sdk/otel':
       specifier: ^1.0.66
       version: 1.0.74
@@ -599,6 +599,9 @@ catalogs:
     fflate:
       specifier: 0.8.3
       version: 0.8.3
+    google-auth-library:
+      specifier: 10.9.1
+      version: 10.9.1
     http-proxy-agent:
       specifier: 7.0.2
       version: 7.0.2
@@ -1060,12 +1063,15 @@ overrides:
   proxy-addr: 2.0.8
   source-map-js: 1.2.2
   '@grpc/grpc-js@<1.14.5': 1.14.5
+  prosemirror-model: 1.25.12
   prosemirror-view@<1.42.3: 1.42.3
+  '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
 
 patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
   '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
+  '@icetee/ftp@0.3.15': 19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9
   '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
   '@langchain/openai@1.4.4': e16bcc93cf9037198faacf494fb81afba6e9abba749dc9a09c3abfb33e68d5c2
   '@lezer/highlight': 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
@@ -1084,6 +1090,7 @@ patchedDependencies:
   v-code-diff: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
   vue-tsc@2.2.8: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
   vuedraggable@4.1.0: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
+  xml2js@0.6.2: 3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3
   z-vue-scan: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
 
 importers:
@@ -1209,7 +1216,7 @@ importers:
         version: 4.0.20(zod@3.25.76)
       '@ai-sdk/openai-compatible':
         specifier: 'catalog:'
-        version: 3.0.28(zod@3.25.76)
+        version: 3.0.44(zod@3.25.76)
       '@ai-sdk/otel':
         specifier: 'catalog:'
         version: 1.0.74(zod@3.25.76)
@@ -1255,6 +1262,9 @@ importers:
       ajv:
         specifier: 8.20.0
         version: 8.20.0
+      google-auth-library:
+        specifier: 'catalog:'
+        version: 10.9.1(supports-color@8.1.1)
       langsmith:
         specifier: 0.6.0
         version: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1610,6 +1620,9 @@ importers:
       '@asteasolutions/zod-to-openapi':
         specifier: 'catalog:'
         version: 7.3.4(zod@3.25.76)
+      '@n8n/inbound-auth':
+        specifier: workspace:*
+        version: link:../inbound-auth
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -1868,12 +1881,15 @@ importers:
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
-      express-openapi-validator:
-        specifier: 5.5.3
-        version: 5.5.3(express@5.2.1(supports-color@8.1.1))
       ioredis:
         specifier: 5.3.2
         version: 5.3.2(supports-color@8.1.1)
+      jsonwebtoken:
+        specifier: 'catalog:'
+        version: 9.0.3
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1893,6 +1909,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.10
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -2886,6 +2905,9 @@ importers:
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@typescript-eslint/typescript-estree':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)
@@ -3103,9 +3125,6 @@ importers:
 
   packages/@n8n/inbound-auth:
     dependencies:
-      '@n8n/api-types':
-        specifier: workspace:*
-        version: link:../api-types
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -4589,6 +4608,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.18
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
@@ -4602,6 +4624,9 @@ importers:
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
@@ -4723,10 +4748,7 @@ importers:
         version: 4.0.39(zod@3.25.76)
       '@ai-sdk/openai-compatible':
         specifier: 'catalog:'
-        version: 3.0.28(zod@3.25.76)
-      '@apidevtools/json-schema-ref-parser':
-        specifier: 12.0.2
-        version: 12.0.2
+        version: 3.0.44(zod@3.25.76)
       '@asteasolutions/zod-to-openapi':
         specifier: 'catalog:'
         version: 7.3.4(zod@3.25.76)
@@ -4805,6 +4827,9 @@ importers:
       '@n8n/backend-module-insights':
         specifier: workspace:*
         version: link:../modules/insights/backend
+      '@n8n/backend-module-quick-connect':
+        specifier: workspace:*
+        version: link:../modules/quick-connect/backend
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../@n8n/backend-network
@@ -4985,9 +5010,6 @@ importers:
       express-handlebars:
         specifier: 8.0.1
         version: 8.0.1
-      express-openapi-validator:
-        specifier: 5.5.3
-        version: 5.5.3(express@5.1.0(supports-color@8.1.1))
       express-prom-bundle:
         specifier: 8.0.0
         version: 8.0.0(prom-client@15.1.3)
@@ -5182,7 +5204,7 @@ importers:
         version: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       xml2js:
         specifier: 'catalog:'
-        version: 0.6.2
+        version: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
       xmllint-wasm:
         specifier: 3.0.1
         version: 3.0.1
@@ -7531,6 +7553,76 @@ importers:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
+  packages/modules/quick-connect/backend:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-network
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../../@n8n/config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../../@n8n/constants
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../../../@n8n/db
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      nock:
+        specifier: 'catalog:'
+        version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+
   packages/modules/type-availability-policies/frontend:
     dependencies:
       '@n8n/api-types':
@@ -7930,7 +8022,7 @@ importers:
         version: 3.12.2
       xml2js:
         specifier: 'catalog:'
-        version: 0.6.2
+        version: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -8067,6 +8159,30 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
+  packages/quality/efficiency:
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
+      '@playwright/test':
+        specifier: catalog:e2e
+        version: 1.62.1
+      n8n-playwright:
+        specifier: workspace:*
+        version: link:../testing/playwright
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/quality/efficiency/microbenchmarks:
     devDependencies:
@@ -8390,6 +8506,9 @@ importers:
       eslint-plugin-playwright:
         specifier: catalog:e2e
         version: 2.2.2(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
+      execa:
+        specifier: 10.1.0
+        version: 10.1.0
       flatted:
         specifier: 3.4.2
         version: 3.4.2
@@ -8555,7 +8674,7 @@ importers:
         version: 11.1.1
       xml2js:
         specifier: 'catalog:'
-        version: 0.6.2
+        version: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
@@ -8772,6 +8891,12 @@ packages:
     peerDependencies:
       zod: 3.25.76
 
+  '@ai-sdk/openai-compatible@3.0.44':
+    resolution: {integrity: sha512-pK7mERd/aIJVtyQCe/nV3G3iEJCY1no8GHDOGbgpNC+petjSfsxj+ni0Q8WVVehTUiY9B04F3Xvir+icBgORCg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: 3.25.76
+
   '@ai-sdk/openai@4.0.20':
     resolution: {integrity: sha512-/Hu+btLIO2zuYqCp//vBBAGdM/BeN4gds+NWrlv7Y9WrcTXwnEEwh6P3QZIWh2Tt1I1lswuDIpAJ4t/c/rws3Q==}
     engines: {node: '>=22'}
@@ -8805,6 +8930,16 @@ packages:
     engines: {node: '>=22'}
     peerDependencies:
       zod: 3.25.76
+
+  '@ai-sdk/provider-utils@5.0.36':
+    resolution: {integrity: sha512-MFXBn6XDyf37PNQAge/HTatPJE8Vmg/g/w4WPtjSV53jq8FKAzoaN5+43hsdQa9bqgN+/13jxug9ChvsG+godQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: 3.25.76
+
+  '@ai-sdk/provider@4.0.10':
+    resolution: {integrity: sha512-fX2ENAc7iDpZ+Wp4+Rk06Usn/Ys7dI9uAkGv0jlF6XVrW13NkRWx5Ou+U6lIM2E1fTLkCs16GGrUAaVvroag7A==}
+    engines: {node: '>=22'}
 
   '@ai-sdk/provider@4.0.3':
     resolution: {integrity: sha512-e0CpNWJUY7OxAFAnCZkw+ri9QOHWwTs1tXP42782KFGCU07qt8NiXCrCVowyCB5dP2r5/Uls+g2oPd8kOJn9dw==}
@@ -8854,10 +8989,6 @@ packages:
     peerDependenciesMeta:
       zod:
         optional: true
-
-  '@apidevtools/json-schema-ref-parser@12.0.2':
-    resolution: {integrity: sha512-SoZWqQz4YMKdw4kEMfG5w6QAy+rntjsoAT1FtvZAnVEnCR4uy9YSuDBNoVAFHgzSz0dJbISLLCSrGR2Zd7bcvA==}
-    engines: {node: '>= 16'}
 
   '@apm-js-collab/code-transformer-bundler-plugins@0.7.4':
     resolution: {integrity: sha512-nAfOeZPSUAQvJa1iFT/5oCrTm5YQhMMrfCNthNnaXHZiOQhu1KGuLoIx7HtbAi3wfwaBYLaICPIeenIaEwcXIg==}
@@ -10725,9 +10856,6 @@ packages:
   '@jsdevtools/ez-spawn@3.0.4':
     resolution: {integrity: sha512-f5DRIOZf7wxogefH03RjMPMdBF7ADTWUMoOs9kaJo06EfwF+aFhMZMDZxHg/Xe12hptN9xoZjGso2fdjapBRIA==}
     engines: {node: '>=10'}
-
-  '@jsdevtools/ono@7.1.3':
-    resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
 
   '@jsep-plugin/assignment@1.3.0':
     resolution: {integrity: sha512-VVgV+CXrhbMI3aSusQyclHkenWSAm95WaiKrMxRFam3JSUiIaQjoMIw2sEs/OX4XifnqeQUN4DYbJjlA8EfktQ==}
@@ -14971,9 +15099,6 @@ packages:
   '@types/mssql@9.1.5':
     resolution: {integrity: sha512-Q9EsgXwuRoX5wvUSu24YfbKMbFChv7pZ/jeCzPkj47ehcuXYsBcfogwrtVFosSjinD4Q/MY2YPGk9Yy1cM2Ywg==}
 
-  '@types/multer@1.4.12':
-    resolution: {integrity: sha512-pQ2hoqvXiJt2FP9WQVLPRO+AmiIm/ZYkavPlIQnx282u4ZrVdztx0pkh3jjpQt0Kz+YI0YhSG264y08UJKoUQg==}
-
   '@types/multer@2.1.0':
     resolution: {integrity: sha512-zYZb0+nJhOHtPpGDb3vqPjwpdeGlGC157VpkqNQL+UU2qwoacoQ7MpsAmUptI/0Oa127X32JzWDqQVEXp2RcIA==}
 
@@ -18353,6 +18478,10 @@ packages:
     resolution: {integrity: sha512-adbxcyWV46qiHyvSp50TKt05tB4tK3HcmF7/nxfAdhnox83seTDbwnaqKO4sXRy7roHAIFqJP/Rw/AuEbX61LA==}
     engines: {node: '>=6'}
 
+  execa@10.1.0:
+    resolution: {integrity: sha512-5HT/600HqXEtmkb9mK/PkTWw+bQSCzPnWiZ4/87wD3Hi0wFzCapOuNT9p4M08PDd+KLHdHvFhKjOWmNx/npRNQ==}
+    engines: {node: '>=22'}
+
   execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
     engines: {node: '>=10'}
@@ -18379,11 +18508,6 @@ packages:
   express-handlebars@8.0.1:
     resolution: {integrity: sha512-mdas0PTbgQnwSyAjcYM7OMaftM8nJ3Kqz6yAyK4iCFvMOGGvh6pv42IHwcE5PBpS6ffYeZRSsgAdYUMG4CSjhQ==}
     engines: {node: '>=20'}
-
-  express-openapi-validator@5.5.3:
-    resolution: {integrity: sha512-G3PxXXE8Y3aZ2s1OW9k79lyqmNWmj8/QWNWqF9qVPjJ8YON8JQ39c4CgSXemPfbRCuD58ynoHrG3WCetU937dg==}
-    peerDependencies:
-      express: '*'
 
   express-prom-bundle@8.0.0:
     resolution: {integrity: sha512-UHdpaMks6Z/tvxQsNzhsE7nkdXb4/zEh/jwN0tfZSZOEF+aD0dlfl085EU4jveOq09v01c5sIUfjV4kJODZ2eQ==}
@@ -20226,10 +20350,6 @@ packages:
   lodash.flatten@4.4.0:
     resolution: {integrity: sha512-C5N2Z3DgnnKr0LOpv/hKCgKdb7ZZwafIrsesve6lmzvZIRZRGaZ/l6Q8+2W7NaT+ZwO3fFlSCzCzrDCFdJfZ4g==}
 
-  lodash.get@4.4.2:
-    resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
-    deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
-
   lodash.groupby@4.6.0:
     resolution: {integrity: sha512-5dcWxm23+VAoz+awKmBaiBvzox8+RqMgFhi7UvX9DHZr2HdxHXM/Wrf8cfKpsW37RNrvtPn6hSwNqurSILbmJw==}
 
@@ -21550,9 +21670,6 @@ packages:
     resolution: {integrity: sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg==}
     engines: {node: '>=6'}
 
-  ono@7.1.3:
-    resolution: {integrity: sha512-9jnfVriq7uJM4o5ganUY54ntUm+5EK21EGaQ5NWnkWg3zz5ywbbonlBguRcnmF1/HDiIe3zxNxXcO1YPBmPcQQ==}
-
   open@10.2.0:
     resolution: {integrity: sha512-YgBpdJHPyQ2UE5x+hlSXcnejzAvD0b22U2OuAP+8OnlJT+PjWPxtgmGqKKc+RgTM63U9gN0YzrYc71R2WT/hTA==}
     engines: {node: '>=18'}
@@ -22161,6 +22278,10 @@ packages:
     resolution: {integrity: sha512-4yf0QO/sllf/1zbZWYnvWw3NxCQwLXKzIj0G849LSufP15BXKM0rbD2Z3wVnkMfjdn/CB0Dpp444gYAACdsplg==}
     engines: {node: '>=18'}
 
+  pretty-ms@9.3.1:
+    resolution: {integrity: sha512-HzMy3Geq23nVALD/M2LliU+F+M+gVNsvkQWWqeBZ8HDiCgzo6YPJ/Omrmtq24EFrIsk0a3EkQGEd7bDOo+IhGA==}
+    engines: {node: '>=18'}
+
   prismjs@1.29.0:
     resolution: {integrity: sha512-Kx/1w86q/epKcmte75LNrEoT+lX8pBpavuAbvJWRXar7Hz8jrtF+e3vY751p0R8H9HdArwaCTNDDzHg/ScJK1Q==}
     engines: {node: '>=6'}
@@ -22252,9 +22373,6 @@ packages:
 
   prosemirror-keymap@1.2.3:
     resolution: {integrity: sha512-4HucRlpiLd1IPQQXNqeo81BGtkY8Ai5smHhKW9jjPKRc2wQIxksg7Hl1tTI2IfT2B/LgX6bfYvXxEpJl7aKYKw==}
-
-  prosemirror-model@1.25.10:
-    resolution: {integrity: sha512-9n6rH4DbJU1eH4SxLt6Y0HhJIo6cZsb7DJ/30uob1hOKPeO6TAaMWI2tc7kwR92BjfPOU2fFHWbZLovLi3XQfA==}
 
   prosemirror-model@1.25.12:
     resolution: {integrity: sha512-Ue2gTmXMa7EhpLNhC7J+h4+ykD8ha12K6rrZFFKKJHBForfIStw5gJ6Zrf1mqqAa9NmpmEB4wp9bKmA4eUVjWg==}
@@ -24823,6 +24941,11 @@ packages:
     resolution: {integrity: sha512-K4jVyjnBdgvc86Y6BkaLZEN933SwYOuBFkdmBu9ZfkcAbdVbpITnDmjvZ/aQjRXQrv5EPkTnD1s39GiiqbngCw==}
     engines: {node: '>= 0.4'}
 
+  which-command@0.1.0:
+    resolution: {integrity: sha512-XZyoF5/5hZtXitIwzrU4NKK+Wtbb9aB9CezUEw2Q0wlYK8NUYQxC1rRXgNueYLtBAJwXIb+/tFVk4dozciNJMA==}
+    engines: {node: '>=22'}
+    hasBin: true
+
   which-typed-array@1.1.19:
     resolution: {integrity: sha512-rEvr90Bck4WZt9HHFC4DJMsjvu7x+r6bImz0/BrbWb7A2djJ8hnZMrWnHo9F8ssv0OMErasDhftrfROTyqSDrw==}
     engines: {node: '>= 0.4'}
@@ -24989,9 +25112,6 @@ packages:
     resolution: {integrity: sha512-FxF6+rkr1rNSQrhUNYrAFJpRXNzlDoMxeXN5qI84939ylEv3qqPFKa85Oxr6tDaJKqwW6KKyo2v26TSv3k6LeA==}
     engines: {node: '>=0.6.0'}
 
-  xregexp@2.0.0:
-    resolution: {integrity: sha512-xl/50/Cf32VsGq/1R8jJE5ajH1yMCQkpmoS10QbFZWl2Oor4H0Me64Pu2yxvsRWK3m6soJbmGfzSR7BYmDcWAA==}
-
   xss@1.0.15:
     resolution: {integrity: sha512-FVdlVVC67WOIPvfOwhoMETV72f6GbW7aOabBC3WxN/oUdoEMDyLz4OgRv5/gck2ZeNqEQu+Tb0kloovXOfpYVg==}
     engines: {node: '>= 0.10.0'}
@@ -25087,6 +25207,10 @@ packages:
 
   yoctocolors@2.1.1:
     resolution: {integrity: sha512-GQHQqAopRhwU8Kt1DDM8NjibDXHC8eoh1erhGAJPEyveY9qqVeXvVikNKrDz69sHowPMorbPUrH/mx8c50eiBQ==}
+    engines: {node: '>=18'}
+
+  yoctocolors@2.2.0:
+    resolution: {integrity: sha512-xYqdZFUK/VYazNl/oCDYN+3WloWQwMfZxBoiNt6qNyk+xfOdi598muWE42rNZFp1kNOiqW936q5RhUdnpqElSg==}
     engines: {node: '>=18'}
 
   yuku-ast@0.1.7:
@@ -25311,6 +25435,12 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.25(zod@3.25.76)
       zod: 3.25.76
 
+  '@ai-sdk/openai-compatible@3.0.44(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
+      zod: 3.25.76
+
   '@ai-sdk/openai@4.0.20(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 4.0.3
@@ -25359,6 +25489,19 @@ snapshots:
       eventsource-parser: 3.0.8
       undici: 7.29.1
       zod: 3.25.76
+
+  '@ai-sdk/provider-utils@5.0.36(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.10
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.0.8
+      undici: 7.29.1
+      zod: 3.25.76
+
+  '@ai-sdk/provider@4.0.10':
+    dependencies:
+      json-schema: 0.4.0
 
   '@ai-sdk/provider@4.0.3':
     dependencies:
@@ -25410,12 +25553,6 @@ snapshots:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
       zod: 3.25.76
-
-  '@apidevtools/json-schema-ref-parser@12.0.2':
-    dependencies:
-      '@jsdevtools/ono': 7.1.3
-      '@types/json-schema': 7.0.15
-      js-yaml: 4.3.2
 
   '@apm-js-collab/code-transformer-bundler-plugins@0.7.4':
     dependencies:
@@ -28552,10 +28689,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@icetee/ftp@0.3.15':
+  '@icetee/ftp@0.3.15(patch_hash=19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9)':
     dependencies:
       readable-stream: 1.1.14
-      xregexp: 2.0.0
+      xregexp: empty-npm-package@1.0.0
 
   '@iconify-json/lucide@1.2.114':
     dependencies:
@@ -28820,8 +28957,6 @@ snapshots:
       cross-spawn: 7.0.6
       string-argv: 0.3.1
       type-detect: 4.1.0
-
-  '@jsdevtools/ono@7.1.3': {}
 
   '@jsep-plugin/assignment@1.3.0(jsep@1.4.0)':
     dependencies:
@@ -33130,10 +33265,6 @@ snapshots:
       '@types/tedious': 4.0.14
       tarn: 3.0.2
 
-  '@types/multer@1.4.12':
-    dependencies:
-      '@types/express': 5.0.1
-
   '@types/multer@2.1.0':
     dependencies:
       '@types/express': 5.0.1
@@ -36589,7 +36720,7 @@ snapshots:
       bluebird: 3.7.2
       crlf-normalize: 1.0.19(ts-toolbelt@9.6.0)
       tslib: 2.8.1
-      xml2js: 0.6.2
+      xml2js: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
     transitivePeerDependencies:
       - ts-toolbelt
 
@@ -37184,6 +37315,21 @@ snapshots:
       signal-exit: 3.0.7
       strip-eof: 1.0.0
 
+  execa@10.1.0:
+    dependencies:
+      '@sindresorhus/merge-streams': 4.0.0
+      figures: 6.1.0
+      get-stream: 9.0.1
+      human-signals: 8.0.1
+      is-plain-obj: 4.1.0
+      is-stream: 4.0.1
+      npm-run-path: 6.0.0
+      pretty-ms: 9.3.1
+      signal-exit: 4.1.0
+      strip-final-newline: 4.0.0
+      which-command: 0.1.0
+      yoctocolors: 2.2.0
+
   execa@5.1.1:
     dependencies:
       cross-spawn: 7.0.6
@@ -37226,42 +37372,6 @@ snapshots:
       glob: 11.1.0
       graceful-fs: 4.2.11
       handlebars: 4.7.9
-
-  express-openapi-validator@5.5.3(express@5.1.0(supports-color@8.1.1)):
-    dependencies:
-      '@apidevtools/json-schema-ref-parser': 12.0.2
-      '@types/multer': 1.4.12
-      ajv: 8.20.0
-      ajv-draft-04: 1.0.0(ajv@8.20.0)
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      express: 5.1.0(supports-color@8.1.1)
-      json-schema-traverse: 1.0.0
-      lodash.clonedeep: 4.5.0
-      lodash.get: 4.4.2
-      media-typer: 1.1.0
-      multer: 2.3.0
-      ono: 7.1.3
-      path-to-regexp: 8.4.0
-      qs: 6.15.2
-
-  express-openapi-validator@5.5.3(express@5.2.1(supports-color@8.1.1)):
-    dependencies:
-      '@apidevtools/json-schema-ref-parser': 12.0.2
-      '@types/multer': 1.4.12
-      ajv: 8.20.0
-      ajv-draft-04: 1.0.0(ajv@8.20.0)
-      ajv-formats: 3.0.1(ajv@8.20.0)
-      content-type: 1.0.5
-      express: 5.2.1(supports-color@8.1.1)
-      json-schema-traverse: 1.0.0
-      lodash.clonedeep: 4.5.0
-      lodash.get: 4.4.2
-      media-typer: 1.1.0
-      multer: 2.3.0
-      ono: 7.1.3
-      path-to-regexp: 8.4.0
-      qs: 6.15.2
 
   express-prom-bundle@8.0.0(prom-client@15.1.3):
     dependencies:
@@ -39362,8 +39472,6 @@ snapshots:
 
   lodash.flatten@4.4.0: {}
 
-  lodash.get@4.4.2: {}
-
   lodash.groupby@4.6.0: {}
 
   lodash.includes@4.3.0: {}
@@ -41069,10 +41177,6 @@ snapshots:
     dependencies:
       mimic-fn: 2.1.0
 
-  ono@7.1.3:
-    dependencies:
-      '@jsdevtools/ono': 7.1.3
-
   open@10.2.0:
     dependencies:
       default-browser: 5.4.0
@@ -41766,6 +41870,10 @@ snapshots:
     dependencies:
       parse-ms: 4.0.0
 
+  pretty-ms@9.3.1:
+    dependencies:
+      parse-ms: 4.0.0
+
   prismjs@1.29.0: {}
 
   proc-log@6.1.0: {}
@@ -41787,7 +41895,7 @@ snapshots:
 
   promise-ftp@1.3.5(promise-ftp-common@1.1.5):
     dependencies:
-      '@icetee/ftp': 0.3.15
+      '@icetee/ftp': 0.3.15(patch_hash=19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9)
       bluebird: 2.11.0
       promise-ftp-common: 1.1.5
 
@@ -41837,7 +41945,7 @@ snapshots:
 
   prosemirror-commands@1.7.1:
     dependencies:
-      prosemirror-model: 1.25.10
+      prosemirror-model: 1.25.12
       prosemirror-state: 1.4.4
       prosemirror-transform: 1.12.0
 
@@ -41850,7 +41958,7 @@ snapshots:
   prosemirror-gapcursor@1.4.1:
     dependencies:
       prosemirror-keymap: 1.2.3
-      prosemirror-model: 1.25.10
+      prosemirror-model: 1.25.12
       prosemirror-state: 1.4.4
       prosemirror-view: 1.42.3
 
@@ -41871,41 +41979,37 @@ snapshots:
       prosemirror-state: 1.4.4
       w3c-keyname: 2.2.6
 
-  prosemirror-model@1.25.10:
-    dependencies:
-      orderedmap: 2.1.1
-
   prosemirror-model@1.25.12:
     dependencies:
       orderedmap: 2.1.1
 
   prosemirror-schema-list@1.5.1:
     dependencies:
-      prosemirror-model: 1.25.10
+      prosemirror-model: 1.25.12
       prosemirror-state: 1.4.4
       prosemirror-transform: 1.12.0
 
   prosemirror-state@1.4.4:
     dependencies:
-      prosemirror-model: 1.25.10
+      prosemirror-model: 1.25.12
       prosemirror-transform: 1.12.0
       prosemirror-view: 1.42.3
 
   prosemirror-tables@1.8.5:
     dependencies:
       prosemirror-keymap: 1.2.3
-      prosemirror-model: 1.25.10
+      prosemirror-model: 1.25.12
       prosemirror-state: 1.4.4
       prosemirror-transform: 1.12.0
       prosemirror-view: 1.42.3
 
   prosemirror-transform@1.12.0:
     dependencies:
-      prosemirror-model: 1.25.10
+      prosemirror-model: 1.25.12
 
   prosemirror-view@1.42.3:
     dependencies:
-      prosemirror-model: 1.25.10
+      prosemirror-model: 1.25.12
       prosemirror-state: 1.4.4
       prosemirror-transform: 1.12.0
 
@@ -45189,6 +45293,8 @@ snapshots:
       is-weakmap: 2.0.2
       is-weakset: 2.0.4
 
+  which-command@0.1.0: {}
+
   which-typed-array@1.1.19:
     dependencies:
       available-typed-arrays: 1.0.7
@@ -45338,7 +45444,7 @@ snapshots:
       sax: 1.2.4
       xmlbuilder: 11.0.1
 
-  xml2js@0.6.2:
+  xml2js@0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3):
     dependencies:
       sax: 1.2.4
       xmlbuilder: 11.0.1
@@ -45362,8 +45468,6 @@ snapshots:
   xpath@0.0.33: {}
 
   xpath@0.0.34: {}
-
-  xregexp@2.0.0: {}
 
   xss@1.0.15:
     dependencies:
@@ -45457,6 +45561,8 @@ snapshots:
   yocto-queue@1.2.2: {}
 
   yoctocolors@2.1.1: {}
+
+  yoctocolors@2.2.0: {}
 
   yuku-ast@0.1.7:
     dependencies:

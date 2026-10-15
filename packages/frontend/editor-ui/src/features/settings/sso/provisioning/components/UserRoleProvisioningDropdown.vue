@@ -152,7 +152,7 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as 
 
 .optionTitle {
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--shade-1);
 }
 
@@ -178,7 +178,7 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as 
 	display: block;
 	margin-top: var(--spacing--4xs);
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
 	text-decoration: underline;
 

@@ -4,9 +4,6 @@ tags:
 summary: Generate an audit
 description: Generate a security audit for your n8n instance.
 x-required-scope: securityAudit:generate
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   content:
     application/json:
@@ -129,6 +126,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
@@ -244,6 +242,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
@@ -362,6 +361,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
@@ -480,6 +480,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}
@@ -595,6 +596,7 @@ responses:
                                     - kind
                                     - nodeType
                                     - filePath
+                              type: object
                           settings:
                             type: object
                             additionalProperties: {}

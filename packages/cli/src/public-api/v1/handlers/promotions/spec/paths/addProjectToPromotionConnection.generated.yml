@@ -4,9 +4,6 @@ tags:
 summary: Link a project to a promotion connection
 description: Links a team project to a project-scoped connection. A project can be linked to only one connection.
 x-required-scope: gitConnection:manageProjects
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

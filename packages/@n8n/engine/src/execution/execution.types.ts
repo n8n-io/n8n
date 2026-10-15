@@ -110,6 +110,18 @@ export type WorkflowDocument = JsonObject;
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
 
 /**
+ * Steps the caller already holds the outputs of, by node id: a partial manual
+ * run that reuses earlier results, or a node with pinned data. The engine does
+ * not run such a node. When the run reaches it, the engine records it as
+ * completed with these outputs instead, so everything before it has settled
+ * first, as it would have had the node run. Same opacity as `TriggerOutputs`.
+ *
+ * Each node maps to its outputs per pass, iteration 0 first. A node outside a
+ * loop has one entry. TODO(CAT-4875): accept a loop's passes.
+ */
+export type SeededSteps = Record<string, StepSlots[]>;
+
+/**
  * A step's declaration that it is not done: instead of outputs, it says when
  * to resume. The executor produces it, the engine persists it on the step row,
  * and whatever resumes the step reads it back — the engine never interprets

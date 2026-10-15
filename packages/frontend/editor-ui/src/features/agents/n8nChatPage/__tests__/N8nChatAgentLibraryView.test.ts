@@ -57,8 +57,19 @@ vi.mock('vue-router', () => ({
 	}),
 }));
 
-const agentA: AgentChatListItem = { id: 'a1', name: 'One', project: { id: 'p', name: 'P' } };
-const agentB: AgentChatListItem = { id: 'a2', name: 'Two', project: { id: 'p', name: 'P' } };
+const NO_ATTACHMENTS = { image: false, pdf: false, audio: false };
+const agentA: AgentChatListItem = {
+	id: 'a1',
+	name: 'One',
+	project: { id: 'p', name: 'P' },
+	attachments: NO_ATTACHMENTS,
+};
+const agentB: AgentChatListItem = {
+	id: 'a2',
+	name: 'Two',
+	project: { id: 'p', name: 'P' },
+	attachments: NO_ATTACHMENTS,
+};
 
 function setup(result: {
 	agents: AgentChatListItem[];

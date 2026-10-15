@@ -17,6 +17,7 @@ import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-executio
 import { NodeTypes } from '@/node-types';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import { toPolicyRefusalResult } from './policy-refusal';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 
@@ -164,6 +165,13 @@ export async function resolveNodeTool(
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});
+			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.
+			if (result.status === 'error' && result.violations) {
+				return toPolicyRefusalResult(
+					result.error ?? result.violations[0].message,
+					result.violations,
+				);
+			}
 			// Throw on the executor's structured error so the agent runtime
 			// flags the tool-result with `isError: true` and the recorder
 			// marks the timeline entry as a failed call. Returning the error

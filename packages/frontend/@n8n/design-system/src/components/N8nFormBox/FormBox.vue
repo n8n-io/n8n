@@ -12,6 +12,7 @@ interface FormBoxProps {
 	buttonText?: string;
 	buttonLoading?: boolean;
 	secondaryButtonText?: string;
+	submitButtonVariant?: 'solid' | 'brand';
 	redirectText?: string;
 	redirectLink?: string;
 }
@@ -23,6 +24,7 @@ withDefaults(defineProps<FormBoxProps>(), {
 	buttonLoading: false,
 	redirectText: '',
 	redirectLink: '',
+	submitButtonVariant: 'solid',
 });
 
 const formBus = createFormEventBus();
@@ -66,6 +68,7 @@ const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 				:loading="buttonLoading"
 				data-test-id="form-submit-button"
 				size="large"
+				:variant="submitButtonVariant"
 				@click="onButtonClick"
 			/>
 		</div>

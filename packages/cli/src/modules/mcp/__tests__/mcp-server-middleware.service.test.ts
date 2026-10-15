@@ -7,7 +7,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';

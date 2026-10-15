@@ -4,9 +4,6 @@ tags:
 summary: Insert rows into a data table
 description: Insert one or more rows into a data table.
 x-required-scope: dataTableRow:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

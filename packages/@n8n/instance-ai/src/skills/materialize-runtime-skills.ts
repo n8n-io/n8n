@@ -20,6 +20,7 @@ import { traceSandboxOperation } from '../tracing/sandbox-tracing';
 import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
+	type VerifiedWorkspaceBundles,
 } from '../workspace/prebaked-workspace-bundle';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
 import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
@@ -70,6 +71,7 @@ interface BuildRuntimeSkillWorkspaceBundleOptions {
 interface MaterializeRuntimeSkillsOptions {
 	source: RuntimeSkillSource;
 	workspace: Workspace;
+	verifiedBundles?: VerifiedWorkspaceBundles;
 	root: string;
 	workspaceRoot?: string;
 	logger: Logger;
@@ -78,6 +80,8 @@ interface MaterializeRuntimeSkillsOptions {
 interface LazyWorkspaceRuntimeSkillSourceOptions {
 	source: RuntimeSkillSource;
 	workspace: Workspace | undefined;
+	/** Resolves the verified bundles of the sandbox behind `workspace`. */
+	resolveVerifiedBundles?: () => Promise<VerifiedWorkspaceBundles | undefined>;
 	logger: Logger;
 }
 
@@ -387,6 +391,7 @@ const RUNTIME_SKILL_FILE_LABEL = 'Runtime skill file';
 export async function loadPrebakedRuntimeSkillsBundle({
 	source,
 	workspace,
+	verifiedBundles,
 	root,
 	workspaceRoot = root,
 	logger,
@@ -398,6 +403,7 @@ export async function loadPrebakedRuntimeSkillsBundle({
 
 	return await loadPrebakedWorkspaceBundle({
 		workspace,
+		verifiedBundles,
 		manifestPath,
 		expectedHash: source.registry.skillsHash,
 		hashField: 'skillsHash',
@@ -592,6 +598,7 @@ export async function buildRuntimeSkillWorkspaceBundle({
 export async function materializeRuntimeSkillsIntoWorkspace({
 	source,
 	workspace,
+	verifiedBundles,
 	root,
 	logger,
 }: MaterializeRuntimeSkillsOptions): Promise<MaterializedRuntimeSkills | undefined> {
@@ -608,10 +615,17 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 
 			return await materializeWorkspaceBundle({
 				workspace,
+				verifiedBundles,
 				resourceLabel: RUNTIME_SKILL_FILE_LABEL,
 				logger,
 				loadPrebaked: async () =>
-					await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, logger }),
+					await loadPrebakedRuntimeSkillsBundle({
+						source,
+						workspace,
+						verifiedBundles,
+						root,
+						logger,
+					}),
 				buildBundle: async () => {
 					const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
 					if (!bundle) {
@@ -619,6 +633,7 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 					}
 					return bundle;
 				},
+				bundleHash: (bundle) => bundle.skillsHash,
 				materializedLogMessage: 'Materialized runtime skills into workspace',
 				materializedLogContext: (bundle) => ({
 					root,
@@ -635,6 +650,7 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 export function createLazyWorkspaceRuntimeSkillSource({
 	source,
 	workspace,
+	resolveVerifiedBundles,
 	logger,
 }: LazyWorkspaceRuntimeSkillSourceOptions): RuntimeSkillSource {
 	if (!workspace || source.registry.skills.length === 0) return source;
@@ -664,7 +680,8 @@ export function createLazyWorkspaceRuntimeSkillSource({
 
 		materializePromise ??= (async () => {
 			const root = await getWorkspaceRoot(runtimeWorkspace);
-			const options = { source, workspace: runtimeWorkspace, root, logger };
+			const verifiedBundles = await resolveVerifiedBundles?.();
+			const options = { source, workspace: runtimeWorkspace, verifiedBundles, root, logger };
 			const result = await materializeRuntimeSkillsIntoWorkspace(options);
 			if (result) {
 				materialized = result;
