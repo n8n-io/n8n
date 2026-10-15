@@ -347,7 +347,7 @@ const onModalOpenChange = (open: boolean) => {
 					<div ref="addRow">
 						<N8nButton
 							icon="plus"
-							variant="subtle"
+							variant="outline"
 							size="small"
 							native-type="button"
 							:disabled="areControlsDisabled"

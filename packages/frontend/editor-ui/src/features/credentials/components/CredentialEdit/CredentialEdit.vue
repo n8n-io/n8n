@@ -1684,7 +1684,7 @@ const { width } = useElementSize(credNameRef);
 						@click="saveCredential"
 					/>
 					<N8nIconButton
-						variant="subtle"
+						variant="outline"
 						v-if="
 							currentCredential &&
 							!modalOptions?.destination &&
