@@ -86,11 +86,8 @@ export class RateLimitService {
 			standardHeaders: false,
 			message: { message: 'Too many requests' },
 			passOnStoreError: true,
-			keyGenerator: (req: AuthenticatedRequest) => this.extractApiKeyIdentifier(req),
-			skip: (req: AuthenticatedRequest) => {
-				const identifier = this.extractApiKeyIdentifier(req);
-				return identifier.startsWith('skip:');
-			},
+			skip: (req: AuthenticatedRequest): boolean => req.tokenGrant?.apiKeyId === undefined,
+			keyGenerator: (req: AuthenticatedRequest) => `apiKey:${req.tokenGrant?.apiKeyId}`,
 		});
 	}
 
@@ -114,10 +111,5 @@ export class RateLimitService {
 
 	private extractUserIdentifier(req: AuthenticatedRequest): string {
 		return `user:${req.user.id}`;
-	}
-
-	private extractApiKeyIdentifier(req: AuthenticatedRequest): string {
-		const apiKeyId = req.tokenGrant?.apiKeyId;
-		return apiKeyId === undefined ? 'skip:no-api-key' : `apiKey:${apiKeyId}`;
 	}
 }
