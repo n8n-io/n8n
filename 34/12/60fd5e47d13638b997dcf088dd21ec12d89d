@@ -1,0 +1,330 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_e4d36e2a16e518::t_323e920b9c04e1 319-320
+  s_e4d36e2a16e518::t_5ec0e3344ee459 217-315,318,321-325,328-330
+  s_e4d36e2a16e518::t_739a9b7b4a6758 113-116,119-132,206-208
+  s_e4d36e2a16e518::t_b19f11a8038b28 326-327
+  s_b1bf05245b10d8::t_debe1db16378e1 107-110
+  s_e4d36e2a16e518::t_ecd847358ee347 117-118,147,162
+  s_e4d36e2a16e518::t_770b2caa3d7abc 316-317
+packages/frontend/editor-ui/src/features/agents/components/SessionEventFilter.vue
+  s_aa3eb92f2f2d89::t_d5eb46a02b0875 108,110
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_f8b427917eda26 1647
+  s_78d29e37581bd4::t_dd5e663a13f100 1585-1594
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_cd74c7fc762ac0::t_31a529f796de19 56,58,196-200,213-218,275,282-287,314
+  s_b1bf05245b10d8::t_6ac512ab229877 8,37,345
+  s_cd74c7fc762ac0::t_7e47cb69676a57 387,410-411,415,419-426,434,455,460-469,484
+  s_b1bf05245b10d8::t_5847af46e48cf8 355,492,531
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_a3c771baba19b4::t_4d62f8ae71e9e5 78,84-92
+  s_baf56886bb628c::t_171bddf41464a9 212,239
+  s_a3c771baba19b4::t_eade1aade5a854 96
+  s_a3c771baba19b4::t_3db4857073fdb3 99-101
+  s_baf56886bb628c::t_ca1394df8d03a2 259-260,285-286,321,323-331
+  s_34249b91a6eaea::t_38635b9d55c732 255
+  s_b1bf05245b10d8::t_e888a83c90e790 7-8,76,94
+  s_cd74c7fc762ac0::t_cfa88e8cff9a19 25-27,131-133,136,146-149,151-154
+  h_f8b427917eda26 251-253,262-263
+  s_e21e8aea334fc1::t_b3e3243d3352ec 3,17,210,237
+  s_2add348c74d9b2::t_80a9fd3d93c5e3 205-206,208-209,211,232-233,235-236,238
+  s_34249b91a6eaea::t_e785d6264d63cf 16,207,234
+  s_cd74c7fc762ac0::t_80f466b13ac99f 125-130,134-135,137,140-141,143-145,150,156,159-160,218
+  s_a3c771baba19b4::t_762561512479c0 95
+  s_baf56886bb628c::t_511d738c634d72 197,224
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionMessageItem.vue
+  s_baf56886bb628c::t_4c7467d4dc31cb 6,11-13,18,21,43,45-47,51-53,91,98-101,109,117-118
+  s_a61f731491ef8b::t_b95272c02db2b8 31-32,37-42
+  s_e21e8aea334fc1::t_cbe29384453920 7,10,16
+  s_0b18cdb0768028::t_d4fc8f02471bd5 14-15
+  s_0b18cdb0768028::t_3d7faf1fc7c245 93-94,97,102-104
+  s_0b18cdb0768028::t_a3c03a64b86bd7 106-108,110-112
+  s_0b18cdb0768028::t_c0c8a0185c627c 167
+  s_a61f731491ef8b::t_664d09cc582e7d 64
+  s_0b18cdb0768028::t_a734ec3ef1e741 114-116,129-131
+  s_0b18cdb0768028::t_0788998db142cc 1,17,48-50,92,105,113,132,166
+  s_0b18cdb0768028::t_5dceb7c7bf490c 133,135
+  s_baf56886bb628c::t_fb8a796bd29763 59-61
+  s_baf56886bb628c::t_a4d02072820ad5 9,44,58
+  s_a61f731491ef8b::t_e9c15a75f6b86e 2-5,8,19-20,22-30,33-36,56,62-63,65-90,95-96,119-128,134,136-165
+  h_f8b427917eda26 54-55,57
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionHitlItem.vue
+  s_0b18cdb0768028::t_4ae641fb5cc653 1-12
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStep/AiActivityStep.vue
+  s_c6a23ceca1f475::t_2e16b7ed43f0ed 38-42,51,58,93
+  s_22d7afc0db9243::t_36aa3a10bf9f03 113-116
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionCapabilityItem.test.ts
+  s_33768f37990de7::t_736ecfdd7a99f9 7-43,48-60,62-75,79-84,88-104
+  s_33768f37990de7::t_830384587bea68 1-6,44-47,61,76-78,85-87
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTestControls.vue
+  s_a508960c50ce74::t_3ea387757c0d2e 83
+  s_78d29e37581bd4::t_dab1887a829089 115,117-125,127-139,145-163,172,174
+  s_a508960c50ce74::t_7b93900b3557fb 79-82
+  s_78d29e37581bd4::t_d097e8e9fb676f 105-107,140-143,164-171
+  s_78d29e37581bd4::t_b5c64abd00d683 176-183
+  s_78d29e37581bd4::t_180d1d7c373bf9 13-19,23-78,84-104,186-192,199-207,212-219,225-232,248-255
+  s_78d29e37581bd4::t_aec1fcb5e2bb43 1-12,20-22,108-114,116,126,144,173,175,184-185,193-198,208-211,220-224,233-247,256-263
+packages/frontend/editor-ui/src/features/agents/session-timeline.styles.ts
+  s_cd74c7fc762ac0::t_be4e78fa4eb856 3-7,44,46-54
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_33768f37990de7::t_4052171fa6af6c 876-877
+  s_33768f37990de7::t_59568fabe4d126 520
+  s_33768f37990de7::t_6060c13e288992 836-839
+  s_33768f37990de7::t_137626f001fc22 16,521-524,645-653,792,814,816,834-835,840-842,869-875
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_e21e8aea334fc1::t_a1fd188b3ff02a 49
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_34249b91a6eaea::t_0de518e982cb30 39,370
+  s_909d916c097b04::t_bb565e0c87a72d 12,352-358,360,367,424
+  h_f8b427917eda26 34,316-326,333-345,363,366,373-374,402,409,411-412,418-419,421
+  s_78d29e37581bd4::t_180d1d7c373bf9 76-77
+  s_761eb4a01ae6f3::t_9950765ec080ae 33,330
+  s_78d29e37581bd4::t_9f1d52c26c50fd 13,71-75,80-85,331-332,362
+  s_baf56886bb628c::t_b9390325bbf5ad 361,422,427
+  s_e21e8aea334fc1::t_f932372fd17b52 2,41,371
+  s_cd74c7fc762ac0::t_903b3594ce6820 32,63,202-204,359,368
+  s_b1bf05245b10d8::t_fa23691531b720 396,408
+  s_cf44feaefa672e::t_e8728571fdedf6 364
+packages/frontend/@n8n/design-system/src/components/N8nRecycleScroller/RecycleScroller.vue
+  s_cd74c7fc762ac0::t_e09dfda4e52ed2 186,191,195,201
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_e21e8aea334fc1::t_12b2b8a092d307 383
+  s_34249b91a6eaea::t_f9b7a88b79da32 382
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_c6a23ceca1f475::t_ba37dbb7135efb 5,8,11-12,14,16-17,22-23,26,31-32,39,47-55,73,81-92
+  s_22d7afc0db9243::t_0c3b2d9cff0c4b 177-184,195-202
+  s_2add348c74d9b2::t_3908306e87dec3 93
+  s_22d7afc0db9243::t_99c5b245763fce 24,209-214
+  s_ce40cfd8cdc88e::t_26f8327b8f5120 132-136
+  s_22d7afc0db9243::t_2b37bb099a0ebd 4,6-7,9-10,15,18-19,74-75,77,79-80,137-138,146,162-163,165-170,172-176,185-194,203-207,215-216,243-247,252-285
+  s_2add348c74d9b2::t_128aefe0bb42ee 20,29,94-95,97-106,113,119,121-123
+  s_ce40cfd8cdc88e::t_e7e795e54ad632 248-251
+  s_33768f37990de7::t_c57bdd7f961294 232-233
+  s_33768f37990de7::t_983093eec585a3 159-160
+  s_33768f37990de7::t_adc7695a28f655 35,40,56,58,60,62,76,78,96
+  s_daad5ab54f0b0c::t_ace4e3a840d0be 2-3,33-34,36-38,41-46,161,234-241
+  s_33768f37990de7::t_5144762bed08a8 70-72
+  s_33768f37990de7::t_55d6a67187db0a 13,57,59,61,63-69,107-112,127-131,139-145,149-151,153-156,158,164,171,217-231
+  s_0b18cdb0768028::t_708b965ec2283a 1,21,25,27-28,30,124-126,208
+  s_33768f37990de7::t_6530a0f24be241 152
+  s_22d7afc0db9243::t_3508a7841d78ae 286
+  s_33768f37990de7::t_0329366ddfd213 157
+  s_33768f37990de7::t_8acd849894d2c0 147-148
+  s_2add348c74d9b2::t_fe9ce592bf68ab 114-118,120
+  h_f8b427917eda26 242
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_33768f37990de7::t_ecbcca4fc34e7f 367-434,904-919,924,926
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionExecutionErrorItem.vue
+  s_0b18cdb0768028::t_6bf9abefa3855b 1-27
+  s_0b18cdb0768028::t_72ac918cc28a9e 28-30
+  h_f8b427917eda26 31-49
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_0b18cdb0768028::t_41883fb7c06979 40,47,53,56,58,60
+  s_0fc3d4a43a7609::t_1ef509c9372a80 42-43,54,61
+  s_daad5ab54f0b0c::t_7305b0ef7eaf17 26
+  s_e21e8aea334fc1::t_7b2c3be8b65550 2,18,57
+  s_baf56886bb628c::t_985e10278061a9 37,41,44
+  s_0b18cdb0768028::t_96ff85b6e49b0a 48-50,52,55
+  s_0b18cdb0768028::t_6cf01d15444038 4-11,23-25,27-36
+  s_2add348c74d9b2::t_7e352bb461d094 16,66
+  s_34249b91a6eaea::t_143f1b8266e59d 17,51
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundJobItem.vue
+  s_0b18cdb0768028::t_e806ede857b7ef 1-12
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_33768f37990de7::t_5e1283ac87762f 18,32
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepButton/AiActivityStepButton.vue
+  s_cf44feaefa672e::t_4b8e1eeaaa1a9d 98,124
+packages/frontend/@n8n/design-system/src/components/N8nAiActivityStepChevron/AiActivityStepChevron.vue
+  s_cf44feaefa672e::t_9f9d47796444fb 18-19,29
+packages/frontend/editor-ui/src/features/agents/components/AgentPersonalisationIcon.vue
+  s_cf44feaefa672e::t_31c3aec97e8d6f 38-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "341260fd5e47d13638b997dcf088dd21ec12d89d",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0b18cdb0768028": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a512-7799-7091-92ad-2fe4f3411756",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_0fc3d4a43a7609": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a550-85cd-7611-ad7f-7547efa974fd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_22d7afc0db9243": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a586-d501-7611-ad7f-754f8c88017d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2add348c74d9b2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d85f-5bb4-72f5-81b3-39cbe050501c",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_33768f37990de7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11bf7-acbf-744b-b963-e4f102192860",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_34249b91a6eaea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c45-b141-744b-b963-e500ca78f806",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_761eb4a01ae6f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d879-e076-72f5-81b3-39cd10e2c8b4",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_78d29e37581bd4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c14-dfdd-744b-b963-e4f57b2c0c30",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_909d916c097b04": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1209a-a36b-77c4-990d-14fb1495d15d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a3c771baba19b4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a568-5b6e-7611-ad7f-754b4f96f958",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a508960c50ce74": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120d6-0bce-77c4-990d-15036138b068",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a61f731491ef8b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c3b-8635-744b-b963-e4ff23ccd682",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_aa3eb92f2f2d89": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11054-5b0f-713f-8661-7313c12c458b",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_b1bf05245b10d8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120c8-ee3d-77c4-990d-15009764df6e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_baf56886bb628c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a58a-ff43-705f-9aae-79a493d028d1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c6a23ceca1f475": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0a53f-ee05-705f-9aae-79a20bff72d1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cd74c7fc762ac0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120a5-b4bc-77c4-990d-14fc6a4e7e9e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ce40cfd8cdc88e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c29-f5c0-744b-b963-e4f9358717de",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_cf44feaefa672e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1250d-4be8-77c4-990d-150da7e0481a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_daad5ab54f0b0c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d84d-8092-7182-92c0-bd61ec558cec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e21e8aea334fc1": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11c2d-14db-744b-b963-e4fbb381e4d5",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e4d36e2a16e518": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a120b4-c3e4-77c4-990d-14ff7d7c7a7d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

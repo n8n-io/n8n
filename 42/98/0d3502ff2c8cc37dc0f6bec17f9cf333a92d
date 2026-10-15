@@ -1,0 +1,26 @@
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_8631ec10eb1199::t_4c945c24c9a177 53-67,84-88
+  s_8631ec10eb1199::t_eb7e502fbde974 98-101,109-111,113-115
+  s_8631ec10eb1199::t_6cf32e03feabc4 91-95,97,102-108,112,116-120,129
+  s_8631ec10eb1199::t_d1d4e5c30a0ba0 89-90
+  s_8631ec10eb1199::t_410b95f04c2f39 96
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_4c945c24c9a177 134-153,172-173
+  s_8631ec10eb1199::t_6cf32e03feabc4 154-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42980d3502ff2c8cc37dc0f6bec17f9cf333a92d",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
