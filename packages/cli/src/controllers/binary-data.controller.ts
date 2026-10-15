@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import { BinaryDataAccessService } from '@/binary-data/binary-data-access.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 @RestController('/binary-data')
 export class BinaryDataController {

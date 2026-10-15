@@ -19,6 +19,7 @@ import {
 	getHumanInTheLoopCallout,
 	getRootSearchCallouts,
 	getSendAndWaitNodes,
+	getNodeCreatorSearchItems,
 	matchesAliasForConnectBoost,
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
@@ -30,11 +31,16 @@ import {
 } from './nodeCreator.utils';
 import {
 	mockActionCreateElement,
+	mockCommandCreateElement,
 	mockNodeCreateElement,
 	mockSectionCreateElement,
 	mockSimplifiedNodeType,
+	mockViewCreateElement,
 } from './__tests__/utils';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import {
+	mockRestrictedCredentialTypes,
+	mockRestrictedNodeTypes,
+} from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -92,6 +98,22 @@ vi.mock('@/app/stores/posthog.store', () => ({
 }));
 
 describe('NodeCreator - utils', () => {
+	describe('getNodeCreatorSearchItems', () => {
+		it('includes nodes and commands but excludes navigation views', () => {
+			const node = mockSimplifiedNodeType({ name: 'node' });
+			const navigationView = mockViewCreateElement({ key: 'navigation' });
+			const command = mockCommandCreateElement({ key: 'command' });
+
+			const result = getNodeCreatorSearchItems([node], [navigationView, command]);
+
+			expect(result.map((item) => item.key)).toEqual(['node', 'command']);
+			expect(result[0]).toMatchObject({
+				type: 'node',
+				properties: node,
+			});
+		});
+	});
+
 	describe('groupItemsInSections', () => {
 		it('should handle multiple sections (with "other" section)', () => {
 			const node1 = mockNodeCreateElement({ key: 'popularNode' });
@@ -1144,6 +1166,25 @@ describe('NodeCreator - utils', () => {
 		});
 	});
 
+	describe('searchNodes', () => {
+		it('searches command descriptions without searching node descriptions', () => {
+			const node = mockNodeCreateElement(
+				{ key: 'node' },
+				{ name: 'node', displayName: 'Node', description: 'A container node' },
+			);
+			const command = mockCommandCreateElement({
+				key: 'group',
+				properties: {
+					title: 'Group',
+					description: 'Add an organisational container to your workflow',
+					icon: 'group',
+				},
+			});
+
+			expect(searchNodes('container', [node, command]).map((item) => item.key)).toEqual(['group']);
+		});
+	});
+
 	describe('searchNodes - n8n Connect boost', () => {
 		const makeNode = (name: string, displayName: string, alias: string[] = []) =>
 			mockNodeCreateElement(
@@ -1423,6 +1464,24 @@ describe('node item restriction lookups', () => {
 		mockRestrictedNodeTypes({ 'n8n-nodes-base.httpRequest': 'instance' });
 
 		expect(isNodeItemRestricted('n8n-creds-base.sysdigApi')).toBe(true);
+	});
+
+	it('hides a credential-only node whose credential type is restricted and keeps HTTP Request and its siblings', () => {
+		mockRestrictedNodeTypes();
+		mockRestrictedCredentialTypes({ virusTotalApi: 'instance' });
+		const items = [
+			'n8n-nodes-base.httpRequest',
+			'n8n-creds-base.virusTotalApi',
+			'n8n-creds-base.sysdigApi',
+		].map((key) => mockNodeCreateElement({ key }));
+
+		expect(withoutRestrictedNodes(items, isNodeItemRestricted).map((item) => item.key)).toEqual([
+			'n8n-nodes-base.httpRequest',
+			'n8n-creds-base.sysdigApi',
+		]);
+		expect(getNodeItemRestriction('n8n-creds-base.virusTotalApi')).toMatchObject({
+			scope: 'instance',
+		});
 	});
 });
 

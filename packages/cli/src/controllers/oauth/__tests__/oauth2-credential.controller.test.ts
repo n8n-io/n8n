@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { SsrfBridge } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ClientOAuth2 } from '@n8n/client-oauth2';
 import { type CredentialsEntity, type User } from '@n8n/db';
@@ -10,7 +11,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService } from '@/oauth/oauth.service';
@@ -93,6 +93,57 @@ describe('OAuth2CredentialController', () => {
 				'Insufficient parameters for OAuth2 callback.',
 				'Received following query parameters: {"state":"test"}',
 			);
+		});
+
+		/**
+		 * Approving an app for a whole organisation reuses the same reply URL, and
+		 * answers with no code at all. It is a success, not a missing parameter.
+		 */
+		it('should render the success page when an administrator approved the app', async () => {
+			const consentReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			consentReq.query = {
+				admin_consent: 'True',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(consentReq, res);
+
+			// Its own page: `oauth-callback` would report an unrelated open sign-in
+			// as connected.
+			expect(res.render).toHaveBeenCalledWith('admin-consent-callback');
+			expect(oauthService.renderCallbackError).not.toHaveBeenCalled();
+		});
+
+		it('should render the error page when an administrator refused the app', async () => {
+			const consentReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			consentReq.query = {
+				admin_consent: 'True',
+				error: 'consent_required',
+				error_description: 'AADSTS65004: The resource owner denied the request.',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(consentReq, res);
+
+			// The description arrives in the URL, so anyone can set it. It is logged,
+			// never rendered.
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The administrator did not approve the requested permissions.',
+			);
+		});
+
+		it('should render the error page when the refusal carries no error parameter', async () => {
+			const consentReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			consentReq.query = {
+				admin_consent: 'False',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(consentReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The administrator did not approve the requested permissions.',
+			);
+			expect(res.render).not.toHaveBeenCalled();
 		});
 
 		it('should exchange the code for a valid token, and save it to DB for static credential', async () => {

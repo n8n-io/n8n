@@ -1098,6 +1098,10 @@ export class ChatTrigger extends Node {
 					// By header as well as by the iframe's attribute, so the document has no
 					// origin even if the attribute is ever stripped.
 					res.setHeader('Content-Security-Policy', `sandbox ${CHAT_FRAME_SANDBOX}`);
+				} else {
+					// The webhook route sandboxes every response. This page keeps its origin,
+					// because the widget keeps the session in `localStorage`.
+					res.removeHeader('Content-Security-Policy');
 				}
 
 				const page = createPage({

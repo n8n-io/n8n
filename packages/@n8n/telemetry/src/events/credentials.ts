@@ -111,4 +111,14 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	USER_OPENED_CREDENTIAL_SHARING_FROM_REDACTED_DATA: {
+		name: 'User opened credential sharing from redacted data',
+		description:
+			'A user who can share a credential but cannot use it clicked the link on redacted execution data that opens its sharing tab. Fires once per click.',
+		properties: z.object({
+			credential_id: z.string(),
+			workflow_id: z.string(),
+			execution_id: z.string().optional(),
+		}),
+	},
 });

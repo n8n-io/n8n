@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import * as path from 'path';
 import type {
 	CommitResult,
@@ -22,6 +22,8 @@ import {
 	SOURCE_CONTROL_DEFAULT_BRANCH,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
+	SOURCE_CONTROL_MANAGED_DIRECTORIES,
+	SOURCE_CONTROL_MANAGED_PATHS,
 	SOURCE_CONTROL_ORIGIN,
 } from './constants';
 import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
@@ -122,6 +124,7 @@ export class SourceControlGitService {
 		this.gitOptions = {
 			baseDir: gitFolder,
 			binary: 'git',
+			config: ['core.symlinks=false'],
 			maxConcurrentProcesses: 6,
 			trimmed: false,
 		};
@@ -130,7 +133,10 @@ export class SourceControlGitService {
 
 		if (preferences.connectionType === 'https') {
 			const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
-			const config = buildHttpsGitConfig({ repositoryUrl: preferences.repositoryUrl });
+			const config = [
+				...(this.gitOptions.config ?? []),
+				...buildHttpsGitConfig({ repositoryUrl: preferences.repositoryUrl }),
+			];
 			const httpsGitOptions = {
 				...this.gitOptions,
 				config,
@@ -272,13 +278,8 @@ export class SourceControlGitService {
 		const { currentBranch, branches: remoteBranches } = await this.getBranches();
 
 		if (!currentBranch && remoteBranches.some((b) => b === targetBranch)) {
-			await this.git.checkout(targetBranch);
-
-			const upstream = [SOURCE_CONTROL_ORIGIN, targetBranch].join('/');
-
-			await this.git.branch([`--set-upstream-to=${upstream}`, targetBranch]);
-
-			this.logger.info('Set local git repository to track remote', { upstream });
+			await this.setBranch(targetBranch);
+			this.logger.info('Set local git repository to track remote', { targetBranch });
 		}
 	}
 
@@ -310,10 +311,8 @@ export class SourceControlGitService {
 		// If the target branch exists on remote, check it out
 		if (remoteBranches.includes(targetBranch)) {
 			try {
-				await this.git.checkout(targetBranch);
-				const upstream = [SOURCE_CONTROL_ORIGIN, targetBranch].join('/');
-				await this.git.branch([`--set-upstream-to=${upstream}`, targetBranch]);
-				this.logger.info('Recovered source control branch setup', { targetBranch, upstream });
+				await this.setBranch(targetBranch);
+				this.logger.info('Recovered source control branch setup', { targetBranch });
 			} catch (error) {
 				this.logger.warn('Failed to checkout branch during recovery', { targetBranch, error });
 			}
@@ -356,7 +355,9 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (setBranch)');
 		}
-		await this.git.checkout(branch);
+
+		const { commit } = await this.fetchAndValidateRemoteCommit(branch);
+		await this.git.raw(['checkout', '-B', branch, commit]);
 		await this.git.branch([`--set-upstream-to=${SOURCE_CONTROL_ORIGIN}/${branch}`, branch]);
 		return await this.getBranches();
 	}
@@ -404,16 +405,141 @@ export class SourceControlGitService {
 		return await this.git.fetch();
 	}
 
+	/**
+	 * Reject a remote commit whose managed paths would materialize the wrong shape
+	 * before applying it. Each managed path is either a directory or a regular file;
+	 * a directory placed at a file path (or the reverse) passes a naive recursive
+	 * scan but breaks the next import/export, so validate the direct entries too.
+	 */
+	private async assertManagedTreeContainsOnlyRegularFiles(ref: string): Promise<void> {
+		if (!this.git) {
+			throw new UnexpectedError(
+				'Git is not initialized (assertManagedTreeContainsOnlyRegularFiles)',
+			);
+		}
+
+		// 1. Validate the shape of each direct managed entry. `ls-tree` without `-r`
+		//    reports the entry itself, so a directory reads as `tree` and a file as
+		//    `blob` instead of being flattened into its contents.
+		const directShapes = await this.git.raw([
+			'ls-tree',
+			'-z',
+			'--full-tree',
+			ref,
+			'--',
+			...SOURCE_CONTROL_MANAGED_PATHS,
+		]);
+		const managedDirectories: readonly string[] = SOURCE_CONTROL_MANAGED_DIRECTORIES;
+		for (const entry of this.parseTreeEntries(directShapes)) {
+			let reason: string | undefined;
+			if (entry.malformed) {
+				reason = 'Git returned malformed tree metadata';
+			} else if (managedDirectories.includes(entry.filePath)) {
+				if (entry.objectType !== 'tree') {
+					reason = `Managed path ${entry.filePath} must be a directory`;
+				}
+			} else {
+				reason = this.regularFileRejectionReason(entry);
+			}
+			if (reason) this.rejectUnsupportedEntry(entry.filePath, reason);
+		}
+
+		// 2. Validate that every entry inside the managed directories is a regular
+		//    file. Recursion here lists leaf blobs only, so symlinks and submodules
+		//    at any depth are rejected.
+		const directoryContents = await this.git.raw([
+			'ls-tree',
+			'-r',
+			'-z',
+			'--full-tree',
+			ref,
+			'--',
+			...SOURCE_CONTROL_MANAGED_DIRECTORIES,
+		]);
+		for (const entry of this.parseTreeEntries(directoryContents)) {
+			const reason = entry.malformed
+				? 'Git returned malformed tree metadata'
+				: this.regularFileRejectionReason(entry);
+			if (reason) this.rejectUnsupportedEntry(entry.filePath, reason);
+		}
+	}
+
+	/** Parse NUL-delimited `ls-tree -z` output into entries. Paths can contain tabs and newlines. */
+	private parseTreeEntries(output: string) {
+		return output
+			.split('\0')
+			.filter((entry) => entry.length > 0)
+			.map((entry) => {
+				const separatorIndex = entry.indexOf('\t');
+				const metadata = separatorIndex === -1 ? entry : entry.slice(0, separatorIndex);
+				const filePath = separatorIndex === -1 ? '<unknown>' : entry.slice(separatorIndex + 1);
+				const [mode, objectType, objectId, ...unexpectedMetadata] = metadata.split(' ');
+
+				const malformed =
+					separatorIndex === -1 ||
+					!mode ||
+					!objectType ||
+					!objectId ||
+					unexpectedMetadata.length > 0;
+
+				return { mode, objectType, objectId, filePath, malformed };
+			});
+	}
+
+	/** Return why a tree entry is not a supported regular file, or undefined if it is. */
+	private regularFileRejectionReason(entry: {
+		mode: string;
+		objectType: string;
+	}): string | undefined {
+		if (entry.objectType !== 'blob') {
+			return `Git object type ${entry.objectType} is not supported`;
+		}
+		if (entry.mode !== '100644' && entry.mode !== '100755') {
+			// 120000 = symlink; other modes are special git objects
+			return `Git file mode ${entry.mode} is not supported`;
+		}
+		return undefined;
+	}
+
+	private rejectUnsupportedEntry(filePath: string, reason: string): never {
+		this.logger.error('Remote source control tree contains an unsupported managed entry', {
+			filePath,
+			reason,
+		});
+		throw new UserError(
+			'The remote repository contains an unsupported source control entry. Update the repository and try again.',
+		);
+	}
+
+	private async fetchAndValidateRemoteCommit(
+		branch?: string,
+	): Promise<{ branch: string; commit: string }> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (fetchAndValidateRemoteCommit)');
+		}
+
+		await this.fetch();
+
+		const resolvedBranch = branch ?? (await this.git.branch()).current;
+		if (!resolvedBranch) {
+			throw new UserError('The source control branch is not configured.');
+		}
+
+		const remoteRef = `refs/remotes/${SOURCE_CONTROL_ORIGIN}/${resolvedBranch}`;
+		const commit = (await this.git.raw(['rev-parse', '--verify', `${remoteRef}^{commit}`])).trim();
+		await this.assertManagedTreeContainsOnlyRegularFiles(commit);
+
+		return { branch: resolvedBranch, commit };
+	}
+
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (pull)');
 		}
-		await this.setGitCommand();
-		const params = {};
-		if (options.ffOnly) {
-			Object.assign(params, { '--ff-only': true });
-		}
-		return await this.git.pull(params);
+
+		// Split pull into fetch + merge so the remote tree can be validated before it touches disk.
+		const { commit } = await this.fetchAndValidateRemoteCommit();
+		return await this.git.merge([...(options.ffOnly ? ['--ff-only'] : []), commit]);
 	}
 
 	async push(
@@ -454,6 +580,16 @@ export class SourceControlGitService {
 			throw new UnexpectedError('Git is not initialized (Promise)');
 		}
 		if (options?.hard) {
+			// A remote target writes remote content onto disk, so it needs the same validation as
+			// pull; a local target (e.g. HEAD) does not.
+			const remotePrefix = `${SOURCE_CONTROL_ORIGIN}/`;
+			if (options.target.startsWith(remotePrefix)) {
+				const branch = options.target.slice(remotePrefix.length);
+				// Reset to the validated SHA, not the ref, so the ref can't move between validation
+				// and reset.
+				const { commit } = await this.fetchAndValidateRemoteCommit(branch);
+				return await this.git.raw(['reset', '--hard', commit]);
+			}
 			return await this.git.raw(['reset', '--hard', options.target]);
 		}
 		return await this.git.raw(['reset', options.target]);

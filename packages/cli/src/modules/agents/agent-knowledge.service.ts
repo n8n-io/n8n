@@ -12,7 +12,7 @@ import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {

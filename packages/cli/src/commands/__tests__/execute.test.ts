@@ -1,4 +1,4 @@
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, Project } from '@n8n/db';
@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
+import type { INode, IRun } from 'n8n-workflow';
 import { Expression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -91,7 +91,7 @@ beforeEach(() => {
 	);
 });
 
-test('should start a task runner', async () => {
+test('should start a task runner and the policy modules', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -116,6 +116,8 @@ test('should start a task runner', async () => {
 	workflowRunner.run.mockResolvedValue('123');
 	activeExecutions.getPostExecutePromise.mockResolvedValue(run);
 
+	const initModules = vi.spyOn(Container.get(ModuleRegistry), 'initModules');
+
 	const cmd = new Execute();
 	// @ts-expect-error Protected property
 	cmd.flags = { id: '123' };
@@ -128,6 +130,10 @@ test('should start a task runner', async () => {
 	// assert
 
 	expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+	expect(initModules).toHaveBeenCalledWith(expect.anything(), [
+		'policy-infrastructure',
+		'type-availability-policies',
+	]);
 });
 
 test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
@@ -185,9 +191,8 @@ test('should exit with a crash when expression engine init fails', async () => {
 		.spyOn(Expression, 'initExpressionEngine')
 		.mockRejectedValue(new Error('isolated-vm failed to load'));
 	const exitSpy = vi
-		// @ts-expect-error Protected method
 		.spyOn(BaseCommand.prototype, 'exitWithCrash')
-		.mockResolvedValue(undefined);
+		.mockResolvedValue(undefined as never);
 
 	Container.set(
 		GlobalConfig,
@@ -203,6 +208,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 				idleTimeout: 30,
 				lazyAcquire: false,
 				compileCache: false,
+				nativeEvaluation: false,
 			},
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
@@ -229,6 +235,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 		idleTimeoutMs: 30_000, // the config value is in seconds
 		lazyAcquire: false,
 		compileCache: false,
+		nativeEvaluation: false,
 		observability: expressionObservability,
 	});
 	expect(exitSpy).toHaveBeenCalledWith(expect.stringContaining('isolated-vm'), expect.any(Error));
@@ -267,3 +274,44 @@ test('exitWithCrash logs the crash message to the console', async () => {
 test('execute needs the expression engine', () => {
 	expect(new Execute().needsExpressionEngine).toBe(true);
 });
+
+test.each([true, false])(
+	'starts from the selected trigger when pinned data is %s',
+	async (pinned) => {
+		const startingNode = mock<INode>({
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+		});
+		const workflow = mock<WorkflowEntity>({
+			id: '123',
+			nodes: [
+				mock<INode>({ name: 'Manual Trigger', type: 'n8n-nodes-base.manualTrigger' }),
+				startingNode,
+			],
+			pinData: pinned ? { [startingNode.name]: [{ json: {} }] } : undefined,
+		});
+		workflowRepository.findOneBy.mockResolvedValue(workflow);
+		ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: 'owner-id' }));
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-id', name: 'Project' }),
+		);
+		workflowRunner.run.mockResolvedValue('execution-id');
+		activeExecutions.getPostExecutePromise.mockResolvedValue(
+			mock<IRun>({ data: { resultData: { error: undefined } } }),
+		);
+		workflowRunner.run.mockClear();
+
+		const cmd = new Execute();
+		// @ts-expect-error Protected property
+		cmd.flags = { id: workflow.id };
+
+		await cmd.run();
+
+		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith({
+			executionMode: 'cli',
+			triggerToStartFrom: { name: startingNode.name },
+			workflowData: workflow,
+			userId: 'owner-id',
+		});
+	},
+);

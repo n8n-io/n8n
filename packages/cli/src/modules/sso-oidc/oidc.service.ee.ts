@@ -19,12 +19,10 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
 import { inspect } from 'util';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import {
 	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
@@ -145,7 +143,7 @@ export class OidcService {
 			payload.redirectUrl = redirectUrl;
 		}
 		return {
-			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
+			signed: this.jwtService.sign('oidcState', payload, { expiresIn: '15m' }),
 			plaintext: state,
 		};
 	}
@@ -155,7 +153,7 @@ export class OidcService {
 		let testMode: boolean | undefined;
 		let redirectUrl: unknown;
 		try {
-			const decodedState = this.jwtService.verify(signedState);
+			const decodedState = this.jwtService.verify('oidcState', signedState);
 			state = decodedState?.state;
 			testMode = decodedState?.testMode;
 			redirectUrl = decodedState?.redirectUrl;
@@ -194,7 +192,7 @@ export class OidcService {
 	generateNonce() {
 		const nonce = `n8n_nonce:${randomUUID()}`;
 		return {
-			signed: this.jwtService.sign({ nonce }, { expiresIn: '15m' }),
+			signed: this.jwtService.sign('oidcNonce', { nonce }, { expiresIn: '15m' }),
 			plaintext: nonce,
 		};
 	}
@@ -202,7 +200,7 @@ export class OidcService {
 	verifyNonce(signedNonce: string) {
 		let nonce: string;
 		try {
-			const decodedNonce = this.jwtService.verify(signedNonce);
+			const decodedNonce = this.jwtService.verify('oidcNonce', signedNonce);
 			nonce = decodedNonce?.nonce;
 		} catch (error) {
 			this.logger.error('Failed to verify nonce', { error });
@@ -321,11 +319,9 @@ export class OidcService {
 
 		let userInfo;
 		try {
-			userInfo = await this.openidClient.fetchUserInfo(
-				configuration,
-				tokens.access_token,
-				claims.sub,
-			);
+			userInfo = configuration.serverMetadata().userinfo_endpoint
+				? await this.openidClient.fetchUserInfo(configuration, tokens.access_token, claims.sub)
+				: claims;
 		} catch (error) {
 			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
@@ -335,9 +331,10 @@ export class OidcService {
 			throw new BadRequestError('An email is required');
 		}
 
-		if (!isValidEmail(userInfo.email)) {
+		if (typeof userInfo.email !== 'string' || !isValidEmail(userInfo.email)) {
 			throw new BadRequestError('Invalid email format');
 		}
+		const email = userInfo.email;
 
 		await this.assertProvisioningLoginAllowed(claims, userInfo);
 
@@ -357,7 +354,7 @@ export class OidcService {
 		}
 
 		const foundUser = await this.userRepository.findOne({
-			where: { email: userInfo.email },
+			where: { email },
 			relations: ['authIdentities', 'role'],
 		});
 
@@ -385,9 +382,9 @@ export class OidcService {
 		const user = await this.userRepository.manager.transaction(async (trx) => {
 			const { user: newUser } = await this.userRepository.createUserWithProject(
 				{
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
+					firstName: typeof userInfo.given_name === 'string' ? userInfo.given_name : undefined,
+					lastName: typeof userInfo.family_name === 'string' ? userInfo.family_name : undefined,
+					email,
 					authIdentities: [],
 					role: GLOBAL_MEMBER_ROLE,
 					password: 'no password set',
@@ -559,11 +556,9 @@ export class OidcService {
 
 		let userInfo;
 		try {
-			userInfo = await this.openidClient.fetchUserInfo(
-				configuration,
-				tokens.access_token,
-				claims.sub,
-			);
+			userInfo = configuration.serverMetadata().userinfo_endpoint
+				? await this.openidClient.fetchUserInfo(configuration, tokens.access_token, claims.sub)
+				: claims;
 		} catch (error) {
 			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');

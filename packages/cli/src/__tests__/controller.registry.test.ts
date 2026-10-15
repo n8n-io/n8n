@@ -28,7 +28,7 @@ import { z } from 'zod';
 
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';

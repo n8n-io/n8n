@@ -13,10 +13,12 @@ import {
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { deepCopy } from 'n8n-workflow';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
+	getAgentBuilderTargetsFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	type ThreadRuntime,
@@ -248,6 +250,54 @@ describe('cancelRun', () => {
 		expect(vi.mocked(postCancel)).toHaveBeenCalledWith(expect.anything(), 'thread-cancel');
 		expect(runtime.activeRunId).toBeNull();
 		expect(vi.mocked(fetchThreadStatus)).not.toHaveBeenCalled();
+	});
+});
+
+describe('transient workflow references', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+	});
+
+	it('keeps draft artifacts thread-scoped and removes the final reference', async () => {
+		const registry = createRuntimeRegistry();
+		const first = registry.getOrCreateRuntime('thread-1');
+		const second = registry.getOrCreateRuntime('thread-2');
+		first.upsertTransientWorkflowReference({
+			referenceId: 'draft-1',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		first.upsertTransientWorkflowReference({
+			referenceId: 'draft-2',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		await nextTick();
+
+		expect(first.producedArtifacts.get('wf-1')?.name).toBe('Orders');
+		expect(second.producedArtifacts.has('wf-1')).toBe(false);
+
+		first.removeTransientWorkflowReference('draft-1');
+		await nextTick();
+		expect(first.producedArtifacts.has('wf-1')).toBe(true);
+
+		first.removeTransientWorkflowReference('draft-2');
+		await nextTick();
+		expect(first.producedArtifacts.has('wf-1')).toBe(false);
+	});
+
+	it('clears transient references when the runtime resets', async () => {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime('thread-1');
+		runtime.upsertTransientWorkflowReference({
+			referenceId: 'draft-1',
+			workflowId: 'wf-1',
+			workflowName: 'Orders',
+		});
+		runtime.resetState();
+		await nextTick();
+
+		expect(runtime.transientWorkflowReferences.size).toBe(0);
+		expect(runtime.producedArtifacts.has('wf-1')).toBe(false);
 	});
 });
 
@@ -1314,6 +1364,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1327,6 +1379,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1404,6 +1458,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prefill_type: 'handoff_setup_panel_execute',
 					prefill_id: null,
 					prompt_modified: false,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					attachment_count: 0,
 				},
 			);
 		});
@@ -1433,6 +1489,59 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
+	test('sendMessage reports mention and outbound attachment counts', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Orders' },
+				{
+					type: 'nodes',
+					workflowId: 'workflow-1',
+					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
+				},
+			],
+			mentionCounts: {
+				total: 3,
+				workflow: 1,
+				node: 1,
+				group: 1,
+			},
+		});
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({
+				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+				attachment_count: 2,
+			}),
+		);
+		warnSpy.mockRestore();
+	});
+
+	test('sendMessage records a mentioned workflow as a mentioned tab on a fresh thread', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+
+		// A new thread's first message is the only trace of the mention: on the wire
+		// it is a plain workflow attachment, like a hand-off would be.
+		await runtime.sendMessage('Look at this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' },
+				{ type: 'workflow', id: 'workflow-handoff', name: 'Canvas' },
+			],
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionedWorkflowIds: ['workflow-mentioned'],
+		});
+		await nextTick();
+
+		expect(runtime.producedArtifactOrigins.get('workflow-mentioned')).toBe('mentioned');
+		expect(runtime.producedArtifactOrigins.get('workflow-handoff')).toBe('attached');
+	});
+
 	test('sendMessage includes action_source from thread metadata', async () => {
 		const hooks = {
 			onTitleUpdated: vi.fn(),
@@ -1455,6 +1564,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
@@ -1483,6 +1594,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1516,6 +1629,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				attachment_count: 0,
 			},
 		);
 		warnSpy.mockRestore();
@@ -1630,6 +1745,33 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.any(Array),
 			undefined,
 		);
+	});
+
+	test('sendMessage sends no tabs while the stored tabs of the view load', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Maybe closed' });
+		runtime.setOpenTabs(null);
+
+		await runtime.sendMessage('Change it', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toBeUndefined();
+	});
+
+	test('sendMessage forwards the open tabs instead of every produced artifact', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Closed' });
+		runtime.producedArtifacts.set('wf-2', { type: 'workflow', id: 'wf-2', name: 'Open' });
+		runtime.setOpenTabs([{ type: 'workflow', id: 'wf-2', name: 'Open' }]);
+		runtime.setActiveArtifactId('wf-2');
+
+		await runtime.sendMessage('Change it', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open' }],
+			activeId: 'wf-2',
+		});
 	});
 
 	test('sendMessage forwards the thread artifact index to postMessage', async () => {
@@ -1779,6 +1921,8 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					attachment_count: 0,
 				},
 			],
 			[
@@ -1792,9 +1936,41 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					attachment_count: 0,
 				},
 			],
 		]);
+	});
+
+	test("repeats the message's mention and attachment counts on the response event", async () => {
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-with-context' });
+
+		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [
+				{ type: 'workflow', id: 'workflow-1', name: 'Orders' },
+				{
+					type: 'nodes',
+					workflowId: 'workflow-1',
+					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
+				},
+			],
+			mentionCounts: {
+				total: 3,
+				workflow: 1,
+				node: 1,
+				group: 1,
+			},
+		});
+		finishRun('run-with-context', 'completed');
+		await vi.waitFor(() => expect(responseMetricCalls()).toHaveLength(1));
+
+		expect(responseMetricCalls()[0][1]).toMatchObject({
+			run_id: 'run-with-context',
+			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+			attachment_count: 2,
+		});
 	});
 
 	test('waits for the visible response render frame before tracking', async () => {
@@ -3205,6 +3381,23 @@ describe('getAgentBuilderTargetFromThreadMetadata', () => {
 	});
 });
 
+describe('getAgentBuilderTargetsFromThreadMetadata', () => {
+	test('reads all valid targets from the persisted registry', () => {
+		expect(
+			getAgentBuilderTargetsFromThreadMetadata({
+				instanceAiAgentBuilderTargets: {
+					first: { agentId: 'agent-1', projectId: 'project-1', ref: 'first' },
+					second: { agentId: 'agent-2', projectId: 'project-2' },
+					invalid: { agentId: 'agent-3' },
+				},
+			}),
+		).toEqual([
+			{ agentId: 'agent-1', projectId: 'project-1' },
+			{ agentId: 'agent-2', projectId: 'project-2' },
+		]);
+	});
+});
+
 describe('getAgentPreviewViewFromThreadMetadata', () => {
 	test('returns the persisted agent preview session', () => {
 		expect(
@@ -3541,5 +3734,177 @@ describe('createThreadRuntime - requestPlanChanges', () => {
 		expect(ok).toBe(false);
 		expect(runtime.updatingPlanRequestIds.has('req-plan')).toBe(false);
 		expect(runtime.resolvedConfirmationIds.has('req-plan')).toBe(false);
+	});
+});
+
+describe('createThreadRuntime - onboarding exit', () => {
+	const hooks = {
+		onTitleUpdated: vi.fn(),
+		onRunFinish: vi.fn(),
+		onOnboardingLeft: vi.fn(),
+	} satisfies Parameters<typeof createThreadRuntime>[1];
+	let runtime: ThreadRuntime;
+
+	const sse = (event: Record<string, unknown>) =>
+		capturedOnMessage!(makeSSEEvent({ runId: 'run-1', agentId: 'agent-root', ...event }));
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		vi.clearAllMocks();
+		capturedOnMessage = null;
+		runtime = createThreadRuntime('thread-onboarding', hooks);
+		runtime.connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+		sse(validRunStartEvent('run-1', 'agent-root'));
+	});
+
+	afterEach(() => {
+		runtime.closeSSE();
+	});
+
+	test('a leave-onboarding call ends the onboarding with the reason the agent gave', () => {
+		sse({ type: 'tool-call', payload: { toolCallId: 'tc-1', toolName: 'search', args: {} } });
+		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
+
+		sse({
+			type: 'tool-call',
+			payload: { toolCallId: 'tc-2', toolName: 'leave-onboarding', args: { reason: 'stop' } },
+		});
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'left', 'stop');
+	});
+
+	test('a failed run ends the onboarding; a completed one does not', () => {
+		sse({ type: 'run-finish', payload: { status: 'completed' } });
+		expect(hooks.onOnboardingLeft).not.toHaveBeenCalled();
+
+		sse(validRunStartEvent('run-2', 'agent-root'));
+		sse({ type: 'run-finish', runId: 'run-2', payload: { status: 'error' } });
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledTimes(1);
+		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'run_failed');
+	});
+});
+
+describe('createThreadRuntime - follow-up run after a reconnect', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-follow-up';
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		vi.clearAllMocks();
+	});
+
+	test('shows the next confirmation of a follow-up run after a run-sync rebuilt the tree', async () => {
+		const runtime = activeRuntime(registry);
+		const send = (event: Record<string, unknown>) => capturedOnMessage!(makeSSEEvent(event));
+
+		// Run 1 starts the message group. Run 2 is a follow-up in the same group
+		// and streams under its own orchestrator agent id.
+		send({
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { toolCallId: 'tc-plan', toolName: 'create-tasks', args: {} },
+		});
+		send({
+			type: 'run-start',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: { messageId: 'msg-2', messageGroupId: 'mg-1' },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				toolCallId: 'tc-folder',
+				toolName: 'workspace',
+				args: { action: 'create-folder' },
+			},
+		});
+		send({
+			type: 'confirmation-request',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				requestId: 'req-folder',
+				toolCallId: 'tc-folder',
+				toolName: 'workspace',
+				args: { action: 'create-folder' },
+				severity: 'info',
+				message: 'Create folder?',
+			},
+		});
+
+		// A reconnect while the run waits: the run-sync frame replaces the tree
+		// with the server's fold, which is rooted at run 1's agent.
+		capturedInstance!.dispatchNamedEvent('run-sync', {
+			runId: 'run-2',
+			messageGroupId: 'mg-1',
+			runIds: ['run-1', 'run-2'],
+			agentTree: deepCopy(runtime.messages.at(-1)!.agentTree),
+			status: 'suspended',
+			backgroundTasks: [],
+		});
+
+		mockPostConfirmation.mockResolvedValueOnce({ ok: true, runId: 'run-2' });
+		await runtime.confirmAction('req-folder', { kind: 'approval', approved: true });
+		runtime.resolveConfirmation('req-folder', 'approved');
+
+		// The resumed segment: the approved tool's result, then a second tool call
+		// that asks for its own confirmation.
+		send({
+			type: 'tool-result',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: { toolCallId: 'tc-folder', result: { id: 'folder-1' } },
+		});
+		send({
+			type: 'tool-call',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				toolCallId: 'tc-move',
+				toolName: 'workspace',
+				args: { action: 'move-workflow-to-folder' },
+			},
+		});
+		send({
+			type: 'confirmation-request',
+			runId: 'run-2',
+			agentId: 'orchestrator-run-2',
+			payload: {
+				requestId: 'req-move',
+				toolCallId: 'tc-move',
+				toolName: 'workspace',
+				args: { action: 'move-workflow-to-folder' },
+				severity: 'info',
+				message: 'Move workflow?',
+			},
+		});
+		await nextTick();
+
+		expect(
+			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
+		).toEqual(['req-move']);
+		expect(runtime.isAwaitingConfirmation).toBe(true);
 	});
 });

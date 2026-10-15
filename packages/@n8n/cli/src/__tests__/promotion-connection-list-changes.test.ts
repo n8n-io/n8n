@@ -8,6 +8,9 @@ interface ListChangesFlags {
 	format?: string;
 	json?: boolean;
 	jq?: string;
+	search?: string;
+	sort?: string;
+	order?: string;
 }
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
@@ -51,12 +54,28 @@ function stubCommand(flags: ListChangesFlags) {
 	} as unknown as N8nClient);
 	const output = vi.spyOn(internals, 'output').mockImplementation(() => {});
 
-	return { command, output };
+	return { command, output, listProjectPromotionChanges };
 }
 
 describe('promotion-connection list-changes command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('passes the search, sort, and order flags to the change preview', async () => {
+		const { command, listProjectPromotionChanges } = stubCommand({
+			search: 'checkout',
+			sort: 'updatedAt',
+			order: 'desc',
+		});
+
+		await command.run();
+
+		expect(listProjectPromotionChanges).toHaveBeenCalledWith('proj-1', 'promote', {
+			search: 'checkout',
+			sort: 'updatedAt',
+			order: 'desc',
+		});
 	});
 
 	it('unwraps the changes array for table output so rows render individually', async () => {

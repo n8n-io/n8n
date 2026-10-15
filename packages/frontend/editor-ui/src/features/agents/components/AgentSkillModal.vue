@@ -12,7 +12,8 @@ import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentSkill } from '../types';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
-import AgentSkillViewer, { type AgentSkillAllowedToolOption } from './AgentSkillViewer.vue';
+import AgentSkillUpload from './AgentSkillUpload.vue';
+import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModal from './modals/AgentModal.vue';
 
 const SKILL_FILE = 'SKILL.md';
@@ -22,7 +23,6 @@ export type AgentSkillModalData = {
 	agentId: string;
 	skill?: AgentSkill;
 	skillId?: string;
-	availableTools?: AgentSkillAllowedToolOption[];
 	/**
 	 * Names of the agent's other skills, so a duplicate name blocks save while
 	 * the modal is still open — skill names must be unique per agent.
@@ -59,13 +59,16 @@ const skill = ref<AgentSkill>(
 		name: props.data.skill?.name ?? getDefaultSkillName(),
 		description: props.data.skill?.description ?? '',
 		instructions: props.data.skill?.instructions ?? '',
-		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
 		...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
 	}),
 );
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
+const step = ref<'upload' | 'manual' | 'edit'>(
+	props.data.skill || props.data.skillId ? 'edit' : 'upload',
+);
+const isImporting = ref(false);
 
 const isEditing = computed(() => !!props.data.skillId);
 const canAddReference = computed(
@@ -124,7 +127,22 @@ const visibleErrors = computed(() =>
 const visibleNameError = computed(() =>
 	submitted.value ? (validationErrors.value.name ?? '') : '',
 );
-const canSave = computed(() => formIsValid.value);
+const canSave = computed(() => formIsValid.value && !validationErrors.value.name);
+
+function onSkillUploaded(importedSkill: AgentSkill) {
+	skill.value = normalizeSkill(importedSkill);
+	selectedPath.value = SKILL_FILE;
+	submitted.value = false;
+	step.value = 'edit';
+}
+
+function onBack() {
+	skill.value = { name: getDefaultSkillName(), description: '', instructions: '' };
+	selectedPath.value = SKILL_FILE;
+	submitted.value = false;
+	formIsValid.value = false;
+	step.value = 'upload';
+}
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
 	skill.value = normalizeSkill({ ...skill.value, ...updates });
@@ -137,10 +155,7 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 }
 
 function normalizeSkill(skill: AgentSkill): AgentSkill {
-	return normalizeAgentSkillForSave(
-		skill,
-		props.data.availableTools?.map((tool) => tool.name),
-	);
+	return normalizeAgentSkillForSave(skill);
 }
 
 function onAddReference() {
@@ -203,7 +218,6 @@ function onSave() {
 		name: skill.value.name.trim(),
 		description: skill.value.description.trim(),
 		instructions: skill.value.instructions,
-		...(skill.value.allowedTools ? { allowedTools: skill.value.allowedTools } : {}),
 		...(skill.value.references ? { references: skill.value.references } : {}),
 	});
 
@@ -221,16 +235,20 @@ function onRemove() {
 <template>
 	<AgentModal
 		:open="modalOpen"
-		:title="skill.name"
+		:title="step === 'upload' ? i18n.baseText('agents.builder.skills.add') : skill.name"
 		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
-		:title-error="visibleNameError"
 		:title-max-length="128"
+		:title-error="visibleNameError"
+		:editable-title="step !== 'upload'"
+		:show-back="step === 'manual'"
+		:show-footer="step !== 'upload'"
+		:busy="isImporting"
 		size="fit"
 		body-flush
-		editable-title
 		data-testid="agent-skill-modal"
 		@update:open="!$event && closeModal()"
 		@update:title="onSkillUpdate({ name: $event })"
+		@back="onBack"
 	>
 		<N8nCallout
 			v-if="openedWithMissingContent"
@@ -241,28 +259,32 @@ function onRemove() {
 			{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
 		</N8nCallout>
 		<div :class="$style.content">
-			<AgentSkillFileNav
-				:skill="skill"
-				:selected-path="selectedPath"
-				:add-reference-disabled="!canAddReference"
-				@add-reference="onAddReference"
-				@remove-reference="onRemoveReference"
-				@select="selectedPath = $event"
-			/>
-			<AgentSkillViewer
-				:skill="skill"
-				:available-tools="props.data.availableTools ?? []"
-				:existing-skill-names="props.data.existingSkillNames ?? []"
-				:selected-path="selectedPath"
-				:errors="visibleErrors"
-				:scrollable="false"
-				:show-name-field="false"
-				:show-validation-warnings="submitted || openedWithMissingContent"
+			<AgentSkillUpload
+				v-if="step === 'upload'"
+				v-model:busy="isImporting"
+				@uploaded="onSkillUploaded"
+				@add-manually="step = 'manual'"
 				@import:skill="onImportSkill"
-				@select:path="selectedPath = $event"
-				@update:skill="onSkillUpdate"
-				@update:valid="onValidUpdate"
 			/>
+			<template v-else>
+				<AgentSkillFileNav
+					:skill="skill"
+					:selected-path="selectedPath"
+					:add-reference-disabled="!canAddReference"
+					@add-reference="onAddReference"
+					@remove-reference="onRemoveReference"
+					@select="selectedPath = $event"
+				/>
+				<AgentSkillViewer
+					:skill="skill"
+					:selected-path="selectedPath"
+					:errors="visibleErrors"
+					:show-validation-warnings="submitted || openedWithMissingContent"
+					@select:path="selectedPath = $event"
+					@update:skill="onSkillUpdate"
+					@update:valid="onValidUpdate"
+				/>
+			</template>
 		</div>
 
 		<template v-if="isEditing && data.onRemove" #footerLeft>
@@ -273,7 +295,7 @@ function onRemove() {
 		</template>
 		<template #footerActions>
 			<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
-				{{ i18n.baseText('generic.save') }}
+				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>
 	</AgentModal>
@@ -283,8 +305,10 @@ function onRemove() {
 .content {
 	/* The Design System has no width preset between 2xlarge and full. */
 	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3));
-	height: min(calc(70dvh - var(--spacing--lg)), calc(var(--height--5xl) * 6 - var(--spacing--lg)));
-	min-height: 0;
+	min-height: min(
+		calc(70dvh - var(--spacing--lg)),
+		calc(var(--height--5xl) * 6 - var(--spacing--lg))
+	);
 	display: flex;
 }
 

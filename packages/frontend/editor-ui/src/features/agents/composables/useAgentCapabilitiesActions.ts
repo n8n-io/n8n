@@ -13,10 +13,8 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
-import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 import type {
 	AgentResource,
 	AgentJsonConfig,
@@ -204,7 +202,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						nextTools[toolIndex] = updatedTool;
 						scheduleConfigUpdate({ tools: nextTools });
 					},
-					onRemove: () => onRemoveTool(toolIndex),
+					onRemove: () => {
+						if (!localConfig.value?.tools?.[toolIndex]) return;
+						onRemoveTool(toolIndex);
+					},
 				},
 			});
 			return;
@@ -219,6 +220,37 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					: -1;
 		const mcpServer = mcpServers[mcpServerIndex];
 		if (!mcpServer) return;
+
+		if (mcpServer.metadata?.nodeTypeName) {
+			const targetAgentId = agentId.value;
+			telemetry?.trackOpenedToolFromList?.('mcpServer');
+			uiStore.openModalWithData({
+				name: AGENT_TOOL_CONFIG_MODAL_KEY,
+				data: {
+					kind: 'registryMcpServer',
+					mcpServer,
+					projectId: projectId.value,
+					supportsToolApproval,
+					existingToolNames: mcpServers
+						.filter((_, index) => index !== mcpServerIndex)
+						.map((server) => server.name),
+					onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+						if (agentId.value !== targetAgentId) return;
+						const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
+						nextMcpServers[mcpServerIndex] = updatedServer;
+						scheduleConfigUpdate({ mcpServers: nextMcpServers });
+					},
+					onRemove: () => {
+						if (agentId.value !== targetAgentId) return;
+						const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
+							(_, index) => index !== mcpServerIndex,
+						);
+						scheduleConfigUpdate({ mcpServers: nextMcpServers });
+					},
+				},
+			});
+			return;
+		}
 
 		const preferredNodeTypeName = mcpServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
 		const nodeType =
@@ -245,12 +277,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					nextMcpServers[mcpServerIndex] = updatedServer;
 					scheduleConfigUpdate({ mcpServers: nextMcpServers });
 				},
-				onRemove: () => {
-					const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
-						(_, i) => i !== mcpServerIndex,
-					);
-					scheduleConfigUpdate({ mcpServers: nextMcpServers });
-				},
+				onRemove: () => onRemoveTool((localConfig.value?.tools ?? []).length + mcpServerIndex),
 			},
 		});
 	}
@@ -299,7 +326,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				agentId: targetAgentId,
 				skill,
 				skillId: id,
-				availableTools: configuredToolOptions(),
 				existingSkillNames: appliedSkillNames(id),
 				onRemove: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
@@ -308,7 +334,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
-					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
+					const sanitizedSkill = normalizeAgentSkillForSave(updatedSkill);
 
 					if (localSkills) {
 						if (hasDuplicateSkillName(sanitizedSkill.name, skillId)) {
@@ -331,47 +357,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				},
 			},
 		});
-	}
-
-	function configuredToolOptions(): AgentSkillAllowedToolOption[] {
-		const tools: AgentSkillAllowedToolOption[] = [];
-
-		for (const tool of localConfig.value?.tools ?? []) {
-			if (tool.type === 'custom') {
-				const name = agent.value?.tools?.[tool.id]?.descriptor.name ?? tool.id;
-				if (name) {
-					tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'code' });
-				}
-			} else if (tool.type === 'workflow') {
-				const name = tool.name ?? tool.workflow;
-				tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'workflow' });
-			} else {
-				tools.push({
-					name: tool.name,
-					label: formatToolNameForDisplay(tool.name) || tool.name,
-					icon: 'globe',
-				});
-			}
-		}
-
-		for (const server of localConfig.value?.mcpServers ?? []) {
-			if (!server.name) continue;
-			tools.push({
-				name: server.name,
-				label: formatToolNameForDisplay(server.name) || server.name,
-				icon: 'mcp',
-			});
-		}
-
-		return tools;
-	}
-
-	function configuredToolNames(): Set<string> {
-		return new Set(configuredToolOptions().map((tool) => tool.name));
-	}
-
-	function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
-		return normalizeAgentSkillForSave(skill, configuredToolNames());
 	}
 
 	/** Names the skill modal validates against: every applied skill except the one being edited. */
@@ -401,9 +386,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
-		if (index < 0 || index >= currentTools.length) return;
-		const nextTools = currentTools.filter((_, i) => i !== index);
-		scheduleConfigUpdate({ tools: nextTools });
+		if (index < 0) return;
+		if (index < currentTools.length) {
+			scheduleConfigUpdate({ tools: currentTools.filter((_, i) => i !== index) });
+			return;
+		}
+
+		const mcpServers = localConfig.value?.mcpServers ?? [];
+		const mcpServerIndex = index - currentTools.length;
+		if (mcpServerIndex >= mcpServers.length) return;
+		scheduleConfigUpdate({ mcpServers: mcpServers.filter((_, i) => i !== mcpServerIndex) });
 	}
 
 	function onRemoveSkill(id: string) {
@@ -436,12 +428,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			data: {
 				projectId: targetProjectId,
 				agentId: targetAgentId,
-				availableTools: configuredToolOptions(),
 				existingSkillNames: appliedSkillNames(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return;
-						const sanitizedSkill = filterSkillAllowedTools(skill);
+						const sanitizedSkill = normalizeAgentSkillForSave(skill);
 						if (hasDuplicateSkillName(sanitizedSkill.name)) {
 							showDuplicateSkillNameError(sanitizedSkill.name);
 							return;
@@ -453,7 +444,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					}
 
 					void (async () => {
-						const sanitizedSkill = filterSkillAllowedTools(skill);
+						const sanitizedSkill = normalizeAgentSkillForSave(skill);
 						let created: AgentSkill;
 						let skillHash: string;
 						let versionId: string | null;

@@ -9,7 +9,7 @@ Mocks the **raw HTTP response a service sends over the wire**. The node then
 executes for real: its routing, pagination, response parsing, and
 post-processing (e.g. `simplify` options) all run against the mocked body.
 
-- Shape source: fetched API documentation (`api-docs.ts`) + endpoint quirks.
+- Shape source: the LLM's own knowledge of the API + endpoint quirks.
 - Used when a node executes against intercepted HTTP.
 
 ## Node-output level — pin data / simulation fixtures
@@ -53,6 +53,18 @@ properties are deliberate:
 The bypass is queried per test rather than snapshotted into the adapter: the
 harness registers ids mid-run, when the simulated user creates a credential on
 a card, long after the run's context was built.
+
+## Agents a workflow calls
+
+A Message an Agent node, or its tool version, runs another agent in-process, so
+no HTTP mock reaches it by itself. In an eval run the workflow eval gives that
+agent the Agent eval's seams (`prepareCalledAgent` in `execution.service.ts`):
+its node and workflow tools, streamable-HTTP MCP servers and fallback web search
+are mocked, and each mocked call is recorded under the calling node. The agent's
+own model call stays real, so its model needs a credential with a real key. The
+eval runs the agent's draft and turns off its memory, vector stores, SSE MCP
+servers and chat integrations. A sub-agent keeps only the MCP servers its calling
+agent also has; the eval turns off the others and adds a warning.
 
 ## Agent model catalogs
 

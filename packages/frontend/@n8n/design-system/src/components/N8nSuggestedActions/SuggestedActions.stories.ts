@@ -67,13 +67,14 @@ Default.args = {
 			id: 'evaluate-workflow',
 			title: 'Evaluate your workflow with a dataset',
 			description: 'Set up an AI evaluation to be sure th WF is reliable.',
-			moreInfoLink: 'https://docs.n8n.io/evaluations',
+			moreInfoLink:
+				'https://docs.n8n.io/build/integrate-ai/test-and-improve-ai-workflows/understand-why-to-test',
 		},
 		{
 			id: 'track-errors',
 			title: 'Keep track of execution errors',
 			description: 'Setup a workflow error to track what is going on here.',
-			moreInfoLink: 'https://docs.n8n.io/error-workflows',
+			moreInfoLink: 'https://docs.n8n.io/build/flow-logic/handle-errors-gracefully',
 		},
 		{
 			id: 'track-time',

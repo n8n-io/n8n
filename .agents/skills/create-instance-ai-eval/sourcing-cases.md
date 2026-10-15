@@ -47,9 +47,20 @@ ids. Full table in
 1. **Scan cluster themes** — `list_cluster_runs` / `get_latest_cluster_run`
    return capability-gap themes with a `label`, `summary`, and `mechanism`: the
    real, recurring failure modes.
-2. **Pull the conversations** — `list_conversations` (e.g. `verdict:"bad"`,
-   `analyzed:"yes"`) → `get_conversation` (raw trace) + `get_conversation_analysis`
-   (findings). `get_linear_ticket_context` links a thread to its ticket. To target
+2. **Pull the conversations.** Start from what LangTracer already detected.
+   `list_signal_rates` lists every code check and label rule with its rate over a
+   window: what fails most right now. Then `list_conversations` with `signals`,
+   one token per signal, ANDed — `check:has_nodes`,
+   `label:task_outcome=agent-gave-up`, `analysis:bad`, `keeper:*`, `review:*` — puts
+   the matching entries on each row, each with its evidence (the verdict comment,
+   the judge's words, Keeper's reason) and its version. On a candidate,
+   `get_conversation_signals` shows what every source said and which ones agreed:
+   a thread flagged by a code check, the judge and Keeper is a stronger source
+   than one flagged by a single model pass. A source marked `not_run` never looked
+   at the thread, so read its silence as unknown, not as clean. The older path
+   still works: `list_conversations` (e.g. `verdict:"bad"`, `analyzed:"yes"`) →
+   `get_conversation` (raw trace) + `get_conversation_analysis` (findings).
+   `get_linear_ticket_context` links a thread to its ticket. To target
    **execution failures**, add `funnelDrop:"05"` (built + launched an execution
    that never *succeeded*). **Caveat: the funnel drop is a *conversion* signal, not
    a build-quality one** — most `funnelDrop:"05"` threads are healthy builds that
@@ -61,7 +72,8 @@ ids. Full table in
    (was `build-workflow` called on this turn?), which it reads reliably — but a
    content-dependent claim ("invented ID", "missing node") can be wrong when it
    couldn't see the built workflow. Confirm against the raw trace before building
-   a case around it.
+   a case around it. The same goes for a signal's `evidence`: it is what that
+   source saw, not the trace.
 4. **Optionally record the selection as an observation.** Offer to save why this
    thread was selected and what the developer observed. This is a best-effort
    LangTracer note, not a gate: skip it when the developer declines or has not

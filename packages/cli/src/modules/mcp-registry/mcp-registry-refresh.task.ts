@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { McpRegistryService } from './registry/mcp-registry.service';
 
@@ -18,15 +18,10 @@ export class McpRegistryRefreshTask implements SystemTask {
 		REFRESH_INTERVAL_HOURS * Time.hours.toSeconds,
 	);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
-		scope: 'cluster',
-		durable: false,
-		// Only the leader polls the remote registry, so a new leader may be
-		// running on outdated data until this runs.
-		runOnTakeover: true,
-	};
+	readonly target = clusterTarget({
+		scheduler: { retryOnFailure: true },
+		leaderTimer: { runOnTakeover: true },
+	});
 
 	constructor(private readonly mcpRegistryService: McpRegistryService) {}
 

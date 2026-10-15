@@ -12,7 +12,7 @@ import type { StateAdapter } from 'chat';
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
@@ -199,6 +199,18 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 		connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
 		disconnectSpy = vi.spyOn(service, 'disconnect').mockResolvedValue();
 		broadcastSpy = vi.spyOn(service, 'broadcastIntegrationChange').mockResolvedValue();
+	});
+
+	it('does not start an external adapter for n8n Chat', async () => {
+		const agent = makeAgent({ activeVersionId: 'published-version-1' });
+		const n8nChatIntegration = { type: 'n8n_chat', credentialId: '' } as const;
+
+		await service.syncToConfig(agent, [], [n8nChatIntegration]);
+		await service.syncToConfig(agent, [n8nChatIntegration], []);
+
+		expect(connectSpy).not.toHaveBeenCalled();
+		expect(disconnectSpy).not.toHaveBeenCalled();
+		expect(broadcastSpy).not.toHaveBeenCalled();
 	});
 
 	it('skips connect when the agent is not published', async () => {
@@ -1983,6 +1995,19 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			await expect(
 				service.broadcastIntegrationChange('a1', { type: 'linear', credentialId: 'c1' }, 'connect'),
 			).resolves.toBeUndefined();
+		});
+
+		it('does nothing for n8n Chat, which has no runtime connection for peers to reconcile', async () => {
+			const publisher = mock<Publisher>();
+			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
+
+			await service.broadcastIntegrationChange(
+				'a1',
+				{ type: 'n8n_chat', credentialId: '' },
+				'connect',
+			);
+
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 	});
 });

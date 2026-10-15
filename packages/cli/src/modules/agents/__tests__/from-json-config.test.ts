@@ -13,6 +13,9 @@ import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-j
 import type { ToolExecutor } from '../json-config/from-json-config';
 import { buildVectorStore } from '../json-config/vector-store-factory';
 
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
 vi.mock('../json-config/vector-store-factory', () => ({
 	buildVectorStore: vi.fn(),
 }));
@@ -323,7 +326,37 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'agent-context')).toBe(false);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
+	});
+
+	// Agents can no longer disable a skill. The schema strips a stale `enabled: false`, so the
+	// runtime loads every ref it gets. Disabled refs are detached before they reach it.
+	it('loads a skill whose ref still says enabled: false', async () => {
+		const config = AgentJsonConfigSchema.parse(
+			makeConfig({
+				skills: [{ type: 'skill', id: 'summarize_notes', enabled: false } as never],
+			}),
+		);
+		expect(config.skills).toEqual([{ type: 'skill', id: 'summarize_notes' }]);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Use for meeting notes and transcripts',
+						instructions: 'Extract decisions and action items.',
+					},
+				},
+			},
+		);
+
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
@@ -477,7 +510,17 @@ describe('buildFromJson()', () => {
 
 	it('resolves workflow tool via resolveTool callback', async () => {
 		const config = makeConfig({
-			tools: [{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' }],
+			tools: [
+				{ type: 'custom', id: 'missing_tool', enabled: false },
+				{ type: 'workflow', workflow: 'Missing Workflow', enabled: false },
+				{
+					type: 'node',
+					name: 'missing_node',
+					enabled: false,
+					node: { nodeType: 'missing.node', nodeTypeVersion: 1, nodeParameters: {} },
+				},
+				{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' },
+			],
 		});
 
 		const resolvedTool = {
@@ -500,6 +543,7 @@ describe('buildFromJson()', () => {
 
 		expect(agent.snapshot.tools.some((t) => t.name === 'run_workflow')).toBe(true);
 		expect(resolveTool).toHaveBeenCalledTimes(1);
+		expect(resolveTool).toHaveBeenCalledWith(config.tools![3]);
 	});
 
 	it('wraps workflow tool with approval when requireApproval is true', async () => {
@@ -1191,22 +1235,43 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
 	});
 
-	it('configures observational memory worker models with their own credentials', async () => {
+	it('configures agent and memory worker models with their own credentials and projects', async () => {
+		getCachedCatalog.mockResolvedValue({
+			'google-vertex': {
+				models: {
+					'gemini-3.1-pro-preview': { sdk: '@ai-sdk/google-vertex' },
+					'gemini-3-flash-preview': { sdk: '@ai-sdk/google-vertex' },
+				},
+			},
+		});
+		const modelSpy = vi.spyOn(AgentsRuntime.Agent.prototype, 'model');
 		const observeSpy = vi.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
 				url: `https://${credentialId}.example/v1`,
+				email: `${credentialId}@example.iam.gserviceaccount.com`,
+				privateKey: `${credentialId}-private-key`,
+				region: 'europe-west4',
+				projectId: `${credentialId}-project`,
 			})),
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue([
+				{ id: 'main-key', name: 'Main', type: 'googleVertexAiApi' },
+				{ id: 'observer-key', name: 'Observer', type: 'googleVertexAiApi' },
+			]),
 		};
 		const config = makeConfig({
+			model: 'google-vertex/gemini-3.1-pro-preview',
+			credential: 'main-key',
 			memory: {
 				enabled: true,
 				storage: 'n8n',
 				observationalMemory: {
-					observerModel: { model: 'openai/gpt-4o-mini', credential: 'observer-key' },
+					observerModel: {
+						model: 'google-vertex/gemini-3-flash-preview',
+						credential: 'observer-key',
+					},
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'reflector-key',
@@ -1225,10 +1290,21 @@ describe('buildFromJson()', () => {
 			},
 		);
 
+		expect(modelSpy).toHaveBeenCalledWith({
+			id: 'google-vertex/gemini-3.1-pro-preview',
+			sdk: '@ai-sdk/google-vertex',
+			project: 'main-key-project',
+			clientEmail: 'main-key@example.iam.gserviceaccount.com',
+			privateKey: 'main-key-private-key',
+			location: 'europe-west4',
+		});
 		expect(observeSpy).toHaveBeenCalledWith({
-			id: 'openai/gpt-4o-mini',
-			apiKey: 'observer-key-api-key',
-			baseURL: 'https://observer-key.example/v1',
+			id: 'google-vertex/gemini-3-flash-preview',
+			sdk: '@ai-sdk/google-vertex',
+			project: 'observer-key-project',
+			clientEmail: 'observer-key@example.iam.gserviceaccount.com',
+			privateKey: 'observer-key-private-key',
+			location: 'europe-west4',
 		});
 		expect(reflectSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
@@ -2063,38 +2139,27 @@ describe('AgentJsonConfigSchema', () => {
 			expect(() => AgentJsonConfigSchema.parse({ ...base, mcpServers: servers })).toThrow();
 		});
 
-		it('parses an allow-mode toolFilter', () => {
+		it('parses MCP tool permissions', () => {
 			const parsed = AgentJsonConfigSchema.parse({
 				...base,
 				mcpServers: [
 					{
 						name: 'github',
 						url: 'https://a.example.test/mcp',
-						toolFilter: { mode: 'allow', tools: ['search_repositories'] },
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'require_approval' },
+							tools: { delete_repository: 'blocked' },
+						},
 					},
 				],
 			});
-			expect(parsed.mcpServers?.[0].toolFilter).toEqual({
-				mode: 'allow',
-				tools: ['search_repositories'],
+			expect(parsed.mcpServers?.[0].toolPermissions).toEqual({
+				categories: { read: 'always_allow', write: 'require_approval' },
+				tools: { delete_repository: 'blocked' },
 			});
 		});
 
-		it('parses approval mode "global"', () => {
-			const parsed = AgentJsonConfigSchema.parse({
-				...base,
-				mcpServers: [
-					{
-						name: 'github',
-						url: 'https://a.example.test/mcp',
-						approval: { mode: 'global' },
-					},
-				],
-			});
-			expect(parsed.mcpServers?.[0].approval).toEqual({ mode: 'global' });
-		});
-
-		it('rejects approval mode "selected" with an empty tools array', () => {
+		it('rejects an unknown MCP tool permission', () => {
 			expect(() =>
 				AgentJsonConfigSchema.parse({
 					...base,
@@ -2102,7 +2167,9 @@ describe('AgentJsonConfigSchema', () => {
 						{
 							name: 'github',
 							url: 'https://a.example.test/mcp',
-							approval: { mode: 'selected', tools: [] },
+							toolPermissions: {
+								categories: { read: 'always_allow', write: 'ask' },
+							},
 						},
 					],
 				}),

@@ -6,7 +6,7 @@ import { ContextEstablishmentHookMetadata, ModuleMetadata } from '@n8n/decorator
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 
 import { ExecutionRedactionService } from '../executions/execution-redaction.service';
 // For the @BackendModule side effect. Importing the hook here would void the assertion.

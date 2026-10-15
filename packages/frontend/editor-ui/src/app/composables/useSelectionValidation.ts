@@ -14,7 +14,12 @@ import {
 import { useNodeGroupRules } from '@/app/composables/useNodeGroupRules';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/app/constants/nodeTypes';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import type { INodeUi } from '@/Interface';
 
 export type SelectionValidationResult = NodeSelectionValidationResult<INodeUi>;
@@ -28,6 +33,14 @@ export function useSelectionValidation() {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { allowTriggerInGroup, allowMultipleBoundaryNodes } = useNodeGroupRules();
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
+
+	function isSubworkflowConversionDisabled(): boolean {
+		return (
+			nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE) ||
+			nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)
+		);
+	}
 
 	/**
 	 * Expands a selection of node ids to include all sub-nodes (memory, tools,
@@ -85,13 +98,9 @@ export function useSelectionValidation() {
 	 * node, expands the rest with their attached sub-nodes, and validates the
 	 * result. Returns the expanded member ids when groupable, null otherwise.
 	 *
-	 * Creating a group additionally requires at least two connectable
-	 * (non-sticky) members, counted after sub-node expansion — so a lone AI
-	 * parent node whose sub-nodes join the group still qualifies, while
-	 * single-node and sticky-only groups are not offered. This is a
-	 * creation-only rule: groups can degenerate below it through node deletion
-	 * and must keep saving, so the shared validator tolerates such groups as
-	 * data and the check lives here instead.
+	 * Creating a group requires at least one connectable (non-sticky) member,
+	 * counted after sub-node expansion. A group can therefore contain one real
+	 * node and can later transition to the empty-group anchor state.
 	 *
 	 * Group creation eligibility and execution must both go through this so the
 	 * checked selection and the created group can't diverge (e.g. stale ids
@@ -106,7 +115,8 @@ export function useSelectionValidation() {
 		const connectableCount = expandedIds.filter(
 			(id) => store?.getNodeById(id)?.type !== STICKY_NODE_TYPE,
 		).length;
-		if (connectableCount < 2) return null;
+		const minimumConnectableCount = emptyCanvasGroupsEnabled.value ? 1 : 2;
+		if (connectableCount < minimumConnectableCount) return null;
 
 		return isSelectionGroupable(expandedIds).valid ? expandedIds : null;
 	}
@@ -134,6 +144,7 @@ export function useSelectionValidation() {
 	}
 
 	return {
+		isSubworkflowConversionDisabled,
 		isSelectionExtractable,
 		isSelectionGroupable,
 		expandSelectionWithSubNodes,

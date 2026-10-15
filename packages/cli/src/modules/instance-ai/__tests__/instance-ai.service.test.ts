@@ -16,6 +16,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	return {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
+		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
 		setTraceModelId: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
+		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({ registry: { skills: [] } })),
 		setupSandboxWorkspace: vi.fn(),
 		traceSandboxOperation: vi.fn(
 			async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
@@ -252,7 +254,7 @@ import type {
 	InstanceContextInjection,
 	InstanceContextSurface,
 } from '@n8n/api-types';
-import type { InstanceAiHandoffContext } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, type InstanceAiHandoffContext } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -266,9 +268,12 @@ import {
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
+	disabledInstanceAiSkillIds,
 	loadInstanceAiPromptSkills,
+	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	streamAgentRun,
+	isQuotaExhaustedError,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
@@ -287,7 +292,7 @@ import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
@@ -302,7 +307,7 @@ import {
 import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
-import { buildThreadContextBlock } from '../internal-messages';
+import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
 import type {
 	RebuildSuspendedRunOutcome,
@@ -598,7 +603,7 @@ type TerminalGuardOrderServiceInternals = {
 	) => void;
 	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
-	creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+	creditService: { claimRunUsage: Mock };
 	failedInternalFollowUpStreaks: Map<string, number>;
 	schedulePlannedTasks: Mock;
 	createPlannedTaskState: Mock;
@@ -696,10 +701,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
-	service.creditService = {
-		claimRunUsage: vi.fn(async () => {}),
-		ensureQuotaLockApplied: vi.fn(async () => {}),
-	};
+	service.creditService = { claimRunUsage: vi.fn(async () => {}) };
 	service.failedInternalFollowUpStreaks = new Map();
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.preserveHitlOnShutdown = new Set();
@@ -734,7 +736,10 @@ function stubInitialRunSurface(
 	instanceContextEnabled = false,
 ): void {
 	Object.assign(service, {
-		resolveContextAttachments: vi.fn(async () => []),
+		adapterService: {
+			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+		},
+		resolveContextAttachments: vi.fn(() => []),
 		createProxyRunConfig: vi.fn(async () => ({})),
 		browserSessionService: { getExtensionTraceContext: vi.fn() },
 		readThreadProvenance: vi.fn(async () => ({})),
@@ -840,6 +845,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				pushRef?: string,
 				proxyRunConfig?: undefined,
 				instanceContextGates?: ContextGates,
+				experimentGates?: undefined,
 			) => Promise<{
 				instanceContextEnabled: boolean;
 				nodeUsageEnabled: boolean;
@@ -871,7 +877,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveExperimentGates: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
-			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+			modelService: {
+				resolveAgentModelConfig: Mock;
+				resolveProxyModel: Mock;
+				getCredits: Mock;
+			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -909,7 +919,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			creditService: { claimRunUsage: Mock };
+			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
@@ -934,7 +945,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
+				progressiveBuildingEnabled: false,
 				nodeUsageEnabled: !instanceContextEnabled,
+				nodeContextEnabled: false,
 				folderExplorationEnabled: false,
 				aiPreferencesEnabled: false,
 				instanceContextEnabled,
@@ -944,9 +957,16 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			getCredits: vi.fn(async () => ({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+			})),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
@@ -1000,10 +1020,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-		service.creditService = {
-			claimRunUsage: vi.fn(),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
-		};
+		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
+		service.creditService = { claimRunUsage: vi.fn() };
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
 			init: vi.fn(async () => {}),
@@ -1012,6 +1030,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createSandbox as Mock).mockResolvedValue(sandbox);
 		(createWorkspace as Mock).mockReturnValue(workspace);
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+		const agentBuildingAvailable = snapshotMode === 'seeded';
+		if (agentBuildingAvailable) {
+			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
+		}
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1022,6 +1044,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			undefined,
 			undefined,
 			boundGates,
+		);
+		// The agent-building skills follow whether the context has a builder delegate.
+		expect(disabledInstanceAiSkillIds).toHaveBeenCalledWith(
+			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
 		);
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,
@@ -1148,6 +1174,24 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 
+		// Runtime skills and workspace setup share the verified bundles of the sandbox.
+		const { resolveVerifiedBundles, bundleSource } = (createLazyWorkspaceRuntimeSkillSource as Mock)
+			.mock.calls[0]?.[0] as {
+			resolveVerifiedBundles: () => Promise<unknown>;
+			bundleSource: unknown;
+		};
+		// The sandbox stores every bundled skill, the same set that the image and snapshot bake.
+		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalled();
+		expect(bundleSource).toBeDefined();
+		expect(bundleSource).toBe((loadInstanceAiRuntimeSkillSource as Mock).mock.results[0]?.value);
+		const verifiedBundles = await resolveVerifiedBundles();
+		expect(verifiedBundles).toEqual(new Map());
+		const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
+			verifiedBundles: unknown;
+		};
+		expect((setupSandboxWorkspace as Mock).mock.calls[0]?.[0]).toBe(workspace);
+		expect(setupOptions.verifiedBundles).toBe(verifiedBundles);
+
 		(createLazyRuntimeWorkspace as Mock).mockClear();
 		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();
 		(createSandbox as Mock).mockClear();
@@ -1179,15 +1223,24 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 
+	// [progressive flag, stored mode, pinned version, concise flag, expected profile]
 	it.each([
-		[false, undefined, 'default', undefined],
-		[true, undefined, 'progressive', undefined],
-		[true, 'default', 'default', undefined],
-		[false, 'progressive', 'progressive', undefined],
-		[true, 'progressive', 'default', 'default@1'],
-		[false, 'default', 'progressive', 'progressive@1'],
-		[true, 'progressive', 'default', 'retired@1'],
-	] as const)('selects mode (%s, %s, %s, %s)', async (enabled, override, expected, version) => {
+		[false, undefined, undefined, false, 'default@1'],
+		[true, undefined, undefined, false, 'progressive@1'],
+		[true, 'default', undefined, false, 'default@1'],
+		[false, 'progressive', undefined, false, 'progressive@1'],
+		[true, 'progressive', 'default@1', false, 'default@1'],
+		[false, 'default', 'progressive@1', false, 'progressive@1'],
+		[true, 'progressive', 'retired@1', false, 'default@1'],
+		// The concise flag applies only in default mode, and any pin beats it.
+		[false, undefined, undefined, true, 'concise@1'],
+		[false, 'default', undefined, true, 'concise@1'],
+		[true, undefined, undefined, true, 'progressive@1'],
+		[false, 'progressive', undefined, true, 'progressive@1'],
+		[false, undefined, 'default@1', true, 'default@1'],
+	] as const)('selects profile (%s, %s, %s, %s) as %s', async (...row) => {
+		const [enabled, override, version, concise, profile] = row;
+		const expected = profile === 'progressive@1' ? 'progressive' : 'default';
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -1223,7 +1276,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveExperimentGates: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
-			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+			modelService: {
+				resolveAgentModelConfig: Mock;
+				resolveProxyModel: Mock;
+				getCredits: Mock;
+			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -1261,7 +1318,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			creditService: { claimRunUsage: Mock };
+			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
@@ -1285,7 +1343,9 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				configEvalsEnabled: true,
 				conversationHistoryEnabled: false,
 				progressiveBuildingEnabled: enabled,
+				conciseStyleEnabled: concise,
 				nodeUsageEnabled: false,
+				nodeContextEnabled: false,
 				folderExplorationEnabled: true,
 				aiPreferencesEnabled: false,
 			}),
@@ -1294,9 +1354,16 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			getCredits: vi.fn(async () => ({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+			})),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
-		service.agentMemory = { getThreadProjectId: vi.fn(async () => 'project-1') };
+		service.agentMemory = {
+			getThreadProjectId: vi.fn(async () => 'project-1'),
+			getThread: vi.fn(async () => undefined),
+		};
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
@@ -1346,10 +1413,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-		service.creditService = {
-			claimRunUsage: vi.fn(),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
+		// Vary the sharing setting across rows. It does not depend on the build mode.
+		const allowSendingParameterValues = !enabled;
+		service.aiUsageService = {
+			isParameterValueSharingAllowed: vi.fn(async () => allowSendingParameterValues),
 		};
+		service.creditService = { claimRunUsage: vi.fn() };
 		(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
 		(createWorkspace as Mock).mockReturnValue({
 			init: vi.fn(async () => {}),
@@ -1367,14 +1436,18 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
 		expect(service.runState.setBuildMode).toHaveBeenCalledWith('thread-1', expected);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: expected, version: `${expected}@1` }),
+			expect.objectContaining({ mode: expected, version: profile }),
 		);
 		expect(environment.orchestrationContext).toMatchObject({
-			promptConfiguration: { version: `${expected}@1` },
+			promptConfiguration: { version: profile },
 		});
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),
+		);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ allowSendingParameterValues }),
 		);
 	});
 });
@@ -2863,40 +2936,56 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
-	it('rebuilds the agent when autoSetup is set, and resumes with the rebuilt one', async () => {
-		const service = createSuspendedRunResumeService();
-		const freshUser = { id: 'user-1', disabled: false } as User;
-		service.revalidateActiveUser.mockResolvedValue(freshUser);
-		const rebuiltAgent = { id: 'rebuilt-agent' };
-		service.rebuildAgentForResume.mockResolvedValue({
-			agent: rebuiltAgent,
-			modelId: { provider: 'anthropic', model: 'claude' },
-		});
+	it.each(['workflows', 'build-agent'])(
+		'rebuilds the suspended %s call when autoSetup is set',
+		async (toolName) => {
+			const service = createSuspendedRunResumeService();
+			const suspended = service.runState.findSuspendedByRequestId('req-1');
+			service.runState.findSuspendedByRequestId.mockReturnValue({
+				...suspended,
+				toolName,
+				suspendPayload: {
+					...suspended.suspendPayload,
+					builderCheckpoint: {
+						runId: 'builder-run-1',
+						toolCallId: 'builder-call-1',
+						configUpdated: false,
+					},
+				},
+			});
+			const freshUser = { id: 'user-1', disabled: false } as User;
+			service.revalidateActiveUser.mockResolvedValue(freshUser);
+			const rebuiltAgent = { id: 'rebuilt-agent' };
+			service.rebuildAgentForResume.mockResolvedValue({
+				agent: rebuiltAgent,
+				modelId: { provider: 'anthropic', model: 'claude' },
+			});
 
-		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
-			approved: true,
-			autoSetup: { credentialType: 'datadogApi' },
-		});
+			const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+				approved: true,
+				autoSetup: { credentialType: 'datadogApi' },
+			});
 
-		expect(result).toEqual({ ok: true, runId: 'run-1' });
-		expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
-			freshUser,
-			'thread-a',
-			'run-1',
-			expect.any(AbortController),
-			undefined,
-			undefined,
-			'group-1',
-			expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
-		);
-		expect(service.processResumedStream).toHaveBeenCalledWith(
-			rebuiltAgent,
-			expect.objectContaining({ autoSetup: { credentialType: 'datadogApi' } }),
-			expect.objectContaining({ modelId: { provider: 'anthropic', model: 'claude' } }),
-		);
-		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
-		expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
-	});
+			expect(result).toEqual({ ok: true, runId: 'run-1' });
+			expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
+				freshUser,
+				'thread-a',
+				'run-1',
+				expect.any(AbortController),
+				undefined,
+				undefined,
+				'group-1',
+				expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
+			);
+			expect(service.processResumedStream).toHaveBeenCalledWith(
+				rebuiltAgent,
+				expect.objectContaining({ autoSetup: { credentialType: 'datadogApi' } }),
+				expect.objectContaining({ modelId: { provider: 'anthropic', model: 'claude' } }),
+			);
+			const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
+			expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
+		},
+	);
 
 	it('fails the resume and cancels the run when the rebuild fails', async () => {
 		const service = createSuspendedRunResumeService();
@@ -5036,59 +5125,116 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 });
 
 describe('InstanceAiService run input gates', () => {
+	function createRunInputService(enabled: boolean) {
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+		vi.mocked(streamAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: emptyWorkSummary(),
+		});
+		const buildBlock = vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' });
+		const environment = {
+			instanceContextEnabled: enabled,
+			context: { setupItemsEmitter: enabled ? {} : undefined },
+			memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+			taskStorage: { get: vi.fn(async () => undefined) },
+			orchestrationContext: {},
+		};
+		const service = Object.assign(Object.create(InstanceAiService.prototype), {
+			webhookBaseUrl: 'https://acme.example.com/webhook',
+			formBaseUrl: 'https://acme.example.com/form',
+			tracing: { createOrchestratorResumeTraceContext: vi.fn(async () => undefined) },
+			adapterService: {
+				resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
+			},
+			resolveContextAttachments: vi.fn(() => []),
+			instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
+			createProxyRunConfig: vi.fn(async () => ({})),
+			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			readThreadProvenance: vi.fn(async () => ({})),
+			instanceContext: { buildBlock },
+			reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
+				throw error;
+			}),
+			isRunDebugEnabled: vi.fn(() => false),
+			eventBus: { publish: vi.fn() },
+			threadPushRef: new Map(),
+			createExecutionEnvironment: vi.fn(async () => environment),
+			snapshotAttachedAgents: vi.fn(),
+			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			resolveProjectContextSection: vi.fn(async () => ''),
+			createAgentFromEnvironment: vi.fn(async () => ({})),
+			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+			shouldPreserveHitlOnShutdown: vi.fn(() => true),
+			runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
+			telemetry: { track: vi.fn() },
+			domainAccessTrackersByThread: new Map(),
+			updateInternalFollowUpFailureStreak: vi.fn(),
+		}) as {
+			executeRun: (
+				user: User,
+				threadId: string,
+				runId: string,
+				message: string,
+				controller: AbortController,
+				attachments?: undefined,
+				context?: InstanceAiHandoffContext,
+				messageGroupId?: string,
+				timeZone?: string,
+				isReplanFollowUp?: boolean,
+				checkpoint?: undefined,
+				resumeReason?: 'background_task_completed',
+			) => Promise<void>;
+		};
+		return { service, buildBlock };
+	}
+
+	it('carries the instance URLs on a user turn', async () => {
+		const { service } = createRunInputService(false);
+
+		await service.executeRun(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			'Share the form link',
+			new AbortController(),
+		);
+
+		const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
+		expect(input).toContain(
+			'<instance-urls>\nWebhook base URL: https://acme.example.com/webhook\nForm base URL: https://acme.example.com/form\n</instance-urls>',
+		);
+	});
+
+	it('omits the instance URLs on an internal follow-up', async () => {
+		const { service } = createRunInputService(false);
+
+		await service.executeRun(
+			fakeUser,
+			'thread-1',
+			'run-1',
+			'(continue)',
+			new AbortController(),
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			undefined,
+			'background_task_completed',
+		);
+
+		const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
+		expect(input).toEqual(expect.any(String));
+		expect(input).not.toContain('<instance-urls>');
+	});
+
 	it.each([true, false])(
 		'forwards the setup panel target and the shared instance gate: %s',
 		async (enabled) => {
-			vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
-			vi.mocked(streamAgentRun).mockResolvedValueOnce({
-				status: 'cancelled',
-				agentRunId: 'agent-run-1',
-				text: Promise.resolve(''),
-				workSummary: emptyWorkSummary(),
-			});
-			const buildBlock = vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' });
-			const environment = {
-				instanceContextEnabled: enabled,
-				context: { setupItemsEmitter: enabled ? {} : undefined },
-				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
-				taskStorage: { get: vi.fn(async () => undefined) },
-				orchestrationContext: {},
-			};
-			const service = Object.assign(Object.create(InstanceAiService.prototype), {
-				resolveContextAttachments: vi.fn(async () => []),
-				instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
-				createProxyRunConfig: vi.fn(async () => ({})),
-				browserSessionService: { getExtensionTraceContext: vi.fn() },
-				readThreadProvenance: vi.fn(async () => ({})),
-				instanceContext: { buildBlock },
-				reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
-					throw error;
-				}),
-				isRunDebugEnabled: vi.fn(() => false),
-				eventBus: { publish: vi.fn() },
-				threadPushRef: new Map(),
-				createExecutionEnvironment: vi.fn(async () => environment),
-				snapshotAttachedAgents: vi.fn(),
-				buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
-				buildWorkflowSetupStateBlock: vi.fn(async () => ''),
-				resolveProjectContextSection: vi.fn(async () => ''),
-				createAgentFromEnvironment: vi.fn(async () => ({})),
-				buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
-				shouldPreserveHitlOnShutdown: vi.fn(() => true),
-				runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
-				domainAccessTrackersByThread: new Map(),
-				updateInternalFollowUpFailureStreak: vi.fn(),
-			}) as {
-				executeRun: (
-					user: User,
-					threadId: string,
-					runId: string,
-					message: string,
-					controller: AbortController,
-					attachments?: undefined,
-					context?: InstanceAiHandoffContext,
-				) => Promise<void>;
-			};
+			const { service, buildBlock } = createRunInputService(enabled);
 
 			await service.executeRun(
 				fakeUser,
@@ -5137,6 +5283,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		schedulePlannedTasks: Mock;
 		taskProjector: { syncFromWorkflowLoop: Mock };
 		browserSessionService: { getExtensionTraceContext: Mock };
+		adapterService: { resolveExperimentGates: Mock };
 	};
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
@@ -5157,6 +5304,9 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		};
 		service.browserSessionService = {
 			getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
+		};
+		service.adapterService = {
+			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
 		};
 		return service;
 	}
@@ -5333,6 +5483,39 @@ describe('InstanceAiService — planned task settlement', () => {
 		);
 	});
 
+	it('stops a background builder as out of credits when the thread is cancelled for quota', async () => {
+		const { service } = createSettlementService();
+
+		service.cancelRun('thread-a', 'quota_exhausted');
+		await flush();
+
+		const abortReason = service.backgroundTasks.cancelThread.mock.calls[0]?.[1];
+		expect(isQuotaExhaustedError(abortReason)).toBe(true);
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'error',
+				agentId: 'orchestrator-task-run-1',
+				payload: expect.objectContaining({
+					code: 'quota_exhausted',
+					content: expect.stringContaining('credits'),
+				}),
+			}),
+		);
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'agent-completed',
+				payload: expect.objectContaining({
+					role: 'builder',
+					result: '',
+					status: 'error',
+					error: expect.stringContaining('credits'),
+				}),
+			}),
+		);
+	});
+
 	it('re-ticks the scheduler when a single background task is cancelled', async () => {
 		const { service, plannedTaskService } = createSettlementService();
 
@@ -5413,8 +5596,9 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		// Imported helpers compile to `(0,__vite_ssr_import_N__.fn)(args)`. Both
 		// arguments must reach the block, or the editor hand-off drops out of it.
 		expect(source).toMatch(
-			/buildThreadArtifactsBlock\)?\s*\(\s*threadArtifacts\s*,\s*contextAttachments\s*\)/,
+			/resolveThreadArtifactsTurn\(\s*threadId\s*,\s*threadArtifacts\s*,\s*contextAttachments\s*,/,
 		);
+		expect(source).toMatch(/buildThreadArtifactsBlock\)?\s*\(\s*context\s*,\s*attachments\s*\)/);
 		expect(source).toMatch(/buildThreadContextBlock\)?/);
 		expect(source).not.toContain('buildContextResourcesBlock');
 		expect(source).not.toContain('EDITOR_CONTEXT_OPEN_TAG');
@@ -6246,7 +6430,7 @@ describe('createAgentMemoryOptions', () => {
 			'observerMessageTokens' | 'reflectorObservationTokens'
 		>;
 		runState: { getObserverThresholdTokens: Mock };
-		creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+		creditService: { claimRunUsage: Mock };
 		logger: { warn: Mock };
 	};
 
@@ -6254,10 +6438,7 @@ describe('createAgentMemoryOptions', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
 		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
 		service.runState = { getObserverThresholdTokens: vi.fn().mockReturnValue(undefined) };
-		service.creditService = {
-			claimRunUsage: vi.fn(async () => {}),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
-		};
+		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
@@ -6495,6 +6676,165 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 			expect(runId).toBe('follow-up-run');
 			expect(service.startExecuteRun).toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — resolveThreadArtifactsTurn', () => {
+	type Context = {
+		artifacts: Array<{ type: 'workflow'; id: string; name?: string }>;
+		activeId?: string;
+	};
+	type Internals = {
+		resolveThreadArtifactsTurn: (
+			threadId: string,
+			context: Context | undefined,
+			attachments: Array<{ type: 'workflow'; id: string; name: string }>,
+			loadHistory: () => Promise<unknown[]>,
+		) => Promise<string>;
+		getReplayedMessages: (threadId: string) => Promise<unknown[]>;
+		agentMemory: {
+			getMessages: Mock;
+			getCursor: Mock;
+			getActiveObservationLog: Mock;
+			getMessagesForObservationScope: Mock;
+		};
+		logger: { warn: Mock };
+	};
+
+	function createService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+		service.agentMemory = {
+			getMessages: vi.fn().mockResolvedValue([]),
+			getCursor: vi.fn().mockResolvedValue(null),
+			getActiveObservationLog: vi.fn().mockResolvedValue([]),
+			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
+		};
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	const digest = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+	const report = { type: 'workflow' as const, id: 'wf-2', name: 'Report' };
+	const storedUserTurn = (block: string) => ({
+		role: 'user',
+		content: [buildThreadContextBlock(['Ambient context.', block]), 'Change it'].join('\n\n'),
+	});
+
+	async function resolve(
+		service: Internals,
+		context: Context | undefined,
+		attachments: Array<{ type: 'workflow'; id: string; name: string }> = [],
+	) {
+		return await service.resolveThreadArtifactsTurn(
+			'thread-1',
+			context,
+			attachments,
+			async () => await service.getReplayedMessages('thread-1'),
+		);
+	}
+
+	it('sends nothing when the client sent no tabs', async () => {
+		expect(await resolve(createService(), undefined)).toBe('');
+	});
+
+	it('sends the tabs when the history has no tabs block', async () => {
+		const block = await resolve(createService(), { artifacts: [digest], activeId: 'wf-1' });
+
+		expect(block).toContain('<thread-artifacts>');
+		expect(block).toContain('(id: `wf-1`) [current]');
+	});
+
+	it('does not send the tabs again when they have not changed, also after a reorder', async () => {
+		const service = createService();
+		const earlier = buildThreadArtifactsBlock({ artifacts: [digest, report], activeId: 'wf-1' });
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-1' })).toBe('');
+		expect(await resolve(service, { artifacts: [report, digest], activeId: 'wf-1' })).toBe('');
+	});
+
+	it('sends the tabs when a tab closed or the active tab changed', async () => {
+		const service = createService();
+		const earlier = buildThreadArtifactsBlock({ artifacts: [digest, report], activeId: 'wf-1' });
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, { artifacts: [digest], activeId: 'wf-1' })).toContain(
+			'Workflow "Digest"',
+		);
+		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-2' })).toContain(
+			'(id: `wf-2`) [current]',
+		);
+	});
+
+	it('says no tabs are open once, then not again while nothing changes', async () => {
+		const service = createService();
+		const noTabs = await resolve(service, { artifacts: [] });
+		expect(noTabs).toContain('The user has no tabs open in this conversation’s preview.');
+
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(noTabs)]);
+		expect(await resolve(service, { artifacts: [] })).toBe('');
+	});
+
+	it('says no tabs are open after a block that listed tabs or only an editor hand-off', async () => {
+		const service = createService();
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
+		]);
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+
+		const handoffOnly = buildThreadArtifactsBlock({ artifacts: [] }, [
+			{ type: 'workflow' as const, id: 'wf-9', name: 'Handed off' },
+		]);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(handoffOnly)]);
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+	});
+
+	it('says no tabs are open again when the same block was compacted out of the replay window', async () => {
+		const service = createService();
+		// The full history has the same block, so only a replay-window read sends it again.
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [] })),
+		]);
+		service.agentMemory.getCursor.mockResolvedValue({
+			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
+			lastObservedMessageId: 'message-1',
+		});
+		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
+
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+	});
+
+	it('always sends a block that carries an editor hand-off', async () => {
+		const service = createService();
+		const attachments = [{ type: 'workflow' as const, id: 'wf-1', name: 'Digest' }];
+		const earlier = buildThreadArtifactsBlock({ artifacts: [digest] }, attachments);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, { artifacts: [digest] }, attachments)).toBe(earlier);
+	});
+
+	it('sends the tabs again when the earlier block was compacted out of the replay window', async () => {
+		const service = createService();
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
+		]);
+		service.agentMemory.getCursor.mockResolvedValue({
+			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
+			lastObservedMessageId: 'message-1',
+		});
+		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
+
+		expect(await resolve(service, { artifacts: [digest] })).toContain('Workflow "Digest"');
+	});
+
+	it('sends the tabs when the history cannot be read', async () => {
+		const service = createService();
+		service.agentMemory.getMessages.mockRejectedValue(new Error('database is locked'));
+
+		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
+		expect(service.logger.warn).toHaveBeenCalled();
 	});
 });
 

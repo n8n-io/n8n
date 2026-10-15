@@ -5,6 +5,7 @@ import { deepCopy, type Logger } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChatAttachmentService } from '../../../agent-chat-attachment.service';
 import { AgentChatBridge } from '../../agent-chat-bridge';
 import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-chat-integration';
 import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
@@ -82,10 +83,14 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 	}
 }
 
-export function toStream(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
+export function toStream(chunks: StreamChunk[], gapMs = 0): AsyncGenerator<StreamChunk> {
 	return (async function* stream() {
 		await Promise.resolve();
-		for (const chunk of chunks) yield chunk;
+		for (const chunk of chunks) {
+			// A gap lets a platform that renders on a timer actually tick.
+			if (gapMs) await new Promise((resolve) => setTimeout(resolve, gapMs));
+			yield chunk;
+		}
 	})();
 }
 
@@ -122,8 +127,18 @@ export interface StubbedRequest {
 export interface StubResponse {
 	/** Recorded call exposed to assertions (platform method name + request body). */
 	apiCall: ReplayApiCall;
-	/** JSON body returned to the real adapter so it proceeds without live network I/O. */
-	responseBody: unknown;
+	/**
+	 * JSON body returned to the real adapter so it proceeds without live
+	 * network I/O. Ignored when `rawResponseBody` is set.
+	 */
+	responseBody?: unknown;
+	/**
+	 * Non-JSON bytes returned as-is (no `JSON.stringify`) — for endpoints a
+	 * real adapter reads as a binary file, such as WhatsApp's media download,
+	 * where sniffing/parsing needs genuine magic bytes, not a JSON-escaped
+	 * stand-in that would corrupt them.
+	 */
+	rawResponseBody?: Buffer | Uint8Array;
 	status?: number;
 }
 
@@ -167,9 +182,17 @@ export function installFetchStub(options: {
 			}
 		}
 
-		const { apiCall, responseBody, status } = options.onRequest({ httpMethod, url, body, rawBody });
+		const { apiCall, responseBody, rawResponseBody, status } = options.onRequest({
+			httpMethod,
+			url,
+			body,
+			rawBody,
+		});
 		apiCalls.push(apiCall);
 
+		if (rawResponseBody) {
+			return new Response(new Uint8Array(rawResponseBody), { status: status ?? 200 });
+		}
 		return new Response(JSON.stringify(responseBody), {
 			status: status ?? 200,
 			headers: { 'content-type': 'application/json' },
@@ -192,9 +215,11 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 		isResumable: Mock;
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
+	channelRateLimitGuard: ChannelRateLimitGuard;
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
 	integration: AgentIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
+	attachmentService?: AgentChatAttachmentService;
 	latestContext: () => IntegrationMessageContext | undefined;
 	latestThreadId: () => string | undefined;
 	nextStream: (chunks: StreamChunk[]) => void;
@@ -208,6 +233,19 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	integration: AgentIntegrationConfig;
 	componentMapper?: ComponentMapper;
 	stream?: StreamChunk[];
+	/**
+	 * Without this, `AgentChatBridge`'s attachment pipeline silently no-ops
+	 * (see its `!this.attachmentService` guard). Pass
+	 * `createMockAttachmentService()` when a platform's tests cover inbound
+	 * attachments and stub the platform's file download.
+	 */
+	attachmentService?: AgentChatAttachmentService;
+	// Shared with the integration impl when its adapter also needs to record or
+	// check the connection cooldown itself (e.g. WhatsApp's automatic replies —
+	// see `withWhatsAppRateLimitBackoff`), so both paths agree on one connection's state.
+	channelRateLimitGuard?: ChannelRateLimitGuard;
+	/** Delay between chunks, so a timer-driven renderer ticks. */
+	streamGapMs?: number;
 }): ReplayContextSetup<TChat> {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(params.integrationImpl);
@@ -226,23 +264,24 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		executeForChatPublished: vi.fn<AgentExecutor['executeForChatPublished']>((config) => {
 			selectedContext = config.messageContext ?? undefined;
 			selectedThreadId = config.memory.threadId.id;
-			return toStream(stream);
+			return toStream(stream, params.streamGapMs);
 		}),
 		resumeForChat: vi.fn<AgentExecutor['resumeForChat']>((config) => {
 			selectedContext = config.messageContext ?? undefined;
-			return toStream(stream);
+			return toStream(stream, params.streamGapMs);
 		}),
 		// Mirrors how production wires the gate. It admits every run by default,
 		// so a test that wants the stale branch resolves it to false.
 		isResumable: vi.fn(async () => true),
 	};
 	const messageContextStore = new MemoryMessageContextStore();
+	const { attachmentService } = params;
 	const pending: Array<{ payload: QueuedIntegrationMessage; threadId: string }> = [];
 	const queue = mock<AgentMessageQueueService>();
 	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
 		if (payload.kind !== 'integration') throw new Error('Expected integration input');
 		pending.push({ payload: deepCopy(payload), threadId });
-		return mock<AgentMessageQueue>();
+		return { status: 'accepted', item: mock<AgentMessageQueue>() };
 	});
 
 	const bridge = new AgentChatBridge(
@@ -254,17 +293,18 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		'project-1',
 		params.integration,
 		messageContextStore as unknown as IntegrationMessageContextService,
-		undefined,
+		attachmentService,
 		undefined,
 		queue,
 	);
 
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	chatIntegrationService.getChatInstanceForTools.mockResolvedValue(params.chat);
+	const channelRateLimitGuard = params.channelRateLimitGuard ?? new ChannelRateLimitGuard();
 	const actionExecutor = new ChatIntegrationActionExecutor(
 		chatIntegrationService,
 		registry,
-		new ChannelRateLimitGuard(),
+		channelRateLimitGuard,
 	);
 	const descriptor = getIntegrationToolConnectionDescriptors([params.integration], 'agent-1')[0];
 
@@ -272,9 +312,11 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 		chat: params.chat,
 		agentExecutor,
 		actionExecutor,
+		channelRateLimitGuard,
 		descriptor,
 		integration: params.integration,
 		messageContextStore,
+		attachmentService,
 		latestContext: () => selectedContext,
 		latestThreadId: () => selectedThreadId,
 		nextStream: (chunks: StreamChunk[]) => {
@@ -287,7 +329,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 				await bridge.consumeQueuedMessage(
 					item.payload,
 					item.threadId,
-					{ executionId: 'execution-1', startedAt: new Date() },
+					{ executionId: 'execution-1', startedAt: new Date(), inputMessageIds: ['message-1'] },
 					new AbortController().signal,
 					params.integration,
 				);
@@ -299,4 +341,23 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 			Container.reset();
 		},
 	};
+}
+
+/**
+ * Echoes back a plausible stored record instead of hitting real binary
+ * storage — good enough for asserting a platform's attachment made it
+ * through the bridge's pipeline with the right name/type/size, without
+ * needing a real `BinaryDataService`.
+ */
+export function createMockAttachmentService(): AgentChatAttachmentService {
+	const service = mock<AgentChatAttachmentService>();
+	service.storeInbound.mockImplementation(async (params) =>
+		mock<Awaited<ReturnType<AgentChatAttachmentService['storeInbound']>>>({
+			id: `attachment-${params.fileName}`,
+			fileName: params.fileName,
+			mimeType: params.mimeType,
+			fileSizeBytes: params.data.byteLength,
+		}),
+	);
+	return service;
 }

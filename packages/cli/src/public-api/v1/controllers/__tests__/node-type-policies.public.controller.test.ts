@@ -11,7 +11,7 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ServiceUnavailableError } from '@n8n/errors';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { EffectivePolicy } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
@@ -159,6 +159,17 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		rules,
 		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
+
+	it('fails loudly instead of returning an extends rule, which no node type write accepts', async () => {
+		service.getEffectivePolicy.mockResolvedValue({
+			...effectivePolicy,
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } }],
+		});
+
+		await expect(controller.getNodeTypeInstancePolicy()).rejects.toThrow(
+			'A node type policy holds an extends rule',
+		);
+	});
 
 	it('getNodeTypeInstancePolicy reads the null-project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue(effectivePolicy);

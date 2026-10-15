@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -267,11 +269,12 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 /** Build an AI SDK ToolResultPart from a resolved/rejected ContentToolCall. */
 function toolCallToResultPart(
 	block: ContentToolCall & { state: 'resolved' | 'rejected' },
+	toolCallId: string,
 ): ToolResultPart {
 	if (block.state === 'resolved') {
 		return {
 			type: 'tool-result',
-			toolCallId: block.toolCallId,
+			toolCallId,
 			toolName: block.toolName,
 			output: isContentToolResultOutput(block.output)
 				? block.output
@@ -285,7 +288,7 @@ function toolCallToResultPart(
 		// from error-json; error-text is dropped with a warning.
 		return {
 			type: 'tool-result',
-			toolCallId: block.toolCallId,
+			toolCallId,
 			toolName: block.toolName,
 			output: block.providerExecuted
 				? { type: 'error-json', value: errorValue }
@@ -294,10 +297,21 @@ function toolCallToResultPart(
 	}
 	return {
 		type: 'tool-result',
-		toolCallId: block.toolCallId,
+		toolCallId,
 		toolName: block.toolName,
 		output: { type: 'error-json', value: errorValue as JSONValue },
 	};
+}
+
+function replayableToolCallId(id: unknown, messageIndex: number, blockIndex: number): string {
+	if (typeof id === 'string' && /^[A-Za-z0-9_-]+$/.test(id)) return id;
+
+	// Keep stored IDs intact. Repair only the model request and its matching result.
+	const digest = createHash('sha256')
+		.update(`${messageIndex}:${blockIndex}:${String(id)}`)
+		.digest('hex')
+		.slice(0, 32);
+	return `n8n_${digest}`;
 }
 
 /** Convert a single AI SDK content part to an n8n MessageContent block. */
@@ -381,7 +395,7 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
  * Pending tool-call blocks are silently skipped (defense-in-depth; the strip
  * step should already have removed them before forLlm() calls toAiMessages).
  */
-function toAiMessageList(msg: Message): ModelMessage[] {
+function toAiMessageList(msg: Message, messageIndex: number): ModelMessage[] {
 	switch (msg.role) {
 		case 'system': {
 			const text = msg.content
@@ -404,7 +418,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 			const assistantParts: AiContentPart[] = [];
 			const resultMessages: ModelMessage[] = [];
 
-			for (const block of msg.content) {
+			for (const [blockIndex, block] of msg.content.entries()) {
 				if (block.type === 'tool-call') {
 					if (!('state' in block)) {
 						// Legacy DB block - skip it
@@ -414,10 +428,11 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						// Skip pending blocks — defense-in-depth (strip step removes them first)
 						continue;
 					}
+					const toolCallId = replayableToolCallId(block.toolCallId, messageIndex, blockIndex);
 					// Emit tool-call part (without result fields)
 					const toolCallPart: ToolCallPart = {
 						type: 'tool-call',
-						toolCallId: block.toolCallId,
+						toolCallId,
 						toolName: block.toolName,
 						input: toToolInputObject(block.input),
 						providerExecuted: block.providerExecuted,
@@ -432,7 +447,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 					});
 					// Emit corresponding tool-result message immediately after. A
 					// provider-executed result belongs in the assistant message itself.
-					const resultPart = toolCallToResultPart(block);
+					const resultPart = toolCallToResultPart(block, toolCallId);
 					if (block.providerExecuted) assistantParts.push(resultPart);
 					else resultMessages.push({ role: 'tool', content: [resultPart] });
 				} else {
@@ -472,7 +487,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 
 /** Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText. */
 export function toAiMessages(messages: Message[]): ModelMessage[] {
-	const modelMessages = messages.flatMap(toAiMessageList);
+	const modelMessages = messages.flatMap((message, index) => toAiMessageList(message, index));
 	const result: ModelMessage[] = [];
 
 	for (const [index, message] of modelMessages.entries()) {

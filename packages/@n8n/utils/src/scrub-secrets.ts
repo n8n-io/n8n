@@ -65,6 +65,9 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	/\b[MNO][A-Za-z0-9_-]{22,}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}\b/g,
 	// Linear API keys (`lin_api_…`) and OAuth tokens (`lin_oauth_…`)
 	/\blin_(?:api|oauth)_[A-Za-z0-9]{20,}/g,
+	// Databricks personal access tokens (`dapi` and 32 hex characters, with an
+	// optional `-<n>` suffix)
+	/\bdapi[0-9a-f]{32}(?:-\d+)?\b/gi,
 	// Credentials embedded in a URL: `scheme://user:password@` — redact the userinfo.
 	/(?<=:\/\/)[^\s:/@]+:[^\s:/@]+(?=@)/g,
 	// Quoted `"key": "value"` (JSON) and `'key': 'value'` (JS object) fields,

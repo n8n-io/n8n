@@ -1,6 +1,12 @@
-import type { RichCardComponentType } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentIntegrationDisconnectWarning,
+	RichCardComponentType,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Attachment, Message, Thread } from 'chat';
 import { UserError } from 'n8n-workflow';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -10,16 +16,70 @@ import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
+	type AgentIntegrationRemovalContext,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
 } from '../../agent-chat-integration';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
+import type { ReplyExpectation } from '../../integration-tool-types';
+import { startTypingIndicator } from '../typing-indicator';
+import { TeamsCleanupService } from './teams-cleanup.service';
+import { READ_PERMISSIONS } from './teams-manifest.service';
+import { fetchTeamsMessageFiles, graphHttpOf } from './teams-message-files';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
 
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
+
+/**
+ * The model input carries no sign of whether the bot was addressed, so a
+ * message read only through read-all looks like a direct question.
+ */
+const ANSWER_AS_TEXT =
+	'To answer, write your answer as normal text. It is posted for you. Do not use the respond action for it.';
+
+const OPTIONAL_REPLY_NOTE = [
+	'<reply_guidance>',
+	'This message does not mention you. You read it because you can read every message in this conversation.',
+	'Answer only if the message is meant for you or you can add something useful within your role.',
+	ANSWER_AS_TEXT,
+	'Otherwise, call do_not_respond once. That ends your turn.',
+	'</reply_guidance>',
+].join('\n');
+
+/** A follow-up in a thread the agent joined may answer the agent itself. */
+const JOINED_THREAD_REPLY_NOTE = [
+	'<reply_guidance>',
+	'This message does not mention you, but it is in a conversation you joined earlier.',
+	'Answer if it continues your conversation or asks you something.',
+	ANSWER_AS_TEXT,
+	'If it is aimed at someone else, call do_not_respond once. That ends your turn.',
+	'</reply_guidance>',
+].join('\n');
+
+function conversationTypeOf(activity: unknown): unknown {
+	return isRecord(activity) && isRecord(activity.conversation)
+		? activity.conversation.conversationType
+		: undefined;
+}
+
+/**
+ * The adapter reports every inbound author as a person, so the activity is
+ * read instead. Bot Framework gives bot accounts a `28:` id.
+ */
+function isFromBot(activity: unknown): boolean {
+	if (!isRecord(activity) || !isRecord(activity.from)) return false;
+	const { id, role } = activity.from;
+	return role === 'bot' || (typeof id === 'string' && id.startsWith('28:'));
+}
+
+/** Interval picked to match Discord's; Teams does not document the expiry. */
+const TEAMS_TYPING_REFRESH_MS = 8000;
 
 /**
  * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
@@ -39,13 +99,37 @@ const TENANT_ID_DOMAIN =
  * endpoint is configured once in Azure Bot Service, so there is no API call to
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
  *
- * This first slice targets 1:1 direct messages. Group chats and channels are not
- * blocked, but they are untested: without RSC permissions Teams only delivers an
- * @-mention there, so nothing arrives ambiently.
+ * Direct messages, team channels and group chats are all supported. Outside a
+ * DM the bot must be @-mentioned, and the mention subscribes the conversation.
+ * In a channel that subscription covers the one thread, because the thread id
+ * carries the root message id. In a group chat it covers the whole chat.
+ *
+ * The manifest carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat`
+ * for each surface that is on, so files can be read through Graph. Teams grants
+ * them when the app is added to a team or a chat, and they make Teams deliver
+ * every message instead of mentions alone. Acting on a message without a
+ * mention is a setup choice for each surface: `readAllChannelMessages` and
+ * `readAllGroupMessages`. Each such message runs the agent with an optional
+ * reply, so the agent decides whether to speak.
  */
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
 	readonly type = 'teams';
+
+	/**
+	 * Deletes nothing. The app registration, the bot and the catalogued Teams app
+	 * depend on each other, and colleagues may already have the app installed, so
+	 * the user is told what is left rather than having it removed for them.
+	 */
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
+		return await Container.get(TeamsCleanupService).describeLeftovers({
+			user: ctx.user,
+			projectId: ctx.projectId,
+			credentialId: ctx.credentialId,
+		});
+	}
 
 	readonly credentialTypes = ['microsoftEntraServicePrincipalApi'];
 
@@ -58,13 +142,16 @@ export class TeamsIntegration extends AgentChatIntegration {
 
 	readonly builderGuidance = {
 		capabilities: [
-			'Receive Microsoft Teams direct messages as agent triggers.',
-			'Respond in the same Microsoft Teams conversation.',
+			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',
+			'Respond in the same Microsoft Teams conversation, and in the same channel thread.',
+			'In a team channel or group chat, run when @-mentioned. When the setup turns on reading all messages there, run on every message and decide whether to reply, or stay silent.',
+			'Add emoji reactions to messages.',
 			'Render Adaptive Cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Microsoft Teams or act as a Teams bot.',
 			'The agent needs to reply to Teams users in the same conversation context.',
+			'The agent should take part in a Microsoft Teams channel or group chat.',
 		],
 		useNodeToolWhen: [
 			'Microsoft Teams is only a backend API step and the agent does not need to be connected as a Teams chat surface.',
@@ -80,10 +167,18 @@ export class TeamsIntegration extends AgentChatIntegration {
 		'image',
 	];
 
-	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'edit_message']);
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
+		'respond',
+		'edit_message',
+		'add_reaction',
+		'do_not_respond',
+	]);
 
 	readonly actionToolGuidance = [
 		'For edit_message, pass the messageId returned by a previous Teams action or get_current_message_context. The current Teams conversation is selected automatically.',
+		'For add_reaction, use one of thumbs_up, eyes, check, x, rocket, thinking or pin, or a Teams reaction type such as like, heart or laugh.',
+		'A channel or group chat message that does not mention you needs no reply. Use do_not_respond unless you have something useful to add.',
+		'To acknowledge a message with only a reaction, call add_reaction and then do_not_respond. Any text you write after add_reaction is posted as a reply.',
 	];
 
 	/**
@@ -98,7 +193,64 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	readonly targetSuspensionCardAtActingUser = true;
 
-	readonly disableStreaming = true;
+	/**
+	 * A direct message renders progressively; every other conversation posts one
+	 * message. The choice is made for each conversation in
+	 * `createBridgeExecutionContext` rather than here.
+	 */
+	readonly disableStreaming = false;
+
+	/**
+	 * Text that follows a card is posted on its own rather than folded back into
+	 * the message being edited above it.
+	 */
+	readonly singleStreamedRunPerTurn = true;
+
+	/**
+	 * A message without a mention runs only on a surface whose read-all setting
+	 * is on, and never when another bot wrote it. Two listening bots in one
+	 * channel would otherwise answer each other.
+	 */
+	shouldHandleUnmentionedMessage({
+		message,
+		integration,
+	}: {
+		message: { raw: unknown };
+		integration: AgentIntegrationConfig;
+	}): boolean {
+		if (isFromBot(message.raw)) return false;
+		const settings = integration.type === 'teams' ? integration.settings : undefined;
+		const type = conversationTypeOf(message.raw);
+		const permission = READ_PERMISSIONS.find((p) => p.conversationType === type);
+		return (
+			permission !== undefined &&
+			settings?.[permission.requires] === true &&
+			settings[permission.setting] === true
+		);
+	}
+
+	/** Only a direct message or a mention obliges the agent to answer. */
+	getReplyExpectation({
+		message,
+		isNewMention,
+	}: {
+		message: { isMention?: boolean; raw: unknown };
+		isNewMention: boolean;
+	}): ReplyExpectation {
+		if (isNewMention || message.isMention === true) return 'required';
+		return conversationTypeOf(message.raw) === 'personal' ? 'required' : 'optional';
+	}
+
+	async fetchInboundAttachments({
+		thread,
+		message,
+	}: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): Promise<Attachment[]> {
+		const http = graphHttpOf(thread.adapter);
+		return http ? await fetchTeamsMessageFiles(http, message.raw) : [];
+	}
 
 	constructor(
 		private readonly logger: Logger,
@@ -143,6 +295,59 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
 		return expandSelectsToButtons(components);
+	}
+
+	/**
+	 * Only a direct message renders progressively. Post-and-edit would work in a
+	 * channel too, but a message that visibly rewrites itself is far more
+	 * disruptive there, so that stays a separate decision.
+	 */
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		const streamable = params.thread.isDM;
+		return {
+			platformAgentContext: {},
+			...(params.replyExpectation === 'optional'
+				? {
+						historyContext: params.inSubscribedThread
+							? JOINED_THREAD_REPLY_NOTE
+							: OPTIONAL_REPLY_NOTE,
+					}
+				: {}),
+			forceBuffered: !streamable,
+			// A queued message is only captured here; the turn that would clear the
+			// indicator runs later, so starting one now leaves it refreshing alone.
+			statusHandle:
+				params.startStatus === false
+					? undefined
+					: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	/** A card action arrives as an invoke activity, which carries no streamer. */
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return {
+			forceBuffered: true,
+			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	private startTyping(
+		thread: BridgeMessageContextParams['thread'],
+		logger: BridgeMessageContextParams['logger'],
+		agentId: string,
+	) {
+		return startTypingIndicator(thread, {
+			logger,
+			agentId,
+			platform: 'Microsoft Teams',
+			refreshMs: TEAMS_TYPING_REFRESH_MS,
+		});
 	}
 
 	/**

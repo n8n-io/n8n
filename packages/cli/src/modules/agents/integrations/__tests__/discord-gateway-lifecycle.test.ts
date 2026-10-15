@@ -3,7 +3,7 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';

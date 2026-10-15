@@ -12,7 +12,7 @@ export function memorySkill(): RuntimeSkill {
 			'ask_embedding_credential',
 			'resolve_llm',
 			'ask_credential',
-			'read_config',
+			'agent-context',
 			'patch_config',
 		],
 		allowedTools: [
@@ -20,7 +20,7 @@ export function memorySkill(): RuntimeSkill {
 			'resolve_llm',
 			'ask_credential',
 			'ask_questions',
-			'read_config',
+			'agent-context',
 			'patch_config',
 			'write_config',
 		],

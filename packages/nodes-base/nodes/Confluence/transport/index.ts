@@ -18,13 +18,16 @@ export const SERVICE_ACCOUNT_CREDENTIAL_NAME = 'atlassianServiceAccountApi';
 
 // The gateway answers 403/404 for an expired token, not the 401 n8n's credential-refresh
 // helpers look for (ENT-408). 401 stays, since a revoked token still gets one, and
-// `skipRefreshWhileTokenIsFresh` keeps a genuinely missing page from paying for a refresh.
-// The two credentials take different refresh paths, hence the two option names.
+// the `skip...WhileTokenIsFresh` options keep a genuinely missing page from paying for a refresh.
+// The two credentials take different refresh paths, hence the two sets of option names.
 const ADDITIONAL_CREDENTIAL_OPTIONS: Record<string, IAdditionalCredentialOptions> = {
 	[CONFLUENCE_CREDENTIAL_NAME]: {
 		oauth2: { tokenExpiredStatusCode: [401, 403, 404], skipRefreshWhileTokenIsFresh: true },
 	},
-	[SERVICE_ACCOUNT_CREDENTIAL_NAME]: { preAuthenticationRetryStatusCode: [401, 403, 404] },
+	[SERVICE_ACCOUNT_CREDENTIAL_NAME]: {
+		preAuthenticationRetryStatusCode: [401, 403, 404],
+		skipPreAuthenticationRetryWhileTokenIsFresh: true,
+	},
 };
 
 /**

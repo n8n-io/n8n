@@ -20,6 +20,7 @@ export type ToolOpenTarget =
 
 export type ToolRowItem = {
 	index: number;
+	enabled: boolean;
 	label: string;
 	nodeType: ToolRowNodeType;
 	openTarget: ToolOpenTarget;
@@ -29,6 +30,7 @@ export type ToolRowItem = {
 
 type ToolRowBase = {
 	index: number;
+	enabled: boolean;
 	label: string;
 	typeLabel: string;
 	nodeType: ToolRowNodeType;
@@ -57,6 +59,8 @@ export type ToolRow = GroupedToolRow | SingleToolRow;
 export type ToolMenuItem = DropdownMenuItemProps<
 	string,
 	{
+		index: number;
+		enabled: boolean;
 		nodeType: ToolRowNodeType;
 		openTarget: ToolOpenTarget;
 		invalid: boolean;

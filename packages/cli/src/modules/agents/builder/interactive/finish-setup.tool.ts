@@ -184,7 +184,7 @@ function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps
 				? ` Available: ${availableChannelTypes.join(', ')}.`
 				: ' No chat channels are currently available.';
 			throw new Error(
-				`Unsupported chat channel "${channel.integrationType}". Call list_integration_types ` +
+				`Unsupported chat channel "${channel.integrationType}". Call agent-context with type "integrations" ` +
 					'and choose a returned type.' +
 					availableMessage,
 			);
@@ -439,11 +439,11 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 			'Collect everything still needed to finish the initial build in ONE guided flow: open ' +
 				'questions (including the model choice), credential slots, and chat-channel ' +
 				'setup. Call it at most once, only in the trailing step of an initial build ' +
-				'when only blocked tasks remain, and never together with another interactive tool. ' +
+				'when only pending setup remains, and never together with another interactive tool. ' +
 				'It shows setup cards back-to-back without returning control between them: questions, ' +
 				'then credentials, then one card per requested channel. Channel cards always run last ' +
 				'after every credential phase, including when earlier setup was skipped or dismissed. Pass ' +
-				'`channels` with a returned `type` from list_integration_types, one entry per channel ' +
+				'`channels` with a returned `type` from agent-context integrations, one entry per channel ' +
 				'to configure; do not infer channel names. Each channel card persists the configuration ' +
 				'or skips it, so channel outcomes are `"configured"` or `"skipped"`. Do not call ' +
 				'configure_channel again for a channel handled by ' +

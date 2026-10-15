@@ -11,7 +11,9 @@ import {
 } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import { i18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	UNLIMITED_CREDITS,
 	type InstanceAiThreadHistoryResponse,
@@ -36,7 +38,11 @@ import {
 	updateThreadMetadata as updateThreadMetadataApi,
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
-import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
+import {
+	createThreadRuntime,
+	type OnboardingExitOutcome,
+	type ThreadRuntime,
+} from './instanceAi.threadRuntime';
 import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
@@ -70,8 +76,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// No reset needed on thread switch — login/logout reloads the page.
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
-	/** Whether the pool has been locked by the activation cap. */
-	const quotaLocked = ref(false);
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
@@ -89,6 +93,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			void loadThreads();
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
+		onOnboardingLeft: leaveOnboarding,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
@@ -150,12 +155,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
 	});
 
-	/**
-	 * Whether to warn about credits above the chat input: either the balance is running low, or the
-	 * pool has been locked outright. The two are mutually exclusive in practice — a cohort with a
-	 * masked balance can never read as "low" — so this is the single condition the views use.
-	 */
-	const showCreditWarning = computed(() => isLowCredits.value || quotaLocked.value);
+	/** Send is blocked. A positive low balance stays a dismissible warning. */
+	const isOutOfCredits = computed(() => creditsRemaining.value === 0);
 
 	// --- Credits push handling ---
 
@@ -166,13 +167,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function handleCreditsPush(data: InstanceAiCreditsPushData): void {
 		creditsQuota.value = data.creditsQuota;
 		creditsClaimed.value = data.creditsClaimed;
-		// Absent means "no opinion", not "unlocked". Only the lock itself reports this; a claim
-		// push carries no lock state, and claims can land after the lock — a background memory
-		// task or a fire-and-forget HITL segment claim from an earlier run — so treating absence
-		// as false would clear the warning the lock had just raised.
-		if (data.quotaLocked !== undefined) {
-			quotaLocked.value = data.quotaLocked;
-		}
 		// Per-message claims also carry the thread's running total — write it onto the
 		// matching thread so the credits dropdown updates live for the acting user.
 		const { creditsPerThread } = data;
@@ -189,7 +183,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			const result = await getInstanceAiCredits(rootStore.restApiContext);
 			creditsQuota.value = result.creditsQuota;
 			creditsClaimed.value = result.creditsClaimed;
-			quotaLocked.value = result.quotaLocked ?? false;
 		} catch {
 			// Non-critical — credits display is optional
 		}
@@ -389,9 +382,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		threadId: string,
 		metadata: Record<string, unknown>,
 	): Promise<void> {
-		// Optimistic update
-		const thread = threads.value.find((t) => t.id === threadId);
-		if (thread) {
+		// Optimistic update, on every local copy
+		for (const thread of localThreadEntries(threadId)) {
 			thread.metadata = { ...thread.metadata, ...metadata };
 		}
 
@@ -432,6 +424,38 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		clearCanvasSelectionRequest.value++;
 	}
 
+	// ponytail: the exits of this session, so a thread-list refresh that races the metadata write
+	// (`onRunFinish` reloads the list on the same event as the `run_failed` exit) cannot hide the
+	// chrome again.
+	const leftOnboardingThreadIds = new Set<string>();
+	/** An onboarding thread hides the host chrome (chat header, sidebar, artifacts) until the user leaves it. */
+	function isOnboardingChromeHidden(threadId: string): boolean {
+		return (
+			!leftOnboardingThreadIds.has(threadId) &&
+			localThreadEntries(threadId).some(
+				(t) => t.metadata?.source === 'onboarding' && !t.metadata.onboardingLeft,
+			)
+		);
+	}
+	/** The exit lives in thread metadata, so a reload keeps it. Idempotent. */
+	function leaveOnboarding(
+		threadId: string,
+		outcome: OnboardingExitOutcome,
+		leaveReason?: string,
+	): void {
+		if (!isOnboardingChromeHidden(threadId)) return;
+		leftOnboardingThreadIds.add(threadId);
+		updateThreadMetadata(threadId, { onboardingLeft: true }).catch((error: unknown) => {
+			toast.showError(error, i18n.baseText('generic.error'));
+		});
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
+			thread_id: threadId,
+			instance_id: rootStore.instanceId,
+			outcome,
+			leave_reason: leaveReason ?? null,
+		});
+	}
+
 	return {
 		// Instance-level state
 		threads,
@@ -446,8 +470,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
-		quotaLocked,
-		showCreditWarning,
+		isOutOfCredits,
 
 		// Thread-list actions
 		deleteThread,
@@ -473,6 +496,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		composerFocusRequest,
 		requestComposerFocus,
 		clearCanvasSelectionRequest,
+		isOnboardingChromeHidden,
+		leaveOnboarding,
 		requestClearCanvasSelection,
 	};
 });

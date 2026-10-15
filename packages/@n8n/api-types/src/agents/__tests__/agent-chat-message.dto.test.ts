@@ -21,6 +21,22 @@ describe('AgentChatMessageDto', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('requires a session when a valid client message UUID is supplied', () => {
+		const messageId = 'C4B02D7B-2088-41CE-9C6B-FAF8C7B83D8A';
+		const payload = { message: 'Hello', sessionId: 'session-1', messageId };
+		expect(AgentChatMessageDto.parse(payload)).toEqual(payload);
+		expect(new AgentChatMessageDto(payload)).toMatchObject(payload);
+		for (const invalid of [
+			{ ...payload, sessionId: undefined },
+			{ ...payload, sessionId: '' },
+			{ ...payload, messageId: 'invalid' },
+			{ ...payload, messageId: '' },
+		]) {
+			expect(AgentChatMessageDto.safeParse(invalid).success).toBe(false);
+			expect(() => AgentChatMessageDto.parse(invalid)).toThrow();
+		}
+	});
+
 	it('rejects a payload with neither message text nor attachments', () => {
 		expect(AgentChatMessageDto.safeParse({ message: '' }).success).toBe(false);
 		expect(AgentChatMessageDto.safeParse({ message: '   ' }).success).toBe(false);
@@ -44,6 +60,30 @@ describe('AgentChatMessageDto', () => {
 			),
 		});
 		expect(result.success).toBe(false);
+	});
+
+	it('accepts an object client context and keeps it in the parsed payload', () => {
+		const clientContext = { timeZone: 'Europe/Helsinki', nested: { ids: ['a', 'b'] }, flag: null };
+		const payload = { message: 'hello', clientContext };
+		expect(AgentChatMessageDto.parse(payload)).toEqual(payload);
+		expect(AgentChatMessageDto.safeParse({ message: 'hello', clientContext: {} }).success).toBe(
+			true,
+		);
+	});
+
+	it('accepts a payload without a client context', () => {
+		const parsed = AgentChatMessageDto.parse({ message: 'hello' });
+		expect(parsed).not.toHaveProperty('clientContext');
+	});
+
+	it.each([
+		['null', null],
+		['an array', [{ timeZone: 'UTC' }]],
+		['a string', 'UTC'],
+		['a number', 1],
+		['a boolean', true],
+	])('rejects a client context that is %s', (_label, clientContext) => {
+		expect(AgentChatMessageDto.safeParse({ message: 'hello', clientContext }).success).toBe(false);
 	});
 
 	it('rejects attachments with empty fileName or mimeType', () => {

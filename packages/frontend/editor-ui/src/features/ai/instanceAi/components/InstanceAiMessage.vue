@@ -13,11 +13,11 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssistantTopUpEligibility';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -27,7 +27,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
-const settingsStore = useSettingsStore();
 const thread = useThread();
 const showDebugInfo = ref(false);
 
@@ -51,16 +50,6 @@ const hasProviderError = computed(() => !!errorDetails.value?.provider);
 
 /** The run failed because the user ran out of AI credits — show a tailored state. */
 const isQuotaExhausted = computed(() => errorDetails.value?.code === 'quota_exhausted');
-
-/**
- * The activation-capped trial cohort is never shown a credit balance, so telling them they've
- * "run out of AI credits" would be the first they'd hear of any credits at all.
- */
-const outOfCreditsTitleKey = computed(() =>
-	settingsStore.moduleSettings?.['instance-ai']?.activationCapped
-		? 'instanceAi.error.outOfCredits.trialTitle'
-		: 'instanceAi.error.outOfCredits.title',
-);
 
 const { goToUpgrade } = usePageRedirectionHelper();
 const { isEligible: isTopUpEligible } = useAssistantTopUpEligibility();
@@ -110,6 +99,29 @@ const attachments = computed(() =>
 		return name && name !== attachment.name ? { ...attachment, name } : attachment;
 	}),
 );
+
+/**
+ * Answered questions that end the timeline, like the onboarding card that the host answers with
+ * no model turn. They render below the actions, so copy and read aloud stay under the assistant
+ * text and not under the user's answer.
+ */
+const trailingAnswer = computed(() => {
+	const tree = props.message.agentTree;
+	// A live run appends after the answer. Only a settled message ends on it.
+	if (!tree || tree.status === 'active') return undefined;
+	const last = tree.timeline.at(-1);
+	if (last?.type !== 'tool-call') return undefined;
+	const toolCall = tree.toolCalls.find((tc) => tc.toolCallId === last.toolCallId);
+	return toolCall?.confirmation?.inputType === 'questions' && !toolCall.isLoading
+		? toolCall
+		: undefined;
+});
+
+const activityTree = computed(() => {
+	const tree = props.message.agentTree;
+	if (!tree || !trailingAnswer.value) return tree;
+	return { ...tree, timeline: tree.timeline.slice(0, -1) };
+});
 
 /** Transient status message from the backend (e.g. "Recalling conversation..."). */
 const statusMessage = computed(() => {
@@ -181,15 +193,15 @@ function formatJson(value: unknown): string {
 		<template v-else>
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
 			<AgentActivityTree
-				v-if="props.message.agentTree"
-				:agent-node="props.message.agentTree"
+				v-if="activityTree"
+				:agent-node="activityTree"
 				:message-id="props.message.id"
 				:run-id="props.message.runId"
 			/>
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
-				{{ i18n.baseText(outOfCreditsTitleKey) }}
+				{{ i18n.baseText('instanceAi.error.outOfCredits.title') }}
 				<template #trailingContent>
 					<N8nButton
 						variant="outline"
@@ -273,6 +285,10 @@ function formatJson(value: unknown): string {
 					/>
 				</N8nTooltip>
 			</N8nChatActions>
+		</template>
+
+		<template v-if="trailingAnswer" #after-actions>
+			<AnsweredQuestions :tool-call="trailingAnswer" />
 		</template>
 	</N8nChatMessage>
 </template>

@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { DataSource, type EntityManager, QueryFailedError, Repository } from '@n8n/typeorm';
+import { DataSource, type EntityManager, In, QueryFailedError, Repository } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import {
@@ -13,6 +13,7 @@ import {
 } from '../entities';
 import type { User } from '../entities';
 import { StatisticsNames } from '../entities/types-db';
+import { chunkIds } from '../utils/chunk-ids';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -45,6 +46,17 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(WorkflowStatistics, dataSource.manager);
+	}
+
+	/** All counter rows of the given workflows. Ids are chunked to stay under the bind limit. */
+	async findByWorkflowIds(workflowIds: string[]): Promise<WorkflowStatistics[]> {
+		if (workflowIds.length === 0) return [];
+
+		const rows: WorkflowStatistics[] = [];
+		for (const chunk of chunkIds(workflowIds)) {
+			rows.push(...(await this.find({ where: { workflowId: In(chunk) } })));
+		}
+		return rows;
 	}
 
 	async insertWorkflowStatistics(

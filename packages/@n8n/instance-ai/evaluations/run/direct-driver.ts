@@ -92,6 +92,7 @@ export async function runDirect(config: DirectRunConfig): Promise<{
 			sideBand.buildExpectations,
 			lanes[0]?.baseUrl,
 			sideBand.runDebug,
+			sideBand.harnessUsage,
 		);
 		for (const iterationResults of allRunResults) {
 			partialResults?.push(iterationResults);

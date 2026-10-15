@@ -11,9 +11,11 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import { v4 as uuid } from 'uuid';
 
 import { createUser } from '../../shared/db/users';
+import { createWorkflowPublishHistoryItem } from '../../shared/db/workflow-publish-history';
 
 describe('WorkflowPublishHistoryRepository', () => {
 	beforeAll(async () => {
@@ -26,6 +28,74 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('findLatestActivations', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('should not query events when no version IDs are provided', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			await expect(repository.findLatestActivations('workflow-1', [])).resolves.toEqual([]);
+
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should batch version IDs and return each latest activation once', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflow();
+			const versionIds = Array.from(
+				{ length: 32_768 },
+				(_, i) => `00000000-0000-4000-8000-${i.toString().padStart(12, '0')}`,
+			);
+			const storedVersionIds = [versionIds[0], versionIds[versionIds.length - 1]];
+			const latestActivations = [];
+			for (const versionId of storedVersionIds) {
+				await createWorkflowHistory({ ...workflow, versionId });
+				const version = { workflowId: workflow.id, versionId };
+				await createWorkflowPublishHistoryItem(version, {
+					createdAt: new Date('2026-01-03T00:00:00Z'),
+				});
+				latestActivations.push(
+					await createWorkflowPublishHistoryItem(version, {
+						createdAt: new Date('2026-01-01T00:00:00Z'),
+					}),
+				);
+				await createWorkflowPublishHistoryItem(version, { event: 'deactivated' });
+			}
+			const logQuery = vi.spyOn(repository.manager.connection.logger, 'logQuery');
+
+			const activations = await repository.findLatestActivations(workflow.id, [
+				...versionIds,
+				...storedVersionIds,
+			]);
+
+			expect(activations).toHaveLength(2);
+			expect(activations).toEqual(expect.arrayContaining(latestActivations));
+			expect(logQuery.mock.calls.map(([, parameters]) => parameters?.length)).toEqual([
+				10_002, 10_002, 10_002, 2_770,
+			]);
+		});
+	});
+
+	describe('findTimelinePage', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it.each([0, -1])('should not query events when the limit is %i', async (limit) => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			await expect(
+				repository.findTimelinePage('workflow-1', { offset: 0, limit }),
+			).resolves.toEqual([]);
+
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('addRecord', () => {
@@ -98,7 +168,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -107,7 +177,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -151,7 +221,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: user1.id,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 5));
+			await sleep(5);
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -201,6 +271,136 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 
 			const result = await repository.findActivatedByUserId('non-existent-id');
+
+			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('findPublisherUserId', () => {
+		// Republishing an older version means the newest activation is not
+		// necessarily the live one, so the version asked about wins.
+		it('prefers the publisher of the version it is asked about', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const older = await createUser();
+			const newer = await createUser();
+			const id1 = uuid();
+			const id2 = uuid();
+			const workflow = await createWorkflow();
+			await createWorkflowHistory({ ...workflow, versionId: id1 });
+			await createWorkflowHistory({ ...workflow, versionId: id2 });
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: id1,
+				event: 'activated',
+				userId: older.id,
+			});
+
+			// Keep `createdAt` ordering deterministic, as the tests above do.
+			await sleep(5);
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: id2,
+				event: 'activated',
+				userId: newer.id,
+			});
+
+			await expect(repository.findPublisherUserId(workflow.id, id1)).resolves.toBe(older.id);
+			// and without a version, the most recent activation wins
+			await expect(repository.findPublisherUserId(workflow.id)).resolves.toBe(newer.id);
+		});
+
+		// Covers a published version whose history row has since been pruned.
+		it('falls back to the latest activation when the version has none', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const user = await createUser();
+			const workflow = await createWorkflowWithHistory();
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: user.id,
+			});
+
+			const result = await repository.findPublisherUserId(workflow.id, 'a-version-never-activated');
+
+			expect(result).toBe(user.id);
+		});
+
+		it('falls back to the latest activation when no version is given', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const user = await createUser();
+			const workflow = await createWorkflowWithHistory();
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: user.id,
+			});
+
+			const result = await repository.findPublisherUserId(workflow.id);
+
+			expect(result).toBe(user.id);
+		});
+
+		// The FK nulls the column when the publisher is deleted.
+		it('returns undefined when the activation records no user', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflowWithHistory();
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: null,
+			});
+
+			const result = await repository.findPublisherUserId(workflow.id, workflow.versionId);
+
+			expect(result).toBeUndefined();
+		});
+
+		// A deleted publisher must leave the run unattributed. Falling through to the
+		// latest activation would hand it to whoever published a different version.
+		it('returns undefined when the version was activated by a since-deleted user', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const otherPublisher = await createUser();
+			const deletedPublishersVersion = uuid();
+			const otherVersion = uuid();
+			const workflow = await createWorkflow();
+			await createWorkflowHistory({ ...workflow, versionId: deletedPublishersVersion });
+			await createWorkflowHistory({ ...workflow, versionId: otherVersion });
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: deletedPublishersVersion,
+				event: 'activated',
+				userId: null,
+			});
+
+			// Keep `createdAt` ordering deterministic, as the tests above do.
+			await sleep(5);
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: otherVersion,
+				event: 'activated',
+				userId: otherPublisher.id,
+			});
+
+			await expect(
+				repository.findPublisherUserId(workflow.id, deletedPublishersVersion),
+			).resolves.toBeUndefined();
+		});
+
+		it('returns undefined for a workflow that was never activated', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflowWithHistory();
+
+			const result = await repository.findPublisherUserId(workflow.id, workflow.versionId);
 
 			expect(result).toBeUndefined();
 		});

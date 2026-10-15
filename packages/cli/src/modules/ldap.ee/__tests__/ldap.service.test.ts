@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
@@ -13,7 +14,6 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
-import type { EventService } from '@/events/event.service';
 
 import { BINARY_AD_ATTRIBUTES } from '../constants';
 import {

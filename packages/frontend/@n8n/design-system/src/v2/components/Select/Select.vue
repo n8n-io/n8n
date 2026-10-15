@@ -56,6 +56,7 @@ const props = withDefaults(defineProps<SelectProps<M>>(), {
 	variant: 'default',
 	size: 'small',
 	sideOffset: 4,
+	align: 'start',
 	clearable: false,
 });
 const emit = defineEmits<SelectEmits<M>>();
@@ -411,6 +412,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				:class="[$style.selectContent, size, contentClass]"
 				position="popper"
 				side="bottom"
+				:align="align"
 				:side-offset="sideOffset"
 			>
 				<slot name="header" />

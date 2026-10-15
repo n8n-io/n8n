@@ -1,5 +1,6 @@
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import type { BadgeVariant } from '@n8n/design-system';
+import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 
 export type EventKind =
 	| 'user'
@@ -28,6 +29,7 @@ export interface TimelineItem {
 	timestamp: number;
 	endTimestamp?: number;
 	content?: string;
+	thinkingSegments?: ThinkingSegment[];
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
 	authorName?: string;

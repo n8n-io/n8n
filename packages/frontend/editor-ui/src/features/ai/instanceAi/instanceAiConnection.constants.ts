@@ -10,13 +10,14 @@ export type InstanceAiModelProvider = 'anthropic' | 'openai' | 'openrouter' | 'c
 export type InstanceAiSearchProvider = 'searxng' | 'brave' | 'disabled';
 
 export const INSTANCE_AI_CURATED_MODELS = {
-	anthropic: ['claude-opus-5', 'claude-sonnet-5'],
-	openai: ['gpt-5.6-sol', 'gpt-5.6-terra'],
+	anthropic: ['claude-opus-5-5', 'claude-sonnet-5-5'],
+	openai: ['gpt-6.1-sol', 'gpt-6-astra'],
+	// OpenRouter uses dotted versions for Claude (`claude-opus-5.5`, not `claude-opus-5-5`).
 	openrouter: [
-		'anthropic/claude-opus-5',
-		'anthropic/claude-sonnet-5',
-		'openai/gpt-5.6-sol',
-		'openai/gpt-5.6-terra',
+		'anthropic/claude-opus-5.5',
+		'anthropic/claude-sonnet-5.5',
+		'openai/gpt-6.1-sol',
+		'openai/gpt-6-astra',
 		'moonshotai/kimi-k3',
 	],
 	custom: [],

@@ -61,6 +61,7 @@ import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useEditorContext } from './useEditorContext';
@@ -95,6 +96,10 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		useRunWorkflowOpts.workflowDocumentStore ?? injectWorkflowDocumentStore();
 	const workflowExecutionState = computed(() =>
 		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+	);
+	const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+		() => workflowDocumentStore.value.usedCredentials,
+		() => workflowDocumentStore.value.allNodes,
 	);
 	const nodeHelpers = useNodeHelpers();
 
@@ -142,6 +147,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			return;
 		}
 
+		if (unusableCredentialReason.value) {
+			toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
+			return;
+		}
+
 		toast.clearAllStickyNotifications();
 
 		try {
@@ -175,15 +185,15 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				if (response !== MODAL_CONFIRM) {
 					return undefined;
 				}
+			}
 
+			if (isNewWorkflow || uiStore.stateIsDirty) {
 				const saved = await workflowSaving.saveCurrentWorkflow({
 					id: workflowDocumentStore.value.workflowId,
 				});
 				if (!saved) {
 					return undefined;
 				}
-			} else if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
-				await workflowSaving.saveCurrentWorkflow({ id: workflowDocumentStore.value.workflowId });
 			}
 
 			const workflowData = workflowDocumentStore.value.serialize();

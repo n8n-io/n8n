@@ -261,6 +261,7 @@ describe('GET /executions/:id', () => {
 				startExecution,
 				getExecution,
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+				cancelExecution: vi.fn(),
 			});
 		});
 
@@ -284,7 +285,11 @@ describe('GET /executions/:id', () => {
 			status: 'completed',
 			mode: 'manual',
 			hostMode: 'manual',
-			graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [] },
+			graph: {
+				nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }],
+				edges: [],
+				seeded: [],
+			},
 			workflow: ranWorkflow(workflowId),
 			createdAt: '2026-08-25T10:00:00.000Z',
 			updatedAt: '2026-08-25T10:00:05.000Z',

@@ -14,5 +14,12 @@ export async function instanceSystemTasks(globalConfig: GlobalConfig): Promise<S
 		tasks.push(TelemetryBufferFlushTask);
 	}
 
+	if (globalConfig.eventBus.checkUnsentInterval > 0) {
+		const { EventBusUnsentMessageFlushTask } = await import(
+			'@/eventbus/message-event-bus/event-bus-unsent-message-flush.task.js'
+		);
+		tasks.push(EventBusUnsentMessageFlushTask);
+	}
+
 	return tasks;
 }

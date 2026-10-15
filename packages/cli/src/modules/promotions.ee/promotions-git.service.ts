@@ -14,8 +14,7 @@ import {
 	type SimpleGitOptions,
 } from 'simple-git';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 
 import {
 	GIT_COMMAND_STALL_TIMEOUT_MS,
@@ -262,8 +261,15 @@ export class PromotionsGitService {
 								});
 							}
 
+							// Empty on a repository with no commits yet.
 							const previousHead = rollbackOnFailure
-								? (await git.revparse(['HEAD'])).trim()
+								? (
+										await git.raw([
+											'for-each-ref',
+											'--format=%(objectname)',
+											`refs/heads/${branchName}`,
+										])
+									).trim()
 								: undefined;
 							try {
 								// Scope staging to the package while including removed entities.
@@ -279,10 +285,16 @@ export class PromotionsGitService {
 
 								return { commitSha };
 							} catch (error) {
-								if (previousHead) {
+								if (previousHead !== undefined) {
 									try {
 										// Restore Git state. The caller restores the package files.
-										await git.raw(['reset', '--mixed', previousHead]);
+										if (previousHead) {
+											await git.raw(['reset', '--mixed', previousHead]);
+										} else {
+											// Remove the first commit and clear the index.
+											await git.raw(['update-ref', '-d', 'HEAD']);
+											await git.raw(['read-tree', '--empty']);
+										}
 									} catch {
 										this.logger.warn(
 											'Failed to restore the Git revision after a failed promotion',
@@ -467,6 +479,29 @@ export class PromotionsGitService {
 				const commitSha = (await git.revparse([`refs/remotes/origin/${branchName}`])).trim();
 				const lsTreeOutput = await git.raw(['ls-tree', '-r', '-z', commitSha, '--', ...pathspecs]);
 				return { commitSha, lsTreeOutput };
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName });
+		}
+	}
+
+	/** Reports whether the local branch's last commit holds this path. False when it has no commits. */
+	async hasCommittedPath({
+		paths,
+		branchName,
+		configId,
+		pathspec,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
+		pathspec: string;
+	}): Promise<boolean> {
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const head = (
+					await git.raw(['for-each-ref', '--format=%(objectname)', `refs/heads/${branchName}`])
+				).trim();
+				if (!head) return false;
+				return (await git.raw(['ls-tree', head, '--', pathspec])).trim() !== '';
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });

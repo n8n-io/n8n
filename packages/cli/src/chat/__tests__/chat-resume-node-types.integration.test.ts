@@ -59,6 +59,7 @@ function makeRealNodeTypes(): NodeTypes {
 		recognizesNode: (name: string) => name in baseTypes,
 		getNode: (name: string) => baseTypes[name],
 		loadedNodes: {} as Record<string, LoadedClass<INodeType>>,
+		excludeNodes: [] as string[],
 	};
 
 	return new NodeTypes(mock(), loader as never);
