@@ -565,7 +565,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 						</N8nTooltip>
 						<N8nTooltip :content="formatTokenTooltip(row.thread)" placement="top">
 							<N8nText step="sm" bold color="text-light" data-test-id="agent-session-token-usage">
-								{{ formatTokenCount(getTotalTokens(row.thread)) }}t
+								{{ formatTokenCount(getTotalTokens(row.thread)) }}
 							</N8nText>
 						</N8nTooltip>
 					</div>
@@ -682,6 +682,7 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 	flex-wrap: wrap;
 	justify-content: flex-end;
 	gap: var(--spacing--sm);
+	font-variant-numeric: tabular-nums;
 }
 
 /**
