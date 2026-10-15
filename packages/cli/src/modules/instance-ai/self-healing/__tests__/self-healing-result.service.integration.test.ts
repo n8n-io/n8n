@@ -278,6 +278,45 @@ it('commits concurrent finalization only once', async () => {
 	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(1);
 });
 
+it.each(['preparation', 'transaction'] as const)(
+	'discards a completion canceled during %s',
+	async (phase) => {
+		const { investigation, completion } = await prepareInvestigation();
+		const controller = new AbortController();
+		if (phase === 'preparation') {
+			const prepare = suggestionService.prepareSuggestion.bind(suggestionService);
+			vi.spyOn(suggestionService, 'prepareSuggestion').mockImplementationOnce(async (...args) => {
+				const result = await prepare(...args);
+				controller.abort(new Error('Investigation canceled.'));
+				return result;
+			});
+		} else {
+			const complete = investigations.completeWithResult.bind(investigations);
+			vi.spyOn(investigations, 'completeWithResult').mockImplementationOnce(async (...args) => {
+				await complete(...args);
+				controller.abort(new Error('Investigation canceled.'));
+			});
+		}
+
+		await expect(
+			service.complete({
+				investigationId: investigation.id,
+				...completion,
+				signal: controller.signal,
+			}),
+		).rejects.toThrow('Investigation canceled.');
+		expect(await results.count()).toBe(0);
+		expect(await suggestions.count()).toBe(0);
+		expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(
+			0,
+		);
+		expect(await investigations.get(investigation.id)).toMatchObject({
+			resultId: null,
+			finishedAt: null,
+		});
+	},
+);
+
 it('rolls back all completion writes and releases the claim on failure', async () => {
 	const { input, original, graph } = await prepareFixture('fix_ready');
 	const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');

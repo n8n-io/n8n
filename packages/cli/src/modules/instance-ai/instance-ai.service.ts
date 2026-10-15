@@ -1549,8 +1549,8 @@ export class InstanceAiService {
 				onFinish: (result, modelId, stream) => {
 					const status = result.status === 'suspended' ? 'errored' : result.status;
 
-					// Shutdown publishes its own finish event before aborting the run.
-					if (abortController.signal.reason !== 'service_shutdown') {
+					// A committed completion supersedes cancellation published during shutdown.
+					if (abortController.signal.reason !== 'service_shutdown' || status === 'completed') {
 						this.publishRunFinish(
 							threadId,
 							runId,

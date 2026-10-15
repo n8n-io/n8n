@@ -26,7 +26,7 @@ describe('InstanceAiCheckpointPruningTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { retryOnFailure: true, timeoutSeconds: 1200 },
+			scheduler: { retryOnFailure: true, timeoutSeconds: 1260 },
 			leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
 		});
 	});
@@ -43,12 +43,12 @@ describe('InstanceAiCheckpointPruningTask', () => {
 	});
 
 	it.each([
-		{ type: 'postgresdb', statementTimeoutMs: 300_000, timeoutSeconds: 1200 },
-		{ type: 'postgresdb', statementTimeoutMs: 1_200_000, timeoutSeconds: 3900 },
+		{ type: 'postgresdb', statementTimeoutMs: 300_000, timeoutSeconds: 1260 },
+		{ type: 'postgresdb', statementTimeoutMs: 1_200_000, timeoutSeconds: 3960 },
 		{ type: 'postgresdb', statementTimeoutMs: 0, timeoutSeconds: MAX_TIMER_DELAY_SECONDS },
-		{ type: 'sqlite', statementTimeoutMs: 0, timeoutSeconds: 1200 },
+		{ type: 'sqlite', statementTimeoutMs: 0, timeoutSeconds: 1260 },
 	] as const)(
-		'should time out 5 minutes after three statement timeouts ($type, $statementTimeoutMs ms)',
+		'should time out 5 minutes after three statement timeouts and the cleanup budget ($type, $statementTimeoutMs ms)',
 		({ type, statementTimeoutMs, timeoutSeconds }) => {
 			const database = mock<DatabaseConfig>({ type, postgresdb: { statementTimeoutMs } });
 

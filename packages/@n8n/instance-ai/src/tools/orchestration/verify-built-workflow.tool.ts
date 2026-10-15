@@ -329,21 +329,38 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				verificationScope ? selectedTriggerNodeName : undefined,
 			);
 
-			const { result, analysis, parameterCheckRuns } = await runWorkflowVerification({
-				prepared,
-				executionService: target.domainContext.executionService,
-				workflowId,
-				inputData: resolvedInput.inputData,
-				triggerNodeName: resolvedInput.triggerNodeName,
-				timeout: resolvedInput.timeout,
-				abortSignal: context.abortSignal,
-				buildOutcome,
-				stateBefore: target.stateBefore,
-				runId: context.runId,
-				chatModelRelatedNodeNames,
-				chatModelRecovery,
-				verificationScope,
-			});
+			let verification: Awaited<ReturnType<typeof runWorkflowVerification>>;
+			try {
+				verification = await runWorkflowVerification({
+					prepared,
+					executionService: target.domainContext.executionService,
+					workflowId,
+					inputData: resolvedInput.inputData,
+					triggerNodeName: resolvedInput.triggerNodeName,
+					timeout: resolvedInput.timeout,
+					abortSignal: context.abortSignal,
+					buildOutcome,
+					stateBefore: target.stateBefore,
+					runId: context.runId,
+					chatModelRelatedNodeNames,
+					chatModelRecovery,
+					verificationScope,
+				});
+			} catch (error) {
+				if (context.abortSignal?.aborted) {
+					await workflowTaskService.updateBuildOutcome(resolvedInput.workItemId, {
+						verification: {
+							attempted: true,
+							success: false,
+							status: 'error',
+							evidence: { errorMessage: 'Verification was canceled.' },
+							verifiedAt: new Date().toISOString(),
+						},
+					});
+				}
+				throw error;
+			}
+			const { result, analysis, parameterCheckRuns } = verification;
 
 			// The repair target from an earlier verdict counts even when the model
 			// omits it here — that is exactly the turn where it stops mentioning it.

@@ -16,6 +16,8 @@ Credential and network failures can still need investigation.
 
 The producer checks execution metadata without loading execution data.
 It passes the execution ID to the agent. The agent reads details through the existing execution tools.
+Execution reads use the normal Assistant access checks. The agent can inspect other executions
+that the actor can access, including executions from related workflows.
 The execution must remain saved and readable. M3 will define how to retain only the triggering
 execution when saving is disabled or pruning runs. Investigation inputs contain no execution payload.
 
@@ -42,8 +44,8 @@ Workflow reads return the captured baseline. The agent cannot select another wor
 
 The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
 It can read and edit workspace files, run sandbox commands, and call `verify_candidate`.
-Self-healing always allows web search and URL fetching, regardless of the Assistant permission settings.
-These research actions do not need interactive approval.
+Self-healing respects blocked web search and URL fetching permissions.
+Other research permission modes do not need interactive approval.
 The agent has no save, publish, credential setup, MCP, browser, or delegation tools.
 It does not request user confirmation or start follow-up runs.
 
@@ -51,7 +53,7 @@ The runtime returns technical `status`, finish information, `usage`, and validat
 when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
 `fix_ready` requires a candidate path. `could_not_fix` excludes one.
 The result includes a candidate compiler when validated output names a candidate file.
-If final compilation reports unresolved credentials, the producer changes `fix_ready` to `needs_you`.
+If final compilation reports mocked credential types, the producer changes `fix_ready` to `needs_you`.
 It keeps the candidate and replaces the report with credential setup instructions.
 An unchanged `needs_you` candidate produces a report without a workflow suggestion.
 Unknown usage measurements stay null. The invocation claims measured credits once.
@@ -117,12 +119,14 @@ A credit-claim failure leaves unknown credits and does not discard valid output.
 `SelfHealingResultService.complete(...)` prepares the optional suggestion through
 `WorkflowSuggestionService`. It rechecks access and the captured baseline, then saves the result,
 suggestion, submission activity, and investigation completion in one transaction.
+Cancellation before acceptance rolls back the result and suggestion.
+Once the completion commits, a later cancellation does not change it to a canceled run.
 A repeated completion returns the saved result.
 A failed transaction releases the investigation claim. The report is not saved for retry.
 Changed baselines and lost access stop completion without creating a result.
 
 Startup releases interrupted claims after the interrupted-run sweep.
-A separate scheduled task checks unfinished claims at the configured prune interval.
+A separate scheduled task checks unfinished claims every minute, even when data pruning is disabled.
 Investigation cleanup failures do not block Assistant data pruning or temporary workflow cleanup.
 Investigation cleanup remains available when new investigations are disabled.
 Technical status and termination reasons stay in the existing Assistant run events.

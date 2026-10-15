@@ -411,5 +411,6 @@ describe('SelfHealingInvestigationService', () => {
 		investigations.listUnfinished.mockResolvedValue([investigation]);
 		await service.reconcile();
 		expect(sweeper.sweepRun).not.toHaveBeenCalled();
+		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();
 	});
 });

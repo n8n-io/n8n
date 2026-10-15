@@ -20,17 +20,17 @@ describe('SelfHealingReconciliationTask', () => {
 			workflowSuggestionsEnabled: false,
 		});
 		const investigations = mock<SelfHealingInvestigationService>();
-		const task = new SelfHealingReconciliationTask(config, investigations);
+		const task = new SelfHealingReconciliationTask(investigations);
 		return { config, investigations, task };
 	}
 
-	it('retries existing work at the prune cadence when new investigations are disabled', async () => {
+	it('retries existing work every minute when new investigations are disabled', async () => {
 		const { task, investigations } = setup();
 		const { signal } = new AbortController();
 
 		await task.run(signal);
 
-		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 1 });
+		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 60 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
 			scheduler: { retryOnFailure: true },

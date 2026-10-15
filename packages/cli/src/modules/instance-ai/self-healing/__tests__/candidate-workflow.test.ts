@@ -158,6 +158,24 @@ describe('compileCandidateWorkflow', () => {
 		expect(baseline.original.nodes[0].parameters.url).toBe('https://example.test/original');
 	});
 
+	it('keeps node telemetry tags through source conversion and compilation', async () => {
+		const tags = { tag: [{ key: 'department', value: 'operations' }] };
+		baseline.original.nodes[0].customTelemetryTags = tags;
+		const workflow = generatedWorkflow();
+		changeUrl(workflow, 'https://example.test/fixed');
+		await writeCandidate(workflow);
+
+		const result = await compile();
+		expect(result).toMatchObject({
+			success: true,
+			workflow: {
+				nodes: expect.arrayContaining([
+					expect.objectContaining({ id: 'request', customTelemetryTags: tags }),
+				]),
+			},
+		});
+	});
+
 	it('accepts an unchanged candidate for verification', async () => {
 		await writeCandidate(generatedWorkflow());
 

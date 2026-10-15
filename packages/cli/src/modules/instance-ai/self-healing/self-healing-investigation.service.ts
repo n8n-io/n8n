@@ -206,7 +206,7 @@ export class SelfHealingInvestigationService {
 		};
 		await this.suggestions.requireCurrentBaseline(investigation.baseline);
 		signal.throwIfAborted();
-		await this.results.complete({ investigationId: investigation.id, ...result });
+		await this.results.complete({ investigationId: investigation.id, ...result, signal });
 	}
 
 	async reconcile(signal?: AbortSignal) {

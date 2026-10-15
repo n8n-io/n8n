@@ -1734,7 +1734,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 	});
 
 	it.each(['completed', 'cancelled'] as const)(
-		'publishes one finish event when a %s run settles during shutdown tracing',
+		'preserves the final %s status when a run settles during shutdown tracing',
 		async (status) => {
 			const service = createLauncher();
 			const settle = createDeferredPromise<undefined>();
@@ -1753,7 +1753,8 @@ describe('InstanceAiService — self-healing launcher', () => {
 			await service.shutdown();
 			const result = await run;
 
-			expect(service.publishRunFinish).toHaveBeenCalledExactlyOnceWith(
+			expect(service.publishRunFinish).toHaveBeenNthCalledWith(
+				1,
 				result.threadId,
 				result.runId,
 				'cancelled',
@@ -1762,6 +1763,20 @@ describe('InstanceAiService — self-healing launcher', () => {
 				undefined,
 				{ promptVersion: undefined },
 			);
+			if (status === 'completed') {
+				expect(service.publishRunFinish).toHaveBeenCalledTimes(2);
+				expect(service.publishRunFinish).toHaveBeenLastCalledWith(
+					result.threadId,
+					result.runId,
+					'completed',
+					undefined,
+					undefined,
+					fakeUser.id,
+					{ modelId: 'model-1', promptVersion: 'self-healing-v1' },
+				);
+			} else {
+				expect(service.publishRunFinish).toHaveBeenCalledTimes(1);
+			}
 			expect(service.emitRunMetrics).toHaveBeenCalledExactlyOnceWith(
 				result.threadId,
 				status,

@@ -57,8 +57,10 @@ export class SelfHealingResultService {
 
 	async complete({
 		investigationId,
+		signal,
 		...input
-	}: SelfHealingResultInput & { investigationId: string }) {
+	}: SelfHealingResultInput & { investigationId: string; signal?: AbortSignal }) {
+		signal?.throwIfAborted();
 		const investigation = await this.investigations.get(investigationId);
 		if (investigation.resultId) {
 			return await this.results.getResult(investigation.resultId, investigation);
@@ -68,6 +70,8 @@ export class SelfHealingResultService {
 			completedAt,
 			suggestion: prepared,
 		} = await this.prepareResult(investigation, input);
+		signal?.throwIfAborted();
+
 		return await this.txRunner.run({}, async (ctx) => {
 			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
 			const current = await this.investigations.get(investigationId, ctx);
@@ -78,6 +82,7 @@ export class SelfHealingResultService {
 				throw new ConflictError('The self-healing investigation has already finished.');
 			}
 			await this.suggestions.requireCurrentBaseline(current.baseline, ctx);
+			signal?.throwIfAborted();
 			const suggestion = prepared ? await this.suggestions.createSuggestion(prepared, ctx) : null;
 			const result = await this.results.createResult(
 				{
@@ -92,6 +97,8 @@ export class SelfHealingResultService {
 				ctx,
 			);
 			await this.investigations.completeWithResult(investigationId, result.id, ctx);
+			// Abort before commit so the result and suggestion roll back together.
+			signal?.throwIfAborted();
 			return result;
 		});
 	}

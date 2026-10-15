@@ -217,3 +217,32 @@ it('creates the snapshot with the content policy clearance in one transaction', 
 		ctx,
 	);
 });
+
+it('stops cleanup between execution stops after cancellation', async () => {
+	const controller = new AbortController();
+	workflows.findUnfinishedExecutionIds.mockResolvedValue(['first', 'second']);
+	executionService.stop.mockImplementationOnce(async () => {
+		controller.abort();
+		return {
+			mode: 'manual',
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			finished: true,
+			status: 'canceled',
+		};
+	});
+	await service.cleanup('temporary', controller.signal);
+	expect(executionService.stop).toHaveBeenCalledTimes(1);
+	expect(workflows.canDelete).not.toHaveBeenCalled();
+	expect(executions.hardDeleteByWorkflowId).not.toHaveBeenCalled();
+});
+
+it('keeps the cleanup marker when cancellation arrives during execution deletion', async () => {
+	const controller = new AbortController();
+	executions.hardDeleteByWorkflowId.mockImplementationOnce(async () => {
+		controller.abort();
+	});
+	await service.cleanup('temporary', controller.signal);
+	expect(executions.hardDeleteByWorkflowId).toHaveBeenCalledExactlyOnceWith('temporary');
+	expect(workflows.deleteTemporary).not.toHaveBeenCalled();
+});

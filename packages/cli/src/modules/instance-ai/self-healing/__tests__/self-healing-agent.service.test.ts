@@ -160,6 +160,7 @@ describe('SelfHealingAgentService', () => {
 		suggestions.requireEditor.mockResolvedValue(user);
 		suggestions.requireCurrentBaseline.mockResolvedValue(user);
 		executions.validateReference.mockResolvedValue(undefined);
+		settings.getPermissions.mockReturnValue({ ...DEFAULT_INSTANCE_AI_PERMISSIONS });
 		models.resolveAgentModelConfig.mockResolvedValue('test/model');
 		adapter.createContext.mockReturnValue(mock<InstanceAiContext>());
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(true);
@@ -196,7 +197,7 @@ describe('SelfHealingAgentService', () => {
 	});
 
 	it.each(['require_approval', 'blocked', 'always_allow'] as const)(
-		'allows research when Assistant research permissions are %s',
+		'respects blocked research and handles %s without interactive approval',
 		async (permission) => {
 			const permissions = {
 				...DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -212,8 +213,8 @@ describe('SelfHealingAgentService', () => {
 					context: expect.objectContaining({
 						permissions: {
 							...permissions,
-							fetchUrl: 'always_allow',
-							webSearch: 'always_allow',
+							fetchUrl: permission === 'blocked' ? 'blocked' : 'always_allow',
+							webSearch: permission === 'blocked' ? 'blocked' : 'always_allow',
 						},
 					}),
 				}),
@@ -367,6 +368,16 @@ describe('SelfHealingAgentService', () => {
 		expect(options.onFinish).toHaveBeenCalledWith(result, 'test/model', stream);
 	});
 
+	it('keeps a committed result completed when cancellation arrives during commit', async () => {
+		options.onComplete = vi.fn(async () => {
+			// The transaction has accepted the result and its commit succeeds.
+			controller.abort('service_shutdown');
+		});
+		const result = await service.execute(input, options);
+		expect(result).toMatchObject({ status: 'completed', output: validOutput });
+		expect(options.onFinish).toHaveBeenCalledWith(result, 'test/model', stream);
+	});
+
 	it('keeps cancellation that occurs while accepting output in the run lifecycle', async () => {
 		options.onComplete = vi.fn(async (_result, signal) => {
 			controller.abort(new Error('Run cancelled'));
@@ -382,18 +393,6 @@ describe('SelfHealingAgentService', () => {
 		expect(finished).not.toHaveProperty('output');
 		expect(finished).not.toHaveProperty('candidate');
 		expect(finished.finishReason).toBeUndefined();
-	});
-
-	it('uses the existing execution service', async () => {
-		const context = mock<InstanceAiContext>({
-			executionService: mock<InstanceAiContext['executionService']>(),
-		});
-		const source = context.executionService;
-		adapter.createContext.mockReturnValueOnce(context);
-		await service.execute(input, options);
-		expect(vi.mocked(createSelfHealingAgent).mock.calls[0][0].context.executionService).toBe(
-			source,
-		);
 	});
 
 	it.each([undefined, { outcome: 'fix_ready', summary: 'Missing report' }])(
@@ -615,17 +614,71 @@ describe('SelfHealingAgentService', () => {
 		['disabled actor', { ...input, user: mock<User>({ id: 'actor', disabled: true }) }],
 		['mismatched actor', { ...input, user: mock<User>({ id: 'someone-else' }) }],
 	])('rejects %s before model work', async (_label, invalid) => {
-		await expect(service.execute(invalid, options)).rejects.toThrow();
+		await expect(service.execute(invalid, options)).resolves.toMatchObject({ status: 'errored' });
+		expect(options.onFinish).toHaveBeenCalledOnce();
 		expect(models.resolveAgentModelConfig).not.toHaveBeenCalled();
 	});
 
 	it('rejects lost edit access, baseline changes, and invalid execution input', async () => {
 		suggestions.requireCurrentBaseline.mockRejectedValueOnce(new Error('No edit access'));
-		await expect(service.execute(input, options)).rejects.toThrow('edit access');
+		await expect(service.execute(input, options)).resolves.toMatchObject({
+			status: 'errored',
+			reason: 'No edit access',
+		});
 		suggestions.requireCurrentBaseline.mockRejectedValueOnce(new Error('Stale baseline'));
-		await expect(service.execute(input, options)).rejects.toThrow('Stale baseline');
+		await expect(service.execute(input, options)).resolves.toMatchObject({
+			status: 'errored',
+			reason: 'Stale baseline',
+		});
 		executions.validateReference.mockRejectedValueOnce(new Error('Invalid execution input'));
-		await expect(service.execute(input, options)).rejects.toThrow('execution');
+		await expect(service.execute(input, options)).resolves.toMatchObject({
+			status: 'errored',
+			reason: 'Invalid execution input',
+		});
 		expect(models.resolveAgentModelConfig).not.toHaveBeenCalled();
+	});
+	it('finishes early validation failures after creating their private thread', async () => {
+		suggestions.requireCurrentBaseline.mockRejectedValueOnce(new Error('Baseline changed.'));
+		const result = await service.execute(input, options);
+
+		expect(result).toMatchObject({ status: 'errored', reason: 'Baseline changed.' });
+		expect(memory.saveThreadWithProject.mock.invocationCallOrder[0]).toBeLessThan(
+			suggestions.requireCurrentBaseline.mock.invocationCallOrder[0],
+		);
+		expect(events.publish).toHaveBeenCalledWith(
+			options.threadId,
+			expect.objectContaining({ type: 'run-start' }),
+		);
+		expect(options.onFinish).toHaveBeenCalledExactlyOnceWith(result, undefined, undefined);
+		expect(streamAgentRun).not.toHaveBeenCalled();
+	});
+
+	it('finalizes thread creation failures without starting the model', async () => {
+		memory.saveThreadWithProject.mockRejectedValueOnce(new Error('Thread storage unavailable.'));
+		const result = await service.execute(input, options);
+		expect(result).toMatchObject({ status: 'errored', reason: 'Thread storage unavailable.' });
+		expect(options.onFinish).toHaveBeenCalledOnce();
+		expect(streamAgentRun).not.toHaveBeenCalled();
+	});
+
+	it('uses the existing execution adapter for investigation reads', async () => {
+		const executionService = mock<InstanceAiContext['executionService']>();
+		const context = mock<InstanceAiContext>({ executionService });
+		adapter.createContext.mockReturnValueOnce(context);
+		await service.execute(input, options);
+		const { context: agentContext } = vi.mocked(createSelfHealingAgent).mock.calls[0][0];
+
+		await agentContext.executionService.list({ workflowId: 'related-workflow' });
+		await agentContext.executionService.getResult('related-execution');
+		expect(executionService.list).toHaveBeenCalledExactlyOnceWith({
+			workflowId: 'related-workflow',
+		});
+		expect(executionService.getResult).toHaveBeenCalledExactlyOnceWith('related-execution');
+		// Only the original failed execution needs to match the investigation baseline.
+		expect(executions.validateReference).toHaveBeenCalledExactlyOnceWith(
+			user,
+			baseline.workflowId,
+			input.executionId,
+		);
 	});
 });

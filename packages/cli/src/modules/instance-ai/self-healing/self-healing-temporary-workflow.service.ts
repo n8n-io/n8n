@@ -1,5 +1,6 @@
 import type { WorkflowSuggestionBaseline, WorkflowSuggestionGraph } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { TransactionRunner, UserRepository, WorkflowEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
@@ -21,6 +22,8 @@ type TemporaryWorkflowInput = {
 	baseline: WorkflowSuggestionBaseline;
 	graph: WorkflowSuggestionGraph;
 };
+
+export const SELF_HEALING_CLEANUP_BUDGET_MS = Time.minutes.toMilliseconds;
 
 @Service()
 export class SelfHealingTemporaryWorkflowService {
@@ -85,28 +88,37 @@ export class SelfHealingTemporaryWorkflowService {
 	}
 
 	async cleanupAbandoned(signal?: AbortSignal): Promise<void> {
+		const deadline = AbortSignal.timeout(SELF_HEALING_CLEANUP_BUDGET_MS);
+		signal = signal ? AbortSignal.any([signal, deadline]) : deadline;
 		if (signal?.aborted) return;
 
 		const before = new Date(Date.now() - TEMPORARY_VERIFICATION_RETENTION_MS);
 		for (const workflowId of await this.workflows.findAbandonedIds(before)) {
 			if (signal?.aborted) return;
 
-			await this.cleanup(workflowId);
+			await this.cleanup(workflowId, signal);
 		}
 	}
 
-	async cleanup(workflowId: string): Promise<void> {
+	async cleanup(workflowId: string, signal?: AbortSignal): Promise<void> {
 		try {
+			if (signal?.aborted) return;
 			for (const executionId of await this.workflows.findUnfinishedExecutionIds(workflowId)) {
+				if (signal?.aborted) return;
 				await this.executionService.stop(executionId, [workflowId]);
 			}
 
 			// Cancellation can return before a worker finishes its final writes.
+			if (signal?.aborted) return;
 			if (!(await this.workflows.canDelete(workflowId))) return;
 
+			if (signal?.aborted) return;
+			// An execution deletion already in progress finishes before cleanup stops.
 			await this.executions.hardDeleteByWorkflowId(workflowId);
+			if (signal?.aborted) return;
 			await this.workflows.deleteTemporary(workflowId);
 		} catch (error) {
+			if (signal?.aborted) return;
 			this.logger.warn('Could not clean up an Assistant verification workflow.', {
 				workflowId,
 				error: getErrorMessage(error),

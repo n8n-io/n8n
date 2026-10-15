@@ -70,13 +70,13 @@ export class InstanceAiModule implements ModuleInterface {
 
 	async systemTasks() {
 		const { InstanceAiConfig } = await import('@n8n/config');
-		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [];
+		const { SelfHealingReconciliationTask } = await import(
+			'./self-healing/self-healing-reconciliation.task.js'
+		);
+		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [SelfHealingReconciliationTask];
 
 		const { InstanceAiCheckpointPruningTask } = await import(
 			'./instance-ai-checkpoint-pruning.task.js'
-		);
-		const { SelfHealingReconciliationTask } = await import(
-			'./self-healing/self-healing-reconciliation.task.js'
 		);
 		return [InstanceAiCheckpointPruningTask, SelfHealingReconciliationTask];
 	}

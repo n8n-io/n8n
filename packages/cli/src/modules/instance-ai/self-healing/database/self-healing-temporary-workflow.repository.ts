@@ -52,6 +52,8 @@ export class SelfHealingTemporaryWorkflowRepository extends BaseRepository<Insta
 				createdAt: LessThan(before),
 			},
 			select: { id: true },
+			order: { createdAt: 'ASC', id: 'ASC' },
+			take: 100,
 		});
 
 		return rows.map(({ id }) => id.slice(RESOURCE_PREFIX.length));
@@ -79,6 +81,7 @@ export class SelfHealingTemporaryWorkflowRepository extends BaseRepository<Insta
 		const executions = await this.manager.find(ExecutionEntity, {
 			where: { workflowId, status: In(['new', 'running', 'waiting', 'unknown']) },
 			select: { id: true },
+			take: 25,
 		});
 
 		return executions.map(({ id }) => id);

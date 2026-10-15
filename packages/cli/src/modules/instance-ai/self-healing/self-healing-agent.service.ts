@@ -30,6 +30,7 @@ import {
 	type StreamRunResult,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { nanoid } from 'nanoid';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -141,7 +142,7 @@ export class SelfHealingAgentService {
 		options: SelfHealingRunOptions,
 	): Promise<SelfHealingRunResult> {
 		input = { ...input, baseline: structuredClone(input.baseline) };
-		const user = await this.validateInput(input);
+		let user = input.user;
 
 		const { baseline, executionId } = input;
 		const { threadId, runId, signal } = options;
@@ -159,19 +160,6 @@ export class SelfHealingAgentService {
 		const resourceId = getSelfHealingResourceId(user.id);
 		const messageId = nanoid();
 
-		await this.memory.saveThreadWithProject(
-			{ id: threadId, resourceId, metadata },
-			baseline.projectId,
-		);
-
-		this.events.publish(threadId, {
-			type: 'run-start',
-			runId,
-			agentId: orchestratorAgentId(runId),
-			userId: user.id,
-			payload: { messageId, messageGroupId: options.messageGroupId },
-		});
-
 		let tracing: InstanceAiTraceContext | undefined;
 		let modelId: ModelConfig | undefined;
 		let stream: StreamRunResult | undefined;
@@ -187,6 +175,20 @@ export class SelfHealingAgentService {
 		};
 
 		try {
+			await this.memory.saveThreadWithProject(
+				{ id: threadId, resourceId, metadata },
+				baseline.projectId,
+			);
+
+			this.events.publish(threadId, {
+				type: 'run-start',
+				runId,
+				agentId: orchestratorAgentId(runId),
+				userId: user.id,
+				payload: { messageId, messageGroupId: options.messageGroupId },
+			});
+
+			user = await this.validateInput(input);
 			signal.throwIfAborted();
 
 			const environment = await this.prepareEnvironment({ ...input, user }, options);
@@ -250,6 +252,8 @@ export class SelfHealingAgentService {
 		} catch (error) {
 			result.status = signal.aborted ? 'cancelled' : 'errored';
 			result.error = error;
+			result.reason = scrubSecretsInText(getErrorMessage(error)).slice(0, 1000);
+			this.logger.error('Self-healing run failed.', { threadId, runId, error: result.reason });
 		} finally {
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
 
@@ -276,26 +280,30 @@ export class SelfHealingAgentService {
 				delete result.finishReason;
 				delete result.validationError;
 			}
-			try {
-				await options.onComplete(result, signal);
-			} finally {
-				if (signal.aborted && result.status !== 'cancelled') {
-					result.status = 'cancelled';
-					result.reason = options.getAbortReason();
-					delete result.output;
-					delete result.candidate;
-					delete result.finishReason;
-					delete result.validationError;
-				}
-				await this.finish(result, stream, tracing, modelId, options);
-				if (!stream) {
-					await options.sandbox.destroySandbox(threadId, user.id).catch((error: unknown) => {
-						this.logger.warn('Could not clear the incomplete self-healing workspace.', {
-							runId,
-							error: getErrorMessage(error),
-						});
+		}
+
+		try {
+			await options.onComplete(result, signal);
+		} catch (error) {
+			if (signal.aborted && result.status !== 'cancelled') {
+				result.status = 'cancelled';
+				result.reason = options.getAbortReason();
+				delete result.output;
+				delete result.candidate;
+				delete result.finishReason;
+				delete result.validationError;
+			}
+			throw error;
+		} finally {
+			// A successful completion has committed. A later abort cannot undo that result.
+			await this.finish(result, stream, tracing, modelId, options);
+			if (!stream) {
+				await options.sandbox.destroySandbox(threadId, user.id).catch((error: unknown) => {
+					this.logger.warn('Could not clear the incomplete self-healing workspace.', {
+						runId,
+						error: getErrorMessage(error),
 					});
-				}
+				});
 			}
 		}
 		return result;
@@ -341,10 +349,11 @@ export class SelfHealingAgentService {
 		});
 		context.runId = options.runId;
 		context.threadId = options.threadId;
+		const permissions = this.settings.getPermissions();
 		context.permissions = {
-			...this.settings.getPermissions(),
-			fetchUrl: 'always_allow',
-			webSearch: 'always_allow',
+			...permissions,
+			fetchUrl: permissions.fetchUrl === 'blocked' ? 'blocked' : 'always_allow',
+			webSearch: permissions.webSearch === 'blocked' ? 'blocked' : 'always_allow',
 		};
 		context.branchReadOnly = this.writeAccess.isReadOnly();
 		if (context.branchReadOnly) {
