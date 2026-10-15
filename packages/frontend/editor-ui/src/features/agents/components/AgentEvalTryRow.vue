@@ -116,6 +116,10 @@ const STATUS_TEXT: Record<AgentAvatarKind, StatusText> = {
 	fail: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'danger' },
 };
 
+// A check is its rule: the complete view titles the row by `whatToCheck`, and
+// only a row without one falls back to the input.
+const title = computed(() => props.whatToCheck?.trim() || props.input);
+
 const statusText = computed(() => i18n.baseText(STATUS_TEXT[props.status].labelKey));
 const statusColor = computed(() => STATUS_TEXT[props.status].color);
 const statusIsWarning = computed(() => STATUS_TEXT[props.status].warning === true);
@@ -177,7 +181,7 @@ function onCancelEditWhatToCheck() {
 async function onDeleteCheck() {
 	const confirmed = await openAgentConfirmationModal({
 		title: i18n.baseText('instanceAi.testAgentPreview.deleteCheck.confirm.title', {
-			interpolate: { title: props.input },
+			interpolate: { title: title.value },
 		}),
 		description: i18n.baseText('instanceAi.testAgentPreview.deleteCheck.confirm.description'),
 		confirmButtonText: i18n.baseText(
@@ -207,7 +211,7 @@ watch(
 			<AgentAvatar :kind="status" size="md" />
 			<div :class="$style.headerTitle">
 				<N8nText color="text-dark" size="medium" bold :class="$style.headerTitleText">{{
-					input
+					title
 				}}</N8nText>
 				<N8nText
 					:color="statusColor"
