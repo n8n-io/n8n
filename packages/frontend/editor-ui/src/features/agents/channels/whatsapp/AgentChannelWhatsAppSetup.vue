@@ -422,7 +422,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 						<N8nButton
 							:href="META_APP_DASHBOARD_URL"
 							target="_blank"
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							data-testid="whatsapp-meta-dashboard-link"
 						>
