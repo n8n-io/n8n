@@ -41,7 +41,7 @@ export type { ContentBlock as McpContentBlock };
  */
 export function isMcpContentArray(data: unknown): data is ContentBlock[] {
 	if (!Array.isArray(data) || data.length === 0) return false;
-	return data.every((item) => ContentBlockSchema.safeParse(item).success);
+	return data.every((item, index) => index in data && ContentBlockSchema.safeParse(item).success);
 }
 const MCP_SESSION_TERMINATION_TIMEOUT_MS = 1_000;
 

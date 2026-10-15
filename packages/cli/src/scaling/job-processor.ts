@@ -757,7 +757,6 @@ export class JobProcessor {
 				let tool = supplyDataResult.response;
 				let isFromToolkit = false;
 				if (tool instanceof StructuredToolkit) {
-					isFromToolkit = true;
 					tool = tool.tools.find((member) => member.name === toolName);
 					if (!tool) {
 						throw new UnexpectedError(

@@ -1842,6 +1842,26 @@ describe('JobProcessor', () => {
 				expect(closeFunction).toHaveBeenCalledTimes(1);
 			});
 
+			it('should not mark an unmarked toolkit member as an MCP proxy', async () => {
+				const { jobProcessor, job } = setupToolkitJob('Remote_Tools_second');
+
+				await jobProcessor.processJob(job);
+
+				expect(job.progress).toHaveBeenCalledWith(
+					expect.objectContaining({ kind: 'mcp-response', isFromToolkit: false }),
+				);
+			});
+
+			it('should mark a marked toolkit member as an MCP proxy', async () => {
+				const { jobProcessor, job } = setupToolkitJob('Remote_Tools_first');
+
+				await jobProcessor.processJob(job);
+
+				expect(job.progress).toHaveBeenCalledWith(
+					expect.objectContaining({ kind: 'mcp-response', isFromToolkit: true }),
+				);
+			});
+
 			it('should report an unknown member and close the connection without invoking a tool', async () => {
 				const { jobProcessor, job, firstCall, secondCall, closeFunction } =
 					setupToolkitJob('Remote_Tools_missing');
