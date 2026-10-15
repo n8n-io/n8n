@@ -73,7 +73,8 @@ The saved workflow, its history, and its published version remain unchanged.
 
 The service copies findings into the tool response before cleanup. It stops unfinished executions
 and deletes terminal executions and their temporary workflow. Canceled executions remain for
-24 hours after cancellation. The existing prune task retries records older than 24 hours.
+24 hours after their stop time. If the stop time is missing, cleanup uses the temporary workflow's
+creation time. The existing prune task retries records older than 24 hours.
 A namespaced resource record keeps cleanup ownership after the investigation thread is deleted.
 No suggestion row is created by verification.
 
