@@ -320,7 +320,7 @@ Put the action to send a message to the current execution immediately before Edi
 ## Preview retries
 
 Show Resend message inside the latest error callout only for errors that explicitly
-support retry. Use the subtle button style, as Fix with Assistant does. Support the
+support retry. Use the outline button style, as Fix with Assistant does. Support the
 saved empty-answer error and the stream-stall error. Do not offer resend for other
 failures. Send the original message and its attachments through the normal send
 action. Keep the failed turn visible. Move the button below the text when needed.
