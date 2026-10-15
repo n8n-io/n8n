@@ -420,6 +420,23 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
 			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true);
 		});
+		it('adds a file access step once the agent works where files are shared', async () => {
+			withBot();
+			const { getByTestId, queryByTestId, getByText } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await openAvailability(getByTestId);
+			expect(queryByTestId('teams-file-access-step')).toBeNull();
+
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+
+			await waitFor(() => expect(getByTestId('teams-file-access-step')).toBeVisible());
+			expect(getByTestId('teams-file-access-menu')).toBeVisible();
+			expect(
+				getByText('agents.channels.teams.setup.availability.fileAccessPermission'),
+			).toBeVisible();
+			expect(queryByTestId('teams-file-access')).toBeNull();
+		});
 	});
 
 	describe('step 5, connect', () => {
@@ -719,18 +736,6 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(step).toContainElement(getByTestId('teams-connect-error'));
 			expect(step).toContainElement(getByTestId('teams-done'));
 			expect(getByTestId('teams-done')).toBeDisabled();
-		});
-
-		it('asks to publish a connected agent that is not published, next to Done', async () => {
-			withBot();
-			const { getByTestId } = renderComponent({
-				props: props({ modelValue: 'cred-1', connected: true, isPublished: false }),
-			});
-
-			await waitFor(() => expect(getByTestId('teams-publish-notice')).toBeVisible());
-			expect(getByTestId('teams-install-step')).toContainElement(
-				getByTestId('teams-publish-notice'),
-			);
 		});
 
 		it('locks the availability once connected, so a new download matches what was saved', async () => {

@@ -270,7 +270,7 @@ watch(
 					i18n.baseText('agents.channels.teams.settings.linkedBot', {
 						interpolate: { name: azureBot.name },
 					})
-				}}
+				}}{{ ' ' }}
 			</template>
 			<N8nLink
 				:href="azureBot?.portalUrl ?? AZURE_BOTS_URL"
