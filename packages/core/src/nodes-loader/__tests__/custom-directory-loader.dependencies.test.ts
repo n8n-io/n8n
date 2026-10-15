@@ -1,5 +1,13 @@
 import { Logger } from '@n8n/backend-common';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+	mkdirSync,
+	mkdtempSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	unlinkSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -72,7 +80,7 @@ describe('CustomDirectoryLoader dependencies', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		tmpRoot = mkdtempSync(path.join(tmpdir(), 'n8n-custom-dependencies-'));
+		tmpRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'n8n-custom-dependencies-')));
 		customDir = path.join(tmpRoot, 'custom');
 		mkdirSync(customDir);
 		loader = new CustomDirectoryLoader(customDir);
@@ -90,6 +98,55 @@ describe('CustomDirectoryLoader dependencies', () => {
 		await loader.loadAll();
 
 		expectCustomFilesLoaded(files);
+	});
+
+	describe.each(['loose', 'package'])('%s custom files', (layout) => {
+		describe.each(['node', 'credentials'])('*.%s.js', (suffix) => {
+			it.each([
+				{
+					failure: 'a missing dependency',
+					source: "require('n8n-test-missing-dependency');",
+					error: expect.objectContaining({ code: 'MODULE_NOT_FOUND' }),
+				},
+				{
+					failure: 'an incorrect class name',
+					source: 'module.exports = {};',
+					error: expect.objectContaining({
+						message: 'Class could not be found. Please check if the class is named correctly.',
+					}),
+				},
+			])('skips a file with $failure and loads healthy files', async ({ source, error }) => {
+				const root =
+					layout === 'loose' ? customDir : path.join(customDir, 'node_modules/n8n-nodes-foo');
+				const files = writeCustomFiles(root);
+				const brokenPath = writeFile(root, `AaaBroken.${suffix}.js`, source);
+				if (layout === 'package') {
+					writeFile(
+						root,
+						'package.json',
+						JSON.stringify({
+							name: 'n8n-nodes-foo',
+							n8n: {
+								nodes: [
+									...(suffix === 'node' ? [path.basename(brokenPath)] : []),
+									'nodes/Foo.node.js',
+								],
+								credentials: [
+									...(suffix === 'credentials' ? [path.basename(brokenPath)] : []),
+									'credentials/FooApi.credentials.js',
+								],
+							},
+						}),
+					);
+				}
+
+				await expect(loader.loadAll()).resolves.toBeUndefined();
+
+				expectCustomFilesLoaded(files);
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(brokenPath), { error });
+			});
+		});
 	});
 
 	it.each(['node', 'credentials'])(

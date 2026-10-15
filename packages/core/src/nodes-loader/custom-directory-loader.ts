@@ -70,11 +70,21 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 		}
 
 		for (const nodePath of nodes) {
-			this.loadNodeFromFile(nodePath);
+			try {
+				this.loadNodeFromFile(nodePath);
+			} catch (error) {
+				this.logger.warn(`Skipping custom node "${nodePath}": failed to load.`, { error });
+			}
 		}
 
 		for (const credentialPath of credentials) {
-			this.loadCredentialFromFile(credentialPath);
+			try {
+				this.loadCredentialFromFile(credentialPath);
+			} catch (error) {
+				this.logger.warn(`Skipping custom credential "${credentialPath}": failed to load.`, {
+					error,
+				});
+			}
 		}
 	}
 }
