@@ -4,9 +4,9 @@ import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { Controller, RateLimitAccessName } from './types';
 
 /**
- * Counts a Public API route as a read or a write for rate limiting. Without it, `GET` and `HEAD`
- * are reads and all other methods are writes. Every Public API route has a limit; this does not
- * add one.
+ * Sets whether the Public API rate limiter treats this route as a read or a write. Use it when
+ * the HTTP method does not match what the route does, for example a `POST` that only reads.
+ * Without it, `GET` and `HEAD` are reads and all other methods are writes.
  */
 export const RateLimitAccess =
 	(access: RateLimitAccessName): MethodDecorator =>
