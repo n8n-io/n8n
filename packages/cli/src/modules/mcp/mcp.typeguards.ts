@@ -23,11 +23,9 @@ export function hasHttpHeaderAuthDecryptedData(
 	value: unknown,
 ): value is WithDecryptedData<HttpHeaderAuthDecryptedData> {
 	if (!isRecord(value)) return false;
-	const obj = value;
-	const dataCandidate = obj['data'];
+	const dataCandidate = value['data'];
 	if (!isRecord(dataCandidate)) return false;
-	const data = dataCandidate;
-	return typeof data.name === 'string';
+	return typeof dataCandidate.name === 'string';
 }
 
 // JWT credential shapes and guards
