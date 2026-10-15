@@ -15,7 +15,10 @@ import type { JSONValue } from '../../types/utils/json';
 import { fixSchema } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
-import { applyToolProviderOptionDefaults } from '../model/provider-quirks';
+import {
+	applyToolProviderOptionDefaults,
+	resolveDefaultToolStrict,
+} from '../model/provider-quirks';
 
 type AiSdkProviderTool = AiSdkTool & {
 	type: 'provider';
@@ -72,17 +75,25 @@ export function toAiSdkProviderTools(tools?: BuiltProviderTool[]): Record<string
  */
 export function toAiSdkTools(
 	tools?: BuiltTool[],
-	options: { defaultStrict?: boolean } = {},
+	options: {
+		defaultStrict?: boolean;
+		/** Filters `defaultStrict` through the provider quirks. Unset sends it unchanged. */
+		providerId?: string;
+	} = {},
 ): Record<string, AiSdkTool> {
 	if (!tools || tools.length === 0) return {};
 
+	const defaultStrict =
+		options.providerId === undefined
+			? options.defaultStrict
+			: resolveDefaultToolStrict(options.providerId, options.defaultStrict);
 	const result: Record<string, AiSdkTool> = {};
 	for (const t of tools) {
 		if (t.inputSchema) {
 			const ai = loadAi();
 			const providerOptions = applyToolProviderOptionDefaults(t.providerOptions);
 			// Responses otherwise normalizes omitted strict schemas and makes optional fields required.
-			const strict = t.strict ?? (t.mcpTool ? false : options.defaultStrict);
+			const strict = t.strict ?? (t.mcpTool ? false : defaultStrict);
 			if (isZodSchema(t.inputSchema)) {
 				result[t.name] = ai.tool({
 					description: t.description,

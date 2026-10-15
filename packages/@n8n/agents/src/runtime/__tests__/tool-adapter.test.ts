@@ -218,6 +218,41 @@ describe('toAiSdkTools — provider strict mode', () => {
 		expect(result.zodTool).toMatchObject({ strict: true });
 	});
 
+	it.each(['anthropic', 'azure-openai', 'vercel'])(
+		'drops the agent default for %s, which is non-strict by default',
+		(providerId) => {
+			const result = toAiSdkTools([makeZodSchemaTool()], { defaultStrict: false, providerId });
+
+			expect(result.zodTool).toMatchObject({ strict: undefined });
+		},
+	);
+
+	it('sends the agent default to openai, which is strict by default', () => {
+		const result = toAiSdkTools([makeZodSchemaTool()], {
+			defaultStrict: false,
+			providerId: 'openai',
+		});
+
+		expect(result.zodTool).toMatchObject({ strict: false });
+	});
+
+	it.each(['anthropic', 'vercel'])('keeps MCP tools non-strict on %s', (providerId) => {
+		const result = toAiSdkTools([makeJsonSchemaTool({ type: 'object' }, { mcpTool: true })], {
+			providerId,
+		});
+
+		expect(result.testTool).toMatchObject({ strict: false });
+	});
+
+	it('keeps an explicit tool setting on a provider that drops the agent default', () => {
+		const result = toAiSdkTools([makeZodSchemaTool({ strict: false })], {
+			defaultStrict: false,
+			providerId: 'anthropic',
+		});
+
+		expect(result.zodTool).toMatchObject({ strict: false });
+	});
+
 	it('keeps MCP tools non-strict when the agent default is strict', () => {
 		const result = toAiSdkTools([makeJsonSchemaTool({ type: 'object' }, { mcpTool: true })], {
 			defaultStrict: true,

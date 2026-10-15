@@ -5,11 +5,26 @@ import {
 	applyToolProviderOptionDefaults,
 	getProviderQuirks,
 	resolveDefaultMaxOutputTokens,
+	resolveDefaultToolStrict,
 } from '../model/provider-quirks';
 
 describe('getProviderQuirks', () => {
 	it('returns an empty object for an unknown provider', () => {
 		expect(getProviderQuirks('some-unknown-provider')).toEqual({});
+	});
+});
+
+describe('resolveDefaultToolStrict', () => {
+	it.each([
+		['openai', false, false],
+		['anthropic', false, undefined],
+		['google-vertex-anthropic', false, undefined],
+		['azure-openai', false, undefined],
+		['vercel', false, undefined],
+		['anthropic', true, true],
+		['openai', undefined, undefined],
+	] as const)('resolves %s with default %s to %s', (providerId, defaultStrict, expected) => {
+		expect(resolveDefaultToolStrict(providerId, defaultStrict)).toBe(expected);
 	});
 });
 

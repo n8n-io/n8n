@@ -133,7 +133,10 @@ export class RuntimeContextBuilder {
 		list?: AgentMessageList,
 	) {
 		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
-		const aiTools = toAiSdkTools(allUserTools, { defaultStrict: this.config.toolStrict });
+		const aiTools = toAiSdkTools(allUserTools, {
+			defaultStrict: this.config.toolStrict,
+			providerId: splitModelId(this.modelId).provider,
+		});
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
 		const toolMap = buildToolMap(allUserTools);

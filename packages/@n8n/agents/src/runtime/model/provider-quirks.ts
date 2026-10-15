@@ -24,6 +24,8 @@ export interface ProviderQuirks {
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
 	relaxStrictJsonSchemaForRawOutput?: boolean;
+	/** Provider treats a tool with no `strict` flag as strict, so an agent's `toolStrict(false)` default must be sent. */
+	toolsStrictByDefault?: boolean;
 	/** Translate the agent's thinking config into this provider's providerOptions namespace. */
 	thinkingToProviderOptions?: (
 		thinking: ThinkingConfig,
@@ -135,6 +137,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// keywords it doesn't allow. See relaxStrictJsonSchemaIfNeeded's docstring
 		// in runtime-context.ts for the full rationale.
 		relaxStrictJsonSchemaForRawOutput: true,
+		// QUIRK(openai): the Responses API treats a function tool with no `strict` flag
+		// as strict and makes every optional field required. Chat Completions stays
+		// non-strict, so `azure-openai` (built on Chat Completions in model-factory)
+		// does not need this; add it there if Azure moves to the Responses API.
+		toolsStrictByDefault: true,
 		thinkingToProviderOptions: (thinking) => {
 			const cfg = thinking as OpenAIThinkingConfig;
 			return {
@@ -201,6 +208,21 @@ export function resolveDefaultMaxOutputTokens(modelId: string): number | undefin
 		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;
+}
+
+/**
+ * Agent-level tool strict default to send to a provider. `false` is sent only where a
+ * missing flag means strict; elsewhere it is the default and only changes the request.
+ * Only the default is filtered: a tool's own setting and the MCP default are sent unchanged.
+ */
+export function resolveDefaultToolStrict(
+	providerId: string,
+	defaultStrict: boolean | undefined,
+): boolean | undefined {
+	if (defaultStrict === false && !getProviderQuirks(providerId).toolsStrictByDefault) {
+		return undefined;
+	}
+	return defaultStrict;
 }
 
 /** Merge every registered tool providerOptions default under its provider namespace; explicit tool values win. */

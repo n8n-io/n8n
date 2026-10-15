@@ -5856,6 +5856,21 @@ describe('Agent — toolStrict', () => {
 		expect(tools.agent_default.strict).toBe(false);
 		expect(tools.own_setting.strict).toBe(true);
 	});
+
+	it('does not send strict: false to Anthropic, where it is the default', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		await new Agent('strict-test')
+			.model('anthropic/claude-sonnet-4-5')
+			.instructions('Test')
+			.tool([makeMockTool('agent_default', async () => ({ ok: true }))])
+			.toolStrict(false)
+			.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const tools = callArgs.tools as Record<string, { strict?: boolean }>;
+		expect(tools.agent_default.strict).toBeUndefined();
+	});
 });
 /* eslint-enable @typescript-eslint/require-await */
 
