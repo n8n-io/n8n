@@ -347,24 +347,33 @@ describe('createSelfHealingAgent', () => {
 		).resolves.toMatchObject({ title: 'Docs' });
 	});
 
-	it('passes only candidate input and the host abort signal to the verifier', async () => {
-		const verifyCandidate = vi
-			.fn<SelfHealingCandidateVerifier>()
-			.mockResolvedValue({ valid: true });
-		const controller = new AbortController();
-		const agent = await createSelfHealingAgent({
-			context: createContext(),
-			modelId: new MockLanguageModelV3(),
-			verifyCandidate,
-			abortSignal: controller.signal,
-		});
-		const tool = findTool(agent.declaredTools, 'verify_candidate');
-		const input = { filePath: 'self-healing/candidate.workflow.ts', validationOnly: true };
-		expect(parseToolInput(tool, { ...input, workflowId: 'other' }).success).toBe(false);
-		await expect(executeTool(tool, input)).resolves.toEqual({ valid: true });
-		expect(verifyCandidate).toHaveBeenCalledWith(input, controller.signal);
-		controller.abort();
-		await expect(executeTool(tool, input)).rejects.toThrow();
-		expect(verifyCandidate).toHaveBeenCalledTimes(1);
-	});
+	it.each([{}, { triggerNodeName: 'Incoming Order', inputData: { body: { price: '12' } } }])(
+		'passes candidate input and the host abort signal to the verifier (%#)',
+		async (options) => {
+			const verifyCandidate = vi
+				.fn<SelfHealingCandidateVerifier>()
+				.mockResolvedValue({ valid: true });
+			const controller = new AbortController();
+			const agent = await createSelfHealingAgent({
+				context: createContext(),
+				modelId: new MockLanguageModelV3(),
+				verifyCandidate,
+				abortSignal: controller.signal,
+			});
+			const tool = findTool(agent.declaredTools, 'verify_candidate');
+			const input = {
+				filePath: 'self-healing/candidate.workflow.ts',
+				validationOnly: true,
+				...options,
+			};
+			expect(parseToolInput(tool, input).success).toBe(true);
+			expect(parseToolInput(tool, { ...input, triggerNodeName: '' }).success).toBe(false);
+			expect(parseToolInput(tool, { ...input, workflowId: 'other' }).success).toBe(false);
+			await expect(executeTool(tool, input)).resolves.toEqual({ valid: true });
+			expect(verifyCandidate).toHaveBeenCalledWith(input, controller.signal);
+			controller.abort();
+			await expect(executeTool(tool, input)).rejects.toThrow();
+			expect(verifyCandidate).toHaveBeenCalledTimes(1);
+		},
+	);
 });

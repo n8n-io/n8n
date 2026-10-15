@@ -19,7 +19,11 @@ Read `knowledge-base/reference/workflow-sdk-language.md` with
 and `n8n-docs` for product documentation. Keep data-table queries narrow.
 
 Call `verify_candidate` with the candidate file path. Start with
-`validationOnly: true` when you need static checks. Use the verification
+`validationOnly: true` when you need static checks. For execution checks, pass
+`triggerNodeName` to select the trigger from the failed execution. Use execution
+diagnostics to supply `inputData` in the shape that trigger produces. Verify
+other triggers in separate calls when needed. A successful run of an unrelated
+trigger does not prove the repair. Use the verification
 result as evidence. A successful static check alone does not prove that the
 workflow runs correctly. If a check fails, inspect the evidence before another
 edit. Each result identifies the candidate it checked. After any edit, check
@@ -28,7 +32,10 @@ reach. Stop if the same approach fails twice.
 
 Return structured output. Use `fix_ready` only for a verified candidate.
 Use `needs_you` when a person must provide information or resolve a blocker.
-It can include a partial candidate. Use `could_not_fix` when you cannot
+Missing credentials require `needs_you`, even when simulated verification succeeds.
+This investigation cannot create credentials. Explain which connections need setup.
+It can include a partial candidate. Omit `candidateFilePath` when the candidate has no changes.
+Use `could_not_fix` when you cannot
 prepare a useful candidate. Include findings, checks, blockers, and the next
 step in the report. State uncertainty and incomplete checks clearly.
 
