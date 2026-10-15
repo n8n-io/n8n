@@ -81,6 +81,14 @@ function trimmedName(name: string): string {
 	return trimmed;
 }
 
+/**
+ * The skill with the name that `create` stores. A caller that answers with the body or
+ * its hash uses this, so the answer matches the stored skill.
+ */
+export function withTrimmedName<T extends { name: string }>(skill: T): T {
+	return { ...skill, name: trimmedName(skill.name) };
+}
+
 function toRecord(rows: Map<string, ResolvedSkillRow>): Record<string, AgentSkill> {
 	return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
 }
@@ -186,7 +194,7 @@ export class SkillService {
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
-		const skill = { ...input.skill, name: trimmedName(input.skill.name) };
+		const skill = withTrimmedName(input.skill);
 		assertHasInstructions(skill);
 		if (input.checkNameTaken) {
 			await this.assertNameFree(skill.name, input.target, undefined, ctx);

@@ -410,8 +410,11 @@ describe('Agent skills in the skills hub', () => {
 			context,
 		);
 
+		// The answer and its hash match the stored skill, so the next edit passes the base check.
+		expect(created.skill.name).toBe('Summarize');
 		const { skills } = await skillRefs.readDraft(await reload(agent), {});
 		expect(skills[created.id]?.name).toBe('Summarize');
+		expect(created.skillHash).toBe(getAgentSkillHash(skills[created.id]!));
 	});
 
 	it('changes where a skill can be added only while no other agent uses it', async () => {
