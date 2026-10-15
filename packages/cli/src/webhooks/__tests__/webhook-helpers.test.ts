@@ -11,9 +11,9 @@ import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
-	AuthenticationPipeline,
-	AuthenticationService,
+	ResourceAdmission,
 	TrustedSourceStore,
+	type Refused,
 	type TrustedSource,
 } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
@@ -2172,29 +2172,21 @@ describe('executeWebhook additional data', () => {
 	describe('validateN8nOAuth2Token', () => {
 		const RESOURCE_URL = 'https://n8n.test/form/abc';
 		const GRANT = { audiences: [RESOURCE_URL], executeAccessWorkflowId: WORKFLOW_ID };
-		const METADATA_CHALLENGE =
-			'Bearer resource_metadata="https://n8n.test/.well-known/oauth-protected-resource/form/abc"';
+		const CALLBACK_REQUEST = { method: 'POST', url: '/form/abc', ip: '203.0.113.7' };
 
-		const pipeline = mock<AuthenticationPipeline>();
-		const authenticationService = mock<AuthenticationService>();
+		// The module init binds the contract; this harness loads no module.
+		const admission = mock<ResourceAdmission>();
+		Container.set(ResourceAdmission, admission);
 		const trustedSourceStore = mock<TrustedSourceStore>();
-		Container.set(AuthenticationPipeline, pipeline);
-		Container.set(AuthenticationService, authenticationService);
 		Container.set(TrustedSourceStore, trustedSourceStore);
-		const logger = Container.get(Logger);
 
-		const authorize = vi.fn<ProtectedResource['authorize']>();
-		const resource: ProtectedResource = {
-			id: `workflow-form:${WORKFLOW_ID}`,
+		const resource = mock<ProtectedResource>({
 			surface: 'trigger',
-			isFirstParty: true,
 			getResourceUrl: () => RESOURCE_URL,
 			getAudiences: () => [RESOURCE_URL],
 			getAcceptedSourceIds: () => ['idp-1'],
-			scopes: [],
-			authorize,
 			getGrant: () => GRANT,
-		};
+		});
 
 		const context: SecurityContext = {
 			subject: {
@@ -2209,12 +2201,8 @@ describe('executeWebhook additional data', () => {
 			tokenScopes: [],
 		};
 
-		const bindingSource = {
-			config: { identity: { subject: 'binding' } },
-		} as unknown as TrustedSource;
-		const userIdSource = {
-			config: { identity: { subject: 'n8n-user-id' } },
-		} as unknown as TrustedSource;
+		const sourceWithIdentity = (subject: 'binding' | 'n8n-user-id') =>
+			({ config: { identity: { subject } } }) as unknown as TrustedSource;
 
 		const request = () =>
 			mock<WebhookRequest>({
@@ -2233,17 +2221,12 @@ describe('executeWebhook additional data', () => {
 		};
 
 		beforeEach(() => {
-			authorize.mockResolvedValue(true);
-			pipeline.run.mockResolvedValue({ ok: true, value: context });
-			authenticationService.advertise.mockResolvedValue({
-				authorizationServers: ['https://idp.example'],
-				challenges: [METADATA_CHALLENGE],
-			});
-			trustedSourceStore.getById.mockResolvedValue(bindingSource);
+			admission.admitBearer.mockResolvedValue({ ok: true, context });
+			trustedSourceStore.getById.mockResolvedValue(sourceWithIdentity('binding'));
 			executionContextService.buildTriggerIdentityCredentials.mockResolvedValue('sealed');
 		});
 
-		it('sends the bearer through the pipeline, stamped with the trigger resource', async () => {
+		it('admits the bearer against the trigger resource and answers with the admitted user', async () => {
 			const req = request();
 			const { validateN8nOAuth2Token } = await resolveWithResource(req);
 
@@ -2258,111 +2241,38 @@ describe('executeWebhook additional data', () => {
 					lastName: 'Example',
 				},
 			});
-			expect(pipeline.run).toHaveBeenCalledWith(
-				expect.objectContaining({
-					surface: 'trigger',
-					resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
-					acceptedSourceIds: ['idp-1'],
-					grant: GRANT,
-					credential: { kind: 'bearer', token: 'the-token' },
-					request: {
-						method: 'POST',
-						url: '/form/abc',
-						ip: '203.0.113.7',
-						headers: { authorization: 'Bearer the-token' },
-					},
-				}),
-			);
-			expect(authorize).toHaveBeenCalledWith(context.subject);
+			expect(admission.admitBearer).toHaveBeenCalledWith(resource, CALLBACK_REQUEST, 'the-token');
 			expect(req.ctx?.security).toBe(context);
 		});
 
-		it('writes one allowed line without token, external subject or email', async () => {
-			const { validateN8nOAuth2Token } = await resolveWithResource();
-			vi.mocked(logger.info).mockClear();
-			vi.mocked(logger.warn).mockClear();
+		// The admission decides and builds the challenge; the surface maps the reason to its answer.
+		it.each([
+			{ reason: 'source-not-accepted', answer: 'invalid_token' },
+			{ reason: 'insufficient_scope', answer: 'insufficient_scope' },
+		] as const)(
+			'answers a $reason refusal with $answer and the challenge',
+			async ({ reason, answer }) => {
+				const refusal: Refused = {
+					ok: false,
+					reason,
+					advertised: {
+						surface: 'trigger',
+						resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
+						acceptedSourceIds: ['idp-1'],
+					},
+				};
+				admission.admitBearer.mockResolvedValue(refusal);
+				admission.challenge.mockResolvedValue('the-challenge');
+				const req = request();
+				const { validateN8nOAuth2Token } = await resolveWithResource(req);
 
-			await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
+				const result = await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
 
-			expect(logger.info).toHaveBeenCalledTimes(1);
-			expect(logger.info).toHaveBeenCalledWith('Inbound authentication allowed', {
-				surface: 'trigger',
-				resource: RESOURCE_URL,
-				sourceId: 'idp-1',
-				authMethod: 'oauth-access-token',
-				userId: 'user-1',
-			});
-			expect(logger.warn).not.toHaveBeenCalled();
-			const logged = JSON.stringify(vi.mocked(logger.info).mock.calls);
-			expect(logged).not.toContain('the-token');
-			expect(logged).not.toContain('idp-alice');
-			expect(logged).not.toContain('alice@example.com');
-		});
-
-		it('answers a pipeline rejection with a challenge that names the metadata and the reason', async () => {
-			pipeline.run.mockResolvedValue({ ok: false, reason: 'source-not-accepted' });
-			const req = request();
-			const { validateN8nOAuth2Token } = await resolveWithResource(req);
-
-			const result = await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
-
-			expect(result).toEqual({
-				valid: false,
-				reason: 'invalid_token',
-				challenge: `${METADATA_CHALLENGE}, error="invalid_token", error_description="source-not-accepted"`,
-			});
-			expect(authenticationService.advertise).toHaveBeenCalledWith(
-				expect.objectContaining({
-					surface: 'trigger',
-					resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
-					acceptedSourceIds: ['idp-1'],
-				}),
-			);
-			expect(authorize).not.toHaveBeenCalled();
-			expect(req.ctx).toBeUndefined();
-		});
-
-		it('answers an absent token with the challenge without running the pipeline', async () => {
-			const { validateN8nOAuth2Token } = await resolveWithResource();
-			vi.mocked(logger.warn).mockClear();
-
-			const result = await validateN8nOAuth2Token!('', RESOURCE_URL);
-
-			expect(result).toEqual({
-				valid: false,
-				reason: 'invalid_token',
-				challenge: `${METADATA_CHALLENGE}, error="invalid_token", error_description="no-credential"`,
-			});
-			expect(pipeline.run).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Inbound authentication denied',
-				expect.objectContaining({ surface: 'trigger', reason: 'no-credential' }),
-			);
-		});
-
-		it('denies a user the resource does not authorize, after the pipeline accepted the token', async () => {
-			authorize.mockResolvedValue(false);
-			const req = request();
-			const { validateN8nOAuth2Token } = await resolveWithResource(req);
-			vi.mocked(logger.warn).mockClear();
-
-			const result = await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
-
-			expect(result).toEqual({
-				valid: false,
-				reason: 'insufficient_scope',
-				challenge: `${METADATA_CHALLENGE}, error="insufficient_scope", error_description="insufficient_scope"`,
-			});
-			expect(logger.warn).toHaveBeenCalledWith('Inbound authentication denied', {
-				surface: 'trigger',
-				resource: RESOURCE_URL,
-				sourceId: 'idp-1',
-				authMethod: 'oauth-access-token',
-				userId: 'user-1',
-				reason: 'insufficient_scope',
-			});
-			expect(req.ctx).toBeUndefined();
-		});
+				expect(result).toEqual({ valid: false, reason: answer, challenge: 'the-challenge' });
+				expect(admission.challenge).toHaveBeenCalledWith(refusal);
+				expect(req.ctx).toBeUndefined();
+			},
+		);
 
 		it('rejects a token for a resource that does not resolve', async () => {
 			const { validateN8nOAuth2Token } = await resolveWithResource();
@@ -2371,10 +2281,23 @@ describe('executeWebhook additional data', () => {
 			const result = await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
 
 			expect(result).toEqual({ valid: false, reason: 'invalid_token' });
-			expect(pipeline.run).not.toHaveBeenCalled();
+			expect(admission.admitBearer).not.toHaveBeenCalled();
 		});
 
-		it('seals the binding of a binding-mode source into the trigger identity', async () => {
+		// Only a binding-mode source has a row the worker gate can re-check.
+		it.each([
+			{
+				name: 'seals the binding of a binding-mode source',
+				subject: 'binding',
+				binding: { sourceId: 'idp-1', subject: 'idp-alice' },
+			},
+			{
+				name: 'seals no binding for a source that names the user by id',
+				subject: 'n8n-user-id',
+				binding: undefined,
+			},
+		] as const)('$name into the trigger identity', async ({ subject, binding }) => {
+			trustedSourceStore.getById.mockResolvedValue(sourceWithIdentity(subject));
 			const { validateN8nOAuth2Token, establishTriggerIdentity } = await resolveWithResource();
 
 			await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
@@ -2386,23 +2309,7 @@ describe('executeWebhook additional data', () => {
 				RESOURCE_URL,
 				GRANT,
 				'user-1',
-				{ sourceId: 'idp-1', subject: 'idp-alice' },
-			);
-		});
-
-		it('seals no binding for a source that names the user by id', async () => {
-			trustedSourceStore.getById.mockResolvedValue(userIdSource);
-			const { validateN8nOAuth2Token, establishTriggerIdentity } = await resolveWithResource();
-
-			await validateN8nOAuth2Token!('the-token', RESOURCE_URL);
-			await establishTriggerIdentity!('the-token', RESOURCE_URL, 'user-1');
-
-			expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
-				'the-token',
-				RESOURCE_URL,
-				GRANT,
-				'user-1',
-				undefined,
+				binding,
 			);
 		});
 	});
