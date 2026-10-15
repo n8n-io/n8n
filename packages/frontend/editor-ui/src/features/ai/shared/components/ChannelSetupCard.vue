@@ -140,6 +140,8 @@ const channelActionInFlight = computed(
 );
 const integrationLabel = computed(() => currentIntegration.value.label);
 const canFinish = computed(() => channelViewRef.value?.canFinish === true);
+/** Set once this card saved the channel, which skipping would then remove. */
+const savedHere = ref(false);
 
 const connectedDescription = computed(() => {
 	if (!isIntegrationConnected(props.integrationType)) return '';
@@ -219,6 +221,7 @@ async function writeChannelConfig(): Promise<boolean> {
 			...(approval ? { approval } : {}),
 		});
 		notifyAgentUpdated();
+		savedHere.value = true;
 		return true;
 	} catch {
 		// useAgentIntegrationStatus exposes the configuration error to the setup component.
@@ -235,6 +238,7 @@ async function saveChannelConfig() {
 
 /** Done is also the save for a setup that reopened past the step that binds the credential. */
 async function finishSetup() {
+	if (!canFinish.value) return finish(true);
 	if (await writeChannelConfig()) finish(true);
 }
 
@@ -371,20 +375,9 @@ watch(
 			/>
 		</div>
 
-		<footer :class="$style.footer">
+		<!-- Skipping removes the channel, which would orphan the one the setup just provisioned. -->
+		<footer v-if="!canFinish && !savedHere" :class="$style.footer">
 			<N8nButton
-				v-if="canFinish"
-				variant="solid"
-				size="medium"
-				:disabled="channelActionInFlight"
-				data-testid="channel-setup-card-done"
-				@click="finishSetup"
-			>
-				{{ i18n.baseText('generic.done') }}
-			</N8nButton>
-			<!-- Skipping removes the channel, which would orphan the one the setup just provisioned. -->
-			<N8nButton
-				v-else
 				variant="ghost"
 				size="medium"
 				:disabled="channelActionInFlight"
@@ -413,10 +406,10 @@ watch(
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: 0 var(--spacing--sm);
-	text-transform: capitalize;
 }
 
 .title {
+	text-transform: capitalize;
 	flex: 1;
 }
 

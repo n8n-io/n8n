@@ -696,8 +696,6 @@ describe('ChannelSetupCard', () => {
 		it('saves the provisioned channel without resolving, then resolves on Done', async () => {
 			const wrapper = mountCard({ integrationType: 'teams' });
 			await flushPromises();
-			expect(wrapper.find('[data-testid="channel-setup-card-done"]').exists()).toBe(false);
-
 			await wrapper.find('[data-testid="mock-teams-provision"]').trigger('click');
 			await flushPromises();
 
@@ -705,7 +703,7 @@ describe('ChannelSetupCard', () => {
 			expect(wrapper.emitted('resolve')).toBeUndefined();
 			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(false);
 
-			await wrapper.find('[data-testid="channel-setup-card-done"]').trigger('click');
+			await wrapper.find('[data-testid="mock-teams-done"]').trigger('click');
 			await flushPromises();
 
 			expect(mocks.connect).toHaveBeenCalledTimes(2);
@@ -722,6 +720,8 @@ describe('ChannelSetupCard', () => {
 
 			expect(mocks.connect).toHaveBeenCalledTimes(1);
 			expect(wrapper.emitted('resolve')).toBeUndefined();
+			// Skipping now would remove the channel this card just saved.
+			expect(wrapper.find('[data-testid="channel-setup-card-skip"]').exists()).toBe(false);
 
 			await wrapper.find('[data-testid="mock-teams-done"]').trigger('click');
 			await flushPromises();
