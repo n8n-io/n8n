@@ -26,6 +26,30 @@ describe('AgentEvalTryRow', () => {
 		expect(queryByText('Your try')).not.toBeInTheDocument();
 	});
 
+	it('titles the complete view by its rule, falling back to the input', () => {
+		const { getByText, queryByText } = renderComponent({
+			props: {
+				status: 'pass',
+				input: 'My bike makes a noise. Can you fix it?',
+				whatToCheck: 'Asks what the noise sounds like before suggesting a fix.',
+				output: 'What kind of noise is it?',
+			},
+		});
+
+		expect(
+			getByText('Asks what the noise sounds like before suggesting a fix.'),
+		).toBeInTheDocument();
+		expect(queryByText('My bike makes a noise. Can you fix it?')).not.toBeInTheDocument();
+	});
+
+	it('titles the complete view by the input when there is no rule', () => {
+		const { getByText } = renderComponent({
+			props: { status: 'pass', input: 'Summarize the thread', whatToCheck: '  ', output: 'y' },
+		});
+
+		expect(getByText('Summarize the thread')).toBeInTheDocument();
+	});
+
 	it('shows the label when provided', () => {
 		const { getByText } = renderComponent({
 			props: { status: 'pass', input: 'x', output: 'y', label: 'Your try', view: 'small' },

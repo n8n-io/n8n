@@ -384,7 +384,7 @@ describe('AgentEvalTryRow', () => {
 			expect(getByTestId('row-edit-rule')).toBeDisabled();
 		});
 
-		it('asks for confirmation naming the case, and emits delete-check once confirmed', async () => {
+		it('asks for confirmation naming the check by its rule, and emits delete-check once confirmed', async () => {
 			openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
 			const user = userEvent.setup();
 			const { getByTestId, emitted } = renderWithRule({ testId: 'row' });
@@ -394,7 +394,7 @@ describe('AgentEvalTryRow', () => {
 
 			expect(openAgentConfirmationModal).toHaveBeenCalledWith(
 				expect.objectContaining({
-					title: 'Delete “Where is my order?”?',
+					title: 'Delete “Names the ticket and the priority.”?',
 					description: 'This removes the check and its example. You can’t undo this.',
 					confirmButtonText: 'Delete check',
 					cancelButtonText: 'Cancel',
