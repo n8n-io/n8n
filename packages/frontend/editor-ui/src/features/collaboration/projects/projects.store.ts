@@ -379,11 +379,20 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		{ immediate: true },
 	);
 
+	/** Whether the project is the user's own personal project or another member's. */
+	function isPersonalProject(projectId: string): boolean {
+		if (projectId === personalProject.value?.id) return true;
+		return myProjects.value.some(
+			(project) => project.id === projectId && project.type === 'personal',
+		);
+	}
+
 	return {
 		projects,
 		availableProjects,
 		myProjects,
 		personalProject,
+		isPersonalProject,
 		currentProject,
 		currentProjectId,
 		isProjectHome,

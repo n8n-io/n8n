@@ -1,7 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
@@ -259,6 +260,23 @@ describe('SettingsSkillsView', () => {
 			expect(showMessageMock).not.toHaveBeenCalled();
 		});
 
+		it('keeps the modal open with the error on the name when the name is taken', async () => {
+			skillsStore.createSkill.mockRejectedValue(
+				new ResponseError(SKILL_NAME_TAKEN_MESSAGE, { httpStatusCode: 409 }),
+			);
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('skills-create-button'));
+
+			const result = await lastModalData().onConfirm({
+				skill: { name: 'brand-voice', description: 'Write copy.', instructions: 'Be brief.' },
+				scope: 'project:personal-1',
+			});
+
+			expect(result).toEqual({ saved: false, nameError: SKILL_NAME_TAKEN_MESSAGE });
+			expect(showErrorMock).not.toHaveBeenCalled();
+		});
+
 		it('says so when the search or the filter hides the new skill', async () => {
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
 			const { getByTestId } = renderView();
@@ -373,6 +391,27 @@ describe('SettingsSkillsView', () => {
 			});
 			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Nothing to save', type: 'info' });
 		});
+	});
+
+	it('keeps the modal open and shows a toast when a save fails for another reason', async () => {
+		skillsStore.skills = [skill()];
+		skillsStore.count = 1;
+		skillsStore.fetchSkill.mockResolvedValue(detail());
+		skillsStore.saveSkill.mockRejectedValue(
+			new ResponseError('The skill was changed somewhere else.', { httpStatusCode: 409 }),
+		);
+		const { getByText } = renderView();
+		await new Promise(process.nextTick);
+		await userEvent.click(getByText('research-search'));
+		await new Promise(process.nextTick);
+
+		const result = await lastModalData().onConfirm({ id: 's1', skill: detail().skill });
+
+		expect(result).toEqual({ saved: false });
+		expect(showErrorMock).toHaveBeenCalledWith(
+			expect.any(ResponseError),
+			'Could not save the skill',
+		);
 	});
 
 	it('deletes a skill after confirmation', async () => {

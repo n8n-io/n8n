@@ -46,11 +46,19 @@ export async function isContextPreferencesEnabledOnceEvaluated(): Promise<boolea
 	return isContextPreferencesEnabled();
 }
 
-/** The Context overview lists preferences and skills, so either flag opens it. */
+/**
+ * The Context overview lists preferences and skills, so either flag opens it. Synchronous,
+ * for the settings menu: it reads the PostHog flags as they are now.
+ */
 export function isContextEnabled(): boolean {
 	return isContextPreferencesEnabled() || isContextSkillsEnabled();
 }
 
+/**
+ * `isContextEnabled` for the route guard. A deep link can arrive before PostHog has
+ * evaluated the flags, so it waits for them instead of sending the user away. The skills
+ * setting comes from the backend and is already known.
+ */
 export async function isContextEnabledOnceEvaluated(): Promise<boolean> {
 	return isContextSkillsEnabled() || (await isContextPreferencesEnabledOnceEvaluated());
 }

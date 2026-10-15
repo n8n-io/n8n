@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -29,6 +29,9 @@ const SKILL_FILE = 'SKILL.md';
 
 export type AgentSkillModalScopeOption = { value: string; label: string; icon: IconName };
 
+/** What a failed `onConfirm` returns. The modal stays open and shows `nameError` on the name. */
+export type AgentSkillConfirmFailure = { saved: false; nameError?: string };
+
 export type AgentSkillModalData = {
 	/** Set when opened from an agent. Absent when opened from Settings > Context > Skills. */
 	projectId?: string;
@@ -55,7 +58,15 @@ export type AgentSkillModalData = {
 	scopeLockedReason?: string;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
-	onConfirm: (payload: { id?: string; skill: AgentSkill; scope?: string }) => void;
+	/**
+	 * Called on Save. A promise keeps the modal open until it settles. It closes unless the
+	 * promise resolves to a failure, so a refused save keeps what the user typed.
+	 */
+	onConfirm: (payload: {
+		id?: string;
+		skill: AgentSkill;
+		scope?: string;
+	}) => void | Promise<void | AgentSkillConfirmFailure>;
 	onRemove?: (id: string) => void;
 };
 
@@ -68,6 +79,7 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+const agentModal = useTemplateRef<InstanceType<typeof AgentModal>>('agentModal');
 
 function getDefaultSkillName(): string {
 	const baseName = i18n.baseText('agents.builder.skills.defaultName' as BaseTextKey);
@@ -96,6 +108,9 @@ const step = ref<'upload' | 'manual' | 'edit'>(
 	props.data.skill || props.data.skillId ? 'edit' : 'upload',
 );
 const isImporting = ref(false);
+const isSaving = ref(false);
+/** A name error from the server, such as a taken name. Typing a new name clears it. */
+const serverNameError = ref('');
 const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
 
 /** The last default name the server gave. A name the user typed is never replaced. */
@@ -198,8 +213,8 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 const visibleErrors = computed(() =>
 	submitted.value || openedWithMissingContent.value ? validationErrors.value : {},
 );
-const visibleNameError = computed(() =>
-	submitted.value ? (validationErrors.value.name ?? '') : '',
+const visibleNameError = computed(
+	() => (submitted.value ? validationErrors.value.name : undefined) ?? serverNameError.value,
 );
 const canSave = computed(() => formIsValid.value && !validationErrors.value.name);
 
@@ -219,6 +234,7 @@ function onBack() {
 }
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
+	if (updates.name !== undefined && updates.name !== skill.value.name) serverNameError.value = '';
 	skill.value = normalizeSkill({ ...skill.value, ...updates });
 	if (
 		selectedPath.value !== SKILL_FILE &&
@@ -286,8 +302,8 @@ function closeModal() {
 	uiStore.closeModal(props.modalName);
 }
 
-function onSave() {
-	if (readOnly.value || defaultNameLoading.value) return;
+async function onSave() {
+	if (readOnly.value || defaultNameLoading.value || isSaving.value) return;
 	submitted.value = true;
 	if (!canSave.value) return;
 
@@ -298,13 +314,39 @@ function onSave() {
 		...(skill.value.references ? { references: skill.value.references } : {}),
 	});
 
-	props.data.onConfirm({
-		id: props.data.skillId,
-		skill: payload,
-		...(canChangeScope.value ? { scope: scope.value } : {}),
-	});
+	isSaving.value = true;
+	let result: void | AgentSkillConfirmFailure;
+	try {
+		result = await props.data.onConfirm({
+			id: props.data.skillId,
+			skill: payload,
+			...(canChangeScope.value ? { scope: scope.value } : {}),
+		});
+	} catch {
+		// The caller reports its own errors. Keep the modal open with the user's edits.
+		return;
+	} finally {
+		isSaving.value = false;
+	}
+	if (result?.saved === false) {
+		if (result.nameError) {
+			serverNameError.value = result.nameError;
+			await focusName();
+		}
+		return;
+	}
 	closeModal();
 }
+
+async function focusName() {
+	await nextTick();
+	agentModal.value?.focusTitle();
+}
+
+// A new skill gets its name first, so the name takes the focus when it can be edited.
+watch(step, async (next) => {
+	if (next !== 'upload' && !isEditing.value && !readOnly.value) await focusName();
+});
 
 function onRemove() {
 	if (!props.data.skillId || readOnly.value) return;
@@ -315,6 +357,7 @@ function onRemove() {
 
 <template>
 	<AgentModal
+		ref="agentModal"
 		:open="modalOpen"
 		:title="step === 'upload' ? i18n.baseText('agents.builder.skills.add') : skill.name"
 		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
@@ -323,7 +366,7 @@ function onRemove() {
 		:editable-title="step !== 'upload' && !readOnly"
 		:show-back="step === 'manual'"
 		:show-footer="step !== 'upload' && !readOnly"
-		:busy="isImporting"
+		:busy="isImporting || isSaving"
 		size="fit"
 		body-flush
 		data-testid="agent-skill-modal"
@@ -429,6 +472,7 @@ function onRemove() {
 			<N8nButton
 				variant="solid"
 				:disabled="defaultNameLoading"
+				:loading="isSaving"
 				data-testid="agent-skill-create-save"
 				@click="onSave"
 			>

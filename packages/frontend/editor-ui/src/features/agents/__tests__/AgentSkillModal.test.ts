@@ -49,7 +49,7 @@ function renderModal({
 	existingSkillNames,
 	settings,
 }: {
-	onConfirm?: (payload: { id?: string; skill: AgentSkill; scope?: string }) => void;
+	onConfirm?: AgentSkillModalData['onConfirm'];
 	skill?: AgentSkill;
 	skillId?: string;
 	existingSkillNames?: string[];
@@ -391,6 +391,52 @@ describe('AgentSkillModal', () => {
 			},
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('focuses the name when a new skill is started by hand', async () => {
+		const { getByTestId } = renderModal();
+
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+
+		await waitFor(() => expect(getByTestId('agent-modal-title-input')).toHaveFocus());
+	});
+
+	it('stays open with the edits and the name error when the save is refused', async () => {
+		const onConfirm = vi.fn().mockResolvedValue({ saved: false, nameError: 'Name taken' });
+		const { getByTestId, queryByTestId } = renderModal({
+			onConfirm,
+			skill: SAVED_SKILL,
+			skillId: 's1',
+		});
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Summarize');
+
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		await waitFor(() =>
+			expect(getByTestId('agent-modal-title-error')).toHaveTextContent('Name taken'),
+		);
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(getByTestId('agent-modal-title-input')).toHaveValue('Summarize');
+		expect(getByTestId('agent-modal-title-input')).toHaveFocus();
+
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Condense');
+		expect(queryByTestId('agent-modal-title-error')).not.toBeInTheDocument();
+	});
+
+	it('stays open when the save fails, and closes once it succeeds', async () => {
+		const onConfirm = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('Network down'))
+			.mockResolvedValueOnce(undefined);
+		const { getByTestId } = renderModal({ onConfirm, skill: SAVED_SKILL, skillId: 's1' });
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Summarize');
+
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+		await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+		await waitFor(() => expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME));
 	});
 });
 

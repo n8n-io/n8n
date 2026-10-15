@@ -3472,6 +3472,7 @@
 	"settings.context.skills.error.loadOne": "Could not load the skill",
 	"settings.context.skills.error.agents": "Could not load the agents",
 	"settings.context.skills.error.save": "Could not save the skill",
+	"settings.context.skills.error.nameTaken": "That name is taken, choose another",
 	"settings.context.skills.error.delete": "Could not delete the skill",
 	"settings.context.sources.title": "Sources",
 	"settings.context.preferences.title": "Preferences",

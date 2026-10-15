@@ -2,8 +2,14 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import type { AgentSkill, SkillListItem, SkillScope } from '@n8n/api-types';
+import {
+	SKILL_NAME_TAKEN_MESSAGE,
+	type AgentSkill,
+	type SkillListItem,
+	type SkillScope,
+} from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
@@ -26,6 +32,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import type {
+	AgentSkillConfirmFailure,
 	AgentSkillModalData,
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
@@ -209,14 +216,35 @@ function confirmIfHidden(skillId: string, key: 'created' | 'saved') {
 	});
 }
 
-async function onCreate(skill: AgentSkill, scopeValue: string) {
-	try {
-		const created = await skillsStore.createSkill({ ...parseScope(scopeValue), skill });
-		await load();
-		confirmIfHidden(created.id, 'created');
-	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.error.save'));
+/**
+ * A refused save keeps the modal open, so the user keeps what they typed. A taken name
+ * shows on the name field, any other error in a toast.
+ */
+function saveFailed(error: unknown): AgentSkillConfirmFailure {
+	if (
+		error instanceof ResponseError &&
+		error.httpStatusCode === 409 &&
+		error.message === SKILL_NAME_TAKEN_MESSAGE
+	) {
+		return { saved: false, nameError: i18n.baseText('settings.context.skills.error.nameTaken') };
 	}
+	showError(error, i18n.baseText('settings.context.skills.error.save'));
+	return { saved: false };
+}
+
+async function onCreate(
+	skill: AgentSkill,
+	scopeValue: string,
+): Promise<AgentSkillConfirmFailure | undefined> {
+	let createdId: string;
+	try {
+		createdId = (await skillsStore.createSkill({ ...parseScope(scopeValue), skill })).id;
+	} catch (error) {
+		return saveFailed(error);
+	}
+	await load();
+	confirmIfHidden(createdId, 'created');
+	return undefined;
 }
 
 /** The value of the scope picker for a saved skill. An agent skill has no picker value of its own. */
@@ -267,9 +295,15 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 
 /** Saves the next version. There are no drafts: what the modal shows is what gets saved. */
 /** `newScope` is set when the user picked another scope: the save also moves the skill. */
-async function onSave(id: string, skill: AgentSkill, baseSkillHash: string, newScope?: string) {
+async function onSave(
+	id: string,
+	skill: AgentSkill,
+	baseSkillHash: string,
+	newScope?: string,
+): Promise<AgentSkillConfirmFailure | undefined> {
+	let created: boolean;
 	try {
-		const saved = await skillsStore.saveSkill(id, {
+		({ created } = await skillsStore.saveSkill(id, {
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
@@ -277,18 +311,19 @@ async function onSave(id: string, skill: AgentSkill, baseSkillHash: string, newS
 			references: skill.references ?? [],
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
-		});
-		// A move is a change even when the content stays the same. Only "Nothing to save"
-		// gets a message: a real change shows in the table.
-		if (saved.created || newScope !== undefined) {
-			await load();
-			confirmIfHidden(id, 'saved');
-		} else {
-			showMessage({ title: i18n.baseText('settings.context.skills.save.noChanges'), type: 'info' });
-		}
+		}));
 	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.error.save'));
+		return saveFailed(error);
 	}
+	// A move is a change even when the content stays the same. Only "Nothing to save"
+	// gets a message: a real change shows in the table.
+	if (created || newScope !== undefined) {
+		await load();
+		confirmIfHidden(id, 'saved');
+	} else {
+		showMessage({ title: i18n.baseText('settings.context.skills.save.noChanges'), type: 'info' });
+	}
+	return undefined;
 }
 
 async function onDelete(skill: SkillListItem) {
