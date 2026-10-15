@@ -5,8 +5,11 @@ import type { Credential, Extracted, Inbound, Result, Verified } from './pipelin
 import type { AuthorizationServerMetadata, Jwk, TrustedSource } from './trusted-source';
 import type { SurfaceId } from './trusted-source-config';
 
-/** What a protected resource reads from the user. The `User` entity satisfies it. */
-export type ResourceUser = AuthPrincipal & { id: string; createdAt: Date };
+/** What a resource's gate reads from the caller. A `Principal` and the `User` entity both satisfy it. */
+export type ResourcePrincipal = AuthPrincipal & { id: string };
+
+/** What the consent screen reads from the user. The `User` entity satisfies it. */
+export type ResourceUser = ResourcePrincipal & { createdAt: Date };
 
 export interface ConsentUiHints {
 	/** design-system icon name (updatedIconSet) for the consent logo tile; omit to fall back to the generic mcp icon */
@@ -89,7 +92,7 @@ export interface ProtectedResource {
 	isAvailable?(): Promise<boolean>;
 
 	/** Whether `user` may access this resource at all. */
-	authorize(user: ResourceUser): Promise<boolean>;
+	authorize(user: ResourcePrincipal): Promise<boolean>;
 
 	/** The grant sealed into a run, so the worker re-takes the same decision without the resource. */
 	getGrant?(): OAuthResourceGrant;
