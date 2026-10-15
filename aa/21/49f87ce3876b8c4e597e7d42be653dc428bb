@@ -1,0 +1,71 @@
+packages/cli/src/modules/oauth-server/oauth-grant.service.ts
+  s_c5924177b26556::t_2f9334c7242b8c 1-25
+packages/cli/src/modules/oauth-server/oauth-authorization-code.service.ts
+  s_c5924177b26556::t_2f9334c7242b8c 3,32,36-51,143-147
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_c5924177b26556::t_2f9334c7242b8c 22-25
+packages/cli/src/modules/oauth-server/__tests__/oauth-authorization-code.service.test.ts
+  s_c5924177b26556::t_2d54fb67cb7c6c 32,64,74,79
+  ai_agent 45-60
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_c5924177b26556::t_2f9334c7242b8c 34,59,117,119-136,339-340
+  s_c5924177b26556::t_ac84e360b5aa53 9,149-153,155-159,161-176,178-179
+packages/cli/src/modules/oauth-server/database/repositories/oauth-user-consent.repository.ts
+  s_c5924177b26556::t_c2de1ceea4dd61 45-65
+  s_c5924177b26556::t_2f9334c7242b8c 2,4,42-44
+packages/cli/src/modules/oauth-server/__tests__/oauth-grant.service.integration.test.ts
+  s_c5924177b26556::t_e640ee8fe43f33 58,84,150,335,337-340,343-348,365-367,372-376,382-391
+  s_c5924177b26556::t_116e80609347d4 32,63-64,105,113-128,217-240
+  s_c5924177b26556::t_f524f23dda52aa 1-3,5-8,10-31,33-36,42-56,59-62,65-75,90-104,106-112,129-133,141-149,152-158,167-216,241-242,278-334,341-342,349-358,360-364,368-371,377-381
+  s_c5924177b26556::t_dd552f62a9c009 4,9,37-41,77-83
+  s_c5924177b26556::t_0984a10cf841c7 243-277
+  s_c5924177b26556::t_ac84e360b5aa53 57,76,85-89,134-140,151,159-166,336,359
+packages/cli/src/modules/oauth-server/database/repositories/oauth-authorization-code.repository.ts
+  s_c5924177b26556::t_c2de1ceea4dd61 14-27
+  s_c5924177b26556::t_677699daad4c19 3,12,36
+  s_c5924177b26556::t_2f9334c7242b8c 1,8-11,13,28-35,37-39
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_c5924177b26556::t_677699daad4c19 7,21-22,79,83,85-86
+  s_c5924177b26556::t_16865a47dfd536 77,84,87,263,425,630-633,638-639,651,809,891,968,1012
+  s_c5924177b26556::t_f524f23dda52aa 248-256,258-262,634-637
+  s_c5924177b26556::t_ac84e360b5aa53 290
+  s_c5924177b26556::t_2d54fb67cb7c6c 78,80-82,88-89,111
+packages/cli/src/modules/oauth-server/database/repositories/oauth-grant.repository.ts
+  s_c5924177b26556::t_16865a47dfd536 18-20,22-28
+  s_c5924177b26556::t_2f9334c7242b8c 1-17,29,31-82
+  s_c5924177b26556::t_dd552f62a9c009 21
+packages/cli/src/services/oauth-token-verifier-proxy.service.ts
+  s_c5924177b26556::t_dd552f62a9c009 12
+packages/cli/src/modules/oauth-server/oauth-consent.service.ts
+  s_c5924177b26556::t_677699daad4c19 424
+  s_c5924177b26556::t_2f9334c7242b8c 3,11,67,285,287,289-297,299-308,310-320,322-325,380-382,384,436-437
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.service.test.ts
+  s_c5924177b26556::t_f524f23dda52aa 451-464,466-469,669-672,771-774
+  s_c5924177b26556::t_2d54fb67cb7c6c 44,46-48,54-55,76,499,522,610,627,645,668,705,769-770,832,874,888,915,939,968,1044
+  s_c5924177b26556::t_16865a47dfd536 43,50,53,470,534,561,574-578,588,661,682,721,741,757,833,848,906,942,956,1031
+  s_c5924177b26556::t_677699daad4c19 7-8,20,45,49,51-52,852-870
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_c5924177b26556::t_16865a47dfd536 54,61,64,239,357,429,1178,1222,1237,1290,1366,1429,1973,2026
+  s_c5924177b26556::t_f524f23dda52aa 1163-1166,1168-1177
+  s_c5924177b26556::t_677699daad4c19 9,26-27,56,60,62-63
+  s_c5924177b26556::t_dd552f62a9c009 1167
+  s_c5924177b26556::t_2d54fb67cb7c6c 55,57-59,65-66,111
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_c5924177b26556::t_2f9334c7242b8c 41,158,553-554,557,559,561-566,568-587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aa2149f87ce3876b8c4e597e7d42be653dc428bb",
+  "prompts": {},
+  "sessions": {
+    "s_c5924177b26556": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13a8b-b624-7770-93c3-9d4ab55dd05d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
