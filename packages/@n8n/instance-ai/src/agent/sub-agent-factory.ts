@@ -104,6 +104,9 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 			},
 		})
 		.tool(toolRegistryValues(tools))
+		// Strict tools on OpenAI make every optional field required, and our tools read
+		// a filled "" or 0 as a real value.
+		.toolStrict(false)
 		.checkpoint(options.checkpointStore ?? 'memory');
 	attachRuntimeWorkspaceCapabilities(agent, {
 		workspace: options.workspace,

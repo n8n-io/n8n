@@ -64,6 +64,8 @@ export interface AgentRuntimeConfig {
 	thinking?: ThinkingConfig;
 	reasoning?: ReasoningLevel;
 	promptCaching?: PromptCachingConfig;
+	/** Default provider strict mode for non-MCP tools. A tool's own `strict` wins. */
+	toolStrict?: boolean;
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
 	toolCallConcurrency?: number;

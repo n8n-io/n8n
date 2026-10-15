@@ -196,6 +196,38 @@ describe('toAiSdkTools — JSON Schema / fixSchema', () => {
 });
 
 // ---------------------------------------------------------------------------
+// toAiSdkTools — provider strict mode
+// ---------------------------------------------------------------------------
+
+describe('toAiSdkTools — provider strict mode', () => {
+	it('leaves strict unset when neither the agent nor the tool sets it', () => {
+		const result = toAiSdkTools([makeZodSchemaTool()]);
+
+		expect(result.zodTool).toMatchObject({ strict: undefined });
+	});
+
+	it('applies the agent default to native tools', () => {
+		const result = toAiSdkTools([makeZodSchemaTool()], { defaultStrict: false });
+
+		expect(result.zodTool).toMatchObject({ strict: false });
+	});
+
+	it('lets a tool setting override the agent default', () => {
+		const result = toAiSdkTools([makeZodSchemaTool({ strict: true })], { defaultStrict: false });
+
+		expect(result.zodTool).toMatchObject({ strict: true });
+	});
+
+	it('keeps MCP tools non-strict when the agent default is strict', () => {
+		const result = toAiSdkTools([makeJsonSchemaTool({ type: 'object' }, { mcpTool: true })], {
+			defaultStrict: true,
+		});
+
+		expect(result.testTool).toMatchObject({ strict: false });
+	});
+});
+
+// ---------------------------------------------------------------------------
 // toAiSdkTools — description forwarding
 // ---------------------------------------------------------------------------
 

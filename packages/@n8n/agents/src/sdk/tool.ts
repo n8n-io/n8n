@@ -245,6 +245,8 @@ export class Tool<
 
 	private providerOptionsValue?: Record<string, JSONObject>;
 
+	private strictValue?: boolean;
+
 	private handleCancellationValue?: boolean;
 
 	private requireApprovalValue?: boolean;
@@ -381,6 +383,17 @@ export class Tool<
 	}
 
 	/**
+	 * Set provider strict mode for this tool's input schema. Overrides the agent's
+	 * `.toolStrict()` default.
+	 *
+	 * Example: `.strict(false)` keeps optional fields optional on OpenAI.
+	 */
+	strict(enabled: boolean): this {
+		this.strictValue = enabled;
+		return this;
+	}
+
+	/**
 	 * Validate configuration and produce a `BuiltTool`.
 	 *
 	 * @throws if name, description, input schema, or handler is missing.
@@ -439,6 +452,7 @@ export class Tool<
 			inputSchema: this.inputSchema,
 			outputSchema: this.outputSchema,
 			providerOptions: this.providerOptionsValue,
+			...(this.strictValue !== undefined ? { strict: this.strictValue } : {}),
 		};
 
 		if (this.requireApprovalValue || this.needsApprovalFnValue) {

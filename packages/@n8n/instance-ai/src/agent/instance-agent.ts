@@ -241,6 +241,9 @@ export async function createInstanceAgent(
 			},
 		})
 		.tool(toolRegistryValues(runtimeTools))
+		// Strict tools on OpenAI make every optional field required, and our tools read
+		// a filled "" or 0 as a real value.
+		.toolStrict(false)
 		.checkpoint(options.checkpointStore ?? 'memory');
 	if (mcpConnectionFailures.length > 0) {
 		agent.mcpConnectionFailures(mcpConnectionFailures);

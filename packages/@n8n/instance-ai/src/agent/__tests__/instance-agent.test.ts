@@ -5,6 +5,7 @@ const mockAgentInstances: Array<{
 	model: Mock;
 	instructions: Mock;
 	tool: Mock;
+	toolStrict: Mock;
 	deferredTool: Mock;
 	skills: Mock;
 	checkpoint: Mock;
@@ -28,6 +29,7 @@ vi.mock('@n8n/agents', () => ({
 		this.model = vi.fn().mockReturnThis();
 		this.instructions = vi.fn().mockReturnThis();
 		this.tool = vi.fn().mockReturnThis();
+		this.toolStrict = vi.fn().mockReturnThis();
 		this.deferredTool = vi.fn().mockReturnThis();
 		this.skills = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
@@ -352,6 +354,25 @@ describe('createInstanceAgent', () => {
 
 		expect(Agent).toHaveBeenCalledWith('n8n-instance-agent');
 		expect(mockAgentInstances[0]?.workspace).toHaveBeenCalledWith(fakeWorkspace);
+	});
+
+	it('turns off provider strict mode for its tools', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'strict-test',
+				computerUseState: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'strict-test',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.toolStrict).toHaveBeenCalledWith(false);
 	});
 
 	it('does not attach a workspace when orchestration context has none', async () => {

@@ -207,6 +207,12 @@ export interface BuiltTool {
 	 */
 	readonly providerOptions?: Record<string, JSONObject>;
 	/**
+	 * Provider strict mode for this tool's input schema. Overrides the agent's
+	 * `toolStrict` default. Unset leaves the choice to the agent, then to the provider:
+	 * OpenAI's Responses API defaults to strict, and makes every optional field required.
+	 */
+	readonly strict?: boolean;
+	/**
 	 * Arbitrary platform-specific metadata attached to the tool.
 	 */
 	readonly metadata?: Record<string, unknown>;

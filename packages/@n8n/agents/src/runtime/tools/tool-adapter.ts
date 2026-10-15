@@ -70,7 +70,10 @@ export function toAiSdkProviderTools(tools?: BuiltProviderTool[]): Record<string
  * Tools are created WITHOUT execute — the agent loop handles execution manually.
  * Supports both Zod schemas (SDK-defined tools) and raw JSON Schema (MCP tools).
  */
-export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
+export function toAiSdkTools(
+	tools?: BuiltTool[],
+	options: { defaultStrict?: boolean } = {},
+): Record<string, AiSdkTool> {
 	if (!tools || tools.length === 0) return {};
 
 	const result: Record<string, AiSdkTool> = {};
@@ -78,8 +81,8 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 		if (t.inputSchema) {
 			const ai = loadAi();
 			const providerOptions = applyToolProviderOptionDefaults(t.providerOptions);
-			// Responses otherwise normalizes omitted strict schemas and makes optional MCP fields required.
-			const strict = t.mcpTool ? false : undefined;
+			// Responses otherwise normalizes omitted strict schemas and makes optional fields required.
+			const strict = t.strict ?? (t.mcpTool ? false : options.defaultStrict);
 			if (isZodSchema(t.inputSchema)) {
 				result[t.name] = ai.tool({
 					description: t.description,

@@ -5794,6 +5794,69 @@ describe('Tool builder — providerOptions', () => {
 		expect(built.providerOptions).toBeUndefined();
 	});
 });
+
+describe('Tool builder — strict', () => {
+	it('sets strict via .strict()', () => {
+		const built = new Tool('search')
+			.description('Search')
+			.input(z.object({ query: z.string() }))
+			.strict(false)
+			.handler(async () => ({ results: [] }))
+			.build();
+
+		expect(built.strict).toBe(false);
+	});
+
+	it('keeps strict on a tool that requires approval', () => {
+		const built = new Tool('delete')
+			.description('Delete')
+			.input(z.object({ id: z.string() }))
+			.strict(false)
+			.requireApproval()
+			.handler(async () => ({ ok: true }))
+			.build();
+
+		expect(built.strict).toBe(false);
+	});
+
+	it('leaves strict unset when .strict() is not called', () => {
+		const built = new Tool('search')
+			.description('Search')
+			.input(z.object({ query: z.string() }))
+			.handler(async () => ({ results: [] }))
+			.build();
+
+		expect(built).not.toHaveProperty('strict');
+	});
+});
+
+describe('Agent — toolStrict', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('sends the agent default to the model for tools without their own setting', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const own = new Tool('own_setting')
+			.description('Own setting')
+			.input(z.object({ query: z.string().optional() }))
+			.strict(true)
+			.handler(async () => ({ ok: true }))
+			.build();
+
+		await new Agent('strict-test')
+			.model('openai/gpt-5.1')
+			.instructions('Test')
+			.tool([makeMockTool('agent_default', async () => ({ ok: true })), own])
+			.toolStrict(false)
+			.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const tools = callArgs.tools as Record<string, { strict?: boolean }>;
+		expect(tools.agent_default.strict).toBe(false);
+		expect(tools.own_setting.strict).toBe(true);
+	});
+});
 /* eslint-enable @typescript-eslint/require-await */
 
 // ---------------------------------------------------------------------------

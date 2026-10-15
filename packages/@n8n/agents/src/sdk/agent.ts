@@ -215,6 +215,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private promptCachingConfig?: PromptCachingConfig;
 
+	private toolStrictValue?: boolean;
+
 	private concurrencyValue?: number;
 
 	private telemetryBuilder?: Telemetry;
@@ -555,6 +557,19 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	/** @internal Read the declared telemetry builder (used by the execution engine to resolve credentials). */
 	protected get declaredTelemetry(): Telemetry | undefined {
 		return this.telemetryBuilder;
+	}
+
+	/**
+	 * Set the default provider strict mode for this agent's tools. A tool's own
+	 * `.strict()` overrides this default. MCP tools without their own setting use `false`.
+	 *
+	 * OpenAI's Responses API applies strict mode when a tool omits the flag. Strict
+	 * mode makes every optional field required, so the model fills optional fields
+	 * with values such as `""`, `0` or `[]`. Pass `false` to keep them optional.
+	 */
+	toolStrict(enabled: boolean): this {
+		this.toolStrictValue = enabled;
+		return this;
 	}
 
 	/**
@@ -1162,6 +1177,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			thinking: this.thinkingConfig,
 			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
+			...(this.toolStrictValue !== undefined ? { toolStrict: this.toolStrictValue } : {}),
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
@@ -1309,6 +1325,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				promptCaching: this.promptCachingConfig,
+				...(this.toolStrictValue !== undefined ? { toolStrict: this.toolStrictValue } : {}),
 				runState: options.runState,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),
