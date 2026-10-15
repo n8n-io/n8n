@@ -136,3 +136,31 @@ it('rejects a lower plan revision and an older stop from later reads', async () 
 	await state.refresh();
 	expect(state.state.value?.requestedAt).toBe(current.requestedAt);
 });
+
+it('keeps a newer stop pending after leaving and returning to the same conversation', async () => {
+	const first = createDeferredPromise<AgentTaskCancellationState>();
+	const second = createDeferredPromise<AgentTaskCancellationState>();
+	vi.mocked(cancelAgentTasks)
+		.mockReturnValueOnce(first.promise)
+		.mockReturnValueOnce(second.promise);
+	const state = create();
+	await flushPromises();
+	const oldStop = state.stopAll();
+	thread.value = 'other-thread';
+	await flushPromises();
+	thread.value = 'thread';
+	await flushPromises();
+	const newStop = state.stopAll();
+	const reads = vi.mocked(getAgentTaskCancellation).mock.calls.length;
+	first.resolve(stopped);
+	await oldStop;
+	expect(state.isStopping.value).toBe(true);
+	expect(getAgentTaskCancellation).toHaveBeenCalledTimes(reads);
+	await state.stopAll();
+	expect(cancelAgentTasks).toHaveBeenCalledTimes(2);
+	vi.mocked(getAgentTaskCancellation).mockResolvedValue(stopped);
+	second.resolve(stopped);
+	await newStop;
+	expect(state.isStopping.value).toBe(false);
+	expect(state.state.value).toEqual(stopped);
+});
