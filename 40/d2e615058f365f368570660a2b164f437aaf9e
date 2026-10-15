@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Dataverse/test/shared.test.ts
+  s_2e1fa95fc44f8f::t_39ecef945f0d5d 249-256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40d2e615058f365f368570660a2b164f437aaf9e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
