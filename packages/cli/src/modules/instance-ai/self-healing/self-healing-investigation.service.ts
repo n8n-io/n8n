@@ -155,6 +155,23 @@ export class SelfHealingInvestigationService {
 			}
 			const candidate = await run.candidate.compile();
 			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
+			if (
+				output.outcome === 'fix_ready' &&
+				candidate.credentialResolution.mockedCredentialTypes.length > 0
+			) {
+				const missingCredentials = Object.entries(
+					candidate.credentialResolution.mockedCredentialsByNode,
+				).map(([node, types]) => `${node}: ${types.join(', ')}`);
+				accepted.output = {
+					...output,
+					outcome: 'needs_you',
+					summary: 'Connect the missing credentials to complete this repair.',
+					report:
+						`The candidate still needs credentials for:\n${missingCredentials.join('\n')}\n\n` +
+						'Simulated verification does not confirm that these connections work. ' +
+						'Continue in chat to connect the credentials and verify the repair.',
+				};
+			}
 			accepted.candidate = {
 				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
 			};

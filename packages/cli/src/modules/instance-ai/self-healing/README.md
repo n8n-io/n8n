@@ -29,9 +29,11 @@ Re-enablement does not change the actor recorded on an existing investigation.
 The producer calls `InstanceAiService.startSelfHealingRun()` with its stored thread and run IDs.
 This uses the existing Assistant run lifecycle. It does not create another job runner.
 
-The backend binds `verify_candidate({ filePath, validationOnly? })` to this investigation.
-It checks current access and the captured baseline before it reads and compiles the candidate.
+The backend binds `verify_candidate({ filePath, validationOnly?, triggerNodeName?, inputData? })` to this investigation.
+It checks current access before it reads and compiles the candidate against the captured baseline.
 With `validationOnly: true`, it returns structural checks without execution.
+For execution checks, the agent selects the failed trigger and supplies its test input.
+The tool passes these options to the existing verification runner. Each call tests one trigger.
 
 `SelfHealingAgentService` creates `self-healing/candidate.workflow.ts` from the captured baseline.
 It uses the same workflow converter as ordinary workflow reads.
@@ -47,6 +49,9 @@ The runtime returns technical `status`, finish information, `usage`, and validat
 when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
 `fix_ready` requires a candidate path. `could_not_fix` excludes one.
 The result includes a candidate compiler when validated output names a candidate file.
+If final compilation reports unresolved credentials, the producer changes `fix_ready` to `needs_you`.
+It keeps the candidate and replaces the report with credential setup instructions.
+An unchanged `needs_you` candidate produces a report without a workflow suggestion.
 Unknown usage measurements stay null. The invocation claims measured credits once.
 Callers must not claim those credits again.
 
@@ -77,6 +82,7 @@ There is no automatic trigger or public launch endpoint.
 ## Verify a candidate
 
 Each call compiles the current workspace file. `candidateChecksum` identifies the compiled candidate.
+Verification uses the captured baseline even if the saved workflow changes. Completion rejects outdated results.
 Validation and execution evidence are separate. Edits require another check.
 The tool reuses the builder simulation planner, execution adapter, and coverage analysis.
 Credential changes use the normal builder rules. The response includes resolved and missing credentials.

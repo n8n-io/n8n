@@ -155,11 +155,15 @@ async function fixture(outcome: Outcome = 'needs_you', withSuggestion = false) {
 
 async function prepareInvestigation(
 	outcome: Outcome = 'fix_ready',
-	withSuggestion = true,
+	withSuggestion: boolean | 'unchanged' = true,
 	content: { report?: string; usage?: SelfHealingResultUsage } = {},
 ) {
 	const fixture = await prepareFixture(outcome);
-	const { original, user, graph } = fixture;
+	const { original, user } = fixture;
+	const graph =
+		withSuggestion === 'unchanged'
+			? { nodes: original.nodes, connections: original.connections }
+			: fixture.graph;
 	const input = { ...fixture.input, ...content };
 	const baseline = await suggestionService.captureBaseline(original.id, user.id);
 	const investigation = await Container.get(TransactionRunner).run({}, async (ctx) => {
@@ -179,7 +183,7 @@ async function prepareInvestigation(
 		completedAt: new Date().toISOString(),
 		...(withSuggestion ? { candidate: { graph } } : {}),
 	});
-	return { ...fixture, input, investigation };
+	return { ...fixture, graph, input, investigation };
 }
 
 it.each(['same', 'different'] as const)(
@@ -361,6 +365,37 @@ it.each([
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	},
 );
+
+it('preserves a needs_you report when the candidate has no changes', async () => {
+	const { investigation, input, user, project, original } = await prepareInvestigation(
+		'needs_you',
+		'unchanged',
+	);
+	const result = await service.complete({ investigationId: investigation.id });
+	const detail = await service.getDetail(user, project.id, original.id, result.id);
+	expect(detail).toMatchObject({
+		outcome: 'needs_you',
+		summary: input.summary,
+		report: input.report,
+		suggestion: null,
+	});
+	expect(await results.count()).toBe(1);
+	expect(await suggestions.count()).toBe(0);
+	expect(await investigations.get(investigation.id)).toMatchObject({
+		resultId: result.id,
+		finishedAt: expect.any(Date),
+		acceptedOutput: null,
+	});
+});
+
+it('rejects a fix_ready candidate with no changes', async () => {
+	const { investigation } = await prepareInvestigation('fix_ready', 'unchanged');
+	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
+		'no workflow changes',
+	);
+	expect(await results.count()).toBe(0);
+	expect(await suggestions.count()).toBe(0);
+});
 
 it('rechecks the background user after execution validation', async () => {
 	const { investigation, user } = await prepareInvestigation();

@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { Project, SharedWorkflowRepository, TransactionRunner, User } from '@n8n/db';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
+import type { CredentialResolutionResult } from '@n8n/instance-ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
@@ -160,12 +161,61 @@ describe('SelfHealingInvestigationService', () => {
 				compile: vi.fn().mockResolvedValue({
 					success: true,
 					workflow: { nodes: [], connections: {} },
+					credentialResolution: mock<CredentialResolutionResult>({ mockedCredentialTypes: [] }),
 				}),
 			};
 			await startAndFinish();
 			expect(investigation.acceptedOutput?.candidate).toEqual({
 				graph: { nodes: [], connections: {} },
 			});
+		},
+	);
+
+	it.each([
+		{ missing: true, outcome: 'needs_you' },
+		{ missing: false, outcome: 'fix_ready' },
+	])(
+		'saves $outcome when simulated credentials are missing=$missing',
+		async ({ missing, outcome }) => {
+			const output = {
+				outcome: 'fix_ready' as const,
+				summary: 'The workflow is fixed.',
+				report: 'The credential was created and verification passed.',
+				candidateFilePath: 'candidate.ts',
+			};
+			const graph = { nodes: [], connections: {} };
+			run.output = output;
+			run.candidate = {
+				filePath: output.candidateFilePath,
+				compile: vi.fn().mockResolvedValue({
+					success: true,
+					workflow: graph,
+					credentialResolution: mock<CredentialResolutionResult>({
+						mockedNodeNames: ['Fetch Order'],
+						mockedCredentialTypes: missing ? ['httpHeaderAuth'] : [],
+						mockedCredentialsByNode: missing ? { 'Fetch Order': ['httpHeaderAuth'] } : {},
+						resolvedCredentialsByNode: missing
+							? {}
+							: { 'Fetch Order': [{ type: 'openAiApi', id: null, name: 'Gateway credits' }] },
+					}),
+				}),
+			};
+
+			await startAndFinish();
+
+			const accepted = investigation.acceptedOutput;
+			expect(accepted?.output.outcome).toBe(outcome);
+			expect(accepted?.candidate?.graph).toEqual(graph);
+			if (missing) {
+				expect(accepted?.output.summary).toContain('credentials');
+				expect(accepted?.output.summary).not.toBe(output.summary);
+				expect(accepted?.output.report).toContain('Fetch Order');
+				expect(accepted?.output.report).toContain('httpHeaderAuth');
+				expect(accepted?.output.report).not.toContain('credential was created');
+			} else {
+				expect(accepted?.output).toEqual(output);
+			}
+			expect(results.complete).toHaveBeenCalledWith({ investigationId: investigation.id });
 		},
 	);
 

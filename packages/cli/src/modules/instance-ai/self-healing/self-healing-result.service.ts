@@ -14,6 +14,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
+import isEqual from 'lodash/isEqual';
 
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
@@ -92,13 +93,19 @@ export class SelfHealingResultService {
 			report: output.report,
 			usage: accepted.usage,
 		});
-		const suggestion = candidate
-			? await this.suggestions.prepareSuggestion(baseline, {
-					graph: candidate.graph,
-					explanation: output.summary,
-					resultKind: output.outcome === 'fix_ready' ? 'fix_ready' : 'needs_you',
-				})
-			: undefined;
+		const needsYouWithoutChanges =
+			output.outcome === 'needs_you' &&
+			candidate !== undefined &&
+			isEqual(baseline.original.nodes, candidate.graph.nodes) &&
+			isEqual(baseline.original.connections, candidate.graph.connections);
+		const suggestion =
+			candidate && !needsYouWithoutChanges
+				? await this.suggestions.prepareSuggestion(baseline, {
+						graph: candidate.graph,
+						explanation: output.summary,
+						resultKind: output.outcome === 'fix_ready' ? 'fix_ready' : 'needs_you',
+					})
+				: undefined;
 		const actor = await this.suggestions.requireEditor(
 			investigation.backgroundUserId,
 			investigation.workflowId,
