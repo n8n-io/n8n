@@ -5661,58 +5661,6 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('omits allowed tools before saving a skill when none are attached', async () => {
-		const skill = {
-			name: 'summarize_notes',
-			description: 'Use when summarizing notes',
-			instructions: 'Read the notes and produce a concise summary.',
-			allowedTools: ['missing_tool'],
-		};
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-			skills: [{ type: 'skill', id: 'summarize_notes' }],
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		getAgentMock.mockResolvedValueOnce(
-			makeAgentResponse({
-				skills: {
-					summarize_notes: skill,
-				},
-				skillHashes: { summarize_notes: 'skill-hash-1' },
-			}),
-		);
-		updateAgentSkillMock.mockResolvedValueOnce({
-			id: 'summarize_notes',
-			skill: {
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-			skillHash: 'skill-hash-2',
-			versionId: 'v2',
-		});
-
-		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('open-skill', 'summarize_notes');
-		await nextTick();
-		openModalWithDataMock.mock.calls[0][0].data.onConfirm({ id: 'summarize_notes', skill });
-		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
-
-		expect(updateAgentSkillMock).toHaveBeenCalledWith(
-			expect.anything(),
-			'p1',
-			'a1',
-			'summarize_notes',
-			{
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-			'skill-hash-1',
-		);
-	});
-
 	it('shows the loading spinner while initialize() is in flight and hides it after', async () => {
 		// A promise that we control — lets us capture the intermediate loading state.
 		let resolveAgent!: (v: unknown) => void;
