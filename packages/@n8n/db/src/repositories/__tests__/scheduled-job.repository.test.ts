@@ -28,6 +28,7 @@ const newJob = (name: string): NewScheduledJob => ({
 	fireAt: null,
 	nextRunAt: CLOCK,
 	maxAttempts: 5,
+	timeoutSeconds: 300,
 	misfirePolicy: 'coalesce',
 	misfireGraceSeconds: 60,
 	concurrencyLimit: null,
@@ -129,6 +130,35 @@ describe('ScheduledJobRepository', () => {
 				select: ['id', 'ownerId', 'payload'],
 			});
 			expect(result).toBe(rows);
+		});
+	});
+
+	describe('findScheduleStatesByOwnerType', () => {
+		it('reads the owner id and schedule state of every job owners of one kind hold', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				{ ownerId: 'a', enabled: true, nextRunAt: CLOCK, orphanedAt: null } as ScheduledJob,
+			]);
+
+			const result = await repository.findScheduleStatesByOwnerType('system-task');
+
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ownerType: 'system-task' },
+				select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt'],
+			});
+			expect(result).toEqual([{ ownerId: 'a', runnable: true, nextRunAt: CLOCK }]);
+		});
+
+		it.each([
+			['disabled', { enabled: false, orphanedAt: null }],
+			['quarantined', { enabled: true, orphanedAt: CLOCK }],
+		])('marks a %s job not runnable', async (_, state) => {
+			entityManager.find.mockResolvedValueOnce([
+				{ ownerId: 'a', nextRunAt: CLOCK, ...state } as ScheduledJob,
+			]);
+
+			const [result] = await repository.findScheduleStatesByOwnerType('system-task');
+
+			expect(result.runnable).toBe(false);
 		});
 	});
 
@@ -417,6 +447,7 @@ describe('ScheduledJobRepository', () => {
 				fireAt: null,
 				nextRunAt: CLOCK,
 				maxAttempts: 3,
+				timeoutSeconds: 600,
 				misfirePolicy: 'skip',
 				misfireGraceSeconds: 120,
 				concurrencyLimit: 2,

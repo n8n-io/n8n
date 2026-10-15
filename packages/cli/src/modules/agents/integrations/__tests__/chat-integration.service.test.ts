@@ -1996,6 +1996,19 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				service.broadcastIntegrationChange('a1', { type: 'linear', credentialId: 'c1' }, 'connect'),
 			).resolves.toBeUndefined();
 		});
+
+		it('does nothing for n8n Chat, which has no runtime connection for peers to reconcile', async () => {
+			const publisher = mock<Publisher>();
+			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
+
+			await service.broadcastIntegrationChange(
+				'a1',
+				{ type: 'n8n_chat', credentialId: '' },
+				'connect',
+			);
+
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
 	});
 });
 

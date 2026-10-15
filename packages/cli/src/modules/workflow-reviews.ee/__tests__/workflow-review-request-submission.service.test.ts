@@ -3,7 +3,7 @@ import type {
 	GetWorkflowReviewEligibleReviewersQueryDto,
 } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import { type EventService, type RoleService } from '@n8n/backend-services';
 import { DbLock, User } from '@n8n/db';
 import type {
 	AuthIdentity,
@@ -27,7 +27,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import type { RoleService } from '@/services/role.service';
+
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';

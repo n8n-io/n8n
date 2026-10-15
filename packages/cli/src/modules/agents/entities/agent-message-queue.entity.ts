@@ -16,7 +16,7 @@ import { AgentMessageEntity } from './agent-message.entity';
 import type { AgentQueueDispatch } from '../types/agent-queued-message';
 
 @Entity({ name: 'agent_message_queue' })
-@Index(['threadId', 'id'])
+@Index(['threadId', 'position'])
 @Index(['threadId'], { unique: true, where: '"executionId" IS NOT NULL' })
 @Index(['steeringExecutionId', 'steeringOrder'], {
 	unique: true,
@@ -30,6 +30,9 @@ export class AgentMessageQueue extends WithTimestamps {
 		comment: 'Acceptance order; IDs are not reused',
 	})
 	id: string;
+
+	@Column({ type: 'int', default: 0, comment: 'Pending turn order within the session' })
+	position: number;
 
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })

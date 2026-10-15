@@ -683,6 +683,37 @@ describe('SourceControlService', () => {
 			});
 		});
 
+		it('announces each pulled workflow, but not one skipped by the content policy', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			mockStatusService.getStatus.mockResolvedValueOnce([
+				mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow', conflict: false }),
+				mock<SourceControlledFile>({ id: 'workflow-2', type: 'workflow', conflict: false }),
+			]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
+				{ id: 'workflow-1', name: 'workflow-1.json', publishingError: undefined },
+				{
+					id: 'workflow-2',
+					name: 'workflow-2.json',
+					publishingError: undefined,
+					contentImportPolicy: {
+						violations: [
+							{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+						],
+						checkErrors: [],
+					},
+				},
+			]);
+
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-1',
+			});
+			expect(eventService.emit).not.toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-2',
+			});
+		});
+
 		it('adds the reason a skipped workflow was blocked to the pull result', async () => {
 			const user = mock<User>({ id: 'user-1' });
 			const workflowStatus = mock<SourceControlledFile>({
@@ -1621,6 +1652,7 @@ describe('SourceControlService', () => {
 
 			// Once the push releases the lock, the queued reset runs - but only after the commit.
 			expect(gitService.resetBranch).toHaveBeenCalled();
+			expect(gitService.pull).toHaveBeenCalled();
 			expect(callOrder).toEqual(['commit', 'reset']);
 		});
 

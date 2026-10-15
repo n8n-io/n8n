@@ -3,8 +3,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import { WorkflowMutationHooksProxy, WorkflowPublishGuardProxy } from '@n8n/backend-services';
 
 @BackendModule({ name: 'workflow-reviews', licenseFlag: LICENSE_FEATURES.WORKFLOW_REVIEWS })
 export class WorkflowReviewsModule implements ModuleInterface {

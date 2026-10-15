@@ -1,5 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
 
+import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
@@ -54,8 +55,8 @@ export function emitPackageImportedEvent(
 	const matchedCredentialIds = credentialResults.flatMap(({ matched, bindings }) =>
 		matched.map((sourceId) => bindings.get(sourceId)!),
 	);
-	const createdCredentialIds = credentialResults.flatMap(({ stubbed, bindings }) =>
-		stubbed.map((sourceId) => bindings.get(sourceId)!),
+	const createdCredentialIds = credentialResults.flatMap(({ stubbed, seeded, bindings }) =>
+		[...stubbed, ...seeded].map((sourceId) => bindings.get(sourceId)!),
 	);
 
 	const dataTablePlans = scopes.map(({ imported }) => imported.dataTablePlan);
@@ -68,6 +69,7 @@ export function emitPackageImportedEvent(
 		(total, plan) => total + plan.creations.length,
 		0,
 	);
+	const dataTablesUpdated = dataTablePlans.reduce((total, plan) => total + plan.updates.length, 0);
 
 	const variableRequirements = scopes.reduce(
 		(total, { variableRequest }) => total + (variableRequest.requirements?.length ?? 0),
@@ -109,6 +111,7 @@ export function emitPackageImportedEvent(
 			workflowIdPolicy: request.workflowIdPolicy,
 			credentialMatchingMode: request.credentialMatchingMode,
 			credentialMissingMode: request.credentialMissingMode,
+			credentialConflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
 			workflowPublishingPolicy: request.workflowPublishingPolicy,
 			missingNodeTypeMode: request.missingNodeTypeMode,
 			projectConflictPolicy: request.projectConflictPolicy,
@@ -154,6 +157,7 @@ export function emitPackageImportedEvent(
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,
+				updated: dataTablesUpdated,
 				requirements: dataTableRequirements,
 			},
 			variables: {

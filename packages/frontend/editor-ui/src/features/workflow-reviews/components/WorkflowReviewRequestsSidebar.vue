@@ -188,7 +188,7 @@ function onListBackgroundClick() {
 					{{ i18n.baseText('workflowReviews.sidebar.error') }}
 				</N8nText>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="mini"
 					:label="i18n.baseText('generic.retry')"
 					data-test-id="workflow-review-list-retry"
@@ -287,7 +287,7 @@ function onListBackgroundClick() {
 							{{ i18n.baseText('workflowReviews.sidebar.error') }}
 						</N8nText>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="mini"
 							:label="i18n.baseText('generic.retry')"
 							:data-section="group.key"
@@ -297,7 +297,7 @@ function onListBackgroundClick() {
 					</div>
 					<N8nButton
 						v-if="group.collapsible && group.section.hasMore"
-						variant="subtle"
+						variant="outline"
 						size="small"
 						:class="$style.loadMoreButton"
 						:label="i18n.baseText('workflowReviews.sidebar.loadMore')"
@@ -337,11 +337,21 @@ function onListBackgroundClick() {
 }
 
 .header {
+	position: relative;
 	display: flex;
 	align-items: center;
 	height: var(--review-tab-bar--height, var(--height--sm));
 	padding-right: var(--spacing--md);
-	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
+	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 15px));
+
+	&::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: var(--spacing--md);
+		bottom: calc(-1 * var(--review-tab-bar--indicator-overhang) - var(--border-width));
+		border-bottom: var(--border-width) solid var(--border-color);
+	}
 }
 
 .list {
@@ -411,10 +421,9 @@ function onListBackgroundClick() {
 	padding: var(--spacing--xs);
 	align-items: stretch;
 	border: var(--border-width) solid var(--border-color);
-	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {
-		background-color: var(--background--active);
+		background-color: var(--background--hover);
 		border-color: transparent;
 	}
 

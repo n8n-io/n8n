@@ -1,7 +1,7 @@
 import type { AgentExecutionStatus } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
@@ -242,7 +242,19 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			)
 			.getRawMany<{ threadId: string; source: string }>();
 
-		return new Map(rows.map((r) => [r.threadId, r.source]));
+		const sources = new Map(rows.map((r) => [r.threadId, r.source]));
+		const unrecorded = threadIds.filter((id) => !sources.has(id));
+		if (unrecorded.length === 0) return sources;
+		// Accepted input keeps its origin after removal from the queue. It names the surface before any execution.
+		const inputs = await this.managerFor(ctx).find(AgentMessageEntity, {
+			where: { threadId: In(unrecorded), origin: Not(IsNull()) },
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+		for (const input of inputs) {
+			const source = input.origin?.source;
+			if (source && !sources.has(input.threadId)) sources.set(input.threadId, source);
+		}
+		return sources;
 	}
 
 	async findLatestStatusesByThreadIds(

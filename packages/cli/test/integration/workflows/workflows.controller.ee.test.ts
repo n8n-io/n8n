@@ -5,6 +5,7 @@ import {
 	createWorkflow,
 	createActiveWorkflow,
 	createWorkflowWithHistory,
+	createWorkflowHistory,
 	getWorkflowSharing,
 	shareWorkflowWithProjects,
 	shareWorkflowWithUsers,
@@ -12,13 +13,20 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, User, WorkflowWithSharingsMetaDataAndCredentials } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	Project,
+	User,
+	WorkflowEntity,
+	WorkflowWithSharingsMetaDataAndCredentials,
+} from '@n8n/db';
 import {
 	ProjectRepository,
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowPublishedVersionRepository,
+	CredentialsRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -30,6 +38,7 @@ import {
 	calculateWorkflowChecksum,
 	type INode,
 } from 'n8n-workflow';
+import { ExecuteWorkflow } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -95,7 +104,11 @@ beforeAll(async () => {
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
-	await utils.initNodeTypes();
+	// Use the real node description to test parameter defaults and visibility.
+	await utils.initNodeTypes({
+		...utils.buildDefaultNodes(),
+		'n8n-nodes-base.executeWorkflow': { type: new ExecuteWorkflow(), sourcePath: '' },
+	});
 });
 
 beforeEach(async () => {
@@ -952,6 +965,73 @@ describe('GET /workflows/:workflowId', () => {
 				},
 			]);
 		});
+
+		describe('the Owner in a team-project workflow', () => {
+			const ownerSees = async (
+				credentialId: string,
+				teamProject: Project,
+				sharedWith: Project[] = [],
+			) => {
+				const workflow = await createWorkflow(
+					makeWorkflow({
+						withPinData: false,
+						withCredential: { id: credentialId, name: 'Credential' },
+					}),
+					teamProject,
+				);
+				if (sharedWith.length > 0) {
+					await shareWorkflowWithProjects(
+						workflow,
+						sharedWith.map((project) => ({ project })),
+					);
+				}
+				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+				const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+				return responseWorkflow.usedCredentials?.[0]?.currentUserCanUse;
+			};
+
+			test('cannot use a personal credential that nobody shared with the project', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(false);
+			});
+
+			test('can use a credential shared with another team project the workflow is in', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const salesProject = await createTeamProject('Sales', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				await shareCredentialWithProjects(credential, [salesProject]);
+
+				expect(await ownerSees(credential.id, teamProject, [salesProject])).toBe(true);
+			});
+
+			test('cannot use the personal credential of someone the workflow is shared with', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				const memberPersonalProject = await getPersonalProject(member);
+
+				expect(await ownerSees(credential.id, teamProject, [memberPersonalProject])).toBe(false);
+			});
+
+			test('can use a credential shared with the project', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				await shareCredentialWithProjects(credential, [teamProject]);
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(true);
+			});
+
+			test('can use a credential shared with everyone', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(
+					{ ...randomCredentialPayload(), isGlobal: true },
+					{ user: member },
+				);
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(true);
+			});
+		});
 	});
 });
 
@@ -1283,6 +1363,414 @@ describe('PATCH /workflows/:workflowId', () => {
 				);
 			},
 		);
+
+		describe('sub-workflow loaded from a URL or file', () => {
+			const UNINSPECTABLE_SOURCE_MESSAGE =
+				'The \'Sub\' node loads its sub-workflow from a source that is resolved only when the workflow runs, so its credential access cannot be checked on save. Use the "Database" or "Define Below" source instead.';
+
+			const remoteSubworkflowNode = (workflowUrl = 'https://example.com/workflow.json') => ({
+				id: 'uuid-sub-1',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.1,
+				position: [0, 0] as [number, number],
+				parameters: { source: 'url', workflowUrl },
+			});
+
+			it('rejects a member adding such a node to a shared workflow', async () => {
+				const workflow = await createWorkflow({}, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [remoteSubworkflowNode()],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('rejects a member creating a workflow with such a node', async () => {
+				const response = await authMemberAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [remoteSubworkflowNode()],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('rejects a member adding the HITL tool variant of such a node', async () => {
+				const workflow = await createWorkflow({}, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [{ ...remoteSubworkflowNode(), type: 'n8n-nodes-base.executeWorkflowHitlTool' }],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('rejects a member changing an execution setting of an existing node', async () => {
+				const workflow = await createWorkflow({ nodes: [remoteSubworkflowNode()] }, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [{ ...remoteSubworkflowNode(), retryOnFail: true }],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('preserves a renamed URL node when the editor omits default and hidden parameters', async () => {
+				// The editor omits the default mode and the old database workflow ID.
+				const stored = {
+					...remoteSubworkflowNode(),
+					parameters: {
+						...remoteSubworkflowNode().parameters,
+						mode: 'once',
+						workflowId: { __rl: true, value: 'old-workflow', mode: 'id' },
+					},
+				};
+				const workflow = await createWorkflow({ nodes: [stored] }, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [{ ...remoteSubworkflowNode(), name: 'Renamed' }],
+				});
+
+				expect(response.statusCode).toBe(200);
+				const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(saved.nodes).toEqual([{ ...stored, name: 'Renamed' }]);
+			});
+
+			it('rejects a member changing a stored URL and leaves the node unchanged', async () => {
+				const workflow = await createWorkflow({ nodes: [remoteSubworkflowNode()] }, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const changed = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [remoteSubworkflowNode('https://example.com/other.json')],
+				});
+
+				expect(changed.statusCode).toBe(400);
+				expect(changed.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+
+				const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(saved.nodes).toEqual([remoteSubworkflowNode()]);
+			});
+
+			it('lets the owner create and change such a node', async () => {
+				const createResponse = await authOwnerAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [remoteSubworkflowNode()],
+				});
+				expect(createResponse.statusCode).toBe(200);
+				const { id, versionId } = createResponse.body.data;
+
+				const response = await authOwnerAgent.patch(`/workflows/${id}`).send({
+					versionId,
+					nodes: [remoteSubworkflowNode('https://example.com/other.json')],
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].parameters.workflowUrl).toBe(
+					'https://example.com/other.json',
+				);
+			});
+		});
+
+		describe('restoring a history version', () => {
+			const nodeWith = (credential: { id: string; name: string }, url = 'https://v1.test') => ({
+				id: 'uuid-restore-1',
+				name: 'Call',
+				parameters: { url },
+				position: [0, 0] as [number, number],
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+			});
+
+			/**
+			 * A member's workflow whose earlier version used the owner's credential. The
+			 * current version no longer has that node, and the member cannot use it.
+			 */
+			const setUp = async () => {
+				// The type must match the node's credential key, so the server resolves it by id.
+				const credential = await saveCredential(
+					{ ...randomCredentialPayload(), type: 'httpHeaderAuth' },
+					{ user: owner },
+				);
+				const workflow = await createWorkflow({}, member);
+				const oldVersionId = uuid();
+				await createWorkflowHistory(workflow, member, undefined, {
+					versionId: oldVersionId,
+					nodes: [nodeWith(credential)],
+				});
+				return { credential, workflow, oldVersionId };
+			};
+
+			test('restores a version with a credential the user cannot use', async () => {
+				const { credential, workflow, oldVersionId } = await setUp();
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+					restoredFromVersionId: oldVersionId,
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes).toEqual([nodeWith(credential)]);
+			});
+
+			test('restores a version after its credential was renamed', async () => {
+				const { credential, workflow, oldVersionId } = await setUp();
+				await Container.get(CredentialsRepository).update(credential.id, { name: 'Renamed' });
+
+				// The editor sends the nodes as the version stored them, with the old name.
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+					restoredFromVersionId: oldVersionId,
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].credentials.httpHeaderAuth).toEqual({
+					id: credential.id,
+					name: 'Renamed',
+				});
+			});
+
+			test('blocks the same nodes in an ordinary save', async () => {
+				const { credential, workflow } = await setUp();
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(
+					"You don't have access to the credentials in the 'Call' node. Ask the owner to share them with you.",
+				);
+			});
+
+			test('blocks a node that differs from the restored version', async () => {
+				const { credential, workflow, oldVersionId } = await setUp();
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential, 'https://changed.test')],
+					restoredFromVersionId: oldVersionId,
+				});
+
+				expect(response.statusCode).toBe(400);
+			});
+
+			test("refuses a version that is not in this workflow's history", async () => {
+				const { credential, workflow } = await setUp();
+				const otherWorkflow = await createWorkflow({}, member);
+				const otherVersionId = uuid();
+				await createWorkflowHistory(otherWorkflow, member, undefined, {
+					versionId: otherVersionId,
+					nodes: [nodeWith(credential)],
+				});
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+					restoredFromVersionId: otherVersionId,
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(
+					"The version to restore is not in this workflow's history.",
+				);
+			});
+		});
+
+		describe('sub-workflow with an inspectable source', () => {
+			const databaseSubworkflowNode = (workflowId: string) => ({
+				id: 'uuid-sub-db',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0] as [number, number],
+				parameters: {
+					source: 'database',
+					workflowId: { __rl: true, value: workflowId, mode: 'id' },
+				},
+			});
+
+			it('lets a member change a stored node that loads its sub-workflow from the database', async () => {
+				const workflow = await createWorkflow(
+					{ nodes: [databaseSubworkflowNode('wf-old')] },
+					owner,
+				);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [databaseSubworkflowNode('wf-new')],
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].parameters.workflowId.value).toBe('wf-new');
+			});
+
+			it('lets a member create a workflow with a node that defines its sub-workflow inline', async () => {
+				const response = await authMemberAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [
+						{
+							id: 'uuid-sub-inline',
+							name: 'Sub',
+							type: 'n8n-nodes-base.executeWorkflow',
+							typeVersion: 1.2,
+							position: [0, 0],
+							parameters: {
+								source: 'parameter',
+								workflowJson: JSON.stringify({ nodes: [], connections: {} }),
+							},
+						},
+					],
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].parameters.source).toBe('parameter');
+			});
+		});
+
+		describe('credentials in an agent node parameter', () => {
+			// The agent node keeps the model credential and its tool credentials in
+			// the hidden `inlineAgent` parameter, not in `node.credentials`.
+			const OWNER_INSTRUCTIONS = 'Answer questions about the docs.';
+			const EDITOR_INSTRUCTIONS = 'Summarize the input.';
+
+			let ownerModelCredential: CredentialsEntity;
+			let ownerToolCredential: CredentialsEntity;
+			let memberCredential: CredentialsEntity;
+			let sharedWorkflow: WorkflowEntity;
+
+			const agentNode = (id: string, inlineAgent: unknown) =>
+				({
+					id,
+					name: id,
+					type: 'n8n-nodes-base.messageAnAgent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: { agentSource: 'inline', inlineAgent },
+				}) as unknown as INode;
+
+			const inlineAgent = (credential: string, instructions: string, extra: object = {}) => ({
+				config: { model: 'gpt-4o-mini', credential, instructions, ...extra },
+			});
+
+			const ownerAgentNode = () =>
+				agentNode('agent-1', inlineAgent(ownerModelCredential.id, OWNER_INSTRUCTIONS));
+
+			const patchAsMember = async (nodes: INode[]) =>
+				await authMemberAgent
+					.patch(`/workflows/${sharedWorkflow.id}`)
+					.send({ versionId: sharedWorkflow.versionId, nodes });
+
+			const storedNodes = async () =>
+				(await workflowRepository.findOneByOrFail({ id: sharedWorkflow.id })).nodes;
+
+			beforeAll(async () => {
+				ownerModelCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+				ownerToolCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+				memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
+			});
+
+			beforeEach(async () => {
+				sharedWorkflow = await createWorkflow({ nodes: [ownerAgentNode()] }, owner);
+				await shareWorkflowWithUsers(sharedWorkflow, [member]);
+			});
+
+			it('keeps the stored agent node when the editor cannot use its credential', async () => {
+				const edited = agentNode(
+					'agent-1',
+					inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS),
+				);
+
+				// The node id matches the stored node, so the guard restores it.
+				const response = await patchAsMember([edited]);
+
+				expect(response.statusCode).toBe(200);
+				expect((await storedNodes())[0].parameters).toEqual(ownerAgentNode().parameters);
+			});
+
+			it('rejects a new agent node whose credential is not shared with the editor', async () => {
+				const planted = agentNode(
+					'agent-2',
+					inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it('rejects a node tool credential that is not shared with the editor', async () => {
+				const planted = agentNode(
+					'agent-2',
+					inlineAgent(memberCredential.id, EDITOR_INSTRUCTIONS, {
+						tools: [
+							{
+								type: 'node',
+								name: 'fetch',
+								node: {
+									nodeType: 'n8n-nodes-base.httpRequest',
+									nodeParameters: { url: 'https://example.com/hook' },
+									credentials: {
+										httpBearerAuth: { id: ownerToolCredential.id, name: 'Owner token' },
+									},
+								},
+							},
+						],
+					}),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it('reads the credential id from a JSON-encoded parameter', async () => {
+				const planted = agentNode(
+					'agent-2',
+					JSON.stringify(inlineAgent(ownerModelCredential.id, EDITOR_INSTRUCTIONS)),
+				);
+
+				const response = await patchAsMember([ownerAgentNode(), planted]);
+
+				expect(response.statusCode).toBe(400);
+				expect(await storedNodes()).toHaveLength(1);
+			});
+
+			it("saves a new agent node that uses the editor's own credential", async () => {
+				const own = agentNode('agent-3', inlineAgent(memberCredential.id, EDITOR_INSTRUCTIONS));
+
+				const response = await patchAsMember([ownerAgentNode(), own]);
+
+				expect(response.statusCode).toBe(200);
+				expect(await storedNodes()).toHaveLength(2);
+			});
+		});
 
 		it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -1859,7 +2347,9 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(response.body).toEqual({});
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: { kind: 'user', user: { id: member.id } },
+		});
 	});
 
 	test('should move workflow to project root if `destinationParentFolderId` is not provided', async () => {
@@ -1989,7 +2479,9 @@ describe('PUT /:workflowId/transfer', () => {
 		});
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
+			actor: { kind: 'user', user: { id: member.id } },
+		});
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
 		expect(workflowFromDB.active).toBe(false);

@@ -72,6 +72,7 @@ export type {
 	ToolContext,
 	ToolCancellationContext,
 	ToolExecutionContext,
+	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	BuiltTool,
@@ -209,3 +210,13 @@ export type {
 	ResolvedCredential,
 	CredentialListItem,
 } from './sdk/credential-provider';
+
+export type {
+	GuardrailsOptions,
+	ModelGuardrail,
+	GuardrailModelCallSource,
+	GuardrailModelCallContext,
+	GuardrailToolCallContext,
+	GuardrailDecision,
+	GuardrailStop,
+} from './sdk/guardrail';

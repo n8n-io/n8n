@@ -16,6 +16,7 @@ import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incom
 import type { UserLike } from '@/events/maps/relay.event-map';
 import { Push } from '@/push';
 
+import { selectVettedVersion } from './community-node-types-utils';
 import { CommunityNodeTypesService } from './community-node-types.service';
 import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService, isValidVersionSpecifier } from './community-packages.service';
@@ -63,34 +64,31 @@ export class CommunityPackagesLifecycleService {
 	}
 
 	/**
-	 * Version and checksum the registry vetted for this package, in one lookup.
-	 * The pair must come from the same catalog read: two separate reads can
-	 * straddle a catalog refresh and pair a pinned version with the checksum of
-	 * a newer release, failing a legitimate install. No requested version means
-	 * the latest vetted one.
+	 * Resolves the version and checksum to install. In verified-only mode both come from the
+	 * vetted list. The checksum is what lets a package through `checkInstallPermissions`, so
+	 * only the instance config decides this, never the caller.
 	 */
 	private async resolveVetted(
 		name: string,
-		version?: string,
-	): Promise<{ version: string; checksum: string }> {
+		requestedVersion: string | undefined,
+	): Promise<{ version: string | undefined; checksum: string | undefined }> {
+		if (this.communityPackagesConfig.unverifiedEnabled) {
+			return { version: requestedVersion, checksum: undefined };
+		}
+
 		const vettedPackage = await this.communityNodeTypesService.findVetted(name);
 		if (!vettedPackage) {
 			throw new BadRequestError(`Package ${name} is not vetted for installation`);
 		}
 
-		const resolvedVersion = version ?? vettedPackage.npmVersion;
-		const checksum =
-			resolvedVersion === vettedPackage.npmVersion
-				? vettedPackage.checksum
-				: vettedPackage.nodeVersions?.find((v) => v.npmVersion === resolvedVersion)?.checksum;
-
+		const { version, checksum } = selectVettedVersion(vettedPackage, requestedVersion);
 		if (!checksum) {
 			throw new BadRequestError(
-				`Version ${resolvedVersion} of ${name} is not verified by n8n. Latest verified version is ${vettedPackage.npmVersion}`,
+				`Version ${version} of ${name} is not verified by n8n. Latest verified version is ${vettedPackage.npmVersion}`,
 			);
 		}
 
-		return { version: resolvedVersion, checksum };
+		return { version, checksum };
 	}
 
 	async listInstalledPackages(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
@@ -107,6 +105,8 @@ export class CommunityPackagesLifecycleService {
 				await executeNpmCommand(['outdated', '--json'], {
 					doNotHandleError: true,
 					cwd: this.instanceSettings.nodesDownloadDir,
+					registry: this.communityPackagesConfig.registry,
+					authToken: this.communityPackagesConfig.authToken || undefined,
 				});
 			} catch (error) {
 				if (isNpmExecErrorWithStdout(error) && error.code === 1) {
@@ -130,29 +130,19 @@ export class CommunityPackagesLifecycleService {
 	}
 
 	async install(
-		args: { name: string | undefined; version?: string; verify?: boolean },
+		args: { name: string | undefined; version?: string },
 		user: UserLike,
 		presentation: CommunityPackageInstallPresentation,
 	): Promise<InstalledPackages> {
 		this.assertNotManagedByEnv();
-		const { name, verify, version } = args;
+		const { name } = args;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (version && !isValidVersionSpecifier(version)) {
-			throw new BadRequestError(`Invalid version: ${version}`);
-		}
-
-		let checksum: string | undefined;
-		let resolvedVersion = version;
-
-		if (verify) {
-			// Pins the vetted version too: without it, npm would install its own
-			// `latest` while the checksum describes the registry's latest, and the
-			// two can differ while a new release awaits vetting.
-			({ version: resolvedVersion, checksum } = await this.resolveVetted(name, version));
+		if (args.version && !isValidVersionSpecifier(args.version)) {
+			throw new BadRequestError(`Invalid version: ${args.version}`);
 		}
 
 		let parsed: CommunityPackages.ParsedPackageName;
@@ -164,6 +154,12 @@ export class CommunityPackagesLifecycleService {
 				error instanceof Error ? error.message : 'Failed to parse package name',
 			);
 		}
+
+		// The vetted list is keyed by bare package name; `name` may carry a `@version` suffix.
+		const { version: packageVersion, checksum } = await this.resolveVetted(
+			parsed.packageName,
+			args.version ?? parsed.version,
+		);
 
 		if (parsed.packageName === STARTER_TEMPLATE_NAME) {
 			const templateMessage =
@@ -197,7 +193,6 @@ export class CommunityPackagesLifecycleService {
 			throw new BadRequestError(`Package "${name}" is banned so it cannot be installed`);
 		}
 
-		const packageVersion = resolvedVersion ?? parsed.version;
 		let installedPackage: InstalledPackages;
 
 		try {
@@ -256,29 +251,39 @@ export class CommunityPackagesLifecycleService {
 	}
 
 	async update(
-		args: { name: string | undefined; version?: string; checksum?: string; verify?: boolean },
+		args: { name: string | undefined; version?: string },
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
 	): Promise<InstalledPackages> {
 		this.assertNotManagedByEnv();
-		const { name, version, verify } = args;
-
-		let checksum = args.checksum;
-
-		if (verify) {
-			({ checksum } = await this.resolveVetted(name ?? '', version));
-		}
+		const { name } = args;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (version && !isValidVersionSpecifier(version)) {
-			throw new BadRequestError(`Invalid version: ${version}`);
+		if (args.version && !isValidVersionSpecifier(args.version)) {
+			throw new BadRequestError(`Invalid version: ${args.version}`);
 		}
 
+		let parsed: CommunityPackages.ParsedPackageName;
+
+		try {
+			parsed = this.communityPackagesService.parseNpmPackageName(name);
+		} catch (error) {
+			throw new BadRequestError(
+				error instanceof Error ? error.message : 'Failed to parse package name',
+			);
+		}
+
+		const { packageName } = parsed;
+		const { version, checksum } = await this.resolveVetted(
+			packageName,
+			args.version ?? parsed.version,
+		);
+
 		const previouslyInstalledPackage =
-			await this.communityPackagesService.findInstalledPackage(name);
+			await this.communityPackagesService.findInstalledPackage(packageName);
 
 		if (!previouslyInstalledPackage) {
 			if (whenMissing === 'notFound') {
@@ -289,7 +294,7 @@ export class CommunityPackagesLifecycleService {
 
 		try {
 			const newInstalledPackage = await this.communityPackagesService.updatePackage(
-				this.communityPackagesService.parseNpmPackageName(name).packageName,
+				packageName,
 				previouslyInstalledPackage,
 				version,
 				checksum,
@@ -317,7 +322,7 @@ export class CommunityPackagesLifecycleService {
 
 			this.eventService.emit('community-package-updated', {
 				user,
-				packageName: name,
+				packageName,
 				packageVersionCurrent: previouslyInstalledPackage.installedVersion,
 				packageVersionNew: newInstalledPackage.installedVersion,
 				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),

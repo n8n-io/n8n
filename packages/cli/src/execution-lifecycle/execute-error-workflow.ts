@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
+import { toErrorWorkflowContext } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
@@ -74,7 +75,7 @@ export function executeErrorWorkflow(
 					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
 					mode,
 					retryOf,
-					executionContext: fullRunData.data.executionData?.runtimeData,
+					executionContext: toErrorWorkflowContext(fullRunData.data.executionData?.runtimeData),
 				},
 				workflow: {
 					id: workflowId,

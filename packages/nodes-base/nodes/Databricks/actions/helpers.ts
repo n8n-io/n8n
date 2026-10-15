@@ -2,6 +2,7 @@ import { retryabilityFromError } from '@n8n/backend-network';
 import { sleep } from '@n8n/utils/sleep';
 import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
 import type {
+	IAdditionalCredentialOptions,
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestOptions,
@@ -29,6 +30,7 @@ export async function databricksApiRequest(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
 	const requestOptions: IHttpRequestOptions = {
 		...options,
@@ -46,6 +48,8 @@ export async function databricksApiRequest(
 				context,
 				credentialType,
 				requestOptions,
+				// Spread so callers that pass nothing keep a two-argument call
+				...(additionalCredentialOptions ? [additionalCredentialOptions] : []),
 			);
 		} catch (error) {
 			const { status, retryAfterMs } = retryabilityFromError(error);
@@ -75,6 +79,28 @@ export async function getHost(
 ): Promise<string> {
 	const credentials = await context.getCredentials<DatabricksCredentials>(credentialType);
 	return credentials.host.replace(/\/$/, '');
+}
+
+export type GenieApiResponse = { body: IDataObject; headers: IDataObject };
+
+/**
+ * Adds the Genie UI link for a space or a conversation. `?o=` carries the workspace id;
+ * Azure workspaces need it.
+ */
+export function withGenieDeepLink(
+	response: GenieApiResponse,
+	host: string,
+	spaceId: string,
+	conversationId?: string,
+): IDataObject {
+	const workspaceId = response.headers['x-databricks-org-id'];
+	const query =
+		typeof workspaceId === 'string' && /^\d+$/.test(workspaceId) ? `?o=${workspaceId}` : '';
+	const chat = conversationId ? `/chats/${encodeURIComponent(conversationId)}` : '';
+	return {
+		...response.body,
+		deep_link: `${host}/genie/rooms/${encodeURIComponent(spaceId)}${chat}${query}`,
+	};
 }
 
 // Body text comes from whatever server `host` points at

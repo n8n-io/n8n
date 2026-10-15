@@ -878,6 +878,56 @@ describe('WebhookService', () => {
 		});
 	});
 
+	describe('findWebhook() - path equal to a dynamic template', () => {
+		test('does not resolve a path that matches a dynamic template', async () => {
+			const method = 'GET';
+			const template = 'user/:id/posts';
+			const webhookId = uuid();
+			const dynamicWebhook = createWebhook(method, template, webhookId, 3);
+
+			webhookRepository.findOneBy.mockResolvedValue(dynamicWebhook);
+			webhookRepository.findBy.mockResolvedValue([]);
+
+			const returnedWebhook = await webhookService.findWebhook(method, template);
+
+			expect(returnedWebhook).toBeNull();
+		});
+
+		test('resolves the dynamic row for its advertised webhookId path', async () => {
+			const method = 'GET';
+			const template = 'user/:id/posts';
+			const webhookId = uuid();
+			const dynamicWebhook = createWebhook(method, template, webhookId, 3);
+
+			webhookRepository.findOneBy.mockResolvedValue(null);
+			webhookRepository.findBy.mockResolvedValue([dynamicWebhook]);
+
+			const returnedWebhook = await webhookService.findWebhook(
+				method,
+				[webhookId, 'user/123/posts'].join('/'),
+			);
+
+			expect(returnedWebhook).toBe(dynamicWebhook);
+		});
+
+		test('does not serve a dynamic row cached under its bare template', async () => {
+			const method = 'GET';
+			const template = 'user/:id/posts';
+			const webhookId = uuid();
+			const dynamicWebhook = createWebhook(method, template, webhookId, 3);
+
+			cacheService.get.mockResolvedValueOnce(dynamicWebhook);
+			webhookRepository.create.mockImplementationOnce(
+				(data) => Object.assign(new WebhookEntity(), data) as WebhookEntity,
+			);
+			webhookRepository.findBy.mockResolvedValue([]);
+
+			const returnedWebhook = await webhookService.findWebhook(method, template);
+
+			expect(returnedWebhook).toBeNull();
+		});
+	});
+
 	describe('findCached()', () => {
 		test('should not cache dynamic webhooks', async () => {
 			const method = 'GET';

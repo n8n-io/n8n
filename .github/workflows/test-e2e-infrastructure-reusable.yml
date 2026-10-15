@@ -74,7 +74,7 @@ jobs:
       # The aggregator auto-detects n8n version and commit SHA from the repo
       # (anchored to its own file location), so no path/version glue is needed.
       - name: Aggregate sizing matrix
-        working-directory: packages/testing/playwright
+        working-directory: packages/quality/testing/playwright
         run: |
           pnpm exec tsx scripts/sizing-matrix-aggregate.ts \
             --input /tmp/benchmark-reports \
@@ -86,8 +86,8 @@ jobs:
         with:
           name: sizing-matrix
           path: |
-            packages/testing/playwright/sizing-matrix.json
-            packages/testing/playwright/sizing-matrix.md
+            packages/quality/testing/playwright/sizing-matrix.json
+            packages/quality/testing/playwright/sizing-matrix.md
           retention-days: 14
           if-no-files-found: error
 

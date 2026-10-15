@@ -6,17 +6,31 @@ export default defineConfig(
 	globalIgnores(['coverage/**', 'vitest.config.ts']),
 	backendConfig,
 	{
+		files: ['./src/**/*.ts'],
+		ignores: ['./src/services/jwt.service.ts', './src/**/__tests__/**'],
 		rules: {
-			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: 'jsonwebtoken',
+							allowImportNames: ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'],
+							allowTypeImports: true,
+							message: 'Sign and verify through JwtService.',
+						},
+					],
+					patterns: [{ group: ['jsonwebtoken/*'], message: 'Sign and verify through JwtService.' }],
+				},
+			],
+		},
+	},
+	{
+		rules: {
 			'n8n-local-rules/no-guardrail-disable': [
 				'error',
 				{
 					guarded: [
-						{
-							rule: 'misplaced-n8n-typeorm-import',
-							message:
-								'Keep TypeORM in the persistence layer: put the query behind a use-case repository method in @n8n/db.',
-						},
 						{
 							rule: 'no-unsealed-workflow-entity-write',
 							message: 'Route the write through a token-gated `WorkflowRepository` method.',

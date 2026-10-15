@@ -4,8 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@n8n/errors';
 import type { UserRequest } from '@/requests';
-import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { JwtService, UrlService } from '@n8n/backend-services';
 import type { UserService } from '@/services/user.service';
 
 import { UsersController } from '../users.controller';
@@ -85,6 +84,7 @@ describe('UsersController', () => {
 				where: { id: inviteeId },
 			});
 			expect(jwtService.sign).toHaveBeenCalledWith(
+				'invite',
 				{
 					inviterId,
 					inviteeId,
@@ -143,6 +143,7 @@ describe('UsersController', () => {
 			await controller.generateInviteLink(request, mock<Response>());
 
 			expect(jwtService.sign).toHaveBeenCalledWith(
+				'invite',
 				{
 					inviterId,
 					inviteeId,

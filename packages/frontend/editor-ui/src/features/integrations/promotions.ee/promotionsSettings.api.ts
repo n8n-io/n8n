@@ -1,9 +1,13 @@
 import type {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
+	ListPromotionRepositoriesQueryDto,
+	ListPromotionBranchesQueryDto,
 	PromotionApplyConfigPublicDto,
 	PromotionCheckoutPublicDto,
 	PromotionConnectionPublicDto,
@@ -15,6 +19,8 @@ import type {
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
+	PromotionRepositoryListPublicDto,
+	PromotionBranchListPublicDto,
 	PromotionPromoteConfigPublicDto,
 	UpdatePromotionConnectionDto,
 	UpdatePromotionProviderDto,
@@ -32,6 +38,31 @@ export type PromotionConnection = PromotionConnectionPublicDto;
 export type { PromotionConnectionSummary };
 
 const promotionsApiRoot = '/promotions';
+
+export const fetchPromotionRepositories = async (
+	context: PublicApiContext,
+	providerId: string,
+	query: Partial<ListPromotionRepositoriesQueryDto> = {},
+): Promise<PromotionRepositoryListPublicDto> =>
+	await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories`,
+		data: query,
+	});
+
+export const fetchPromotionBranches = async (
+	context: PublicApiContext,
+	providerId: string,
+	repositoryId: string,
+	query: Partial<ListPromotionBranchesQueryDto> = {},
+): Promise<PromotionBranchListPublicDto> =>
+	await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories/${encodeURIComponent(repositoryId)}/branches`,
+		data: query,
+	});
 
 async function fetchAllPages<T>(
 	fetchPage: (cursor?: string) => Promise<{ data: T[]; nextCursor: string | null }>,
@@ -249,5 +280,31 @@ export const continueApplyPromotion = async (
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: `${promotionsApiRoot}/connections/${connectionId}/apply/continue`,
+		data: payload,
+	});
+
+/** Applies only the chosen workflows into the destination project. */
+export const applyProjectSelection = async (
+	context: PublicApiContext,
+	projectId: string,
+	payload: ApplySelectionDto,
+): Promise<ApplyPackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/projects/${projectId}/apply`,
+		data: payload,
+	});
+
+/** Resumes a selective apply that paused on unresolved bindings, once they are created. */
+export const continueApplyProjectSelection = async (
+	context: PublicApiContext,
+	projectId: string,
+	payload: ContinueApplySelectionDto,
+): Promise<ApplyPackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/projects/${projectId}/apply/continue`,
 		data: payload,
 	});

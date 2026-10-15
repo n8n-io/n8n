@@ -189,7 +189,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'An eligible user reached the Instance AI empty state for the free-use nudge experiment, including the control variant.',
 		properties: z.object({
 			variant: freeNudgeVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/105_instance_ai_free_nudge': freeNudgeVariant,
 		}),
 	},
@@ -198,7 +197,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user dismissed a visible Instance AI free-use nudge.',
 		properties: z.object({
 			variant: freeNudgeTreatmentVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/105_instance_ai_free_nudge': freeNudgeTreatmentVariant,
 		}),
 	},
@@ -210,7 +208,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			workflow_id: z.string().nullable(),
 			variant: openWorkflowInAssistantVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
@@ -220,7 +217,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			method: z.enum(['got_it', 'never_show_again', 'close', 'settings_link']),
 			variant: openWorkflowInAssistantVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
@@ -230,7 +226,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			value: z.enum(['assistant', 'manual']),
 			variant: openWorkflowInAssistantVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
@@ -241,7 +236,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			workflow_id: z.string(),
 			thread_id: z.string().optional(),
 			variant: openWorkflowInAssistantVariant,
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
@@ -257,7 +251,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The Fix with Assistant button was shown inside a workflow error toast. Fires once for each toast that receives the button.',
 		properties: z.object({
 			variant: z.enum(['control', 'variant']),
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
 		}),
 	},
@@ -272,7 +265,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 					'Whether n8n Assistant was enabled. True opens the Assistant. False opens Assistant settings.',
 				),
 			variant: z.enum(['control', 'variant']),
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
 		}),
 	},
@@ -312,12 +304,15 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user started connecting a new credential for an MCP server.',
 		properties: z.object({ server_slug: z.string() }),
 	},
-	MCP_TOOL_FILTER_SETTINGS_UPDATED: {
-		name: 'Instance AI mcp tool filter settings updated',
-		description: 'The user updated which tools are enabled for an MCP server.',
+	MCP_TOOL_PERMISSIONS_UPDATED: {
+		name: 'User updated Instance AI MCP tool permissions',
+		description:
+			'The user saved changed read, write, or tool-specific permissions for an MCP server.',
 		properties: z.object({
 			server_slug: z.string(),
-			inclusion_mode: z.enum(['all', 'selected', 'except']),
+			read_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			write_permission: z.enum(['always_allow', 'require_approval', 'blocked']),
+			tool_override_count: z.number().int().nonnegative(),
 		}),
 	},
 	BROWSER_USE_MODAL_OPENED: {

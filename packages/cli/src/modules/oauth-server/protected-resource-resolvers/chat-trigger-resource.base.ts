@@ -3,10 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_PATH_SUFFIX } from 'n8n-workflow';
 
-import type {
-	ProtectedResource,
-	ProtectedResourceResolver,
-} from '@/services/protected-resource.registry';
+import type { ProtectedResource, ProtectedResourceResolver } from '@n8n/backend-services/auth';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
@@ -101,6 +98,7 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 			// triggers, each its own resource.
 			id: `workflow-chat:${workflowId}:${path}`,
 			isFirstParty: true,
+			surface: 'trigger' as const,
 			getResourceUrl: () => resourceUrl,
 			getAudiences: () => audiences,
 			getAllowedRedirectUris: async () => [resourceUrl],

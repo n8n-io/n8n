@@ -162,6 +162,15 @@ for (const backend of ['memory', 'redis'] as const) {
 				await expect(promise).resolves.toBe('refreshValue');
 			});
 
+			test('should honor ttl on a refreshed value', async () => {
+				const promise = cacheService.get('key', { refreshFn: createRefreshFn(), ttl: 100 });
+				await expect(promise).resolves.toBe('refreshValue');
+
+				await sleep(200);
+
+				await expect(cacheService.get('key')).resolves.toBeUndefined();
+			});
+
 			test('should handle non-ASCII key', async () => {
 				const nonAsciiKey = 'ԱԲԳ';
 				await cacheService.set(nonAsciiKey, 'value');
@@ -329,6 +338,27 @@ for (const backend of ['memory', 'redis'] as const) {
 
 				await expect(cacheService.getHashValue('key', 'field1')).resolves.toBe('value1');
 			});
+
+			if (backend === 'memory') {
+				test('should not return inherited properties as hash field values', async () => {
+					await cacheService.setHash('key', { field1: { id: 'value1' } });
+
+					await expect(cacheService.getHashValue('key', '__proto__')).resolves.toBeUndefined();
+					await expect(cacheService.getHashValue('key', 'constructor')).resolves.toBeUndefined();
+				});
+
+				test('should not store a `__proto__` hash field', async () => {
+					await cacheService.setHash('key', { field1: { id: 'value1' } });
+					// A computed key creates an own `__proto__` field, as a hash keyed by a workflow id does
+					await cacheService.setHash('key', { ['__proto__']: { id: 'value2' } });
+
+					expect(Object.getPrototypeOf(await cacheService.get('key'))).toBe(Object.prototype);
+					await expect(cacheService.getHashValue('key', '__proto__')).resolves.toBeUndefined();
+					await expect(cacheService.getHashValue('key', 'field1')).resolves.toEqual({
+						id: 'value1',
+					});
+				});
+			}
 		});
 	});
 }

@@ -88,6 +88,46 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 1m 5s');
 	});
 
+	it('should not count the time until an interrupted tool call was swept', () => {
+		const tc = makeToolCall({
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-02T22:06:23Z',
+			interrupted: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry('tc-1')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Finished thinking');
+	});
+
+	it('should end the duration at the last completed call when a later call was interrupted', () => {
+		const done = makeToolCall({
+			toolCallId: 'tc-1',
+			startedAt: '2026-01-01T00:00:00Z',
+			completedAt: '2026-01-01T00:00:12Z',
+		});
+		const swept = makeToolCall({
+			toolCallId: 'tc-2',
+			startedAt: '2026-01-01T00:00:13Z',
+			completedAt: '2026-01-02T22:06:23Z',
+			interrupted: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [done, swept] }),
+				entries: [toolEntry('tc-1'), toolEntry('tc-2')],
+				active: false,
+			},
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Thought for 12s');
+	});
+
 	it('should fall back to a static title when no timestamps exist', () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -339,7 +379,11 @@ describe('ThinkingBlock', () => {
 		const { getByTestId, getAllByText, getByText } = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
-				entries: [reasoning('deep thoughts'), text('Checking credentials now.'), toolEntry('tc-1')],
+				entries: [
+					reasoning('Deep thoughts. More detail.'),
+					text('Checking credentials now.'),
+					toolEntry('tc-1'),
+				],
 				active: true,
 			},
 		});
@@ -348,8 +392,23 @@ describe('ThinkingBlock', () => {
 
 		// Appears twice: as the header status line and as the narration paragraph
 		expect(getAllByText('Checking credentials now.')).toHaveLength(2);
-		// Reasoning rows are labeled with their own first sentence
-		expect(getByText('deep thoughts')).toBeInTheDocument();
+		// Reasoning shows in full, not behind a second toggle
+		expect(getByText('Deep thoughts. More detail.')).toBeVisible();
+	});
+
+	it('should show the full reasoning on the first expand when it is the header line', async () => {
+		const { getByTestId, getByText, queryByRole } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('\n\nThis sounds like a mapping request. So I look it up.')],
+				active: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('thinking-block-header'));
+
+		expect(getByText('This sounds like a mapping request. So I look it up.')).toBeVisible();
+		expect(queryByRole('button', { name: /This sounds like/, expanded: false })).toBeNull();
 	});
 });
 

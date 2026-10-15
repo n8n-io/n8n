@@ -300,6 +300,79 @@ describe('AgentModelCatalogService', () => {
 		expect(result.models.map((m) => m.id)).toEqual(['claude-sonnet-4-6']);
 	});
 
+	it('keeps the gateway label of a google model missing from the catalog', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [{ name: 'Gemini Brand New', value: 'models/gemini-brand-new' }],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({ id: 'gemini-brand-new', name: 'Gemini Brand New' }),
+		]);
+	});
+
+	it('prefers the gateway name over the catalog name and keeps its priority for a managed model', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [
+				{ name: 'Gemini 2.5 Flash (Gateway)', value: 'models/gemini-2.5-flash', priority: 10 },
+				{ name: 'models/gemini-2.5-flash-lite', value: 'models/gemini-2.5-flash-lite' },
+			],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({
+				id: 'gemini-2.5-flash',
+				name: 'Gemini 2.5 Flash (Gateway)',
+				reasoning: true,
+				priority: 10,
+			}),
+			expect.objectContaining({ id: 'gemini-2.5-flash-lite', name: 'gemini-2.5-flash-lite' }),
+		]);
+	});
+
+	it('falls back to the catalog name or the id when the gateway reports no name', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [
+				{ name: '', value: 'models/gemini-2.5-flash' },
+				{ name: '', value: 'models/gemini-brand-new', priority: 5 },
+			],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }),
+			{ id: 'gemini-brand-new', name: 'gemini-brand-new', toolCall: true, priority: 5 },
+		]);
+	});
+
 	it('strips the "models/" prefix from google model ids before matching', async () => {
 		const { service, lookupService } = makeService();
 		lookupService.lookup.mockResolvedValue({

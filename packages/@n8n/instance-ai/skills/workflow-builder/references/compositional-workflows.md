@@ -1,3 +1,11 @@
+---
+name: compositional-workflows
+description: >-
+  Load before splitting a large workflow into supporting sub-workflows and a
+  main workflow, when the work has reusable chunks or benefits from independent
+  testing. Simple workflows stay in one workflow.
+---
+
 # Compositional Workflows
 
 For complex workflows, you may decompose work into supporting sub-workflows and

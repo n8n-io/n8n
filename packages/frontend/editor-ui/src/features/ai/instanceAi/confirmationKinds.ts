@@ -9,8 +9,8 @@ import type { PendingConfirmationItem } from './instanceAi.store';
  *   continue, channel setup.
  *
  * Items are inline-by-presence: if `setupRequests` / `credentialRequests` /
- * `credentialFlow` / `channelConfig` is set, the panel renders a setup or
- * credential card regardless of `inputType`. Otherwise `inputType` drives the
+ * `credentialFlow` / `channelConfig` / `testListener` is set, the panel renders
+ * a setup, credential, channel, or test-listener card regardless of `inputType`. Otherwise `inputType` drives the
  * choice; an absent or `'approval'` `inputType` falls through to floating.
  */
 export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
@@ -20,6 +20,7 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 	if (conf.credentialRequests?.length) return false;
 	if (conf.credentialFlow) return false;
 	if (conf.channelConfig) return false;
+	if (conf.testListener) return false;
 
 	switch (conf.inputType) {
 		case 'plan-review':

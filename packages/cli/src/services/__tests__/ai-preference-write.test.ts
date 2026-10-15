@@ -63,15 +63,22 @@ describe('writeAssistantPreference', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
-			{ surface: 'mcp', scope_type: 'user', text_length: 19 },
+			{ user_id: 'user-1', surface: 'mcp', scope_type: 'user', text_length: 19 },
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-			{ surface: 'mcp', outcome: 'accepted', scope_type: 'user', text_length: 19 },
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				outcome: 'accepted',
+				scope_type: 'user',
+				text_length: 19,
+			},
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
 			{
+				user_id: 'user-1',
 				surface: 'mcp',
 				offered_scope: 'user',
 				accepted_scope: 'user',
@@ -80,7 +87,13 @@ describe('writeAssistantPreference', () => {
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
-			{ surface: 'mcp', scope_type: 'user', text_length: 19, replaced_existing: false },
+			{
+				user_id: 'user-1',
+				surface: 'mcp',
+				scope_type: 'user',
+				text_length: 19,
+				replaced_existing: false,
+			},
 		);
 	});
 
@@ -111,6 +124,7 @@ describe('writeAssistantPreference', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
 				{
+					user_id: 'user-1',
 					surface: 'mcp',
 					reason: expected.reason,
 					scope_type: 'user',

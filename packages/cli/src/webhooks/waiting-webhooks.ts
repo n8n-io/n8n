@@ -229,6 +229,18 @@ export class WaitingWebhooks implements IWebhookManager {
 		return { valid, webhookPath };
 	}
 
+	/**
+	 * Removes the waiting token from the request's query so it never reaches
+	 * the resumed node's own output data.
+	 */
+	private stripTokenFromRequest(req: express.Request) {
+		delete req.query[WAITING_TOKEN_QUERY_PARAM];
+
+		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+		url.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+		req.url = `${url.pathname}${url.search}`;
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -250,7 +262,9 @@ export class WaitingWebhooks implements IWebhookManager {
 		if (execution?.data.resumeToken) {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
-			const isSendAndWait = this.isSendAndWaitRequest(nodes, suffix);
+			// Send-and-wait node ids carried in the signature query value require HMAC validation too.
+			const effectiveSuffix = suffix ?? this.parseSignatureParam(req).webhookPath;
+			const isSendAndWait = this.isSendAndWaitRequest(nodes, effectiveSuffix);
 
 			// Send-and-wait uses HMAC to protect tamper-sensitive query params (e.g. approved=true).
 			// All other waiting URLs use a simple random token comparison.
@@ -267,6 +281,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				}
 				return { noWebhookResponse: true };
 			}
+			this.stripTokenFromRequest(req);
 			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
 			if (!suffix && webhookPath) {
 				suffix = webhookPath;
@@ -289,12 +304,19 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ConflictError(`The execution "${executionId}" is running already.`);
 		}
 
+		// A run parked at a node boundary is not waiting for this webhook: resuming
+		// it here would hand the webhook payload to a node that never asked for it.
+		if (execution.data?.waitReason === 'suspended') {
+			throw new ConflictError(`The execution "${executionId}" is about to resume.`);
+		}
+
 		if (execution.data?.resultData?.error) {
 			const message = `The execution "${executionId}" has finished with error.`;
 			this.logger.debug(message, { error: execution.data.resultData.error });
 			throw new ConflictError(message);
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
@@ -321,12 +343,16 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	private emitExecutionResumedEvent(execution: IExecutionResponse, executionId: string) {
+	private emitExecutionResumedEvent(
+		execution: IExecutionResponse,
+		executionId: string,
+		responseAt: Date,
+	) {
 		this.eventService.emit('execution-resumed', {
 			executionId,
 			workflowId: execution.workflowData.id,
 			resumeSource: 'webhook', // today, we only emit the 'execution-resumed' event for webhook wait nodes
-			responseAt: new Date(),
+			responseAt,
 		});
 	}
 
@@ -406,9 +432,10 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			const isWaitingForWebhook =
 				!this.includeForms && !this.isSendAndWaitRequest(workflow.nodes, suffix);
-			if (isWaitingForWebhook) {
-				this.emitExecutionResumedEvent(execution, executionId);
-			}
+			const responseAt = new Date();
+			const onResume = isWaitingForWebhook
+				? () => this.emitExecutionResumedEvent(execution, executionId, responseAt)
+				: undefined;
 
 			return await new Promise((resolve, reject) => {
 				WebhookHelpers.executeWebhook(
@@ -429,6 +456,8 @@ export class WaitingWebhooks implements IWebhookManager {
 						}
 						resolve(data);
 					},
+					undefined,
+					{ storedAt: execution.storedAt, onResume },
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {

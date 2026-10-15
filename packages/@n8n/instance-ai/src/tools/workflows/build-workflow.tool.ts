@@ -633,6 +633,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
+			// Limited mode: reads omit parameter values, so a save would erase them.
+			if (context.allowSendingParameterValues === false) {
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: [
+						'n8n Assistant cannot create or edit workflows while data sharing is turned off. Nothing was saved.',
+					],
+					remediation: createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: 'parameter_values_hidden',
+						guidance:
+							'Do not retry or rewrite the workflow code. Tell the user that an instance owner or admin can turn on "Send actual data values" in Settings > AI usage.',
+					}),
+				};
+			}
+
 			const { groupingDecision, groupingReason } = input;
 			if (groupingDecision === 'not_warranted' && !groupingReason?.trim()) {
 				const guidance =
@@ -701,6 +719,33 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			// The source was read while parameter values were hidden. Saving it would erase them.
+			if (binding.workflowId && binding.parameterValuesIncluded === false) {
+				const remediation = createRemediation({
+					category: 'code_fixable',
+					shouldEdit: false,
+					reason: 'workflow_source_refresh_required',
+					guidance:
+						'Call workflows(action="get-as-code") for this workflow before rebuilding. ' +
+						'If it reports a conflict, preserve your edits separately, remove the stale file, and read the workflow again. Then reapply your edits.',
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'blocked',
+					stage: 'source_read',
+					binding,
+					targetWorkflowId: binding.workflowId,
+					remediation,
+					errorCount: 1,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: binding.workflowId,
+					errors: ['This workflow source may omit saved parameter values. Nothing was saved.'],
+					remediation,
+				};
+			}
+
 			if (input.workflowId && !binding.workflowId) {
 				try {
 					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
@@ -730,8 +775,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			const targetWorkflowId = binding.workflowId;
 			// Only the folder-enabled schema carries the field; the narrowing keeps the
 			// handler valid for both shapes without a cast.
+			// Blank or "/" names no folder: OpenAI's strict tool schemas make models fill every field.
 			const folderPath =
-				'folderPath' in input && typeof input.folderPath === 'string'
+				'folderPath' in input &&
+				typeof input.folderPath === 'string' &&
+				/[^\s/]/.test(input.folderPath)
 					? input.folderPath
 					: undefined;
 			if (folderPath !== undefined && targetWorkflowId) {
@@ -1295,7 +1343,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
-				await preserveExistingNodePositions(json, targetWorkflowId, context);
 				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
 				const droppedGroupWarnings = nodeGroupDroppedWarnings(
 					dropInvalidWorkflowJsonGroups(
@@ -1307,6 +1354,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				);
 				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
 				informational.push(...droppedGroupWarnings);
+				// After the drop: placement reads group membership.
+				await preserveExistingNodePositions(json, targetWorkflowId, context);
 
 				const topLevel = summarizeWorkflowTopLevelItems(json);
 				const grouping: GroupingOutcome = {
@@ -1434,13 +1483,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(t): t is { nodeName: string; nodeType: string } =>
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
-				// Setup routing is scoped to nodes this build actually changed:
-				// pre-existing nodes the build merely round-tripped must not route
-				// the user into setup for an unrelated edit. Undefined = unscoped
-				// (new workflow, or prior state unreadable).
-				const changedNodeNames = savedWorkflowSnapshot
+				// Setup routing is scoped to nodes this work item's builds actually
+				// changed: pre-existing nodes the build merely round-tripped must not
+				// route the user into setup for an unrelated edit. Earlier builds of the
+				// same work item (or the same run) stay in scope, so a fix that leaves a
+				// new node alone keeps its pending setup. Undefined = unscoped (workflow
+				// created by this work item, or prior state unreadable).
+				const runId = buildContext?.runId ?? context.runId;
+				// The file path is the fallback work item id. It stays the same across
+				// work items, so only the run can match then.
+				const scopeWorkItemId = resolvedWorkItemId === filePath ? undefined : resolvedWorkItemId;
+				const priorScope = binding.setupScope;
+				const sameWork =
+					(scopeWorkItemId !== undefined && priorScope?.workItemId === scopeWorkItemId) ||
+					(runId !== undefined && priorScope?.runId === runId);
+				const buildChanges = savedWorkflowSnapshot
 					? computeChangedNodeNames(json, savedWorkflowSnapshot)
 					: undefined;
+				const changedNodeNames = !sameWork
+					? buildChanges
+					: priorScope?.nodeNames && buildChanges
+						? [...new Set([...priorScope.nodeNames, ...buildChanges])]
+						: undefined;
 				const isInSetupScope = (nodeName: string | undefined) =>
 					changedNodeNames === undefined ||
 					(nodeName !== undefined && changedNodeNames.includes(nodeName));
@@ -1506,7 +1570,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						scriptedGateCount: waitGateScripts?.length ?? 0,
 						savedWorkflowId: saved.id,
 					});
-					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
 					binding = await saveWorkflowSourceFileBinding(context, {
@@ -1516,6 +1579,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
 						setupPending: undefined,
+						setupScope: { workItemId: scopeWorkItemId, runId, nodeNames: changedNodeNames },
 						...(setupPreferences
 							? {
 									setupPreferences: {
@@ -1610,6 +1674,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 
 					failureTracker.clear(workItemKey);
+					await context.onArtifactChanged?.({
+						type: 'workflow',
+						id: saved.id,
+						...(json.name ? { name: json.name } : {}),
+					});
 
 					trackWorkflowSourceBuild(context, {
 						result: 'success',

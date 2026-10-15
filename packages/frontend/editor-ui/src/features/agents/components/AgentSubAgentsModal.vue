@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 import {
 	N8nButton,
 	N8nCallout,
@@ -9,20 +9,23 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { SUB_AGENT_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
+import { SUB_AGENT_USE_WHEN_MAX_LENGTH, type AgentPersonalisation } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import { TOOL_ICON_AVATAR_RENDERER_KEY } from '@/features/shared/toolsConnection/types';
 import type {
 	AgentConnectionItem,
 	ToolConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
+import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 
 export type AgentSubAgentOption = {
 	id: string;
 	name: string;
+	personalisation?: AgentPersonalisation;
 	added?: boolean;
 	useWhen?: string;
 	invalidReasons?: string[];
@@ -60,6 +63,9 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
+// Avatar rows render through the shared tools connection modal
+provide(TOOL_ICON_AVATAR_RENDERER_KEY, AgentPersonalisationIcon);
+
 const availableAgents = computed(() => ('agents' in props.data ? props.data.agents : []));
 const pickerItems = computed<AgentConnectionItem[]>(() =>
 	availableAgents.value.map((agent) => ({
@@ -67,6 +73,9 @@ const pickerItems = computed<AgentConnectionItem[]>(() =>
 		kind: 'agent',
 		agentId: agent.id,
 		title: agent.name,
+		iconSource: agent.personalisation
+			? { type: 'avatar', personalisation: agent.personalisation }
+			: undefined,
 		status: agent.added ? 'connected' : 'none',
 		category: 'agents',
 	})),

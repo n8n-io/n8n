@@ -3,12 +3,11 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type {
-	ProtectedResource,
-	ProtectedResourceRegistry,
-} from '@/services/protected-resource.registry';
 import type { UrlService } from '@n8n/backend-services';
+import type { AuthenticationService } from '@n8n/inbound-auth';
+import type { ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
+import type { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import { OAuthServerService } from '../oauth-server.service';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 
@@ -27,6 +26,8 @@ beforeAll(async () => {
 
 const urlService = mock<UrlService>();
 const registry = mock<ProtectedResourceRegistry>();
+const localServer = mock<OAuthServerLocalAuthorizationServer>();
+const authenticationService = mock<AuthenticationService>();
 let controller: OAuthControllerClass;
 
 const makeRes = () => {
@@ -42,6 +43,7 @@ const makeReq = (resourcePath: string | string[], originalUrl?: string): Request
 	({ params: { resourcePath }, originalUrl }) as unknown as Request;
 
 const resource = (scopes: string[], isAvailable?: () => Promise<boolean>): ProtectedResource => ({
+	surface: 'instance-mcp',
 	id: 'instance-mcp',
 	getResourceUrl: () => 'https://n8n.test/mcp-server/http',
 	getAudiences: () => ['https://n8n.test/mcp-server/http'],
@@ -50,13 +52,35 @@ const resource = (scopes: string[], isAvailable?: () => Promise<boolean>): Prote
 	scopes,
 });
 
+const publicApiResource: ProtectedResource = {
+	surface: 'public-api',
+	id: 'public-api',
+	getResourceUrl: () => 'https://n8n.test/api/v1',
+	getAudiences: () => ['https://n8n.test/api/v1'],
+	authorize: async () => true,
+	scopes: [],
+};
+
 beforeEach(() => {
 	vi.resetAllMocks();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
-	controller = new OAuthController(urlService, registry);
+	controller = new OAuthController(urlService, registry, localServer, authenticationService);
 });
 
 describe('OAuthController', () => {
+	describe('metadata', () => {
+		test("returns the local authorization server's document with CORS headers", async () => {
+			const document = { issuer: 'https://n8n.test', jwks_uri: 'https://n8n.test/jwks' };
+			localServer.getMetadata.mockResolvedValue(document);
+			const res = makeRes();
+
+			await controller.metadata(makeReq([]), res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.json).toHaveBeenCalledWith(document);
+		});
+	});
+
 	describe('protectedResourceMetadata', () => {
 		test('resolves the registry with the reconstructed leading-slash path', async () => {
 			registry.getByResourcePath.mockResolvedValue(resource(['tool:listWorkflows']));
@@ -111,6 +135,33 @@ describe('OAuthController', () => {
 				bearer_methods_supported: ['header'],
 				authorization_servers: ['https://n8n.test'],
 				scopes_supported: scopes,
+			});
+			expect(authenticationService.advertise).not.toHaveBeenCalled();
+		});
+
+		test('lists the issuers of the trusted sources accepted on the public-api surface', async () => {
+			registry.getByResourcePath.mockResolvedValue(publicApiResource);
+			authenticationService.advertise.mockResolvedValue({
+				authorizationServers: ['https://n8n.test', 'https://idp.example'],
+				challenges: [],
+			});
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['api', 'v1']), res);
+
+			expect(authenticationService.advertise).toHaveBeenCalledWith(
+				expect.objectContaining({
+					surface: 'public-api',
+					resource: {
+						url: 'https://n8n.test/api/v1',
+						acceptedAudiences: ['https://n8n.test/api/v1'],
+					},
+				}),
+			);
+			expect(res.json).toHaveBeenCalledWith({
+				resource: 'https://n8n.test/api/v1',
+				bearer_methods_supported: ['header'],
+				authorization_servers: ['https://n8n.test', 'https://idp.example'],
 			});
 		});
 

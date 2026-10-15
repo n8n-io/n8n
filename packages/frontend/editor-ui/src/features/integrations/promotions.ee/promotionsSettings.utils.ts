@@ -3,23 +3,41 @@ import type {
 	CreatePromotionProviderDto,
 	PromotionDirection,
 	PromotionProviderAuthType,
+	PromotionProviderType,
 	PromotionSshKeyType,
 	UpdatePromotionConnectionDto,
 	UpdatePromotionProviderDto,
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 } from '@n8n/api-types';
+import { promotionProviderTypeCapabilities } from '@n8n/api-types';
 
 import type { PromotionConnection, PromotionProvider } from './promotionsSettings.api';
 
 export type ProviderFormState = {
 	name: string;
+	type: PromotionProviderType;
+	baseUrl: string;
 	/** Cannot change after creation. */
 	authType: PromotionProviderAuthType;
 	keyType: PromotionSshKeyType;
 	username: string;
 	password: string;
 	regenerateKey: boolean;
+};
+
+export type PromotionProviderChange = {
+	id: string;
+	hostChanged: boolean;
+	credentialsChanged: boolean;
+};
+
+export const isSamePromotionHostUrl = (current: string, next: string): boolean => {
+	try {
+		return new URL(current).href.replace(/\/$/, '') === new URL(next).href.replace(/\/$/, '');
+	} catch {
+		return false;
+	}
 };
 
 type DirectionFormState = {
@@ -32,6 +50,7 @@ export type ConnectionFormState = {
 	name: string;
 	providerId: string;
 	remoteUrl: string;
+	repositoryPath?: string;
 	apply: DirectionFormState & { branchName: string };
 	promote: DirectionFormState & { baseBranchName: string; createBranchOnPromotion: boolean };
 };
@@ -44,6 +63,8 @@ export type ConnectionWrite =
 
 export const emptyProviderForm = (): ProviderFormState => ({
 	name: '',
+	type: 'git',
+	baseUrl: '',
 	authType: 'ssh-key',
 	keyType: 'ed25519',
 	username: '',
@@ -54,17 +75,20 @@ export const emptyProviderForm = (): ProviderFormState => ({
 export const providerFormFrom = (provider: PromotionProvider): ProviderFormState => ({
 	...emptyProviderForm(),
 	name: provider.name,
+	type: provider.type,
+	baseUrl: 'baseUrl' in provider.config ? provider.config.baseUrl : '',
 	authType: provider.authType,
 	keyType: 'keyType' in provider.config ? provider.config.keyType : 'ed25519',
 });
 
-/** New forms must set whether promotion creates a branch. */
+/** Keep field order aligned with connectionFormFrom for JSON-based dirty checks. */
 export const emptyConnectionForm = (): ConnectionFormState => ({
 	name: '',
 	providerId: '',
 	remoteUrl: '',
-	apply: { enabled: false, branchName: '' },
-	promote: { enabled: false, baseBranchName: '', createBranchOnPromotion: false },
+	repositoryPath: undefined,
+	apply: { enabled: false, name: undefined, branchName: '' },
+	promote: { enabled: false, name: undefined, baseBranchName: '', createBranchOnPromotion: false },
 });
 
 export const connectionFormFrom = (connection: PromotionConnection): ConnectionFormState => {
@@ -74,6 +98,7 @@ export const connectionFormFrom = (connection: PromotionConnection): ConnectionF
 		name: connection.name,
 		providerId: connection.provider.id,
 		remoteUrl: connection.target.remoteUrl,
+		repositoryPath: connection.target.repositoryPath,
 		apply: {
 			enabled: apply !== undefined,
 			name: apply?.name,
@@ -106,11 +131,18 @@ export const buildProviderCreatePayload = (
 	form: ProviderFormState,
 ): CreatePromotionProviderDto => ({
 	name: form.name.trim(),
-	type: 'git',
+	type: form.type,
+	...(promotionProviderTypeCapabilities[form.type].hasHostApi && {
+		config: { schemaVersion: 1, baseUrl: form.baseUrl.trim() },
+	}),
 	auth:
 		form.authType === 'ssh-key'
 			? { authType: 'ssh-key', keyType: form.keyType }
-			: { authType: 'token', username: form.username.trim(), password: form.password },
+			: {
+					authType: 'token',
+					...(form.type === 'git' && { username: form.username.trim() }),
+					password: form.password,
+				},
 });
 
 /** If credentials are absent, the API keeps them. SSH rotation keeps the key type. */
@@ -122,13 +154,20 @@ export const buildProviderUpdatePayload = (
 
 	const name = form.name.trim();
 	if (name !== current.name) payload.name = name;
+	if (
+		'baseUrl' in current.config &&
+		!isSamePromotionHostUrl(current.config.baseUrl, form.baseUrl)
+	) {
+		payload.config = { schemaVersion: 1, baseUrl: form.baseUrl.trim() };
+	}
+	const username = form.username.trim();
 
 	if (form.authType === 'ssh-key' && form.regenerateKey) {
 		payload.auth = { authType: 'ssh-key' };
-	} else if (form.authType === 'token' && form.username.trim() && form.password) {
+	} else if (form.authType === 'token' && form.password && (current.type !== 'git' || username)) {
 		payload.auth = {
 			authType: 'token',
-			username: form.username.trim(),
+			...(current.type === 'git' && { username }),
 			password: form.password,
 		};
 	}
@@ -161,7 +200,11 @@ export const planConnectionWrites = (
 	if (name !== current.name) payload.name = name;
 
 	const remoteUrl = form.remoteUrl.trim();
-	if (remoteUrl !== current.target.remoteUrl) {
+	// A matching URL still needs a write when it converts a saved URL target to a path.
+	if (
+		remoteUrl !== current.target.remoteUrl ||
+		form.repositoryPath !== current.target.repositoryPath
+	) {
 		payload.target = { schemaVersion: 1, remoteUrl };
 	}
 

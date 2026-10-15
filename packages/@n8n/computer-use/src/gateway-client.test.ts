@@ -111,6 +111,7 @@ function makeSession(overrides: Partial<GatewaySession> = {}): Mocked<GatewaySes
 		clearSession: vi.fn(),
 		alwaysAllow: vi.fn(),
 		alwaysDeny: vi.fn(),
+		claimUnscopedRules: vi.fn(),
 		flush: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as Mocked<GatewaySession>;
@@ -373,12 +374,12 @@ describe('GatewayClient.uploadCapabilities', () => {
 		global.fetch = originalFetch;
 	});
 
-	function makeMinimalClient(): GatewayClient {
+	function makeMinimalClient(session = makeSession()): GatewayClient {
 		const client = new GatewayClient({
 			url: 'http://localhost:5678',
 			apiKey: 'tok',
 			config: makeConfig(),
-			session: makeSession(),
+			session,
 			confirmResourceAccess: vi.fn(),
 		});
 
@@ -421,6 +422,28 @@ describe('GatewayClient.uploadCapabilities', () => {
 		const promise = client['uploadCapabilities']();
 		await expect(promise).rejects.not.toBeInstanceOf(GatewayAuthError);
 		await expect(promise).rejects.toThrow(/Failed to upload capabilities: 500/);
+	});
+
+	it('start claims unscoped resource rules after the instance accepts the capabilities', async () => {
+		mockFetchResponse(200);
+		const session = makeSession();
+		const client = makeMinimalClient(session);
+		client['connectSSE'] = vi.fn();
+
+		await client.start();
+
+		expect(session.claimUnscopedRules).toHaveBeenCalled();
+	});
+
+	it('start does not claim unscoped resource rules when the instance rejects the capabilities', async () => {
+		mockFetchResponse(401, 'invalid token');
+		const session = makeSession();
+		const client = makeMinimalClient(session);
+		client['connectSSE'] = vi.fn();
+
+		await expect(client.start()).rejects.toBeInstanceOf(GatewayAuthError);
+
+		expect(session.claimUnscopedRules).not.toHaveBeenCalled();
 	});
 });
 

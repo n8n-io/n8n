@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
 import { ForbiddenError } from '@n8n/errors';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 /**
  * Middleware that checks if the instance allows write operations.

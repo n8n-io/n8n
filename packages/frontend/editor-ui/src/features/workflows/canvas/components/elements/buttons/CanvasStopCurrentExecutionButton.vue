@@ -19,7 +19,7 @@ const title = computed(() =>
 
 <template>
 	<N8nIconButton
-		variant="subtle"
+		variant="outline"
 		icon="square"
 		:size="size ?? 'large'"
 		class="stop-execution"

@@ -247,7 +247,7 @@ onMounted(() => {
 		<template #footer>
 			<div :class="$style['popover-footer']">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('generic.cancel')"
 					:size="'small'"
 					:disabled="isSaving"

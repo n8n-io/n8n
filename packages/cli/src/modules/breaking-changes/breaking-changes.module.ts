@@ -20,6 +20,12 @@ export class BreakingChangesModule implements ModuleInterface {
 		Container.get(MigrationRegistry).registerAll();
 
 		await import('./breaking-changes.controller.js');
+
+		// Keep the finding table current between full scans.
+		const { MigrationFindingSyncListener } = await import(
+			'./sync/migration-finding-sync.listener.js'
+		);
+		Container.get(MigrationFindingSyncListener).init();
 	}
 
 	// Registered even when `init()` skips: the tables exist regardless of the
@@ -29,7 +35,10 @@ export class BreakingChangesModule implements ModuleInterface {
 		const { MigrationFindingSync } = await import(
 			'./database/entities/migration-finding-sync.entity.js'
 		);
+		const { MigrationWorkflowOwner } = await import(
+			'./database/entities/migration-workflow-owner.entity.js'
+		);
 
-		return [MigrationFinding, MigrationFindingSync];
+		return [MigrationFinding, MigrationFindingSync, MigrationWorkflowOwner];
 	}
 }

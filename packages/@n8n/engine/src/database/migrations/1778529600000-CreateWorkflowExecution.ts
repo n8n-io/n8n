@@ -25,7 +25,8 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 					{
 						name: 'response_expectation',
 						type: 'jsonb',
-						comment: 'What kind of a response the caller expects (none, runEnd or stepResponse)',
+						comment:
+							'What kind of a response the caller expects (none, runEnd, stepResponse or stream)',
 					},
 					{
 						name: 'created_at',

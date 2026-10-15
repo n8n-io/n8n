@@ -291,7 +291,11 @@ describe('createToolsFromLocalMcpServer', () => {
 				type: 'content',
 				value: [
 					{ type: 'text', text: 'current browser screenshot' },
-					{ type: 'image-data', data: 'base64-screenshot', mediaType: 'image/png' },
+					{
+						type: 'file',
+						data: { type: 'data', data: 'base64-screenshot' },
+						mediaType: 'image/png',
+					},
 				],
 			});
 		});
@@ -326,7 +330,13 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			expect(tool?.toModelOutput?.(PDF_RESULT)).toEqual({
 				type: 'content',
-				value: [{ type: 'file-data', data: 'base64-pdf', mediaType: 'application/pdf' }],
+				value: [
+					{
+						type: 'file',
+						data: { type: 'data', data: 'base64-pdf' },
+						mediaType: 'application/pdf',
+					},
+				],
 			});
 		});
 	});

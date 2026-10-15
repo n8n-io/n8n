@@ -38,6 +38,27 @@ describe('Redis execution response sender', () => {
 		);
 	});
 
+	it('publishes a chunk with the execution ID', () => {
+		const publisher = mock<RedisResponsePublisher>();
+		publisher.publish.mockResolvedValue(1);
+		const sender = new RedisExecutionResponseSender(publisher, getChannelName, mockLogger());
+
+		sender.send({
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hello' },
+		});
+
+		expect(publisher.publish).toHaveBeenCalledExactlyOnceWith(
+			executionChannel,
+			JSON.stringify({
+				type: 'chunk',
+				executionId: 'exec-1',
+				payload: { type: 'item', content: 'hello' },
+			}),
+		);
+	});
+
 	it('logs a publish failure without throwing', async () => {
 		const publisher = mock<RedisResponsePublisher>();
 		const logger = mockLogger();

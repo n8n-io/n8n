@@ -57,7 +57,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMcp } from '@n8n/frontend-module-mcp';
 import RedactionMembersModal from '@/features/workflows/components/WorkflowSettings/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -1978,7 +1978,7 @@ onBeforeUnmount(() => {
 }
 
 .no-nodes-title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
@@ -2013,7 +2013,7 @@ onBeforeUnmount(() => {
 }
 
 .nodes-active-title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
@@ -2079,7 +2079,7 @@ onBeforeUnmount(() => {
 	width: 100%;
 	gap: var(--spacing--3xs);
 	align-items: center;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--color--background--light-2);
 	color: var(--color--text--shade-1);

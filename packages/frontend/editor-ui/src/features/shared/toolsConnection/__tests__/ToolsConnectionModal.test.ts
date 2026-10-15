@@ -91,8 +91,10 @@ function renderWith(
 		categories: ToolCategoryKey[];
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
+		showSuggestionFooter: boolean;
+		groupSearchResults: boolean;
 		createAction: {
-			category: ToolCategoryKey;
+			category?: ToolCategoryKey;
 			label: string;
 			testId?: string;
 		};
@@ -105,6 +107,8 @@ function renderWith(
 			categories: props.categories ?? ALL_CATEGORIES,
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
+			showSuggestionFooter: props.showSuggestionFooter,
+			groupSearchResults: props.groupSearchResults,
 			createAction: props.createAction,
 		},
 		slots: {
@@ -185,6 +189,19 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('GitHub')).toBeTruthy();
 		expect(queryByText('OpenAI')).toBeTruthy();
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+	});
+
+	it('supports a flat all-items list with a suggestion footer', () => {
+		const { getByTestId, queryByTestId, queryByText } = renderWith({
+			categories: ['all'],
+			showSuggestionFooter: true,
+		});
+
+		expect(queryByTestId('tab-all')).not.toBeInTheDocument();
+		expect(queryByText('Notion')).toBeTruthy();
+		expect(queryByText('GitHub')).toBeTruthy();
+		expect(queryByText('OpenAI')).toBeTruthy();
+		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
 	});
 
 	it('lists restricted tools after every usable tool on the all tab and in their category', async () => {
@@ -325,7 +342,20 @@ describe('ToolsConnectionModal', () => {
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
 
 		await fireEvent.click(getByTestId('tools-connection-create-workflow'));
-		expect(emitted().create).toEqual([[]]);
+		expect(emitted().create).toEqual([['workflows']]);
+	});
+
+	it('offers the create action on every tab when it has no category', async () => {
+		const { getByTestId } = renderWith({
+			categories: ['all', 'mcp', 'workflows'],
+			createAction: { label: 'Create', testId: 'tools-connection-create-any' },
+		});
+
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-mcp'));
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-workflows'));
+		expect(getByTestId('tools-connection-create-any')).toBeTruthy();
 	});
 
 	it('renders the detail view when a detailItem is set', () => {
@@ -334,15 +364,12 @@ describe('ToolsConnectionModal', () => {
 			status: 'none' as const,
 			settings: undefined,
 		};
-		const { queryByTestId, queryByText, queryAllByTestId } = renderWith({
+		const { queryByTestId, queryByText } = renderWith({
 			detailItem: unconnectedMcp,
 		});
 
 		expect(queryByTestId('tools-connection-detail')).toBeTruthy();
-		const chips = queryAllByTestId('tools-connection-detail-tool');
-		expect(chips.length).toBeGreaterThan(0);
-		expect(queryByText('search')).toBeTruthy();
-		expect(queryByText('create-pages')).toBeTruthy();
+		expect(queryByText(connectedMcpFixture.longDescription ?? '')).toBeTruthy();
 		expect(queryByTestId('tools-connection-search')).toBeNull();
 	});
 
@@ -358,7 +385,7 @@ describe('ToolsConnectionModal', () => {
 	it('renders the slotted settings body when a consumer supplies #settings-body', () => {
 		const { queryByTestId } = renderWithMcpSettingsSlot(connectedMcpFixture);
 		expect(queryByTestId('tools-connection-settings')).toBeTruthy();
-		expect(queryByTestId('tools-connection-settings-inclusion')).toBeTruthy();
+		expect(queryByTestId('tools-connection-permission-read')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-save')).toBeTruthy();
 		expect(queryByTestId('tools-connection-settings-remove')).toBeTruthy();
 	});
@@ -436,6 +463,25 @@ describe('ToolsConnectionModal', () => {
 		// Categories with no hits stay in the strip, reading zero.
 		expect(getByTestId('tab-workflows').textContent).toContain('(0)');
 		expect(getByTestId('tab-connected').textContent).toContain('(0)');
+	});
+
+	it('groups search matches from all categories under category headings', async () => {
+		const { getByPlaceholderText, getByTestId, queryByTestId, queryByText } = renderWith({
+			categories: ['all', 'mcp', 'app-action', 'workflows'],
+			groupSearchResults: true,
+		});
+
+		await fireEvent.update(getByPlaceholderText('Search all tools...'), 'notion');
+
+		await waitFor(() => {
+			expect(getByTestId('tools-connection-search-category-mcp')).toHaveTextContent('Connectors');
+		});
+		expect(getByTestId('tools-connection-search-category-workflows')).toHaveTextContent(
+			'Workflows',
+		);
+		expect(queryByText('Notion')).toBeTruthy();
+		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+		expect(queryByTestId('tools-connection-tabs')).not.toBeInTheDocument();
 	});
 
 	it('filters the list down to the clicked category', async () => {

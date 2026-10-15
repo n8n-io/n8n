@@ -16,6 +16,7 @@ const NODE_WITH_INLINE_SUBWORKFLOW_CRED = 'a1f8c2e0-1b2c-4d3e-9f0a-1234567890ab'
 const NODE_WITH_WORKFLOW_TOOL_INLINE_CRED = 'b2e9d3f1-2c3d-4e5f-a0b1-234567890abc';
 const NODE_WITH_NESTED_INLINE_SUBWORKFLOW_CRED = 'c3f0e4a2-3d4e-5f60-b1c2-34567890abcd';
 const NODE_WITH_DEEPLY_NESTED_INLINE_CRED = 'd4a1f5b3-4e5f-6071-c2d3-4567890abcde';
+const NODE_WITH_INLINE_AGENT_CRED = 'e5b2a6c4-5f60-7182-d3e4-567890abcdef';
 
 const nodeWithNoCredentials: INode = {
 	id: NODE_WITH_NO_CRED,
@@ -181,6 +182,21 @@ const buildDeeplyNestedInlineNode = (depth: number): INode => {
 	};
 };
 
+// Agent node whose hidden `inlineAgent` parameter references a credential
+// (FIRST_CREDENTIAL_ID) that the node's own top-level `credentials` does not
+// expose. Execution resolves it in the workflow owner's project.
+const nodeWithInlineAgentCredential: INode = {
+	id: NODE_WITH_INLINE_AGENT_CRED,
+	name: 'Message an Agent',
+	typeVersion: 2,
+	type: 'n8n-nodes-base.messageAnAgent',
+	position: [0, 0],
+	parameters: {
+		agentSource: 'inline',
+		inlineAgent: { config: { model: 'gpt-4o-mini', credential: FIRST_CREDENTIAL_ID } },
+	},
+};
+
 export function getWorkflow(options?: {
 	addNodeWithoutCreds?: boolean;
 	addNodeWithOneCred?: boolean;
@@ -189,6 +205,7 @@ export function getWorkflow(options?: {
 	addNodeWithWorkflowToolInlineCred?: boolean;
 	addNodeWithNestedInlineSubworkflowCred?: boolean;
 	addNodeWithDeeplyNestedInlineCred?: boolean;
+	addNodeWithInlineAgentCred?: boolean;
 }) {
 	const workflow = new WorkflowEntity();
 
@@ -221,6 +238,10 @@ export function getWorkflow(options?: {
 	if (options?.addNodeWithDeeplyNestedInlineCred) {
 		// 15 levels deep — beyond any small fixed traversal budget.
 		workflow.nodes.push(buildDeeplyNestedInlineNode(15));
+	}
+
+	if (options?.addNodeWithInlineAgentCred) {
+		workflow.nodes.push(nodeWithInlineAgentCredential);
 	}
 
 	return workflow;

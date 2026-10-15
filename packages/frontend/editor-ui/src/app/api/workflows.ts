@@ -12,7 +12,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { DEFAULT_NEW_WORKFLOW_NAME, DEFAULT_SETTINGS } from '@/app/constants';
 import { isEmpty } from '@/app/utils/typesUtils';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { CallableSubworkflowsResponse, ExecutionRedactionQueryDto } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
@@ -118,6 +118,19 @@ export async function getWorkflowsAndFolders(
 		...(filter ? { filter } : {}),
 		...(options ? options : {}),
 	});
+}
+
+export async function getCallableSubworkflows(
+	context: IRestApiContext,
+	parentWorkflowId: string,
+	params: { query?: string; skip: number; take: number },
+) {
+	return await makeRestApiRequest<CallableSubworkflowsResponse>(
+		context,
+		'GET',
+		`/workflows/${parentWorkflowId}/callable-subworkflows`,
+		params,
+	);
 }
 
 export async function getActiveWorkflows(context: IRestApiContext) {

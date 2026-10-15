@@ -248,7 +248,7 @@ watch(
 				:placement="'top'"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="outline"
 					:size="props.buttonSize ?? undefined"
 					icon="pen"
 					:class="{

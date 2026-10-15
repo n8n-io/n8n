@@ -14,7 +14,6 @@ import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadc
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { productionChatMemoryResourceId } from './utils/agent-memory-scope';
-import { N8N_CHAT_PRODUCTION_SOURCE } from './utils/agent-thread-access';
 import { AgentTestRunService } from './agent-test-run.service';
 import {
 	AgentBackgroundJobService,
@@ -98,30 +97,34 @@ export class AgentWorkflowToolResumeService {
 	/**
 	 * Settle the background job tracking this execution, carrying a bounded
 	 * serialization of the result — the run data is in memory here, so the job
-	 * row gets its answer without a later read of the executions table. Job
-	 * results carry the last node's output only: the row does not know the
-	 * tool's `allOutputs` setting, so it keeps the tightest projection and the
-	 * execution keeps the full data. A no-op when the execution was not
-	 * backgrounded. Never throws into the execution's lifecycle.
+	 * row gets its answer without a later read of the executions table.
+	 * The service keeps the last node's output for normal results. It also
+	 * keeps earlier outputs for stop reports. A no-op when the execution was
+	 * not backgrounded. Never throws into the execution's lifecycle.
 	 */
 	private async settleBackgroundJob(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		const { status, data } = ctx.runData;
 		if (!isTerminalExecutionStatus(status)) return;
 		// A success callback for a run that has not actually finished must not
 		// seal the job with partial output; reconciliation settles it later.
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (status === 'success' && !ctx.runData.finished) return;
 
 		try {
 			const settlementStatus = settlementStatusForExecution(status);
 			const runData = data.resultData?.runData;
-			await this.backgroundJobService.settleWorkflowJobByExecutionId(ctx.executionId, {
-				status: settlementStatus,
-				result:
-					settlementStatus === 'completed' && runData
-						? serializeWorkflowJobResult(collectResultData(runData, false))
-						: null,
-				error: data.resultData?.error?.message ?? null,
-			});
+			await this.backgroundJobService.settleWorkflowJobByExecutionId(
+				ctx.executionId,
+				{
+					status: settlementStatus,
+					result:
+						settlementStatus === 'completed' && runData
+							? serializeWorkflowJobResult(collectResultData(runData, false))
+							: null,
+					error: data.resultData?.error?.message ?? null,
+				},
+				runData,
+			);
 		} catch (error) {
 			this.logger.error('Failed to settle workflow background job', {
 				executionId: ctx.executionId,
@@ -223,7 +226,7 @@ export class AgentWorkflowToolResumeService {
 			user,
 			usePublishedVersion: true,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
-			source: N8N_CHAT_PRODUCTION_SOURCE,
+			chatSurface: 'n8n-chat',
 			expectedMemory: {
 				threadId: agentRun.threadId,
 				resourceId: productionChatMemoryResourceId(user.id),
@@ -253,7 +256,7 @@ export class AgentWorkflowToolResumeService {
 		// The draft version gates node and workflow tools by the user's access, so
 		// without the user those tools drop and the pending tool call fails to resume.
 		const user = agentRun.userId
-			? await this.userRepository.findOneBy({ id: agentRun.userId })
+			? await this.userRepository.findByIdWithRole(agentRun.userId)
 			: null;
 		if (!user) {
 			this.logger.warn('Cannot resume preview chat run without its user', {
@@ -272,7 +275,7 @@ export class AgentWorkflowToolResumeService {
 			toolCallId: agentRun.toolCallId,
 			resumeData,
 			user,
-			previewChat: agentRun.previewChat,
+			chatSurface: agentRun.previewChat ? 'preview' : undefined,
 			automaticPreviewContinuation: true,
 			response: '',
 		});

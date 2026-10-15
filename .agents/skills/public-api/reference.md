@@ -103,55 +103,76 @@ scope, RBAC denial. Add whichever apply, matching the nearest existing tests:
   unchanged. Tests alone cannot show this — see
   [Verifying a migration](#verifying-a-migration).
 
-## Migrating legacy EOV endpoints
+## Request body media types
 
-Legacy `express-openapi-validator` endpoints live under
-`v1/handlers/`, wired through `openapi.yml` with `x-eov-operation-*` and request
-types in `packages/cli/src/public-api/types.ts`. Treat these as migration targets,
-not templates.
+`@Body` defaults to `application/json`; the body is already parsed by the
+app-wide `bodyParser` before the registry sees it. Declaring
+`@Body({ mediaType: 'multipart/form-data', uploadLimits })` instead takes a
+`multipart/form-data` body:
 
-- Prefer migrating to `@PublicApiController` over extending the handler.
-- Preserve the public contract: path, method, scopes, status codes, response
-  shape, and pagination.
-- Move HTTP concerns into the controller and business orchestration into the
-  shared service; keep the controller a thin HTTP boundary. If the legacy
-  handler was itself already just a thin wrapper around an internal
-  `@RestController` (calling its methods directly, e.g.
-  `Container.get(SomeController).createThing(req, res, payload)`), the new
-  public controller can call that same internal controller directly — no need
-  to duplicate its validation/business logic.
-- A route must be served by either the EOV handler or a controller, not both —
-  the build's `mergeDecoratorDocument` (`v1/openapi-gen/generate.ts`) throws on
-  a path+method declared by both sides. Remove the legacy wiring (its path's
-  `$ref` entry in `openapi.yml`, the `x-eov-operation-*` handler, and its
-  `handler.ts`) only after the new controller is registered, `pnpm build`
-  regenerates the spec cleanly, and tests are updated.
-- Fully delete the migrated legacy files: the handler's `.ts`, its
-	`spec/paths/*.yml` and `spec/schemas/*.yml`, and any now-dead request type
-	in `packages/cli/src/public-api/types.ts`. Then check
-  `v1/shared/spec/schemas/_index.yml` and `v1/shared/spec/parameters/_index.yml`
-  for entries that `$ref` one of the deleted schema/parameter files — those are
-  separate from the path's own `$ref` in `openapi.yml` and are easy to miss;
-  left dangling, the next bundle fails on a broken `$ref`.
-- If the legacy handler gated on a license (`isLicensed('feat:x')` middleware),
-  `@Licensed('feat:x')` now replicates that for a controller route (see the
-  decorator table in [SKILL.md](SKILL.md#declaring-a-controller)) — but only for
-  a single feature. If the legacy check was an any-of/all-of over several flags
-  (e.g. `LicenseState.isProvisioningLicensed()`), `@Licensed` can't express
-  that; replicate it manually in the controller instead, don't drop it - this
-  is exactly what the internal `provisioning.controller.ee.ts` and
-  `role-mapping-rule.controller.ee.ts` already do, since neither uses
-  `@Licensed` for that reason.
-- As a legacy file drops repository access / the `export =` tuple, remove its
-  entry from the `off` allowlists for `no-repository-in-public-api-handler` and
-  `require-public-api-controller` in `packages/cli/eslint.config.mjs` (shrink-only
-  — never extend them).
-- For complex legacy-only, multipart, or non-standard endpoints, study the
-  nearest existing handler first.
-- Keep each field in its original position when you extract a request shape shared
-  by two routes, and destructure out the ones a route doesn't take. The generator
-  emits properties in shape order, so a moved field rewrites the `*.generated.yml`
-  of a route the PR wasn't changing.
+- `uploadLimits: () => MultipartUploadLimits` is a thunk, read once the route
+  handles its first request (not at startup) — read live config inside it
+  (e.g. `Container.get(GlobalConfig)`), don't inline a literal.
+- The route's `@Body` DTO validates text fields merged with uploaded files,
+  not `req.body` alone. A text field and a file share the same flat object;
+  a file field uses `publicApiUploadedFileSchema` (`@n8n/api-types`) — a
+  multer-file-shaped schema that documents itself as `{ type: 'string',
+  format: 'binary' }`. Several files under the same field name become an
+  array.
+- An unknown field (one the DTO doesn't declare, on a `{ strict: true }` DTO)
+  fails with `Unexpected form field "<name>"` — not the default "unrecognized
+  keys" wording.
+- Multer parsing errors map to these statuses: `413` for a size or count limit,
+  `500` for `LIMIT_UNEXPECTED_FILE`, `400` for any other multer error, and `500`
+  for anything else (a malformed body). The `500` is not masked, because it is a
+  `ResponseError`. A missing boundary gives `400` with `multipart file(s) required`.
+- The body is parsed **after** every auth/scope/license/quota gate and
+  **before** controller/route middlewares — a caller those gates would reject
+  never has their (possibly huge) body read off the socket, and a middleware
+  that reads `req.body` sees it already parsed.
+- `/discover` shows no request schema for a multipart route (same as a legacy
+  multipart route today) — a client can't assume a JSON schema it never gets.
+- The generator documents the body under the `multipart/form-data` content
+  key (not `application/json`) and adds `413` alongside `415` to the route's
+  documented responses automatically.
+
+Everything above lives in `packages/cli/src/public-api/media-types/`, one
+handler per media type (`REQUEST_BODY_HANDLERS` in
+`media-types/request-body/index.ts`). Adding a further media type (e.g.
+`application/octet-stream`) means: add it to `RequestBodyMediaOptions` in
+`@n8n/decorators`'s `controller/types.ts`, write a handler implementing
+`RequestBodyHandler` in `media-types/request-body/`, and register it in
+`REQUEST_BODY_HANDLERS` — the registry, resolver, generator and `/discover`
+need no change, since they all read the handler, not the media type.
+
+## Binary response bodies
+
+`@ApiResponse(status, { mediaType, description?, headers? })` declares a
+success body that the controller method returns as `{ body, headers? }`, for
+example an `application/gzip` stream. The framework treats options whose
+`mediaType` is in `BINARY_RESPONSE_MEDIA_TYPES` as a binary response.
+`mediaType` accepts only those types.
+
+- `body` is a `Buffer` or a `Readable`. The method returns the result and never
+  writes to `res`.
+- `headers` holds the response headers. Every header declared in `headers` must
+  be in the result. A missing header fails the request with a `500`. Matching is
+  case-insensitive.
+- The registry checks the headers, then sets the declared status, the headers,
+  and `Content-Type: <mediaType>`. A header in the result cannot replace the
+  `Content-Type`.
+- A stream's first chunk is read before any header is set. So a stream that
+  fails before its first chunk gives the normal JSON error response, with no
+  binary `Content-Type`. A method that throws before it returns does the same.
+- After the first chunk is sent, an error ends the response. A client that
+  disconnects is not an error, and the framework destroys the stream.
+- A method that returns no binary body fails with a `500`.
+- The generator documents the body as `{ type: string, format: binary }`
+  under the `mediaType` content key, with the description and headers.
+  The description defaults to `Operation successful.`.
+
+The runtime part is `sendBinaryResponse` in
+`packages/cli/src/public-api/media-types/binary-response.ts`.
 
 ## Verifying a migration
 

@@ -2,7 +2,8 @@ import { configure, logger } from '@n8n/computer-use/logger';
 import { app } from 'electron';
 import * as path from 'node:path';
 
-import { assertConnectOriginAllowed } from './connect-origin';
+import { confirmConnect } from './connect-confirmation';
+import { assertConnectOriginAllowed, isAlreadyConnectedTo } from './connect-origin';
 import {
 	deepLinkProtocolsInArgv,
 	parseConnectPayload,
@@ -57,6 +58,16 @@ if (!app.requestSingleInstanceLock()) {
 						'Missing gateway token in deeplink. Connect from n8n using the computer-use link.',
 					);
 				}
+				if (isAlreadyConnectedTo(payload.url, controller.getSnapshot())) {
+					logger.info('Deep-link ignored: already connected to this instance', {
+						url: payload.url,
+					});
+					return;
+				}
+				if (!(await confirmConnect(payload.url, controller.getSnapshot().connectedUrl))) {
+					logger.info('Deep-link connection declined by user', { url: payload.url });
+					return;
+				}
 				await controller.connect(config, payload.url, token);
 			}
 
@@ -64,13 +75,18 @@ if (!app.requestSingleInstanceLock()) {
 				await controller.disconnect();
 			}
 
+			// One link at a time, so each dialog and connect sees the state the previous link left.
+			let connectQueue = Promise.resolve();
+
 			function handleConnectPayload(payload: ConnectPayload): void {
 				logger.info('Handling deep-link connection payload', { url: payload.url });
-				void connect(payload).catch((error: unknown) => {
-					logger.error('Deep-link connection failed', {
-						error: error instanceof Error ? error.message : String(error),
+				connectQueue = connectQueue.then(async () => {
+					await connect(payload).catch((error: unknown) => {
+						logger.error('Deep-link connection failed', {
+							error: error instanceof Error ? error.message : String(error),
+						});
+						openSettingsWindow(preloadPath, rendererPath);
 					});
-					openSettingsWindow(preloadPath, rendererPath);
 				});
 			}
 

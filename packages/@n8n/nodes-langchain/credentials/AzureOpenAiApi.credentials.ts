@@ -3,7 +3,7 @@ import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n
 export class AzureOpenAiApi implements ICredentialType {
 	name = 'azureOpenAiApi';
 
-	displayName = 'Azure Open AI';
+	displayName = 'Microsoft Foundry (API Key)';
 
 	documentationUrl = 'azureopenai';
 
@@ -14,11 +14,11 @@ export class AzureOpenAiApi implements ICredentialType {
 			type: 'options',
 			options: [
 				{ name: 'Classic', value: 'classic' },
-				{ name: 'Azure AI Foundry', value: 'foundry' },
+				{ name: 'Microsoft Foundry', value: 'foundry' },
 			],
 			default: 'classic',
 			description:
-				'Classic targets *.openai.azure.com (resource name + deployment-based URLs). Azure AI Foundry targets *.services.ai.azure.com/openai/v1 (full endpoint URL).',
+				'Classic targets *.openai.azure.com (resource name + deployment-based URLs). Microsoft Foundry targets *.services.ai.azure.com/openai/v1 (full endpoint URL).',
 		},
 		{
 			displayName: 'API Key',
@@ -52,7 +52,7 @@ export class AzureOpenAiApi implements ICredentialType {
 			default: '',
 			placeholder: 'https://<resource>.services.ai.azure.com/openai/v1',
 			displayOptions: { show: { endpointType: ['foundry'] } },
-			hint: 'The full Azure AI Foundry OpenAI-compatible base URL.',
+			hint: 'The full Microsoft Foundry OpenAI-compatible base URL.',
 		},
 		{
 			displayName: 'Endpoint',

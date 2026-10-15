@@ -1,14 +1,24 @@
 import { BaseCommand, EXIT_BLOCKED, EXIT_SOURCE_CHANGED, EXIT_SUCCESS } from '../../base-command';
-import type { ApplyPackageResult, PromotionBindingPreflight } from '../../client';
+import type {
+	ApplyPackageResult,
+	PromotionBindingPreflight,
+	PromotionProjectDeletion,
+} from '../../client';
 
 type ReportFlags = { quiet?: boolean; format?: string; json?: boolean; jq?: string };
+
+/** The Apply result that stopped for binding setup. */
+type BlockedResult = Extract<ApplyPackageResult, { status: 'blocked' }>;
+
+/** Builds the command that resumes a blocked Apply. Shapes differ per entry point. */
+type ContinueCommand = (result: BlockedResult) => string;
 
 /** Shared result handling for Apply and Continue, which return the same statuses. */
 export abstract class PromotionApplyCommand extends BaseCommand {
 	protected reportApplyResult(
 		result: ApplyPackageResult,
 		flags: ReportFlags,
-		connectionId: string,
+		continueCommand: ContinueCommand,
 	): void {
 		// `succeed()` ignores --jq, so JSON output for every status goes through `output()`.
 		if (this.isJsonMode(flags)) {
@@ -31,7 +41,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		if (!flags.quiet) {
 			this.logToStderr(
 				result.status === 'blocked'
-					? blockedMessage(result, result.preflight, connectionId)
+					? blockedMessage(result, result.preflight, continueCommand)
 					: sourceChangedMessage(result),
 			);
 		}
@@ -53,12 +63,13 @@ function sourceChangedMessage(result: ApplyPackageResult): string {
 }
 
 function blockedMessage(
-	result: ApplyPackageResult,
+	result: BlockedResult,
 	preflight: PromotionBindingPreflight,
-	connectionId: string,
+	continueCommand: ContinueCommand,
 ): string {
 	const bindings = (kind: 'credential' | 'variable') =>
 		preflight.missingBindings.filter((binding) => binding.kind === kind).length;
+	const projectDeletions = preflight.conflicts.filter(isProjectDeletion);
 
 	return [
 		'Apply is blocked. Nothing was imported.',
@@ -67,12 +78,58 @@ function blockedMessage(
 		`  Missing variables:   ${bindings('variable')}`,
 		`  Access requirements: ${preflight.accessRequirements.length}`,
 		`  Conflicts:           ${preflight.conflicts.length}`,
+		...(projectDeletions.length > 0
+			? [
+					'Apply deletes these projects with everything in them:',
+					...projectDeletions.map(({ project }) => `  ${project.name} (${project.id})`),
+				]
+			: []),
 		'Run with --json for the details. After you resolve them, run:',
-		`  n8n-cli promotion-connection apply-continue ${shellQuote(connectionId)}` +
-			` --expected-config-id=${shellQuote(result.configId)}` +
-			` --expected-branch=${shellQuote(result.git.branchName)}` +
-			` --expected-commit-sha=${shellQuote(result.git.commitSha)}`,
+		`  ${continueCommand(result)}`,
+		...(preflight.conflicts.some(({ code }) => code === 'destructive-change')
+			? [
+					'To also apply data table changes that remove or retype columns, add --confirm-destructive-changes. The values in those columns are removed.',
+				]
+			: []),
+		...(projectDeletions.length > 0
+			? [
+					"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
+				]
+			: []),
 	].join('\n');
+}
+
+function isProjectDeletion(
+	conflict: Record<string, unknown>,
+): conflict is PromotionProjectDeletion {
+	return conflict.code === 'project-deletion';
+}
+
+/** The `--expected-*` flags that pin a Continue run to the source a blocked Apply reported. */
+function expectedSourceArgs(result: BlockedResult): string {
+	return (
+		` --expected-config-id=${shellQuote(result.configId)}` +
+		` --expected-branch=${shellQuote(result.git.branchName)}` +
+		` --expected-commit-sha=${shellQuote(result.git.commitSha)}`
+	);
+}
+
+/** The command that resumes a blocked whole-connection Apply. */
+export function connectionContinueCommand(connectionId: string): ContinueCommand {
+	return (result) =>
+		`n8n-cli promotion-connection apply-continue ${shellQuote(connectionId)}` +
+		expectedSourceArgs(result);
+}
+
+/** The command that resumes a blocked selection Apply. It resends the same workflow ids. */
+export function selectionContinueCommand(
+	projectId: string,
+	workflowIds: string[],
+): ContinueCommand {
+	return (result) =>
+		`n8n-cli promotion-connection apply-selection-continue ${shellQuote(projectId)}` +
+		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
+		expectedSourceArgs(result);
 }
 
 /** Branch names can contain shell metacharacters such as `;` and `$(`, so the shell must not interpret them. */
