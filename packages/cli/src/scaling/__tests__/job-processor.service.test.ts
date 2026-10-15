@@ -1769,6 +1769,7 @@ describe('JobProcessor', () => {
 							new DynamicStructuredTool({
 								name: `Remote_Tools_${index === 0 ? 'first' : 'second'}`,
 								description: 'Search remote data',
+								metadata: index === 0 ? { isFromToolkit: true } : undefined,
 								schema: z.object({ query: z.string() }),
 								func,
 							}),
