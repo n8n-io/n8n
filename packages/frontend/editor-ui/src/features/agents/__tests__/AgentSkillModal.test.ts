@@ -1260,6 +1260,7 @@ function makeListItem(
 		agentId: null,
 		agentName: null,
 		source: 'ui',
+		createdBy: null,
 		latestVersion: 1,
 		usedByAgents: 0,
 		canEdit: true,

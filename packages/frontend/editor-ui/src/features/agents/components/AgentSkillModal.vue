@@ -395,6 +395,8 @@ function getPickerCategory(librarySkill: SkillListItem): 'project' | 'this-agent
 }
 
 async function loadLibrarySkills() {
+	// The picker lists what one agent may attach. Settings opens the modal without an agent.
+	if (!props.data.agentId) return;
 	libraryLoading.value = true;
 	try {
 		librarySkills.value = await listAttachableSkills(rootStore.restApiContext, props.data.agentId);
