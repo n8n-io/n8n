@@ -1871,6 +1871,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../errors
+      '@n8n/inbound-auth':
+        specifier: workspace:*
+        version: link:../inbound-auth
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -1883,6 +1886,9 @@ importers:
       ioredis:
         specifier: 5.3.2
         version: 5.3.2(supports-color@8.1.1)
+      jose:
+        specifier: ^6.2.9
+        version: 6.2.9
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3

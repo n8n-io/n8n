@@ -15,8 +15,7 @@ import {
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 // Discovery of the local source must fail, not succeed with made-up documents.
 class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {

@@ -12,8 +12,7 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { InboundAuthPipeline } from '../authentication-pipeline';
