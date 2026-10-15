@@ -28,8 +28,8 @@ export const importPackageRequestFieldDocs = {
 			'carries no data for falls back to an empty stub. A credential created with package data ' +
 			'is listed under `credentials.seeded` when the package confirms that all source data ' +
 			'was retained. ' +
-			'Credentials created from partial or unverified data are listed under ' +
-			'`credentials.incomplete` and block workflow publishing with `incomplete-credential`. ' +
+			'Otherwise, also when the package has no completeness flag, it is listed under ' +
+			'`credentials.incomplete` and blocks workflow publishing with `incomplete-credential`. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
 	},
 	bindings: {
