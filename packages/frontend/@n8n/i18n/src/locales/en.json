@@ -9641,6 +9641,7 @@
 	"agents.channels.teams.settings.outdated": "Changes to the agent aren’t in Teams yet. Install the app again to apply.",
 	"agents.channels.teams.settings.linkedBot": "Linked to Azure Bot {name}.",
 	"agents.channels.teams.settings.findInAzure": "Find it in Azure",
+	"agents.channels.teams.settings.availabilityLabel": "Where it works",
 	"agents.channels.teams.settings.identityLabel": "Appearance in Teams",
 	"agents.channels.teams.settings.saveAndDownload": "Save and download package",
 	"agents.channels.teams.settings.displayNamePlaceholder": "Uses the agent's name",

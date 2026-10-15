@@ -876,16 +876,7 @@ defineExpose({
 		<div v-else :class="$style.formContent">
 			<div :class="$style.field" data-testid="teams-availability-field">
 				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.channels.teams.setup.availability.title') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText(
-							offerManagedApp
-								? 'agents.channels.teams.managed.availability.description'
-								: 'agents.channels.teams.setup.availability.description',
-						)
-					}}
+					{{ i18n.baseText('agents.channels.teams.settings.availabilityLabel') }}
 				</N8nText>
 				<AgentChannelTeamsAvailability
 					:model-value="availability"

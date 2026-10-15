@@ -902,7 +902,7 @@ describe('AgentChannelTeamsSetup', () => {
 
 			await waitFor(() =>
 				expect(getByTestId('teams-availability-field')).toHaveTextContent(
-					'agents.channels.teams.setup.availability.title',
+					'agents.channels.teams.settings.availabilityLabel',
 				),
 			);
 			expect(getByTestId('teams-identity-field')).toHaveTextContent(
