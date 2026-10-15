@@ -1,3 +1,4 @@
+import { ExpressionError } from 'n8n-workflow';
 import type { ExpressionEvaluationOutcome, ExpressionShadowContext } from 'n8n-workflow';
 
 import { MAX_MISMATCH_SHAPES, QuickJsExpressionShadow } from './shadowRunner';
@@ -62,6 +63,38 @@ describe('QuickJsExpressionShadow', () => {
 		run(shadow, source, legacy);
 
 		expect(shadow.takeReport()).toMatchObject({ evaluations: 1, [outcome]: 1 });
+	});
+
+	it('counts missing input data apart, without a mismatch shape', () => {
+		const { shadow } = createShadow(ok(undefined));
+		const error = new ExpressionError('No execution data available', { type: 'no_execution_data' });
+
+		run(shadow, '{{ $json.name.toUpperCase() }}', {
+			ok: false,
+			error,
+			errorClass: 'ExpressionError',
+		});
+
+		const report = shadow.takeReport();
+		expect(report).toMatchObject({
+			evaluations: 1,
+			legacy_missing_input: 1,
+			legacy_error_quickjs_ok: 0,
+		});
+		expect(report?.mismatches).toEqual([]);
+	});
+
+	it('keeps other expression errors as mismatches', () => {
+		const { shadow } = createShadow(ok(undefined));
+		const error = new ExpressionError("Can't get data for expression", {
+			type: 'paired_item_no_info',
+		});
+
+		run(shadow, '{{ $json.a }}', { ok: false, error, errorClass: 'ExpressionError' });
+
+		const report = shadow.takeReport();
+		expect(report).toMatchObject({ legacy_error_quickjs_ok: 1, legacy_missing_input: 0 });
+		expect(report?.mismatches).toHaveLength(1);
 	});
 
 	// While the user types `$json.name.toUpperCase`, before the `()`.

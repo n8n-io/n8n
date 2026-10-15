@@ -1,3 +1,4 @@
+import { ExpressionError } from 'n8n-workflow';
 import type {
 	ExpressionEvaluationOutcome,
 	ExpressionShadowContext,
@@ -21,7 +22,25 @@ export type ShadowOutcome =
 	| 'unchecked'
 	| 'legacy_ok_quickjs_error'
 	| 'legacy_error_quickjs_ok'
-	| 'both_error';
+	| 'both_error'
+	| 'legacy_missing_input';
+
+// Before the previous nodes run, the legacy engine throws for missing input data
+// while QuickJS reads `undefined`. Users open nodes like this all the time, so
+// these runs get their own count instead of filling the capped mismatch shapes.
+const MISSING_INPUT_ERROR_TYPES = new Set([
+	'no_execution_data',
+	'no_node_execution_data',
+	'no_input_connection',
+]);
+
+function isMissingInputError(error: unknown): boolean {
+	return (
+		error instanceof ExpressionError &&
+		typeof error.context.type === 'string' &&
+		MISSING_INPUT_ERROR_TYPES.has(error.context.type)
+	);
+}
 
 type MismatchOutcome = Extract<
 	ShadowOutcome,
@@ -60,6 +79,7 @@ const emptyCounts = (): Record<ShadowOutcome, number> => ({
 	legacy_ok_quickjs_error: 0,
 	legacy_error_quickjs_ok: 0,
 	both_error: 0,
+	legacy_missing_input: 0,
 });
 
 const emptyBuckets = () => new Array<number>(LATENCY_BUCKET_BOUNDS_MS.length + 1).fill(0);
@@ -222,6 +242,7 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 		legacy: ExpressionEvaluationOutcome,
 		quickjs: ExpressionEvaluationOutcome,
 	): ShadowOutcome {
+		if (!legacy.ok && isMissingInputError(legacy.error)) return 'legacy_missing_input';
 		if (!legacy.ok) return quickjs.ok ? 'legacy_error_quickjs_ok' : 'both_error';
 		if (!quickjs.ok) return 'legacy_ok_quickjs_error';
 		if (isNonDeterministic(source)) return 'unchecked';
