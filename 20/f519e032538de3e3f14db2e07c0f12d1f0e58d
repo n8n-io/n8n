@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/__tests__/agent-workflow-dependency.repository.test.ts
+  s_09ebfe5a5b97ab::t_de14d45ba6610a 122-141
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_09ebfe5a5b97ab::t_de14d45ba6610a 135-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "20f519e032538de3e3f14db2e07c0f12d1f0e58d",
+  "prompts": {},
+  "sessions": {
+    "s_09ebfe5a5b97ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26e89b9d-8656-45aa-98cc-1e020586a4fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
