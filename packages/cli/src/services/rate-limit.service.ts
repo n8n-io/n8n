@@ -86,6 +86,10 @@ export class RateLimitService {
 			standardHeaders: false,
 			message: { message: 'Too many requests' },
 			passOnStoreError: true,
+			// Only a 429 is uncounted, so a request one limiter blocks uses no quota of another limiter.
+			// Other error responses still count.
+			skipFailedRequests: true,
+			requestWasSuccessful: (_req, res) => res.statusCode !== 429,
 			skip: (req: AuthenticatedRequest): boolean => req.tokenGrant?.apiKeyId === undefined,
 			keyGenerator: (req: AuthenticatedRequest) => `apiKey:${req.tokenGrant?.apiKeyId}`,
 		});

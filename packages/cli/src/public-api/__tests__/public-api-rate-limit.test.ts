@@ -1,6 +1,7 @@
 import type { EventService } from '@n8n/backend-services';
 import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ApiResponse, ControllerRegistryMetadata, Get, Param, Post } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
@@ -208,6 +209,28 @@ describe('Public API rate limiting', () => {
 
 		await sendTimes(app, 1, 'get', '/widgets/other');
 		await sendTimes(app, 1, 'get', '/widgets/1');
+	});
+
+	it('does not count a request that the all-endpoints limit blocks toward the per-endpoint limit', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			const app = activate({
+				globalReadLimit: 3,
+				globalReadWindowSeconds: 5,
+				endpointReadLimit: 5,
+				endpointReadWindowSeconds: 60,
+			});
+
+			await sendTimes(app, 3, 'get', '/widgets');
+			expect((await send(app, 'get', '/widgets')).status).toBe(429);
+			expect((await send(app, 'get', '/widgets')).status).toBe(429);
+
+			vi.advanceTimersByTime(6 * Time.seconds.toMilliseconds);
+
+			await sendTimes(app, 2, 'get', '/widgets');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('reports the all-endpoints limit in the headers of a successful request', async () => {

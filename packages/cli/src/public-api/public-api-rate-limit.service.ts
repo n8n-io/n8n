@@ -18,10 +18,7 @@ const resolveAccess = (method: Method): Access => (READ_METHODS.has(method) ? 'r
 
 @Service()
 export class PublicApiRateLimitService {
-	private readonly allEndpointsLimiterCache = new Map<
-		Access,
-		RequestHandler | undefined
-	>();
+	private readonly allEndpointsLimiterCache = new Map<Access, RequestHandler | undefined>();
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -38,8 +35,7 @@ export class PublicApiRateLimitService {
 
 		const access = resolveAccess(method);
 
-		// The per-endpoint limiter runs first, so a request it blocks does not count toward the
-		// all-endpoints limit, and the all-endpoints headers are the ones a client sees when both pass.
+		// The all-endpoints limiter runs last, so its headers are the ones a client sees when both pass.
 		return [this.createPerEndpointLimiter(access), this.getAllEndpointsLimiter(access)].filter(
 			(limiter) => limiter !== undefined,
 		);
