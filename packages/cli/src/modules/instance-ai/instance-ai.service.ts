@@ -199,7 +199,11 @@ import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiSkillsService } from './instance-ai-skills.service';
+import {
+	InstanceAiSkillsService,
+	SKILLS,
+	type InstanceAiSkillScope,
+} from './instance-ai-skills.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
@@ -2828,12 +2832,16 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		const skills = await this.skillsService.resolveForRun(selectedPrompt.profile, {
-			configEvalsEnabled,
-			instanceContextEnabled,
-			// The agent-building skills need the build-agent tool, which needs a builder delegate.
-			agentBuildingEnabled: context.builderDelegate !== undefined,
-		});
+		const skillScope: InstanceAiSkillScope = {
+			profile: selectedPrompt.profile,
+			flags: {
+				configEvalsEnabled,
+				instanceContextEnabled,
+				// The agent-building skills need the build-agent tool, which needs a builder delegate.
+				agentBuildingEnabled: context.builderDelegate !== undefined,
+			},
+		};
+		const skills = await this.skillsService.loadSkills(skillScope);
 		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
 		this.runState.setPromptConfiguration(threadId, promptMetadata);
 		let runtimeWorkspace: Workspace | undefined;
@@ -2965,6 +2973,7 @@ export class InstanceAiService {
 			// Reuse the gate results so a rollout change cannot split this turn.
 			instanceContextEnabled,
 			nodeUsageEnabled,
+			skillScope,
 		};
 	}
 
@@ -4061,6 +4070,7 @@ export class InstanceAiService {
 				aiPreferencesEnabled,
 				instanceContextEnabled,
 				nodeUsageEnabled,
+				skillScope,
 			} = environment;
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
@@ -4204,7 +4214,7 @@ export class InstanceAiService {
 				thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
 			const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
 			const onboardingSkill = unopenedOnboarding
-				? await this.skillsService.loadOnboardingInstructions()
+				? (await this.skillsService.loadSkill(SKILLS.suggestAutomations, skillScope)).instructions
 				: undefined;
 
 			if (isOpeningTurn) {

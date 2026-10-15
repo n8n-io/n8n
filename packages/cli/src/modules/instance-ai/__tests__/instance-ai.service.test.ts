@@ -1030,7 +1030,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		if (agentBuildingAvailable) {
 			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
 		}
-		const resolveSkills = vi.spyOn(service.skillsService, 'resolveForRun');
+		const loadSkills = vi.spyOn(service.skillsService, 'loadSkills');
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1043,9 +1043,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			boundGates,
 		);
 		// The agent-building skills follow whether the context has a builder delegate.
-		expect(resolveSkills).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
+		expect(loadSkills).toHaveBeenCalledWith(
+			expect.objectContaining({
+				flags: expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
+			}),
 		);
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,
