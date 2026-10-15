@@ -391,7 +391,7 @@ describe('ScalingService', () => {
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
 				globalConfig.queue.suspendExecutionsOnShutdown = true;
-				jobProcessor.getTrackedJobIds.mockReturnValue([]);
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
 
 				await scalingService.stop();
 
@@ -403,7 +403,7 @@ describe('ScalingService', () => {
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
 				globalConfig.queue.suspendExecutionsOnShutdown = false;
-				jobProcessor.getTrackedJobIds.mockReturnValue([]);
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
 
 				await scalingService.stop();
 
