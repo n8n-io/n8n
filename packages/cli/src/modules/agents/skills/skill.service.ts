@@ -1,4 +1,4 @@
-import type { AgentSkill } from '@n8n/api-types';
+import { AGENT_SKILL_NAME_MAX_LENGTH, skillNameKey, type AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
@@ -20,6 +20,7 @@ import {
 } from '../repositories/skill.repository';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
+import { SkillNameTakenError } from './skill-name-taken.error';
 import { findIntroducedNameClashes, renameIntroducesClash } from './skill-names';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
@@ -161,11 +162,24 @@ export class SkillService {
 	// ---------------------------------------------------------------- writes
 
 	/** Creates a skill with its v1. Returns the new id. */
+	/**
+	 * `checkNameTaken` is for a name that a user or the builder chose. A copy of an agent
+	 * skill for a new agent keeps the name of the skill it copies, so it skips the check.
+	 */
 	async create(
-		input: { target: SkillTarget; skill: AgentSkill; source: SkillSource; createdById: string },
+		input: {
+			target: SkillTarget;
+			skill: AgentSkill;
+			source: SkillSource;
+			createdById: string;
+			checkNameTaken?: boolean;
+		},
 		ctx: OperationContext = {},
 	): Promise<string> {
 		assertHasInstructions(input.skill);
+		if (input.checkNameTaken) {
+			await this.assertNameFree(input.skill.name, input.target, undefined, ctx);
+		}
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
@@ -213,7 +227,10 @@ export class SkillService {
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
 				return { saved: result, following: [] };
 			}
-			if (skill.name !== latest.version.name) {
+			// A rename that only changes case or separators keeps the name key, so it can
+			// clash with nothing new. The legacy rule skipped it too.
+			if (skillNameKey(skill.name) !== skillNameKey(latest.version.name)) {
+				await this.assertNameFree(skill.name, latest.skill, skillId, txCtx);
 				await this.assertRenameKeepsNamesApart(skillId, latest.version.name, skill.name, txCtx);
 			}
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
@@ -254,6 +271,50 @@ export class SkillService {
 				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
 				excludePushRef,
 			);
+		}
+	}
+
+	/**
+	 * The requested name if its scope has no name like it, else the name with the first
+	 * free number after it ("New skill 2"), as workflow names get.
+	 */
+	async freeName(requested: string, target: SkillTarget, ctx: OperationContext = {}) {
+		const taken = new Set(
+			(
+				await this.skillRepository.findLatestNamesInTarget(
+					{ projectId: target.projectId, agentId: target.agentId },
+					ctx,
+				)
+			).map(({ name }) => skillNameKey(name)),
+		);
+		const base = requested.trim();
+		if (!taken.has(skillNameKey(base))) return base;
+		for (let n = 2; ; n++) {
+			const suffix = ` ${n}`;
+			const candidate = `${base.slice(0, AGENT_SKILL_NAME_MAX_LENGTH - suffix.length)}${suffix}`;
+			if (!taken.has(skillNameKey(candidate))) return candidate;
+		}
+	}
+
+	/**
+	 * Refuses a name that is hard to tell apart from another skill's name in the same
+	 * scope: one agent, one project or the instance, by the same rule as inside one agent.
+	 */
+	private async assertNameFree(
+		name: string,
+		target: SkillTarget,
+		exceptSkillId: string | undefined,
+		ctx: OperationContext,
+	): Promise<void> {
+		const key = skillNameKey(name);
+		const names = await this.skillRepository.findLatestNamesInTarget(
+			{ projectId: target.projectId, agentId: target.agentId },
+			ctx,
+		);
+		if (
+			names.some((other) => other.skillId !== exceptSkillId && skillNameKey(other.name) === key)
+		) {
+			throw new SkillNameTakenError(name);
 		}
 	}
 
@@ -416,14 +477,17 @@ export class SkillService {
 
 	/**
 	 * Moves a skill to a project, one agent or the instance. Refused while an agent other
-	 * than `keepAgentId` uses it. The edit lock makes a concurrent attach wait, so the check
-	 * and the move see the same agents.
+	 * than `keepAgentId` uses it, or while any agent uses it when there is no `keepAgentId`.
+	 * The edit lock makes a concurrent attach wait, so the check and the move see the same
+	 * agents.
 	 */
 	async changeTarget(
 		skillId: string,
 		target: SkillTarget,
-		keepAgentId: string,
+		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
+		/** The name the skill has after this request, when the same request renames it. */
+		nameAfterMove?: string,
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -432,9 +496,16 @@ export class SkillService {
 			);
 			if (others.length > 0) {
 				throw new ConflictError(
-					'Other agents use this skill. Detach it from those agents first, then change where it can be added.',
+					keepAgentId
+						? 'Other agents use this skill. Detach it from those agents first, then change where it can be added.'
+						: 'Agents use this skill. Detach it from every agent first, then change where it can be added.',
 				);
 			}
+			// The new scope must not already hold a name like the one the skill has after the move.
+			const name =
+				nameAfterMove ??
+				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
+			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);
 		});
 	}

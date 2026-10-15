@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DialogSize } from '@n8n/design-system';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import AgentModal from './AgentModal.vue';
 
@@ -49,6 +49,15 @@ const emit = defineEmits<{
 	interactOutside: [event: Event];
 }>();
 
+const agentModal = useTemplateRef<InstanceType<typeof AgentModal>>('agentModal');
+
+/** Puts the editable title in edit mode. */
+function focusTitle() {
+	agentModal.value?.focusTitle();
+}
+
+defineExpose({ focusTitle });
+
 const isPickerStep = computed(() => props.step === 'select' || props.step === 'list');
 const stepChanged = ref(false);
 watch(
@@ -63,6 +72,7 @@ watch(
 
 <template>
 	<AgentModal
+		ref="agentModal"
 		:open="open"
 		:title="title"
 		:editable-title="editableTitle"
