@@ -2,11 +2,20 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import {
+	skillNameKey,
+	type AgentConfigValidationIssue,
+	type AgentSkillAvailability,
+	type SkillDetail,
+	type SkillListItem,
+} from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createAgentSkill } from './useAgentApi';
+import { createAgentSkill, getHubSkill } from './useAgentApi';
+import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
 	AGENT_TOOLS_MODAL_KEY,
@@ -57,7 +66,11 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * `onOpenAddSkillModal` via the shared `createAgentSkill` API call.
 	 * Unused when `localSkills` is provided.
 	 */
-	scheduleSkillSave: (payload: { skillId: string; skill: AgentSkill }) => void;
+	scheduleSkillSave: (payload: {
+		skillId: string;
+		skill: AgentSkill;
+		availableTo?: AgentSkillAvailability;
+	}) => void;
 	/**
 	 * Skill store for hosts whose bodies live outside an agent entity — inline
 	 * agents keep them in the node parameter. `bodies` is where the handlers
@@ -83,6 +96,7 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * Hosts whose agent always exists omit it.
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
+	flushConfigSave?: () => Promise<unknown>;
 	/**
 	 * Flushes pending agent edits before an API mutation that also writes the
 	 * agent config. This prevents the mutation from advancing the config hash
@@ -117,6 +131,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		localSkills,
 		supportsToolApproval,
 		ensureAgentPersisted,
+		flushConfigSave,
 		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
@@ -127,7 +142,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const rbacStore = useRBACStore();
+	const settingsStore = useSettingsStore();
 	const { showError, showMessage } = useToast();
+	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
+
+	const hubSkillsEnabled = computed(
+		() => !localSkills && settingsStore.moduleSettings.agents?.skillsHubEnabled === true,
+	);
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -327,11 +349,26 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				skill,
 				skillId: id,
 				existingSkillNames: appliedSkillNames(id),
+				hubSkillsEnabled: hubSkillsEnabled.value,
+				outdated: hubSkillsEnabled.value && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
+				onUseLatestVersion: (skillId: string) => {
+					if (agentId.value !== targetAgentId) return;
+					void useLatestSkillVersion(skillId);
+				},
 				onRemove: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
 				},
-				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
+				onConfirm: ({
+					id: skillId,
+					skill: updatedSkill,
+					availableTo,
+				}: {
+					id?: string;
+					skill: AgentSkill;
+					availableTo?: AgentSkillAvailability;
+				}) => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
 					const sanitizedSkill = normalizeAgentSkillForSave(updatedSkill);
@@ -353,7 +390,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							[skillId]: sanitizedSkill,
 						},
 					};
-					scheduleSkillSave({ skillId, skill: sanitizedSkill });
+					scheduleSkillSave({
+						skillId,
+						skill: sanitizedSkill,
+						...(availableTo && hubSkillsEnabled.value ? { availableTo } : {}),
+					});
 				},
 			},
 		});
@@ -369,10 +410,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	 * local-skill hosts. The modal validates against `existingSkillNames` before closing
 	 */
 	function hasDuplicateSkillName(name: string, excludeId?: string): boolean {
-		const normalized = name.trim().toLowerCase();
-		return appliedSkillNames(excludeId).some(
-			(existing) => existing.trim().toLowerCase() === normalized,
-		);
+		const key = skillNameKey(name);
+		return appliedSkillNames(excludeId).some((existing) => skillNameKey(existing) === key);
 	}
 
 	function showDuplicateSkillNameError(name: string) {
@@ -411,7 +450,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleConfigUpdate({ tasks: nextTasks });
 	}
 
-	function onOpenAddSkillModal() {
+	async function onOpenAddSkillModal() {
 		telemetry?.trackOpenedAddSkillModal?.();
 
 		// Capture the target at open time: the modal can outlive an agent/node
@@ -423,13 +462,44 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		const isCurrentTarget = () =>
 			projectId.value === targetProjectId && agentId.value === targetAgentId;
 
+		if (hubSkillsEnabled.value && ensureAgentPersisted) {
+			try {
+				await ensureAgentPersisted();
+			} catch (error) {
+				showError(error, locale.baseText('agents.builder.skills.picker.loadError'));
+				return;
+			}
+			if (!isCurrentTarget()) return;
+		}
+
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				existingSkillNames: appliedSkillNames(),
-				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
+				hubSkillsEnabled: hubSkillsEnabled.value,
+				getAttachedSkills: () =>
+					appliedSkills.value.map(({ id, skill }) => ({ id, name: skill.name })),
+				projectLabel: projectName.value ?? undefined,
+				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
+				onRemove: (skillId: string) => {
+					if (!isCurrentTarget()) return;
+					onRemoveSkill(skillId);
+				},
+				onAttach: async (librarySkill: SkillListItem) =>
+					await attachHubSkill(
+						isCurrentTarget,
+						async () => await getHubSkill(rootStore.restApiContext, librarySkill.id),
+					),
+				onConfirm: ({
+					skill,
+					availableTo,
+				}: {
+					id?: string;
+					skill: AgentSkill;
+					availableTo?: AgentSkillAvailability;
+				}) => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return;
 						const sanitizedSkill = normalizeAgentSkillForSave(skill);
@@ -465,6 +535,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 								targetProjectId,
 								targetAgentId,
 								sanitizedSkill,
+								hubSkillsEnabled.value ? availableTo : undefined,
 							);
 							skillId = result.id;
 							created = result.skill;
@@ -508,6 +579,86 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				},
 			},
 		});
+	}
+
+	async function attachHubSkill(
+		isCurrentTarget: () => boolean,
+		loadSkill: () => Promise<SkillDetail>,
+	) {
+		let hubSkill: SkillDetail;
+		try {
+			hubSkill = await loadSkill();
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.attach.error'));
+			return;
+		}
+		if (!isCurrentTarget() || !agent.value || !localConfig.value) return;
+		if (hasDuplicateSkillName(hubSkill.skill.name)) {
+			showDuplicateSkillNameError(hubSkill.skill.name);
+			return;
+		}
+		agent.value = {
+			...agent.value,
+			skillHashes: { ...(agent.value.skillHashes ?? {}), [hubSkill.id]: hubSkill.skillHash },
+			skills: { ...(agent.value.skills ?? {}), [hubSkill.id]: hubSkill.skill },
+		};
+		scheduleConfigUpdate({
+			skills: [
+				...(localConfig.value.skills ?? []).filter((ref) => ref.id !== hubSkill.id),
+				{ type: 'skill', id: hubSkill.id },
+			],
+		});
+		if (!flushConfigSave) return;
+		try {
+			await flushConfigSave();
+		} catch {
+			if (isCurrentTarget()) undoRefusedAttach(hubSkill.id);
+		}
+	}
+
+	function undoRefusedAttach(skillId: string) {
+		if (!agent.value || !localConfig.value) return;
+		const withoutSkill = <T>(byId: Record<string, T> | undefined) =>
+			Object.fromEntries(Object.entries(byId ?? {}).filter(([id]) => id !== skillId));
+		agent.value = {
+			...agent.value,
+			skills: withoutSkill(agent.value.skills),
+			skillHashes: withoutSkill(agent.value.skillHashes),
+		};
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).filter((ref) => ref.id !== skillId),
+		});
+	}
+
+	async function useLatestSkillVersion(skillId: string) {
+		const targetAgentId = agentId.value;
+		let hubSkill: SkillDetail;
+		try {
+			hubSkill = await getHubSkill(rootStore.restApiContext, skillId);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.useLatest.error'));
+			return;
+		}
+		if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
+		if (!localConfig.value) return;
+		agent.value = {
+			...agent.value,
+			skills: { ...(agent.value.skills ?? {}), [skillId]: hubSkill.skill },
+			skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: hubSkill.skillHash },
+			outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
+		};
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).map((ref) =>
+				ref.id === skillId ? { type: 'skill', id: skillId } : ref,
+			),
+		});
+		try {
+			await beforeAgentMutation?.();
+		} catch {
+			return;
+		}
+		if (agentId.value !== targetAgentId) return;
+		onOpenSkillFromList(skillId);
 	}
 
 	function onConnectedTriggersUpdate(triggers: string[]) {
