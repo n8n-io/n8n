@@ -1,3 +1,11 @@
+## [2.43.6](https://github.com/n8n-io/n8n/compare/n8n@2.43.5...n8n@2.43.6) (2026-10-15)
+
+
+### Bug Fixes
+
+* **core:** Create an XML parser for each webhook request body ([#41113](https://github.com/n8n-io/n8n/issues/41113)) ([ea3ee53](https://github.com/n8n-io/n8n/commit/ea3ee53361503ac55478ac146d8474765ea08574))
+
+
 ## [2.43.5](https://github.com/n8n-io/n8n/compare/n8n@2.43.4...n8n@2.43.5) (2026-10-14)
 
 
