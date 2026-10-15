@@ -38,7 +38,7 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 			quickjs_fe_legacy_missing_input: z
 				.number()
 				.describe(
-					'The legacy engine had no input data, because the previous nodes did not run. Not compared, and not in the mismatch shapes',
+					'The legacy engine had no input data, because previous or intermediate nodes did not run, and QuickJS returned no value either. Not compared, and not in the mismatch shapes',
 				),
 			quickjs_fe_quickjs_timeouts: z
 				.number()

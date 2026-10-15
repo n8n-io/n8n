@@ -65,23 +65,75 @@ describe('QuickJsExpressionShadow', () => {
 		expect(shadow.takeReport()).toMatchObject({ evaluations: 1, [outcome]: 1 });
 	});
 
-	it('counts missing input data apart, without a mismatch shape', () => {
-		const { shadow } = createShadow(ok(undefined));
-		const error = new ExpressionError('No execution data available', { type: 'no_execution_data' });
-
-		run(shadow, '{{ $json.name.toUpperCase() }}', {
+	const missingInput = (type: 'no_execution_data' | 'paired_item_intermediate_nodes') =>
+		({
 			ok: false,
-			error,
+			error: new ExpressionError('No execution data available', { type }),
 			errorClass: 'ExpressionError',
-		});
+		}) as const;
+
+	it.each([
+		['no_execution_data', ok(undefined)],
+		['paired_item_intermediate_nodes', ok(undefined)],
+		['no_execution_data', failed('TypeError')],
+	] as const)(
+		'counts missing input data (%s) apart, without a mismatch shape or latency',
+		(type, quickjs) => {
+			const { shadow } = createShadow(quickjs);
+
+			run(shadow, '{{ $json.name.toUpperCase() }}', missingInput(type));
+
+			const report = shadow.takeReport();
+			expect(report).toMatchObject({
+				evaluations: 1,
+				legacy_missing_input: 1,
+				legacy_error_quickjs_ok: 0,
+				both_error: 0,
+			});
+			expect(report?.mismatches).toEqual([]);
+			expect(report?.legacy_latency_buckets.every((count) => count === 0)).toBe(true);
+		},
+	);
+
+	// The editor shows a "pending" hint for legacy, but QuickJS would show a value.
+	it('keeps missing input as a mismatch when QuickJS still returns a value', () => {
+		const { shadow } = createShadow(ok('fallback'));
+
+		run(shadow, "{{ $json.a ?? 'fallback' }}", missingInput('no_execution_data'));
 
 		const report = shadow.takeReport();
-		expect(report).toMatchObject({
-			evaluations: 1,
-			legacy_missing_input: 1,
-			legacy_error_quickjs_ok: 0,
+		expect(report).toMatchObject({ legacy_error_quickjs_ok: 1, legacy_missing_input: 0 });
+		expect(report?.mismatches).toHaveLength(1);
+	});
+
+	it('still compares an expression once its input data arrives in the same report', () => {
+		const evaluate = vi
+			.fn<() => ExpressionEvaluationOutcome>()
+			.mockReturnValueOnce(ok(undefined))
+			.mockReturnValue(ok('Ada'));
+		const shadow = new QuickJsExpressionShadow({
+			evaluator: { evaluate },
+			sampleRate: 1,
+			random: () => 0,
+			now: () => 0,
 		});
-		expect(report?.mismatches).toEqual([]);
+
+		run(shadow, '{{ $json.name }}', missingInput('no_execution_data'));
+		run(shadow, '{{ $json.name }}', ok('Ada'));
+
+		expect(shadow.takeReport()).toMatchObject({
+			evaluations: 2,
+			legacy_missing_input: 1,
+			same: 1,
+		});
+	});
+
+	it('sends a report that holds only missing-input runs', () => {
+		const { shadow } = createShadow(ok(undefined));
+
+		run(shadow, '{{ $json.a }}', missingInput('no_execution_data'));
+
+		expect(shadow.takeReport()).toMatchObject({ legacy_missing_input: 1 });
 	});
 
 	it('keeps other expression errors as mismatches', () => {
