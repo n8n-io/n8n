@@ -248,7 +248,7 @@ catalog:
   oxlint-tsgolint: ^0.21.1
   p-limit: ^3.1.0
   pdf-parse: 2.4.5
-  pdfjs-dist: 5.4.296
+  pdfjs-dist: 6.3.289
   pg: 8.21.0
   picocolors: 1.0.1
   playwright-core: 1.62.1
@@ -486,13 +486,14 @@ overrides:
   # The editor schema and DOM parser must use the same model classes.
   prosemirror-model: 1.25.12
   'prosemirror-view@<1.42.3': 1.42.3
+  # Only the pdf-parse CommonJS build loads this copy. Match pdfjs-dist so the image ships one binary.
+  'pdf-parse>@napi-rs/canvas': ^1.0.0
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
 
 patchedDependencies:
   bull@4.16.4: patches/bull@4.16.4.patch
   element-plus@2.4.3: patches/element-plus@2.4.3.patch
-  pdfjs-dist@5.4.296: patches/pdfjs-dist@5.4.296.patch
   pkce-challenge@5.0.0: patches/pkce-challenge@5.0.0.patch
   '@types/express-serve-static-core@5.0.6': patches/@types__express-serve-static-core@5.0.6.patch
   '@types/ws@8.18.1': patches/@types__ws@8.18.1.patch
@@ -512,6 +513,7 @@ patchedDependencies:
   imapflow@1.7.1: patches/imapflow@1.7.1.patch
   '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
   '@chat-adapter/whatsapp@4.37.0': patches/@chat-adapter__whatsapp@4.37.0.patch
+  pdf-parse@2.4.5: patches/pdf-parse@2.4.5.patch
   '@icetee/ftp@0.3.15': patches/@icetee__ftp@0.3.15.patch
   xml2js@0.6.2: patches/xml2js@0.6.2.patch
 
