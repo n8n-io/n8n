@@ -35,51 +35,53 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
+	for (let i = 0; i < items.length; i++) {
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	const body = {
-		query: `query IssueLabels($first: Int, $after: String) {
-			issueLabels(first: $first, after: $after) {
-				nodes {
-					id
-					name
-					color
-					description
-					createdAt
-					updatedAt
+		const body = {
+			query: `query IssueLabels($first: Int, $after: String) {
+				issueLabels(first: $first, after: $after) {
+					nodes {
+						id
+						name
+						color
+						description
+						createdAt
+						updatedAt
+					}
+					pageInfo {
+						hasNextPage
+						endCursor
+					}
 				}
-				pageInfo {
-					hasNextPage
-					endCursor
-				}
-			}
-		}`,
-		variables: { first: 50 },
-	};
+			}`,
+			variables: { first: 50 },
+		};
 
-	try {
-		const labels = await linearApiRequestAllItems.call(this, 'data.issueLabels', body, limit);
+		try {
+			const labels = await linearApiRequestAllItems.call(this, 'data.issueLabels', body, limit);
 
-		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(labels),
-			{ itemData: { item: 0 } },
-		);
-		returnData.push(...executionData);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(labels),
+				{ itemData: { item: i } },
 			);
-		} else {
-			throw error;
+			returnData.push(...executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
 

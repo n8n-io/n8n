@@ -20,19 +20,20 @@ const properties: INodeProperties[] = [
 		description: 'The URL to attach to the issue',
 	},
 	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The attachment title',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
 		options: [
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'The attachment title',
-			},
 			{
 				displayName: 'Subtitle',
 				name: 'subtitle',
@@ -62,13 +63,14 @@ export async function execute(
 		try {
 			const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
 			const url = this.getNodeParameter('url', i) as string;
+			const title = this.getNodeParameter('title', i) as string;
 			const additionalFields = this.getNodeParameter('additionalFields', i) as Record<
 				string,
 				unknown
 			>;
 
 			const body = {
-				query: `mutation AttachmentCreate($issueId: String!, $url: String!, $title: String, $subtitle: String) {
+				query: `mutation AttachmentCreate($issueId: String!, $url: String!, $title: String!, $subtitle: String) {
 					attachmentCreate(input: {
 						issueId: $issueId
 						url: $url
@@ -89,6 +91,7 @@ export async function execute(
 				variables: {
 					issueId,
 					url,
+					title,
 					...additionalFields,
 				},
 			};

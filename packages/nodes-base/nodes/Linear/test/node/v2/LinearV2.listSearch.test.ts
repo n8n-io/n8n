@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import * as GenericFunctions from '../../../shared/GenericFunctions';
-import { getIssues } from '../../../shared/methods/listSearch';
+import { getIssues, getStates } from '../../../shared/methods/listSearch';
 
 describe('Linear v2 → listSearch.getIssues', () => {
 	const mockThis = {} as unknown as ILoadOptionsFunctions;
@@ -49,5 +49,31 @@ describe('Linear v2 → listSearch.getIssues', () => {
 				}),
 			}),
 		);
+	});
+});
+
+describe('Linear v2 → listSearch.getStates', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('prefixes each state with its team key', async () => {
+		vi.spyOn(GenericFunctions, 'linearApiRequest').mockResolvedValue({
+			data: {
+				workflowStates: {
+					nodes: [
+						{ id: 's1', name: 'Todo', team: { key: 'ENG' } },
+						{ id: 's2', name: 'Todo', team: { key: 'OPS' } },
+						{ id: 's3', name: 'Done', team: { key: 'ENG' } },
+					],
+					pageInfo: { hasNextPage: false, endCursor: null },
+				},
+			},
+		} as never);
+
+		const result = await getStates.call({} as ILoadOptionsFunctions, 'todo');
+
+		expect(result.results).toEqual([
+			{ name: 'ENG — Todo', value: 's1' },
+			{ name: 'OPS — Todo', value: 's2' },
+		]);
 	});
 });

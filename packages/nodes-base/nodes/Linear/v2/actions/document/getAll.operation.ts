@@ -33,50 +33,54 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 
-	const body = {
-		query: `query Documents($first: Int, $after: String) {
-			documents(first: $first, after: $after) {
-				nodes {
-					id
-					title
-					content
-					createdAt
-					updatedAt
-					project {
+	for (let i = 0; i < items.length; i++) {
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
+
+		const body = {
+			query: `query Documents($first: Int, $after: String) {
+				documents(first: $first, after: $after) {
+					nodes {
 						id
-						name
+						title
+						content
+						createdAt
+						updatedAt
+						project {
+							id
+							name
+						}
 					}
+					pageInfo { hasNextPage endCursor }
 				}
-				pageInfo { hasNextPage endCursor }
-			}
-		}`,
-		variables: { first: 50 },
-	};
+			}`,
+			variables: { first: 50 },
+		};
 
-	try {
-		const documents = await linearApiRequestAllItems.call(this, 'data.documents', body, limit);
-		returnData.push(
-			...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(documents), {
-				itemData: { item: 0 },
-			}),
-		);
-	} catch (error) {
-		if (this.continueOnFail()) {
+		try {
+			const documents = await linearApiRequestAllItems.call(this, 'data.documents', body, limit);
 			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(documents), {
+					itemData: { item: i },
+				}),
 			);
-		} else {
-			throw error;
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
+
 	return returnData;
 }

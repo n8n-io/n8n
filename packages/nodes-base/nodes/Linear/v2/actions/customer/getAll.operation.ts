@@ -34,45 +34,49 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 
-	const body = {
-		query: `query Customers($first: Int, $after: String) {
-			customers(first: $first, after: $after) {
-				nodes {
-					${CUSTOMER_FIELDS}
-				}
-				pageInfo {
-					hasNextPage
-					endCursor
-				}
-			}
-		}`,
-		variables: { first: 50 },
-	};
+	for (let i = 0; i < items.length; i++) {
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	try {
-		const customers = await linearApiRequestAllItems.call(this, 'data.customers', body, limit);
-		returnData.push(
-			...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(customers), {
-				itemData: { item: 0 },
-			}),
-		);
-	} catch (error) {
-		if (this.continueOnFail()) {
+		const body = {
+			query: `query Customers($first: Int, $after: String) {
+				customers(first: $first, after: $after) {
+					nodes {
+						${CUSTOMER_FIELDS}
+					}
+					pageInfo {
+						hasNextPage
+						endCursor
+					}
+				}
+			}`,
+			variables: { first: 50 },
+		};
+
+		try {
+			const customers = await linearApiRequestAllItems.call(this, 'data.customers', body, limit);
 			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(customers), {
+					itemData: { item: i },
+				}),
 			);
-		} else {
-			throw error;
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
+
 	return returnData;
 }

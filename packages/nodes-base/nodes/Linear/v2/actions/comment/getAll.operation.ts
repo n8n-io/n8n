@@ -37,60 +37,67 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const issueId = this.getNodeParameter('issueId', 0, '', { extractValue: true }) as string;
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
+	for (let i = 0; i < items.length; i++) {
+		const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	const body = {
-		query: `query IssueComments($issueId: String!, $first: Int, $after: String) {
-			issue(id: $issueId) {
-				comments(first: $first, after: $after) {
-					nodes {
-						id
-						body
-						createdAt
-						updatedAt
-						user {
+		const body = {
+			query: `query IssueComments($issueId: String!, $first: Int, $after: String) {
+				issue(id: $issueId) {
+					comments(first: $first, after: $after) {
+						nodes {
 							id
-							displayName
-							email
+							body
+							createdAt
+							updatedAt
+							user {
+								id
+								displayName
+								email
+							}
+						}
+						pageInfo {
+							hasNextPage
+							endCursor
 						}
 					}
-					pageInfo {
-						hasNextPage
-						endCursor
-					}
 				}
-			}
-		}`,
-		variables: {
-			issueId,
-			first: 50,
-		},
-	};
+			}`,
+			variables: {
+				issueId,
+				first: 50,
+			},
+		};
 
-	try {
-		const comments = await linearApiRequestAllItems.call(this, 'data.issue.comments', body, limit);
-
-		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(comments),
-			{ itemData: { item: 0 } },
-		);
-		returnData.push(...executionData);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+		try {
+			const comments = await linearApiRequestAllItems.call(
+				this,
+				'data.issue.comments',
+				body,
+				limit,
 			);
-		} else {
-			throw error;
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(comments),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
 

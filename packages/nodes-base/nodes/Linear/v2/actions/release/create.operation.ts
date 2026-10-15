@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { RELEASE_FIELDS } from '../../../shared/constants';
+import { PIPELINE_LOCATOR, RELEASE_FIELDS } from '../../../shared/constants';
 import { linearApiRequest, normalizeTimelessDates } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -18,14 +18,7 @@ const properties: INodeProperties[] = [
 		default: '',
 		description: 'The name of the release',
 	},
-	{
-		displayName: 'Pipeline ID',
-		name: 'pipelineId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The ID of the release pipeline this release belongs to',
-	},
+	PIPELINE_LOCATOR,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -69,7 +62,9 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const name = this.getNodeParameter('name', i) as string;
-			const pipelineId = this.getNodeParameter('pipelineId', i) as string;
+			const pipelineId = this.getNodeParameter('pipelineId', i, '', {
+				extractValue: true,
+			}) as string;
 			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 			normalizeTimelessDates(additionalFields);
 

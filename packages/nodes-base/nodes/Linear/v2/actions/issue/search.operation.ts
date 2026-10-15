@@ -44,50 +44,52 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const searchQuery = this.getNodeParameter('query', 0) as string;
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
+	for (let i = 0; i < items.length; i++) {
+		const searchQuery = this.getNodeParameter('query', i) as string;
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	const body = {
-		query: `query IssueSearch($term: String!, $first: Int, $after: String) {
-			searchIssues(term: $term, first: $first, after: $after) {
-				nodes {
-					${ISSUE_FIELDS}
+		const body = {
+			query: `query IssueSearch($term: String!, $first: Int, $after: String) {
+				searchIssues(term: $term, first: $first, after: $after) {
+					nodes {
+						${ISSUE_FIELDS}
+					}
+					pageInfo {
+						hasNextPage
+						endCursor
+					}
 				}
-				pageInfo {
-					hasNextPage
-					endCursor
-				}
-			}
-		}`,
-		variables: {
-			term: searchQuery,
-			first: 50,
-		},
-	};
+			}`,
+			variables: {
+				term: searchQuery,
+				first: 50,
+			},
+		};
 
-	try {
-		const issues = await linearApiRequestAllItems.call(this, 'data.searchIssues', body, limit);
+		try {
+			const issues = await linearApiRequestAllItems.call(this, 'data.searchIssues', body, limit);
 
-		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(issues),
-			{ itemData: { item: 0 } },
-		);
-		returnData.push(...executionData);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(issues),
+				{ itemData: { item: i } },
 			);
-		} else {
-			throw error;
+			returnData.push(...executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
 

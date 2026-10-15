@@ -79,63 +79,65 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const filters = this.getNodeParameter('filters', 0) as IDataObject;
-	extractLocatorIds(this, filters, 'filters', 0);
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
+	for (let i = 0; i < items.length; i++) {
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const filters = this.getNodeParameter('filters', i) as IDataObject;
+		extractLocatorIds(this, filters, 'filters', i);
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	// Build filter object for the query
-	const filter: IDataObject = {};
-	if (filters.assigneeId) filter.assignee = { id: { eq: filters.assigneeId } };
-	if (filters.cycleId) filter.cycle = { id: { eq: filters.cycleId } };
-	if (filters.labelId) filter.labels = { some: { id: { eq: filters.labelId } } };
-	if (filters.priority !== undefined && filters.priority !== '') {
-		filter.priority = { eq: filters.priority };
-	}
-	if (filters.projectId) filter.project = { id: { eq: filters.projectId } };
-	if (filters.stateId) filter.state = { id: { eq: filters.stateId } };
-	if (filters.teamId) filter.team = { id: { eq: filters.teamId } };
+		// Build filter object for the query
+		const filter: IDataObject = {};
+		if (filters.assigneeId) filter.assignee = { id: { eq: filters.assigneeId } };
+		if (filters.cycleId) filter.cycle = { id: { eq: filters.cycleId } };
+		if (filters.labelId) filter.labels = { some: { id: { eq: filters.labelId } } };
+		if (filters.priority !== undefined && filters.priority !== '') {
+			filter.priority = { eq: filters.priority };
+		}
+		if (filters.projectId) filter.project = { id: { eq: filters.projectId } };
+		if (filters.stateId) filter.state = { id: { eq: filters.stateId } };
+		if (filters.teamId) filter.team = { id: { eq: filters.teamId } };
 
-	const body = {
-		query: `query Issues($first: Int, $after: String, $filter: IssueFilter) {
-			issues(first: $first, after: $after, filter: $filter) {
-				nodes {
-					${ISSUE_FIELDS}
+		const body = {
+			query: `query Issues($first: Int, $after: String, $filter: IssueFilter) {
+				issues(first: $first, after: $after, filter: $filter) {
+					nodes {
+						${ISSUE_FIELDS}
+					}
+					pageInfo {
+						hasNextPage
+						endCursor
+					}
 				}
-				pageInfo {
-					hasNextPage
-					endCursor
-				}
-			}
-		}`,
-		variables: {
-			first: 50,
-			...(Object.keys(filter).length > 0 ? { filter } : {}),
-		},
-	};
+			}`,
+			variables: {
+				first: 50,
+				...(Object.keys(filter).length > 0 ? { filter } : {}),
+			},
+		};
 
-	try {
-		const issues = await linearApiRequestAllItems.call(this, 'data.issues', body, limit);
+		try {
+			const issues = await linearApiRequestAllItems.call(this, 'data.issues', body, limit);
 
-		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(issues),
-			{ itemData: { item: 0 } },
-		);
-		returnData.push(...executionData);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(issues),
+				{ itemData: { item: i } },
 			);
-		} else {
-			throw error;
+			returnData.push(...executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
 

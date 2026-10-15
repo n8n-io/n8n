@@ -35,53 +35,57 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-	const projectId = this.getNodeParameter('projectId', 0, '', { extractValue: true }) as string;
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 
-	const body = {
-		query: `query ProjectMilestones($projectId: String!, $first: Int, $after: String) {
-			project(id: $projectId) {
-				projectMilestones(first: $first, after: $after) {
-					nodes {
-						${PROJECT_MILESTONE_FIELDS}
-					}
-					pageInfo {
-						hasNextPage
-						endCursor
+	for (let i = 0; i < items.length; i++) {
+		const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
+
+		const body = {
+			query: `query ProjectMilestones($projectId: String!, $first: Int, $after: String) {
+				project(id: $projectId) {
+					projectMilestones(first: $first, after: $after) {
+						nodes {
+							${PROJECT_MILESTONE_FIELDS}
+						}
+						pageInfo {
+							hasNextPage
+							endCursor
+						}
 					}
 				}
-			}
-		}`,
-		variables: { projectId, first: 50 },
-	};
+			}`,
+			variables: { projectId, first: 50 },
+		};
 
-	try {
-		const milestones = await linearApiRequestAllItems.call(
-			this,
-			'data.project.projectMilestones',
-			body,
-			limit,
-		);
-		returnData.push(
-			...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(milestones), {
-				itemData: { item: 0 },
-			}),
-		);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+		try {
+			const milestones = await linearApiRequestAllItems.call(
+				this,
+				'data.project.projectMilestones',
+				body,
+				limit,
 			);
-		} else {
-			throw error;
+			returnData.push(
+				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(milestones), {
+					itemData: { item: i },
+				}),
+			);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
+
 	return returnData;
 }

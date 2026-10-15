@@ -32,6 +32,7 @@ import {
 	getCycles as searchCycles,
 	getDocuments,
 	getReleases,
+	getReleasePipelines,
 	getViews,
 } from '../shared/methods/listSearch';
 import { validateCredentials } from '../shared/GenericFunctions';
@@ -98,6 +99,7 @@ export class LinearV2 implements INodeType {
 			getCycles: searchCycles,
 			getDocuments,
 			getReleases,
+			getReleasePipelines,
 			getViews,
 		},
 	};

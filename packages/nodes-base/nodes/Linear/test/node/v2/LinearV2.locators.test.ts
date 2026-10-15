@@ -1,5 +1,6 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyRegexValidation } from 'n8n-workflow';
 
+import { ISSUE_LOCATOR } from '../../../shared/constants';
 import { LinearV2 } from '../../../v2/LinearV2.node';
 
 describe('Linear v2 → resource locators', () => {
@@ -47,5 +48,16 @@ describe('Linear v2 → resource locators', () => {
 			.map((option) => option.name);
 
 		expect(requiredNested).toEqual([]);
+	});
+
+	it('accepts issue URLs that include the title slug', () => {
+		const urlMode = ISSUE_LOCATOR.modes?.find((mode) => mode.name === 'url');
+		const validation = urlMode?.validation?.[0] as INodePropertyRegexValidation;
+		const extract = urlMode?.extractValue;
+		const url = 'https://linear.app/acme/issue/CE-123/some-issue-title';
+
+		// n8n anchors validation regexes to the whole value
+		expect(new RegExp(`^${validation.properties.regex}$`).test(url)).toBe(true);
+		expect(url.match(new RegExp(extract!.regex))?.[1]).toBe('CE-123');
 	});
 });

@@ -17,7 +17,11 @@ const properties: INodeProperties[] = [
 		required: true,
 		default: '',
 	},
-	TEAM_LOCATOR,
+	{
+		...TEAM_LOCATOR,
+		required: false,
+		description: 'The team the label belongs to. Leave empty to create a workspace label.',
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -67,7 +71,7 @@ export async function execute(
 			>;
 
 			const body = {
-				query: `mutation IssueLabelCreate($name: String!, $teamId: String!, $color: String, $description: String) {
+				query: `mutation IssueLabelCreate($name: String!, $teamId: String, $color: String, $description: String) {
 					issueLabelCreate(input: {
 						name: $name
 						teamId: $teamId
@@ -86,7 +90,8 @@ export async function execute(
 				}`,
 				variables: {
 					name,
-					teamId,
+					// Omitting the team creates a workspace-wide label
+					teamId: teamId || undefined,
 					...additionalFields,
 				},
 			};

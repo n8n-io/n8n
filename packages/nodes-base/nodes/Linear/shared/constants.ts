@@ -240,7 +240,8 @@ export function buildLocator({
 							validation: [
 								{
 									type: 'regex' as const,
-									properties: { regex: url.regex, errorMessage: url.errorMessage },
+									// Validation is anchored to the whole value, so allow the trailing slug/query
+									properties: { regex: `${url.regex}(?:[/?#].*)?`, errorMessage: url.errorMessage },
 								},
 							],
 							extractValue: { type: 'regex' as const, regex: url.regex },
@@ -336,6 +337,14 @@ export const STATE_LOCATOR: INodeProperties = buildLocator({
 	searchListMethod: 'getStates',
 	idHint: 'Enter the workflow state ID',
 	required: false,
+});
+
+export const PIPELINE_LOCATOR: INodeProperties = buildLocator({
+	name: 'pipelineId',
+	displayName: 'Pipeline',
+	description: 'The release pipeline this release belongs to',
+	searchListMethod: 'getReleasePipelines',
+	idHint: 'Enter the release pipeline ID',
 });
 
 export const WORKFLOW_STATE_LOCATOR: INodeProperties = buildLocator({

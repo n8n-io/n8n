@@ -225,7 +225,19 @@ export async function getStates(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return await searchByName(this, 'workflowStates', 'WorkflowStateFilter', filter, paginationToken);
+	// State names repeat across teams (every team has a "Todo"), so prefix the team key
+	return await searchLocally(
+		this,
+		'workflowStates',
+		'id name team { key }',
+		(node) => {
+			const team = (node.team as IDataObject | undefined)?.key;
+			const name = node.name as string;
+			return { name: team ? `${team as string} — ${name}` : name, value: node.id as string };
+		},
+		filter,
+		paginationToken,
+	);
 }
 
 export async function getLabels(
@@ -287,6 +299,21 @@ export async function getReleases(
 				value: node.id as string,
 			};
 		},
+		filter,
+		paginationToken,
+	);
+}
+
+export async function getReleasePipelines(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchLocally(
+		this,
+		'releasePipelines',
+		'id name',
+		(node) => ({ name: node.name as string, value: node.id as string }),
 		filter,
 		paginationToken,
 	);

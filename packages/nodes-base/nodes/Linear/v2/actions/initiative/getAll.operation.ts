@@ -34,45 +34,54 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 
-	const body = {
-		query: `query Initiatives($first: Int, $after: String) {
-			initiatives(first: $first, after: $after) {
-				nodes {
-					${INITIATIVE_FIELDS}
-				}
-				pageInfo {
-					hasNextPage
-					endCursor
-				}
-			}
-		}`,
-		variables: { first: 50 },
-	};
+	for (let i = 0; i < items.length; i++) {
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
-	try {
-		const initiatives = await linearApiRequestAllItems.call(this, 'data.initiatives', body, limit);
-		returnData.push(
-			...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(initiatives), {
-				itemData: { item: 0 },
-			}),
-		);
-	} catch (error) {
-		if (this.continueOnFail()) {
-			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+		const body = {
+			query: `query Initiatives($first: Int, $after: String) {
+				initiatives(first: $first, after: $after) {
+					nodes {
+						${INITIATIVE_FIELDS}
+					}
+					pageInfo {
+						hasNextPage
+						endCursor
+					}
+				}
+			}`,
+			variables: { first: 50 },
+		};
+
+		try {
+			const initiatives = await linearApiRequestAllItems.call(
+				this,
+				'data.initiatives',
+				body,
+				limit,
 			);
-		} else {
-			throw error;
+			returnData.push(
+				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(initiatives), {
+					itemData: { item: i },
+				}),
+			);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
+
 	return returnData;
 }

@@ -47,61 +47,65 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_items: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
-	const filters = this.getNodeParameter('filters', 0) as IDataObject;
-	extractLocatorIds(this, filters, 'filters', 0);
 
-	const filter: IDataObject = {};
-	if (filters.teamId) filter.team = { id: { eq: filters.teamId } };
+	for (let i = 0; i < items.length; i++) {
+		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
+		const filters = this.getNodeParameter('filters', i) as IDataObject;
+		extractLocatorIds(this, filters, 'filters', i);
 
-	const body = {
-		query: `query WorkflowStates($first: Int, $after: String, $filter: WorkflowStateFilter) {
-			workflowStates(first: $first, after: $after, filter: $filter) {
-				nodes {
-					id
-					name
-					type
-					color
-					description
-					position
-					createdAt
-					updatedAt
-					team {
+		const filter: IDataObject = {};
+		if (filters.teamId) filter.team = { id: { eq: filters.teamId } };
+
+		const body = {
+			query: `query WorkflowStates($first: Int, $after: String, $filter: WorkflowStateFilter) {
+				workflowStates(first: $first, after: $after, filter: $filter) {
+					nodes {
 						id
 						name
+						type
+						color
+						description
+						position
+						createdAt
+						updatedAt
+						team {
+							id
+							name
+						}
 					}
+					pageInfo { hasNextPage endCursor }
 				}
-				pageInfo { hasNextPage endCursor }
-			}
-		}`,
-		variables: {
-			first: 50,
-			...(Object.keys(filter).length > 0 ? { filter } : {}),
-		},
-	};
+			}`,
+			variables: {
+				first: 50,
+				...(Object.keys(filter).length > 0 ? { filter } : {}),
+			},
+		};
 
-	try {
-		const states = await linearApiRequestAllItems.call(this, 'data.workflowStates', body, limit);
-		returnData.push(
-			...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(states), {
-				itemData: { item: 0 },
-			}),
-		);
-	} catch (error) {
-		if (this.continueOnFail()) {
+		try {
+			const states = await linearApiRequestAllItems.call(this, 'data.workflowStates', body, limit);
 			returnData.push(
-				...this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray({ error: (error as Error).message }),
-					{ itemData: { item: 0 } },
-				),
+				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(states), {
+					itemData: { item: i },
+				}),
 			);
-		} else {
-			throw error;
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+			} else {
+				throw error;
+			}
 		}
 	}
+
 	return returnData;
 }
