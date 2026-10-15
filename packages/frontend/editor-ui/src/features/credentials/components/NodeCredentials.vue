@@ -352,11 +352,10 @@ const leftBehind = ref<Record<string, UsedCredential>>({});
  * consulting the store. A host-supplied `credentials` list can hold ids the
  * flat map has not (yet) loaded — the store lookup alone would be `undefined`.
  *
- * When the host supplies that list it is authoritative: do not fall back to the
- * usable slice for ids missing from the displayed rows (e.g. a ghost id the
- * delete listener would otherwise re-select). Without a host list, the usable
- * slice is consulted so private Connect still resolves after the flat map is
- * cleared.
+ * Always allow the usable-slice fallback so private Connect still resolves after
+ * an unrelated credential list replaces the flat map. Ghost reselection after
+ * delete is prevented in the store listener by limiting candidates to the
+ * currently displayed host rows when `props.credentials` is set.
  */
 function findDisplayedCredential(
 	credentialType: string,
@@ -365,15 +364,11 @@ function findDisplayedCredential(
 	const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
 		({ type }) => type.name === credentialType,
 	);
-	const fromOptions = typeEntry?.options.find((option) => option.id === credentialId);
-	if (fromOptions) return fromOptions;
-	// Host-supplied lists are authoritative for dropdown picks — skip the usable
-	// slice so a delete listener cannot re-select a ghost id that is not shown.
-	if (!props.credentials) {
-		const usable = credentialsStore.getUsableCredentialById(credentialId);
-		if (usable) return usable;
-	}
-	return credentialsStore.getCredentialById(credentialId);
+	return (
+		typeEntry?.options.find((option) => option.id === credentialId) ??
+		credentialsStore.getUsableCredentialById(credentialId) ??
+		credentialsStore.getCredentialById(credentialId)
+	);
 }
 
 function isCredentialResolvable(credentialType: string): boolean {
@@ -620,7 +615,17 @@ onMounted(() => {
 
 			const current = selected.value[credentialType];
 			let credentialsOfType: ICredentialsResponse[] = [];
-			if (props.showAll) {
+			if (props.credentials) {
+				// Host-supplied lists are authoritative for delete/create reselection.
+				// Use the currently displayed rows (already filtered for deleted override
+				// ids) so a usable-slice "ghost" id that is not in the host list cannot
+				// be applied — while findDisplayedCredential still falls back to the
+				// usable slice for private Connect after the flat map is cleared.
+				const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
+					({ type }) => type.name === credentialType,
+				);
+				credentialsOfType = typeEntry?.options ?? [];
+			} else if (props.showAll) {
 				if (props.node) {
 					credentialsOfType = [...(credentialsStore.allUsableCredentialsForNode(props.node) || [])];
 				}
