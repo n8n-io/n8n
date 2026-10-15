@@ -2884,6 +2884,22 @@ export class InstanceAiService {
 					return createScopedWorkspace(workspace, root);
 				};
 
+				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
+					id: 'instance-ai-runtime-skill-workspace',
+					name: 'Instance AI runtime skill workspace',
+					ensureWorkspace: async () =>
+						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
+				});
+				const workspaceSkills = createLazyWorkspaceRuntimeSkillSource({
+					source: allRuntimeSkills,
+					// The sandbox stores every bundled skill, the same set the image and
+					// snapshot bake, so the prebaked skills bundle is reused.
+					bundleSource: loadInstanceAiRuntimeSkillSource(),
+					workspace: runtimeSkillWorkspace,
+					resolveVerifiedBundles: async () => (await getSandboxEntry())?.verifiedBundles,
+					logger: this.logger,
+				});
+				runtimeSkills = workspaceSkills;
 				runtimeWorkspace = createLazyRuntimeWorkspace({
 					// Empty + stable across resumes: sandbox/filesystem guidance lives in
 					// the system prompt's `## Sandbox workspace` section. Passing '' here
@@ -2894,21 +2910,8 @@ export class InstanceAiService {
 					filesystemInstructions: '',
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
-				});
-				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
-					id: 'instance-ai-runtime-skill-workspace',
-					name: 'Instance AI runtime skill workspace',
-					ensureWorkspace: async () =>
-						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
-				});
-				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-					source: allRuntimeSkills,
-					// The sandbox stores every bundled skill, the same set the image and
-					// snapshot bake, so the prebaked skills bundle is reused.
-					bundleSource: loadInstanceAiRuntimeSkillSource(),
-					workspace: runtimeSkillWorkspace,
-					resolveVerifiedBundles: async () => (await getSandboxEntry())?.verifiedBundles,
-					logger: this.logger,
+					// Commands can run skill scripts, so they wait for the skill files.
+					beforeUse: async () => await workspaceSkills.whenFilesWritten?.(),
 				});
 			}
 		}

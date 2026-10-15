@@ -67,6 +67,12 @@ export function hasRuntimeSkills(
 	return (source?.registry.skills.length ?? 0) > 0;
 }
 
+function hasPendingSkillFiles(
+	source: RuntimeSkillSource,
+): source is RuntimeSkillSource & { whenFilesWritten: () => Promise<void> } {
+	return 'whenFilesWritten' in source && typeof source.whenFilesWritten === 'function';
+}
+
 /**
  * Prepare the skill source in the background so it overlaps with the first model
  * call. load_skill awaits the same promise and retries if this one fails. It runs
@@ -83,7 +89,11 @@ export function warmRuntimeSkills(
 	const preparation = tracing
 		? tracing.withActiveSpan(tracing.actorRun, async () => await prepare.call(source))
 		: prepare.call(source);
-	tracing?.keepOpenUntilSettled?.(preparation);
+	tracing?.keepOpenUntilSettled?.(
+		hasPendingSkillFiles(source)
+			? preparation.then(async () => await source.whenFilesWritten())
+			: preparation,
+	);
 	preparation.catch((error: unknown) => {
 		logger?.warn('Failed to warm runtime skills in the background', {
 			error: getErrorMessage(error),

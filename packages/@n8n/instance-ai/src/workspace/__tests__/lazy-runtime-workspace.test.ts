@@ -129,6 +129,23 @@ describe('createLazyRuntimeWorkspace', () => {
 		await expect(operation).rejects.toMatchObject({ name: 'AbortError' });
 	});
 
+	it('runs commands only after the beforeUse hook settles', async () => {
+		const { workspace, executeCommand } = createMockWorkspace();
+		const pendingWrites = createDeferredPromise();
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace: async () => await Promise.resolve(workspace),
+			beforeUse: async () => await pendingWrites.promise,
+		});
+
+		const operation = lazyWorkspace.sandbox!.executeCommand!('ls', []);
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(executeCommand).not.toHaveBeenCalled();
+
+		pendingWrites.resolve();
+		await operation;
+		expect(executeCommand).toHaveBeenCalledTimes(1);
+	});
+
 	it('retries workspace creation after the first lazy initialization fails', async () => {
 		const { workspace } = createMockWorkspace();
 		const ensureWorkspace = vi

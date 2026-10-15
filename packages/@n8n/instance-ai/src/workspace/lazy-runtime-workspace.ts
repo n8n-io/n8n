@@ -45,6 +45,8 @@ export interface LazyRuntimeWorkspaceOptions {
 	 */
 	sandboxInstructions?: string;
 	filesystemInstructions?: string;
+	/** Awaited before each file or command operation, e.g. to finish pending skill writes. */
+	beforeUse?: () => Promise<void>;
 }
 
 type WorkspaceResolvedListener = (workspace: Workspace) => void;
@@ -56,8 +58,9 @@ export function createLazyRuntimeWorkspace({
 	name = 'Instance AI runtime workspace',
 	sandboxInstructions,
 	filesystemInstructions,
+	beforeUse,
 }: LazyRuntimeWorkspaceOptions): Workspace {
-	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
+	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace, beforeUse);
 
 	const workspace = new Workspace({
 		id,
@@ -80,7 +83,10 @@ class LazyRuntimeWorkspaceResolver {
 	private readonly resolvedListeners = new Set<WorkspaceResolvedListener>();
 	private readonly destroyedListeners = new Set<WorkspaceDestroyedListener>();
 
-	constructor(private readonly ensureWorkspace: RuntimeWorkspaceResolver) {}
+	constructor(
+		private readonly ensureWorkspace: RuntimeWorkspaceResolver,
+		private readonly beforeUse?: () => Promise<void>,
+	) {}
 
 	get current(): Workspace | undefined {
 		return this.resolvedWorkspace;
@@ -112,6 +118,7 @@ class LazyRuntimeWorkspaceResolver {
 			throw new Error('Instance AI runtime workspace is unavailable.');
 		}
 
+		await this.beforeUse?.();
 		return workspace;
 	}
 
