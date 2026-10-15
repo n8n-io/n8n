@@ -167,7 +167,6 @@ erDiagram
   uuid userId FK
 }
 "public.app" {
-  varchar_32_ auth
   timestamp_3__with_time_zone createdAt
   uuid draftVersionId FK
   uuid id
@@ -176,6 +175,7 @@ erDiagram
   varchar_36_ projectId FK
   uuid publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ visibility
 }
 "public.data_table" {
   timestamp_3__with_time_zone createdAt

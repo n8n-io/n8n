@@ -20,7 +20,7 @@ function toResponse(app: App): AppResponse {
 		projectId: app.projectId,
 		name: app.name,
 		namespace: app.namespace,
-		auth: app.auth,
+		visibility: app.visibility,
 		draftVersionId: app.draftVersionId,
 		publishedVersionId: app.publishedVersionId,
 		createdAt: app.createdAt.toISOString(),

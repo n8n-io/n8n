@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "auth" varchar(32) NOT NULL DEFAULT ('n8n'), "projectId" varchar(36) NOT NULL, "draftVersionId" varchar, "publishedVersionId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_auth" CHECK (("auth" IN ('none', 'n8n'))), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "app_draftVersionId_foreign" FOREIGN KEY ("draftVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL, CONSTRAINT "app_publishedVersionId_foreign" FOREIGN KEY ("publishedVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL)
+CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "visibility" varchar(16) NOT NULL DEFAULT ('project'), "projectId" varchar(36) NOT NULL, "draftVersionId" varchar, "publishedVersionId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_visibility" CHECK (("visibility" IN ('public', 'project', 'instance'))), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "app_draftVersionId_foreign" FOREIGN KEY ("draftVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL, CONSTRAINT "app_publishedVersionId_foreign" FOREIGN KEY ("publishedVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,7 +15,6 @@ CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT N
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| auth | varchar(32) | 'n8n' | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | draftVersionId | varchar |  | true |  | [app_version](app_version.md) |  |
 | id | varchar |  | false | [app_version](app_version.md) |  |  |
@@ -24,12 +23,13 @@ CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT N
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | publishedVersionId | varchar |  | true |  | [app_version](app_version.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| visibility | varchar(16) | 'project' | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("auth" IN ('none', 'n8n'))) |
+| - | CHECK | CHECK (("visibility" IN ('public', 'project', 'instance'))) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
@@ -57,7 +57,6 @@ erDiagram
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "app" {
-  varchar_32_ auth
   datetime_3_ createdAt
   varchar draftVersionId FK
   varchar id PK
@@ -66,19 +65,17 @@ erDiagram
   varchar_36_ projectId FK
   varchar publishedVersionId FK
   datetime_3_ updatedAt
+  varchar_16_ visibility
 }
 "app_version" {
   varchar appId FK
-  datetime_3_ artifactPrunedAt
-  INTEGER artifactSizeBytes
-  TEXT artifactStorageRef
-  varchar_32_ buildStatus
+  varchar_16_ buildStatus
   INTEGER buildTaskId FK
+  INTEGER bundleArtifactId FK
   datetime_3_ createdAt
   varchar id PK
   varchar_255_ label
-  INTEGER sourceSizeBytes
-  TEXT sourceStorageRef
+  INTEGER sourceArtifactId FK
   datetime_3_ updatedAt
 }
 "project" {

@@ -51,7 +51,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.ai_preference](public.ai_preference.md) | 8 |  | BASE TABLE |
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
 | [public.app](public.app.md) | 9 |  | BASE TABLE |
-| [public.app_version](public.app_version.md) | 12 |  | BASE TABLE |
+| [public.app_artifact](public.app_artifact.md) | 4 |  | BASE TABLE |
+| [public.app_version](public.app_version.md) | 9 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -278,6 +279,8 @@ erDiagram
 "public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
 "public.app_version" }o--o| "public.scheduled_task" : "FOREIGN KEY (#quot;buildTaskId#quot;) REFERENCES scheduled_task(id) ON DELETE SET NULL"
 "public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
+"public.app_version" }o--o| "public.app_artifact" : "FOREIGN KEY (#quot;bundleArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE SET NULL"
+"public.app_version" }o--|| "public.app_artifact" : "FOREIGN KEY (#quot;sourceArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE RESTRICT"
 "public.auth_identity" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id)"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES chat_hub_agents(id) ON DELETE CASCADE"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_tools" : "FOREIGN KEY (#quot;toolId#quot;) REFERENCES chat_hub_tools(id) ON DELETE CASCADE"
@@ -910,7 +913,6 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.app" {
-  varchar_32_ auth
   timestamp_3__with_time_zone createdAt
   uuid draftVersionId FK
   uuid id
@@ -919,19 +921,23 @@ erDiagram
   varchar_36_ projectId FK
   uuid publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ visibility
+}
+"public.app_artifact" {
+  integer id
+  integer sizeBytes
+  text storageKey
+  varchar_2_ storedAt
 }
 "public.app_version" {
   uuid appId FK
-  timestamp_3__with_time_zone artifactPrunedAt
-  integer artifactSizeBytes
-  text artifactStorageRef
-  varchar_32_ buildStatus
+  varchar_16_ buildStatus
   bigint buildTaskId FK
+  integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
   uuid id
   varchar_255_ label
-  integer sourceSizeBytes
-  text sourceStorageRef
+  integer sourceArtifactId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.auth_identity" {

@@ -173,7 +173,6 @@ erDiagram
   varchar userId FK
 }
 "app" {
-  varchar_32_ auth
   datetime_3_ createdAt
   varchar draftVersionId FK
   varchar id PK
@@ -182,6 +181,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar publishedVersionId FK
   datetime_3_ updatedAt
+  varchar_16_ visibility
 }
 "data_table" {
   datetime_3_ createdAt

@@ -7,11 +7,11 @@ export class CreateApps1791897793262 implements ReversibleMigration {
 				column('id').uuid.primary,
 				column('name').varchar(128).notNull,
 				column('namespace').varchar(128).notNull.comment('Unique URL path segment for the app'),
-				column('auth')
-					.varchar(32)
-					.notNull.default("'n8n'")
-					.withEnumCheck(['none', 'n8n'])
-					.comment('Visitor authentication mode: none or n8n'),
+				column('visibility')
+					.varchar(16)
+					.notNull.default("'project'")
+					.withEnumCheck(['public', 'project', 'instance'])
+					.comment('App access: everyone, project members, or instance users'),
 				column('projectId').varchar(36).notNull,
 				column('draftVersionId').uuid.comment('Current working app version'),
 				column('publishedVersionId').uuid.comment('Published app version; null when unpublished'),
@@ -26,35 +26,52 @@ export class CreateApps1791897793262 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			});
 
+		await createTable('app_artifact').withColumns(
+			column('id').int.primary.autoGenerate2,
+			column('storedAt')
+				.varchar(2)
+				.notNull.withEnumCheck(['db', 'fs', 's3', 'az'])
+				.comment('Storage backend: database, filesystem, S3, or Azure'),
+			column('storageKey').text.notNull.comment(
+				'Reference to the object within its storage backend',
+			),
+			column('sizeBytes').int.notNull,
+		);
+
 		await createTable('app_version')
 			.withColumns(
 				column('id').uuid.primary,
 				column('appId').uuid.notNull,
 				column('label').varchar(255),
-				column('sourceStorageRef').text.notNull.comment(
-					'Opaque reference to the saved source snapshot',
-				),
-				column('sourceSizeBytes').int.notNull,
-				column('artifactStorageRef').text.comment('Opaque reference to the built static output'),
-				column('artifactSizeBytes').int,
-				column('artifactPrunedAt')
-					.timestampTimezone()
-					.comment('Time when retention deleted the build artifact; null if not pruned'),
+				column('sourceArtifactId').int.notNull,
+				column('bundleArtifactId').int,
 				(isSqlite ? column('buildTaskId').int : column('buildTaskId').bigint).comment(
 					'Current build task; null before dispatch or after task cleanup',
 				),
 				column('buildStatus')
-					.varchar(32)
+					.varchar(16)
 					.notNull.default("'queued'")
 					.withEnumCheck(['queued', 'running', 'succeeded', 'failed'])
 					.comment('Build state: queued, running, succeeded, or failed'),
 			)
 			.withTimestamps.withIndexOn('appId')
+			.withIndexOn('sourceArtifactId')
+			.withIndexOn('bundleArtifactId')
 			.withIndexOn('buildTaskId')
 			.withForeignKey('appId', {
 				tableName: 'app',
 				columnName: 'id',
 				onDelete: 'CASCADE',
+			})
+			.withForeignKey('sourceArtifactId', {
+				tableName: 'app_artifact',
+				columnName: 'id',
+				onDelete: 'RESTRICT',
+			})
+			.withForeignKey('bundleArtifactId', {
+				tableName: 'app_artifact',
+				columnName: 'id',
+				onDelete: 'SET NULL',
 			})
 			.withForeignKey('buildTaskId', {
 				tableName: 'scheduled_task',
@@ -92,6 +109,7 @@ export class CreateApps1791897793262 implements ReversibleMigration {
 			'app_draftVersionId_foreign',
 		);
 		await dropTable('app_version');
+		await dropTable('app_artifact');
 		await dropTable('app');
 	}
 }

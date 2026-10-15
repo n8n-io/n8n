@@ -12,8 +12,8 @@ export const appNamespaceSchema = z
 		'Use lowercase letters, numbers, and single hyphens between them.',
 	);
 
-export const appAuthSchema = z.enum(['none', 'n8n']);
-export type AppAuth = z.infer<typeof appAuthSchema>;
+export const appVisibilitySchema = z.enum(['public', 'project', 'instance']);
+export type AppVisibility = z.infer<typeof appVisibilitySchema>;
 
 export const appBuildStatusSchema = z.enum(['queued', 'running', 'succeeded', 'failed']);
 export type AppBuildStatus = z.infer<typeof appBuildStatusSchema>;
@@ -23,7 +23,7 @@ export const appSchema = z.object({
 	projectId: z.string(),
 	name: appNameSchema,
 	namespace: appNamespaceSchema,
-	auth: appAuthSchema,
+	visibility: appVisibilitySchema,
 	draftVersionId: z.string().uuid().nullable(),
 	publishedVersionId: z.string().uuid().nullable(),
 	createdAt: z.string().datetime(),
@@ -35,9 +35,8 @@ export const appVersionSchema = z.object({
 	id: z.string().uuid(),
 	appId: appSchema.shape.id,
 	label: z.string().max(255).nullable(),
-	sourceSizeBytes: z.number().int().nonnegative(),
-	artifactSizeBytes: z.number().int().nonnegative().nullable(),
-	artifactPrunedAt: z.string().datetime().nullable(),
+	sourceArtifactId: z.number().int().positive(),
+	bundleArtifactId: z.number().int().positive().nullable(),
 	buildStatus: appBuildStatusSchema,
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),

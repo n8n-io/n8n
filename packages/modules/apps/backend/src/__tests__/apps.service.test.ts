@@ -32,7 +32,7 @@ describe('AppsService', () => {
 		expect(appRepository.list).toHaveBeenCalledWith(projectIds, query);
 	});
 
-	it('creates an app with n8n authentication by default', async () => {
+	it('creates an app with project visibility by default', async () => {
 		const { service, appRepository } = createService();
 		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
 		const app = mock<App>({
@@ -50,10 +50,9 @@ describe('AppsService', () => {
 		const response = await service.createApp('project-1', dto);
 		expect(appRepository.createApp).toHaveBeenCalledWith(
 			'project-1',
-			expect.objectContaining({ auth: 'n8n' }),
+			expect.objectContaining({ visibility: 'project' }),
 		);
-		expect(response.auth).toBe('n8n');
-		expect(response).not.toHaveProperty('visibility');
+		expect(response.visibility).toBe('project');
 	});
 
 	it('returns not found when creating an app in a missing project', async () => {
@@ -83,7 +82,11 @@ describe('AppsService', () => {
 	it('updates an app and maps the returned row to the response', async () => {
 		const { service, appRepository } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
-		const dto = UpdateAppDto.parse({ name: 'Updated app', namespace: 'updated-app', auth: 'none' });
+		const dto = UpdateAppDto.parse({
+			name: 'Updated app',
+			namespace: 'updated-app',
+			visibility: 'public',
+		});
 		const app = mock<App>({
 			id: appId,
 			projectId: 'project-1',
@@ -103,7 +106,7 @@ describe('AppsService', () => {
 			projectId: 'project-1',
 			name: 'Updated app',
 			namespace: 'updated-app',
-			auth: 'none',
+			visibility: 'public',
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',

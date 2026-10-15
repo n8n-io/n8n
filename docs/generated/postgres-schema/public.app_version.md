@@ -5,16 +5,13 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | appId | uuid |  | false |  | [public.app](public.app.md) |  |
-| artifactPrunedAt | timestamp(3) with time zone |  | true |  |  | Time when retention deleted the build artifact; null if not pruned |
-| artifactSizeBytes | integer |  | true |  |  |  |
-| artifactStorageRef | text |  | true |  |  | Opaque reference to the built static output |
-| buildStatus | varchar(32) | 'queued'::character varying | false |  |  | Build state: queued, running, succeeded, or failed |
+| buildStatus | varchar(16) | 'queued'::character varying | false |  |  | Build state: queued, running, succeeded, or failed |
 | buildTaskId | bigint |  | true |  | [public.scheduled_task](public.scheduled_task.md) | Current build task; null before dispatch or after task cleanup |
+| bundleArtifactId | integer |  | true |  | [public.app_artifact](public.app_artifact.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | uuid |  | false | [public.app](public.app.md) |  |  |
 | label | varchar(255) |  | true |  |  |  |
-| sourceSizeBytes | integer |  | false |  |  |  |
-| sourceStorageRef | text |  | false |  |  | Opaque reference to the saved source snapshot |
+| sourceArtifactId | integer |  | false |  | [public.app_artifact](public.app_artifact.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -22,22 +19,25 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_app_version_buildStatus | CHECK | CHECK ((("buildStatus")::text = ANY ((ARRAY['queued'::character varying, 'running'::character varying, 'succeeded'::character varying, 'failed'::character varying])::text[]))) |
+| FK_2ab536cbf97d71bad59517afee5 | FOREIGN KEY | FOREIGN KEY ("bundleArtifactId") REFERENCES app_artifact(id) ON DELETE SET NULL |
 | FK_93f7f9719991a7e6c3ebd93145a | FOREIGN KEY | FOREIGN KEY ("buildTaskId") REFERENCES scheduled_task(id) ON DELETE SET NULL |
+| FK_9f1db6f02f5a0d1ae2f2b41a327 | FOREIGN KEY | FOREIGN KEY ("sourceArtifactId") REFERENCES app_artifact(id) ON DELETE RESTRICT |
 | FK_e9aeab5b1db8dc77708231ae44e | FOREIGN KEY | FOREIGN KEY ("appId") REFERENCES app(id) ON DELETE CASCADE |
 | PK_f2573b981a7eac664875e7483ac | PRIMARY KEY | PRIMARY KEY (id) |
 | app_version_appId_not_null | n | NOT NULL "appId" |
 | app_version_buildStatus_not_null | n | NOT NULL "buildStatus" |
 | app_version_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_version_id_not_null | n | NOT NULL id |
-| app_version_sourceSizeBytes_not_null | n | NOT NULL "sourceSizeBytes" |
-| app_version_sourceStorageRef_not_null | n | NOT NULL "sourceStorageRef" |
+| app_version_sourceArtifactId_not_null | n | NOT NULL "sourceArtifactId" |
 | app_version_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_2ab536cbf97d71bad59517afee | CREATE INDEX "IDX_2ab536cbf97d71bad59517afee" ON public.app_version USING btree ("bundleArtifactId") |
 | IDX_93f7f9719991a7e6c3ebd93145 | CREATE INDEX "IDX_93f7f9719991a7e6c3ebd93145" ON public.app_version USING btree ("buildTaskId") |
+| IDX_9f1db6f02f5a0d1ae2f2b41a32 | CREATE INDEX "IDX_9f1db6f02f5a0d1ae2f2b41a32" ON public.app_version USING btree ("sourceArtifactId") |
 | IDX_e9aeab5b1db8dc77708231ae44 | CREATE INDEX "IDX_e9aeab5b1db8dc77708231ae44" ON public.app_version USING btree ("appId") |
 | PK_f2573b981a7eac664875e7483ac | CREATE UNIQUE INDEX "PK_f2573b981a7eac664875e7483ac" ON public.app_version USING btree (id) |
 
@@ -48,25 +48,23 @@ erDiagram
 
 "public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.app_version" }o--o| "public.scheduled_task" : "FOREIGN KEY (#quot;buildTaskId#quot;) REFERENCES scheduled_task(id) ON DELETE SET NULL"
+"public.app_version" }o--o| "public.app_artifact" : "FOREIGN KEY (#quot;bundleArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE SET NULL"
 "public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;draftVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
 "public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
+"public.app_version" }o--|| "public.app_artifact" : "FOREIGN KEY (#quot;sourceArtifactId#quot;) REFERENCES app_artifact(id) ON DELETE RESTRICT"
 
 "public.app_version" {
   uuid appId FK
-  timestamp_3__with_time_zone artifactPrunedAt
-  integer artifactSizeBytes
-  text artifactStorageRef
-  varchar_32_ buildStatus
+  varchar_16_ buildStatus
   bigint buildTaskId FK
+  integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
   uuid id
   varchar_255_ label
-  integer sourceSizeBytes
-  text sourceStorageRef
+  integer sourceArtifactId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.app" {
-  varchar_32_ auth
   timestamp_3__with_time_zone createdAt
   uuid draftVersionId FK
   uuid id
@@ -75,6 +73,7 @@ erDiagram
   varchar_36_ projectId FK
   uuid publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ visibility
 }
 "public.scheduled_task" {
   integer attempts
@@ -96,6 +95,12 @@ erDiagram
   varchar_16_ status
   varchar_128_ taskType
   integer timeoutSeconds
+}
+"public.app_artifact" {
+  integer id
+  integer sizeBytes
+  text storageKey
+  varchar_2_ storedAt
 }
 ```
 
