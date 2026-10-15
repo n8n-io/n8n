@@ -8,6 +8,7 @@ const MAX_KEY_LENGTH = 128;
 const IDEMPOTENT_POST_SEGMENTS = new Set([
 	'activate',
 	'deactivate',
+	'disconnect',
 	'publish',
 	'unpublish',
 	'archive',

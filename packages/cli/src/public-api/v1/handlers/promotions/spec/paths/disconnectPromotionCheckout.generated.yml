@@ -5,7 +5,6 @@ summary: Remove one direction's local checkout
 description: Removes the local checkout and keeps the configuration, its credentials, and the trusted SSH host keys.
 x-required-scope: gitConnection:clone
 parameters:
-  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: string
     required: true
@@ -28,17 +27,11 @@ responses:
       application/json:
         schema:
           $ref: ../../../../shared/spec/schemas/promotionCheckoutPublicDto.generated.yml
-  '400':
-    $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
-  '409':
-    $ref: ../../../../shared/spec/responses/conflict.yml
-  '422':
-    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml
