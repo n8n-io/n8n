@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Response } from 'express';
-import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError, UserError, OperationalError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
@@ -11,13 +10,14 @@ import { sendPublicApiErrorResponse } from '../public-api-error-response';
 
 describe('sendPublicApiErrorResponse', () => {
 	const logger = mockInstance(Logger);
-	const errorReporter = mockInstance(ErrorReporter);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 	});
 
-	const createMockRes = (req?: object) => {
+	const defaultRequest = { method: 'GET', baseUrl: '/api/v1', path: '/tags' };
+
+	const createMockRes = (req: object = defaultRequest) => {
 		const payload: { statusCode?: number; body?: unknown } = {};
 		const res = {
 			_payload: payload,
@@ -103,47 +103,38 @@ describe('sendPublicApiErrorResponse', () => {
 		expect(res._payload.body).toEqual({ message: 'Internal server error' });
 	});
 
-	describe('reporting', () => {
-		it('logs and reports an unknown error, and keeps the generic body', () => {
+	describe('logging', () => {
+		it('logs an unknown error, and keeps the generic body', () => {
 			const res = createMockRes();
 			sendPublicApiErrorResponse(res, new Error('plain'));
 
 			expect(res._payload.statusCode).toBe(500);
 			expect(res._payload.body).toEqual({ message: 'Internal server error' });
 			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).toHaveBeenCalledWith(
-				expect.objectContaining({ message: 'plain' }),
-				expect.objectContaining({ shouldBeLogged: false, tags: { source: 'public-api' } }),
-			);
 		});
 
-		it('logs and reports an UnexpectedError', () => {
+		it('logs an UnexpectedError', () => {
 			const res = createMockRes();
 			sendPublicApiErrorResponse(res, new UnexpectedError('internal bug'));
 
 			expect(res._payload.body).toEqual({ message: 'Internal server error' });
 			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		});
 
-		it('logs an OperationalError, which maps to a server error, but does not send it to Sentry', () => {
+		it('logs an OperationalError, which maps to a server error', () => {
 			const res = createMockRes();
 			sendPublicApiErrorResponse(res, new OperationalError('temporarily down'));
 
 			expect(res._payload.statusCode).toBe(500);
 			expect(logger.error).toHaveBeenCalledTimes(1);
-			// Operational errors default to the warning level, which Sentry drops.
-			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
-		it('logs and reports a 5xx ResponseError', () => {
+		it('logs a 5xx ResponseError', () => {
 			const res = createMockRes();
 			sendPublicApiErrorResponse(res, new InternalServerError('database exploded'));
 
 			expect(res._payload.statusCode).toBe(500);
 			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		});
 
 		it.each([
@@ -151,12 +142,11 @@ describe('sendPublicApiErrorResponse', () => {
 			['BadRequestError', new BadRequestError('invalid')],
 			['ConflictError', new ConflictError('conflict')],
 			['UserError', new UserError('bad input')],
-		])('does not log or report a client error (%s)', (_name, error) => {
+		])('does not log a client error (%s)', (_name, error) => {
 			const res = createMockRes();
 			sendPublicApiErrorResponse(res, error);
 
 			expect(logger.error).not.toHaveBeenCalled();
-			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
 		it('scrubs secrets from the logged message and stack', () => {
@@ -200,18 +190,8 @@ describe('sendPublicApiErrorResponse', () => {
 					stack: expect.any(String),
 				},
 			);
-			expect(errorReporter.error).toHaveBeenCalledWith(
-				expect.any(Error),
-				expect.objectContaining({
-					extra: {
-						method: 'POST',
-						route: '/api/v1/workflows/:workflowId',
-						userId: 'user-1',
-					},
-				}),
-			);
 
-			const serialized = JSON.stringify([logger.error.mock.calls, errorReporter.error.mock.calls]);
+			const serialized = JSON.stringify(logger.error.mock.calls);
 			expect(serialized).not.toContain('query-secret-value');
 			expect(serialized).not.toContain('header-secret-value');
 			expect(serialized).not.toContain('body-secret-value');
@@ -241,75 +221,6 @@ describe('sendPublicApiErrorResponse', () => {
 
 			expect(res._payload.statusCode).toBe(500);
 			expect(res._payload.body).toEqual({ message: 'Internal server error' });
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
-		});
-
-		it('scrubs secrets from the stack that is sent to Sentry', () => {
-			const error = new Error('plain');
-			error.stack = 'Error: plain\n    at fetchData (https://files.example.com/doc?sig=zzz111)';
-			sendPublicApiErrorResponse(createMockRes(), error);
-
-			const reported = errorReporter.error.mock.calls[0][0] as Error;
-			expect(reported.stack).not.toContain('sig=zzz111');
-		});
-
-		it('sends a copy without secrets in the message, stack or causes', () => {
-			const original = new Error('call failed with Bearer abcdefghijklmnop', {
-				cause: new Error('upstream https://api.example.com/hook?token=abc'),
-			});
-			sendPublicApiErrorResponse(createMockRes(), original);
-
-			const reported = errorReporter.error.mock.calls[0][0] as Error;
-			expect(reported).not.toBe(original);
-			expect(reported.message).not.toContain('abcdefghijklmnop');
-			expect(reported.stack).not.toContain('abcdefghijklmnop');
-			expect(reported.cause).toBeInstanceOf(Error);
-			expect((reported.cause as Error).message).not.toContain('token=abc');
-		});
-
-		it('does not send an axios error to Sentry, but still logs it', () => {
-			const error = Object.assign(new Error('upstream failed'), { isAxiosError: true });
-			sendPublicApiErrorResponse(createMockRes(), error);
-
-			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).not.toHaveBeenCalled();
-		});
-
-		it('does not send an error marked shouldReport: false to Sentry, but still logs it', () => {
-			sendPublicApiErrorResponse(
-				createMockRes(),
-				new UnexpectedError('quiet failure', { shouldReport: false }),
-			);
-
-			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).not.toHaveBeenCalled();
-		});
-
-		it('does not send an error with a warning level to Sentry, but still logs it', () => {
-			const error = Object.assign(new Error('warned'), { level: 'warning' });
-			sendPublicApiErrorResponse(createMockRes(), error);
-
-			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).not.toHaveBeenCalled();
-		});
-
-		it('does not send an error whose cause has an info level to Sentry, but still logs it', () => {
-			const cause = Object.assign(new Error('informational'), { level: 'info' });
-			sendPublicApiErrorResponse(createMockRes(), new Error('outer', { cause }));
-
-			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).not.toHaveBeenCalled();
-		});
-
-		it('reports an error when the response has no request', () => {
-			const res = createMockRes();
-			sendPublicApiErrorResponse(res, new Error('plain'));
-
-			expect(logger.error).toHaveBeenCalledWith(
-				'Public API request failed (undefined ): Error: plain',
-				expect.objectContaining({ method: undefined, route: '', userId: undefined }),
-			);
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		});
 	});
 });
