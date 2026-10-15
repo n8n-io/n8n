@@ -1,0 +1,19 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_9ff4262de30095::t_042ad8baa1a3c8 2866-2868,2870
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "77c567ae5e1c852ad5836f481f4999b4fddc4721",
+  "prompts": {},
+  "sessions": {
+    "s_9ff4262de30095": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9868a5dd-91a6-459c-9b56-a6c634304b2f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
