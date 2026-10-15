@@ -652,9 +652,7 @@ export class OauthService {
 	 * Callers log the full error before rendering.
 	 */
 	extractCallbackErrorMessage(error: Error, credentialType?: string): string {
-		const errorField =
-			error instanceof OAuth2AuthError && isRecord(error.body) ? error.body.error : undefined;
-		const hasServerText = isRecord(errorField) && errorField.message === error.message;
+		const hasServerText = error instanceof OAuth2AuthError && error.fromErrorObject;
 		if (hasServerText && !(credentialType && this.hasFixedTokenEndpoint(credentialType))) {
 			return 'The OAuth2 server rejected the token request';
 		}

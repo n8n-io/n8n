@@ -274,7 +274,12 @@ describe('OauthService', () => {
 	describe('extractCallbackErrorMessage', () => {
 		const fixedMessage = 'The OAuth2 server rejected the token request';
 		const serverTextError = () =>
-			new OAuth2AuthError('Server text', { error: { message: 'Server text', code: 191 } });
+			new OAuth2AuthError(
+				'Server text',
+				{ error: { message: 'Server text', code: 191 } },
+				undefined,
+				true,
+			);
 		const withTokenUrlProperty = (property: Partial<INodeProperties>) =>
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{ displayName: 'Access Token URL', name: 'accessTokenUrl', ...property } as INodeProperties,
@@ -317,13 +322,9 @@ describe('OauthService', () => {
 		it.each([
 			['an OAuth2 error code', new OAuth2AuthError('Readable', { error: 'invalid_grant' })],
 			[
-				'an error_description',
-				new OAuth2AuthError('Readable', {
-					error: { message: 'Nested' },
-					error_description: 'Readable',
-				}),
+				'an OAuth2 error whose message is not from an error object',
+				new OAuth2AuthError('Readable', { error: { message: 'Readable' } }),
 			],
-			['an error object without text', new OAuth2AuthError('Readable', { error: { code: 5 } })],
 			['a non-OAuth2 error', new Error('Readable')],
 		])('should return the error message for %s', (_, error) => {
 			withTokenUrlProperty({ type: 'string', default: '' });

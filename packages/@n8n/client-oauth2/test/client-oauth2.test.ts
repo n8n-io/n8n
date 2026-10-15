@@ -221,6 +221,7 @@ describe('ClientOAuth2', () => {
 			expect(result).toBeInstanceOf(AuthError);
 			expect(result.message).toEqual(ERROR_RESPONSES.access_denied);
 			expect(result.body).toEqual({ error: 'access_denied' });
+			expect(result.fromErrorObject).toBe(false);
 		});
 
 		it('should use the nested message when the error field is an object', async () => {
@@ -242,6 +243,7 @@ describe('ClientOAuth2', () => {
 			expect(result).toBeInstanceOf(AuthError);
 			expect(result.message).toBe(body.error.message);
 			expect(result.body).toEqual(body);
+			expect(result.fromErrorObject).toBe(true);
 		});
 
 		it('should use a fixed message when the error object has no string message', async () => {
@@ -256,6 +258,7 @@ describe('ClientOAuth2', () => {
 			expect(result).toBeInstanceOf(AuthError);
 			expect(result.message).toBe('The OAuth2 server rejected the request');
 			expect(result.body).toEqual(body);
+			expect(result.fromErrorObject).toBe(false);
 		});
 
 		it.each([
@@ -275,6 +278,7 @@ describe('ClientOAuth2', () => {
 			const result = await makeTokenCall().catch((err) => err);
 			expect(result).toBeInstanceOf(AuthError);
 			expect(result.message).toBe('Server description');
+			expect(result.fromErrorObject).toBe(false);
 		});
 
 		it('should reject 3xx responses with response errors', async () => {

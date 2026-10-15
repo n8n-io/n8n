@@ -25,6 +25,8 @@ export class AuthError extends Error {
 		message: string,
 		readonly body: any,
 		readonly code = 'EAUTH',
+		/** True when `message` is the text of an `error` object in the server response. */
+		readonly fromErrorObject = false,
 	) {
 		super(message);
 	}
@@ -33,10 +35,10 @@ export class AuthError extends Error {
 const UNREADABLE_ERROR_MESSAGE = 'The OAuth2 server rejected the request';
 
 /** Some servers (e.g. Meta Graph API) send `error` as an object with its own `message`. */
-function toReadableMessage(value: unknown): string {
-	if (typeof value === 'string') return value;
-	if (isRecord(value) && typeof value.message === 'string' && value.message) return value.message;
-	return UNREADABLE_ERROR_MESSAGE;
+function getErrorObjectText(value: unknown): string | undefined {
+	return isRecord(value) && typeof value.message === 'string' && value.message
+		? value.message
+		: undefined;
 }
 
 /**
@@ -48,11 +50,13 @@ export function getAuthError(body: {
 }): Error | undefined {
 	const message: unknown = ERROR_RESPONSES[body.error] ?? body.error_description ?? body.error;
 
-	if (message) {
-		return new AuthError(toReadableMessage(message), body);
-	}
+	if (!message) return undefined;
+	if (typeof message === 'string') return new AuthError(message, body);
 
-	return undefined;
+	const errorObjectText = getErrorObjectText(message);
+	return errorObjectText
+		? new AuthError(errorObjectText, body, undefined, true)
+		: new AuthError(UNREADABLE_ERROR_MESSAGE, body);
 }
 
 /**
