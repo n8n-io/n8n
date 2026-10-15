@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { DataSource, LessThan } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { IdempotencyKey } from '../entities';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -59,13 +60,11 @@ export class IdempotencyKeyRepository extends BaseRepository<IdempotencyKey> {
 	}
 
 	async markCompleted(id: string, responseStatus: number, responseBody: unknown): Promise<void> {
-		const row = await this.findOneBy({ id, status: 'processing' });
-		if (!row) return;
-
-		row.status = 'completed';
-		row.responseStatus = responseStatus;
-		row.responseBody = responseBody;
-		await this.save(row);
+		await this.update({ id, status: 'processing' }, {
+			status: 'completed',
+			responseStatus,
+			responseBody,
+		} as QueryDeepPartialEntity<IdempotencyKey>);
 	}
 
 	async deleteProcessingById(id: string): Promise<void> {
