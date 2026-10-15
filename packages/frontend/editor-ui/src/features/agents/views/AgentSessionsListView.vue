@@ -4,6 +4,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { formatTokenCount } from '@/features/agents/utils/token-count';
 import { useRelativeTimestamp } from '@/features/agents/utils/relative-time';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
@@ -193,6 +194,14 @@ function formatDateTooltip(thread: AgentExecutionThread): string {
 	const dateLabel = `${date} ${time.slice(0, 5)}`;
 	if (!thread.status || thread.status === 'running') return dateLabel;
 	return `${dateLabel} • ${formatDuration(thread.totalDuration)}`;
+}
+
+function getTotalTokens(thread: AgentExecutionThread): number {
+	return thread.totalPromptTokens + thread.totalCompletionTokens;
+}
+
+function formatTokenTooltip(thread: AgentExecutionThread): string {
+	return `${getTotalTokens(thread).toLocaleString()}t • $${thread.totalCost.toFixed(4)}`;
 }
 
 function getStatusIcon(status: AgentSessionStatus): IconName {
@@ -554,11 +563,11 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 								{{ formatRelativeDate(row.thread.updatedAt) }}
 							</N8nText>
 						</N8nTooltip>
-						<N8nText step="sm" bold color="text-light" data-test-id="agent-session-token-usage">
-							{{
-								(row.thread.totalPromptTokens + row.thread.totalCompletionTokens).toLocaleString()
-							}}t
-						</N8nText>
+						<N8nTooltip :content="formatTokenTooltip(row.thread)" placement="top">
+							<N8nText step="sm" bold color="text-light" data-test-id="agent-session-token-usage">
+								{{ formatTokenCount(getTotalTokens(row.thread)) }}t
+							</N8nText>
+						</N8nTooltip>
 					</div>
 				</RouterLink>
 				<div v-if="row.thread.status !== 'running'" :class="$style.actionGroup">
