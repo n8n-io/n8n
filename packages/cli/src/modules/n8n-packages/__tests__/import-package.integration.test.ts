@@ -2557,7 +2557,7 @@ describe('credential-missing-mode: create-with-values', () => {
 		expect(stubbed?.publishing).toEqual({ state: 'blocked', blockedReason: 'stub-credential' });
 	});
 
-	it('lists a credential exported with literal values as incomplete and does not publish its workflows', async () => {
+	it('blocks publishing a workflow whose credential the import created from partial package data', async () => {
 		licenseMocker.enable('feat:projectRole:admin');
 		licenseMocker.setQuota('quota:maxTeamProjects', 100);
 		const owner = await createOwner();
