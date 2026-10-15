@@ -514,6 +514,7 @@ patchedDependencies:
   '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
   '@chat-adapter/whatsapp@4.37.0': patches/@chat-adapter__whatsapp@4.37.0.patch
   '@icetee/ftp@0.3.15': patches/@icetee__ftp@0.3.15.patch
+  xml2js@0.6.2: patches/xml2js@0.6.2.patch
 
 allowBuilds:
   '@biomejs/biome': false

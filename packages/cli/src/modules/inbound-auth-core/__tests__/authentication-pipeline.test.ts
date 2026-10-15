@@ -41,7 +41,7 @@ const verified: Verified = {
 };
 
 const context: SecurityContext = {
-	subject: { id: 'user-1', type: 'human' } as Principal,
+	subject: { id: 'user-1', type: 'human', email: 'alice@example.com' } as Principal,
 	authMethod: 'oauth-access-token',
 	subjectClaim: { sourceId: SOURCE_ID, issuer: 'https://idp.example', subject: 'alice' },
 };
@@ -58,7 +58,7 @@ beforeEach(() => {
 });
 
 describe('InboundAuthPipeline', () => {
-	it('returns the identity result when both steps pass, without logging', async () => {
+	it('returns the identity result when both steps pass, without a warning', async () => {
 		authentication.authenticate.mockResolvedValue({ ok: true, value: verified });
 		identity.identify.mockResolvedValue({ ok: true, value: context });
 
@@ -68,6 +68,34 @@ describe('InboundAuthPipeline', () => {
 		expect(authentication.authenticate).toHaveBeenCalledWith(extracted);
 		expect(identity.identify).toHaveBeenCalledWith(verified);
 		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	describe('accept log line', () => {
+		beforeEach(() => {
+			authentication.authenticate.mockResolvedValue({ ok: true, value: verified });
+			identity.identify.mockResolvedValue({ ok: true, value: context });
+		});
+
+		it('logs one info line with surface, resource, source, auth method and user id', async () => {
+			await pipeline.run(extracted);
+
+			expect(logger.info).toHaveBeenCalledTimes(1);
+			expect(logger.info).toHaveBeenCalledWith(expect.any(String), {
+				surface: 'instance-mcp',
+				resource: RESOURCE,
+				sourceId: SOURCE_ID,
+				authMethod: 'oauth-access-token',
+				userId: 'user-1',
+			});
+		});
+
+		it('never writes the bearer token, the external subject or the email', async () => {
+			await pipeline.run(extracted);
+
+			const written = JSON.stringify(logger.info.mock.calls);
+			expect(written).not.toContain(TOKEN);
+			expect(written).not.toContain('alice');
+		});
 	});
 
 	it('returns the authentication reject and skips the identity step', async () => {
@@ -146,5 +174,13 @@ describe('InboundAuthPipeline', () => {
 				expect(JSON.stringify(logger.warn.mock.calls)).not.toContain(TOKEN);
 			},
 		);
+
+		it.each(cases)('writes no accept line on an $step reject', async ({ arrange, reject }) => {
+			arrange(reject);
+
+			await pipeline.run(extracted);
+
+			expect(logger.info).not.toHaveBeenCalled();
+		});
 	});
 });

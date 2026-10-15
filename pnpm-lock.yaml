@@ -1090,6 +1090,7 @@ patchedDependencies:
   v-code-diff: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
   vue-tsc@2.2.8: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
   vuedraggable@4.1.0: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
+  xml2js@0.6.2: 3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3
   z-vue-scan: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
 
 importers:
@@ -5203,7 +5204,7 @@ importers:
         version: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       xml2js:
         specifier: 'catalog:'
-        version: 0.6.2
+        version: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
       xmllint-wasm:
         specifier: 3.0.1
         version: 3.0.1
@@ -8021,7 +8022,7 @@ importers:
         version: 3.12.2
       xml2js:
         specifier: 'catalog:'
-        version: 0.6.2
+        version: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -8673,7 +8674,7 @@ importers:
         version: 11.1.1
       xml2js:
         specifier: 'catalog:'
-        version: 0.6.2
+        version: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
@@ -36719,7 +36720,7 @@ snapshots:
       bluebird: 3.7.2
       crlf-normalize: 1.0.19(ts-toolbelt@9.6.0)
       tslib: 2.8.1
-      xml2js: 0.6.2
+      xml2js: 0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3)
     transitivePeerDependencies:
       - ts-toolbelt
 
@@ -45443,7 +45444,7 @@ snapshots:
       sax: 1.2.4
       xmlbuilder: 11.0.1
 
-  xml2js@0.6.2:
+  xml2js@0.6.2(patch_hash=3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3):
     dependencies:
       sax: 1.2.4
       xmlbuilder: 11.0.1

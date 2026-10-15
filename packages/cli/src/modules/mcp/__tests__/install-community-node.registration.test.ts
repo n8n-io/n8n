@@ -5,6 +5,7 @@ import {
 	RoleService,
 	FolderFinderService,
 	ExecutionRedactionServiceProxy,
+	WorkflowPublishedDataService,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -34,7 +35,7 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';

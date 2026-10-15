@@ -382,6 +382,58 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findWithIntegrationType', () => {
+		const makeQb = (rows: unknown[]) => ({
+			select: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			getMany: vi.fn().mockResolvedValue(rows),
+		});
+
+		it('pre-filters in SQL on the quoted type and selects only id and integrations', async () => {
+			const mockQb = makeQb([]);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findWithIntegrationType('whatsapp');
+
+			expect(mockQb.select).toHaveBeenCalledWith(['agent.id', 'agent.integrations']);
+			expect(mockQb.where).toHaveBeenCalledWith(
+				expect.stringContaining('CAST(agent.integrations AS TEXT) LIKE :pattern'),
+				{ pattern: '%"whatsapp"%' },
+			);
+		});
+
+		it('escapes LIKE metacharacters in the type', async () => {
+			const mockQb = makeQb([]);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findWithIntegrationType('my_type%');
+
+			expect(mockQb.where).toHaveBeenCalledWith(expect.any(String), {
+				pattern: '%"my\\_type\\%"%',
+			});
+		});
+
+		it('keeps only agents with an exactly matching integration type', async () => {
+			const whatsAppAgent = {
+				id: 'agent-whatsapp',
+				integrations: [
+					{ type: 'telegram', credentialId: 'cred-1' },
+					{ type: 'whatsapp', credentialId: 'cred-2' },
+				],
+			} as Agent;
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(
+				makeQb([
+					whatsAppAgent,
+					// The SQL pre-filter can match the string in another field.
+					{ id: 'agent-telegram', integrations: [{ type: 'telegram', credentialId: 'whatsapp' }] },
+					{ id: 'agent-null', integrations: null },
+				]) as never,
+			);
+
+			expect(await repository.findWithIntegrationType('whatsapp')).toEqual([whatsAppAgent]);
+		});
+	});
+
 	describe('findByIntegrationCredential', () => {
 		const makeAgent = (id: string, integrations: AgentIntegrationConfig[]) =>
 			({ id, integrations }) as Agent;

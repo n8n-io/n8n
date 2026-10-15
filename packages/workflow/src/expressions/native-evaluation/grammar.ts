@@ -307,6 +307,10 @@ export const MAX_STEPS = 100_000;
 // visit does (a body can scan a MAX_RESULT_LENGTH string per element); this
 // bounds the product, in units the interpreter already computes, so it does
 // not depend on the clock or the machine.
+//
+// Rule for every allowlisted method: its charge is an upper bound on the
+// characters it touches, not the elements it counts. A method that compares
+// or stringifies elements is charged by their content.
 export const MAX_WORK = 10 * MAX_RESULT_LENGTH;
 
 // Nesting depth of the subset grammar. Parsing and evaluation both recurse

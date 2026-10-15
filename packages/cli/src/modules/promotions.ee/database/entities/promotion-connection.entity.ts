@@ -1,8 +1,9 @@
-import type { PromotionConnectionScope, PromotionConnectionTarget } from '@n8n/api-types';
+import type { PromotionConnectionScope } from '@n8n/api-types';
 import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { PromotionProvider } from './promotion-provider.entity';
+import type { PromotionStoredConnectionTarget } from '../../git-hosts/git-host-target';
 
 /**
  * One remote, reached with one provider's credentials. The provider, remote URL,
@@ -28,7 +29,7 @@ export class PromotionConnection extends WithTimestampsAndStringId {
 
 	/** Where to push and pull, with its own `schemaVersion`. */
 	@JsonColumn()
-	target: PromotionConnectionTarget;
+	target: PromotionStoredConnectionTarget;
 
 	@ManyToOne(() => PromotionProvider, { onDelete: 'RESTRICT' })
 	@JoinColumn({ name: 'providerId' })

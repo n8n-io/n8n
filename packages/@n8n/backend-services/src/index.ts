@@ -70,6 +70,12 @@ export {
 } from './services/token-purposes';
 
 export {
+	WorkflowPublishedDataService,
+	type PublishedWorkflowData,
+	type PublishedWorkflowDataForExecution,
+} from './workflows/workflow-published-data.service';
+
+export {
 	RuntimeCredentialProxyService,
 	type RuntimeCredentialProvider,
 } from './services/runtime-credential-proxy.service';
