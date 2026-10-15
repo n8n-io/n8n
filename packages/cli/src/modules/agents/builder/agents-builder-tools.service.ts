@@ -86,20 +86,15 @@ import {
 	buildFinishSetupTool,
 	buildResolveLlmTool,
 } from './interactive';
-import type {
-	FinishSetupConfigApplyResult,
-	FinishSetupConfigWrites,
-} from './interactive/finish-setup.tool';
+import type { SetupFillResult } from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import {
-	assignCredentialToNodeTools,
-	listAiGatewayManagedCredentialTypes,
-} from '../json-config/reconcile-node-tool-gateway-credentials';
+import { fillSetupGaps, findSetupGaps, type SetupValues } from '../json-config/agent-setup-gaps';
+import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
 import { SkillNameTakenError, skillNameTakenToolMessage } from '../skills/skill-name-taken.error';
@@ -610,8 +605,11 @@ export class AgentsBuilderToolsService {
 			agentId,
 			projectId,
 			track,
-			applySetupToConfig: async (writes) =>
-				await this.applyFinishSetupToConfig(agentId, projectId, user, writes),
+			findSetupGaps: async () => {
+				const agent = await this.agentsService.findById(agentId, projectId);
+				return findSetupGaps(agent?.schema?.tools, this.nodeTypes);
+			},
+			fillSetupGaps: async (values) => await this.fillSetupGaps(agentId, projectId, user, values),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
@@ -1386,75 +1384,45 @@ export class AgentsBuilderToolsService {
 	}
 
 	/**
-	 * Writes the results of a completed setup flow into the config: each
-	 * credential into the empty node-tool slots of its type, and each answer to
-	 * its config path. A path that does not resolve is reported, not fatal.
+	 * Writes the values of a completed setup flow into the node-tool fields that
+	 * the current config leaves empty, and reports the fields still empty.
 	 */
-	private async applyFinishSetupToConfig(
+	private async fillSetupGaps(
 		agentId: string,
 		projectId: string,
 		user: User,
-		writes: FinishSetupConfigWrites,
-	): Promise<FinishSetupConfigApplyResult> {
-		const empty = { credentialTypes: [], paths: [] };
+		values: SetupValues,
+	): Promise<SetupFillResult> {
+		const { config: current, configHash } = await this.getConfigSnapshot(agentId, projectId);
+		if (!current) return { filled: [], remaining: [], error: 'Agent has no JSON config yet.' };
+		const unchanged = (errors?: Array<{ message: string }>): SetupFillResult => ({
+			filled: [],
+			remaining: findSetupGaps(current.tools, this.nodeTypes),
+			...(errors ? { error: errors.map((e) => e.message).join('; ') } : {}),
+		});
+
 		const editorLock = await this.getEditorLockFailure(agentId);
-		if (editorLock) return { ...empty, errors: editorLock.errors };
+		if (editorLock) return unchanged(editorLock.errors);
 
-		const snapshot = await this.getConfigSnapshot(agentId, projectId);
-		if (!snapshot.config) {
-			return { ...empty, errors: [{ path: '(root)', message: 'Agent has no JSON config yet.' }] };
-		}
+		const { config: next, filled } = fillSetupGaps(current, this.nodeTypes, values);
+		if (filled.length === 0) return unchanged();
 
-		const jsonpatch = (await import('fast-json-patch')).default;
-		let next = jsonpatch.deepClone(snapshot.config) as AgentJsonConfig;
-		const credentialTypes: string[] = [];
-		for (const credential of writes.credentials) {
-			const filled = assignCredentialToNodeTools(
-				next.tools,
-				this.nodeTypes,
-				credential.credentialType,
-				{
-					id: credential.id,
-					name: credential.name,
-				},
-			);
-			if (filled > 0) credentialTypes.push(credential.credentialType);
-		}
-
-		const paths: string[] = [];
-		const errors: Array<{ path: string; message: string }> = [];
-		for (const { path, value } of writes.values) {
-			const op: Operation = { op: 'add', path, value };
-			const invalid = jsonpatch.validate([op], next);
-			if (invalid) {
-				errors.push({ path, message: invalid.message ?? 'Config path does not resolve' });
-				continue;
-			}
-			next = jsonpatch.applyPatch(next, [op]).newDocument;
-			paths.push(path);
-		}
-
-		if (credentialTypes.length === 0 && paths.length === 0) {
-			return { ...empty, ...(errors.length ? { errors } : {}) };
-		}
-
-		const validated = this.validateBuilderConfig(next, snapshot.config);
-		if (!validated.ok) return { ...empty, errors: validated.errors };
+		const validated = this.validateBuilderConfig(next, current);
+		if (!validated.ok) return unchanged(validated.errors);
 		const saved = await this.saveBuilderConfig(
 			agentId,
 			projectId,
 			user,
 			validated.config,
-			snapshot.configHash,
+			configHash,
 			next,
-			true,
 		);
-		if (!saved.ok) return { ...empty, errors: saved.errors };
+		if (!saved.ok) return unchanged(saved.errors);
+
 		return {
-			credentialTypes,
-			paths,
+			filled,
+			remaining: findSetupGaps((saved.config ?? validated.config).tools, this.nodeTypes),
 			configHash: saved.configHash,
-			...(errors.length ? { errors } : {}),
 		};
 	}
 

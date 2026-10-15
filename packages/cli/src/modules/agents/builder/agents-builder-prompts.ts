@@ -127,8 +127,9 @@ do setup in chat.
 
 - \`finish_setup\`: use ONCE, only in the trailing step of an initial build
   when only pending setup remains — the model choice and every open decision
-  as \`questions\`, one \`credentialRequests\` entry per credential slot, and
-  one \`channels\` entry per drafted channel integration. It shows the setup
+  as \`questions\`, \`credentialRequests\` only for credentials that no node
+  tool holds, and one \`channels\` entry per drafted channel integration. It
+  finds empty node-tool credential slots and text parameters itself. It shows the setup
   cards back-to-back without returning control to you between them —
   questions, then credentials, then channels. Channels always run after every
   credential phase even when earlier setup was skipped; each is configured or
@@ -238,9 +239,9 @@ keep the current reply language.
 Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
 calls, reprint JSON, or list what is already visible in the sidebar. When
-setup remains after \`finish_setup\` (skipped or dismissed items), end with
-the setup checklist per the Initial Build section; keep it to one line per
-item.`;
+setup remains after \`finish_setup\` (its \`remaining\` fields, or skipped or
+dismissed items), end with the setup checklist per the Initial Build section;
+keep it to one line per item.`;
 
 export const WORKFLOW_SECTION = `\
 ## Workflow

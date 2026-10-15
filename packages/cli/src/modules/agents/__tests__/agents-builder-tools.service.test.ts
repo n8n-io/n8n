@@ -608,9 +608,9 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
 		});
 
-		it('finish_setup writes the resolved credential and path-bound answer into the config', async () => {
+		it('finish_setup asks for the empty fields of the config and writes the answers into it', async () => {
 			const { service, agentsService, nodeTypes } = makeService();
-			const gmailTool = (name: string, nodeParameters: Record<string, unknown> = {}) => ({
+			const gmailTool = (name: string, nodeParameters: Record<string, unknown>) => ({
 				type: 'node' as const,
 				name,
 				description: name,
@@ -618,7 +618,10 @@ describe('AgentsBuilderToolsService', () => {
 			});
 			const currentConfig: AgentJsonConfig = {
 				...baseConfig,
-				tools: [gmailTool('search_order_emails'), gmailTool('escalate', { sendTo: '' })],
+				tools: [
+					gmailTool('search_order_emails', { sendTo: '={{ $fromAI("to") }}' }),
+					gmailTool('escalate', { sendTo: '' }),
+				],
 			};
 			let stored = currentConfig;
 			agentsService.listChatIntegrations.mockReturnValue([]);
@@ -642,7 +645,9 @@ describe('AgentsBuilderToolsService', () => {
 					defaults: {},
 					inputs: [],
 					outputs: [],
-					properties: [],
+					properties: [
+						{ displayName: 'To', name: 'sendTo', type: 'string', required: true, default: '' },
+					],
 					credentials: [{ name: 'gmailOAuth2' }],
 				},
 			} as unknown as ReturnType<NodeTypes['getByNameAndVersion']>);
@@ -651,28 +656,21 @@ describe('AgentsBuilderToolsService', () => {
 			]);
 
 			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
-			const input = {
-				questions: [
-					{
-						id: 'escalation_email',
-						question: 'Which address receives escalations?',
-						type: 'text',
-						configPath: '/tools/1/node/nodeParameters/sendTo',
-					},
-				],
-				credentialRequests: [{ credentialType: 'gmailOAuth2', purpose: 'Order emails' }],
-			};
-			const suspendPayload = await tool.handler!(input, {
+			const suspendPayload = (await tool.handler!({}, {
 				...ctx,
 				suspend: vi.fn(async (payload: unknown) => payload),
-			} as never);
-			const result = await tool.handler!(input, {
+			} as never)) as Record<string, unknown>;
+			expect(suspendPayload.questions).toEqual([
+				{ id: 'setup:escalate:sendTo', question: 'escalate: To', type: 'text' },
+			]);
+
+			const result = await tool.handler!({}, {
 				...ctx,
 				suspendPayload,
 				resumeData: {
 					answers: [
 						{
-							questionId: 'escalation_email',
+							questionId: 'setup:escalate:sendTo',
 							selectedOptions: [],
 							customText: 'support@acme.test',
 						},
@@ -682,19 +680,30 @@ describe('AgentsBuilderToolsService', () => {
 
 			const credentials = { gmailOAuth2: { id: 'g1', name: 'Gmail account' } };
 			expect(stored.tools?.map((t) => (t.type === 'node' ? t.node : undefined))).toEqual([
-				expect.objectContaining({ credentials }),
+				expect.objectContaining({
+					credentials,
+					nodeParameters: { sendTo: '={{ $fromAI("to") }}' },
+				}),
 				expect.objectContaining({ credentials, nodeParameters: { sendTo: 'support@acme.test' } }),
 			]);
 			expect(result).toEqual(
 				expect.objectContaining({
 					completed: true,
-					appliedToConfig: {
-						credentialTypes: ['gmailOAuth2'],
-						paths: ['/tools/1/node/nodeParameters/sendTo'],
-					},
+					filled: [
+						{ kind: 'credential', tool: 'search_order_emails', credentialType: 'gmailOAuth2' },
+						{ kind: 'credential', tool: 'escalate', credentialType: 'gmailOAuth2' },
+						{
+							kind: 'parameter',
+							tool: 'escalate',
+							parameter: 'sendTo',
+							label: 'To',
+							askable: true,
+						},
+					],
 					configHash: getAgentConfigHash(stored),
 				}),
 			);
+			expect(result).not.toHaveProperty('remaining');
 		});
 
 		it('patch_config saves a removed top-level field as removed', async () => {
