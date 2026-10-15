@@ -25,6 +25,8 @@ const icon = computed<IconOrEmoji | null>(() => {
 			return props.preference.project?.icon ?? DEFAULT_PROJECT_ICON;
 		case 'personalProject':
 			return { type: 'icon', value: 'user' };
+		case 'instance':
+			return { type: 'icon', value: 'globe' };
 		default:
 			return null;
 	}

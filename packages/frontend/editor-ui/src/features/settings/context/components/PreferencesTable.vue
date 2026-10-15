@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, useCssModule } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nDataTableServer, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nActionToggle, N8nDataTableServer, N8nText } from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
@@ -11,6 +11,17 @@ import PreferenceScopeBadge from './PreferenceScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import type { Preference } from '../context.types';
 import { preferenceCreatorLabel, preferenceScope, toPreferencePermissions } from '../context.utils';
+
+type PreferenceAction = 'edit' | 'delete';
+
+/** The fields of the action toggle item that this menu uses. */
+type PreferenceActionItem = {
+	value: PreferenceAction;
+	label: string;
+	disabled?: boolean;
+	tooltip?: string;
+	destructive?: boolean;
+};
 
 const props = defineProps<{
 	preferences: Preference[];
@@ -42,13 +53,51 @@ function isSelectable(preference: Preference) {
 
 const readOnlyHint = computed(() => i18n.baseText('settings.context.preferences.readOnly.tooltip'));
 
+function actionsFor(preference: Preference): PreferenceActionItem[] {
+	const { update, delete: canDelete } = permissions(preference);
+	return [
+		{
+			value: 'edit',
+			label: i18n.baseText('settings.context.preferences.actions.edit'),
+			disabled: !update,
+			tooltip: update ? undefined : readOnlyHint.value,
+		},
+		{
+			value: 'delete',
+			label: i18n.baseText('settings.context.preferences.actions.delete'),
+			disabled: !canDelete,
+			tooltip: canDelete ? undefined : readOnlyHint.value,
+			destructive: true,
+		},
+	];
+}
+
+function onAction(preference: Preference, action: PreferenceAction) {
+	if (action === 'edit') emit('edit', preference);
+	else emit('delete', preference);
+}
+
+function onRowClick(event: MouseEvent, payload: { item: Preference }) {
+	// The modal has no read-only mode, so a row the viewer cannot change does not open it.
+	if (!permissions(payload.item).update) return;
+	// The selection checkbox sits inside the row, so its click must not open the modal too.
+	if (event.target instanceof Element && event.target.closest('[role="checkbox"]')) return;
+	emit('edit', payload.item);
+}
+
+const style = useCssModule();
+
+function rowProps(preference: Preference) {
+	return { class: { [style.clickable]: permissions(preference).update } };
+}
+
 // The widths are pixel sizes that sum to the table's minimum width, so a new column takes its
 // room from the others, not from the page.
 const headers = computed<Array<TableHeader<Preference>>>(() => [
 	{
 		title: i18n.baseText('settings.context.preferences.columns.preference'),
 		key: 'content',
-		width: 430,
+		width: 550,
 		disableSort: true,
 		resize: false,
 	},
@@ -80,7 +129,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 		title: '',
 		key: 'actions',
 		align: 'end',
-		width: 184,
+		width: 64,
 		disableSort: true,
 		resize: false,
 		value: () => undefined,
@@ -100,10 +149,11 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 			:items-length="props.itemsLength"
 			:loading="props.loading"
 			:page-sizes="PREFERENCES_PAGE_SIZES"
-			:row-props="{ class: $style.row }"
+			:row-props="rowProps"
 			show-select
 			:item-selectable="isSelectable"
 			@update:options="emit('update:options', $event)"
+			@click:row="onRowClick"
 		>
 			<template v-if="props.showEmpty" #cover>
 				<slot name="empty" />
@@ -131,30 +181,12 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 
 			<template #[`item.actions`]="{ item }">
 				<div :class="$style.actions" @click.stop>
-					<N8nTooltip :disabled="permissions(item).update" :content="readOnlyHint">
-						<span>
-							<N8nButton
-								variant="outline"
-								size="small"
-								:disabled="!permissions(item).update"
-								:label="i18n.baseText('settings.context.preferences.actions.edit')"
-								data-test-id="preference-edit-button"
-								@click="emit('edit', item)"
-							/>
-						</span>
-					</N8nTooltip>
-					<N8nTooltip :disabled="permissions(item).delete" :content="readOnlyHint">
-						<span>
-							<N8nButton
-								variant="outline"
-								size="small"
-								:disabled="!permissions(item).delete"
-								:label="i18n.baseText('settings.context.preferences.actions.delete')"
-								data-test-id="preference-delete-button"
-								@click="emit('delete', item)"
-							/>
-						</span>
-					</N8nTooltip>
+					<N8nActionToggle
+						:actions="actionsFor(item)"
+						icon-orientation="vertical"
+						data-test-id="preference-actions"
+						@action="(action: PreferenceAction) => onAction(item, action)"
+					/>
 				</div>
 			</template>
 		</N8nDataTableServer>
@@ -165,16 +197,9 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 .actions {
 	display: flex;
 	justify-content: flex-end;
-	gap: var(--spacing--2xs);
-	/* Revealed on hover, per the row-action pattern; focus keeps it reachable by keyboard. */
-	opacity: 0;
-	transition: opacity 0.1s ease-in;
 }
 
-.row {
-	&:hover .actions,
-	&:focus-within .actions {
-		opacity: 1;
-	}
+.clickable {
+	cursor: pointer;
 }
 </style>
