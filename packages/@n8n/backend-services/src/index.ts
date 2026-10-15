@@ -7,6 +7,7 @@ export {
 } from './credentials/credentials-finder.service';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
+export type { Hash, MaybeHash } from './services/cache/cache.types';
 export { RedisClientService } from './services/redis-client.service';
 export type { RedisClientType } from './services/redis.types';
 export { RoleCacheService, type RoleLoader } from './services/role-cache.service';
@@ -122,3 +123,4 @@ export {
 	renderAiPreferencesBlock,
 } from './services/ai-preference.service';
 export { AiPreferenceScopeFullError } from './errors/response-errors/ai-preference-scope-full.error';
+export * from './auth';

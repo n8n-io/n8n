@@ -497,13 +497,13 @@ describe('AgentChannelModal', () => {
 	 * Done is the only moment the channel can be written. Closing without
 	 * writing left it absent from the agent with nothing to show for the run.
 	 */
-	it('writes the channel when the setup is finished from the footer', async () => {
+	it('writes the channel when the view finishes the setup', async () => {
 		platformCanFinish.value = true;
 		selectedCredentials.value.example = 'credential-new';
 		const wrapper = mountModal('example_setup', true);
 		await flushPromises();
 
-		await wrapper.get('[data-testid="agent-channel-setup-done"]').trigger('click');
+		await wrapper.get('[data-testid="platform-done"]').trigger('click');
 		await flushPromises();
 
 		expect(mocks.connect).toHaveBeenCalled();

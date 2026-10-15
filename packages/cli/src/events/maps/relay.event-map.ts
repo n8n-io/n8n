@@ -41,7 +41,7 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import type { TracingContext } from '@/modules/otel/tracing-context';
-import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
