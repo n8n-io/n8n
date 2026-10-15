@@ -27,6 +27,7 @@ import AgentPublishButton from './AgentPublishButton.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
 import AgentSetupTasks from './AgentSetupTasks/AgentSetupTasks.vue';
 import type { SetupTask, SetupTaskId } from './AgentSetupTasks/agentSetupTasks.registry';
+import { useAgentChannelWarnings } from '../composables/useAgentChannelWarnings';
 import { useCreateAgent } from '../composables/useCreateAgent';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
@@ -67,6 +68,10 @@ const i18n = useI18n();
 const router = useRouter();
 const $style = useCssModule();
 const publishButton = ref<InstanceType<typeof AgentPublishButton>>();
+const { allWarnings: channelWarnings } = useAgentChannelWarnings(
+	() => props.projectId,
+	() => props.agentId,
+);
 
 const { createAgent } = useCreateAgent();
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
@@ -259,6 +264,7 @@ function onMenuSelect(id: string) {
 				:config-validation-status="configValidationStatus"
 				:config-validation-issues="props.configValidationIssues ?? []"
 				:before-publish="beforePublish"
+				:channel-warnings="channelWarnings"
 				@publish-ready="emit('publish-ready', $event)"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"

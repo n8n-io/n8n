@@ -1,4 +1,8 @@
-import type { WhatsAppCredentialCheck, WhatsAppWebhookStatus } from '@n8n/api-types';
+import type {
+	WhatsAppAccountStatus,
+	WhatsAppCredentialCheck,
+	WhatsAppWebhookStatus,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { NotFoundError } from '@n8n/errors';
@@ -28,6 +32,25 @@ export class AgentWhatsAppIntegrationsController {
 		@Param('credentialId') credentialId: string,
 	): Promise<WhatsAppCredentialCheck> {
 		return await this.credentialCheckService.check(req.user, req.params.projectId, credentialId);
+	}
+
+	/**
+	 * Polled while the channel modal is open, so the user sees when Meta's
+	 * reviews finish. Same scope as the check, because it also sends the token
+	 * to Meta.
+	 */
+	@Get('/:agentId/integrations/whatsapp/account-status/:credentialId')
+	@ProjectScope('agent:update')
+	async accountStatus(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('credentialId') credentialId: string,
+	): Promise<WhatsAppAccountStatus> {
+		return await this.credentialCheckService.accountStatus(
+			req.user,
+			req.params.projectId,
+			credentialId,
+		);
 	}
 
 	/** Polled by the setup until Meta completes the webhook handshake. */

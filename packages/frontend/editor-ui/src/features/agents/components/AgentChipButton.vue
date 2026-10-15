@@ -15,7 +15,7 @@ const props = withDefaults(
 		invalid?: boolean;
 		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
 		invalidReasons?: string[];
-		/** Marks the chip as usable in preview but blocking publish (e.g. an unpublished workflow). */
+		/** Marks the chip as usable but needing attention (e.g. an unpublished workflow, or a channel the platform is still reviewing). */
 		warning?: boolean;
 		/** Human-readable reasons behind `warning`; ignored while `invalid` is set. */
 		warningReasons?: string[];

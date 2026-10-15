@@ -21,6 +21,7 @@ import { TIME } from '@/app/constants';
 import { getWhatsAppVerifyToken } from '../../composables/useAgentApi';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
+import AgentChannelWhatsAppAccountStatus from './AgentChannelWhatsAppAccountStatus.vue';
 import AgentChannelWhatsAppIdentityCard from './AgentChannelWhatsAppIdentityCard.vue';
 import AgentChannelWhatsAppSettings, {
 	type WhatsAppChannelSettings,
@@ -30,6 +31,7 @@ import {
 	getWhatsAppWebhookStatus,
 	resetWhatsAppWebhookStatus,
 } from './api';
+import { useWhatsAppAccountStatus } from './useWhatsAppAccountStatus';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -185,6 +187,16 @@ async function runCredentialCheck() {
 }
 
 watch(credentialId, runCredentialCheck, { immediate: true });
+
+// Asked only once the check passes: before that, Meta would refuse it for the same reason.
+// A credential edit resets the check, so this asks again for the edited credential.
+const { status: accountStatus } = useWhatsAppAccountStatus({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	credentialId,
+	enabled: credentialVerified,
+	poll: true,
+});
 
 // Saving the picked credential keeps its ID, so the watch above does not see the edit.
 // Pinia removes this listener when the component unmounts.
@@ -567,6 +579,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							show-connect
 							@connect="emit('connect')"
 						/>
+						<AgentChannelWhatsAppAccountStatus v-if="credentialVerified" :status="accountStatus" />
 						<N8nText
 							v-if="connectBlockedHint"
 							:class="$style.hint"
@@ -617,6 +630,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 						i18n.baseText(`agents.channels.whatsapp.setup.credential.failed.${credentialProblem}`)
 					}}
 				</N8nText>
+				<AgentChannelWhatsAppAccountStatus v-if="credentialVerified" :status="accountStatus" />
 			</div>
 
 			<div :class="$style.field">

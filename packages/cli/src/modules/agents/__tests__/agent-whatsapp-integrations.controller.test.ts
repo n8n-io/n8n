@@ -1,4 +1,4 @@
-import type { WhatsAppCredentialCheck } from '@n8n/api-types';
+import type { WhatsAppAccountStatus, WhatsAppCredentialCheck } from '@n8n/api-types';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -35,6 +35,7 @@ describe('AgentWhatsAppIntegrationsController', () => {
 
 	it.each([
 		['checkCredential', 'agent:update'],
+		['accountStatus', 'agent:update'],
 		['webhookStatus', 'agent:read'],
 		['resetWebhookStatus', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -54,6 +55,30 @@ describe('AgentWhatsAppIntegrationsController', () => {
 
 			expect(credentialCheckService.check).toHaveBeenCalledWith(user, 'project-1', 'cred-1');
 			expect(result).toBe(check);
+		});
+	});
+
+	describe('accountStatus', () => {
+		it('delegates to the credential check service with the caller, project and credential', async () => {
+			const { controller, credentialCheckService } = makeController();
+			const status: WhatsAppAccountStatus = {
+				sending: 'limited',
+				reasons: [],
+				displayName: 'pending',
+				businessVerification: 'notStarted',
+				accountReview: 'approved',
+				sandbox: false,
+			};
+			credentialCheckService.accountStatus.mockResolvedValue(status);
+
+			const result = await controller.accountStatus(request, undefined as never, 'cred-1');
+
+			expect(credentialCheckService.accountStatus).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				'cred-1',
+			);
+			expect(result).toBe(status);
 		});
 	});
 

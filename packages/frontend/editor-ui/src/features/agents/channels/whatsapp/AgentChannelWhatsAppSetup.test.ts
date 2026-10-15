@@ -14,6 +14,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import {
 	checkWhatsAppCredential,
 	getWhatsAppWebhookStatus,
+	getWhatsAppAccountStatus,
 	resetWhatsAppWebhookStatus,
 } from './api';
 
@@ -48,6 +49,7 @@ vi.mock('./api', () => ({
 	checkWhatsAppCredential: vi.fn(),
 	getWhatsAppWebhookStatus: vi.fn(),
 	resetWhatsAppWebhookStatus: vi.fn(),
+	getWhatsAppAccountStatus: vi.fn(),
 }));
 
 vi.mock('../../components/AgentIntegrationCredentialConnection.vue', () => ({
@@ -105,6 +107,14 @@ describe('AgentChannelWhatsAppSetup', () => {
 		vi.mocked(checkWhatsAppCredential).mockResolvedValue({ status: 'ok', profile: PROFILE });
 		vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: false });
 		vi.mocked(resetWhatsAppWebhookStatus).mockResolvedValue({ verified: false });
+		vi.mocked(getWhatsAppAccountStatus).mockResolvedValue({
+			sending: 'available',
+			reasons: [],
+			displayName: 'approved',
+			businessVerification: 'approved',
+			accountReview: 'approved',
+			sandbox: false,
+		});
 	});
 
 	afterEach(() => vi.useRealTimers());
@@ -980,6 +990,47 @@ describe('AgentChannelWhatsAppSetup', () => {
 				getByTestId('whatsapp-credential-problem'),
 			);
 			expect(ensureAgentPersisted).not.toHaveBeenCalled();
+		});
+
+		// The status cache is shared by credential, so these use their own IDs.
+		it("shows Meta's account status once the credential is verified", async () => {
+			vi.mocked(getWhatsAppAccountStatus).mockResolvedValue({
+				sending: 'limited',
+				reasons: [],
+				displayName: 'pending',
+				businessVerification: 'notStarted',
+				accountReview: 'approved',
+				sandbox: false,
+			});
+			const { getByTestId } = renderComponent({
+				props: props({ mode: 'edit', connected: true, modelValue: 'cred-status-1' }),
+			});
+
+			await waitFor(() =>
+				expect(getByTestId('whatsapp-account-status-displayName')).toHaveTextContent(
+					'agents.channels.whatsapp.status.state.pending',
+				),
+			);
+			expect(getWhatsAppAccountStatus).toHaveBeenCalledWith(
+				expect.anything(),
+				'p',
+				'a',
+				'cred-status-1',
+			);
+		});
+
+		it('does not ask Meta for the account status when the credential check fails', async () => {
+			vi.mocked(checkWhatsAppCredential).mockResolvedValue({
+				status: 'failed',
+				reason: 'mismatch',
+			});
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ mode: 'edit', connected: true, modelValue: 'cred-status-2' }),
+			});
+
+			await waitFor(() => expect(getByTestId('whatsapp-credential-problem')).toBeVisible());
+			expect(queryByTestId('whatsapp-account-status')).toBeNull();
+			expect(getWhatsAppAccountStatus).not.toHaveBeenCalled();
 		});
 	});
 });

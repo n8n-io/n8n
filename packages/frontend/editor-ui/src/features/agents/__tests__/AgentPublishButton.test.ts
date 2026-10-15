@@ -110,6 +110,7 @@ interface RenderProps {
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
 	beforePublish?: () => Promise<boolean>;
+	channelWarnings?: string[];
 }
 
 const blockingIssue: AgentConfigValidationIssue = {
@@ -414,6 +415,37 @@ describe('AgentPublishButton', () => {
 
 	// Configuration validation gating
 	describe('configuration validation gating', () => {
+		it('warns about channels that may not reply yet without blocking Publish', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				channelWarnings: ['Meta is still reviewing the WhatsApp display name.'],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeUndefined();
+			expect(wrapper.find('[data-testid="publish-agent-channel-warning-icon"]').exists()).toBe(
+				true,
+			);
+			const warningTooltip = wrapper.findAll('[data-testid="stub-tooltip"]')[1];
+			expect(warningTooltip.attributes('data-disabled')).toBe('false');
+		});
+
+		it('hides channel warnings while Publish is blocked for another reason', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [blockingIssue],
+				channelWarnings: ['Meta is still reviewing the WhatsApp display name.'],
+			});
+
+			expect(wrapper.find('[data-testid="publish-agent-channel-warning-icon"]').exists()).toBe(
+				false,
+			);
+			const warningTooltip = wrapper.findAll('[data-testid="stub-tooltip"]')[1];
+			expect(warningTooltip.attributes('data-disabled')).toBe('true');
+		});
+
 		it('gates the Publish button on validation status', async () => {
 			const unpublishedAgent = createAgent({ activeVersionId: null });
 

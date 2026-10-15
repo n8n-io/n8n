@@ -28,6 +28,11 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 	}),
 }));
 
+const channelWarningsRef = ref<string[]>([]);
+vi.mock('../composables/useAgentChannelWarnings', () => ({
+	useAgentChannelWarnings: () => ({ allWarnings: channelWarningsRef }),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 	i18n: { baseText: (k: string) => k },

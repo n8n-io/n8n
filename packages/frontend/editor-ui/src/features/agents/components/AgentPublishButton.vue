@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { computed, watch } from 'vue';
-import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -32,8 +38,13 @@ const props = withDefaults(
 		 * the backend re-validates independently regardless.
 		 */
 		beforePublish?: () => Promise<boolean>;
+		/**
+		 * Why a connected channel may not reply yet, such as a platform review
+		 * that is still running. These do not block Publish.
+		 */
+		channelWarnings?: string[];
 	}>(),
-	{ configValidationStatus: 'valid', configValidationIssues: () => [] },
+	{ configValidationStatus: 'valid', configValidationIssues: () => [], channelWarnings: () => [] },
 );
 
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(() => props.projectId);
@@ -103,6 +114,11 @@ const isPublishDisabled = computed(
 );
 
 watch(isPublishDisabled, (disabled) => emit('publish-ready', !disabled), { immediate: true });
+
+// While Publish is blocked, the validation tooltip explains why, so this one stays quiet.
+const showChannelWarnings = computed(
+	() => !isPublishDisabled.value && props.channelWarnings.length > 0,
+);
 
 const dropdownActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
@@ -180,30 +196,47 @@ async function onDropdownSelect(action: string) {
 			action="publish"
 			:issues="configValidationIssues"
 		>
-			<N8nButton
-				:class="$style.groupButtonLeft"
-				:loading="publishing"
-				:disabled="isPublishDisabled"
-				variant="ghost"
-				data-testid="publish-agent-button"
-				@click="onPublishClick"
-			>
-				<div :class="$style.flex">
-					<span
-						v-if="buttonConfig.showIndicator"
-						:class="{
-							[$style.indicatorDot]: true,
-							[$style.indicatorPublished]: buttonConfig.indicatorClass === 'published',
-							[$style.indicatorChanges]: buttonConfig.indicatorClass === 'changes',
-						}"
-					/>
-					<span
-						:class="{ [$style.indicatorPublishedText]: publishState === 'published-no-changes' }"
-					>
-						{{ buttonConfig.text }}
-					</span>
-				</div>
-			</N8nButton>
+			<N8nTooltip :disabled="!showChannelWarnings" placement="bottom">
+				<template #content>
+					<div data-testid="publish-agent-channel-warnings">
+						{{ locale.baseText('agents.publish.button.channelWarningsTooltip') }}
+						<ul :class="$style.warningList">
+							<li v-for="warning in channelWarnings" :key="warning">{{ warning }}</li>
+						</ul>
+					</div>
+				</template>
+				<N8nButton
+					:class="$style.groupButtonLeft"
+					:loading="publishing"
+					:disabled="isPublishDisabled"
+					variant="ghost"
+					data-testid="publish-agent-button"
+					@click="onPublishClick"
+				>
+					<div :class="$style.flex">
+						<span
+							v-if="buttonConfig.showIndicator"
+							:class="{
+								[$style.indicatorDot]: true,
+								[$style.indicatorPublished]: buttonConfig.indicatorClass === 'published',
+								[$style.indicatorChanges]: buttonConfig.indicatorClass === 'changes',
+							}"
+						/>
+						<span
+							:class="{ [$style.indicatorPublishedText]: publishState === 'published-no-changes' }"
+						>
+							{{ buttonConfig.text }}
+						</span>
+						<N8nIcon
+							v-if="showChannelWarnings"
+							icon="triangle-alert"
+							size="small"
+							:class="$style.warningIcon"
+							data-testid="publish-agent-channel-warning-icon"
+						/>
+					</div>
+				</N8nButton>
+			</N8nTooltip>
 		</AgentValidationTooltip>
 		<N8nActionDropdown
 			:items="dropdownActions"
@@ -225,6 +258,15 @@ async function onDropdownSelect(action: string) {
 </template>
 
 <style module lang="scss">
+.warningIcon {
+	color: var(--text-color--warning);
+}
+
+.warningList {
+	margin: var(--spacing--4xs) 0 0;
+	padding-left: var(--spacing--sm);
+}
+
 .buttonGroup {
 	display: inline-flex;
 	border: var(--border);

@@ -37,7 +37,7 @@ interface GraphReply {
 	body: unknown;
 }
 
-type Route = 'phone' | 'debugToken' | 'phoneNumbers' | 'profile';
+type Route = 'phone' | 'debugToken' | 'phoneNumbers' | 'profile' | 'account';
 
 const ok = (body: unknown): GraphReply => ({ statusCode: 200, body });
 
@@ -45,6 +45,7 @@ function routeOf(url: string): Route {
 	if (url.endsWith('/debug_token')) return 'debugToken';
 	if (url.endsWith('/phone_numbers')) return 'phoneNumbers';
 	if (url.endsWith('/whatsapp_business_profile')) return 'profile';
+	if (url.endsWith(`/${BUSINESS_ACCOUNT_ID}`)) return 'account';
 	return 'phone';
 }
 
@@ -75,6 +76,8 @@ describe('WhatsAppCredentialCheckService', () => {
 						},
 					],
 				}),
+			account: async () =>
+				ok({ business_verification_status: 'verified', account_review_status: 'APPROVED' }),
 		};
 		request = vi.fn(async (options: RequestOptions) => await replies[routeOf(options.url)]());
 
@@ -311,4 +314,138 @@ describe('WhatsAppCredentialCheckService', () => {
 			});
 		},
 	);
+
+	describe('accountStatus', () => {
+		const accountStatus = async () => await service.accountStatus(user, PROJECT_ID, CREDENTIAL_ID);
+
+		const health = (canSendMessage: string, entities: unknown[] = []) => ({
+			health_status: { can_send_message: canSendMessage, entities },
+		});
+
+		beforeEach(() => {
+			replies.phone = async () =>
+				ok({ ...health('AVAILABLE'), name_status: 'APPROVED', account_mode: 'LIVE' });
+		});
+
+		it('reports a number that can send and has every review approved', async () => {
+			expect(await accountStatus()).toEqual({
+				sending: 'available',
+				reasons: [],
+				displayName: 'approved',
+				businessVerification: 'approved',
+				accountReview: 'approved',
+				sandbox: false,
+			});
+		});
+
+		it('asks for the status fields with the appsecret_proof', async () => {
+			await accountStatus();
+
+			const proof = createHmac('sha256', APP_SECRET).update(ACCESS_TOKEN).digest('hex');
+			expect(callsTo('phone')[0].qs).toEqual({
+				fields: 'health_status,name_status,new_name_status,account_mode',
+				appsecret_proof: proof,
+			});
+			expect(callsTo('account')[0].qs).toEqual({
+				fields: 'business_verification_status,account_review_status',
+				appsecret_proof: proof,
+			});
+		});
+
+		it("returns Meta's reasons once each, with the suggested fix", async () => {
+			const error = {
+				error_code: 141010,
+				error_description: 'The business is not verified.',
+				possible_solution: 'Verify the business in Business Manager.',
+			};
+			replies.phone = async () =>
+				ok({
+					...health('BLOCKED', [
+						{ entity_type: 'PHONE_NUMBER', errors: [error] },
+						{ entity_type: 'WABA', errors: [error] },
+						{ entity_type: 'BUSINESS', additional_info: ['Your limit increases after review.'] },
+					]),
+					name_status: 'APPROVED',
+				});
+
+			const status = await accountStatus();
+
+			expect(status.sending).toBe('blocked');
+			expect(status.reasons).toEqual([
+				{
+					description: 'The business is not verified.',
+					solution: 'Verify the business in Business Manager.',
+				},
+				{ description: 'Your limit increases after review.' },
+			]);
+		});
+
+		it.each([
+			['PENDING_REVIEW', undefined, 'pending'],
+			['DECLINED', undefined, 'rejected'],
+			['NONE', undefined, 'notStarted'],
+			['AVAILABLE_WITHOUT_REVIEW', undefined, 'approved'],
+			['APPROVED', 'PENDING_REVIEW', 'pending'],
+			['SOMETHING_NEW', undefined, 'unknown'],
+		])('maps name_status %s with new_name_status %s to %s', async (name, rename, expected) => {
+			replies.phone = async () =>
+				ok({ ...health('LIMITED'), name_status: name, new_name_status: rename });
+
+			expect((await accountStatus()).displayName).toBe(expected);
+		});
+
+		it.each([
+			['pending_need_more_info', 'pending'],
+			['not_verified', 'notStarted'],
+			['revoked', 'rejected'],
+		])('maps business_verification_status %s to %s', async (value, expected) => {
+			replies.account = async () => ok({ business_verification_status: value });
+
+			expect((await accountStatus()).businessVerification).toBe(expected);
+		});
+
+		it('marks a test number as a sandbox', async () => {
+			replies.phone = async () => ok({ ...health('AVAILABLE'), account_mode: 'SANDBOX' });
+
+			expect((await accountStatus()).sandbox).toBe(true);
+		});
+
+		it('keeps the phone status when Meta refuses the business account request', async () => {
+			replies.account = async () => ({ statusCode: 403, body: { error: { code: 200 } } });
+
+			expect(await accountStatus()).toMatchObject({
+				sending: 'available',
+				businessVerification: 'unknown',
+				accountReview: 'unknown',
+			});
+		});
+
+		it('reports everything as unknown when Meta cannot be reached', async () => {
+			replies.phone = async () => {
+				throw new Error('ETIMEDOUT');
+			};
+
+			expect(await accountStatus()).toEqual({
+				sending: 'unknown',
+				reasons: [],
+				displayName: 'unknown',
+				businessVerification: 'unknown',
+				accountReview: 'unknown',
+				sandbox: false,
+			});
+		});
+
+		it('reports everything as unknown without calling Meta when a field is empty', async () => {
+			credentialLookup.decryptForUser.mockResolvedValue({ ...workingCredential, appSecret: '' });
+
+			expect((await accountStatus()).sending).toBe('unknown');
+			expect(request).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the caller cannot use the credential', async () => {
+			credentialLookup.decryptForUser.mockResolvedValue(null);
+
+			await expect(accountStatus()).rejects.toThrow(NotFoundError);
+		});
+	});
 });

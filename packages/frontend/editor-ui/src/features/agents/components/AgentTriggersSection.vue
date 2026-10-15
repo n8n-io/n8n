@@ -18,6 +18,7 @@ import {
 import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { useAgentChannelWarnings } from '../composables/useAgentChannelWarnings';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
@@ -73,6 +74,10 @@ const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+const { warningsByChannel } = useAgentChannelWarnings(
+	() => props.projectId,
+	() => props.agentId,
+);
 
 const runtimeContext = {
 	projectId: computed(() => props.projectId),
@@ -181,6 +186,7 @@ const channelRows = computed(() =>
 			icon: channelIcon(integration?.icon),
 			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
 			invalidReasons,
+			warningReasons: warningsByChannel.value[channel] ?? [],
 			// The status fetch can confirm n8n Chat before `connectedTriggers` does.
 			connected:
 				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),
@@ -293,6 +299,8 @@ function handleChannelDisconnected(channelType: string) {
 					:deactivated="!channel.connected"
 					:invalid="channel.invalidReasons.length > 0"
 					:invalid-reasons="channel.invalidReasons"
+					:warning="channel.warningReasons.length > 0"
+					:warning-reasons="channel.warningReasons"
 					:disabled="props.disabled || removingChannel"
 					:class="$style.channelChip"
 					@click="openChannelEdit(channel.type, channel.connected)"

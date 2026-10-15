@@ -33,3 +33,38 @@ export type WhatsAppCredentialCheck =
 export interface WhatsAppWebhookStatus {
 	verified: boolean;
 }
+
+/**
+ * Whether Meta lets the number send messages, from its `health_status`.
+ *
+ * - `available`: the number can send.
+ * - `limited`: the number can send, with a lower limit. A display name that is
+ *   still in review gives this.
+ * - `blocked`: the number cannot send. `reasons` says why.
+ * - `unknown`: Meta did not say, or n8n could not ask.
+ */
+export type WhatsAppSendingStatus = 'available' | 'limited' | 'blocked' | 'unknown';
+
+/** Where one of Meta's reviews is. `notStarted` means nobody submitted it yet. */
+export type WhatsAppReviewStatus = 'approved' | 'pending' | 'rejected' | 'notStarted' | 'unknown';
+
+/** One reason Meta gives for a limited or blocked number, in Meta's words. */
+export interface WhatsAppStatusReason {
+	description: string;
+	/** What Meta suggests to fix it. */
+	solution?: string;
+}
+
+/** The state of the number and its business account in Meta. */
+export interface WhatsAppAccountStatus {
+	sending: WhatsAppSendingStatus;
+	reasons: WhatsAppStatusReason[];
+	/** Meta's review of the display name. */
+	displayName: WhatsAppReviewStatus;
+	/** Meta's verification of the business that owns the account. */
+	businessVerification: WhatsAppReviewStatus;
+	/** Meta's review of the WhatsApp Business Account. */
+	accountReview: WhatsAppReviewStatus;
+	/** A test number, which can only message the recipients set in the Meta app. */
+	sandbox: boolean;
+}
