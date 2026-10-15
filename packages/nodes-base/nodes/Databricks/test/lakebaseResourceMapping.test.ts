@@ -280,6 +280,17 @@ describe('Lakebase -> function arguments', () => {
 		expect(fields[0].type).toBe(expected);
 	});
 
+	it('offers the enum values of an enum argument', async () => {
+		vi.mocked(fetchLakebaseFunctionArguments).mockResolvedValue([
+			argument({ type: 'string', format: 'order_status', enum: ['open', 'shipped'] }),
+		]);
+
+		const { fields } = await getLakebaseFunctionArguments.call(setup());
+
+		expect(fields[0].type).toBe('options');
+		expect(fields[0].options).toEqual(['open', 'shipped'].map((value) => ({ name: value, value })));
+	});
+
 	it('explains the JSON fallback when the schema document is off', async () => {
 		const unavailable = new NodeApiError(node, { message: 'Not found' } as JsonObject);
 		unavailable.context.data = { code: 'PGRST205' };

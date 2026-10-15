@@ -111,6 +111,7 @@ export async function getLakebaseFunctionArguments(
 			defaultMatch: false,
 			canBeUsedToMatch: false,
 			type: fieldTypeOf(arg),
+			options: arg.enum?.map((value) => ({ name: String(value), value: value as string })),
 		})),
 	};
 }

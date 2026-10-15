@@ -31,8 +31,13 @@ describe('Lakebase -> Execute Function', () => {
 		const context = mockDeep<IExecuteFunctions>();
 		context.getNode.mockReturnValue(node);
 		context.getExecutionCancelSignal.mockReturnValue(undefined);
+		// A stored null must reach the operation; only a missing parameter gets the fallback
 		context.getNodeParameter.mockImplementation((name, index, fallback) =>
-			index === itemIndex || name === 'authentication' ? (parameters[name] ?? fallback) : fallback,
+			index === itemIndex || name === 'authentication'
+				? parameters[name] !== undefined
+					? parameters[name]
+					: fallback
+				: fallback,
 		);
 		context.getCredentials.mockResolvedValue({ host: 'https://host.example' });
 		return context;
