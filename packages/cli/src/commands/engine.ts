@@ -7,6 +7,9 @@ import { Expression, UserError } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
+import { engineTracingEnabled } from '@/modules/engine-v2/engine-tracing';
+import { OtelConfig } from '@/modules/otel/otel.config';
+import type { OtelService } from '@/modules/otel/otel.service';
 
 import { BaseCommand } from './base-command';
 
@@ -16,6 +19,7 @@ import { BaseCommand } from './base-command';
 		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to report to and to resolve credentials from.',
 })
 export class Engine extends BaseCommand {
+	private stopping = false;
 	// The data plane has no control plane database. Its own database is the
 	// engine's, opened by the runtime from N8N_ENGINE_DATABASE_URL.
 	override needsDb = false;
@@ -30,6 +34,8 @@ export class Engine extends BaseCommand {
 
 	private responseSender?: ExecutionResponseSender;
 
+	private otelService?: OtelService;
+
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
 		// crash path reports through it.
@@ -41,6 +47,12 @@ export class Engine extends BaseCommand {
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
+
+		if (engineTracingEnabled()) {
+			const { OtelService } = await import('@/modules/otel/otel.service.js');
+			this.otelService = Container.get(OtelService);
+			await this.otelService.initFromConfig(Container.get(OtelConfig));
+		}
 
 		// The control plane runs in another process, so responses travel over Redis.
 		const { createRedisExecutionResponseSender } = await import(
@@ -66,6 +78,21 @@ export class Engine extends BaseCommand {
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 
+	protected override onTerminationSignal(signal: string) {
+		return async () => {
+			if (this.stopping) return;
+			this.stopping = true;
+			this.logger.info(`Received ${signal}. Shutting down the engine data plane...`);
+			// The global registry includes CP services that this command must not construct.
+			const deadline = setTimeout(() => process.exit(1), this.gracefulShutdownTimeoutInS * 1000);
+			try {
+				await this.stopProcess();
+			} finally {
+				clearTimeout(deadline);
+			}
+		};
+	}
+
 	protected async stopProcess() {
 		this.logger.info('Stopping engine v2 data plane...');
 
@@ -74,9 +101,14 @@ export class Engine extends BaseCommand {
 				await this.runtime?.shutdown();
 			} finally {
 				// After the engine, so a final response still has somewhere to go.
-				await this.responseSender?.stop();
+				try {
+					await this.responseSender?.stop();
+				} finally {
+					await this.otelService?.shutdown();
+				}
 			}
 			await Expression.disposeExpressionEngine();
+			await this.errorReporter.shutdown();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down the engine.', error);
 		}

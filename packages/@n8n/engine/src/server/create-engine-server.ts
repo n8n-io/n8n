@@ -1,4 +1,4 @@
-import express, { type Application } from 'express';
+import express, { type Application, type RequestHandler } from 'express';
 
 import { createAuthenticationMiddleware } from '../auth/authenticate';
 import type { IdentityVerifier } from '../auth/identity.types';
@@ -22,6 +22,8 @@ export interface EngineServerDeps {
 	identityVerifier: IdentityVerifier;
 	/** Where the engine writes its own messages. Defaults to the console. */
 	logger?: EngineLogger;
+	/** Runs on API requests before authentication and body parsing. */
+	requestMiddleware?: RequestHandler;
 }
 
 /** Builds the engine HTTP app: `/healthz` plus the authenticated execution API. */
@@ -33,6 +35,7 @@ export function createEngineServer(deps: EngineServerDeps): { app: Application }
 		res.status(200).json({ status: 'ok' });
 	});
 
+	if (deps.requestMiddleware) app.use('/api', deps.requestMiddleware);
 	// Mounted on the prefix, not on each router, so a future router cannot forget it.
 	app.use('/api', createAuthenticationMiddleware(deps.identityVerifier, deps.logger));
 	app.use('/api', express.json({ limit: MAX_BODY_SIZE }));

@@ -61,6 +61,54 @@ export interface V1StepExecutorDeps {
 		context: AdditionalDataContext,
 	) => Promise<IWorkflowExecuteAdditionalData>;
 	loadStepData: StepDataLoader;
+	/** Allows static NoOp steps for a legacy benchmark. The host must explicitly select legacy. */
+	allowLegacyNoopBenchmark?: boolean;
+	instrumentation?: V1StepExecutorInstrumentation;
+	/** Measures the node call separately from executor setup and cleanup. */
+	traceNodeExecution?: (
+		context: NodeExecutionTraceContext,
+		run: () => Promise<unknown>,
+	) => Promise<unknown>;
+}
+
+export interface NodeExecutionTraceContext
+	extends Pick<StepExecutionContext, 'executionId' | 'stepId' | 'workflowId' | 'iteration'> {
+	nodeId: string;
+	nodeType: string;
+}
+
+export const V1_STEP_EXECUTOR_PHASES = Object.freeze([
+	'load-data',
+	'adapter-setup',
+	'additional-data',
+	'context-setup',
+	'isolate-enter',
+	'cleanup',
+	'result-conversion',
+	'isolate-exit',
+] as const);
+
+export type V1StepExecutorPhase = (typeof V1_STEP_EXECUTOR_PHASES)[number];
+
+/** Measures a boundary without changing the active execution context. */
+export interface V1StepExecutorMeasurement {
+	end(): void;
+	fail(): void;
+}
+
+/** The host supplies measurements. The compatibility package does not import a tracing SDK. */
+export interface V1StepExecutorInstrumentation {
+	run<T>(
+		phase: V1StepExecutorPhase,
+		metadata: NodeExecutionTraceContext,
+		operation: () => Promise<T>,
+	): Promise<T>;
+	runSync<T>(
+		phase: V1StepExecutorPhase,
+		metadata: NodeExecutionTraceContext,
+		operation: () => T,
+	): T;
+	start(phase: V1StepExecutorPhase, metadata: NodeExecutionTraceContext): V1StepExecutorMeasurement;
 }
 
 export type ExecutableNodeType = INodeType & { execute: NonNullable<INodeType['execute']> };

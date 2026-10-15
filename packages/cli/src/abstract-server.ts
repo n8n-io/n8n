@@ -16,6 +16,10 @@ import { ServiceUnavailableError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { sendErrorResponse } from '@/response-helper';
+import {
+	createEngineHttpTracingMiddleware,
+	engineTracingEnabled,
+} from '@/modules/engine-v2/engine-tracing';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
@@ -123,6 +127,13 @@ export abstract class AbstractServer {
 	}
 
 	private setupCommonMiddlewares() {
+		if (this.webhooksEnabled && engineTracingEnabled()) {
+			this.app.use(
+				`/${this.endpointWebhook}/`,
+				createEngineHttpTracingMiddleware('engine.cp.webhook'),
+			);
+		}
+
 		// Compress the response data
 		this.app.use(compression());
 

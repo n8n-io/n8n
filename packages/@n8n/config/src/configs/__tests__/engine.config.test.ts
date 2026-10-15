@@ -63,6 +63,42 @@ describe('EngineConfig', () => {
 		expect(Container.get(EngineConfig).mode).toBe('in-process');
 	});
 
+	it('keeps engine tracing off by default', () => {
+		expect(Container.get(EngineConfig).tracingEnabled).toBe(false);
+	});
+
+	it('keeps legacy NoOp benchmarking off by default', () => {
+		expect(Container.get(EngineConfig).benchmarkLegacyNoops).toBe(false);
+	});
+
+	it('enables legacy NoOp benchmarking only through an explicit flag', () => {
+		process.env.N8N_ENGINE_BENCHMARK_LEGACY_NOOPS = 'true';
+		expect(Container.get(EngineConfig).benchmarkLegacyNoops).toBe(true);
+	});
+
+	it('keeps legacy NoOp benchmarking off when the flag is false', () => {
+		process.env.N8N_ENGINE_BENCHMARK_LEGACY_NOOPS = 'false';
+		expect(Container.get(EngineConfig).benchmarkLegacyNoops).toBe(false);
+	});
+
+	it('rejects an invalid legacy NoOp benchmark flag', () => {
+		process.env.N8N_ENGINE_BENCHMARK_LEGACY_NOOPS = 'invalid';
+		expect(Container.get(EngineConfig).benchmarkLegacyNoops).toBe(false);
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_BENCHMARK_LEGACY_NOOPS'),
+		);
+	});
+
+	it('enables engine tracing only through an explicit flag', () => {
+		process.env.N8N_ENGINE_TRACING_ENABLED = 'true';
+		expect(Container.get(EngineConfig).tracingEnabled).toBe(true);
+	});
+
+	it('keeps engine tracing off when the flag is false', () => {
+		process.env.N8N_ENGINE_TRACING_ENABLED = 'false';
+		expect(Container.get(EngineConfig).tracingEnabled).toBe(false);
+	});
+
 	it('should read the remote mode', () => {
 		process.env.N8N_ENGINE_MODE = 'remote';
 

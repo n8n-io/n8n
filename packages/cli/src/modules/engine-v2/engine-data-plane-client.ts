@@ -15,9 +15,12 @@ import type {
 	SearchExecutionsResponse,
 } from '@n8n/engine';
 import { mintIdentityToken } from '@n8n/engine';
+import { SpanKind } from '@opentelemetry/api';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { injectEngineTraceHeaders, runEngineSpan } from './engine-tracing';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 import {
@@ -61,6 +64,7 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			// the module generates it, which is after this constructor runs.
 			headers: () => ({
 				authorization: `Bearer ${mintIdentityToken(this.engineConfig.authSecret, this.caller())}`,
+				...injectEngineTraceHeaders(),
 			}),
 		});
 	}
@@ -75,6 +79,18 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 	}
 
 	async startExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
+		return await runEngineSpan(
+			'engine.cp.start_execution',
+			{
+				'n8n.workflow.id': request.workflowId,
+				'n8n.execution.mode': request.callerContext?.hostMode,
+			},
+			async () => await this.sendStartExecution(request),
+			SpanKind.CLIENT,
+		);
+	}
+
+	private async sendStartExecution(request: StartExecutionRequest): Promise<StartExecutionResult> {
 		const response = await this.http.request<StartExecutionResult | EngineErrorResponse>({
 			url: '/api/workflow-executions',
 			method: 'POST',

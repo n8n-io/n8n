@@ -72,8 +72,10 @@ COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
 COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/build/Release/confluent-kafka-javascript.node /tmp/
 
 # The base image keeps node in /usr/bin and has no /usr/local/bin.
+# A private build umask can restrict copied code. Keep it readable by the runtime user.
 RUN set -e; \
     N8N=/usr/local/lib/node_modules/n8n; \
+    chmod -R a+rX "$N8N"; \
     kafka=$(echo "$N8N"/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript); \
     install -D /tmp/confluent-kafka-javascript.node "$kafka/build/Release/confluent-kafka-javascript.node"; \
     rm -rf "$N8N"/node_modules/.pnpm/isolated-vm@*/node_modules/isolated-vm/prebuilds; \

@@ -178,6 +178,37 @@ describe('OtelService tracer provider', () => {
 	});
 
 	describe('when the global API is free', () => {
+		it('starts from environment settings without loading persisted settings', async () => {
+			otelSettingsService.loadSettings.mockRejectedValue(new Error('No control plane database'));
+
+			await service.initFromConfig(enabledSettings);
+			service.getTracer('n8n-engine-v2').startSpan('engine.execute').end();
+
+			expect(otelSettingsService.loadSettings).not.toHaveBeenCalled();
+			expect(exportedSpanNames()).toEqual(['engine.execute']);
+		});
+
+		it('uses one provider when environment startup runs twice', async () => {
+			await service.initFromConfig(enabledSettings);
+			const tracer = trace.getTracer('n8n-engine-v2');
+			await service.initFromConfig(enabledSettings);
+			tracer.startSpan('engine.execute').end();
+
+			expect(exportedSpanNames()).toEqual(['engine.execute']);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(otelSettingsService.loadSettings).not.toHaveBeenCalled();
+		});
+
+		it('does not start a provider from disabled environment settings', async () => {
+			await service.initFromConfig(disabledSettings);
+
+			expect(service.getTracer('n8n-engine-v2').startSpan('engine.execute').isRecording()).toBe(
+				false,
+			);
+			expect(fetchMock).not.toHaveBeenCalled();
+			expect(otelSettingsService.loadSettings).not.toHaveBeenCalled();
+		});
+
 		it('registers its provider, so third-party tracers export through the module', async () => {
 			await service.init();
 

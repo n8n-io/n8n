@@ -16,6 +16,8 @@ import { RedisExecutionResponseSender } from '@/modules/engine-v2/response-chann
 import type { RedisResponsePublisher } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
+import { OtelConfig } from '@/modules/otel/otel.config';
+import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { PostHogClient } from '@/posthog';
 import { RedisClientService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -41,17 +43,21 @@ const redisClientService = mockInstance(RedisClientService, {
 // Services the base `init()` reaches, as in worker.test.ts.
 const errorReporter = mockInstance(ErrorReporter);
 mockInstance(NodeTypes);
-mockInstance(ShutdownService);
+const shutdownService = mockInstance(ShutdownService);
 mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
-mockInstance(OtelService);
+const otelService = mockInstance(OtelService);
+const otelSettingsService = mockInstance(OtelSettingsService);
 mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
 describe('Engine', () => {
 	const originalEnv = process.env;
+	const originalSigtermListeners = new Set(process.listeners('SIGTERM'));
+	const originalSigintListeners = new Set(process.listeners('SIGINT'));
 	let engineConfig: EngineConfig;
+	let otelConfig: OtelConfig;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -66,13 +72,21 @@ describe('Engine', () => {
 			),
 		);
 		engineConfig = mockInstance(EngineConfig, {
+			tracingEnabled: false,
 			authSecret: 'a'.repeat(32),
 			controlPlaneBaseUrl: 'http://n8n-main:3001',
 		});
+		otelConfig = mockInstance(OtelConfig, { enabled: false });
 	});
 
 	afterEach(() => {
 		process.env = originalEnv;
+		for (const listener of process.listeners('SIGTERM')) {
+			if (!originalSigtermListeners.has(listener)) process.removeListener('SIGTERM', listener);
+		}
+		for (const listener of process.listeners('SIGINT')) {
+			if (!originalSigintListeners.has(listener)) process.removeListener('SIGINT', listener);
+		}
 	});
 
 	const createEngine = () => {
@@ -99,6 +113,36 @@ describe('Engine', () => {
 	};
 
 	describe('init', () => {
+		it('starts environment-only tracing before Redis and the runtime', async () => {
+			engineConfig.tracingEnabled = true;
+			otelConfig.enabled = true;
+
+			await createEngine().init();
+
+			expect(otelService.initFromConfig).toHaveBeenCalledExactlyOnceWith(otelConfig);
+			expect(otelService.init).not.toHaveBeenCalled();
+			expect(otelSettingsService.loadSettings).not.toHaveBeenCalled();
+			expect(dbConnection.init).not.toHaveBeenCalled();
+			expect(dbConnection.migrate).not.toHaveBeenCalled();
+			expect(otelService.initFromConfig.mock.invocationCallOrder[0]).toBeLessThan(
+				redisClientService.createClient.mock.invocationCallOrder[0],
+			);
+			expect(otelService.initFromConfig.mock.invocationCallOrder[0]).toBeLessThan(
+				runtime.init.mock.invocationCallOrder[0],
+			);
+		});
+
+		it.each([
+			[false, false],
+			[false, true],
+			[true, false],
+		])('does not start tracing with engine=%s and otel=%s', async (engineEnabled, otelEnabled) => {
+			engineConfig.tracingEnabled = engineEnabled;
+			otelConfig.enabled = otelEnabled;
+			await createEngine().init();
+			expect(otelService.initFromConfig).not.toHaveBeenCalled();
+		});
+
 		it('refuses to boot with control plane database access', async () => {
 			process.env.DB_POSTGRESDB_HOST = 'postgres';
 
@@ -192,6 +236,45 @@ describe('Engine', () => {
 	});
 
 	describe('stopProcess', () => {
+		it('stops owned DP services without constructing CP shutdown services', async () => {
+			const engine = createEngine();
+			await engine.init();
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing the protected signal handler for testing
+				const terminate = engine.onTerminationSignal('SIGTERM');
+				await terminate();
+				await terminate();
+				expect(shutdownService.shutdown).not.toHaveBeenCalled();
+				expect(shutdownService.waitForShutdown).not.toHaveBeenCalled();
+				expect(runtime.shutdown).toHaveBeenCalledOnce();
+				expect(publisher.disconnect).toHaveBeenCalledOnce();
+				expect(exit).toHaveBeenCalledOnce();
+			} finally {
+				exit.mockRestore();
+			}
+		});
+		it('flushes tracing after the runtime and Redis stop, before exit', async () => {
+			engineConfig.tracingEnabled = true;
+			otelConfig.enabled = true;
+			const engine = createEngine();
+			await engine.init();
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing protected method for testing
+				await engine.stopProcess();
+				expect(otelService.shutdown).toHaveBeenCalledTimes(1);
+				expect(publisher.disconnect.mock.invocationCallOrder[0]).toBeLessThan(
+					otelService.shutdown.mock.invocationCallOrder[0],
+				);
+				expect(otelService.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
+					exit.mock.invocationCallOrder[0],
+				);
+			} finally {
+				exit.mockRestore();
+			}
+		});
+
 		it('shuts the data plane down before exiting, without touching the crash journal', async () => {
 			const engine = createEngine();
 			await engine.init();

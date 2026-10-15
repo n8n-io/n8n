@@ -28,10 +28,13 @@ import { fromStepInputs, toStepOutputs } from './io';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
+	NodeExecutionTraceContext,
 	NodeRunResult,
 	RunNodeParams,
 	V1NodeStepConfig,
 	V1StepExecutorDeps,
+	V1StepExecutorInstrumentation,
+	V1StepExecutorMeasurement,
 } from './types';
 import type { DurableWaitExecuteContext } from './v1-adapters';
 import {
@@ -91,9 +94,17 @@ export class V1StepExecutor implements IStepExecutor {
 	constructor(private readonly deps: V1StepExecutorDeps) {}
 
 	async execute(request: StepExecutionRequest): Promise<StepExecutionResult> {
-		this.validateExpressionEngine();
+		this.validateExpressionEngine(request.node);
 		const stepConfig = this.validateStepConfig(request.node);
 		const nodeType = this.resolveNodeType(stepConfig);
+		if (this.deps.instrumentation) {
+			return await this.executeInstrumented(
+				request,
+				stepConfig,
+				nodeType,
+				this.deps.instrumentation,
+			);
+		}
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
@@ -121,17 +132,117 @@ export class V1StepExecutor implements IStepExecutor {
 		});
 
 		return await workflow.expression.withIsolate(async () => {
-			const nodeResult = await this.runNode({ nodeType, context });
+			const nodeResult = await this.runNode({ nodeType, context }, request);
 			return toStepResult(context, nodeResult);
 		});
 	}
 
-	private validateExpressionEngine(): void {
-		// Any isolated engine works here — v1 steps only need the pooled
-		// evaluator that initExpressionEngine() sets up; 'legacy' has none.
-		if (Expression.getActiveImplementation() === 'legacy') {
-			throw new VmExpressionEngineRequiredError();
+	private async executeInstrumented(
+		request: StepExecutionRequest,
+		stepConfig: V1NodeStepConfig,
+		nodeType: ExecutableNodeType,
+		hooks: V1StepExecutorInstrumentation,
+	): Promise<StepExecutionResult> {
+		const metadata: NodeExecutionTraceContext = {
+			executionId: request.context.executionId,
+			stepId: request.context.stepId,
+			workflowId: request.context.workflowId,
+			iteration: request.context.iteration,
+			nodeId: request.node.id,
+			nodeType: stepConfig.nodeType,
+		};
+		const stepData = await hooks.run(
+			'load-data',
+			metadata,
+			async () => await this.deps.loadStepData(request.context),
+		);
+		const { node, execution, workflow } = hooks.runSync('adapter-setup', metadata, () => {
+			const node = toV1Node(request.node, stepConfig);
+			const execution = toV1Execution(
+				stepData.graph,
+				stepData.outputsByNode,
+				request.node.id,
+				request.context.iteration,
+			);
+			const workflow = toV1Workflow(
+				request.context.workflowId,
+				node,
+				execution,
+				this.deps.nodeTypes,
+			);
+			return { node, execution, workflow };
+		});
+		const additionalData = await hooks.run(
+			'additional-data',
+			metadata,
+			async () => await this.deps.additionalDataFactory(toAdditionalDataContext(request.context)),
+		);
+		const context = hooks.runSync('context-setup', metadata, () => {
+			attachResponseHooks(additionalData, request);
+			return toV1ExecuteContext({
+				node,
+				workflow,
+				execution,
+				source: toV1Sources(stepData.graph).get(node.id) ?? [],
+				additionalData,
+				stepContext: request.context,
+				itemsByConnection: fromStepInputs(request.inputs),
+			});
+		});
+
+		// Entry stops before the callback. Neither token makes itself the body's parent.
+		let entering: V1StepExecutorMeasurement | undefined = hooks.start('isolate-enter', metadata);
+		let exiting: V1StepExecutorMeasurement | undefined;
+		let callbackFailed = false;
+		let callbackError: unknown;
+		try {
+			return await workflow.expression.withIsolate(async () => {
+				entering?.end();
+				entering = undefined;
+				try {
+					const nodeResult = await this.runNode({ nodeType, context }, request, {
+						hooks,
+						metadata,
+					});
+					return hooks.runSync('result-conversion', metadata, () =>
+						toStepResult(context, nodeResult),
+					);
+				} catch (error) {
+					callbackFailed = true;
+					callbackError = error;
+					throw error;
+				} finally {
+					exiting = hooks.start('isolate-exit', metadata);
+				}
+			});
+		} catch (error) {
+			if (entering) entering.fail();
+			else if (!callbackFailed || error !== callbackError) exiting?.fail();
+			throw error;
+		} finally {
+			entering?.end();
+			exiting?.end();
 		}
+	}
+
+	private validateExpressionEngine(node: GraphNode): void {
+		if (Expression.getActiveImplementation() !== 'legacy') return;
+		const config = node.config;
+		if (
+			this.deps.allowLegacyNoopBenchmark === true &&
+			node.type === 'v1-node' &&
+			isV1NodeStepConfig(config) &&
+			config.nodeType === 'n8n-nodes-base.noOp' &&
+			config.typeVersion === 1 &&
+			// The CP adds the NoOp's hidden default when it prepares the graph.
+			Object.entries(config.parameters).every(
+				([name, value]) => name === 'emptyGroupAnchor' && value === false,
+			) &&
+			config.credentials === undefined &&
+			!config.continueOnFail
+		)
+			return;
+		throw new VmExpressionEngineRequiredError();
 	}
 
 	private validateStepConfig({ type, name, config }: GraphNode): V1NodeStepConfig {
@@ -164,19 +275,55 @@ export class V1StepExecutor implements IStepExecutor {
 	 * failure with `continueOnFail` passes the input items through as output.
 	 * A null result yields no output.
 	 */
-	private async runNode({ nodeType, context }: RunNodeParams): Promise<INodeExecutionData[][]> {
+	private async runNode(
+		{ nodeType, context }: RunNodeParams,
+		request: StepExecutionRequest,
+		measurement?: { hooks: V1StepExecutorInstrumentation; metadata: NodeExecutionTraceContext },
+	): Promise<INodeExecutionData[][]> {
 		let result: NodeRunResult;
 		try {
-			const value = isNodeClassInstance(nodeType)
-				? await nodeType.execute(context)
-				: await nodeType.execute.call(context);
+			const value = this.deps.traceNodeExecution
+				? await this.deps.traceNodeExecution(
+						{
+							executionId: request.context.executionId,
+							stepId: request.context.stepId,
+							workflowId: request.context.workflowId,
+							iteration: request.context.iteration,
+							nodeId: request.node.id,
+							nodeType: context.getNode().type,
+						},
+						async () =>
+							isNodeClassInstance(nodeType)
+								? await nodeType.execute(context)
+								: await nodeType.execute.call(context),
+					)
+				: isNodeClassInstance(nodeType)
+					? await nodeType.execute(context)
+					: await nodeType.execute.call(context);
 			result = { ok: true, value };
 		} catch (error) {
 			result = { ok: false, error };
 		}
 
 		const { closeFunctions } = context;
-		if (closeFunctions.length > 0) {
+		if (closeFunctions.length > 0 && measurement) {
+			await measurement.hooks.run('cleanup', measurement.metadata, async () => {
+				const closeResults = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
+				if (result.ok) {
+					const rejected = closeResults.find(
+						(closeResult): closeResult is PromiseRejectedResult =>
+							closeResult.status === 'rejected',
+					);
+					if (rejected) {
+						throw rejected.reason instanceof Error
+							? rejected.reason
+							: new UnexpectedError("Error on node's close function", {
+									extra: { nodeName: context.getNode().name },
+								});
+					}
+				}
+			});
+		} else if (closeFunctions.length > 0) {
 			const closeResults = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
 			if (result.ok) {
 				const rejected = closeResults.find(

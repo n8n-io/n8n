@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, ExpressionEngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EngineRuntime, ExecutionResponseSender } from '@n8n/engine';
 import {
@@ -13,7 +13,7 @@ import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { Expression, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 
@@ -24,6 +24,16 @@ import { NodeTypes } from '@/node-types';
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneClient } from './engine-control-plane-client';
 import { EngineCredentialsClient } from './engine-credentials-client';
+import { createEngineExecutorInstrumentation } from './engine-executor-instrumentation';
+import {
+	createEngineHttpTracingMiddleware,
+	engineTracingEnabled,
+	runEngineSpan,
+} from './engine-tracing';
+import {
+	createEngineRuntimeInstrumentation,
+	traceEngineStepExecutor,
+} from './engine-runtime-instrumentation';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 
 /**
@@ -59,12 +69,22 @@ export class EngineV2Runtime {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly expressionEngineConfig: ExpressionEngineConfig,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 	}
 
 	async init(responseSender: ExecutionResponseSender = noopExecutionResponseSender): Promise<void> {
 		try {
+			if (
+				this.engineConfig.benchmarkLegacyNoops &&
+				(this.expressionEngineConfig.engine !== 'legacy' ||
+					Expression.getActiveImplementation() !== 'legacy')
+			) {
+				throw new UserError(
+					'Legacy NoOp benchmarking requires N8N_EXPRESSION_ENGINE=legacy. It also requires an active legacy expression engine.',
+				);
+			}
 			await this.initDb();
 
 			this.initEngine(responseSender);
@@ -101,9 +121,14 @@ export class EngineV2Runtime {
 
 		const stopping = new AbortController();
 		this.stopping = stopping;
+		const executorInstrumentation = createEngineExecutorInstrumentation();
 
 		const engine = createEngineRuntime({
 			dataSource: this.dataSource,
+			instrumentation: createEngineRuntimeInstrumentation(),
+			requestMiddleware: engineTracingEnabled()
+				? createEngineHttpTracingMiddleware('engine.http.admit')
+				: undefined,
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
@@ -118,11 +143,31 @@ export class EngineV2Runtime {
 					await this.binaryDataService.deleteMany([
 						FileLocation.ofExecution(workflowId, executionId),
 					]),
-				v1StepExecutor: new V1StepExecutor({
-					nodeTypes: this.nodeTypes,
-					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
-					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
-				}),
+				v1StepExecutor: traceEngineStepExecutor(
+					new V1StepExecutor({
+						allowLegacyNoopBenchmark: this.engineConfig.benchmarkLegacyNoops,
+						nodeTypes: this.nodeTypes,
+						additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
+						loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+						instrumentation: executorInstrumentation,
+						traceNodeExecution: engineTracingEnabled()
+							? async (metadata, run) =>
+									await runEngineSpan(
+										'engine.node.body',
+										{
+											'engine.execution.id': metadata.executionId,
+											'engine.step.id': metadata.stepId,
+											'engine.workflow.id': metadata.workflowId,
+											'engine.node.id': metadata.nodeId,
+											'engine.node.type': metadata.nodeType,
+											'engine.step.iteration': metadata.iteration,
+											'engine.node.boundary': 'body',
+										},
+										run,
+									)
+							: undefined,
+					}),
+				),
 			}),
 		});
 		engine.start();

@@ -1,7 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionResponse, ExecutionResponseSender } from '@n8n/engine';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import type { Span } from '@opentelemetry/api';
+import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { UnexpectedError } from 'n8n-workflow';
+
+import { engineTracingEnabled, getEngineTracer, injectEngineTraceHeaders } from '../engine-tracing';
 
 import { serializeExecutionResponse } from './execution-response-frame';
 import type { RedisExecutionResponseChannelNameGenerator } from './redis-execution-response-channel';
@@ -23,6 +27,8 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 
 	private readonly inFlightPublishes = new Set<Promise<unknown>>();
 
+	private readonly activePublicationSpans = new Set<Span>();
+
 	constructor(
 		private readonly publisher: RedisResponsePublisher,
 		private readonly getChannelName: RedisExecutionResponseChannelNameGenerator,
@@ -34,20 +40,61 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 			return createResultError(new UnexpectedError('The execution response sender has stopped.'));
 		}
 
-		const frameResult = serializeExecutionResponse(response, this.logger);
+		if (!engineTracingEnabled()) return this.publishResponse(response);
+
+		return getEngineTracer().startActiveSpan(
+			'engine.response.publish',
+			{
+				kind: SpanKind.PRODUCER,
+				attributes: {
+					'n8n.execution.id': response.executionId,
+					'n8n.response.type': response.type,
+				},
+			},
+			(span) => {
+				this.activePublicationSpans.add(span);
+				try {
+					return this.publishResponse(response, span);
+				} catch (error) {
+					this.endPublicationSpan(span, true);
+					throw error;
+				}
+			},
+		);
+	}
+
+	private publishResponse(response: ExecutionResponse, span?: Span): Result<void, Error> {
+		const frameResult = serializeExecutionResponse(
+			response,
+			this.logger,
+			undefined,
+			injectEngineTraceHeaders(),
+		);
+		let failed = !frameResult.ok;
 
 		const publishTask: Promise<unknown> = this.publisher
 			.publish(this.getChannelName(response.executionId), frameResult.frame)
 			.catch((error: unknown) => {
+				failed = true;
 				this.logger.error('Failed to publish an execution response', {
 					executionId: response.executionId,
 					error,
 				});
 			})
-			.finally(() => this.inFlightPublishes.delete(publishTask));
+			.finally(() => {
+				this.endPublicationSpan(span, failed);
+				this.inFlightPublishes.delete(publishTask);
+			});
 		this.inFlightPublishes.add(publishTask);
 
 		return frameResult.ok ? createResultOk(undefined) : createResultError(frameResult.error);
+	}
+
+	private endPublicationSpan(span: Span | undefined, failed: boolean): void {
+		if (!span || !this.activePublicationSpans.delete(span)) return;
+
+		if (failed) span.setStatus({ code: SpanStatusCode.ERROR });
+		span.end();
 	}
 
 	async stop(): Promise<void> {
@@ -55,6 +102,8 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 
 		this.stopped = true;
 		await this.drainInFlightPublishes();
+		// Disconnect can reject pending publishes after the tracer provider shuts down.
+		for (const span of this.activePublicationSpans) this.endPublicationSpan(span, true);
 		this.publisher.disconnect();
 	}
 

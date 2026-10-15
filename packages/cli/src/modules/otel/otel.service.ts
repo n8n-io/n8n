@@ -63,6 +63,11 @@ export class OtelService {
 		await this.start(settings);
 	}
 
+	/** Start from environment settings without reading the control plane database. */
+	async initFromConfig(settings: OtelConfig): Promise<void> {
+		await this.start(settings);
+	}
+
 	async restart(): Promise<void> {
 		await this.shutdown();
 		const settings = await this.otelSettingsService.loadSettings();
@@ -131,7 +136,7 @@ export class OtelService {
 	}
 
 	private async start(settings: OtelConfig): Promise<void> {
-		if (!settings.enabled) return;
+		if (!settings.enabled || this.provider) return;
 
 		this.configureDiagnosticsLogger();
 		let provider: NodeTracerProvider;

@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { EngineConfig, GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
@@ -7,6 +7,8 @@ import { mock } from 'vitest-mock-extended';
 
 import { AbstractServer } from '@/abstract-server';
 import { ExternalHooks } from '@/external-hooks';
+import { rawBodyReader } from '@/middlewares';
+import { OtelConfig } from '@/modules/otel/otel.config';
 
 const mockServer = mock<http.Server>();
 
@@ -92,6 +94,33 @@ describe('AbstractServer health endpoints', () => {
 			const res = mock<express.Response>();
 			healthHandler(mock<express.Request>(), res);
 			expect(res.send).toHaveBeenCalledWith({ status: 'ok' });
+		});
+	});
+
+	describe('engine HTTP tracing mount', () => {
+		it('mounts tracing only on the production webhook prefix, before body reads', () => {
+			Container.set(EngineConfig, mock<EngineConfig>({ tracingEnabled: true }));
+			Container.set(OtelConfig, mock<OtelConfig>({ enabled: true }));
+			mockApp.use.mockClear();
+			// @ts-expect-error - Accessing private setup method for testing
+			testServer.setupCommonMiddlewares();
+
+			expect(mockApp.use.mock.calls[0]).toEqual(['/webhook/', expect.any(Function)]);
+			expect(mockApp.use.mock.calls.at(-1)).toEqual([rawBodyReader]);
+			expect(mockApp.use.mock.calls.filter(([path]) => typeof path === 'string')).toHaveLength(1);
+		});
+
+		it.each([
+			[false, false],
+			[false, true],
+			[true, false],
+		])('does not mount tracing with engine=%s and otel=%s', (engineEnabled, otelEnabled) => {
+			Container.set(EngineConfig, mock<EngineConfig>({ tracingEnabled: engineEnabled }));
+			Container.set(OtelConfig, mock<OtelConfig>({ enabled: otelEnabled }));
+			mockApp.use.mockClear();
+			// @ts-expect-error - Accessing private setup method for testing
+			testServer.setupCommonMiddlewares();
+			expect(mockApp.use.mock.calls.some(([path]) => typeof path === 'string')).toBe(false);
 		});
 	});
 

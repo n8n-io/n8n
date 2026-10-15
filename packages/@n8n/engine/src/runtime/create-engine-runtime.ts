@@ -1,5 +1,5 @@
 import type { DataSource } from '@n8n/typeorm';
-import type { Application } from 'express';
+import type { Application, RequestHandler } from 'express';
 
 import type { AdmittanceService } from '../admittance';
 import type { IdentityVerifier } from '../auth/identity.types';
@@ -21,9 +21,18 @@ import { BatchingLifecycleEventPublisher, noopLifecycleEventPublisher } from '..
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
-import type { OrchestrationMessage, StepMessage } from '../queue';
+import type { OrchestrationMessage, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
+
+/** Host-owned instrumentation. The runtime applies each wrapper once. */
+export interface EngineRuntimeInstrumentation {
+	wrapStores(stores: EngineStores): EngineStores;
+	wrapQueue<TMessage extends OrchestrationMessage | StepMessage>(
+		name: 'orchestration' | 'step',
+		queue: WorkQueue<TMessage>,
+	): WorkQueue<TMessage>;
+}
 
 export interface EngineRuntimeOptions {
 	/** The data plane database, already initialized and migrated. */
@@ -50,6 +59,9 @@ export interface EngineRuntimeOptions {
 	externalDependencies?: (stores: EngineStores) => ExternalDependencies;
 	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
 	waitSweepIntervalMs?: number;
+	instrumentation?: EngineRuntimeInstrumentation;
+	/** Runs on API requests before authentication and body parsing. */
+	requestMiddleware?: RequestHandler;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -78,13 +90,22 @@ export function createEngineRuntime({
 	responseSender,
 	externalDependencies,
 	waitSweepIntervalMs,
+	instrumentation,
+	requestMiddleware,
 }: EngineRuntimeOptions): EngineRuntime {
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
-	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger);
-	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
+	const rawOrchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
+	const rawStepQueue = new InMemoryWorkQueue<StepMessage>(logger);
+	const orchestrationQueue = instrumentation
+		? instrumentation.wrapQueue('orchestration', rawOrchestrationQueue)
+		: rawOrchestrationQueue;
+	const stepQueue = instrumentation
+		? instrumentation.wrapQueue('step', rawStepQueue)
+		: rawStepQueue;
+	const rawStores = createStores(dataSource);
+	const stores = instrumentation ? instrumentation.wrapStores(rawStores) : rawStores;
+	const { executionStore, stepStore, executionViewStore } = stores;
 	// Built once, not per handler: the factory must not run twice.
-	const dependencies =
-		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
+	const dependencies = externalDependencies?.(stores) ?? {};
 	const lifecycleEventPublisher: LifecycleEventPublisher = dependencies.lifecycleEventCallback
 		? new BatchingLifecycleEventPublisher(dependencies.lifecycleEventCallback)
 		: noopLifecycleEventPublisher;
@@ -132,6 +153,7 @@ export function createEngineRuntime({
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier,
 		logger,
+		requestMiddleware,
 	});
 
 	return {

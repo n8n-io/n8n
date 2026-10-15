@@ -1,8 +1,13 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { EngineConfig } from '@n8n/config';
+import type { EngineConfig, ExpressionEngineConfig } from '@n8n/config';
 import type { ExecutionResponseSender } from '@n8n/engine';
 import type { BinaryDataService } from 'n8n-core';
+import type {
+	NodeExecutionTraceContext,
+	V1StepExecutorInstrumentation,
+} from '@n8n/node-engine-compatibility';
 import { mock } from 'vitest-mock-extended';
+import { Expression } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
@@ -52,6 +57,12 @@ const mocks = vi.hoisted(() => {
 	type AdditionalData = { executionId?: string; credentialsHelper?: unknown };
 
 	type V1StepExecutorDeps = {
+		allowLegacyNoopBenchmark?: boolean;
+		instrumentation?: V1StepExecutorInstrumentation;
+		traceNodeExecution?: (
+			context: NodeExecutionTraceContext,
+			run: () => Promise<unknown>,
+		) => Promise<unknown>;
 		additionalDataFactory: (context: {
 			executionId: string;
 			workflowId: string;
@@ -62,6 +73,15 @@ const mocks = vi.hoisted(() => {
 	};
 
 	return {
+		tracingEnabled: vi.fn(() => false),
+		instrumentation: vi.fn<() => unknown>(() => undefined),
+		executorInstrumentation: vi.fn<() => V1StepExecutorInstrumentation | undefined>(
+			() => undefined,
+		),
+		httpMiddleware: vi.fn(() => 'trace-middleware'),
+		traceSpan: vi.fn(
+			async (_name: string, _attributes: unknown, run: () => Promise<unknown>) => await run(),
+		),
 		dataSource,
 		listen,
 		server,
@@ -91,9 +111,24 @@ vi.mock('@n8n/node-engine-compatibility', () => ({
 	V1StepExecutor: mocks.V1StepExecutor,
 }));
 
+vi.mock('../engine-tracing', () => ({
+	engineTracingEnabled: mocks.tracingEnabled,
+	createEngineHttpTracingMiddleware: mocks.httpMiddleware,
+	runEngineSpan: mocks.traceSpan,
+}));
+
+vi.mock('../engine-runtime-instrumentation', () => ({
+	createEngineRuntimeInstrumentation: mocks.instrumentation,
+	traceEngineStepExecutor: (executor: unknown) => executor,
+}));
+
+vi.mock('../engine-executor-instrumentation', () => ({
+	createEngineExecutorInstrumentation: mocks.executorInstrumentation,
+}));
+
 describe('EngineV2Runtime', () => {
-	const engineConfig = (databaseUrl: string) =>
-		mock<EngineConfig>({ databaseUrl, host: '0.0.0.0', port: 3000 });
+	const engineConfig = (databaseUrl: string, benchmarkLegacyNoops = false) =>
+		mock<EngineConfig>({ databaseUrl, host: '0.0.0.0', port: 3000, benchmarkLegacyNoops });
 
 	const nodeTypes = mock<NodeTypes>();
 
@@ -107,9 +142,13 @@ describe('EngineV2Runtime', () => {
 	// `@n8n/engine` is mocked below, so the sender is a stand-in too.
 	const responseSender = () => mock<ExecutionResponseSender>();
 
-	const newRuntime = (databaseUrl = 'postgres://engine') =>
+	const newRuntime = (
+		databaseUrl = 'postgres://engine',
+		benchmarkLegacyNoops = false,
+		engine: ExpressionEngineConfig['engine'] = 'vm',
+	) =>
 		new EngineV2Runtime(
-			engineConfig(databaseUrl),
+			engineConfig(databaseUrl, benchmarkLegacyNoops),
 			nodeTypes,
 			mockLogger(),
 			controlPlaneClient,
@@ -118,6 +157,7 @@ describe('EngineV2Runtime', () => {
 			credentialTypes,
 			additionalDataBuilder,
 			binaryDataService,
+			mock<ExpressionEngineConfig>({ engine }),
 		);
 
 	const stepContext = {
@@ -144,6 +184,9 @@ describe('EngineV2Runtime', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.tracingEnabled.mockReturnValue(false);
+		mocks.instrumentation.mockReturnValue(undefined);
+		mocks.executorInstrumentation.mockReturnValue(undefined);
 		mocks.dataSource.isInitialized = false;
 		mocks.listen.error = undefined;
 		controlPlaneClient = mock<EngineControlPlaneClient>();
@@ -157,6 +200,50 @@ describe('EngineV2Runtime', () => {
 	});
 
 	describe('init', () => {
+		it('keeps legacy NoOp benchmarking off by default', async () => {
+			await newRuntime().init(responseSender());
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			expect(mocks.V1StepExecutor.mock.calls[0][0].allowLegacyNoopBenchmark).toBe(false);
+		});
+
+		it('allows the benchmark only when legacy is explicitly selected and active', async () => {
+			const active = vi.spyOn(Expression, 'getActiveImplementation').mockReturnValue('legacy');
+			try {
+				await newRuntime('postgres://engine', true, 'legacy').init(responseSender());
+				externalDependencies({ executionStore: {}, stepStore: {} });
+				expect(mocks.V1StepExecutor.mock.calls[0][0].allowLegacyNoopBenchmark).toBe(true);
+			} finally {
+				active.mockRestore();
+			}
+		});
+
+		it.each(['vm', 'quickjs'] as const)(
+			'rejects benchmark opt-in with selected engine %s before connecting to SQL',
+			async (engine) => {
+				const active = vi.spyOn(Expression, 'getActiveImplementation').mockReturnValue('legacy');
+				try {
+					await expect(
+						newRuntime('postgres://engine', true, engine).init(responseSender()),
+					).rejects.toThrow('N8N_EXPRESSION_ENGINE=legacy');
+					expect(mocks.createDataSource).not.toHaveBeenCalled();
+					expect(mocks.engine.start).not.toHaveBeenCalled();
+				} finally {
+					active.mockRestore();
+				}
+			},
+		);
+
+		it('rejects a selected legacy benchmark when an isolated implementation remains active', async () => {
+			const active = vi.spyOn(Expression, 'getActiveImplementation').mockReturnValue('vm');
+			try {
+				await expect(
+					newRuntime('postgres://engine', true, 'legacy').init(responseSender()),
+				).rejects.toThrow('active legacy');
+				expect(mocks.createDataSource).not.toHaveBeenCalled();
+			} finally {
+				active.mockRestore();
+			}
+		});
 		it('refuses to start without a data plane database', async () => {
 			await expect(newRuntime('').init(responseSender())).rejects.toThrow(
 				'N8N_ENGINE_DATABASE_URL',
@@ -180,6 +267,64 @@ describe('EngineV2Runtime', () => {
 			await newRuntime().init(responseSender());
 
 			expect(mocks.engine.start).toHaveBeenCalled();
+		});
+
+		it('keeps optional trace middleware and node measurement off by default', async () => {
+			await newRuntime().init(responseSender());
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ instrumentation: undefined, requestMiddleware: undefined }),
+			);
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			expect(mocks.V1StepExecutor.mock.calls[0][0].traceNodeExecution).toBeUndefined();
+			expect(mocks.V1StepExecutor.mock.calls[0][0].instrumentation).toBeUndefined();
+		});
+
+		it('injects trace boundaries without exposing node inputs to the body measurement', async () => {
+			mocks.tracingEnabled.mockReturnValue(true);
+			const instrumentation = { wrapStores: vi.fn(), wrapQueue: vi.fn() };
+			mocks.instrumentation.mockReturnValue(instrumentation);
+			const executorInstrumentation = mock<V1StepExecutorInstrumentation>();
+			mocks.executorInstrumentation.mockReturnValue(executorInstrumentation);
+			await newRuntime().init(responseSender());
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ instrumentation, requestMiddleware: 'trace-middleware' }),
+			);
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			expect(mocks.executorInstrumentation).toHaveBeenCalledOnce();
+			expect(mocks.V1StepExecutor.mock.calls.map(([deps]) => deps.instrumentation)).toEqual([
+				executorInstrumentation,
+				executorInstrumentation,
+			]);
+			const measure = mocks.V1StepExecutor.mock.calls[0][0].traceNodeExecution;
+			expect(measure).toBeDefined();
+			if (!measure) throw new Error('The node body measurement was not injected.');
+			const run = vi.fn(async () => 42);
+			const result = await measure(
+				{
+					executionId: 'execution',
+					stepId: 'step',
+					workflowId: 'workflow',
+					nodeId: 'node',
+					nodeType: 'n8n-nodes-base.noOp',
+					iteration: 0,
+				},
+				run,
+			);
+			expect(result).toBe(42);
+			expect(mocks.traceSpan).toHaveBeenCalledExactlyOnceWith(
+				'engine.node.body',
+				{
+					'engine.execution.id': 'execution',
+					'engine.step.id': 'step',
+					'engine.workflow.id': 'workflow',
+					'engine.node.id': 'node',
+					'engine.node.type': 'n8n-nodes-base.noOp',
+					'engine.step.iteration': 0,
+					'engine.node.boundary': 'body',
+				},
+				run,
+			);
 		});
 
 		it('injects a lifecycle event callback that reports to the control plane', async () => {

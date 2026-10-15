@@ -1,8 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionResponse } from '@n8n/engine';
+import { context, SpanKind } from '@opentelemetry/api';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { deserializeExecutionResponse } from './execution-response-frame';
+import {
+	engineTracingEnabled,
+	extractEngineTraceContext,
+	runEngineSpanSync,
+} from '../engine-tracing';
+
+import { deserializeExecutionResponseFrame } from './execution-response-frame';
 import type {
 	ExecutionResponseReceiver,
 	UnsubscribeExecutionResponse,
@@ -148,12 +155,26 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		const subscription = this.subscriptionsByChannel.get(channel);
 		if (subscription === undefined) return;
 
-		const responseResult = deserializeExecutionResponse(frame, this.logger);
+		const responseResult = deserializeExecutionResponseFrame(frame, this.logger);
 		if (!responseResult.ok) return;
-		const response = responseResult.result;
+		const { response, traceHeaders } = responseResult.result;
 
 		try {
-			subscription.handler(response);
+			if (engineTracingEnabled()) {
+				context.with(extractEngineTraceContext(traceHeaders), () =>
+					runEngineSpanSync(
+						'engine.response.receive',
+						{
+							'n8n.execution.id': response.executionId,
+							'n8n.response.type': response.type,
+						},
+						() => subscription.handler(response),
+						SpanKind.CONSUMER,
+					),
+				);
+			} else {
+				subscription.handler(response);
+			}
 		} catch (error) {
 			this.logger.error('An execution response handler failed', {
 				executionId: response.executionId,
