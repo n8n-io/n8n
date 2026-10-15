@@ -1,0 +1,23 @@
+packages/cli/src/idempotency/idempotency.middleware.ts
+  s_209d3652df9edf::t_961459fc9c4bb4 89
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_209d3652df9edf::t_e6bff310f7989f 1145-1165
+packages/cli/src/idempotency/__tests__/idempotency.middleware.test.ts
+  s_209d3652df9edf::t_ecd92a5901dd28 154-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f696e44cf2b02abc360f310fcdb466f87f1e6319",
+  "prompts": {},
+  "sessions": {
+    "s_209d3652df9edf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b430ae3-90b8-4e4f-a650-99bf71711d23",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
