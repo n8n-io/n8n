@@ -92,7 +92,7 @@ function toCredentialPublicDto(
 	};
 }
 
-/** The delete response adds `usageScope` to the standard credential fields. Carry over from legacy EOV handler. */
+/** The delete response adds `usageScope` to the standard credential fields. */
 function toDeleteCredentialPublicDto(
 	credential: CredentialsEntity,
 	includeDescription: boolean,

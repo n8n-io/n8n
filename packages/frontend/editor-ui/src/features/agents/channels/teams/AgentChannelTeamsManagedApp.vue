@@ -8,8 +8,16 @@
  * setup stepper is gone by then — it closes on connect — so without this the
  * only step left in the flow had nowhere to happen.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import type { AgentTeamsIntegrationSettings } from '@n8n/api-types';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nLink,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
+import type { AgentTeamsIntegrationSettings, TeamsAgentSetupState } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { saveAs } from 'file-saver';
@@ -17,7 +25,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { fetchTeamsAppPackage } from './api';
-import { TEAMS_PACKAGE_FILENAME } from './constants';
+import { AZURE_BOTS_URL, TEAMS_PACKAGE_FILENAME } from './constants';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 
 const props = defineProps<{
@@ -47,45 +55,65 @@ const props = defineProps<{
 	 * on the dialog that reports how it went.
 	 */
 	persistChannel?: () => Promise<boolean>;
+	/** The bot the setup made. Null before n8n kept it, which falls back to the bot list. */
+	azureBot?: TeamsAgentSetupState['azureBot'];
+	/** Teams holds an older version than the agent and the form describe. */
+	outdated?: boolean;
+}>();
+
+const emit = defineEmits<{
+	/** n8n handed Teams a new version, so what it holds is worth reading again. */
+	installed: [];
 }>();
 
 type Busy = 'publish' | 'download';
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+const toast = useToast();
 const busy = ref<Busy | null>(null);
 const errorMessage = ref('');
-const downloaded = ref(false);
 // The catalogue read runs on its own, so it takes no lock: an action the user
 // chose must not wait on a background read, nor vanish when one fails.
 const reading = ref(false);
-const readFailed = ref(false);
 
 const catalogState = computed(() => props.runtime.catalogState.value);
-const published = computed(() => catalogState.value?.status === 'published');
 
-/**
- * One sentence for where the app is, so the action below reads as the next
- * step. Nothing is claimed until the catalogue has answered: the read happens
- * on mount, and until it lands an app already published would otherwise be
- * announced as one nobody has published.
- */
+/** Only the states that wait on somebody else, since nothing else on the card says so. */
 const standing = computed(() => {
-	if (!catalogState.value) {
-		return readFailed.value
-			? ('agents.channels.teams.managed.app.unknown' as const)
-			: ('agents.channels.teams.managed.app.checking' as const);
-	}
-	if (reading.value) return 'agents.channels.teams.managed.app.checking' as const;
-	if (published.value) return 'agents.channels.teams.managed.app.published' as const;
+	if (reading.value) return null;
 	if (catalogState.value?.status === 'submitted') {
 		return 'agents.channels.teams.managed.app.submitted' as const;
 	}
 	if (catalogState.value?.status === 'rejected') {
 		return 'agents.channels.teams.managed.app.rejected' as const;
 	}
-	return 'agents.channels.teams.managed.app.notPublished' as const;
+	return null;
 });
+
+/**
+ * The two routes are independent, so downloading the package must not take
+ * publishing away. Only a pending review drops it: it is the one state that
+ * cannot take another submission.
+ */
+const installMenuItems = computed(() => [
+	{
+		id: 'for-me',
+		testId: 'teams-settings-download',
+		label: i18n.baseText('agents.channels.teams.managed.install.forMe'),
+		description: i18n.baseText('agents.channels.teams.managed.install.forMeHint'),
+	},
+	...(catalogState.value?.status === 'submitted'
+		? []
+		: [
+				{
+					id: 'publish',
+					testId: 'teams-settings-publish',
+					label: i18n.baseText('agents.channels.teams.managed.install.publish'),
+					description: i18n.baseText('agents.channels.teams.managed.install.publishHintShort'),
+				},
+			]),
+]);
 
 async function run(name: Busy, action: () => Promise<void>) {
 	if (busy.value) return;
@@ -109,7 +137,29 @@ const publish = async () =>
 		// a failed save would leave the catalogue ahead of n8n, which is worse
 		// than leaving it behind.
 		if (props.unsavedChanges && !(await props.persistChannel?.())) return;
-		await props.runtime.publishApp(publishing);
+		// False when the sign-in or agent changed under it, so the catalogue was not read back.
+		if (!(await props.runtime.publishApp(publishing))) return;
+		const status = catalogState.value?.status;
+		emit('installed');
+		if (status === 'published') {
+			toast.showMessage({
+				type: 'success',
+				title: i18n.baseText('agents.channels.teams.managed.install.publishedToast'),
+				message: i18n.baseText('agents.channels.teams.managed.install.publishedToastHint'),
+			});
+		} else if (status === 'submitted') {
+			toast.showMessage({
+				type: 'success',
+				title: i18n.baseText('agents.channels.teams.managed.install.submittedToast'),
+				message: i18n.baseText('agents.channels.teams.managed.install.submitted'),
+			});
+		} else {
+			// Microsoft took the upload but has not listed the app yet.
+			toast.showMessage({
+				type: 'info',
+				title: i18n.baseText('agents.channels.teams.managed.install.unknown'),
+			});
+		}
 	});
 
 /**
@@ -127,17 +177,22 @@ const downloadPackage = async () =>
 			props.settings,
 		);
 		saveAs(blob, TEAMS_PACKAGE_FILENAME);
-		downloaded.value = true;
+		emit('installed');
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
+		});
 	});
+
+const onInstallMenu = async (id: string) =>
+	id === 'publish' ? await publish() : await downloadPackage();
 
 /** Read once, when the settings open: the state is Microsoft's and it moves. */
 async function readCatalogue() {
 	reading.value = true;
-	readFailed.value = false;
 	try {
 		await props.runtime.refreshCatalogState();
 	} catch (error) {
-		readFailed.value = true;
 		errorMessage.value = error instanceof Error ? error.message : String(error);
 	} finally {
 		reading.value = false;
@@ -162,61 +217,71 @@ watch(
 			{{ i18n.baseText('agents.channels.teams.settings.identityLabel') }}
 		</N8nText>
 
-		<AgentChannelTeamsIdentityCard :name="name" :description="description" ready>
+		<AgentChannelTeamsIdentityCard
+			:name="name"
+			:description="description"
+			ready
+			:outdated="outdated"
+		>
 			<template #action>
-				<!--
-					Offered once the app is published too: publishing again is how a
-					changed manifest reaches the catalogue, and it saves an open change
-					on the way. Hidden only while a review is pending, which is the one
-					state that cannot take another -- and shown while the catalogue is
-					unread, because a read that never answers must not take the action
-					away with it.
-				-->
-				<N8nButton
-					v-if="catalogState?.status !== 'submitted'"
-					variant="outline"
-					size="medium"
-					:loading="busy === 'publish'"
-					:disabled="busy !== null"
-					data-testid="teams-settings-publish"
-					@click="publish"
+				<N8nSpinner v-if="busy" size="medium" data-testid="teams-settings-install-spinner" />
+				<N8nActionDropdown
+					v-else
+					:items="installMenuItems"
+					placement="bottom-end"
+					:teleported="false"
+					@select="onInstallMenu"
 				>
-					{{ i18n.baseText('agents.channels.teams.managed.install.publish') }}
-				</N8nButton>
-				<!--
-					Always offered. Uploading it is the only way to use the agent
-					through the day Microsoft can take to make the published app
-					addable.
-				-->
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					:loading="busy === 'download'"
-					:disabled="busy !== null"
-					data-testid="teams-settings-download"
-					@click="downloadPackage"
-				>
-					{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-					<N8nIcon icon="download" size="medium" />
-				</N8nButton>
+					<template #activator>
+						<N8nButton variant="outline" size="medium" data-testid="teams-settings-install-menu">
+							{{ i18n.baseText('agents.channels.teams.managed.install.menu') }}
+							<N8nIcon icon="chevron-down" size="small" />
+						</N8nButton>
+					</template>
+				</N8nActionDropdown>
 			</template>
 		</AgentChannelTeamsIdentityCard>
 
-		<N8nText size="small" color="text-light" data-testid="teams-managed-app-standing">
-			{{ i18n.baseText(standing) }}
+		<N8nText
+			v-if="outdated"
+			size="small"
+			:class="$style.outdated"
+			data-testid="teams-managed-app-outdated"
+		>
+			{{ i18n.baseText('agents.channels.teams.settings.outdated') }}
 		</N8nText>
 
 		<N8nText
-			v-if="downloaded"
+			v-if="standing"
 			size="small"
 			color="text-light"
-			data-testid="teams-managed-app-downloaded"
+			data-testid="teams-managed-app-standing"
 		>
-			{{ i18n.baseText('agents.channels.teams.managed.install.downloaded') }}
+			{{ i18n.baseText(standing) }}
 		</N8nText>
 
 		<N8nText v-if="errorMessage" size="small" color="danger" data-testid="teams-managed-app-error">
 			{{ errorMessage }}
+		</N8nText>
+
+		<N8nText size="small" :class="$style.bot" data-testid="teams-managed-app-bot">
+			<template v-if="azureBot">
+				{{
+					i18n.baseText('agents.channels.teams.settings.linkedBot', {
+						interpolate: { name: azureBot.name },
+					})
+				}}
+			</template>
+			<N8nLink
+				:href="azureBot?.portalUrl ?? AZURE_BOTS_URL"
+				target="_blank"
+				rel="noopener noreferrer"
+				size="small"
+				data-testid="teams-managed-app-bot-link"
+			>
+				{{ i18n.baseText('agents.channels.teams.settings.findInAzure') }}
+				<N8nIcon icon="arrow-up-right" size="xsmall" />
+			</N8nLink>
 		</N8nText>
 	</div>
 </template>
@@ -226,5 +291,13 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.outdated {
+	color: var(--text-color--warning);
+}
+
+.bot {
+	margin-top: var(--spacing--xs);
 }
 </style>

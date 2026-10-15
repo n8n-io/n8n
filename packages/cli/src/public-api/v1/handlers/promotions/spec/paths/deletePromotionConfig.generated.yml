@@ -4,9 +4,6 @@ tags:
 summary: Remove one direction
 description: Deletes the configuration and its local checkout. Nothing in Git changes.
 x-required-scope: gitConnection:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
