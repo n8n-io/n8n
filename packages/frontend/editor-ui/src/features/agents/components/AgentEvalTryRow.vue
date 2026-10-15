@@ -279,7 +279,7 @@ watch(
 						<!-- Only the rule is editable; a case with no criteria column can still be deleted. -->
 						<N8nButton
 							v-if="whatToCheck"
-							variant="subtle"
+							variant="outline"
 							size="small"
 							icon-only
 							:disabled="disabled || runningCheck"
@@ -292,7 +292,7 @@ watch(
 							</template>
 						</N8nButton>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							icon-only
 							:disabled="disabled"
@@ -330,7 +330,7 @@ watch(
 							{{ i18n.baseText('generic.save') }}
 						</N8nButton>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="small"
 							:data-test-id="testId && `${testId}-rule-cancel`"
 							@click="onCancelEditWhatToCheck"
@@ -421,7 +421,7 @@ watch(
 				<div :class="$style.correctionActions">
 					<N8nButton
 						size="small"
-						variant="subtle"
+						variant="outline"
 						:disabled="disabled"
 						:loading="runningCheck"
 						:data-test-id="testId && `${testId}-run-check`"
