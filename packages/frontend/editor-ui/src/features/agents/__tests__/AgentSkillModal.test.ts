@@ -768,6 +768,23 @@ describe('AgentSkillModal', () => {
 			expect(queryByText('agents.builder.skills.availableTo.instance')).not.toBeInTheDocument();
 		});
 
+		it('keeps a skill read-only and reports the error when its access check fails', async () => {
+			const error = new Error('offline');
+			getHubSkill.mockRejectedValue(error);
+			const { findByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				skillId: 'sql',
+				skill: { name: 'SQL helper', description: 'Use for SQL', instructions: 'Write SQL' },
+				onRemove: vi.fn(),
+			});
+
+			await findByTestId('agent-skill-remove');
+			await vi.waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(error, 'agents.builder.skills.accessError'),
+			);
+			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+		});
+
 		it('shows a skill that the user cannot edit as read-only', async () => {
 			getHubSkill.mockResolvedValue(
 				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'instance', canEdit: false }),

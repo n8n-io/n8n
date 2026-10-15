@@ -232,21 +232,25 @@ show a scope label or an icon in a row. Each row has a switch with the label
 This is an exception to the explicit row action. Disable a skill whose name is
 hard to tell apart from an attached skill, and give the reason in its tooltip.
 A row click opens a read-only preview with Back, Cancel, and `Add skill`. The
-preview of an attached skill shows `Remove skill` instead of `Add skill`. Both
+preview of an attached skill shows `Detach` instead of `Add skill`. Both
 actions return to the picker. Do not edit a skill from the picker.
-`Create skill` opens the upload screen, and Back returns to the picker. The user
-selects `Where can this skill be added` at the bottom left of the editor:
-`This project`, `This agent only`, or `Global`. Only a user who can create
-global skills sees `Global`. An existing skill that the user can edit shows
-the same selector, after `Remove skill`. Disable it, with a tooltip that gives
-the reason, when another Agent uses the skill. Do not show the selector when the
+`Create skill` shows on every tab. It opens the upload screen, and Back returns
+to the picker. The first field of the skill form is `Where can this skill be
+added?`: `This project`, `This agent only`, or `Global`. Each choice has an
+icon. The field starts from the tab: the project tab starts at `This project`,
+the Global tab at `Global`, and the other tabs at `This agent only`. Only a
+user who can create global skills sees `Global`. An existing skill that the
+user can edit shows the same field. Disable it, with a tooltip that gives the
+reason, when another Agent uses the skill. `Save skill` stays disabled until
+the user changes the skill or its target. Do not show the field when the
 skills hub is off. Then `Add skill` creates the skill on the Agent, without the picker.
 
 Show a read-only skill as a document, not as a disabled form. Show each label
 in muted text without the required mark, the description as text, and the
 instructions and references as rendered markdown. Put a muted hint before Cancel that tells the
 user how to edit the skill, or whom to ask. A skill that the user can use but
-not edit opens this way. Hide Save and keep `Remove skill`.
+not edit opens this way. Hide Save. Keep `Detach` for an attached skill, and
+`Add skill` for a preview of a skill that is not attached.
 
 A skill that the draft pins to an older version also opens read-only, with
 the hint that the agent uses an older version. Its primary action is

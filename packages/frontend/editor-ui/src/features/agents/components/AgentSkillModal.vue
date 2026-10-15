@@ -161,9 +161,14 @@ const modalTitle = computed(() => {
 
 const skillAccess = ref<SkillDetail | null>(null);
 const skillAccessLoading = ref(false);
+const skillAccessFailed = ref(false);
 const isOutdated = computed(() => isEditing.value && !!props.data.outdated);
 const isReadOnly = computed(
-	() => skillAccessLoading.value || skillAccess.value?.canEdit === false || isOutdated.value,
+	() =>
+		skillAccessLoading.value ||
+		skillAccessFailed.value ||
+		skillAccess.value?.canEdit === false ||
+		isOutdated.value,
 );
 const cannotEdit = computed(() => skillAccess.value?.canEdit === false || isOutdated.value);
 const savedTarget = computed<AgentSkillAvailability | undefined>(() => {
@@ -327,8 +332,10 @@ async function loadSkillAccess(skillId: string) {
 	try {
 		skillAccess.value = await getHubSkill(rootStore.restApiContext, skillId);
 		availableTo.value = savedTarget.value ?? 'project';
-	} catch {
+	} catch (error) {
 		skillAccess.value = null;
+		skillAccessFailed.value = true;
+		showError(error, i18n.baseText('agents.builder.skills.accessError'));
 	} finally {
 		skillAccessLoading.value = false;
 	}

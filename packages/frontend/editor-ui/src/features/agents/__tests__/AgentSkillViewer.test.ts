@@ -137,6 +137,21 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.text()).not.toContain('characters');
 	});
 
+	it('shows the task lists of a read-only skill as disabled checkboxes', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '- [ ] Check the SLA',
+			},
+		});
+
+		const checkbox = wrapper.find('[data-testid="agent-skill-instructions-text"] input');
+		expect(checkbox.attributes('type')).toBe('checkbox');
+		expect(checkbox.attributes('disabled')).toBeDefined();
+	});
+
 	it('shows a read-only reference as text', () => {
 		const wrapper = mountViewer({
 			readOnly: true,

@@ -20,6 +20,9 @@ import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
 
 const SKILL_FILE = 'SKILL.md';
+const READ_ONLY_MARKDOWN_OPTIONS = {
+	tasklists: { enabled: false, label: true, labelAfter: false },
+};
 
 const props = withDefaults(
 	defineProps<{
@@ -289,6 +292,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				>
 					<N8nMarkdown
 						:class="$style.readOnlyMarkdown"
+						:options="READ_ONLY_MARKDOWN_OPTIONS"
 						:content="props.skill.instructions"
 						data-testid="agent-skill-instructions-text"
 					/>
@@ -303,6 +307,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 			>
 				<N8nMarkdown
 					:class="$style.readOnlyMarkdown"
+					:options="READ_ONLY_MARKDOWN_OPTIONS"
 					:content="selectedReference.content"
 					data-testid="agent-skill-reference-text"
 				/>

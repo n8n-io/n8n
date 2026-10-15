@@ -24,6 +24,9 @@ import {
 	listN8nChatThreads,
 	duplicateAgent,
 	listAttachableSkills,
+	createAgentSkill,
+	getHubSkill,
+	updateAgentSkillAvailability,
 } from '../composables/useAgentApi';
 import type { SkillListItem } from '@n8n/api-types';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -62,6 +65,53 @@ describe('useAgentApi', () => {
 				attachableTo: 'agent-1',
 			});
 			expect(result.map(({ name }) => name)).toEqual(['Billing', 'SQL', 'Notes', 'Brand', 'Tone']);
+		});
+	});
+
+	describe('hub skill requests', () => {
+		const skill = { name: 'Tone', description: 'Use for replies', instructions: 'Be kind' };
+
+		it('creates an agent skill with its target, and without one when none is given', async () => {
+			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill, 'agent');
+			await createAgentSkill(restApiContext, 'project-1', 'agent-1', skill);
+
+			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
+				1,
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/skills',
+				{ ...skill, availableTo: 'agent' },
+			);
+			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
+				2,
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/skills',
+				skill,
+			);
+		});
+
+		it('changes the target of an agent skill', async () => {
+			await updateAgentSkillAvailability(
+				restApiContext,
+				'project-1',
+				'agent-1',
+				'skill-1',
+				'instance',
+			);
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'PATCH',
+				'/projects/project-1/agents/v2/agent-1/skills/skill-1',
+				{ availableTo: 'instance' },
+			);
+		});
+
+		it('gets one hub skill', async () => {
+			await getHubSkill(restApiContext, 'skill-1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills/skill-1');
 		});
 	});
 
