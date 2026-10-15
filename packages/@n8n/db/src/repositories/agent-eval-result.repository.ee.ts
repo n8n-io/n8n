@@ -90,8 +90,8 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 	}
 
 	/** Progress belongs to one running attempt, identified by its start timestamp. */
-	async updateRunningToolCalls(id: string, runAt: Date, toolCalls: JsonObject) {
-		return await this.update({ id, status: 'running', runAt }, { toolCalls });
+	async updateRunningToolCalls(id: string, runAt: Date, toolCalls: JsonObject): Promise<void> {
+		await this.update({ id, status: 'running', runAt }, { toolCalls });
 	}
 
 	/**
