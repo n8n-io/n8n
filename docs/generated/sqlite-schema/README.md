@@ -51,7 +51,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [ai_preference](ai_preference.md) | 8 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [app](app.md) | 9 |  | table |
-| [app_artifact](app_artifact.md) | 4 |  | table |
+| [app_artifact](app_artifact.md) | 5 |  | table |
 | [app_version](app_version.md) | 9 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
@@ -914,6 +914,7 @@ erDiagram
   INTEGER sizeBytes
   TEXT storageKey
   varchar_2_ storedAt
+  varchar_16_ uploadStatus
 }
 "app_version" {
   varchar appId FK

@@ -107,6 +107,7 @@ erDiagram
   INTEGER sizeBytes
   TEXT storageKey
   varchar_2_ storedAt
+  varchar_16_ uploadStatus
 }
 ```
 

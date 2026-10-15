@@ -8,17 +8,20 @@
 | sizeBytes | integer |  | false |  |  |  |
 | storageKey | text |  | false |  |  | Reference to the object within its storage backend |
 | storedAt | varchar(2) |  | false |  |  | Storage backend: database, filesystem, S3, or Azure |
+| uploadStatus | varchar(16) | 'pending'::character varying | false |  |  | Upload state: pending or completed |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_app_artifact_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
+| CHK_app_artifact_uploadStatus | CHECK | CHECK ((("uploadStatus")::text = ANY ((ARRAY['pending'::character varying, 'completed'::character varying])::text[]))) |
 | PK_307f7470d2b759f7c4bc056d3a5 | PRIMARY KEY | PRIMARY KEY (id) |
 | app_artifact_id_not_null | n | NOT NULL id |
 | app_artifact_sizeBytes_not_null | n | NOT NULL "sizeBytes" |
 | app_artifact_storageKey_not_null | n | NOT NULL "storageKey" |
 | app_artifact_storedAt_not_null | n | NOT NULL "storedAt" |
+| app_artifact_uploadStatus_not_null | n | NOT NULL "uploadStatus" |
 
 ## Indexes
 
@@ -39,6 +42,7 @@ erDiagram
   integer sizeBytes
   text storageKey
   varchar_2_ storedAt
+  varchar_16_ uploadStatus
 }
 "public.app_version" {
   uuid appId FK

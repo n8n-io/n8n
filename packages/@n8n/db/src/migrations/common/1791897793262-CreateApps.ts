@@ -36,6 +36,11 @@ export class CreateApps1791897793262 implements ReversibleMigration {
 				'Reference to the object within its storage backend',
 			),
 			column('sizeBytes').int.notNull,
+			column('uploadStatus')
+				.varchar(16)
+				.notNull.default("'pending'")
+				.withEnumCheck(['pending', 'completed'])
+				.comment('Upload state: pending or completed'),
 		);
 
 		await createTable('app_version')
