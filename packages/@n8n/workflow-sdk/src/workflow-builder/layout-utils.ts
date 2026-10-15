@@ -1015,6 +1015,12 @@ export function resolveStickyGeometry(
 	};
 
 	const placed = resolved.filter((sticky) => sticky.pinned).map(({ box }) => box);
+	for (const [name, graphNode] of nodes) {
+		if (graphNode.instance.type === STICKY_NODE_TYPE) continue;
+		const box = boxOfNode(name);
+		if (box) placed.push(box);
+	}
+
 	for (const { name, box, sizedByAnchors, pinned } of resolved) {
 		if (pinned) {
 			record(name, box, sizedByAnchors);
