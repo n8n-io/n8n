@@ -19,6 +19,11 @@ function aiGatewayManagedCredential(): NodeToolCredential {
 	};
 }
 
+/** Sanitization clears inaccessible ids to '', which leaves the slot empty. */
+function isCredentialSlotFilled(ref: NodeToolCredential | undefined): boolean {
+	return !!ref && (!!ref.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref);
+}
+
 function setAiGatewayManagedCredential(
 	node: NodeToolConfig,
 	credentialType: string,
@@ -155,8 +160,7 @@ export function listAiGatewayManagedCredentialTypes(
 		const resolvedParameters = resolveNodeParameters(node, description);
 		for (const slot of getRequiredNodeCredentialSlots(description)) {
 			const credentialType = slot.credentialType;
-			const ref = node.credentials?.[credentialType];
-			if (ref && (ref.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref)) continue;
+			if (isCredentialSlotFilled(node.credentials?.[credentialType])) continue;
 			if (isCredentialDisplayed(node, description, credentialType, resolvedParameters)) {
 				unsatisfied.add(credentialType);
 			}
@@ -190,8 +194,7 @@ export function assignCredentialToNodeTools(
 		}
 		if (!description.credentials?.some((c) => c.name === credentialType)) continue;
 
-		const existing = node.credentials?.[credentialType];
-		if (existing && (existing.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in existing)) continue;
+		if (isCredentialSlotFilled(node.credentials?.[credentialType])) continue;
 
 		const resolvedParameters = resolveNodeParameters(node, description);
 		if (!isCredentialDisplayed(node, description, credentialType, resolvedParameters)) continue;
@@ -262,10 +265,7 @@ function reconcileNode(
 
 	for (const slot of getRequiredNodeCredentialSlots(description)) {
 		const credentialType = slot.credentialType;
-		// A ref only occupies the slot with a real id or the managed flag —
-		// sanitization clears inaccessible ids to '', leaving the slot empty.
-		const existing = node.credentials?.[credentialType];
-		if (existing && (existing.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in existing)) continue;
+		if (isCredentialSlotFilled(node.credentials?.[credentialType])) continue;
 
 		// Own credential wins (same precedence as MCP and model slots): leave the
 		// slot empty so the builder resolves the user's credential instead.
