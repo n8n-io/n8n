@@ -350,7 +350,11 @@ async function onDelete() {
 					data-test-id="promotion-provider-form-step"
 					@submit.prevent="submit"
 				>
-					<N8nNotice v-if="isEdit && isInUse" theme="warning" data-test-id="promotion-provider-in-use">
+					<N8nNotice
+						v-if="isEdit && isInUse"
+						theme="warning"
+						data-test-id="promotion-provider-in-use"
+					>
 						{{ i18n.baseText('settings.promotions.provider.inUse.warning') }}
 						{{
 							i18n.baseText('settings.promotions.provider.inUse.connections', {
@@ -384,7 +388,10 @@ async function onDelete() {
 							:disabled="isLoading || isSubmitting || isEdit"
 							data-test-id="promotion-provider-type-select"
 						>
-							<N8nOption value="git" :label="i18n.baseText('settings.promotions.providers.type.git')" />
+							<N8nOption
+								value="git"
+								:label="i18n.baseText('settings.promotions.providers.type.git')"
+							/>
 							<N8nOption
 								value="gitlab"
 								:label="i18n.baseText('settings.promotions.providers.type.gitlab')"
@@ -412,7 +419,9 @@ async function onDelete() {
 						input-name="promotion-provider-auth-type"
 						:label="i18n.baseText('settings.promotions.provider.form.authType')"
 						:tooltip-text="
-							isEdit ? i18n.baseText('settings.promotions.provider.form.authType.locked') : undefined
+							isEdit
+								? i18n.baseText('settings.promotions.provider.form.authType.locked')
+								: undefined
 						"
 					>
 						<N8nSelect
