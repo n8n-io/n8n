@@ -8,6 +8,10 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
+import {
+	credentialUpdateScope,
+	resolveCredentialConflictPolicy,
+} from '../entities/credential/credential-conflict-policy';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
@@ -35,6 +39,7 @@ import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import {
 	needsBundledCredentialData,
+	needsBundledCredentialFiles,
 	needsBundledVariableValues,
 	placeByPolicy,
 	placeCredentialData,
@@ -84,6 +89,14 @@ export class WorkflowPackageImporter {
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
+			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			packageCredentials: needsBundledCredentialFiles(
+				request,
+				(credentialRequirements?.length ?? 0) > 0,
+			)
+				? await this.packageParser.getCredentials(reader)
+				: undefined,
+			updateScope: credentialUpdateScope([context.projectId]),
 		};
 
 		const dataTableRequirements = identifyRequirements(
@@ -143,8 +156,9 @@ export class WorkflowPackageImporter {
 		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
 			credentialRequest.requirements = placeCredentialData({
 				requirements: credentialRequirements,
-				manifestCredentials: manifest.credentials,
-				bundledCredentials: await this.packageParser.getCredentials(reader, missingCredentialIds),
+				bundledCredentials:
+					credentialRequest.packageCredentials ??
+					(await this.packageParser.getCredentials(reader, missingCredentialIds)),
 			});
 		}
 

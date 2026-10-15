@@ -28,8 +28,15 @@ import CredentialsDropdown, {
 } from '@/features/credentials/components/CredentialPicker/CredentialsDropdown.vue';
 import { fetchTeamsAppPackage } from './api';
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
-import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
+import {
+	availabilityFrom,
+	entraApiPermissionsUrl,
+	readsSharedConversations as readsShared,
+	TEAMS_PACKAGE_FILENAME,
+	type TeamsAvailability,
+} from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
+import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 
 const selectedCredentialId = defineModel<string>({ default: '' });
@@ -197,6 +204,24 @@ const installProgress = computed(() => {
  */
 const installDone = computed(() => published.value);
 
+const readsSharedConversations = computed(() => readsShared(availability.value));
+
+/** Without a consent link the instance has no address Entra accepts to return to. */
+const fileAccessUrl = computed(() => {
+	const app = provisionedApp.value;
+	if (!app) return '';
+	return app.fileAccessConsentUrl ?? entraApiPermissionsUrl(app.appId);
+});
+
+const organization = computed(
+	() => provisionedApp.value?.organizationName ?? selectedCredential.value?.organizationName ?? '',
+);
+
+const { items: fileAccessMenuItems, onSelect: onFileAccessMenu } = useTeamsFileAccessMenu({
+	url: fileAccessUrl,
+	organization,
+});
+
 const connectSummary = computed(() =>
 	selectedCredential.value?.organizationName
 		? i18n.baseText('agents.channels.teams.managed.connect.summary', {
@@ -226,6 +251,7 @@ const statusOf = computed<Record<string, 'complete' | 'active' | 'locked'>>(() =
 		'create-bot': status(botReady.value, appDone && connected.value),
 		availability: botReady.value && connected.value ? ('active' as const) : ('locked' as const),
 		install: status(installDone.value, botReady.value && connected.value),
+		'file-access': botReady.value && connected.value ? ('active' as const) : ('locked' as const),
 		// The upload happens in the Teams client, so this step never reports
 		// itself finished -- the user says when it is. Gated on the sign-in like
 		// the steps above: one that has to be redone locks them, and leaving
@@ -274,6 +300,15 @@ const steps = computed(() => {
 			title: i18n.baseText('agents.channels.teams.managed.install.title'),
 			description: i18n.baseText('agents.channels.teams.managed.install.description'),
 		},
+		...(readsSharedConversations.value
+			? [
+					{
+						id: 'file-access',
+						title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
+						description: i18n.baseText('agents.channels.teams.managed.fileAccess.description'),
+					},
+				]
+			: []),
 		{
 			id: 'finish',
 			title: i18n.baseText('agents.channels.teams.managed.finish.title'),
@@ -293,6 +328,7 @@ const lockedHints = computed<Record<string, string>>(() => {
 			'create-bot': signIn,
 			availability: signIn,
 			install: signIn,
+			'file-access': signIn,
 			finish: signIn,
 		};
 	}
@@ -301,6 +337,7 @@ const lockedHints = computed<Record<string, string>>(() => {
 		'create-bot': i18n.baseText('agents.channels.teams.managed.createBot.locked'),
 		availability: i18n.baseText('agents.channels.teams.managed.availability.locked'),
 		install: i18n.baseText('agents.channels.teams.managed.install.locked'),
+		'file-access': i18n.baseText('agents.channels.teams.managed.availability.locked'),
 		finish: i18n.baseText('agents.channels.teams.managed.finish.locked'),
 	};
 });
@@ -854,7 +891,29 @@ const downloadPackage = async () =>
 					v-else-if="step.id === 'availability' && statusOf[step.id] === 'active'"
 					:class="$style.stepContent"
 				>
-					<AgentChannelTeamsAvailability v-model="availability" start-collapsed />
+					<AgentChannelTeamsAvailability v-model="availability" start-collapsed hide-file-access />
+				</div>
+
+				<div
+					v-else-if="step.id === 'file-access' && statusOf[step.id] === 'active'"
+					:class="$style.stepContent"
+				>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('agents.channels.teams.managed.fileAccess.hint') }}
+					</N8nText>
+					<N8nActionDropdown
+						:items="fileAccessMenuItems"
+						placement="bottom-start"
+						:teleported="false"
+						@select="onFileAccessMenu"
+					>
+						<template #activator>
+							<N8nButton variant="outline" size="medium" data-testid="teams-file-access-menu">
+								{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
+								<N8nIcon icon="chevron-down" size="small" />
+							</N8nButton>
+						</template>
+					</N8nActionDropdown>
 				</div>
 
 				<div

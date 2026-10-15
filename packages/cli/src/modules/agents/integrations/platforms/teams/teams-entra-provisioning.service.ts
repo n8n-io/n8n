@@ -5,10 +5,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { withTeamsFailure } from './teams-setup-telemetry.service';
 
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, UrlService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@n8n/errors';
 
+import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
 import { graphErrorCode, TeamsGraphService } from './teams-graph.service';
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
 import { GRAPH_RESOURCE, TeamsManagerTokenService } from './teams-manager-token.service';
@@ -31,6 +32,21 @@ function usableSecret(
 	if (Number.isNaN(expiry) || expiry - Date.now() < SECRET_RENEW_BEFORE_MS) return undefined;
 	return { value, expiresAt };
 }
+const GRAPH_APP_ID = '00000003-0000-0000-c000-000000000000';
+const FILES_READ_ALL_ROLE = { id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' };
+
+function withFileAccess(requiredResourceAccess: unknown): unknown[] {
+	const entries: unknown[] = Array.isArray(requiredResourceAccess) ? requiredResourceAccess : [];
+	const graph = entries.find((entry) => isRecord(entry) && entry.resourceAppId === GRAPH_APP_ID);
+	const roles: unknown[] =
+		isRecord(graph) && Array.isArray(graph.resourceAccess) ? graph.resourceAccess : [];
+	if (roles.some((role) => isRecord(role) && role.id === FILES_READ_ALL_ROLE.id)) return entries;
+	return [
+		...entries.filter((entry) => entry !== graph),
+		{ resourceAppId: GRAPH_APP_ID, resourceAccess: [...roles, FILES_READ_ALL_ROLE] },
+	];
+}
+
 const ENTRA_APP_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId';
 
@@ -74,6 +90,7 @@ export class TeamsEntraProvisioningService {
 		private readonly tokens: TeamsManagerTokenService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -108,6 +125,9 @@ export class TeamsEntraProvisioningService {
 		// run may have lost its principal.
 		await this.createServicePrincipal(token, app.appId);
 
+		const redirectUri = adminConsentRedirectUri(this.urlService.getInstanceBaseUrl(), options);
+		const fileAccessDeclared = await this.declareFileAccess(token, app.objectId, redirectUri);
+
 		const credentialId = await this.writeBotCredential({
 			options,
 			app,
@@ -122,6 +142,10 @@ export class TeamsEntraProvisioningService {
 			appName: app.displayName,
 			organizationName: tenant.organizationName,
 			entraAppUrl: `${ENTRA_APP_URL}/${app.appId}`,
+			fileAccessConsentUrl:
+				fileAccessDeclared && redirectUri
+					? adminConsentUrl(tenant.tenantId, app.appId, redirectUri)
+					: null,
 			secretExpiresAt: secret.expiresAt,
 		};
 	}
@@ -279,6 +303,48 @@ export class TeamsEntraProvisioningService {
 			throw new OperationalError('Microsoft updated the app but would not say which one.');
 		}
 		return { objectId, appId, displayName: stringProperty(first, 'displayName') ?? displayName };
+	}
+
+	/**
+	 * This sign-in cannot grant app permissions, only declare them, so the setup
+	 * links an administrator to the consent screen. Merges into what the app has:
+	 * an administrator may have added permissions or addresses of their own. A
+	 * failure leaves the setup working; the link then falls back to the app in Entra.
+	 */
+	private async declareFileAccess(
+		token: string,
+		objectId: string,
+		redirectUri: string | undefined,
+	): Promise<boolean> {
+		try {
+			return await this.mergeFileAccess(token, objectId, redirectUri);
+		} catch {
+			return false;
+		}
+	}
+
+	private async mergeFileAccess(
+		token: string,
+		objectId: string,
+		redirectUri: string | undefined,
+	): Promise<boolean> {
+		const current = await this.graph.request(
+			token,
+			'GET',
+			`/applications/${objectId}?$select=requiredResourceAccess,web`,
+		);
+		if (!current.ok) return false;
+		const app = isRecord(current.body) ? current.body : {};
+		const web = isRecord(app.web) ? app.web : {};
+		const redirectUris: unknown[] = Array.isArray(web.redirectUris) ? web.redirectUris : [];
+
+		const response = await this.graph.request(token, 'PATCH', `/applications/${objectId}`, {
+			requiredResourceAccess: withFileAccess(app.requiredResourceAccess),
+			...(redirectUri && !redirectUris.includes(redirectUri)
+				? { web: { redirectUris: [...redirectUris, redirectUri] } }
+				: {}),
+		});
+		return response.ok;
 	}
 
 	/** `undefined` when the app is gone from the tenant, so the caller remakes it. */
@@ -450,6 +516,11 @@ export class TeamsEntraProvisioningService {
 			delete existingData.publishedTeamsAppId;
 			delete existingData.publishedTeamsAppState;
 			delete existingData.publishedTeamsAppAt;
+			// The bot signs for the app it was made with, so it does not move either.
+			delete existingData.azureBotName;
+			delete existingData.azureSubscriptionId;
+			// The fingerprint stays: it describes the app Teams still holds, which
+			// names the old bot, so the settings can say it needs installing again.
 		}
 
 		const data = {
