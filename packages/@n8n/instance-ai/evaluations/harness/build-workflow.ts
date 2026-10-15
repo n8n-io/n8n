@@ -807,7 +807,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		// Pin the thread's credential view to the case's declared set (empty by
-		// default) before the first message, so every build-workflow call inside
+		// default) before the first message, so every workflow_build call inside
 		// the build sees the same deterministic environment.
 		const declaredCredentials = config.credentials ?? [];
 		// Shared with UserProxyLlm's mid-run credential creation (if any) so a

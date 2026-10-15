@@ -1,4 +1,4 @@
-import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
@@ -8,9 +8,9 @@ import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAg
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user.
- *  `leave-onboarding` ends the turn right after the model's reply: hiding it keeps
+ *  `leave_onboarding` ends the turn right after the model's reply: hiding it keeps
  *  that reply a user-facing final message instead of narration before a tool call. */
-export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'leave-onboarding']);
+export const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'leave_onboarding']);
 
 /** Render hints whose tool calls produce no output in the timeline — they are
  *  represented elsewhere (child agent sections, artifact cards). */
@@ -72,7 +72,7 @@ type ToolCallKind =
  * UI; `hidden` calls are dropped without splitting a run.
  *
  * Builder calls delegated to a sub-agent (`*-with-agent`) are hidden — the
- * child agent section represents them. In-thread builds (`build-workflow`)
+ * child agent section represents them. In-thread builds (`workflow_build`)
  * render as trace rows so the build step is visible inside the thinking block.
  */
 function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
@@ -319,9 +319,13 @@ export interface ArtifactInfo {
 	completedAt?: string;
 }
 
-/** The workflow a build-workflow / submit-workflow call wrote, if it wrote one. */
+/** The workflow a workflow_build / submit-workflow call wrote, if it wrote one. */
 function workflowArtifactFromToolCall(tc: InstanceAiToolCallState): ArtifactInfo | undefined {
-	if (tc.toolName !== 'build-workflow' && tc.toolName !== 'submit-workflow') return undefined;
+	if (
+		tc.toolName !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
+		tc.toolName !== 'submit-workflow'
+	)
+		return undefined;
 	if (!tc.result || typeof tc.result !== 'object') return undefined;
 	const result = tc.result as Record<string, unknown>;
 	if (typeof result.workflowId !== 'string') return undefined;

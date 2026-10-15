@@ -1,10 +1,17 @@
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
-import { AGENT_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
-const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'task-control']);
+const NO_TOGGLE_TOOLS = new Set<string>([
+	'updateWorkingMemory',
+	WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL,
+]);
 const SKILL_TOOLS = new Set<string>([
 	AGENT_BUILDER_TOOL_NAMES.CREATE_SKILLS,
 	'list_skills',
@@ -120,26 +127,27 @@ function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined 
 
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
-	if (toolName === 'complete-checkpoint') return 'circle-check';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT) return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
-	if (toolName === 'data-tables') return 'table';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES) return 'table';
 	if (toolName === 'activity') return 'history';
-	if (toolName === 'conversation-history') return 'message-square';
-	if (toolName === 'mcp-servers') return 'plug';
+	if (toolName === 'conversation_history') return 'message-square';
+	if (toolName === 'mcp_servers') return 'plug';
 	if (
-		toolName === 'workflows' ||
-		toolName === 'executions' ||
-		toolName === 'nodes' ||
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS ||
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS ||
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES ||
 		toolName === 'templates' ||
 		toolName === AGENT_BUILDER_TOOL_NAMES.SEARCH_NODES ||
 		toolName === AGENT_BUILDER_TOOL_NAMES.GET_NODE_TYPES
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
-	if (toolName === 'credentials') return 'key-round';
-	if (toolName === 'task-control' || toolName === 'updateWorkingMemory') return 'brain';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS) return 'key-round';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL || toolName === 'updateWorkingMemory')
+		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
 	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
 	if (toolName.includes('data-table')) return 'table';
@@ -217,12 +225,12 @@ export function useToolLabel() {
 	}
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {
-		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
+		if (NO_TOGGLE_TOOLS.has(resolveBuilderToolName(toolCall.toolName))) return undefined;
 		return i18n.baseText('instanceAi.stepTimeline.showData');
 	}
 
 	function getHideLabel(toolCall: InstanceAiToolCallState): string | undefined {
-		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
+		if (NO_TOGGLE_TOOLS.has(resolveBuilderToolName(toolCall.toolName))) return undefined;
 		return i18n.baseText('instanceAi.stepTimeline.hideData');
 	}
 

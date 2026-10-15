@@ -97,7 +97,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								result: { workflowId: 'wf-1', workflowName: 'My Workflow' },
 							}),
 						],
@@ -121,12 +121,12 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								result: { workflowId: 'wf-1', workflowName: 'Lead routing' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-2',
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								result: { workflowId: 'wf-1', workflowName: '' },
 							}),
 						],
@@ -148,7 +148,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { name: 'From Args' },
 								result: { workflowId: 'wf-2' },
 							}),
@@ -172,7 +172,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-3' },
 							}),
@@ -256,12 +256,12 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-a' },
 							}),
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-b' },
 							}),
@@ -545,7 +545,7 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-1',
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { name: 'Initial' },
 								result: { workflowId: 'wf-1' },
 							}),
@@ -573,13 +573,13 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create',
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { name: 'Keep Me' },
 								result: { workflowId: 'wf-1' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-patch',
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-1' },
 							}),
@@ -600,7 +600,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Signups' } },
 							}),
@@ -1185,7 +1185,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'list' },
 								result: {
 									tables: [{ id: 'dt-a', name: 'Existing Table' }],
@@ -1215,7 +1215,7 @@ describe('useResourceRegistry', () => {
 								result: { workflows: [{ id: 'wf-1', name: 'Existing' }] },
 							}),
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { patches: [{ op: 'replace' }] },
 								result: { workflowId: 'wf-1' },
 							}),
@@ -1244,7 +1244,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-3' },
 							}),
@@ -1268,7 +1268,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								result: { workflowId: 'wf-4', workflowName: 'Original Name' },
 							}),
 						],
@@ -1289,7 +1289,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'cities1' } },
 							}),
@@ -1377,7 +1377,7 @@ describe('useResourceRegistry', () => {
 						agentTree: makeAgentNode({
 							toolCalls: [
 								makeToolCall({
-									toolName: 'data-tables',
+									toolName: 'data_tables',
 									args: { action, dataTableId: 'Signups' },
 									result: {
 										dataTableId: 'dt-signups',
@@ -1411,7 +1411,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								result: { workflowId: 'wf-1', workflowName: 'Pipeline' },
 							}),
 						],
@@ -1502,7 +1502,7 @@ describe('useResourceRegistry', () => {
 			messages.value[0].agentTree!.toolCalls.push(
 				makeToolCall({
 					toolCallId: 'tc-3',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-2', workflowName: 'Second Pipeline' },
 				}),
 			);
@@ -1526,7 +1526,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_build',
 								result: { workflowId: 'wf-1', workflowName: 'Pipeline' },
 							}),
 						],
@@ -1563,7 +1563,7 @@ describe('useResourceRegistry', () => {
 				agentTree: makeAgentNode({
 					toolCalls: [
 						makeToolCall({
-							toolName: 'build-workflow',
+							toolName: 'workflow_build',
 							result: { workflowId, workflowName: 'Orders' },
 						}),
 					],

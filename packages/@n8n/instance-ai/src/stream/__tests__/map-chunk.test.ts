@@ -296,7 +296,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -362,7 +362,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -604,7 +604,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'mcp-servers',
+				toolName: 'mcp_servers',
 				input: { action: 'connect', serverSlugs: ['brave'] },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -631,7 +631,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'mcp-servers',
+				toolName: 'mcp_servers',
 				args: { action: 'connect', serverSlugs: ['brave'] },
 				severity: 'info',
 				message: 'To search the web',
@@ -655,7 +655,7 @@ describe('mapAgentChunkToEvent', () => {
 		const event = map({
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
-			toolName: 'mcp-servers',
+			toolName: 'mcp_servers',
 			suspendPayload: {
 				requestId: 'request-1',
 				severity: 'info',
@@ -685,7 +685,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'executions',
+				toolName: 'workflow_executions',
 				input: { action: 'listen', workflowId: 'wf-1' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -701,7 +701,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'executions',
+				toolName: 'workflow_executions',
 				args: { action: 'listen', workflowId: 'wf-1' },
 				severity: 'info',
 				message: 'Waiting for a test request to Intake',
@@ -746,7 +746,7 @@ describe('mapAgentChunkToEvent', () => {
 		const event = map({
 			type: 'tool-call-suspended',
 			toolCallId: 'tc-1',
-			toolName: 'executions',
+			toolName: 'workflow_executions',
 			suspendPayload: {
 				requestId: 'request-1',
 				severity: 'info',

@@ -1,4 +1,5 @@
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -27,7 +28,7 @@ const searchAction = z.object({
 		.max(200)
 		.optional()
 		.describe(
-			"Case-insensitive text matched against conversation titles, the user's messages, and answers the user gave to ask-user questions. Matched as one exact phrase — prefer fewer, short, distinctive terms, and run separate searches for separate concepts. Omit to list the most recent conversations instead.",
+			"Case-insensitive text matched against conversation titles, the user's messages, and answers the user gave to ask_user questions. Matched as one exact phrase — prefer fewer, short, distinctive terms, and run separate searches for separate concepts. Omit to list the most recent conversations instead.",
 		),
 	limit: z
 		.number()
@@ -129,7 +130,7 @@ async function handleSearch(
 				context.logger,
 				error,
 				'Failed to search conversation history.',
-				'conversation-history tool call failed',
+				'conversation_history tool call failed',
 			),
 		};
 	}
@@ -157,7 +158,7 @@ async function handleGetMessages(
 				context.logger,
 				error,
 				'Failed to read the conversation.',
-				'conversation-history tool call failed',
+				'conversation_history tool call failed',
 			),
 		};
 	}
@@ -170,6 +171,7 @@ const DESCRIPTION =
 
 export function createConversationHistoryTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.CONVERSATION_HISTORY)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.CONVERSATION_HISTORY))
 		.description(DESCRIPTION)
 		.input(conversationHistoryToolInputSchema)
 		.output(conversationHistoryOutputSchema)

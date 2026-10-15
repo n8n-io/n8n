@@ -79,8 +79,8 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflows(action="get-as-code").',
 		'Do not call workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
 		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
-		'Use executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
-		'Read the execution output and summarize the result in chat. If it fails, use executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
+		'Use workflow_executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
+		'Read the execution output and summarize the result in chat. If it fails, use workflow_executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
 		'Do not open the setup trigger-test wizard or substitute an earlier mocked verification result for this test.',
 		WORKFLOW_TEST_REQUEST_CLOSE_TAG,
 	].join('\n');
@@ -126,7 +126,7 @@ function trailingBlockRegex(tag: string): RegExp {
  * Trailing blocks from older stored messages. New turns wrap these inside a
  * leading `<thread-context>` instead. Registering here is what makes a block
  * invisible to BOTH readers of a stored message: the UI, and the
- * conversation-history tool's text extraction — so injected context never
+ * conversation_history tool's text extraction — so injected context never
  * pollutes a later history search.
  */
 const TRAILING_CONTEXT_BLOCKS = [
@@ -220,7 +220,7 @@ export function withProjectContext(message: string, projectSection: string): str
 
 /**
  * Tell the agent the project has searchable past conversations. First turn of a
- * thread only — it exists to make the agent reach for the `conversation-history`
+ * thread only — it exists to make the agent reach for the `conversation_history`
  * tool, which it otherwise has no reason to believe has anything in it.
  * Kept for older stored messages and tests that rebuild that shape.
  */

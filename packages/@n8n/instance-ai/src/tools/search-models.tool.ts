@@ -1,4 +1,5 @@
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 
 import { ModelCatalogService } from './models/model-catalog.service';
 import { searchModelsInputSchema, searchModelsOutputSchema } from './models/schemas';
@@ -8,6 +9,7 @@ const catalogService = new ModelCatalogService();
 
 export function createSearchModelsTool(service = catalogService) {
 	return new Tool(DOMAIN_TOOL_IDS.SEARCH_MODELS)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.SEARCH_MODELS))
 		.description(
 			'Search models.dev for recent text-generation models when selecting a new model without a relevant credential or a suitable named builder-hint recommendation. ' +
 				'This includes selecting a model while building a workflow. ' +

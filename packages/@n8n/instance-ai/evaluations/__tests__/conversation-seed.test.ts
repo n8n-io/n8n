@@ -30,7 +30,7 @@ function makeSeed(): ConversationSeed {
 					{
 						type: 'tool-call',
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflow_build',
 						state: 'resolved',
 						input: { workflowId: WF_ID },
 						output: { success: true, workflowId: WF_ID, url: `/workflow/${WF_ID}` },
@@ -169,7 +169,7 @@ describe('ConversationSeedSchema message envelope', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'tc-1',
-							toolName: 'build-workflow',
+							toolName: 'workflow_build',
 							state: 'resolved',
 							input: { name: 'Digest' },
 							output: { success: true, workflowId: 'AbCdEf1234567890' },
@@ -184,7 +184,7 @@ describe('ConversationSeedSchema message envelope', () => {
 		expect(only.messageGroupId).toBe('mg-1');
 		expect(only.content?.[0]).toMatchObject({
 			toolCallId: 'tc-1',
-			toolName: 'build-workflow',
+			toolName: 'workflow_build',
 			state: 'resolved',
 			input: { name: 'Digest' },
 			output: { success: true, workflowId: 'AbCdEf1234567890' },
@@ -557,14 +557,14 @@ describe('transcriptPrefixFromSeed', () => {
 			{ kind: 'agent-text', text: 'Built it.' },
 			{
 				kind: 'tool-call',
-				toolName: 'build-workflow',
+				toolName: 'workflow_build',
 				args: { workflowId: WF_ID },
 				result: { success: true, workflowId: WF_ID, url: `/workflow/${WF_ID}` },
 			},
 		]);
 	});
 
-	it('renders a seeded ask-user block as an ask-user step with the chosen answers', () => {
+	it('renders a seeded ask_user block as an ask_user step with the chosen answers', () => {
 		const turns = transcriptPrefixFromSeed([
 			{
 				id: 'a1',
@@ -573,7 +573,7 @@ describe('transcriptPrefixFromSeed', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: 'ask-user',
+						toolName: 'ask_user',
 						state: 'resolved',
 						input: {
 							introMessage: 'A couple of questions',
@@ -733,7 +733,7 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
-	it('renders a seeded create-tasks block as a plan step', () => {
+	it('renders a seeded workflow_create_tasks block as a plan step', () => {
 		const turns = transcriptPrefixFromSeed([
 			{
 				id: 'a1',
@@ -742,7 +742,7 @@ describe('transcriptPrefixFromSeed', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: 'create-tasks',
+						toolName: 'workflow_create_tasks',
 						state: 'resolved',
 						input: { tasks: [{ title: 'Add trigger', description: 'schedule' }] },
 						output: {},

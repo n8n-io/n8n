@@ -420,7 +420,7 @@ const setupAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'The workflow these credentials are for, when one exists (e.g. the id returned by build-workflow). Lets the setup panel list them against that workflow.',
+			'The workflow these credentials are for, when one exists (e.g. the id returned by workflow_build). Lets the setup panel list them against that workflow.',
 		),
 	requireUserSelection: z
 		.boolean()
@@ -461,7 +461,7 @@ const earlySetupActionWithFolder = earlySetupAction.extend({
 		.string()
 		.optional()
 		.describe(
-			'Folder for the new workflow. Pass the intended folder here before building; omit it on the later build-workflow call.',
+			'Folder for the new workflow. Pass the intended folder here before building; omit it on the later workflow_build call.',
 		),
 });
 

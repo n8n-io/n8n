@@ -7,6 +7,7 @@ import {
 	instanceAiEvalSeedAgentSchema,
 	instanceAiEvalSeedArtifactIdSchema,
 	instanceAiEvalSeedFolderSchema,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
@@ -651,7 +652,9 @@ const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
  *  else a generic tool-call). */
 function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 	const call: SeedToolCall = {
-		toolName: typeof block.toolName === 'string' ? block.toolName : 'unknown-tool',
+		// Seeded histories can carry a former builder tool name.
+		toolName:
+			typeof block.toolName === 'string' ? resolveBuilderToolName(block.toolName) : 'unknown-tool',
 		input: isRecord(block.input) ? block.input : undefined,
 		output: isRecord(block.output) ? block.output : undefined,
 	};

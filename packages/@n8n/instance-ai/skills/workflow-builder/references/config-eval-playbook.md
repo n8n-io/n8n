@@ -1,14 +1,14 @@
 ---
 name: config-eval-playbook
 description: >-
-  Load after config-evals when you need exact `eval-config` action fields,
+  Load after config-evals when you need exact `eval_config` action fields,
   config shapes, or worked examples to list, create, change, run, or remove a
   config evaluation.
 ---
 
 # Config Eval Playbook
 
-Recipes and worked examples for the `eval-config` tool. All actions are
+Recipes and worked examples for the `eval_config` tool. All actions are
 discriminated by `action` and always take a `workflowId`.
 
 ## Actions
@@ -58,18 +58,18 @@ resolved output. Only omit `=` for a genuinely fixed constant string.
 1. Ensure a dataset exists with an input column and a ground-truth column:
 
    ```
-   data-tables(action="list")
+   data_tables(action="list")
    // if none fits:
-   data-tables(action="create", name="Support agent eval dataset",
+   data_tables(action="create", name="Support agent eval dataset",
      columns=[{ name: "input", type: "string" },
               { name: "expected_output", type: "string" }])
-   // then seed rows with data-tables insert
+   // then seed rows with data_tables insert
    ```
 
 2. Create the config eval, linking the dataset by id:
 
    ```
-   eval-config(
+   eval_config(
      action="create",
      workflowId="<wf_id>",
      name="Support agent correctness",
@@ -95,7 +95,7 @@ Use `helpfulness` when there is no single correct answer. The dataset needs only
 the input column; no ground-truth column is required.
 
 ```
-eval-config(
+eval_config(
   action="create",
   workflowId="<wf_id>",
   name="Assistant helpfulness",
@@ -125,4 +125,4 @@ eval-config(
 
 This tool never touches the canvas. Do not add EvaluationTrigger or Evaluation
 nodes; config evals are attached through the evaluation-config API only. Build
-and seed datasets exclusively through the `data-tables` tool.
+and seed datasets exclusively through the `data_tables` tool.

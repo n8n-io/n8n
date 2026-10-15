@@ -23,9 +23,9 @@ vi.mock('../credentials.tool', () => ({
 }));
 
 vi.mock('../data-tables.tool', () => ({
-	DATA_TABLES_TOOL_ID: 'data-tables',
+	DATA_TABLES_TOOL_ID: 'data_tables',
 	createDataTablesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `data-tables-${scope}` : 'data-tables',
+		id: scope ? `data_tables-${scope}` : 'data_tables',
 	})),
 }));
 
@@ -34,7 +34,7 @@ vi.mock('../agent-context.tool', () => ({
 }));
 
 vi.mock('../executions.tool', () => ({
-	createExecutionsTool: vi.fn(() => ({ id: 'executions' })),
+	createExecutionsTool: vi.fn(() => ({ id: 'workflow_executions' })),
 }));
 
 vi.mock('../nodes.tool', () => ({
@@ -44,7 +44,7 @@ vi.mock('../nodes.tool', () => ({
 }));
 
 vi.mock('../search-models.tool', () => ({
-	createSearchModelsTool: vi.fn(() => ({ id: 'searchModels' })),
+	createSearchModelsTool: vi.fn(() => ({ id: 'workflow_search_models' })),
 }));
 
 vi.mock('../n8n-docs.tool', () => ({
@@ -52,7 +52,7 @@ vi.mock('../n8n-docs.tool', () => ({
 }));
 
 vi.mock('../mcp-servers.tool', () => ({
-	createMcpServersTool: vi.fn(() => ({ id: 'mcp-servers' })),
+	createMcpServersTool: vi.fn(() => ({ id: 'mcp_servers' })),
 }));
 
 vi.mock('../orchestration/select-agent.tool', () => ({
@@ -64,19 +64,21 @@ vi.mock('../orchestration/builder-tools', () => ({
 }));
 
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
-	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
+	createCompleteCheckpointTool: vi.fn(() => ({ id: 'workflow_complete_checkpoint' })),
 }));
 
 vi.mock('../orchestration/plan.tool', () => ({
-	createPlanTool: vi.fn(() => ({ id: 'create-tasks' })),
+	createPlanTool: vi.fn(() => ({ id: 'workflow_create_tasks' })),
 }));
 
 vi.mock('../orchestration/report-verification-verdict.tool', () => ({
-	createReportVerificationVerdictTool: vi.fn(() => ({ id: 'report-verification-verdict' })),
+	createReportVerificationVerdictTool: vi.fn(() => ({
+		id: 'workflow_report_verification_verdict',
+	})),
 }));
 
 vi.mock('../orchestration/verify-built-workflow.tool', () => ({
-	createVerifyBuiltWorkflowTool: vi.fn(() => ({ id: 'verify-built-workflow' })),
+	createVerifyBuiltWorkflowTool: vi.fn(() => ({ id: 'workflow_verify_built' })),
 }));
 
 vi.mock('../research.tool', () => ({
@@ -84,20 +86,22 @@ vi.mock('../research.tool', () => ({
 }));
 
 vi.mock('../shared/ask-user.tool', () => ({
-	ASK_USER_TOOL_ID: 'ask-user',
-	createAskUserTool: vi.fn(() => ({ id: 'ask-user' })),
+	ASK_USER_TOOL_ID: 'ask_user',
+	createAskUserTool: vi.fn(() => ({ id: 'ask_user' })),
 }));
 
 vi.mock('../task-control.tool', () => ({
-	createTaskControlTool: vi.fn(() => ({ id: 'task-control' })),
+	createTaskControlTool: vi.fn(() => ({ id: 'workflow_task_control' })),
 }));
 
 vi.mock('../workflows/apply-workflow-credentials.tool', () => ({
-	createApplyWorkflowCredentialsTool: vi.fn(() => ({ id: 'apply-workflow-credentials' })),
+	createApplyWorkflowCredentialsTool: vi.fn(() => ({
+		id: 'workflow_apply_credentials',
+	})),
 }));
 
 vi.mock('../workflows/build-workflow.tool', () => ({
-	createBuildWorkflowTool: vi.fn(() => ({ id: 'build-workflow' })),
+	createBuildWorkflowTool: vi.fn(() => ({ id: 'workflow_build' })),
 }));
 
 vi.mock('../workflows.tool', () => ({
@@ -136,16 +140,16 @@ describe('domain tool construction', () => {
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
 			workflows: { id: 'workflows' },
-			executions: { id: 'executions' },
+			workflow_executions: { id: 'workflow_executions' },
 			credentials: { id: 'credentials' },
-			'data-tables': { id: 'data-tables' },
+			data_tables: { id: 'data_tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
 			nodes: { id: 'nodes' },
-			searchModels: { id: 'searchModels' },
-			'ask-user': { id: 'ask-user' },
-			'build-workflow': { id: 'build-workflow' },
+			workflow_search_models: { id: 'workflow_search_models' },
+			ask_user: { id: 'ask_user' },
+			workflow_build: { id: 'workflow_build' },
 		});
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
@@ -161,8 +165,8 @@ describe('domain tool construction', () => {
 	});
 
 	it('makes model catalog search discoverable without loading it for every turn', () => {
-		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('searchModels');
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('searchModels')).toBe(false);
+		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('workflow_search_models');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('workflow_search_models')).toBe(false);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {
@@ -189,25 +193,25 @@ describe('domain tool construction', () => {
 		});
 	});
 
-	it('gates the eval-config tool on the config-evals flag (evaluationConfigService presence)', () => {
+	it('gates the eval_config tool on the config-evals flag (evaluationConfigService presence)', () => {
 		// Flag off: adapter leaves evaluationConfigService unset → tool absent.
 		const disabled = makeContext();
-		expect(createOrchestratorDomainTools(disabled).get('eval-config')).toBeUndefined();
+		expect(createOrchestratorDomainTools(disabled).get('eval_config')).toBeUndefined();
 
 		// Flag on: adapter wires evaluationConfigService → tool exposed.
 		const enabled = makeContext({
 			evaluationConfigService: {} as InstanceAiContext['evaluationConfigService'],
 		});
-		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
+		expect(createOrchestratorDomainTools(enabled).get('eval_config')).toBeDefined();
 	});
 
-	it('gates the mcp-servers tool on the host-wired mcpService', () => {
+	it('gates the mcp_servers tool on the host-wired mcpService', () => {
 		// Gates off: adapter leaves mcpService unset → tool absent.
 		const disabled = makeContext();
-		expect(createOrchestratorDomainTools(disabled).get('mcp-servers')).toBeUndefined();
+		expect(createOrchestratorDomainTools(disabled).get('mcp_servers')).toBeUndefined();
 
 		const enabled = makeContext({ mcpService: {} as InstanceAiContext['mcpService'] });
-		expect(createOrchestratorDomainTools(enabled).get('mcp-servers')).toBeDefined();
+		expect(createOrchestratorDomainTools(enabled).get('mcp_servers')).toBeDefined();
 	});
 
 	it('reports the same active names that the domain registry exposes', () => {
@@ -251,8 +255,8 @@ describe('domain tool construction', () => {
 		expect(withService.has('save_user_preference')).toBe(true);
 	});
 
-	it('never defers mcp-servers behind search_tools', () => {
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
+	it('never defers mcp_servers behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp_servers')).toBe(true);
 	});
 
 	it('gates Agent context on the project-scoped reader', () => {
@@ -270,12 +274,12 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('agent-context')).toBe(true);
 	});
 
-	it('constructs create-tasks for the agent to apply profile exclusions', () => {
+	it('constructs workflow_create_tasks for the agent to apply profile exclusions', () => {
 		const context = mock<OrchestrationContext>();
 
 		const orchestrationTools = createOrchestrationTools(context);
 
-		expect(orchestrationTools.has('create-tasks')).toBe(true);
+		expect(orchestrationTools.has('workflow_create_tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);
 		expect(orchestrationTools.has('delegate')).toBe(false);
 		expect(orchestrationTools.has('eval-setup-with-agent')).toBe(false);

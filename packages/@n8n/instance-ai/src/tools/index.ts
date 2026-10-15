@@ -134,7 +134,7 @@ function getOrchestratorDomainToolFactories(
 		]);
 	}
 
-	// eval-config is flag-gated: the adapter only wires evaluationConfigService
+	// eval_config is flag-gated: the adapter only wires evaluationConfigService
 	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([

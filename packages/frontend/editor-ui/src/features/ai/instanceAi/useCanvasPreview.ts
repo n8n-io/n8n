@@ -414,7 +414,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	// --- Auto-open canvas when an edit-mode builder spawns ---
 	// The workflow-builder carries the existing workflow id in
 	// `targetResource.id` from the moment it is spawned. Opening the preview
-	// then — instead of waiting for the first build-workflow result — lets the
+	// then — instead of waiting for the first workflow_build result — lets the
 	// user see what is being edited as soon as the sub-agent is called.
 	// Keyed by agentId so a fresh builder spawn re-triggers the preview.
 
@@ -500,7 +500,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		{ flush: 'sync' },
 	);
 
-	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
+	// --- Refresh preview when setup-workflow / workflow_apply_credentials completes ---
 	// These tools modify the workflow (credentials, parameters) but aren't detected
 	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
 

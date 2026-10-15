@@ -13,7 +13,7 @@
 		],
 		"noneOfToolCalls": [
 			{
-				"toolName": "build-workflow"
+				"toolName": "workflow_build"
 			}
 		]
 	},

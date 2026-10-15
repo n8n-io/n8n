@@ -304,7 +304,7 @@ describe('createCompleteCheckpointTool', () => {
 
 		expect(res.ok).toBe(false);
 		expect(res.result).toContain('not a checkpoint');
-		expect(res.result).toContain('build-workflow');
+		expect(res.result).toContain('actual kind: build-workflow');
 	});
 
 	it('returns error string on wrong-status', async () => {

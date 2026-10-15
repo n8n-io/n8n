@@ -43,7 +43,7 @@ type ConversationStoredMessage = (AgentDbMessage | StoredAgentMessage) & {
 // ---------------------------------------------------------------------------
 
 /** Concatenated text blocks of a stored message's content. Exported for the
- *  conversation-history service, which reads the same persisted rows. */
+ *  conversation_history service, which reads the same persisted rows. */
 export function extractTextFromContent(content: unknown): string {
 	if (typeof content === 'string') return content;
 	if (Array.isArray(content)) return extractTextFromParts(content);

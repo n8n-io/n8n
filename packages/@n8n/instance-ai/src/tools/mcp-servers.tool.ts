@@ -1,5 +1,9 @@
 import { Tool } from '@n8n/agents';
-import { mcpConnectRequestSchema, mcpConnectResumeSchema } from '@n8n/api-types';
+import {
+	getLegacyBuilderToolNames,
+	mcpConnectRequestSchema,
+	mcpConnectResumeSchema,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -246,6 +250,7 @@ async function handleConnect(
 
 export function createMcpServersTool(context: InstanceAiContext) {
 	return new Tool(DOMAIN_TOOL_IDS.MCP_SERVERS)
+		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.MCP_SERVERS))
 		.description(DESCRIPTION)
 		.input(mcpServersToolInputSchema)
 		.output(mcpServersOutputSchema)

@@ -159,7 +159,7 @@ starting a new thread.
 
 ## Workflow Build Path
 
-The `build-workflow` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
+The `workflow_build` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
 (`.json`) from the runtime workspace. The conventional filenames are
 `.workflow.ts` and `.workflow.json`.
 

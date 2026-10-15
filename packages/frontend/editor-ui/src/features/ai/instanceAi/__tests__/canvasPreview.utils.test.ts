@@ -55,7 +55,7 @@ describe('getLatestBuildResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					isLoading: true,
 					result: undefined,
 				}),
@@ -68,7 +68,7 @@ describe('getLatestBuildResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: false, errors: ['compile error'] },
 				}),
 			],
@@ -81,7 +81,7 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-build-1',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-123' },
 				}),
 			],
@@ -113,12 +113,12 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-old' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-new' },
 				}),
 			],
@@ -134,12 +134,12 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-same' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-same' },
 				}),
 			],
@@ -155,7 +155,7 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-child' },
 				}),
 			],
@@ -173,7 +173,7 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-child' },
 				}),
 			],
@@ -183,7 +183,7 @@ describe('getLatestBuildResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-parent',
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-parent' },
 				}),
 			],
@@ -758,7 +758,7 @@ describe('getLatestDataTableResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-1' },
 				}),
 			],
@@ -770,7 +770,7 @@ describe('getLatestDataTableResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					isLoading: true,
 				}),
@@ -784,7 +784,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-create',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { id: 'dt-1', name: 'My Table' } },
 				}),
@@ -800,7 +800,7 @@ describe('getLatestDataTableResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { name: 'No ID' } },
 				}),
@@ -814,7 +814,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-schema',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'schema', dataTableId: 'Table Name' },
 					result: { dataTableId: 'dt-schema', columns: [] },
 				}),
@@ -831,7 +831,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-query',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'query', dataTableId: 'dt-query' },
 					result: { dataTableId: 'dt-query', count: 1, data: [{ id: 1 }] },
 				}),
@@ -848,7 +848,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-insert',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'insert-rows', dataTableId: 'dt-2' },
 					result: { insertedCount: 5 },
 				}),
@@ -864,7 +864,7 @@ describe('getLatestDataTableResult', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'insert-rows' },
 					result: { insertedCount: 5 },
 				}),
@@ -878,7 +878,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-update',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'update-rows', dataTableId: 'dt-3' },
 					result: { updatedCount: 2 },
 				}),
@@ -895,7 +895,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-add-col',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'add-column', dataTableId: 'dt-4' },
 					result: { column: { name: 'Status', type: 'string' } },
 				}),
@@ -914,7 +914,7 @@ describe('getLatestDataTableResult', () => {
 				toolCalls: [
 					makeToolCall({
 						toolCallId: `tc-${action}`,
-						toolName: 'data-tables',
+						toolName: 'data_tables',
 						args: { action, dataTableId: 'dt-5' },
 						result: { success: true },
 					}),
@@ -932,13 +932,13 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { id: 'dt-old' } },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'insert-rows', dataTableId: 'dt-new' },
 					result: { insertedCount: 3 },
 				}),
@@ -956,7 +956,7 @@ describe('getLatestDataTableResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { id: 'dt-child' } },
 				}),
@@ -979,7 +979,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'create' },
 					result: { table: { id: 'dt-1' } },
 				}),
@@ -992,7 +992,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'delete' },
 					isLoading: true,
 				}),
@@ -1005,7 +1005,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-1' },
 					result: { success: false },
 				}),
@@ -1018,7 +1018,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'delete' },
 					result: { success: true },
 				}),
@@ -1031,7 +1031,7 @@ describe('getLatestDeletedDataTableId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-deleted' },
 					result: { success: true },
 				}),
@@ -1045,13 +1045,13 @@ describe('getLatestDeletedDataTableId', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-old' },
 					result: { success: true },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-new' },
 					result: { success: true },
 				}),
@@ -1065,7 +1065,7 @@ describe('getLatestDeletedDataTableId', () => {
 			agentId: 'dt-agent',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					args: { action: 'delete', dataTableId: 'dt-child' },
 					result: { success: true },
 				}),
@@ -1085,7 +1085,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'success' },
 				}),
@@ -1099,7 +1099,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'verify-built-workflow',
+					toolName: 'workflow_verify_built',
 					args: { workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'success' },
 				}),
@@ -1113,7 +1113,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'verify-built-workflow',
+					toolName: 'workflow_verify_built',
 					args: { workflowId: 'wf-1' },
 					result: {
 						executionId: 'exec-1',
@@ -1135,13 +1135,13 @@ describe('getExecutionResultsByWorkflow', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'verify-built-workflow',
+					toolName: 'workflow_verify_built',
 					args: { workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'success' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'verify-built-workflow',
+					toolName: 'workflow_verify_built',
 					args: { workflowId: 'wf-2' },
 					result: {
 						executionId: 'exec-2',
@@ -1160,7 +1160,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'error' },
 				}),
@@ -1175,13 +1175,13 @@ describe('getExecutionResultsByWorkflow', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'error' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-2', status: 'success' },
 				}),
@@ -1196,13 +1196,13 @@ describe('getExecutionResultsByWorkflow', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'success' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-2' },
 					result: { executionId: 'exec-2', status: 'error' },
 				}),
@@ -1217,7 +1217,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const child = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-child', status: 'success' },
 				}),
@@ -1233,7 +1233,7 @@ describe('getExecutionResultsByWorkflow', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-child',
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-child', status: 'success' },
 				}),
@@ -1244,7 +1244,7 @@ describe('getExecutionResultsByWorkflow', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-parent',
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-parent', status: 'error' },
 				}),
@@ -1258,7 +1258,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'success', finishedAt: '2026-03-30T10:00:00Z' },
 				}),
@@ -1272,7 +1272,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'success' },
 				}),
@@ -1286,7 +1286,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					isLoading: true,
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'running' },
@@ -1300,7 +1300,7 @@ describe('getExecutionResultsByWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					args: { action: 'run', workflowId: 'wf-1' },
 					result: { executionId: 'exec-1', status: 'running' },
 				}),
@@ -1409,7 +1409,7 @@ describe('isAgentEditingWorkflow', () => {
 
 	test('locks an announced workflow while its first build has no result yet', () => {
 		const call = makeToolCall({
-			toolName: 'build-workflow',
+			toolName: 'workflow_build',
 			args: { filePath: 'workflow.ts' },
 			isLoading: true,
 			startedAt: '2026-09-15T08:00:00.000Z',
@@ -1438,7 +1438,7 @@ describe('isAgentEditingWorkflow', () => {
 			status: 'active',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-1' },
 				}),
 			],
@@ -1451,7 +1451,7 @@ describe('isAgentEditingWorkflow', () => {
 			status: 'completed',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { success: true, workflowId: 'wf-1' },
 				}),
 			],
@@ -1488,11 +1488,11 @@ describe('isAgentEditingWorkflow', () => {
 
 	test('locks while a build/setup/verification tool call is in flight on the workflow', () => {
 		for (const toolName of [
-			'build-workflow',
+			'workflow_build',
 			'build-workflow-with-agent',
-			'apply-workflow-credentials',
+			'workflow_apply_credentials',
 			'setup-workflow',
-			'verify-built-workflow',
+			'workflow_verify_built',
 		]) {
 			const node = makeAgentNode({
 				toolCalls: [makeToolCall({ toolName, isLoading: true, args: { workflowId: 'wf-1' } })],
@@ -1505,7 +1505,7 @@ describe('isAgentEditingWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'executions',
+					toolName: 'workflow_executions',
 					isLoading: true,
 					args: { action: 'run', workflowId: 'wf-1' },
 				}),
@@ -1563,7 +1563,7 @@ describe('isAgentEditingWorkflow', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					isLoading: true,
 					args: { workflowId: 'wf-other' },
 				}),

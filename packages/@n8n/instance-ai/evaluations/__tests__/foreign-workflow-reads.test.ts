@@ -16,7 +16,7 @@ function call(
 }
 
 const created = call(
-	'build-workflow',
+	'workflow_build',
 	{ filePath: 'src/workflows/digest.workflow.ts', name: 'Daily Email Digest' },
 	{ result: { success: true, workflowId: 'mine' } },
 );
@@ -86,7 +86,7 @@ describe('findForeignWorkflowReads', () => {
 			[
 				call('workflows', { action: 'get', workflowId: 'other' }),
 				call(
-					'build-workflow',
+					'workflow_build',
 					{ filePath: 'src/workflows/digest.workflow.ts', workflowId: 'other' },
 					{ result: { success: true, workflowId: 'other' } },
 				),

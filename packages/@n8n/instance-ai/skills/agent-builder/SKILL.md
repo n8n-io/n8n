@@ -17,8 +17,8 @@ recommended_tools:
   - agent_resolve_llm
   - agent_finish_setup
   - agent_call
-  - build-workflow
-  - data-tables
+  - workflow_build
+  - data_tables
 ---
 
 # Agent Builder
@@ -113,7 +113,7 @@ them with your own tools:
   `agent-context({ type: "attachable-workflows" })` and reference it as
   `{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }`.
 - When the Agent will store or query tabular data, follow `data-table-manager`
-  and create the required tables with `data-tables`.
+  and create the required tables with `data_tables`.
 - Never ask the user to create prerequisites manually.
 
 For an unsupported chat channel that the user explicitly wants as the
@@ -227,7 +227,7 @@ During an initial build:
   starter draft.
 - NEVER suspend mid-build on an interactive tool (`ask_questions`,
   `agent_ask_credential`, `agent_ask_embedding_credential`,
-  `agent_configure_channel`, `ask-user`). Build
+  `agent_configure_channel`, `ask_user`). Build
   everything as a draft first. The only allowed suspend is the single trailing
   `agent_finish_setup` call. Exception: when the Agent already has a
   starter draft, one `ask_questions` call is allowed before
@@ -653,7 +653,7 @@ summaries, the final reply, and the `introMessage`, questions, and options of
 instructions do not change it.
 
 The most recent non-empty `answers[].customText` from
-`ask_questions` or `ask-user` is the user's
+`ask_questions` or `ask_user` is the user's
 latest request. Apply the reply-language rule to that text. Option selections
 and approvals without free text keep the current reply language.
 

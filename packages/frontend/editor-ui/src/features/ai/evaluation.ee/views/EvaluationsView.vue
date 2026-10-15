@@ -40,7 +40,7 @@ const configsLoading = ref<boolean>(true);
 
 const activeConfigId = computed<string | null>(() => {
 	const configs = evaluationStore.evaluationConfigsByWorkflowId[props.workflowId];
-	// The eval-config flow creates a single config per workflow, so the first
+	// The eval_config flow creates a single config per workflow, so the first
 	// entry is the active one. If multi-config support lands, this needs to
 	// become an explicit user selection rather than an implicit first().
 	return configs?.[0]?.id ?? null;

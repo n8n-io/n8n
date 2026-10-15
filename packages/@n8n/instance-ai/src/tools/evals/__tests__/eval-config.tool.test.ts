@@ -22,7 +22,7 @@ function createMockEvalConfigService() {
 	};
 }
 
-// Pass `null` to build a context WITHOUT an eval-config service. A default
+// Pass `null` to build a context WITHOUT an eval_config service. A default
 // param only kicks in for `undefined`, so `null` is the explicit "absent" sentinel.
 function createMockContext(
 	evaluationConfigService: ReturnType<
@@ -126,7 +126,7 @@ const expectedUpsertInput: UpsertEvaluationConfigInput = {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('eval-config tool', () => {
+describe('eval_config tool', () => {
 	describe('tool construction', () => {
 		it('should describe config-based evaluations', () => {
 			const tool = createEvalConfigTool(createMockContext());

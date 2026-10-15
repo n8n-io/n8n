@@ -2,13 +2,13 @@
 name: config-evals
 description: >-
   Builds and maintains configuration-based evaluations on a workflow with the
-  eval-config tool. Use when the user asks to set up, add, view, change, or
+  eval_config tool. Use when the user asks to set up, add, view, change, or
   remove an evaluation, score, grade, or judge a workflow's output, or measure
   answer quality against a test dataset. This is the only eval form Instance AI
   handles — it does not touch on-canvas evaluation nodes.
 recommended_tools:
-  - eval-config
-  - data-tables
+  - eval_config
+  - data_tables
 platforms:
   - daytona
 ---
@@ -16,7 +16,7 @@ platforms:
 # Config-based Evaluations
 
 Use this skill to attach a configuration-based evaluation to a workflow with the
-`eval-config` tool. A config eval pairs a workflow with a name, a start node, an
+`eval_config` tool. A config eval pairs a workflow with a name, a start node, an
 end node, one or more judged metrics, and a Data Table dataset. Nothing is added
 to the canvas — the config lives off-canvas via the evaluation-config API.
 
@@ -32,7 +32,7 @@ build a config eval instead and briefly say that is how you set up evaluations.
   Must be a node with an incoming connection — **never a trigger** (see step 2).
 - `endNodeName` — the node whose output is judged.
 - `dataTableId` — a Data Table holding the test dataset. Create and populate it
-  with the `data-tables` tool first, then link it here by id.
+  with the `data_tables` tool first, then link it here by id.
 - `metrics` — one or more judged metrics (see below).
 
 ## Default Procedure
@@ -47,12 +47,12 @@ build a config eval instead and briefly say that is how you set up evaluations.
      workflow this is usually the agent node (often the same as `endNodeName`).
    - `endNodeName` is the node whose output you want scored (usually the AI agent
      or the final response node).
-3. Resolve the dataset. Call `data-tables(action="list")` to find an existing
-   dataset, or create and seed one with `data-tables` before creating the config.
-   Never invent a `dataTableId`; use one returned by `data-tables`.
+3. Resolve the dataset. Call `data_tables(action="list")` to find an existing
+   dataset, or create and seed one with `data_tables` before creating the config.
+   Never invent a `dataTableId`; use one returned by `data_tables`.
 4. Choose metrics and build the `actualAnswer` / `expectedAnswer` / `userQuery`
    expressions (see Metrics).
-5. Call `eval-config` (`action="create"`), or `update` when changing an existing
+5. Call `eval_config` (`action="create"`), or `update` when changing an existing
    config. The tool shows an approval card automatically — call it and respect
    the result; do not ask for chat approval first.
 6. Close with facts: evaluation name, workflow, start/end nodes, dataset name and
@@ -106,9 +106,9 @@ relative to the request. Use `prompt` only to override the default judge prompt.
 
 ## Dataset Boundary
 
-- Build the dataset with the `data-tables` tool: one column for each input the
+- Build the dataset with the `data_tables` tool: one column for each input the
   evaluation varies, plus a ground-truth column when using `correctness`.
-- The config only references the dataset by `dataTableId`; the `eval-config` tool
+- The config only references the dataset by `dataTableId`; the `eval_config` tool
   does not create or populate rows. If no suitable dataset exists, create one
   first, then create the config.
 - Do not weaken the evaluation to fit a thin dataset — seed the dataset to match

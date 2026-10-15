@@ -385,7 +385,7 @@ describe('InstanceAiMessage', () => {
 	describe('answered questions', () => {
 		const answeredCall = {
 			toolCallId: 'tc-1',
-			toolName: 'ask-user',
+			toolName: 'ask_user',
 			args: {},
 			isLoading: false,
 			confirmation: {

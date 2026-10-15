@@ -1197,7 +1197,7 @@ export interface EvaluationConfigMetricInput {
 }
 
 /** Payload for creating/updating a config-based eval. The dataset is a Data
- *  Table the caller already created (via the data-tables tool). */
+ *  Table the caller already created (via the data_tables tool). */
 export interface UpsertEvaluationConfigInput {
 	name: string;
 	startNodeName: string;
@@ -1380,7 +1380,6 @@ export interface BuilderToolsSession {
  * The agents-module builder, as the orchestrator uses it. The host (cli)
  * supplies it only when the agents module is active.
  */
-
 export interface InstanceAiBuilderDelegate {
 	/**
 	 * `options.id` creates the agent under an id the frontend already minted for
@@ -1520,7 +1519,7 @@ export interface InstanceAiContext {
 	userId: string;
 	/**
 	 * Trace handle for the current agent run, threaded in from the orchestration
-	 * context. Lets domain tools (e.g. build-workflow) emit explicit child runs
+	 * context. Lets domain tools (e.g. workflow_build) emit explicit child runs
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
@@ -1533,7 +1532,7 @@ export interface InstanceAiContext {
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
-	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
+	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave_onboarding`. */
 	onboardingThread?: boolean;
 	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
@@ -1550,12 +1549,12 @@ export interface InstanceAiContext {
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
 	/** Optional — present when the host allows MCP registry discovery for this
-	 *  user. Presence gates the `mcp-servers` tool. */
+	 *  user. Presence gates the `mcp_servers` tool. */
 	mcpService?: InstanceAiMcpService;
 	/** Optional — presence gates the `execute` action on the `nodes` tool. */
 	executeNodeService?: InstanceAiExecuteNodeService;
 	/** Optional — wired by the host when the run has a bound project. Presence
-	 *  gates the `conversation-history` tool (orchestrator only). */
+	 *  gates the `conversation_history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
 	/** Present when the user can read Agents in the bound project. */
 	agentContextService?: InstanceAiAgentContextReader;
@@ -1564,7 +1563,7 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
-	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
+	/** Per-run inventory behind `mcp_servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
 	connectedMcpServices?: ConnectedMcpService[];
@@ -1599,11 +1598,11 @@ export interface InstanceAiContext {
 	permissions?: InstanceAiPermissions;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
-	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
+	 *  verifying — `workflow_executions(action="run")` on any other workflow still requires user approval. */
 	allowedRunWorkflowIds?: ReadonlySet<string>;
 	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
 	allowedRunWorkflowNames?: ReadonlySet<string>;
-	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
+	/** Force `workflow_executions(action="run")` through HITL even when a scoped checkpoint override exists. */
 	requireRunWorkflowApproval?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
@@ -1665,7 +1664,7 @@ export interface InstanceAiContext {
 	onArtifactChanged?: (artifact: InstanceAiChangedArtifact) => Promise<void>;
 	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
-	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
+	 * workflow_build on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
 	 * the same thread uses the persisted `workflows:update:<id>` session grant
 	 * written at create time — this in-memory set alone does not survive a new run.
@@ -1703,7 +1702,7 @@ export interface InstanceAiContext {
 	 *  the model's API knowledge. */
 	outputSchemaLookup?: OutputSchemaLookup;
 	/**
-	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
+	 * Runtime-only workflow build loop context. The direct `workflow_build` tool
 	 * reports build outcomes here so planned build follow-ups and verification
 	 * tools can share the same work item without a detached builder sub-agent.
 	 */
@@ -2209,11 +2208,11 @@ export interface OrchestrationContext {
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
 	/** True when the current run was started by the replan pipeline after a failed
-	 *  background task. Set by the host, not by user text — the create-tasks guard
+	 *  background task. Set by the host, not by user text — the workflow_create_tasks guard
 	 *  reads this instead of substring-matching `currentUserMessage`. */
 	isReplanFollowUp?: boolean;
 	/** True when the current run was started to execute a planned-task checkpoint.
-	 *  The orchestrator should run the checkpoint's spec and call complete-checkpoint. */
+	 *  The orchestrator should run the checkpoint's spec and call workflow_complete_checkpoint. */
 	isCheckpointFollowUp?: boolean;
 	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
 	 *  Used by the post-run deadlock fallback in the service. */

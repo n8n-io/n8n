@@ -97,7 +97,7 @@ export async function createInstanceAgent(
 		orchestrationContext.modelId = modelId;
 	}
 
-	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
+	// Thread the trace handle in so domain tools (e.g. workflow_build) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
 	const domainContext: InstanceAiContext = {

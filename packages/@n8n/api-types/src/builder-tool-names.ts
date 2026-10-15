@@ -1,10 +1,28 @@
 /**
- * Registered names of the Agent Builder tools.
+ * Registered names of the workflow builder and agent builder tools.
  *
  * Tool names are part of the model contract. They also appear in persisted
- * message history and telemetry. When you rename a tool, add the former name
- * to `LEGACY_BUILDER_TOOL_NAMES` so stored data still resolves.
+ * checkpoints, message history, and telemetry. When you rename a tool, add the
+ * former name to `LEGACY_BUILDER_TOOL_NAMES` so stored data still resolves.
  */
+
+/** Tools that the Instance AI orchestrator uses to build workflows. */
+export const WORKFLOW_BUILDER_TOOL_NAMES = {
+	WORKFLOWS: 'workflows',
+	NODES: 'nodes',
+	CREDENTIALS: 'credentials',
+	EXECUTIONS: 'workflow_executions',
+	DATA_TABLES: 'data_tables',
+	ASK_USER: 'ask_user',
+	SEARCH_MODELS: 'workflow_search_models',
+	BUILD_WORKFLOW: 'workflow_build',
+	VERIFY_BUILT_WORKFLOW: 'workflow_verify_built',
+	REPORT_VERIFICATION_VERDICT: 'workflow_report_verification_verdict',
+	APPLY_WORKFLOW_CREDENTIALS: 'workflow_apply_credentials',
+	CREATE_TASKS: 'workflow_create_tasks',
+	TASK_CONTROL: 'workflow_task_control',
+	COMPLETE_CHECKPOINT: 'workflow_complete_checkpoint',
+} as const;
 
 /** Tools that the Instance AI orchestrator uses to build Agents. */
 export const AGENT_BUILDER_TOOL_NAMES = {
@@ -34,11 +52,28 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	CONFIGURE_CHANNEL: 'agent_configure_channel',
 } as const;
 
+export type WorkflowBuilderToolName =
+	(typeof WORKFLOW_BUILDER_TOOL_NAMES)[keyof typeof WORKFLOW_BUILDER_TOOL_NAMES];
 export type AgentBuilderToolName =
 	(typeof AGENT_BUILDER_TOOL_NAMES)[keyof typeof AGENT_BUILDER_TOOL_NAMES];
 
 /** Former tool names mapped to their current names. Never remove an entry. */
 export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
+	executions: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
+	'data-tables': WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES,
+	'ask-user': WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
+	searchModels: WORKFLOW_BUILDER_TOOL_NAMES.SEARCH_MODELS,
+	'build-workflow': WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
+	'verify-built-workflow': WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
+	'report-verification-verdict': WORKFLOW_BUILDER_TOOL_NAMES.REPORT_VERIFICATION_VERDICT,
+	'apply-workflow-credentials': WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
+	'create-tasks': WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS,
+	'task-control': WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL,
+	'complete-checkpoint': WORKFLOW_BUILDER_TOOL_NAMES.COMPLETE_CHECKPOINT,
+	'leave-onboarding': 'leave_onboarding',
+	'eval-config': 'eval_config',
+	'mcp-servers': 'mcp_servers',
+	'conversation-history': 'conversation_history',
 	// Former Agent Builder sub-agent tools. Only stored threads use these names.
 	write_config: AGENT_BUILDER_TOOL_NAMES.WRITE_CONFIG,
 	patch_config: AGENT_BUILDER_TOOL_NAMES.PATCH_CONFIG,
@@ -63,4 +98,11 @@ export function resolveBuilderToolName(toolName: string): string {
 	return Object.prototype.hasOwnProperty.call(LEGACY_BUILDER_TOOL_NAMES, toolName)
 		? LEGACY_BUILDER_TOOL_NAMES[toolName]
 		: toolName;
+}
+
+/** Returns every former name of a builder tool. */
+export function getLegacyBuilderToolNames(toolName: string): string[] {
+	return Object.entries(LEGACY_BUILDER_TOOL_NAMES)
+		.filter(([, current]) => current === toolName)
+		.map(([legacy]) => legacy);
 }

@@ -7,7 +7,11 @@ import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
-import { AGENT_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '../builder-tool-names';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '../builder-tool-names';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
 import type { McpToolPermissions } from './mcp-tool-permissions.schema';
@@ -2726,10 +2730,14 @@ export type InstanceAiMcpConnectionToolsResponse =
 
 export function getRenderHint(rawToolName: string): InstanceAiToolCallState['renderHint'] {
 	const toolName = resolveBuilderToolName(rawToolName);
-	if (toolName === 'task-control') return 'tasks';
-	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL) return 'tasks';
+	if (
+		toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW ||
+		toolName === 'build-workflow-with-agent'
+	)
+		return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
-	if (toolName === 'create-tasks') return 'planner';
+	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREATE_TASKS) return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	if (
 		[
@@ -2826,7 +2834,7 @@ export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 /** Enables workflow, node, and canvas group mentions in the n8n Assistant */
 export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
 
-/** Enables the conversation-history tool and the past-conversations first-turn hint */
+/** Enables the conversation_history tool and the past-conversations first-turn hint */
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
 
 export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';

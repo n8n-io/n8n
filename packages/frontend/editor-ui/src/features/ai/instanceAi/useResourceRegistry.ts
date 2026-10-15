@@ -1,5 +1,5 @@
 import { reactive, watch } from 'vue';
-import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -95,7 +95,7 @@ type PendingAgentTargetMetadata = {
  * optional fields provided by the new call win; fields it omits are preserved
  * from the existing entry. Callers are responsible for resolving `name` using
  * the existing entry as a fallback so partial updates (e.g. a patch
- * `build-workflow` call that carries only a `workflowId`) don't regress a
+ * `workflow_build` call that carries only a `workflowId`) don't regress a
  * known name to 'Untitled'.
  */
 function recordProduced(
@@ -154,14 +154,14 @@ function entryFromListItem(
 
 /** Tools whose results may contain resource info (workflows, credentials, data tables). */
 const ARTIFACT_TOOLS = new Set<string>([
-	'build-workflow',
+	WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	'build-workflow-with-agent',
 	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
 	'submit-workflow',
-	'apply-workflow-credentials',
-	'workflows',
-	'credentials',
-	'data-tables',
+	WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
+	WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
+	WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS,
+	WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES,
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -183,8 +183,13 @@ const DATA_TABLE_READ_ACTIONS = new Set(['schema', 'query']);
 function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
 	const action = optionalString(tc.args?.action);
 	if (!action) return 'built';
-	if (tc.toolName === 'workflows' && WORKFLOW_READ_ACTIONS.has(action)) return 'fetched';
-	if (tc.toolName === 'data-tables' && DATA_TABLE_READ_ACTIONS.has(action)) return 'fetched';
+	if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && WORKFLOW_READ_ACTIONS.has(action))
+		return 'fetched';
+	if (
+		tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES &&
+		DATA_TABLE_READ_ACTIONS.has(action)
+	)
+		return 'fetched';
 	return 'built';
 }
 function entryFromAgentBuilderTarget(
@@ -244,7 +249,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// build-workflow / build-workflow-with-agent / submit-workflow:
+	// workflow_build / build-workflow-with-agent / submit-workflow:
 	// { workflowId, workflowName? } — produced. Patch calls may omit the name,
 	// so fall back to the existing entry before regressing to 'Untitled'.
 	if (typeof result.workflowId === 'string') {
@@ -258,7 +263,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	if (
-		tc.toolName === 'workflows' &&
+		tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS &&
 		result.success === true &&
 		typeof tc.args?.workflowId === 'string' &&
 		typeof tc.args.action === 'string' &&
@@ -276,7 +281,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 
 	// Historical workflows action=get-json events return the workflow document itself,
 	// not under a `workflow` key. Keep them available when replaying stored threads.
-	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
+	if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS && Array.isArray(result.nodes)) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);
 	}
@@ -372,7 +377,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			result.dataTableId;
 		const dataTableAction = optionalString(tc.args?.action);
 		const isReadOnlyLookup =
-			tc.toolName === 'data-tables' &&
+			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.DATA_TABLES &&
 			dataTableAction !== undefined &&
 			DATA_TABLE_READ_ACTIONS.has(dataTableAction);
 		recordProduced(
@@ -391,7 +396,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 /**
  * Register the agent's `targetResource` as a produced artifact when it carries
  * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
- * workflow). Surfacing this at spawn time — before the first build-workflow
+ * workflow). Surfacing this at spawn time — before the first workflow_build
  * tool result arrives — lets the artifacts panel show the workflow as soon as
  * the sub-agent starts, instead of waiting for the first edit.
  */

@@ -8,7 +8,7 @@
 				"argsContainAny": ["workflow-builder"]
 			},
 			{
-				"toolName": "build-workflow"
+				"toolName": "workflow_build"
 			}
 		],
 		"noneOfToolCalls": [

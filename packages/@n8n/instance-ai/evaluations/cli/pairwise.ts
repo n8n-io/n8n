@@ -37,6 +37,7 @@ import { buildWorkflow } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
 import { createLogger, type EvalLogger } from '../harness/logger';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import type { CapturedEvent, CapturedToolCall } from '../types';
 
 /** Default dataset — orchestrator-plan-derived spec rows. Each row's prompt
@@ -378,8 +379,11 @@ function buildInteractivity(
 	toolCalls: ToolCallTrace[],
 ): BuildInteractivity {
 	return {
-		askUserCount: toolCalls.filter((toolCall) => toolCall.toolName === 'ask-user').length,
-		planToolCount: toolCalls.filter((toolCall) => toolCall.toolName === 'create-tasks').length,
+		askUserCount: toolCalls.filter((toolCall) => toolCall.toolName === DOMAIN_TOOL_IDS.ASK_USER)
+			.length,
+		planToolCount: toolCalls.filter(
+			(toolCall) => toolCall.toolName === ORCHESTRATION_TOOL_IDS.CREATE_TASKS,
+		).length,
 		autoApprovedSuspensions: events.filter((event) => event.type === 'confirmation-request').length,
 		mockedCredentialTypes: [],
 	};

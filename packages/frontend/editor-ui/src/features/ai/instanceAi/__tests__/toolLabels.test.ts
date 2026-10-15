@@ -18,11 +18,11 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.list_credentials': 'Inspecting credentials',
 				'instanceAi.tools.list_workflows': 'Listing workflows',
 				'instanceAi.tools.nodes': 'Search nodes',
-				'instanceAi.tools.executions': 'Run workflow',
+				'instanceAi.tools.workflow_executions': 'Run workflow',
 				'instanceAi.tools.activity': 'Activity',
 				'instanceAi.tools.activity.list': 'Checking recent activity',
-				'instanceAi.tools.conversation-history': 'Past conversations',
-				'instanceAi.tools.conversation-history.search': 'Searching past conversations',
+				'instanceAi.tools.conversation_history': 'Past conversations',
+				'instanceAi.tools.conversation_history.search': 'Searching past conversations',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
 				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
@@ -64,8 +64,8 @@ function makeToolCall(overrides: Partial<InstanceAiToolCallState> = {}): Instanc
 }
 
 describe('getToolIcon', () => {
-	test('returns circle-check for complete-checkpoint', () => {
-		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
+	test('returns circle-check for the complete checkpoint tool', () => {
+		expect(getToolIcon('workflow_complete_checkpoint')).toBe('circle-check');
 	});
 
 	test('returns default icon for removed delegate tool', () => {
@@ -81,12 +81,12 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns table for data-table tools', () => {
-		expect(getToolIcon('data-tables')).toBe('table');
+		expect(getToolIcon('data_tables')).toBe('table');
 	});
 
 	test('returns workflow for workflow-related tools', () => {
 		expect(getToolIcon('workflows')).toBe('workflow');
-		expect(getToolIcon('executions')).toBe('workflow');
+		expect(getToolIcon('workflow_executions')).toBe('workflow');
 		expect(getToolIcon('nodes')).toBe('workflow');
 		expect(getToolIcon('templates')).toBe('workflow');
 		expect(getToolIcon('search_nodes')).toBe('workflow');
@@ -101,7 +101,7 @@ describe('getToolIcon', () => {
 
 	test('returns brain for memory/task-control tools', () => {
 		expect(getToolIcon('updateWorkingMemory')).toBe('brain');
-		expect(getToolIcon('task-control')).toBe('brain');
+		expect(getToolIcon('workflow_task_control')).toBe('brain');
 	});
 
 	test('treats removed plan tool as an ordinary unknown icon', () => {
@@ -138,15 +138,24 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('activity')).toBe('history');
 	});
 
-	test('returns message-square for the conversation-history tool', () => {
-		expect(getToolIcon('conversation-history')).toBe('message-square');
+	test('returns message-square for the conversation_history tool', () => {
+		expect(getToolIcon('conversation_history')).toBe('message-square');
 	});
 
 	test('returns wrench as default', () => {
 		expect(getToolIcon('unknown-tool')).toBe('wrench');
 	});
 
+	test('returns workflow for workflow_ tools without a dedicated mapping', () => {
+		expect(getToolIcon('ask_user')).toBe('wrench');
+		expect(getToolIcon('workflow_create_tasks')).toBe('workflow');
+		expect(getToolIcon('workflow_build')).toBe('workflow');
+	});
+
 	test('resolves legacy builder tool names to the current icon', () => {
+		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
+		expect(getToolIcon('data-tables')).toBe('table');
+		expect(getToolIcon('task-control')).toBe('brain');
 		expect(getToolIcon('create_skills')).toBe('book-open');
 		expect(getToolIcon('update_skill')).toBe('book-open');
 	});
@@ -215,6 +224,10 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('build-agent')).toBe('Working with agent');
 		expect(getToolLabel('build-agent', { operation: 'exploring' })).toBe('Exploring agent');
 		expect(getToolLabel('write_config')).toBe('Writing agent config');
+		expect(getToolLabel('executions')).toBe('Run workflow');
+		expect(getToolLabel('conversation-history', { action: 'search' })).toBe(
+			'Searching past conversations',
+		);
 	});
 
 	test('getToolLabel falls back to raw tool name when not found', () => {
@@ -230,12 +243,12 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('n8n-docs', { action: 'read' })).toBe('Opening n8n docs');
 	});
 
-	test('getToolLabel returns action-specific activity and conversation-history labels', () => {
+	test('getToolLabel returns action-specific activity and conversation_history labels', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('activity')).toBe('Activity');
 		expect(getToolLabel('activity', { action: 'list' })).toBe('Checking recent activity');
-		expect(getToolLabel('conversation-history')).toBe('Past conversations');
-		expect(getToolLabel('conversation-history', { action: 'search' })).toBe(
+		expect(getToolLabel('conversation_history')).toBe('Past conversations');
+		expect(getToolLabel('conversation_history', { action: 'search' })).toBe(
 			'Searching past conversations',
 		);
 	});
@@ -253,6 +266,7 @@ describe('useToolLabel', () => {
 	test('getToggleLabel returns undefined for no-toggle tools', () => {
 		const { getToggleLabel } = useToolLabel();
 		expect(getToggleLabel(makeToolCall({ toolName: 'updateWorkingMemory' }))).toBeUndefined();
+		expect(getToggleLabel(makeToolCall({ toolName: 'workflow_task_control' }))).toBeUndefined();
 		expect(getToggleLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
 	});
 
@@ -273,6 +287,7 @@ describe('useToolLabel', () => {
 
 	test('getHideLabel returns undefined for no-toggle tools', () => {
 		const { getHideLabel } = useToolLabel();
+		expect(getHideLabel(makeToolCall({ toolName: 'workflow_task_control' }))).toBeUndefined();
 		expect(getHideLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
 	});
 
