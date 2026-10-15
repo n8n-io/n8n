@@ -4,6 +4,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { useRelativeTimestamp } from '@/features/agents/utils/relative-time';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
@@ -27,6 +28,7 @@ import {
 	N8nText,
 	N8nSpinner,
 	N8nIcon,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, IconColor, IconName } from '@n8n/design-system';
 
@@ -115,9 +117,14 @@ onBeforeUnmount(() => {
 	sessionsStore.stopAutoRefresh();
 });
 
-function formatDate(fullDate: string) {
-	const { date, time } = convertToDisplayDate(fullDate);
-	return `${date} ${time}`;
+const formatRelativeDate = useRelativeTimestamp();
+
+/** Builds the tooltip text, e.g. "Oct 18 13:23 • 24.9s". Omits the duration while the session runs. */
+function formatDateTooltip(thread: AgentExecutionThread): string {
+	const { date, time } = convertToDisplayDate(thread.updatedAt);
+	const dateLabel = `${date} ${time.slice(0, 5)}`;
+	if (!thread.status || thread.status === 'running') return dateLabel;
+	return `${dateLabel} • ${formatDuration(thread.totalDuration)}`;
 }
 
 function getStatusIcon(status: AgentSessionStatus): IconName {
@@ -432,22 +439,11 @@ const skeletonMetaWidths = ['var(--spacing--2xl)', 'var(--spacing--xl)', 'var(--
 						>
 							{{ originPresentation(thread).label }}
 						</N8nBadge>
-						<N8nText step="sm" bold color="text-light" data-test-id="agent-session-updated-at">
-							{{ formatDate(thread.updatedAt) }}
-						</N8nText>
-						<N8nText
-							v-if="thread.status && thread.status !== 'running'"
-							step="sm"
-							bold
-							color="text-light"
-							data-testid="agent-session-status-duration"
-						>
-							{{
-								i18n.baseText('executionDetails.runningTimeFinished', {
-									interpolate: { time: formatDuration(thread.totalDuration) },
-								})
-							}}
-						</N8nText>
+						<N8nTooltip :content="formatDateTooltip(thread)" placement="top">
+							<N8nText step="sm" bold color="text-light" data-test-id="agent-session-updated-at">
+								{{ formatRelativeDate(thread.updatedAt) }}
+							</N8nText>
+						</N8nTooltip>
 						<N8nText step="sm" bold color="text-light" data-test-id="agent-session-token-usage">
 							{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t
 						</N8nText>
