@@ -13,6 +13,7 @@ import {
 } from '../channels/registry';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
+	AgentChannelRestart,
 	AgentChannelRuntime,
 	AgentChannelView,
 	AgentChannelViewExpose,
@@ -280,10 +281,11 @@ const {
 	disabled: () => props.disabled || channelActionInFlight.value || channelViewLoading.value,
 	status: integrationStatus,
 	runtimeFor,
-	onRemoved: (channelType) => {
+	onRemoved: (channelType, { restartWith }) => {
 		if (!isIntegrationConfigured(channelType)) emit('channel-disconnected', channelType);
 		emit('agent-changed');
-		completeAndClose();
+		if (restartWith) restartSetup(channelType, restartWith);
+		else completeAndClose();
 	},
 });
 
@@ -586,13 +588,22 @@ function handlePlatformConnected() {
 	finishConnect(channelType);
 }
 
-function removeCurrentChannel() {
+function removeCurrentChannel(restartWith?: AgentChannelRestart) {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
 	void requestDisconnect(
 		channelType,
 		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
+		restartWith,
 	);
+}
+
+function restartSetup(channelType: string, restart: AgentChannelRestart) {
+	runtimeFor(channelType).reset?.(restart);
+	prepareChannelEdit(null);
+	selectedCredentials.value[channelType] = restart.credentialId;
+	viewSession.value += 1;
+	goToSetup(channelType);
 }
 
 /** The list's "Make unavailable" menu item. n8n Chat has no credential to carry. */
@@ -703,6 +714,7 @@ watch(
 					"
 					:error-is-conflict="errorIsConflict[currentIntegration.type]"
 					:saved-settings="integrationSettings[currentIntegration.type]"
+					:saved-credential-id="connectedCredentials[currentIntegration.type] ?? ''"
 					:is-published="isPublished"
 					:agent-name="agentId"
 					:project-id="projectId"
@@ -719,6 +731,7 @@ watch(
 					@persist="writeChannelConfig"
 					@connected="handlePlatformConnected"
 					@done="finishSetup"
+					@restart="removeCurrentChannel"
 				/>
 				<N8nText
 					v-if="saveAttempted && !currentChannelCredentialId"
@@ -745,7 +758,7 @@ watch(
 				:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
 				:disabled="disabled || actionInFlight || !selectedChannelType"
 				data-testid="agent-channel-remove-channel"
-				@click="removeCurrentChannel"
+				@click="removeCurrentChannel()"
 			>
 				<template v-if="!isN8nChatSelected" #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ removeChannelLabel }}
