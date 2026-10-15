@@ -12,7 +12,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { Builder } from 'xml2js';
 
-import { uriEncodeS3CopySource } from '../../../../credentials/common/aws/utils';
+import { uriEncodeS3CopySource } from '@credentials/common/aws/utils';
 import { bucketFields, bucketOperations } from './BucketDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
@@ -20,9 +20,11 @@ import {
 	awsApiRequestREST,
 	awsApiRequestRESTAllItems,
 	getPresignedS3Url,
+	normalizeS3Region,
 } from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
 import { getAwsCredentials } from '../../GenericFunctions';
+import type { AwsIamCredentialsType } from '@credentials/common/aws/types';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -90,7 +92,7 @@ export class AwsS3V2 implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-		const { credentials } = await getAwsCredentials(this);
+		const { credentials, credentialsType } = await getAwsCredentials(this);
 
 		for (let i = 0; i < items.length; i++) {
 			let headers: IDataObject = {};
@@ -787,15 +789,43 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
 					if (operation === 'getPresignedUrl') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
 
+						if (!bucketName) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Bucket name is required to generate a presigned URL',
+							);
+						} else if (
+							typeof bucketName !== 'string' ||
+							bucketName.trim() === '' ||
+							bucketName.trim() === '.'
+						) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Bucket name should be a non-empty string',
+							);
+						}
+
+						const servicePath = bucketName?.includes('.') ? 's3' : `${bucketName}.s3`;
+						const basePath = bucketName?.includes('.') ? `/${bucketName}` : '';
 						const fileKey = this.getNodeParameter('fileKey', i) as string;
-						const expiresIn = this.getNodeParameter('urlExpiryTime', i) as number;
+
+						const setCustomExpiry = this.getNodeParameter('setUrlExpiryTime', i, false) as boolean;
+						const requestedExpiresIn = setCustomExpiry
+							? (this.getNodeParameter('urlExpiryTime', i, 3600) as number)
+							: 3600;
+
+						const usesTemporaryCredentials =
+							credentialsType === 'awsAssumeRole' ||
+							(credentialsType === 'aws' &&
+								(credentials as AwsIamCredentialsType).temporaryCredentials);
+
+						const expiresIn = usesTemporaryCredentials
+							? Math.min(requestedExpiresIn, 3600)
+							: requestedExpiresIn;
 						const options = this.getNodeParameter('options', i);
 						let ContentDisposition: string | undefined;
 
-						// this.logger.info(`options: ${JSON.stringify(options)}`);
 						if (options.noContentDisposition) {
 							ContentDisposition = undefined;
 						} else {
@@ -805,7 +835,7 @@ export class AwsS3V2 implements INodeType {
 						if (fileKey.substring(fileKey.length - 1) === '/') {
 							throw new NodeOperationError(
 								this.getNode(),
-								'Presigning a whole directory is not supported, please provide a file key',
+								'Presigned url for a whole directory is not supported, please provide a file key',
 							);
 						}
 
@@ -820,20 +850,21 @@ export class AwsS3V2 implements INodeType {
 							},
 						);
 
-						const region = responseData.LocationConstraint._;
+						const region = normalizeS3Region(responseData.LocationConstraint._);
+						const validTo = new Date(Date.now() + expiresIn * 1000).toISOString();
 
 						const url = await getPresignedS3Url.call(
 							this,
 							'GET',
 							bucketName,
 							fileKey,
-							region as string,
+							region,
 							expiresIn,
 							ContentDisposition,
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ url, expiresIn }),
+							this.helpers.returnJsonArray({ url, validTo }),
 							{ itemData: { item: i } },
 						);
 

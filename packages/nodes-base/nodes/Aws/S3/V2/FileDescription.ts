@@ -874,6 +874,34 @@ export const fileFields: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Set Custom URL Expiry Time',
+		name: 'setUrlExpiryTime',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+	},
+	// We cannot reassign a lifetime for chained credentials, so we need to warn the user that the requested lifetime may be capped at 1 hour.
+	// for STS/AssumeRole there is currently no option to set a lifetime in the credentials.
+	{
+		displayName:
+			'When using STS or Assume Role credentials, the requested URL expiry is capped at 1 hour and may be shorter if the credentials expire earlier. For longer validity, use IAM credentials with a suitable lifetime.',
+		name: 'temporaryCredentialsNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+				setUrlExpiryTime: [true],
+			},
+		},
+	},
+	{
 		displayName: 'URL Expiry Time',
 		description:
 			'The time period (in seconds) for which the presigned URL will be valid. Maximum is 604800 seconds (7 days).',
@@ -888,6 +916,7 @@ export const fileFields: INodeProperties[] = [
 			show: {
 				resource: ['file'],
 				operation: ['getPresignedUrl'],
+				setUrlExpiryTime: [true],
 			},
 		},
 	},
