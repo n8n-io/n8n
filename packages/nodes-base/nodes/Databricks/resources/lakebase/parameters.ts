@@ -174,6 +174,14 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Function',
 		name: 'lakebaseFunction',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+			],
+		},
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The Postgres function in the schema',

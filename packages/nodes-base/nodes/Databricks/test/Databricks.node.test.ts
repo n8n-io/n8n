@@ -1554,4 +1554,11 @@ describe('Lakebase -> Execute Function method wiring', () => {
 	it('opens on the argument form', () => {
 		expect(property('specifyArguments')?.default).toBe('fields');
 	});
+
+	// The editor clears a locator only when a declared dependency changes
+	it('resets the function picker when a parent locator changes', () => {
+		expect(property('lakebaseFunction')?.typeOptions?.loadOptionsDependsOn).toEqual(
+			property('lakebaseTable')?.typeOptions?.loadOptionsDependsOn,
+		);
+	});
 });
