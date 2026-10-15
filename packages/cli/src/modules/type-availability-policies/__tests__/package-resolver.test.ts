@@ -251,7 +251,9 @@ describe('installedCheckFor', () => {
 
 	describe('name selector, node-types kind', () => {
 		it('is true when the resolved base name is a known node', () => {
-			const registry = makeFullRegistry({ knownNodes: { 'n8n-nodes-base.slack': {} } });
+			const registry = makeFullRegistry({
+				knownNodes: { 'n8n-nodes-base.slack': { className: '', sourcePath: '' } },
+			});
 			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
 
 			expect(isInstalled({ kind: 'name', value: 'n8n-nodes-base.slack' })).toBe(true);
@@ -264,7 +266,9 @@ describe('installedCheckFor', () => {
 		});
 
 		it('treats a synthetic tool variant as installed when its base node is known', () => {
-			const registry = makeFullRegistry({ knownNodes: { 'n8n-nodes-base.slack': {} } });
+			const registry = makeFullRegistry({
+				knownNodes: { 'n8n-nodes-base.slack': { className: '', sourcePath: '' } },
+			});
 			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
 
 			expect(isInstalled({ kind: 'name', value: 'n8n-nodes-base.slackTool' })).toBe(true);
