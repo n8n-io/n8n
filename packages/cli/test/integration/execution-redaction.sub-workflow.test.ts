@@ -3,7 +3,7 @@
  * the executions back through the REST API. The parent keeps a copy of the
  * sub-workflow's output, so the parent's execution must be redacted as well.
  */
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { ExecutionRepository, type IWorkflowDb, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { parse } from 'flatted';
@@ -49,7 +49,14 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
+	await testDb.truncate([
+		'ExecutionEntity',
+		'WorkflowPublishedVersion',
+		'SharedWorkflow',
+		'WorkflowEntity',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+	]);
 });
 
 async function createChild(name: string, redactionPolicy?: WorkflowSettings.RedactionPolicy) {
@@ -61,6 +68,18 @@ async function createChild(name: string, redactionPolicy?: WorkflowSettings.Reda
 		} as unknown as IWorkflowDb,
 		owner,
 	);
+}
+
+/** Execute Workflow Trigger → Execute Workflow (grandchild). */
+function createMiddleChildFixture(grandchildId: string) {
+	const {
+		nodes: [, callNode],
+		connections,
+	} = createParentWorkflowFixture(grandchildId);
+	const {
+		nodes: [triggerNode],
+	} = createSubWorkflowFixture();
+	return { nodes: [triggerNode, callNode], connections, pinData: {} };
 }
 
 /** Manual Trigger → Execute Workflow (first child) → Execute Workflow (second child). */
@@ -217,6 +236,69 @@ test('redacts a later sibling sub-workflow that receives the redacted output', a
 	expect(plainChildData.executionData?.runtimeData).toMatchObject({
 		redaction: { production: false, manual: false },
 		subWorkflowRedaction: { production: true, manual: true },
+	});
+});
+
+test('does not redact the calling execution when the sub-workflow opts out', async () => {
+	const child = await createWorkflow(
+		{
+			name: 'Library child',
+			...createSubWorkflowFixture(),
+			settings: { redactionPolicy: 'all', redactCallerExecutions: false },
+		} as unknown as IWorkflowDb,
+		owner,
+	);
+	const parent = await createWorkflow(
+		{ name: 'Parent', ...createParentWorkflowFixture(child.id) } as unknown as IWorkflowDb,
+		owner,
+	);
+
+	const parentExecutionId = await runManually(parent.id);
+
+	const data = await readExecution(parentExecutionId);
+	expect(data.executionData?.runtimeData).not.toHaveProperty('subWorkflowRedaction');
+	expect(data.redactionInfo).toBeUndefined();
+	expect(data.resultData.runData['Execute Workflow'][0].data!.main[0]![0].json).toEqual({
+		test: 'test',
+	});
+	// The opt-out applies to the callers only. The child's own execution is still redacted.
+	const childData = await readExecution(await findChildExecutionId(child.id));
+	expect(childData.redactionInfo).toMatchObject({ isRedacted: true });
+});
+
+test('redacts the calling execution when a sub-workflow that opts out passes up a redaction', async () => {
+	// The child calls the grandchild in `integrated` mode, which runs the published version.
+	const grandchild = await createActiveWorkflow(
+		{
+			name: 'Grandchild with policy',
+			...createSubWorkflowFixture(),
+			settings: { redactionPolicy: 'all' },
+		} as unknown as IWorkflowDb,
+		owner,
+	);
+	const child = await createWorkflow(
+		{
+			name: 'Library child',
+			...createMiddleChildFixture(grandchild.id),
+			settings: { redactionPolicy: 'all', redactCallerExecutions: false },
+		} as unknown as IWorkflowDb,
+		owner,
+	);
+	const parent = await createWorkflow(
+		{ name: 'Parent', ...createParentWorkflowFixture(child.id) } as unknown as IWorkflowDb,
+		owner,
+	);
+
+	const parentExecutionId = await runManually(parent.id);
+
+	const data = await readExecution(parentExecutionId);
+	expect(data.executionData?.runtimeData?.subWorkflowRedaction).toEqual({
+		production: true,
+		manual: true,
+	});
+	expect(data.redactionInfo).toMatchObject({
+		isRedacted: true,
+		reason: 'sub_workflow_redaction_policy',
 	});
 });
 

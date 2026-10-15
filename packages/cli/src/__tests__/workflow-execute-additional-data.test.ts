@@ -1035,6 +1035,76 @@ describe('WorkflowExecuteAdditionalData', () => {
 					subWorkflowRedaction: { production: true, manual: true },
 				});
 			});
+
+			describe('when the sub-workflow opts out of redacting its callers', () => {
+				const runLibrary = async () => {
+					const options = mock<ExecuteWorkflowOptions>({ doNotWaitToFinish: false });
+					// Assigned after `mock()`, which does not keep `false` values in nested objects.
+					options.loadedWorkflowData = {
+						id: 'library',
+						name: 'Library',
+						active: false,
+						nodes: [],
+						connections: {},
+						settings: { redactCallerExecutions: false },
+					} as unknown as IWorkflowBase;
+					return await executeWorkflow(
+						mock<IExecuteWorkflowInfo>(),
+						mock<IWorkflowExecuteAdditionalData>(),
+						options,
+					);
+				};
+
+				it('does not report its own channels', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							getMockRunWithContext(
+								childContext({ redaction: { version: 2, production: true, manual: true } }),
+							),
+						),
+					);
+
+					const response = await runLibrary();
+
+					expect(response.subWorkflowRedaction).toBeUndefined();
+				});
+
+				it('still reports the channels its own sub-workflows reported to it', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							getMockRunWithContext(
+								childContext({
+									redaction: { version: 2, production: true, manual: true },
+									subWorkflowRedaction: { production: true, manual: false },
+								}),
+							),
+						),
+					);
+
+					const response = await runLibrary();
+
+					expect(response.subWorkflowRedaction).toEqual({ production: true, manual: false });
+				});
+
+				it('attaches only the reported channels to the error of a failed run', async () => {
+					processRunExecutionData.mockReturnValue(
+						getCancelablePromise(
+							getMockRunWithContext(
+								childContext({
+									redaction: { version: 2, production: true, manual: true },
+									subWorkflowRedaction: { production: true, manual: false },
+								}),
+								true,
+							),
+						),
+					);
+
+					await expect(runLibrary()).rejects.toMatchObject({
+						message: 'child failed',
+						subWorkflowRedaction: { production: true, manual: false },
+					});
+				});
+			});
 		});
 
 		/**

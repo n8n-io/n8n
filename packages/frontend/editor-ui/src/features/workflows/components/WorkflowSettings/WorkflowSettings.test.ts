@@ -20,6 +20,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
+import type { Scope } from '@n8n/permissions';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
@@ -1645,6 +1646,110 @@ describe('WorkflowSettingsVue', () => {
 					getByTestId('workflow-settings-redact-manual-select'),
 				).getByRole('combobox');
 				expect(manualCombobox).toBeDisabled();
+			});
+		});
+
+		describe('redact caller executions', () => {
+			const setUp = (params: {
+				redactionPolicy: 'none' | 'all';
+				redactCallerExecutions?: boolean;
+				scopes?: Scope[];
+				licensed?: boolean;
+			}) => {
+				const scopes = params.scopes ?? ['workflow:enableRedaction', 'workflow:disableRedaction'];
+				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] =
+					params.licensed ?? true;
+				projectsStore.personalProject = mock<Project>({ scopes });
+				const workflow = createTestWorkflow({
+					id: '1',
+					name: 'Test Workflow',
+					active: true,
+					scopes: ['workflow:update', ...scopes],
+				});
+				workflowsListStore.workflowsById = { '1': workflow };
+				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+				workflowDocumentStore.setSettings({
+					redactionPolicy: params.redactionPolicy,
+					...(params.redactCallerExecutions !== undefined && {
+						redactCallerExecutions: params.redactCallerExecutions,
+					}),
+				});
+			};
+
+			it('is hidden when the workflow redacts no channel', async () => {
+				setUp({ redactionPolicy: 'none' });
+
+				const { queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(
+					queryByTestId('workflow-settings-redact-caller-executions-row'),
+				).not.toBeInTheDocument();
+			});
+
+			it('is on by default when the workflow redacts a channel', async () => {
+				setUp({ redactionPolicy: 'all' });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const toggle = getByTestId('workflow-settings-redact-caller-executions');
+				expect(toggle).toHaveAttribute('aria-checked', 'true');
+				expect(toggle).toBeEnabled();
+			});
+
+			it('saves redactCallerExecutions as false when the user turns it off', async () => {
+				setUp({ redactionPolicy: 'all' });
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				await userEvent.click(getByTestId('workflow-settings-redact-caller-executions'));
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({
+							redactionPolicy: 'all',
+							redactCallerExecutions: false,
+						}),
+					}),
+				);
+			});
+
+			it('is disabled when it is on and the user lacks the disableRedaction scope', async () => {
+				setUp({ redactionPolicy: 'all', scopes: ['workflow:enableRedaction'] });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getByTestId('workflow-settings-redact-caller-executions')).toBeDisabled();
+			});
+
+			it('is disabled when it is off and the user lacks the enableRedaction scope', async () => {
+				setUp({
+					redactionPolicy: 'all',
+					redactCallerExecutions: false,
+					scopes: ['workflow:disableRedaction'],
+				});
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const toggle = getByTestId('workflow-settings-redact-caller-executions');
+				expect(toggle).toHaveAttribute('aria-checked', 'false');
+				expect(toggle).toBeDisabled();
+			});
+
+			it('is disabled without the data redaction license', async () => {
+				setUp({ redactionPolicy: 'all', licensed: false });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getByTestId('workflow-settings-redact-caller-executions')).toBeDisabled();
 			});
 		});
 
