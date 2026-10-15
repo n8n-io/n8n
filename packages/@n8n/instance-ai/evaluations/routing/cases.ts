@@ -3,8 +3,9 @@
 // main eval case format that LangTracer exports. The slug is the case id.
 //
 // The routing labels are tags: `routing`, one `bucket:<route>`, and one
-// `accepts:<token>` for each other accepted route. A judge picks the route of
-// each trial (see grade.ts).
+// `accepts:<token>` for each other accepted route. An optional
+// `clarity:<level>` tag splits each bucket in the summary. A judge picks the
+// route of each trial (see grade.ts).
 //
 // An optional second user turn holds only [stage directions]: the facts that
 // the user proxy uses to answer a question. The proxy answers up to two
@@ -41,11 +42,14 @@ export type RoutingBucket = (typeof ROUTING_BUCKETS)[number];
 export const ROUTING_ACCEPT_TOKENS = [
 	...ROUTING_BUCKETS,
 	'clarify:agent',
+	'clarify:workflow',
 	'clarify:open',
 	'answer:agent',
 	'answer:open',
 ] as const;
 export type AcceptToken = (typeof ROUTING_ACCEPT_TOKENS)[number];
+
+export const ROUTING_CLARITIES = ['clear', 'hidden', 'vague'] as const;
 
 const routingTagsSchema = z
 	.object({
@@ -58,13 +62,19 @@ const routingTagsSchema = z
 		accepts: z.array(z.enum(ROUTING_ACCEPT_TOKENS)),
 		/** The routes that pass after the user proxy answers a question. */
 		after: z.array(z.enum(ROUTING_BUCKETS).exclude(['clarify'])),
+		/** How clearly the message points to the route. */
+		clarity: z
+			.array(z.enum(ROUTING_CLARITIES))
+			.max(1, 'needs at most one clarity:<level> tag')
+			.transform((levels) => levels.at(0)),
 	})
 	// The bucket always passes, so case files need not repeat it. A clarify case
 	// keeps only its own tokens: most accept only `clarify:open`, and plain
 	// `clarify` would also pass a question that only asks about a workflow.
-	.transform(({ bucket, accepts: tokens, after }) => {
+	.transform(({ bucket, accepts: tokens, after, clarity }) => {
 		const accepts = bucket === 'clarify' || tokens.includes(bucket) ? tokens : [bucket, ...tokens];
 		return {
+			...(clarity && { clarity }),
 			bucket,
 			accepts,
 			after:
@@ -136,6 +146,7 @@ function parseRoutingCaseFile(filePath: string): ParsedFile {
 		bucket: tagValues(tags, 'bucket:'),
 		accepts: tagValues(tags, 'accepts:'),
 		after: tagValues(tags, 'after:'),
+		clarity: tagValues(tags, 'clarity:'),
 	});
 	if (!labels.success) throw new Error(`${filePath}: ${formatIssues(labels.error)}`);
 	const direction = directionTurn?.text;

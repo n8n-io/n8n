@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import simpleGit, { GitError, type SimpleGit } from 'simple-git';
+import { GitError, simpleGit, type SimpleGit } from 'simple-git';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { Container } from '@n8n/di';
 import { DeploymentConfig, SecurityConfig } from '@n8n/config';
@@ -39,9 +39,8 @@ const mockGit = {
 } as unknown as Mocked<SimpleGit>;
 
 vi.mock('simple-git', async () => ({
-	__esModule: true,
 	GitError: (await vi.importActual<typeof import('simple-git')>('simple-git')).GitError,
-	default: vi.fn(() => mockGit),
+	simpleGit: vi.fn(() => mockGit),
 }));
 
 const mockSimpleGit = vi.mocked(simpleGit);

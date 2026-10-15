@@ -1,5 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import {
+	type AuthFailureReason,
+	OAuthTokenVerifierProxy,
+	OAuth2FlowProxy,
+	ProtectedResourceRegistry,
+} from '@n8n/backend-services/auth';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -76,13 +82,7 @@ import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
-import {
-	type AuthFailureReason,
-	OAuthTokenVerifierProxy,
-} from '@/services/oauth-token-verifier-proxy.service';
-import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';

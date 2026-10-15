@@ -684,15 +684,15 @@ describe('AgentInfoPanel', () => {
 			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
 		});
 
-		it('hides the deployment-name field for a foundry API-key credential', async () => {
+		it('shows the deployment-name field for a foundry API-key credential', async () => {
 			seedAzureCredential('azure-foundry-1', 'foundry', 'azureOpenAiApi');
 			const wrapper = mountAzurePanel('azure-foundry-1');
 			await flushAsync(wrapper);
 
-			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
 		});
 
-		it('hides the deployment-name field for a foundry Entra credential', async () => {
+		it('shows the deployment-name field for a foundry Entra credential', async () => {
 			seedAzureCredential(
 				'azure-foundry-entra-1',
 				'foundry',
@@ -701,7 +701,7 @@ describe('AgentInfoPanel', () => {
 			const wrapper = mountAzurePanel('azure-foundry-entra-1');
 			await flushAsync(wrapper);
 
-			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
 		});
 
 		it('shows the deployment-name field when endpointType is unknown (no read access)', async () => {
@@ -768,20 +768,28 @@ describe('AgentInfoPanel', () => {
 			expect(last.modelDeploymentName).toBe('gpt-4o');
 		});
 
-		it('does not seed modelDeploymentName on a foundry model change', async () => {
+		it('clears modelDeploymentName on a foundry model change', async () => {
 			seedAzureCredential('azure-foundry-1', 'foundry', 'azureOpenAiApi');
-			const wrapper = mountAzurePanel('azure-foundry-1');
+			const wrapper = mountModelPanel({
+				name: 'Azure agent',
+				model: 'azure-openai/gpt-4o',
+				credential: 'azure-foundry-1',
+				instructions: 'Help users.',
+				modelDeploymentName: 'my-chat-model',
+			});
 			await flushAsync(wrapper);
 
 			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
 				provider: 'azure-openai',
-				model: 'gpt-4o',
+				model: 'gpt-4o-mini',
 			});
 			await wrapper.vm.$nextTick();
 
 			const events = wrapper.emitted('update:config') ?? [];
 			const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
-			expect(last.modelDeploymentName).toBeUndefined();
+			// The old model's deployment name must not survive the switch; the
+			// empty string is a deliberate clear, so the call uses the model id.
+			expect(last.modelDeploymentName).toBe('');
 		});
 
 		it('emits modelDeploymentName when the deployment-name input changes', async () => {

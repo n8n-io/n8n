@@ -17,10 +17,6 @@ vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
 }));
 
-vi.mock('prettier', () => ({
-	format: vi.fn(async (code) => await Promise.resolve(`formatted-${code}`)),
-}));
-
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	generateCodeForPrompt: vi.fn(),
 }));
@@ -33,7 +29,7 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 	});
 
 	it('should retry and succeed on the second attempt', async () => {
-		const mockGeneratedCode = 'const example = "retry success";';
+		const mockGeneratedCode = 'const example={a:1}';
 
 		vi.mocked(generateCodeForPrompt)
 			.mockRejectedValueOnce(new Error('First attempt failed'))
@@ -51,7 +47,7 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 
 		expect(result).toEqual({
 			name: 'test/path',
-			value: 'formatted-const example = "retry success";',
+			value: 'const example = { a: 1 };\n',
 		});
 		expect(generateCodeForPrompt).toHaveBeenCalledTimes(2);
 	});
@@ -75,7 +71,7 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 	});
 
 	it('should succeed on the first attempt without retries', async () => {
-		const mockGeneratedCode = 'const example = "no retries needed";';
+		const mockGeneratedCode = 'const example={a:1}';
 		vi.mocked(generateCodeForPrompt).mockResolvedValue({ code: mockGeneratedCode });
 
 		const result = await generateCodeForAiTransform(
@@ -89,7 +85,7 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 
 		expect(result).toEqual({
 			name: 'test/path',
-			value: 'formatted-const example = "no retries needed";',
+			value: 'const example = { a: 1 };\n',
 		});
 		expect(generateCodeForPrompt).toHaveBeenCalledTimes(1);
 	});

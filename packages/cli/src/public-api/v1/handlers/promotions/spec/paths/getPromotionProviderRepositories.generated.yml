@@ -1,0 +1,67 @@
+operationId: getPromotionProviderRepositories
+tags:
+  - Promotions
+summary: List repositories of a promotion provider
+description: Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as a connection target. Search matches names and namespaces in similarity order. Unfiltered results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.
+x-required-scope: gitConnection:discover
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion provider.
+    name: promotionProviderId
+    in: path
+  - schema:
+      type: string
+      maxLength: 255
+    required: false
+    name: search
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  fullPath:
+                    type: string
+                  remoteUrl:
+                    type: string
+                  defaultBranch:
+                    type: string
+                    nullable: true
+                required:
+                  - id
+                  - name
+                  - fullPath
+                  - remoteUrl
+                  - defaultBranch
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

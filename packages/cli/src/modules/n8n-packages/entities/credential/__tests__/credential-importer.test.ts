@@ -1,4 +1,5 @@
-import type { Project, User } from '@n8n/db';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,6 +10,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ImportContext } from '../../../n8n-packages.types';
 import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
+import type { SerializedCredential } from '../../../spec/serialized/credential.schema';
 import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
 import type { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
@@ -24,6 +26,7 @@ const usable = (id: string, type = 'githubApi'): UsableCredential =>
 
 describe('CredentialImporter', () => {
 	const credentialsService = mock<CredentialsService>();
+	const credentialsFinder = mock<CredentialsFinderService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const targetProject = mock<Project>({ id: 'project-target' });
 	const user = mock<User>({ id: 'user-1' });
@@ -38,12 +41,18 @@ describe('CredentialImporter', () => {
 			credentialBindings?: CredentialBindingRequest['credentialBindings'];
 			missingMode?: CredentialBindingRequest['missingMode'];
 			matchingMode?: CredentialBindingRequest['matchingMode'];
+			conflictPolicy?: CredentialBindingRequest['conflictPolicy'];
+			packageCredentials?: CredentialBindingRequest['packageCredentials'];
+			updateScope?: CredentialBindingRequest['updateScope'];
 		} = {},
 	): CredentialBindingRequest => ({
 		requirements,
 		matchingMode: options.matchingMode ?? 'id-only',
 		missingMode: options.missingMode ?? 'must-preexist',
 		credentialBindings: options.credentialBindings,
+		conflictPolicy: options.conflictPolicy ?? 'keep-existing',
+		packageCredentials: options.packageCredentials,
+		updateScope: options.updateScope ?? { projectIds: new Set([targetProject.id]) },
 	});
 
 	const packageCredential = (
@@ -81,6 +90,7 @@ describe('CredentialImporter', () => {
 				mock<TypeOnlyCredentialMatcher>(),
 			),
 			credentialsService,
+			credentialsFinder,
 		);
 	});
 
@@ -381,6 +391,236 @@ describe('CredentialImporter', () => {
 					},
 				),
 			).rejects.toBeInstanceOf(ForbiddenError);
+		});
+	});
+	describe('conflict policy', () => {
+		const EXPRESSION = '={{ $vars.githubToken }}';
+		const requirement = packageCredential({
+			id: 'cred-1',
+			usedBy: [
+				{ kind: 'workflow', id: 'wf-2' },
+				{ kind: 'workflow', id: 'wf-1' },
+			],
+		});
+
+		const packageFile = (overrides: Partial<SerializedCredential> = {}): SerializedCredential => ({
+			id: 'cred-1',
+			name: 'Source GitHub',
+			type: 'githubApi',
+			data: { accessToken: EXPRESSION },
+			...overrides,
+		});
+
+		const destination = (overrides: Partial<CredentialsEntity> = {}) =>
+			mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Source GitHub',
+				type: 'githubApi',
+				isManaged: false,
+				isResolvable: false,
+				isGlobal: false,
+				usageScope: 'project',
+				shared: [
+					mock<SharedCredentials>({ role: 'credential:owner', projectId: targetProject.id }),
+				],
+				...overrides,
+			});
+
+		beforeEach(() => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([usable('cred-1')]);
+			credentialsFinder.findCredentialIdsWithScopeForUser.mockImplementation(
+				async (ids) => await Promise.resolve(new Set(ids)),
+			);
+		});
+
+		it('keep-existing loads and decrypts nothing', async () => {
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'keep-existing',
+					packageCredentials: new Map([['cred-1', packageFile({ name: 'Renamed' })]]),
+				}),
+			);
+
+			expect(result.successes).toEqual(new Map([['cred-1', 'cred-1']]));
+			expect(result.candidates).toEqual([]);
+			expect(result.updates).toEqual([]);
+			expect(result.forbidden).toEqual([]);
+			expect(credentialsFinder.findById).not.toHaveBeenCalled();
+			expect(credentialsFinder.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+
+		it('plans an update when the package value differs from the stored value', async () => {
+			credentialsFinder.findById.mockResolvedValue(destination());
+			credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'fail',
+					packageCredentials: new Map([['cred-1', packageFile()]]),
+				}),
+			);
+
+			const candidate = {
+				sourceId: 'cred-1',
+				targetId: 'cred-1',
+				targetName: 'Source GitHub',
+				name: 'Source GitHub',
+				data: { accessToken: EXPRESSION },
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
+			};
+			expect(result.candidates).toEqual([candidate]);
+			expect(result.updates).toEqual([candidate]);
+			expect(credentialsFinder.findById).toHaveBeenCalledWith('cred-1', {
+				includeSharedProject: true,
+			});
+			expect(credentialsService.decrypt).toHaveBeenCalledWith(expect.anything(), true);
+		});
+
+		it('keeps an equal candidate out of the updates', async () => {
+			credentialsFinder.findById.mockResolvedValue(destination());
+			credentialsService.decrypt.mockResolvedValue({ accessToken: EXPRESSION, other: 'secret' });
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'overwrite',
+					packageCredentials: new Map([['cred-1', packageFile()]]),
+				}),
+			);
+
+			expect(result.candidates).toHaveLength(1);
+			expect(result.updates).toEqual([]);
+		});
+
+		it('only binds a match without a package file', async () => {
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], { conflictPolicy: 'fail', packageCredentials: new Map() }),
+			);
+
+			expect(result.successes).toEqual(new Map([['cred-1', 'cred-1']]));
+			expect(result.candidates).toEqual([]);
+			expect(credentialsFinder.findById).not.toHaveBeenCalled();
+		});
+
+		it('only binds a match that is not an update candidate', async () => {
+			credentialsFinder.findById.mockResolvedValue(destination({ isManaged: true }));
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'fail',
+					packageCredentials: new Map([['cred-1', packageFile({ name: 'Renamed' })]]),
+				}),
+			);
+
+			expect(result.candidates).toEqual([]);
+			expect(result.updates).toEqual([]);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+
+		it('reports a match in scope that the user cannot update as forbidden, and decrypts nothing', async () => {
+			credentialsFinder.findById.mockResolvedValue(destination());
+			credentialsFinder.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'fail',
+					packageCredentials: new Map([['cred-1', packageFile({ name: 'Renamed' })]]),
+				}),
+			);
+
+			expect(result.successes).toEqual(new Map([['cred-1', 'cred-1']]));
+			expect(result.candidates).toEqual([]);
+			expect(result.updates).toEqual([]);
+			expect(result.forbidden).toEqual([
+				{
+					sourceId: 'cred-1',
+					targetId: 'cred-1',
+					targetName: 'Source GitHub',
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-1' },
+						{ kind: 'workflow', id: 'wf-2' },
+					],
+				},
+			]);
+			expect(credentialsFinder.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
+				['cred-1'],
+				user,
+				['credential:update'],
+			);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+
+		it('only binds a match out of scope, and checks no permission for it', async () => {
+			credentialsFinder.findById.mockResolvedValue(
+				destination({
+					shared: [
+						mock<SharedCredentials>({ role: 'credential:owner', projectId: 'project-other' }),
+					],
+				}),
+			);
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'overwrite',
+					packageCredentials: new Map([['cred-1', packageFile({ name: 'Renamed' })]]),
+				}),
+			);
+
+			expect(result.candidates).toEqual([]);
+			expect(result.forbidden).toEqual([]);
+			expect(credentialsFinder.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+
+		it('only binds a match the finder does not return (an instance credential)', async () => {
+			credentialsFinder.findById.mockResolvedValue(null);
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'overwrite',
+					packageCredentials: new Map([['cred-1', packageFile()]]),
+				}),
+			);
+
+			expect(result.candidates).toEqual([]);
+		});
+
+		it('loads a destination once when two package credentials resolve to it', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				usable('cred-target'),
+			]);
+			credentialsFinder.findById.mockResolvedValue(destination({ id: 'cred-target' }));
+			credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+			const other = packageCredential({ id: 'cred-2' });
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement, other], {
+					conflictPolicy: 'overwrite',
+					credentialBindings: new Map([
+						['cred-1', 'cred-target'],
+						['cred-2', 'cred-target'],
+					]),
+					packageCredentials: new Map([
+						['cred-1', packageFile()],
+						['cred-2', packageFile({ id: 'cred-2' })],
+					]),
+				}),
+			);
+
+			expect(result.candidates.map(({ sourceId }) => sourceId)).toEqual(['cred-1', 'cred-2']);
+			expect(credentialsFinder.findById).toHaveBeenCalledTimes(1);
 		});
 	});
 

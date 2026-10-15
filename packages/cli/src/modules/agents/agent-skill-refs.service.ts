@@ -38,7 +38,7 @@ export interface AgentSkillsSnapshot {
  * version, and for the skill bodies they resolve to. All other code reads and
  * writes skill refs through this service.
  *
- * With the skills hub on (the `125_context_skills` flag), the refs of a draft are the
+ * With the skills hub on (`N8N_AGENTS_SKILLS_HUB_ENABLED`), the refs of a draft are the
  * `agent_skill_dependency` rows and the refs of a published version are the
  * `agent_version_skill_dependency` pins, in attach order. The skill bodies come
  * from the skills hub.
