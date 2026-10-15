@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_a82b90cd60e3b1::t_4d5fc0f5243201 186-187
+packages/@n8n/instance-ai/knowledge-base/reference/open-ai-output-shape.md
+  s_a82b90cd60e3b1::t_3d5094fd0cb937 91-92,94-96
+  s_a82b90cd60e3b1::t_0f7e2425c0bdff 64-90,93,97-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2097d1a7136f5efc3ce36ba537b3d7b8e40ff00b",
+  "prompts": {},
+  "sessions": {
+    "s_a82b90cd60e3b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72117c39-b48e-4ab1-9bf0-e6225664a8dd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

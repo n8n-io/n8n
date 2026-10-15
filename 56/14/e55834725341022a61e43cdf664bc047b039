@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 3,14,24-26,50,63-64,72,80-99,103-106,115-116,125-126,149,158,187-189,193-194,201,212-214,218-219,226,238,281-282
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTaskCancellation.ts
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 25-33,52,73
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 224-240,487-489,528,1571,1577,1637,1645
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 24,1368-1412
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTaskCancellation.test.ts
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 1,115-137
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPlan.test.ts
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 1,21-98,127-140
+packages/frontend/editor-ui/src/features/agents/__tests__/fixtures/agent-plan.ts
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 1,48-49
+  s_fbba0b32ee6f59::t_9eaa0f42cdb99b 50-66
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 8267-8268
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 25-33
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_fbba0b32ee6f59::t_fa6fb46728fcae 258-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5614e55834725341022a61e43cdf664bc047b039",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
