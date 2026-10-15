@@ -127,12 +127,14 @@ describe('sendPublicApiErrorResponse', () => {
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		});
 
-		it('logs and reports an OperationalError, which maps to a server error', () => {
+		it('logs an OperationalError, which maps to a server error, but does not send it to Sentry', () => {
 			const res = createMockRes();
 			sendPublicApiErrorResponse(res, new OperationalError('temporarily down'));
 
+			expect(res._payload.statusCode).toBe(500);
 			expect(logger.error).toHaveBeenCalledTimes(1);
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			// Operational errors default to the warning level, which Sentry drops.
+			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
 		it('logs and reports a 5xx ResponseError', () => {
@@ -239,6 +241,48 @@ describe('sendPublicApiErrorResponse', () => {
 
 			expect(res._payload.statusCode).toBe(500);
 			expect(res._payload.body).toEqual({ message: 'Internal server error' });
+			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+		});
+
+		it('scrubs secrets from the stack that is sent to Sentry', () => {
+			const error = new Error('plain');
+			error.stack = 'Error: plain\n    at fetchData (https://files.example.com/doc?sig=zzz111)';
+			sendPublicApiErrorResponse(createMockRes(), error);
+
+			const reported = errorReporter.error.mock.calls[0][0] as Error;
+			expect(reported.stack).not.toContain('sig=zzz111');
+		});
+
+		it('sends a copy without secrets in the message, stack or causes', () => {
+			const original = new Error('call failed with Bearer abcdefghijklmnop', {
+				cause: new Error('upstream https://api.example.com/hook?token=abc'),
+			});
+			sendPublicApiErrorResponse(createMockRes(), original);
+
+			const reported = errorReporter.error.mock.calls[0][0] as Error;
+			expect(reported).not.toBe(original);
+			expect(reported.message).not.toContain('abcdefghijklmnop');
+			expect(reported.stack).not.toContain('abcdefghijklmnop');
+			expect(reported.cause).toBeInstanceOf(Error);
+			expect((reported.cause as Error).message).not.toContain('token=abc');
+		});
+
+		it('does not send an axios error to Sentry, but still logs it', () => {
+			const error = Object.assign(new Error('upstream failed'), { isAxiosError: true });
+			sendPublicApiErrorResponse(createMockRes(), error);
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('does not send an error marked shouldReport: false to Sentry, but still logs it', () => {
+			sendPublicApiErrorResponse(
+				createMockRes(),
+				new UnexpectedError('quiet failure', { shouldReport: false }),
+			);
+
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
 		it('reports an error when the response has no request', () => {
