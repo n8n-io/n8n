@@ -161,9 +161,9 @@ export function findHostEventRenderer(
 }
 
 /**
- * Identity of a host event: its `name` and `key` when it has a key, else its
- * `id`. A keyed update keeps the identity, so the view also uses it as the
- * Vue key and keeps the component mounted.
+ * A string that stays the same when a host event updates. Keyed events use
+ * `name` and `key`, because an update in a later message gets a new `id`.
+ * Events without a key never update, so they use `id`.
  */
 export function hostEventIdentity(event: AgentsChatHostEvent): string {
 	return event.key === undefined

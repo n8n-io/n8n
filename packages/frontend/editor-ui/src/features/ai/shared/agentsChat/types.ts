@@ -148,9 +148,14 @@ export interface ChatMessageAttachment {
  * and `key` in place, in the same message or in the same tool run.
  */
 export interface AgentsChatHostEvent {
+	/** Set by the chat for each event of a message. The server sends no id. */
 	id: string;
 	name: string;
 	payload: unknown;
+	/**
+	 * Set when the provider emits the event with a key, which makes the event
+	 * updatable. A later event with the same name and key replaces it.
+	 */
 	key?: string;
 }
 
