@@ -2696,6 +2696,15 @@ describe('update-workflow MCP tool', () => {
 				);
 			});
 
+			test('treats an empty expectedChecksum as stale instead of skipping the check', async () => {
+				const result = await callHandler({ workflowId: 'wf-1', expectedChecksum: '', operations });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.errorCode).toBe('WORKFLOW_CONFLICT');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
 			test('maps a conflict raised by the service at save time to WORKFLOW_CONFLICT without recovery', async () => {
 				const expectedChecksum = await calculateWorkflowChecksum(buildExistingWorkflow());
 				updateMock.mockRejectedValue(new WorkflowChecksumConflictError());

@@ -914,7 +914,7 @@ function buildUpdateTelemetryPayload({
 			opTypes: operations.map((op) => op.type),
 			hasVersionName: !!versionName,
 			hasVersionDescription: !!versionDescription,
-			hasExpectedChecksum: !!expectedChecksum,
+			hasExpectedChecksum: expectedChecksum !== undefined,
 		},
 	};
 }
@@ -923,13 +923,14 @@ function buildUpdateTelemetryPayload({
  * Rejects the update when the workflow changed after the client read it. Runs
  * before the operations are applied, so a stale batch fails fast. The same
  * checksum is also passed to `WorkflowService.update`, which checks it again
- * against a fresh read just before it saves.
+ * under a row lock in the same transaction as the save.
  */
 async function assertChecksumMatches(
 	workflow: FoundWorkflow,
 	expectedChecksum: string | undefined,
 ): Promise<void> {
-	if (!expectedChecksum) {
+	// Only an omitted checksum skips the check; an empty one must fail the comparison.
+	if (expectedChecksum === undefined) {
 		return;
 	}
 
@@ -1372,9 +1373,9 @@ export const createUpdateWorkflowTool = (
 						versionName: versionMetadata.name,
 						versionDescription: versionMetadata.description,
 						...(tagIds !== undefined ? { tagIds } : {}),
-						// Re-checked against a fresh read inside the service, which closes
-						// most of the window left open by the async validation above.
-						...(expectedChecksum ? { expectedChecksum } : {}),
+						// Re-checked inside the service under a row lock in the save
+						// transaction, so a concurrent edit cannot land before this write.
+						...(expectedChecksum !== undefined ? { expectedChecksum } : {}),
 					});
 				} catch (updateError) {
 					if (updateError instanceof WorkflowChecksumConflictError) {

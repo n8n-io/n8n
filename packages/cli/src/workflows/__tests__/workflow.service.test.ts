@@ -24,7 +24,7 @@ import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { QueryFailedError } from '@n8n/typeorm';
-import type { IConnections, INode } from 'n8n-workflow';
+import { calculateWorkflowChecksum, type IConnections, type INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -37,6 +37,7 @@ import {
 	UnprocessableRequestError,
 } from '@n8n/errors';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
+import { WorkflowChecksumConflictError } from '@/errors/response-errors/workflow-checksum-conflict.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { SharedWorkflowRepository } from '@n8n/db';
@@ -470,6 +471,8 @@ describe('WorkflowService', () => {
 			update: Mock;
 			updateContent: Mock;
 			get: Mock;
+			findForContentUpdate: Mock;
+			runInTransaction: Mock;
 		}>;
 
 		beforeEach(() => {
@@ -679,6 +682,100 @@ describe('WorkflowService', () => {
 				expect.anything(),
 			);
 			expect(eventServiceMock.emit).not.toHaveBeenCalled();
+		});
+
+		describe('checksum-guarded saves', () => {
+			const trxCtx: OperationContext = { trx: mock<Transaction>() };
+
+			beforeEach(() => {
+				workflowRepositoryMock.runInTransaction.mockImplementation(
+					async (_ctx: OperationContext, fn: (trx: unknown, ctx: OperationContext) => unknown) =>
+						await fn(mock(), trxCtx),
+				);
+			});
+
+			test('re-checks the checksum against a locked read in the save transaction', async () => {
+				const original = setupExistingWorkflow();
+				const expectedChecksum = await calculateWorkflowChecksum(original);
+				workflowRepositoryMock.findForContentUpdate.mockResolvedValue(original);
+
+				await workflowService.update(
+					mock<User>(),
+					Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
+					original.id,
+					{ expectedChecksum },
+				);
+
+				expect(workflowRepositoryMock.runInTransaction).toHaveBeenCalledTimes(1);
+				expect(workflowRepositoryMock.findForContentUpdate).toHaveBeenCalledWith(
+					original.id,
+					trxCtx,
+				);
+				expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
+					original.id,
+					expect.anything(),
+					expect.objectContaining({ trx: trxCtx.trx }),
+				);
+				expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					original.id,
+					false,
+					'ui',
+					undefined,
+					undefined,
+					{ ctx: trxCtx, propagateErrors: true },
+				);
+			});
+
+			test('rejects and writes nothing when the workflow changed during preparation', async () => {
+				const original = setupExistingWorkflow();
+				const expectedChecksum = await calculateWorkflowChecksum(original);
+				workflowRepositoryMock.findForContentUpdate.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), { ...original, name: 'Saved by someone else' }),
+				);
+
+				await expect(
+					workflowService.update(
+						mock<User>(),
+						Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
+						original.id,
+						{ expectedChecksum },
+					),
+				).rejects.toThrow(WorkflowChecksumConflictError);
+
+				expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
+				expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
+				expect(eventServiceMock.emit).not.toHaveBeenCalled();
+			});
+
+			test('keeps the plain save path when no checksum is given', async () => {
+				const original = setupExistingWorkflow();
+
+				await workflowService.update(
+					mock<User>(),
+					Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
+					original.id,
+				);
+
+				expect(workflowRepositoryMock.runInTransaction).not.toHaveBeenCalled();
+				expect(workflowRepositoryMock.findForContentUpdate).not.toHaveBeenCalled();
+				expect(workflowRepositoryMock.updateContent).toHaveBeenCalled();
+			});
+
+			test('skips the re-check when forceSave is set', async () => {
+				const original = setupExistingWorkflow();
+
+				await workflowService.update(
+					mock<User>(),
+					Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
+					original.id,
+					{ expectedChecksum: 'stale', forceSave: true },
+				);
+
+				expect(workflowRepositoryMock.runInTransaction).not.toHaveBeenCalled();
+				expect(workflowRepositoryMock.findForContentUpdate).not.toHaveBeenCalled();
+			});
 		});
 
 		test('can require history persistence without a transaction', async () => {

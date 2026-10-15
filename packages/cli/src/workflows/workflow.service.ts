@@ -558,7 +558,16 @@ export class WorkflowService {
 		options: WorkflowUpdateOptions = {},
 	): Promise<WorkflowEntity> {
 		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options);
-		const saved = await this.savePreparedUpdate(prepared);
+		// A checksum-guarded save re-checks the checksum under a row lock, so the check
+		// and the writes must share one transaction. History errors then propagate:
+		// a failed insert aborts the transaction, so the save cannot continue anyway.
+		const saved = prepared.options.expectedChecksum
+			? await this.workflowRepository.runInTransaction(
+					{},
+					async (_trx, ctx) =>
+						await this.savePreparedUpdate(prepared, ctx, { propagateVersionHistoryErrors: true }),
+				)
+			: await this.savePreparedUpdate(prepared);
 		return await this.finishUpdate(prepared, saved);
 	}
 
@@ -870,6 +879,7 @@ export class WorkflowService {
 			versionIdToPublish,
 			settingsChanged,
 			options: {
+				expectedChecksum: !forceSave && expectedChecksum ? expectedChecksum : undefined,
 				tagIds,
 				autosaved,
 				source,
@@ -890,7 +900,20 @@ export class WorkflowService {
 	) {
 		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
 		const workflowId = prepared.workflow.id;
-		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
+		const { expectedChecksum, tagIds, autosaved, source, versionName, versionDescription } =
+			prepared.options;
+		if (expectedChecksum) {
+			// The check in prepareUpdate ran before slow, async preparation. Re-read the
+			// row (locked when ctx carries a transaction) so a concurrent save that landed
+			// in between is rejected instead of overwritten.
+			const current = await this.workflowRepository.findForContentUpdate(workflowId, ctx);
+			if (!current) {
+				throw new BadRequestError(
+					`Workflow with ID "${workflowId}" could not be found to be updated.`,
+				);
+			}
+			await this._detectConflicts(current, expectedChecksum);
+		}
 		if (saveNewVersion) {
 			const versionMetadata =
 				versionName || versionDescription
