@@ -1580,8 +1580,6 @@ export interface InstanceAiContext {
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
-	/** Selected skill source for inline tool guidance. */
-	runtimeSkillCatalog?: RuntimeSkillSource;
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
@@ -2246,8 +2244,8 @@ export interface OrchestrationContext {
 	localMcpServer?: LocalMcpServer;
 	/** Validated, approval-wrapped MCP tools available to Agent Builder. */
 	mcpTools?: InstanceAiToolRegistry;
-	/** Runtime-loadable skills available to the agent. */
-	runtimeSkills?: RuntimeSkillSource;
+	/** Skills that the agent can load. */
+	skills?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */

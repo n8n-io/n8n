@@ -64,7 +64,6 @@ vi.mock('@n8n/instance-ai', async () => {
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		),
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({ registry: { skills: [] } })),
 		setupSandboxWorkspace: vi.fn(),
 		traceSandboxOperation: vi.fn(
 			async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
@@ -77,13 +76,12 @@ vi.mock('@n8n/instance-ai', async () => {
 			disabledTools: [],
 			source: {
 				registry: {
-					skillsHash: 'runtime-skills-hash',
+					skillsHash: 'skills-hash',
 					skills: [{ id: 'data-table-manager' }],
 				},
 				loadSkill: vi.fn(),
 			},
 		})),
-		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
@@ -266,7 +264,6 @@ import {
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
-	disabledInstanceAiSkillIds,
 	loadInstanceAiPromptSkills,
 	resumeAgentRun,
 	streamAgentRun,
@@ -807,7 +804,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			disabledTools: [],
 			source: {
 				registry: {
-					skillsHash: 'runtime-skills-hash',
+					skillsHash: 'skills-hash',
 					skills: [{ id: 'data-table-manager' }],
 				},
 				loadSkill: vi.fn(),
@@ -849,7 +846,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				orchestrationContext: {
 					setupPanelEnabled?: boolean;
 					workspace?: unknown;
-					runtimeSkills?: {
+					skills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
 						loadSkill: (skillId: string) => Promise<unknown>;
 					};
@@ -1033,6 +1030,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		if (agentBuildingAvailable) {
 			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
 		}
+		const resolveSkills = vi.spyOn(service.skillsService, 'resolveForRun');
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1045,7 +1043,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			boundGates,
 		);
 		// The agent-building skills follow whether the context has a builder delegate.
-		expect(disabledInstanceAiSkillIds).toHaveBeenCalledWith(
+		expect(resolveSkills).toHaveBeenCalledWith(
+			expect.anything(),
 			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
 		);
 		const expectedGates = boundGates ?? {
@@ -1084,7 +1083,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
-		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+		expect(environment.orchestrationContext.skills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
 
@@ -1179,7 +1178,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
-		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+		expect(unavailableEnvironment.orchestrationContext.skills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
 		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
@@ -1215,7 +1214,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				orchestrationContext: {
 					outputRedaction?: unknown;
 					workspace?: unknown;
-					runtimeSkills?: {
+					skills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
 						loadSkill: (skillId: string) => Promise<unknown>;
 					};

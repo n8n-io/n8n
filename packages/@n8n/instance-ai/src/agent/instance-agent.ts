@@ -11,7 +11,6 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
-import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
@@ -101,7 +100,6 @@ export async function createInstanceAgent(
 	const domainContext: InstanceAiContext = {
 		...context,
 		tracing: orchestrationContext?.tracing,
-		runtimeSkillCatalog: context.runtimeSkillCatalog ?? orchestrationContext?.runtimeSkills,
 	};
 	if (orchestrationContext) {
 		orchestrationContext.domainContext = domainContext;
@@ -247,14 +245,12 @@ export async function createInstanceAgent(
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
-	const runtimeSkills = orchestrationContext?.runtimeSkills;
+	const skills = orchestrationContext?.skills;
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
-	attachRuntimeWorkspaceCapabilities(agent, {
-		workspace: orchestrationContext?.workspace,
-		runtimeSkills,
-	});
+	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
+	if (skills) agent.skills(skills);
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);
@@ -305,7 +301,7 @@ export async function createInstanceAgent(
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
 			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
-			runtimeSkills: runtimeSkills?.registry,
+			skills: skills?.registry,
 		}),
 	);
 

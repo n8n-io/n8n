@@ -569,7 +569,7 @@ background-agent routing from captured `tool-call`, `tool-result`, `tool-error`,
 `agent-spawned` events. Use them when a regression is about which path the
 agent chooses, not whether a generated workflow executes.
 
-To inspect runtime skill loading, run a focused verbose pass:
+To inspect skill loading, run a focused verbose pass:
 
 ```bash
 pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fail-on-zero-pass

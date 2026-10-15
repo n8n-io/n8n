@@ -2,9 +2,9 @@ import type { RuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiBuildMode, InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import type { SkillVariant } from './skill-variants';
 import { CONCISE_COMMUNICATION_STYLE_SECTION } from '../agent/communication-style.prompt';
 import { createSystemPromptRenderer, getSystemPrompt } from '../agent/system-prompt';
+import type { SkillVariant } from '../skills/skill-variants';
 import { ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 
 export interface PromptProfile {

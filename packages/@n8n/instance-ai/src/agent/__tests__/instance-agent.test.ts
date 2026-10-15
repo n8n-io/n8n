@@ -408,8 +408,8 @@ describe('createInstanceAgent', () => {
 		});
 	});
 
-	it('attaches runtime skills to the orchestrator when provided by the context', async () => {
-		const runtimeSkills = {
+	it('attaches skills to the orchestrator when provided by the context', async () => {
+		const skills = {
 			registry: {
 				schemaVersion: 1,
 				skillsHash: 'skills-hash',
@@ -443,16 +443,13 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'skills-test',
-				runtimeSkills,
+				skills,
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
-		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
-		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
-			expect.objectContaining({ runtimeSkillCatalog: runtimeSkills }),
-		);
+		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(skills);
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {

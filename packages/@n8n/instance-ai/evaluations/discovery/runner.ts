@@ -8,7 +8,7 @@
 // stubbed services.
 //
 // What's tested: the orchestrator's first dispatch decision. Tools are NOT
-// stubbed — when the orchestrator loads a runtime skill or reaches for a
+// stubbed — when the orchestrator loads a skill or reaches for a
 // Computer Use browser tool, the tool-call event fires before any downstream
 // failure, so the discovery check still sees the dispatch intent. The wall-clock
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
@@ -62,7 +62,7 @@ import {
 	executeResumableStream,
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
-import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
+import { loadInstanceAiSkills } from '../../src/skills/skills';
 import type {
 	BuilderTurnStream,
 	InstanceAiContext,
@@ -237,7 +237,7 @@ export async function runOrchestratorTurn(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// `create-tasks` and skills. Discovery scenarios measure first-step
 		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
@@ -444,7 +444,7 @@ function createStubOrchestrationContext(
 		modelId: opts.modelId,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
-		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
+		skills: loadInstanceAiSkills(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
 		// Surface the localMcpServer so Computer Use browser tools are available to the

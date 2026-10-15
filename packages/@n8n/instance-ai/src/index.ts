@@ -20,7 +20,7 @@ import type * as ResumableStreamExecutorMod from './runtime/resumable-stream-exe
 import type * as RunStateRegistryMod from './runtime/run-state-registry';
 import type * as StreamRunnerMod from './runtime/stream-runner';
 import type * as TerminalResponseGuardMod from './runtime/terminal-response-guard';
-import type * as RuntimeSkillsMod from './skills/runtime-skills';
+import type * as SkillsMod from './skills/skills';
 import type * as StorageMod from './storage';
 import type * as InstanceContextReachMod from './stream/instance-context-reach';
 import type * as MapChunkMod from './stream/map-chunk';
@@ -137,9 +137,7 @@ const loadInstanceContextReach = lazyModule<typeof InstanceContextReachMod>(() =
 const loadInstanceContextState = lazyModule<typeof InstanceContextStateMod>(() =>
 	require('./runtime/instance-context-state'),
 );
-const loadRuntimeSkills = lazyModule(
-	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
-);
+const loadSkills = lazyModule(() => require('./skills/skills') as typeof SkillsMod);
 const loadPromptProfiles = lazyModule(
 	() => require('./prompts/prompt-profiles') as typeof PromptProfilesMod,
 );
@@ -322,14 +320,12 @@ export type {
 	TraceToolSuspend,
 	TraceToolResume,
 } from './tracing/trace-replay';
-export type { SubAgentOptions } from './agent/sub-agent-factory';
-export declare const INSTANCE_AI_SKILLS_DIR: typeof RuntimeSkillsMod.INSTANCE_AI_SKILLS_DIR;
-export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSource =
-	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
-export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSourceForBuildMode =
-	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSourceForBuildMode);
-export const loadInstanceAiPromptSkills: typeof RuntimeSkillsMod.loadInstanceAiPromptSkills =
-	lazyFunction(() => loadRuntimeSkills().loadInstanceAiPromptSkills);
+export const loadInstanceAiSkills: typeof SkillsMod.loadInstanceAiSkills = lazyFunction(
+	() => loadSkills().loadInstanceAiSkills,
+);
+export const loadInstanceAiPromptSkills: typeof SkillsMod.loadInstanceAiPromptSkills = lazyFunction(
+	() => loadSkills().loadInstanceAiPromptSkills,
+);
 export type { PromptProfile } from './prompts/prompt-profiles';
 export const resolvePromptProfile: typeof PromptProfilesMod.resolvePromptProfile = lazyFunction(
 	() => loadPromptProfiles().resolvePromptProfile,
@@ -340,11 +336,6 @@ export const assertInstanceAiPromptVersion: typeof PromptProfilesMod.assertInsta
 export const describePromptProfile: typeof PromptProfilesMod.describePromptProfile = lazyFunction(
 	() => loadPromptProfiles().describePromptProfile,
 );
-export {
-	CONFIG_EVALS_SKILL_ID,
-	disabledInstanceAiSkillIds,
-	type InstanceAiSkillFlags,
-} from './skills/skill-gates';
 
 export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
 	() => loadInstanceAgent().createInstanceAgent,
@@ -451,7 +442,6 @@ defineLazyExport(
 	() => loadInstanceContextState().suspendedInstanceContextSchema,
 );
 defineLazyExport('CONCISE_PROMPT_VERSION', () => loadPromptProfiles().CONCISE_PROMPT_VERSION);
-defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
 defineLazyExport(
 	'INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG',
 	() => loadLivenessPolicy().INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,

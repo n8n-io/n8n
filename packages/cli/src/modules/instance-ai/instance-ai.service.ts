@@ -224,7 +224,6 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
-import { loadOnboardingSkill } from './onboarding';
 import { ONBOARDING_OPENING } from './onboarding-opening';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -2935,7 +2934,7 @@ export class InstanceAiService {
 			taskStorage,
 			timeZone: this.defaultTimeZone,
 			localMcpServer: context.localMcpServer,
-			runtimeSkills: skills.source,
+			skills: skills.source,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			touchRun: () => this.runState.touchActiveRun(threadId),
@@ -4204,7 +4203,9 @@ export class InstanceAiService {
 			const unopenedOnboarding =
 				thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
 			const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
-			const onboardingSkill = unopenedOnboarding ? await loadOnboardingSkill() : undefined;
+			const onboardingSkill = unopenedOnboarding
+				? await this.skillsService.loadOnboardingInstructions()
+				: undefined;
 
 			if (isOpeningTurn) {
 				const handoffTitle = unopenedOnboarding

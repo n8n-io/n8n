@@ -71,9 +71,8 @@ vi.mock('../storage', () => ({
 	WorkflowLoopStorage: class WorkflowLoopStorage {},
 }));
 vi.mock('../stream/map-chunk', () => ({ mapAgentChunkToEvent: () => ({ type: 'event' }) }));
-vi.mock('../skills/runtime-skills', () => ({
-	INSTANCE_AI_SKILLS_DIR: '/instance-ai-skills',
-	loadInstanceAiRuntimeSkillSource: () => 'runtime-skill-source',
+vi.mock('../skills/skills', () => ({
+	loadInstanceAiSkills: () => 'skills',
 }));
 vi.mock('../utils/eval-agents', () => ({
 	createEvalAgent: () => 'eval-agent',
@@ -214,8 +213,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.TraceIndex)).toBeInstanceOf(entrypoint.TraceIndex);
 		expect(construct(entrypoint.TraceWriter)).toBeInstanceOf(entrypoint.TraceWriter);
 
-		expect(call(entrypoint.loadInstanceAiRuntimeSkillSource)).toBe('runtime-skill-source');
-		expect(entrypoint.INSTANCE_AI_SKILLS_DIR).toBe('/instance-ai-skills');
+		expect(call(entrypoint.loadInstanceAiSkills)).toBe('skills');
 
 		expect(call(entrypoint.formatPreviousAttempts)).toBe('previous attempts');
 		expect(construct(entrypoint.ThreadIterationLogStorage)).toBeInstanceOf(

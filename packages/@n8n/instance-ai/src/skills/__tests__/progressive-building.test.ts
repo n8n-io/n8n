@@ -1,17 +1,19 @@
 import { createSkillLoadTool, filterRuntimeSkillSource } from '@n8n/agents';
+import type { InstanceAiBuildMode } from '@n8n/api-types';
 
 import { getSystemPrompt } from '../../agent/system-prompt';
-import {
-	loadInstanceAiRuntimeSkillSource,
-	loadInstanceAiRuntimeSkillSourceForBuildMode,
-} from '../runtime-skills';
-import { disabledInstanceAiSkillIds } from '../skill-gates';
+import { resolvePromptProfile } from '../../prompts/prompt-profiles';
+import { loadInstanceAiPromptSkills, loadInstanceAiSkills } from '../skills';
+
+async function loadModeSkills(mode: InstanceAiBuildMode | undefined) {
+	return (await loadInstanceAiPromptSkills(resolvePromptProfile({ mode }).profile)).source;
+}
 
 describe('progressive workflow skill variants', () => {
 	it('excludes planning and changes only the workflow-building and post-build instructions', async () => {
-		const source = loadInstanceAiRuntimeSkillSource();
+		const source = loadInstanceAiSkills();
 		const originalRegistry = structuredClone(source.registry);
-		const progressive = await loadInstanceAiRuntimeSkillSourceForBuildMode('progressive');
+		const progressive = await loadModeSkills('progressive');
 		const policy = await source.loadSkill('progressive-building');
 		if (!policy) throw new Error('Expected the progressive policy');
 
@@ -38,31 +40,19 @@ describe('progressive workflow skill variants', () => {
 
 		expect(progressive.registry.skillsHash).not.toBe(source.registry.skillsHash);
 		expect(source.registry).toEqual(originalRegistry);
-		const control = await loadInstanceAiRuntimeSkillSourceForBuildMode('default');
+		const control = await loadModeSkills('default');
 		expect(control.registry).toEqual(
 			filterRuntimeSkillSource(source, ['progressive-building']).registry,
 		);
-		await expect(loadInstanceAiRuntimeSkillSourceForBuildMode(undefined)).resolves.toBe(control);
+		await expect(loadModeSkills(undefined)).resolves.toBe(control);
 	});
 
 	it('serves the selected skills through load_skill', async () => {
-		const policy = await loadInstanceAiRuntimeSkillSource().loadSkill('progressive-building');
+		const policy = await loadInstanceAiSkills().loadSkill('progressive-building');
 		if (!policy) throw new Error('Expected the progressive policy');
-		const excluded = disabledInstanceAiSkillIds({
-			configEvalsEnabled: true,
-			instanceContextEnabled: true,
-			agentBuildingEnabled: true,
-		});
-		const control = filterRuntimeSkillSource(
-			await loadInstanceAiRuntimeSkillSourceForBuildMode('default'),
-			excluded,
-		);
-		const progressive = filterRuntimeSkillSource(
-			await loadInstanceAiRuntimeSkillSourceForBuildMode('progressive'),
-			excluded,
-		);
+		const progressive = await loadModeSkills('progressive');
 		const loadProgressive = createSkillLoadTool(progressive);
-		const loadControl = createSkillLoadTool(control);
+		const loadControl = createSkillLoadTool(await loadModeSkills('default'));
 
 		for (const skillId of ['workflow-builder', 'post-build-flow']) {
 			await expect(loadProgressive.handler?.({ skillId }, {})).resolves.toHaveProperty(

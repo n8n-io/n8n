@@ -134,7 +134,7 @@ writes the bundle again and writes the manifest last. A matching manifest is
 trusted, and setup reads no other bundle file. Each cached sandbox entry keeps
 the result, so later runs do not read the manifest again.
 
-Runtime skills are not stored in the sandbox. `load_skill` serves the skill
+Skills are not stored in the sandbox. `load_skill` serves the skill
 text from memory. Skills refer to the knowledge base with paths relative to the
 workspace root, such as `knowledge-base/index.json`.
 

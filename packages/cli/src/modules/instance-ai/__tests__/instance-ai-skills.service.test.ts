@@ -1,60 +1,50 @@
-import { createRuntimeSkillSource } from '@n8n/agents';
-import type { Mock } from 'vitest';
+import { loadInstanceAiSkills, resolvePromptProfile } from '@n8n/instance-ai';
 
-vi.mock('@n8n/instance-ai', () => ({
-	disabledInstanceAiSkillIds: vi.fn(() => []),
-	loadInstanceAiPromptSkills: vi.fn(),
-}));
+import { InstanceAiSkillsService, type InstanceAiSkillFlags } from '../instance-ai-skills.service';
 
-import {
-	disabledInstanceAiSkillIds,
-	loadInstanceAiPromptSkills,
-	type PromptProfile,
-} from '@n8n/instance-ai';
-
-import { InstanceAiSkillsService } from '../instance-ai-skills.service';
-
-const profile = { version: 'test@1' } as unknown as PromptProfile;
-const flags = {
-	configEvalsEnabled: false,
-	instanceContextEnabled: false,
-	agentBuildingEnabled: false,
+const allFlagsOn: InstanceAiSkillFlags = {
+	configEvalsEnabled: true,
+	instanceContextEnabled: true,
+	agentBuildingEnabled: true,
 };
-
-function skill(id: string) {
-	return { id, name: id, description: `Use ${id}.`, instructions: `Do ${id}.` };
-}
 
 describe('InstanceAiSkillsService', () => {
 	const service = new InstanceAiSkillsService();
-	const profileSource = createRuntimeSkillSource([skill('workflow-builder'), skill('evals')]);
+	const defaultProfile = resolvePromptProfile({ mode: 'default' }).profile;
 
-	beforeEach(() => {
-		vi.clearAllMocks();
-		(loadInstanceAiPromptSkills as Mock).mockResolvedValue({
-			source: profileSource,
-			disabledTools: ['submit-workflow'],
+	describe('resolveForRun', () => {
+		it('returns the profile skills and disabled tools when every flag is on', async () => {
+			const progressive = resolvePromptProfile({ mode: 'progressive' }).profile;
+
+			const skills = await service.resolveForRun(progressive, allFlagsOn);
+
+			expect(skills.disabledTools).toEqual(['create-tasks']);
+			expect(skills.source.registry.skills.map(({ id }) => id)).not.toContain('planning');
+		});
+
+		it.each([
+			['configEvalsEnabled', ['config-evals', 'config-eval-playbook']],
+			['instanceContextEnabled', ['instance-awareness']],
+			['agentBuildingEnabled', ['agent-builder', 'intent-recognition']],
+		] as const)('removes the skills that %s turns off', async (flag, skillIds) => {
+			const on = await service.resolveForRun(defaultProfile, allFlagsOn);
+			const off = await service.resolveForRun(defaultProfile, { ...allFlagsOn, [flag]: false });
+
+			const onIds = on.source.registry.skills.map(({ id }) => id);
+			const offIds = off.source.registry.skills.map(({ id }) => id);
+			expect(onIds).toEqual(expect.arrayContaining([...skillIds]));
+			expect(onIds.filter((id) => !offIds.includes(id)).sort()).toEqual([...skillIds].sort());
+			for (const skillId of skillIds) {
+				await expect(off.source.loadSkill(skillId)).resolves.toBeNull();
+			}
 		});
 	});
 
-	describe('resolveForRun', () => {
-		it('returns the profile skills and disabled tools when no flag turns a skill off', async () => {
-			const skills = await service.resolveForRun(profile, flags);
+	describe('loadOnboardingInstructions', () => {
+		it('returns the instructions of the suggest-automations skill', async () => {
+			const skill = await loadInstanceAiSkills().loadSkill('suggest-automations');
 
-			expect(loadInstanceAiPromptSkills).toHaveBeenCalledWith(profile);
-			expect(disabledInstanceAiSkillIds).toHaveBeenCalledWith(flags);
-			expect(skills.source).toBe(profileSource);
-			expect(skills.disabledTools).toEqual(['submit-workflow']);
-		});
-
-		it('removes the skills that the flags turn off', async () => {
-			(disabledInstanceAiSkillIds as Mock).mockReturnValue(['evals']);
-
-			const { source } = await service.resolveForRun(profile, flags);
-
-			expect(source.registry.skills.map((entry) => entry.id)).toEqual(['workflow-builder']);
-			expect(source.registry.skillsHash).not.toBe(profileSource.registry.skillsHash);
-			await expect(source.loadSkill('evals')).resolves.toBeNull();
+			await expect(service.loadOnboardingInstructions()).resolves.toBe(skill?.instructions);
 		});
 	});
 });

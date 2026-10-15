@@ -1537,10 +1537,10 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
 	});
 
-	it('attaches runtime skill metadata to trace inputs without skill bodies', () => {
+	it('attaches skill metadata to trace inputs without skill bodies', () => {
 		const inputs = buildAgentTraceInputs({
 			tools: createToolRegistry(),
-			runtimeSkills: createRuntimeSkillRegistry([
+			skills: createRuntimeSkillRegistry([
 				{
 					id: 'data-table-manager',
 					name: 'data-table-manager',

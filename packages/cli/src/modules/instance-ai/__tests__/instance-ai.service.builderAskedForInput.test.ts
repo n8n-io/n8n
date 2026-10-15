@@ -13,11 +13,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(),
 		setupSandboxWorkspace: vi.fn(),
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
-			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: vi.fn(),
-		})),
-		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
