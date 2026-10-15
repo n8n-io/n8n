@@ -180,6 +180,9 @@ describe('runScriptedGateVerification — merge consistency', () => {
 
 		expect(analysis.success).toBe(false);
 		expect(result.status).toBe('error');
+		expect(analysis.nodeErrors).toEqual([
+			{ nodeName: 'Revise', message: '[decision: decline] expression error' },
+		]);
 	});
 
 	it('discloses simulated nodes reached only in an earlier pass', async () => {
