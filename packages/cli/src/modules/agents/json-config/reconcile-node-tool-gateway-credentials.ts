@@ -166,6 +166,42 @@ export function listAiGatewayManagedCredentialTypes(
 	return [...managed].filter((credentialType) => !unsatisfied.has(credentialType));
 }
 
+/**
+ * Write a resolved credential into every node-tool slot of its type that is
+ * still empty and displayed for the node's current parameters. A slot with a
+ * real id or a managed marker is left alone. Returns the number of slots filled.
+ */
+export function assignCredentialToNodeTools(
+	tools: AgentJsonToolConfig[] | undefined,
+	nodeTypes: NodeTypes,
+	credentialType: string,
+	credential: { id: string; name: string },
+): number {
+	let assigned = 0;
+	for (const tool of tools ?? []) {
+		if (tool.type !== 'node') continue;
+		const node = tool.node;
+
+		let description: INodeTypeDescription;
+		try {
+			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
+		} catch {
+			continue;
+		}
+		if (!description.credentials?.some((c) => c.name === credentialType)) continue;
+
+		const existing = node.credentials?.[credentialType];
+		if (existing && (existing.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in existing)) continue;
+
+		const resolvedParameters = resolveNodeParameters(node, description);
+		if (!isCredentialDisplayed(node, description, credentialType, resolvedParameters)) continue;
+
+		node.credentials = { ...(node.credentials ?? {}), [credentialType]: { ...credential } };
+		assigned++;
+	}
+	return assigned;
+}
+
 function reconcileNode(
 	node: NodeToolConfig,
 	nodeTypes: NodeTypes,

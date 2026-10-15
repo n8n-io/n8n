@@ -55,9 +55,14 @@ During an initial build:
   pending: the model choice and open decisions as \`questions\`, one
   \`credentialRequests\` entry per credential slot, and one \`channels\` entry
   per drafted channel integration — it configures or skips each channel itself,
-  always as the last cards in the flow. Resolve its results — \`resolve_llm\`
-  with the model answer, patch returned credential ids into the config,
-  verify MCP servers — and finish every build step that waited on that setup.
+  always as the last cards in the flow. When a node tool needs a value that
+  only the user knows, such as a recipient address, write that field empty
+  and ask for it as a question with \`configPath\` set to that field.
+  \`finish_setup\` writes each resolved credential into the empty node-tool
+  slots of its type, and each answer that has a \`configPath\`, and lists them
+  in \`appliedToConfig\`. Do not patch those again. Resolve only the rest —
+  \`resolve_llm\` with the model answer, verify MCP servers, fix each entry in
+  \`configApplyErrors\` — and finish every build step that waited on that setup.
 - Do not call \`configure_channel\` again after \`finish_setup\` handles a channel card.
 - After \`finish_setup\`, end your reply with a short setup checklist for
   skipped or dismissed setup that remains unresolved — one line per item naming
