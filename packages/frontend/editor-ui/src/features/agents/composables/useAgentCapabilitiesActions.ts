@@ -14,7 +14,7 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createAgentSkill, getHubSkill, updateAgentSkillAvailability } from './useAgentApi';
+import { createAgentSkill, getHubSkill } from './useAgentApi';
 import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
@@ -66,7 +66,11 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * `onOpenAddSkillModal` via the shared `createAgentSkill` API call.
 	 * Unused when `localSkills` is provided.
 	 */
-	scheduleSkillSave: (payload: { skillId: string; skill: AgentSkill }) => void;
+	scheduleSkillSave: (payload: {
+		skillId: string;
+		skill: AgentSkill;
+		availableTo?: AgentSkillAvailability;
+	}) => void;
 	/**
 	 * Skill store for hosts whose bodies live outside an agent entity — inline
 	 * agents keep them in the node parameter. `bodies` is where the handlers
@@ -386,10 +390,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							[skillId]: sanitizedSkill,
 						},
 					};
-					scheduleSkillSave({ skillId, skill: sanitizedSkill });
-					if (availableTo && hubSkillsEnabled.value) {
-						void changeSkillAvailability(skillId, availableTo);
-					}
+					scheduleSkillSave({
+						skillId,
+						skill: sanitizedSkill,
+						...(availableTo && hubSkillsEnabled.value ? { availableTo } : {}),
+					});
 				},
 			},
 		});
@@ -574,20 +579,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				},
 			},
 		});
-	}
-
-	async function changeSkillAvailability(skillId: string, availableTo: AgentSkillAvailability) {
-		try {
-			await updateAgentSkillAvailability(
-				rootStore.restApiContext,
-				projectId.value,
-				agentId.value,
-				skillId,
-				availableTo,
-			);
-		} catch (error) {
-			showError(error, locale.baseText('agents.builder.skills.availableTo.error'));
-		}
 	}
 
 	async function attachHubSkill(

@@ -26,7 +26,7 @@ import {
 	listAttachableSkills,
 	createAgentSkill,
 	getHubSkill,
-	updateAgentSkillAvailability,
+	updateAgentSkill,
 } from '../composables/useAgentApi';
 import type { SkillListItem } from '@n8n/api-types';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -91,12 +91,14 @@ describe('useAgentApi', () => {
 			);
 		});
 
-		it('changes the target of an agent skill', async () => {
-			await updateAgentSkillAvailability(
+		it('saves the skill text and its target in one request', async () => {
+			await updateAgentSkill(
 				restApiContext,
 				'project-1',
 				'agent-1',
 				'skill-1',
+				skill,
+				'hash-1',
 				'instance',
 			);
 
@@ -104,7 +106,7 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'PATCH',
 				'/projects/project-1/agents/v2/agent-1/skills/skill-1',
-				{ availableTo: 'instance' },
+				{ ...skill, baseSkillHash: 'hash-1', availableTo: 'instance' },
 			);
 		});
 

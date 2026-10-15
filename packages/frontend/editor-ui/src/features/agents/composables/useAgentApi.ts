@@ -724,27 +724,13 @@ export const updateAgentSkill = async (
 	skillId: string,
 	updates: Partial<AgentSkill>,
 	baseSkillHash?: string,
+	availableTo?: AgentSkillAvailability,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
-		{ ...updates, baseSkillHash },
-	);
-};
-
-export const updateAgentSkillAvailability = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	skillId: string,
-	availableTo: AgentSkillAvailability,
-): Promise<AgentSkillMutationResponse> => {
-	return await makeRestApiRequest<AgentSkillMutationResponse>(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
-		{ availableTo },
+		{ ...updates, baseSkillHash, ...(availableTo ? { availableTo } : {}) },
 	);
 };
 

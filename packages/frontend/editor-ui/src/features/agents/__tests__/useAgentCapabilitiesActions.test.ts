@@ -8,11 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import {
-	createAgentSkill,
-	getHubSkill,
-	updateAgentSkillAvailability,
-} from '../composables/useAgentApi';
+import { createAgentSkill, getHubSkill } from '../composables/useAgentApi';
 import type { SkillDetail, SkillListItem } from '@n8n/api-types';
 import type {
 	AgentJsonConfig,
@@ -41,7 +37,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: vi.fn(),
 	getHubSkill: vi.fn(),
-	updateAgentSkillAvailability: vi.fn(),
 }));
 
 const { hasScopeSpy } = vi.hoisted(() => ({
@@ -938,46 +933,26 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		return { ...result, editData };
 	}
 
-	it('saves the content and changes the target of an edited skill', async () => {
-		vi.mocked(updateAgentSkillAvailability).mockResolvedValue(
-			{} as Awaited<ReturnType<typeof updateAgentSkillAvailability>>,
-		);
+	it('saves the content and the target of an edited skill in one skill save', () => {
 		const { editData, scheduleSkillSave } = openEdit();
 
 		editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
-		await flushPromises();
 
-		expect(scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });
-		expect(updateAgentSkillAvailability).toHaveBeenCalledWith(
-			expect.anything(),
-			'project-1',
-			'agent-1',
-			'tone',
-			'agent',
-		);
-	});
-
-	it('does not change the target when the edit keeps it or the skills hub is off', async () => {
-		openEdit().editData.onConfirm({ id: 'tone', skill: supportTone });
-		openEdit({ skillsHubEnabled: false }).editData.onConfirm({
-			id: 'tone',
+		expect(scheduleSkillSave).toHaveBeenCalledWith({
+			skillId: 'tone',
 			skill: supportTone,
 			availableTo: 'agent',
 		});
-		await flushPromises();
-
-		expect(updateAgentSkillAvailability).not.toHaveBeenCalled();
 	});
 
-	it('reports a refused target change', async () => {
-		const conflict = new Error('Other agents use this skill.');
-		vi.mocked(updateAgentSkillAvailability).mockRejectedValue(conflict);
-		const { editData } = openEdit();
+	it('saves no target when the edit keeps it or the skills hub is off', () => {
+		const kept = openEdit();
+		kept.editData.onConfirm({ id: 'tone', skill: supportTone });
+		const hubOff = openEdit({ skillsHubEnabled: false });
+		hubOff.editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
 
-		editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'instance' });
-		await flushPromises();
-
-		expect(showErrorSpy).toHaveBeenCalledWith(conflict, 'agents.builder.skills.availableTo.error');
+		expect(kept.scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });
+		expect(hubOff.scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });
 	});
 
 	it('tells the edit modal to check the edit permission', () => {
