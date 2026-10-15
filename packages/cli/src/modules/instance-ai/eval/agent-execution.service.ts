@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import {
 	AgentEvent,
 	sanitizeToolName as sanitizeMcpToolName,
@@ -497,6 +498,69 @@ export class EvalAgentExecutionService {
 				if (!segmentToolCalls.includes(entry)) segmentToolCalls.push(entry);
 			}
 		};
+		const terminalToolCalls = (): InstanceAiEvalAgentToolCallRecord[] => {
+			const kindByToolName = new Map(toolSummaries.map((tool) => [tool.name, tool.kind]));
+			const kindForTool = (tool: string): InstanceAiEvalAgentToolCallRecord['kind'] =>
+				kindByToolName.get(tool) ??
+				(mcpServers.some((server) => tool.startsWith(sanitizeMcpToolName(`${server.name}_`))) ||
+				(toolLedger.get(tool) ?? []).some((request) => request.nodeType?.startsWith('mcp:'))
+					? 'mcp'
+					: 'other');
+			const reported = segmentToolCalls.map(
+				(entry): InstanceAiEvalAgentToolCallRecord => ({
+					tool: entry.tool,
+					kind: kindForTool(entry.tool),
+					input: truncateRecordedValue(entry.input),
+					output: truncateRecordedValue(entry.output),
+					...(entry.canceled ? { error: 'canceled' } : {}),
+					mocked: false,
+					interceptedRequests: [],
+				}),
+			);
+			// Events own the IDs shown during progress. Consume matching SDK entries
+			// once, so repeated calls remain distinct even when they finish out of order.
+			const calls = [...progressCalls.values()].map((call) => {
+				const index = reported.findIndex(
+					(entry) =>
+						call.status === 'completed' &&
+						entry.tool === call.tool &&
+						(call.input === undefined || isDeepStrictEqual(entry.input, call.input)) &&
+						isDeepStrictEqual(entry.output, call.output),
+				);
+				const entry = index >= 0 ? reported.splice(index, 1)[0] : undefined;
+				return {
+					...entry,
+					...call,
+					kind: kindForTool(call.tool),
+					...(call.status === 'running'
+						? { status: 'error' as const, error: 'execution_stopped' }
+						: {}),
+				};
+			});
+			// Some cancelled calls never emit execution events. Keep those records too.
+			calls.push(...reported);
+			const recordedTools = new Set(calls.map((call) => call.tool));
+			for (const [tool] of toolLedger) {
+				if (recordedTools.has(tool)) continue;
+				calls.push({
+					tool,
+					kind: kindForTool(tool),
+					error:
+						'Not attributed to a reported tool call (a delegated sub-agent call, or an errored call) — see interceptedRequests',
+					mocked: false,
+					interceptedRequests: [],
+				});
+			}
+			return calls.map((call) => {
+				const interceptedRequests = toolLedger.get(call.tool) ?? [];
+				return {
+					...call,
+					mocked: interceptedRequests.length > 0,
+					interceptedRequests,
+					...(autoApprovedToolNames.has(call.tool) ? { autoApproved: true } : {}),
+				};
+			});
+		};
 		const budgetSignal = AbortSignal.timeout(timeoutMs);
 		try {
 			result = await agent.generate(seed.openingMessage, {
@@ -540,13 +604,19 @@ export class EvalAgentExecutionService {
 					`Agent run exceeded its ${seconds}s eval budget and was stopped`,
 					seed,
 					skippedFeatures,
-					{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
+					{
+						modelTurns: recorder.turns,
+						toolLedger,
+						credentialHelpers,
+						toolCalls: terminalToolCalls(),
+					},
 				);
 			}
 			return this.errorResult(`Agent run failed: ${message}`, seed, skippedFeatures, {
 				modelTurns: recorder.turns,
 				toolLedger,
 				credentialHelpers,
+				toolCalls: terminalToolCalls(),
 			});
 		} finally {
 			onLedgerChange = undefined;
@@ -573,47 +643,6 @@ export class EvalAgentExecutionService {
 			);
 		}
 
-		const kindByToolName = new Map(toolSummaries.map((tool) => [tool.name, tool.kind]));
-		// MCP summaries are keyed by SERVER name; the model calls the client-side
-		// prefixed `<server>_<tool>` names. Sub-agent-brought servers aren't in
-		// this agent's summaries — their ledger entries carry an `mcp:` nodeType.
-		const kindForTool = (tool: string): InstanceAiEvalAgentToolCallRecord['kind'] =>
-			kindByToolName.get(tool) ??
-			(mcpServers.some((server) => tool.startsWith(sanitizeMcpToolName(`${server.name}_`))) ||
-			(toolLedger.get(tool) ?? []).some((request) => request.nodeType?.startsWith('mcp:'))
-				? 'mcp'
-				: 'other');
-		const toolCalls = segmentToolCalls.map((entry): InstanceAiEvalAgentToolCallRecord => {
-			const interceptedRequests = toolLedger.get(entry.tool) ?? [];
-			return {
-				tool: entry.tool,
-				kind: kindForTool(entry.tool),
-				input: truncateRecordedValue(entry.input),
-				output: truncateRecordedValue(entry.output),
-				...(entry.canceled ? { error: 'canceled' } : {}),
-				mocked: interceptedRequests.length > 0,
-				interceptedRequests,
-				...(autoApprovedToolNames.has(entry.tool) ? { autoApproved: true } : {}),
-			};
-		});
-		// Ledger entries with no matching toolCalls record are either errored
-		// calls (GenerateResult omits those) or a delegated sub-agent's calls
-		// (never reported on the parent) — surface them without asserting
-		// failure so the judge can weigh the intercepted traffic itself.
-		const reportedTools = new Set(toolCalls.map((entry) => entry.tool));
-		for (const [tool, interceptedRequests] of toolLedger) {
-			if (reportedTools.has(tool)) continue;
-			toolCalls.push({
-				tool,
-				kind: kindForTool(tool),
-				error:
-					'Not attributed to a reported tool call (a delegated sub-agent call, or an errored call) — see interceptedRequests',
-				mocked: interceptedRequests.length > 0,
-				interceptedRequests,
-				...(autoApprovedToolNames.has(tool) ? { autoApproved: true } : {}),
-			});
-		}
-
 		return {
 			runId: result.runId,
 			success: errors.length === 0 && result.finishReason !== 'error',
@@ -621,7 +650,7 @@ export class EvalAgentExecutionService {
 			finalText: extractFinalAssistantText(result),
 			model: result.model,
 			finishReason: result.finishReason,
-			toolCalls,
+			toolCalls: terminalToolCalls(),
 			modelTurns: recorder.turns,
 			...(result.usage
 				? {
@@ -678,6 +707,7 @@ export class EvalAgentExecutionService {
 			modelTurns: InstanceAiEvalAgentExecutionResult['modelTurns'];
 			toolLedger: ToolLedger;
 			credentialHelpers: EvalMockedCredentialsHelper[];
+			toolCalls?: InstanceAiEvalAgentToolCallRecord[];
 		},
 	): InstanceAiEvalAgentExecutionResult {
 		this.logger.error(`[EvalAgentMock] ${message}`);
@@ -686,14 +716,16 @@ export class EvalAgentExecutionService {
 			success: false,
 			errors: [message],
 			finalText: '',
-			toolCalls: partial
-				? [...partial.toolLedger.entries()].map(([tool, interceptedRequests]) => ({
-						tool,
-						kind: salvagedToolKind(interceptedRequests),
-						mocked: interceptedRequests.length > 0,
-						interceptedRequests,
-					}))
-				: [],
+			toolCalls:
+				partial?.toolCalls ??
+				(partial
+					? [...partial.toolLedger.entries()].map(([tool, interceptedRequests]) => ({
+							tool,
+							kind: salvagedToolKind(interceptedRequests),
+							mocked: interceptedRequests.length > 0,
+							interceptedRequests,
+						}))
+					: []),
 			modelTurns: partial?.modelTurns ?? [],
 			seed: seed ?? { openingMessage: '', globalContext: '', toolHints: {}, warnings: [] },
 			skippedFeatures,

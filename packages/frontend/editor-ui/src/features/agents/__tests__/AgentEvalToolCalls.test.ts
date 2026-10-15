@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { TOOL_CALL_STATE } from '@/features/ai/shared/agentsChat/constants';
 import AgentEvalToolCalls from '../components/AgentEvalToolCalls.vue';
 import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
 
@@ -63,6 +64,36 @@ it('keeps legacy calls free of mock claims', () => {
 	});
 	expect(queryByText(/Mocked/)).not.toBeInTheDocument();
 });
+
+it.each([false, true])(
+	'keeps the tool disclosure open when the result completes (grouped: %s)',
+	async (grouped) => {
+		const user = userEvent.setup();
+		const { getByText, getByRole, rerender } = renderComponent({
+			props: { toolCalls: calls(true, grouped) },
+		});
+		if (grouped) await user.click(getByText('2 tool calls'));
+		const trigger = getByRole('button', { name: /Send and wait/ });
+		await user.click(trigger);
+		const contentId = trigger.getAttribute('aria-controls');
+		expect(getByText('Input')).toBeInTheDocument();
+		await rerender({
+			toolCalls: calls(true, grouped).map((call) => ({
+				...call,
+				state: TOOL_CALL_STATE.DONE,
+				output: { ok: true },
+			})),
+		});
+		expect(getByRole('button', { name: /Send and wait/ })).toHaveAttribute(
+			'aria-controls',
+			contentId,
+		);
+		expect(getByRole('button', { name: /Send and wait/ })).toHaveAttribute('aria-expanded', 'true');
+		expect(getByText('Input')).toBeInTheDocument();
+		expect(getByText('Output')).toBeInTheDocument();
+		expect(getByText('Mocked requests')).toBeInTheDocument();
+	},
+);
 
 it('opens recorded mock details when the tool has no input or output', async () => {
 	const user = userEvent.setup();
