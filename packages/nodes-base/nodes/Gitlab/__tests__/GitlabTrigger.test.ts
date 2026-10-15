@@ -146,19 +146,15 @@ describe('GitlabTrigger', () => {
 			expect(data.webhookSecret).toBeUndefined();
 		});
 
-		it('should not crash when a 404-shaped error has no description', async () => {
-			// Regression: the old code read error.cause.httpCode and called
-			// error.description.includes('404') unconditionally, which threw
-			// TypeError on errors without a description.
+		it('should rethrow the original error when it has no http code and no description', async () => {
 			mockHookFunctions = staticData(42) as unknown as Partial<IWebhookFunctions>;
-			const error = new NodeApiError({} as never, {}, { httpCode: '404', description: '' });
+			const error = new NodeApiError({} as never, {}, { message: 'socket hang up' });
+			error.description = undefined;
 			(gitlabApiRequest as Mock).mockRejectedValue(error);
 
-			const result = await trigger.webhookMethods!.default.checkExists.call(
-				mockHookFunctions as never,
-			);
-
-			expect(result).toBe(false);
+			await expect(
+				trigger.webhookMethods!.default.checkExists.call(mockHookFunctions as never),
+			).rejects.toBe(error);
 		});
 
 		it('should rethrow non-404 errors', async () => {
