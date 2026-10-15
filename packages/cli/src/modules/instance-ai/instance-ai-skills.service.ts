@@ -7,6 +7,8 @@ import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { InstanceAiFeatureFlags } from './instance-ai.adapter.service';
+
 /** Folder ids under `@n8n/instance-ai/skills` that n8n refers to by id. */
 export const SKILLS = {
 	configEvals: 'config-evals',
@@ -19,21 +21,15 @@ export const SKILLS = {
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];
 
-/** Feature flags that turn skills on or off for a user. */
-export interface InstanceAiSkillFlags {
-	configEvalsEnabled: boolean;
-	instanceContextEnabled: boolean;
+/** What decides the active skills of a run. */
+export interface InstanceAiSkillScope {
+	profile: PromptProfile;
+	flags: Pick<InstanceAiFeatureFlags, 'configEvalsEnabled' | 'instanceContextEnabled'>;
 	/**
 	 * Whether the host gives the Assistant a builder delegate, so it can build
 	 * agents. This needs the Agents module and the Settings > Agents switch.
 	 */
 	agentBuildingEnabled: boolean;
-}
-
-/** What decides the active skills of a run. */
-export interface InstanceAiSkillScope {
-	profile: PromptProfile;
-	flags: InstanceAiSkillFlags;
 }
 
 export interface InstanceAiRunSkills {
@@ -43,23 +39,35 @@ export interface InstanceAiRunSkills {
 	disabledTools: string[];
 }
 
-/** The skills that each flag turns on. A skill that no flag lists is always active. */
-const SKILL_GATES: ReadonlyArray<{ flag: keyof InstanceAiSkillFlags; skills: SkillId[] }> = [
-	// The playbook is a `workflow-builder` reference next to `config-evals`, not
-	// inside it, so the flag must hide it separately.
-	{ flag: 'configEvalsEnabled', skills: [SKILLS.configEvals, SKILLS.configEvalPlaybook] },
-	// The skill is about a block and a tool that only exist when the reader is on.
-	{ flag: 'instanceContextEnabled', skills: [SKILLS.instanceAwareness] },
-	{ flag: 'agentBuildingEnabled', skills: [SKILLS.agentBuilder, SKILLS.intentRecognition] },
+/** The gated skills, and when each gate is open. A skill that no gate lists is always active. */
+const SKILL_GATES: ReadonlyArray<{
+	skills: SkillId[];
+	isOpen: (scope: InstanceAiSkillScope) => boolean;
+}> = [
+	{
+		// The playbook is a `workflow-builder` reference next to `config-evals`, not
+		// inside it, so the flag must hide it separately.
+		skills: [SKILLS.configEvals, SKILLS.configEvalPlaybook],
+		isOpen: ({ flags }) => flags.configEvalsEnabled,
+	},
+	{
+		// The skill is about a block and a tool that only exist when the reader is on.
+		skills: [SKILLS.instanceAwareness],
+		isOpen: ({ flags }) => flags.instanceContextEnabled,
+	},
+	{
+		skills: [SKILLS.agentBuilder, SKILLS.intentRecognition],
+		isOpen: ({ agentBuildingEnabled }) => agentBuildingEnabled,
+	},
 ];
 
-/** Loads the active skills of Instance AI: the prompt-profile skills that the flags leave on. */
+/** Loads the active skills of Instance AI: the prompt-profile skills that the gates leave on. */
 @Service()
 export class InstanceAiSkillsService {
 	/** The active skills, and the tools that the prompt profile turns off. */
-	async loadSkills({ profile, flags }: InstanceAiSkillScope): Promise<InstanceAiRunSkills> {
-		const { source, disabledTools } = await loadInstanceAiPromptSkills(profile);
-		const inactive = inactiveSkillIds(flags);
+	async loadSkills(scope: InstanceAiSkillScope): Promise<InstanceAiRunSkills> {
+		const { source, disabledTools } = await loadInstanceAiPromptSkills(scope.profile);
+		const inactive = inactiveSkillIds(scope);
 
 		return {
 			source: inactive.length > 0 ? filterRuntimeSkillSource(source, inactive) : source,
@@ -86,6 +94,6 @@ export class InstanceAiSkillsService {
 	}
 }
 
-function inactiveSkillIds(flags: InstanceAiSkillFlags): SkillId[] {
-	return SKILL_GATES.flatMap(({ flag, skills }) => (flags[flag] ? [] : skills));
+function inactiveSkillIds(scope: InstanceAiSkillScope): SkillId[] {
+	return SKILL_GATES.flatMap(({ skills, isOpen }) => (isOpen(scope) ? [] : skills));
 }

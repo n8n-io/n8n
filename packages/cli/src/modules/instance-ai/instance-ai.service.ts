@@ -207,7 +207,10 @@ import {
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
 import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
-import { InstanceAiAdapterService } from './instance-ai.adapter.service';
+import {
+	InstanceAiAdapterService,
+	type InstanceAiFeatureFlags,
+} from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
@@ -2592,7 +2595,7 @@ export class InstanceAiService {
 		pushRef?: string,
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
 		instanceContextGates?: InstanceContextGates,
-		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
+		experimentGates?: InstanceAiFeatureFlags,
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
@@ -2834,12 +2837,9 @@ export class InstanceAiService {
 
 		const skillScope: InstanceAiSkillScope = {
 			profile: selectedPrompt.profile,
-			flags: {
-				configEvalsEnabled,
-				instanceContextEnabled,
-				// The agent-building skills need the build-agent tool, which needs a builder delegate.
-				agentBuildingEnabled: context.builderDelegate !== undefined,
-			},
+			flags: { configEvalsEnabled, instanceContextEnabled },
+			// The agent-building skills need the build-agent tool, which needs a builder delegate.
+			agentBuildingEnabled: context.builderDelegate !== undefined,
 		};
 		const skills = await this.skillsService.loadSkills(skillScope);
 		const promptMetadata = describePromptProfile(selectedPrompt, skills.source);
