@@ -52,10 +52,6 @@ export interface AgentExecutionThreadKeysetPage {
 	hasMore: boolean;
 }
 
-export type AgentExecutionThreadOwnedChanges = Partial<
-	Pick<AgentExecutionThread, 'title' | 'projectId'>
->;
-
 function ownedSessionWhere(agentId: string, ownerId: string, threadId: string) {
 	return {
 		id: threadId,
@@ -452,22 +448,41 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/**
-	 * Update the editable fields of a top-level private session of a user with
-	 * an agent. Returns false when no such session exists.
+	 * Rename a top-level private session of a user with an agent. Returns false
+	 * when no such session exists.
 	 */
-	async updateOwned(
+	async renameOwned(
 		agentId: string,
 		ownerId: string,
 		threadId: string,
-		changes: AgentExecutionThreadOwnedChanges,
+		title: string,
+		ctx: OperationContext,
 	): Promise<boolean> {
-		const where = ownedSessionWhere(agentId, ownerId, threadId);
-		const set: AgentExecutionThreadOwnedChanges = {};
-		if (changes.title !== undefined) set.title = changes.title;
-		if (changes.projectId !== undefined) set.projectId = changes.projectId;
-		// TypeORM rejects an update without values.
-		if (Object.keys(set).length === 0) return await this.existsBy(where);
-		const result = await this.update(where, set);
+		const result = await this.managerFor(ctx).update(
+			AgentExecutionThread,
+			ownedSessionWhere(agentId, ownerId, threadId),
+			{ title },
+		);
+		return result.affected === 1;
+	}
+
+	/**
+	 * Move a top-level private session of a user with an agent to another
+	 * project. Returns false when no such session exists. The caller must check
+	 * that the user can use the target project.
+	 */
+	async moveOwned(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			AgentExecutionThread,
+			ownedSessionWhere(agentId, ownerId, threadId),
+			{ projectId },
+		);
 		return result.affected === 1;
 	}
 

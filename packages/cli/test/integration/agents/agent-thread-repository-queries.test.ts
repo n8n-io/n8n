@@ -129,52 +129,63 @@ describe('Agent thread repository queries for system agents', () => {
 		});
 	});
 
-	describe('updateOwned', () => {
-		it('updates the title and the project of a session', async () => {
+	describe('renameOwned', () => {
+		it('renames a session and keeps its project', async () => {
 			const thread = await createThread({ title: 'Old title' });
-			const otherProjectId = (await createTeamProject()).id;
 
-			expect(
-				await threadRepo.updateOwned(agentId, ownerId, thread.id, { title: 'New title' }),
-			).toBe(true);
+			expect(await threadRepo.renameOwned(agentId, ownerId, thread.id, 'New title', {})).toBe(true);
 			expect(await threadRepo.findOneByOrFail({ id: thread.id })).toMatchObject({
 				title: 'New title',
 				projectId,
 			});
+		});
 
-			await threadRepo.updateOwned(agentId, ownerId, thread.id, { projectId: otherProjectId });
+		it('does not rename a session of another owner, another agent or a parent session', async () => {
+			const parent = await createThread({ title: 'Parent' });
+			const child = await createThread({ parentThreadId: parent.id, title: 'Child' });
+			const shared = await createThread({ accessScope: 'project', ownerId: null, title: 'Shared' });
+			const rename = async (agent: string, owner: string, threadId: string) =>
+				await threadRepo.renameOwned(agent, owner, threadId, 'Changed', {});
+
+			expect(await rename(agentId, otherUserId, parent.id)).toBe(false);
+			expect(await rename(otherAgentId, ownerId, parent.id)).toBe(false);
+			expect(await rename(agentId, ownerId, child.id)).toBe(false);
+			expect(await rename(agentId, ownerId, shared.id)).toBe(false);
+			expect(await rename(agentId, ownerId, 'missing')).toBe(false);
+			const stored = await threadRepo.findBy({});
+			expect(stored.map(({ title }) => title).sort()).toEqual(['Child', 'Parent', 'Shared']);
+		});
+	});
+
+	describe('moveOwned', () => {
+		it('moves a session to another project and keeps its title', async () => {
+			const thread = await createThread({ title: 'Title' });
+			const otherProjectId = (await createTeamProject()).id;
+
+			expect(await threadRepo.moveOwned(agentId, ownerId, thread.id, otherProjectId, {})).toBe(
+				true,
+			);
 			expect(await threadRepo.findOneByOrFail({ id: thread.id })).toMatchObject({
-				title: 'New title',
+				title: 'Title',
 				projectId: otherProjectId,
 			});
 		});
 
-		it('does not update a session of another owner, another agent or a parent session', async () => {
-			const parent = await createThread({ title: 'Parent' });
-			const child = await createThread({ parentThreadId: parent.id, title: 'Child' });
-			const shared = await createThread({ accessScope: 'project', ownerId: null, title: 'Shared' });
-			const change = { title: 'Changed' };
+		it('does not move a session of another owner, another agent or a parent session', async () => {
+			const parent = await createThread();
+			const child = await createThread({ parentThreadId: parent.id });
+			const shared = await createThread({ accessScope: 'project', ownerId: null });
+			const otherProjectId = (await createTeamProject()).id;
+			const move = async (agent: string, owner: string, threadId: string) =>
+				await threadRepo.moveOwned(agent, owner, threadId, otherProjectId, {});
 
-			expect(await threadRepo.updateOwned(agentId, otherUserId, parent.id, change)).toBe(false);
-			expect(await threadRepo.updateOwned(otherAgentId, ownerId, parent.id, change)).toBe(false);
-			expect(await threadRepo.updateOwned(agentId, ownerId, child.id, change)).toBe(false);
-			expect(await threadRepo.updateOwned(agentId, ownerId, shared.id, change)).toBe(false);
-			expect(await threadRepo.updateOwned(agentId, ownerId, 'missing', change)).toBe(false);
+			expect(await move(agentId, otherUserId, parent.id)).toBe(false);
+			expect(await move(otherAgentId, ownerId, parent.id)).toBe(false);
+			expect(await move(agentId, ownerId, child.id)).toBe(false);
+			expect(await move(agentId, ownerId, shared.id)).toBe(false);
+			expect(await move(agentId, ownerId, 'missing')).toBe(false);
 			const stored = await threadRepo.findBy({});
-			expect(stored.map(({ title }) => title).sort()).toEqual(['Child', 'Parent', 'Shared']);
-		});
-
-		it('does nothing when no change is given', async () => {
-			const thread = await createThread({ title: 'Title' }, '2024-01-01T00:00:00.000Z');
-
-			expect(await threadRepo.updateOwned(agentId, ownerId, thread.id, {})).toBe(true);
-			expect(await threadRepo.updateOwned(agentId, ownerId, thread.id, { title: undefined })).toBe(
-				true,
-			);
-			expect(await threadRepo.updateOwned(agentId, otherUserId, thread.id, {})).toBe(false);
-			const stored = await threadRepo.findOneByOrFail({ id: thread.id });
-			expect(stored.title).toBe('Title');
-			expect(stored.updatedAt.toISOString()).toBe('2024-01-01T00:00:00.000Z');
+			expect(stored.every((thread) => thread.projectId === projectId)).toBe(true);
 		});
 	});
 
