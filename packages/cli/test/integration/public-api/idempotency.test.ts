@@ -181,27 +181,24 @@ describe('Public API idempotency', () => {
 		});
 		if (!id) throw new Error('Failed to insert a processing idempotency key');
 
-		// CreateDateColumn skips createdAt on update. The TTL check reads that column.
-		const createdAt = Container.get(DataSource)
-			.getMetadata(IdempotencyKey)
-			.findColumnWithPropertyName('createdAt');
-		if (!createdAt) throw new Error('createdAt column is missing');
+		const dataSource = Container.get(DataSource);
+		const metadata = dataSource.getMetadata(IdempotencyKey);
+		const createdAt = metadata.findColumnWithPropertyName('createdAt');
+		const idColumn = metadata.findColumnWithPropertyName('id');
+		if (!createdAt || !idColumn) throw new Error('idempotency key columns are missing');
 
-		const wasUpdatable = createdAt.isUpdate;
-		createdAt.isUpdate = true;
-		try {
-			await repository.update(
-				{ id },
-				{
-					status: 'completed',
-					responseStatus: 200,
-					responseBody: { stale: true },
-					createdAt: new Date(Date.now() - IDEMPOTENCY_KEY_TTL_MS - 60_000),
-				},
-			);
-		} finally {
-			createdAt.isUpdate = wasUpdatable;
-		}
+		const table = metadata.schema
+			? `${dataSource.driver.escape(metadata.schema)}.${dataSource.driver.escape(metadata.tableName)}`
+			: dataSource.driver.escape(metadata.tableName);
+		const [sql, parameters] = dataSource.driver.escapeQueryWithParameters(
+			`UPDATE ${table} SET ${dataSource.driver.escape(createdAt.databaseName)} = :createdAt WHERE ${dataSource.driver.escape(idColumn.databaseName)} = :id`,
+			{
+				createdAt: new Date(Date.now() - IDEMPOTENCY_KEY_TTL_MS - 60_000),
+				id,
+			},
+			{},
+		);
+		await dataSource.query(sql, parameters);
 
 		const response = await authOwnerAgent
 			.post('/workflows')
