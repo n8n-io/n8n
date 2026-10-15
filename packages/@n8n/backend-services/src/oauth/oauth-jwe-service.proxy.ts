@@ -20,7 +20,7 @@ export interface OAuthJweHandler {
 }
 
 /**
- * CLI-side proxy for the OAuth2 JWE module. Lives outside the `oauth-jwe`
+ * Shared proxy for the OAuth2 JWE module. Lives outside the `oauth-jwe`
  * module so non-module callers (the OAuth2 callback controller, the OAuth
  * service for dynamic client registration) and the execution engine
  * (via `additionalData['oauth-jwe']`) consume it without importing module

@@ -5,7 +5,7 @@ import type { ICredentialContext, INode, PlaintextExecutionContext, Workflow } f
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutingUserIdentifierProxy } from '@/credentials/executing-user-identifier-proxy';
+import type { ExecutingUserIdentifierProxy } from '@n8n/backend-services';
 
 import { DynamicCredentialsContextHook } from '../dynamic-credentials-context-hook';
 

@@ -237,6 +237,68 @@ describe('parseObservationLogMarkdown', () => {
 		]);
 		expect(parsed.skippedLines).toEqual(['not a bullet']);
 	});
+
+	it('appends indented unmarked detail lines to the entry above', () => {
+		const parsed = parseObservationLogMarkdown(
+			[
+				"* CRITICAL (15:09) User's invoice rules:",
+				'  * Count only invoices with status paid or pending.',
+				'    - Status void means cancelled.',
+				'* IMPORTANT (15:10) Open questions for the user',
+				'  * INFO (15:10) Setup is blocked on two answers.',
+				'    1. Which bridge do they use?',
+				'    2. Which webhook URL?',
+			].join('\n'),
+		);
+
+		expect(parsed.entries).toEqual([
+			{
+				marker: 'critical',
+				text: "User's invoice rules: Count only invoices with status paid or pending. Status void means cancelled.",
+				parentIndex: null,
+			},
+			{ marker: 'important', text: 'Open questions for the user', parentIndex: null },
+			{
+				marker: 'info',
+				text: 'Setup is blocked on two answers. 1. Which bridge do they use? 2. Which webhook URL?',
+				parentIndex: 1,
+			},
+		]);
+		expect(parsed.skippedLines).toEqual([]);
+	});
+
+	it('joins a detail line with a semicolon when the entry has no closing punctuation', () => {
+		const parsed = parseObservationLogMarkdown(
+			['* INFO (10:02) Published version 90f4e3d6', '    * Current draft fbda5a15'].join('\n'),
+		);
+
+		expect(parsed.entries).toEqual([
+			{
+				marker: 'info',
+				text: 'Published version 90f4e3d6; Current draft fbda5a15',
+				parentIndex: null,
+			},
+		]);
+	});
+
+	it('keeps detail lines that start with an uppercase word', () => {
+		const parsed = parseObservationLogMarkdown(
+			[
+				'* INFO (10:02) Endpoints checked:',
+				'  * GET /orders returns 200.',
+				'  * API key rotated.',
+			].join('\n'),
+		);
+
+		expect(parsed.entries).toEqual([
+			{
+				marker: 'info',
+				text: 'Endpoints checked: GET /orders returns 200. API key rotated.',
+				parentIndex: null,
+			},
+		]);
+		expect(parsed.skippedLines).toEqual([]);
+	});
 });
 
 describe('renderObserverTranscript', () => {
@@ -520,6 +582,43 @@ describe('runObservationLogObserver', () => {
 		},
 	);
 
+	it('writes observations with indented detail lists and advances the cursor', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Remember my rules.', new Date(2026, 4, 12, 14, 30))],
+		});
+
+		const result = await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 20,
+			tokenCounter: () => 10,
+			now: new Date(2026, 4, 12, 14, 31),
+			observe: async () =>
+				await Promise.resolve(
+					[
+						'* CRITICAL (14:31) User rules:',
+						'  * Count paid invoices.',
+						'  * Skip void ones.',
+					].join('\n'),
+				),
+		});
+
+		expect(result).toMatchObject({
+			status: 'ran',
+			observationsWritten: 1,
+			cursorAdvanced: true,
+			skippedLines: [],
+		});
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
+			{ marker: 'critical', text: 'User rules: Count paid invoices. Skip void ones.' },
+		]);
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm1' });
+	});
+
 	it('writes parsed observations and advances the cursor after observing', async () => {
 		const store = new InMemoryMemory();
 		const parentText = 'User needs the current request remembered.';
@@ -610,6 +709,12 @@ describe('runObservationLogObserver', () => {
 		'```\nNO_OBSERVATIONS\n```',
 		'NO_OBSERVATIONS\n* CRITICAL Keep this fact.',
 		'* CRITICAL Keep this fact.\nUnformatted detail.',
+		'  Indented detail before any entry.\n* CRITICAL Keep this fact.',
+		'* CRITICAL Keep this fact.\n  * COMPLETED (14:31) Unknown marker.',
+		'* CRITICAL Keep this fact.\n  * COMPLETED Deploy is set for noon.',
+		'* CRITICAL Keep this fact.\n  * INFO: Marker with a colon.',
+		'* CRITICAL Keep this fact.\n  ```\n  code\n  ```',
+		'* CRITICAL Keep this fact.\n  NO_OBSERVATIONS',
 		'* INFO    ',
 		'```\n* CRITICAL Keep this fact.\n```',
 	])('rejects an invalid response without changing memory: %j', async (output) => {

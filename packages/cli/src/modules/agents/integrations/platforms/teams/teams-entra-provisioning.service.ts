@@ -186,7 +186,7 @@ export class TeamsEntraProvisioningService {
 		// Graph hands the status back rather than throwing, so a refusal would
 		// otherwise read as an empty directory and be blamed on the account type.
 		if (!organization.ok) {
-			throw new OperationalError('Could not read the organisation this account belongs to.');
+			throw new OperationalError('Could not read the organization this account belongs to.');
 		}
 		const first = isRecord(organization.body)
 			? (organization.body.value as unknown[] | undefined)?.[0]
@@ -195,7 +195,9 @@ export class TeamsEntraProvisioningService {
 		if (!tenantId) {
 			// A personal Microsoft account has no directory behind it.
 			throw withTeamsFailure(
-				new UserError('Sign in with a work or school account. A personal account cannot be used.'),
+				new UserError(
+					'Teams apps need a work or school account. Sign in again with your organization’s account.',
+				),
 				'personal_account',
 			);
 		}
@@ -418,8 +420,8 @@ export class TeamsEntraProvisioningService {
 		throw withTeamsFailure(
 			new UserError(
 				lastCode === 'Authorization_RequestDenied'
-					? 'This organisation does not allow n8n to add a client secret. Use the manual setup.'
-					: 'This organisation refused every client secret lifetime n8n offered. Use the manual setup.',
+					? 'This organization does not allow n8n to add a client secret. Use the manual setup.'
+					: 'This organization refused every client secret lifetime n8n offered. Use the manual setup.',
 			),
 			'secrets_refused',
 		);
@@ -433,7 +435,7 @@ export class TeamsEntraProvisioningService {
 			!response.ok &&
 			graphErrorCode(response.body) !== 'Request_MultipleObjectsWithSameKeyValue'
 		) {
-			throw new OperationalError('Could not finish registering the app in this organisation.');
+			throw new OperationalError('Could not finish registering the app in this organization.');
 		}
 	}
 
@@ -441,7 +443,7 @@ export class TeamsEntraProvisioningService {
 		if (statusCode === 403 || code === 'Authorization_RequestDenied') {
 			return withTeamsFailure(
 				new UserError(
-					'This account is not allowed to register applications in the organisation. Ask an administrator, or use the manual setup.',
+					'This organization doesn’t let you register apps. Ask an admin to register the app.',
 				),
 				'cannot_register_apps',
 			);

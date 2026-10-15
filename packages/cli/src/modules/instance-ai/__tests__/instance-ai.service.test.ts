@@ -65,6 +65,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
+		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({ registry: { skills: [] } })),
 		setupSandboxWorkspace: vi.fn(),
 		traceSandboxOperation: vi.fn(
 			async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
@@ -269,6 +270,7 @@ import {
 	createInstanceAiTraceContext,
 	disabledInstanceAiSkillIds,
 	loadInstanceAiPromptSkills,
+	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	streamAgentRun,
 	isQuotaExhaustedError,
@@ -1173,8 +1175,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 
 		// Runtime skills and workspace setup share the verified bundles of the sandbox.
-		const { resolveVerifiedBundles } = (createLazyWorkspaceRuntimeSkillSource as Mock).mock
-			.calls[0]?.[0] as { resolveVerifiedBundles: () => Promise<unknown> };
+		const { resolveVerifiedBundles, bundleSource } = (createLazyWorkspaceRuntimeSkillSource as Mock)
+			.mock.calls[0]?.[0] as {
+			resolveVerifiedBundles: () => Promise<unknown>;
+			bundleSource: unknown;
+		};
+		// The sandbox stores every bundled skill, the same set that the image and snapshot bake.
+		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalled();
+		expect(bundleSource).toBeDefined();
+		expect(bundleSource).toBe((loadInstanceAiRuntimeSkillSource as Mock).mock.results[0]?.value);
 		const verifiedBundles = await resolveVerifiedBundles();
 		expect(verifiedBundles).toEqual(new Map());
 		const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
