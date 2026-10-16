@@ -717,7 +717,7 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].json).toEqual({ url: mockPresignedUrl, validTo: expect.any(String) });
+			expect(result[0][0].json).toEqual({ url: mockPresignedUrl, expectedExpirationTime: expect.any(String) });
 		});
 
 		it('should fetch bucket region before generating the URL', async () => {
@@ -783,7 +783,7 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 
 			const result = await node.execute.call(executeFunctionsMock);
 
-			expect(result[0][0].json).toMatchObject({ validTo: expect.any(String) });
+			expect(result[0][0].json).toMatchObject({ expectedExpirationTime: expect.any(String) });
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(String),
@@ -803,7 +803,7 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 
 			const result = await node.execute.call(executeFunctionsMock);
 
-			expect(result[0][0].json).toMatchObject({ validTo: expect.any(String) });
+			expect(result[0][0].json).toMatchObject({ expectedExpirationTime: expect.any(String) });
 			expect(getPresignedS3UrlSpy).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.any(String),
@@ -851,6 +851,26 @@ describe('AWS S3 V2 Node - Get Presigned URL', () => {
 			getPresignedS3UrlSpy.mockRejectedValue(new Error('Signing failed'));
 
 			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow('Signing failed');
+		});
+		
+		it('should throw NodeOperationError when a custom S3 endpoint is configured', async () => {
+			setupParams();
+
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				accessKeyId: 'test-key',
+				secretAccessKey: 'test-secret',
+				region: 'eu-central-1',
+				customEndpoint: true,
+				s3Endpoint: 'https://s3.example.com',
+			});
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'Presigned URLs are not supported with a custom S3 endpoint. Clear the S3 Endpoint setting to use the default AWS S3 Endpoint.'
+			);
+
+			expect(awsApiRequestRESTSpy).not.toHaveBeenCalled();
+			expect(getPresignedS3UrlSpy).not.toHaveBeenCalled();
 		});
 	});
 });
