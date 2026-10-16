@@ -1,4 +1,5 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, type EntityManager, type Repository } from '@n8n/typeorm';
+import type { PoolClient, QueryResultRow } from 'pg';
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
@@ -52,6 +53,52 @@ type ClaimedStepRow = {
 };
 type DueStepRow = { id: string; execution_id: string };
 
+/** A statement Postgres parses and plans once per connection. Its text must be static. */
+type PreparedStatement = { name: string; text: string };
+
+const LOCK_EXECUTION_FOR_SHARE: PreparedStatement = {
+	name: 'engine_lock_execution_for_share',
+	text: 'SELECT id FROM workflow_execution WHERE id = $1::uuid FOR SHARE',
+};
+
+/**
+ * The failed-step test must be a statement after the lock: a statement that
+ * waits for the lock keeps the snapshot it started with, and would miss a
+ * failure committed during the wait.
+ *
+ * ON CONFLICT DO NOTHING is the unique key doing its job: a node another
+ * planner already queued is skipped, leaving the rest of the batch to land.
+ * RETURNING emits exactly the rows that were inserted, in input order.
+ */
+const INSERT_STEPS: PreparedStatement = {
+	name: 'engine_insert_steps',
+	text: `INSERT INTO workflow_step_execution (id, execution_id, node_id, iteration, status, outputs)
+		SELECT candidate.id, $1::uuid, candidate.node_id, candidate.iteration, candidate.status, candidate.outputs
+		FROM unnest($2::uuid[], $3::varchar[], $4::int[], $5::varchar[], $6::jsonb[])
+			WITH ORDINALITY AS candidate (id, node_id, iteration, status, outputs, position)
+		WHERE NOT EXISTS (
+			SELECT 1 FROM workflow_step_execution
+			WHERE execution_id = $1::uuid AND status = 'failed'
+		)
+		ORDER BY candidate.position
+		ON CONFLICT DO NOTHING
+		RETURNING id, node_id, iteration`,
+};
+
+/** Runs a prepared statement on the connection that holds the manager's transaction. */
+async function queryPrepared<Row extends QueryResultRow>(
+	manager: EntityManager,
+	statement: PreparedStatement,
+	values: unknown[],
+): Promise<Row[]> {
+	if (!manager.queryRunner) {
+		throw new UnexpectedError(`prepared statement ${statement.name} runs outside a transaction`);
+	}
+	const client: PoolClient = await manager.queryRunner.connect();
+	const result = await client.query<Row>({ ...statement, values });
+	return result.rows;
+}
+
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
  * the key filter is a row-value comparison no query-builder helper covers.
@@ -83,44 +130,26 @@ export class TypeOrmStepStore implements StepStore {
 		for (const record of records) assertCreatableRecord(record);
 
 		// Ids are assigned here because the entity's insert hook only runs on class
-		// instances, and these are plain values.
-		const parameters: unknown[] = [executionId];
-		const tuples = records.map((record) => {
+		// instances, and these are plain values. One array per column keeps the
+		// statement text the same for every batch size.
+		const values = [
+			executionId,
+			records.map(() => generateId()),
+			records.map((record) => record.nodeId),
+			records.map((record) => record.iteration),
+			records.map((record) => record.status),
 			// jsonb is passed as text: the driver would send a JS array as a Postgres array.
-			const outputs = record.outputs === undefined ? null : JSON.stringify(record.outputs);
-			parameters.push(generateId(), record.nodeId, record.iteration, record.status, outputs);
-			const p = parameters.length;
-			return `($${p - 4}::uuid, $${p - 3}, $${p - 2}::int, $${p - 1}, $${p}::jsonb)`;
-		});
+			records.map((record) =>
+				record.outputs === undefined ? null : JSON.stringify(record.outputs),
+			),
+		];
 
 		// The execution-row lock serializes this insert with `failStep`, so rows
 		// land before the failure (its sweep cancels them) or not at all.
 		// Otherwise rows inserted after the sweep would stay `queued` forever.
 		return await this.repo.manager.transaction(async (manager) => {
-			await manager.query('SELECT id FROM workflow_execution WHERE id = $1 FOR SHARE', [
-				executionId,
-			]);
-
-			// The failed-step test must be a statement after the lock: a statement
-			// that waits for the lock keeps the snapshot it started with, and would
-			// miss a failure committed during the wait.
-			//
-			// ON CONFLICT DO NOTHING is the unique key doing its job: a node another
-			// planner already queued is skipped, leaving the rest of the batch to land.
-			// RETURNING emits exactly the rows that were inserted.
-			const inserted = await manager.query<InsertedStepRow[]>(
-				`INSERT INTO workflow_step_execution (id, execution_id, node_id, iteration, status, outputs)
-				 SELECT candidate.id, $1::uuid, candidate.node_id, candidate.iteration, candidate.status, candidate.outputs
-				 FROM (VALUES ${tuples.join(', ')}) AS candidate (id, node_id, iteration, status, outputs)
-				 WHERE NOT EXISTS (
-					SELECT 1 FROM workflow_step_execution
-					WHERE execution_id = $1::uuid AND status = 'failed'
-				 )
-				 ON CONFLICT DO NOTHING
-				 RETURNING id, node_id, iteration`,
-				parameters,
-			);
-
+			await queryPrepared(manager, LOCK_EXECUTION_FOR_SHARE, [executionId]);
+			const inserted = await queryPrepared<InsertedStepRow>(manager, INSERT_STEPS, values);
 			return inserted.map(({ id, node_id: nodeId, iteration }) => ({ id, nodeId, iteration }));
 		});
 	}
