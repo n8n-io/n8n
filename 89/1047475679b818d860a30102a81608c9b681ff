@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v1/transport/index.ts
+  s_2e1fa95fc44f8f::t_edfae9c5ff38a3 31-37
+  s_2e1fa95fc44f8f::t_31a6bca9314471 38-40
+packages/nodes-base/nodes/Microsoft/SharePoint/test/methods/listSearch.test.ts
+  s_2e1fa95fc44f8f::t_a7534e53d27426 648-677
+packages/nodes-base/nodes/Microsoft/SharePoint/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_cb6c9923e0bc8e 61-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "891047475679b818d860a30102a81608c9b681ff",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
