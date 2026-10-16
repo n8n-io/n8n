@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/SentryIo/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c18feddbda9eaa 14-17
+packages/nodes-base/nodes/SentryIo/SentryIo.node.ts
+  s_2e1fa95fc44f8f::t_2507e2f860b62c 14,28-29,256,483,512,581
+packages/nodes-base/nodes/SentryIo/__tests__/SentryIo.node.test.ts
+  s_2e1fa95fc44f8f::t_b886fcd2ecfb70 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb04b85a4d5840e90fa6c78b3877a8f5e12dd1b0",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
