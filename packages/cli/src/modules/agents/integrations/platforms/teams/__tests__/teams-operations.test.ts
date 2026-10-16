@@ -166,6 +166,27 @@ describe('executeTeamsContextQuery', () => {
 			});
 		});
 
+		it('fails the search when a team cannot be read for another reason', async () => {
+			const { run } = setup({ ...routes, [`${GRAPH}/teams/team-2/channels`]: graphError(500) });
+
+			await expect(run('search_channels', { query: 'general' })).rejects.toThrow('Graph 500');
+		});
+
+		it('says when a team has more channels than the first page', async () => {
+			const { run } = setup({
+				...routes,
+				[`${GRAPH}/teams/team-1/channels`]: {
+					value: [{ id: '19:general-m@thread.tacv2', displayName: 'General' }],
+					'@odata.nextLink': `${GRAPH}/teams/team-1/channels?$skiptoken=x`,
+				},
+			});
+
+			await expect(run('search_channels', { query: 'general' })).resolves.toMatchObject({
+				ok: true,
+				note: expect.stringContaining('first page of channels'),
+			});
+		});
+
 		it('says when only part of a large organisation was searched', async () => {
 			const { run } = setup({
 				...routes,
@@ -177,7 +198,7 @@ describe('executeTeamsContextQuery', () => {
 
 			await expect(run('search_channels', { query: 'general' })).resolves.toMatchObject({
 				ok: true,
-				note: expect.stringContaining('only the first 50'),
+				note: expect.stringContaining('at most 50 teams'),
 			});
 		});
 

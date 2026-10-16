@@ -15,7 +15,7 @@ const USER_FIELDS = 'id,displayName,mail,userPrincipalName';
 /** Each team costs one channel request, so a large tenant is searched only in part. */
 const MAX_TEAMS_SEARCHED = 50;
 const CHANNEL_REQUESTS_AT_ONCE = 5;
-const PARTIAL_CHANNEL_SEARCH = `This organisation has more than ${MAX_TEAMS_SEARCHED} teams and only the first ${MAX_TEAMS_SEARCHED} were searched. If the channel is missing, ask someone to mention the bot in it once and use the channelId from get_current_message_context.`;
+const PARTIAL_CHANNEL_SEARCH = `Some teams or channels in this organisation were not searched: at most ${MAX_TEAMS_SEARCHED} teams and the first page of channels in each. If the channel is missing, ask someone to mention the bot in it once and use the channelId from get_current_message_context.`;
 
 const getUserSchema = z.object({ userId: z.string().min(1) });
 const searchUsersSchema = z.object({
@@ -165,6 +165,7 @@ async function searchGraphChannels(
 
 	const words = normalize(input.query).split(' ');
 	const matches: TeamsChannelResult[] = [];
+	let partial = hasNextPage(data);
 	for (
 		let start = 0;
 		start < teams.length && matches.length < input.limit;
@@ -175,11 +176,14 @@ async function searchGraphChannels(
 			batch.map(async (team) => {
 				const channels = await http
 					.get(`${GRAPH_V1}/teams/${encodeURIComponent(team.id)}/channels?$select=id,displayName`)
-					.then(({ data: body }) => valuesOf(body))
-					// A missing permission fails every team, so only that is worth failing the search for.
+					.then(({ data: body }) => {
+						if (hasNextPage(body)) partial = true;
+						return valuesOf(body);
+					})
 					.catch((error: unknown) => {
-						if (statusOf(error) === 403) throw error;
-						return [];
+						// A team removed after it was listed has no channels left to read.
+						if (statusOf(error) === 404) return [];
+						throw error;
 					});
 				return channels.flatMap((channel) => {
 					const channelId = stringProperty(channel, 'id');
@@ -196,8 +200,12 @@ async function searchGraphChannels(
 	}
 	return {
 		channels: matches.slice(0, input.limit),
-		partial: isRecord(data) && typeof data['@odata.nextLink'] === 'string',
+		partial,
 	};
+}
+
+function hasNextPage(data: unknown): boolean {
+	return isRecord(data) && typeof data['@odata.nextLink'] === 'string';
 }
 
 function toUser(value: unknown): TeamsUserResult | undefined {
