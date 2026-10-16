@@ -1,4 +1,8 @@
-import { isMcpOAuth2Authentication, shouldRefreshMcpOAuth2Token } from '../src/mcp-helpers';
+import {
+	getMcpAuthHeaders,
+	isMcpOAuth2Authentication,
+	shouldRefreshMcpOAuth2Token,
+} from '../src/mcp-helpers';
 
 describe('isMcpOAuth2Authentication', () => {
 	it('returns true for the canonical "mcpOAuth2Api" type', () => {
@@ -56,5 +60,13 @@ describe('shouldRefreshMcpOAuth2Token', () => {
 				'authorizationCode',
 			),
 		).toBe(false);
+	});
+});
+
+describe('getMcpAuthHeaders', () => {
+	it('sends the minted Gateway credits token as a bearer token', () => {
+		expect(getMcpAuthHeaders('n8nConnectFirecrawlMcpAiGatewayApi', { token: 'minted' })).toEqual({
+			Authorization: 'Bearer minted',
+		});
 	});
 });

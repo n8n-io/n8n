@@ -3,7 +3,9 @@ import {
 	getConfiguredEndpointUrl,
 	getMcpAuthHeaders,
 	type ICredentialTypes,
+	isMcpAiGatewayAuthentication,
 	isMcpOAuth2Authentication,
+	type McpAiGatewayCredentialType,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
 	type PrepareMcpRegistryConnectionInput,
@@ -11,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import type { McpRegistryServer, McpRegistryUsesCredential } from './registry/mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from './registry/mcp-registry.types';
 
 export { getConfiguredEndpointUrl };
 
@@ -25,9 +28,27 @@ export function getMcpRegistryCredentialTypeName(
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
+/** Takes a slug, not a server, because a registry server can offer the type of another row. */
+export function getMcpRegistryAiGatewayCredentialTypeName(
+	slug: string,
+): McpAiGatewayCredentialType {
+	return `${camelCase(slug)}McpAiGatewayApi`;
+}
+
+function getAiGatewayCredentialOption(slug: string): McpRegistryUsesCredential {
+	return {
+		credentialType: getMcpRegistryAiGatewayCredentialTypeName(slug),
+		name: 'Gateway credits',
+		value: 'aiGateway',
+	};
+}
+
 export function getMcpRegistryCredentialOptions(
 	server: McpRegistryServer,
 ): McpRegistryUsesCredential[] {
+	if (server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE) {
+		return [getAiGatewayCredentialOption(server.slug)];
+	}
 	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
 	return [
 		{
@@ -67,7 +88,9 @@ export function resolveMcpRegistryConnection(
 	const nodeTypeName = `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`;
 	const credentialBindings = getMcpRegistryCredentialOptions(server).flatMap(
 		({ credentialType, value }) =>
-			isMcpOAuth2Authentication(credentialType) ? [{ credentialType, selector: value }] : [],
+			isMcpOAuth2Authentication(credentialType) || isMcpAiGatewayAuthentication(credentialType)
+				? [{ credentialType, selector: value }]
+				: [],
 	);
 
 	// A templated remote's url is an unresolved `$self`-expression, not a
@@ -126,7 +149,9 @@ export function prepareMcpRegistryConnection({
 			ok: false,
 			error: {
 				code: 'missing_access_token',
-				message: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
+				message: isMcpAiGatewayAuthentication(credentialType)
+					? `Credential type "${credentialType}" does not contain a Gateway credits token`
+					: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
 			},
 		};
 	}

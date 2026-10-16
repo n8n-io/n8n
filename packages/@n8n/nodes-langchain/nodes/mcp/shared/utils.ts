@@ -8,7 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	McpOAuth2CredentialType,
+	McpRegistryCredentialType,
 	McpRegistryConnection,
 	INode,
 	ISupplyDataFunctions,
@@ -451,7 +451,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl: string;
 		registryCredential?: {
 			connection: McpRegistryConnection;
-			credentialType: McpOAuth2CredentialType;
+			credentialType: McpRegistryCredentialType;
 			prepareConnection(
 				input: PrepareMcpRegistryConnectionInput,
 			): PrepareMcpRegistryConnectionResult;

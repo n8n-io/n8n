@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	getMcpRegistryAiGatewayCredentialTypeName,
 	getMcpRegistryCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
@@ -15,6 +16,7 @@ import {
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
 	mcpRegistryExtendsCredentialSchema,
 	mcpRegistryUsesCredentialsSchema,
 	type McpRegistryExtendsCredential,
@@ -211,6 +213,24 @@ function serverToExtendedCredentialDescription(
 }
 
 /**
+ * Builds the credential type of an AI Gateway row. It has no base type and no
+ * fields: the node slot holds the managed marker, and the credentials helper
+ * mints the token without reading this type.
+ */
+function serverToAiGatewayCredentialDescription(server: McpRegistryServer): ICredentialType | null {
+	if (!resolveMcpRegistryConnection(server)) return null;
+
+	return {
+		name: getMcpRegistryAiGatewayCredentialTypeName(server.slug),
+		icon: `node:${MCP_REGISTRY_PACKAGE_NAME}.${getMcpRegistryNodeTypeName(server)}`,
+		displayName: `${server.title} Gateway credits`,
+		// Nobody creates this credential: the node slot holds the managed marker.
+		hidden: true,
+		properties: [],
+	};
+}
+
+/**
  * Get the `credentials` property for node description based on the server's auth type
  */
 function getNodeDescriptionCredentials(
@@ -237,6 +257,8 @@ function getNodeDescriptionCredentials(
 				displayOptions: { show: { authentication: [value] } },
 			}));
 		}
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
+			return [{ name: getMcpRegistryAiGatewayCredentialTypeName(server.slug), required: true }];
 		default:
 			return [];
 	}
@@ -313,6 +335,8 @@ export function serverToCredentialDescription(
 			return serverToOAuth2CredentialDescription(server);
 		case 'extendsCredential':
 			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
+			return serverToAiGatewayCredentialDescription(server);
 		case 'usesCredentials':
 			return null;
 		default:
@@ -331,7 +355,8 @@ export function serverToNodeDescription(
 	if (
 		server.authType !== 'oauth2' &&
 		server.authType !== 'extendsCredential' &&
-		server.authType !== 'usesCredentials'
+		server.authType !== 'usesCredentials' &&
+		server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE
 	) {
 		return null;
 	}

@@ -1,4 +1,4 @@
-import type { McpRegistryServer } from './mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE, type McpRegistryServer } from './mcp-registry.types';
 
 export const notionMockServer = {
 	name: 'com.notion/mcp',
@@ -188,4 +188,22 @@ export const linearMockServer: McpRegistryServer = {
 	origin: 'registry',
 	status: 'active',
 	tags: ['issue-tracking', 'project-management'],
+} satisfies McpRegistryServer;
+
+export const firecrawlAiGatewayMockServer = {
+	name: 'com.n8n/n8n-connect-firecrawl-mcp',
+	slug: 'n8n-connect-firecrawl',
+	title: 'Firecrawl',
+	description: 'Scrape, crawl, map and search the web, billed to Gateway credits',
+	tagline: 'Read the web with Gateway credits',
+	version: '1.0.0',
+	updatedAt: '2026-09-17T10:00:00.000Z',
+	icons: [{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/svg+xml' }],
+	authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+	remotes: [{ type: 'streamable-http', url: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl' }],
+	tools: [{ name: 'firecrawl_scrape', title: 'Scrape', annotations: { readOnlyHint: true } }],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	requiredCapabilities: ['n8n-connect'],
 } satisfies McpRegistryServer;

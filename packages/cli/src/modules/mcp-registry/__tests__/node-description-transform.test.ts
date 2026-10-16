@@ -8,6 +8,7 @@ import {
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
 	gmailDirectExtendMockServer,
 	githubUsesCredentialsMockServer,
 	notionMockServer,
@@ -835,6 +836,32 @@ describe('serverToCredentialDescription', () => {
 				),
 			).not.toBeNull(); // current code DOES build a tile once the parent credential is known...
 			expect(oldPickRemote(databricksGenieTemplatedMockServer)).toBeNull(); // ...but old code drops it regardless
+		});
+	});
+});
+
+describe('Gateway credits MCP server', () => {
+	it('loads as a node with one credential type that has no base type and no fields', () => {
+		const node = serverToNodeDescription(
+			firecrawlAiGatewayMockServer,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+		const credential = serverToCredentialDescription(
+			firecrawlAiGatewayMockServer,
+			isKnownCredentialType,
+		);
+
+		expect(node?.credentials).toEqual([
+			{ name: 'n8nConnectFirecrawlMcpAiGatewayApi', required: true },
+		]);
+		expect(node?.properties.some(({ name }) => name === 'authentication')).toBe(false);
+		expect(credential).toEqual({
+			name: 'n8nConnectFirecrawlMcpAiGatewayApi',
+			icon: 'node:@n8n/mcp-registry.n8nConnectFirecrawl',
+			displayName: 'Firecrawl Gateway credits',
+			hidden: true,
+			properties: [],
 		});
 	});
 });

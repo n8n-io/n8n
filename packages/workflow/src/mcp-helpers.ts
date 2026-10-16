@@ -8,6 +8,12 @@ const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
 /** Covers MCP-specific and existing native OAuth2 credential type names. */
 export type McpOAuth2CredentialType = 'oAuth2Api' | `${string}OAuth2Api` | `${string}OAuth2`;
 
+/** Credential types that registry servers generate for Gateway credits, such as `n8nConnectFirecrawlMcpAiGatewayApi`. */
+export type McpAiGatewayCredentialType = `${string}McpAiGatewayApi`;
+
+/** Either credential kind that an MCP registry binding can hold. */
+export type McpRegistryCredentialType = McpOAuth2CredentialType | McpAiGatewayCredentialType;
+
 interface McpRegistryConnectionBase {
 	nodeTypeName: string;
 	transport: 'httpStreamable' | 'sse';
@@ -19,7 +25,7 @@ interface McpRegistryConnectionBase {
 }
 
 export interface McpRegistryCredentialBinding {
-	credentialType: McpOAuth2CredentialType;
+	credentialType: McpRegistryCredentialType;
 	selector: string;
 }
 
@@ -60,7 +66,7 @@ export function getConfiguredEndpointUrl(connection: McpRegistryConnection): str
 
 export interface PrepareMcpRegistryConnectionInput {
 	connection: McpRegistryConnection;
-	credentialType: McpOAuth2CredentialType;
+	credentialType: McpRegistryCredentialType;
 	credentialData: ICredentialDataDecryptedObject;
 	headers?: Record<string, string>;
 }
@@ -70,7 +76,7 @@ export type PrepareMcpRegistryConnectionResult =
 			ok: true;
 			value: {
 				nodeTypeName: string;
-				credentialType: McpOAuth2CredentialType;
+				credentialType: McpRegistryCredentialType;
 				transport: 'httpStreamable' | 'sse';
 				/** Always a literal URL, templated or not. */
 				endpointUrl: string;
@@ -112,6 +118,13 @@ export function isMcpOAuth2Authentication(
 	);
 }
 
+/** Returns `true` for the credential types that registry servers generate for Gateway credits. */
+export function isMcpAiGatewayAuthentication(
+	authentication: string,
+): authentication is McpAiGatewayCredentialType {
+	return authentication.endsWith('McpAiGatewayApi');
+}
+
 /** Return true when an MCP OAuth2 token is close enough to expiry to refresh it. */
 export function shouldRefreshMcpOAuth2Token(tokenData: unknown, grantType?: unknown): boolean {
 	if (!isRecord(tokenData)) return false;
@@ -145,7 +158,8 @@ export function getMcpAuthHeaders(
 			: {};
 	}
 
-	if (authentication === 'bearerAuth') {
+	// The minted Gateway credits credential has its token in `token`, the same as a bearer credential.
+	if (authentication === 'bearerAuth' || isMcpAiGatewayAuthentication(authentication)) {
 		return typeof credentialData.token === 'string' && credentialData.token.length > 0
 			? { ['Authorization']: `Bearer ${credentialData.token}` }
 			: {};

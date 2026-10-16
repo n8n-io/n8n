@@ -9,6 +9,9 @@ export type McpRegistryServerUpsertRow = Pick<
 
 const serverStatuses = ['active', 'deprecated'] as const;
 
+/** `authType` of a row made from an AI Gateway MCP server. Stored in the database. */
+export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
+
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
 
@@ -136,6 +139,8 @@ const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
 		authType: z.literal('usesCredentials'),
 		usesCredentials: mcpRegistryUsesCredentialsSchema,
 	}),
+	// No user credential: the token is minted for Gateway credits on each use.
+	z.object({ authType: z.literal(AI_GATEWAY_MANAGED_AUTH_TYPE) }),
 ]);
 
 export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);
