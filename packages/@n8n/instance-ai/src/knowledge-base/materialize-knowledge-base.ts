@@ -316,19 +316,6 @@ export async function loadPrebakedKnowledgeBaseBundle(
 		schemaVersion: KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION,
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 		logger: options.logger,
-		invalidManifestLogMessage: 'Ignoring invalid prebaked knowledge base manifest',
-		staleManifestLogMessage: 'Ignoring stale prebaked knowledge base manifest',
-		staleManifestLogKeys: {
-			expected: 'expectedContentHash',
-			actual: 'actualContentHash',
-		},
-		successLogMessage: 'Using prebaked knowledge base from workspace',
-		successLogContext: (loadedBundle) => ({
-			root: options.root,
-			knowledgeBaseRoot: loadedBundle.rootDir,
-			contentHash: loadedBundle.contentHash,
-			fileCount: loadedBundle.files.size,
-		}),
 		buildBundle: () => bundle,
 	});
 }
@@ -352,13 +339,6 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 				loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
 				buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
 				bundleHash: (bundle) => bundle.contentHash,
-				materializedLogMessage: 'Materialized knowledge base into workspace',
-				materializedLogContext: (bundle) => ({
-					root: options.root,
-					knowledgeBaseRoot: bundle.rootDir,
-					contentHash: bundle.contentHash,
-					fileCount: bundle.files.size,
-				}),
 			});
 		},
 	);

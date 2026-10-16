@@ -58,7 +58,7 @@ describe('Agent skills in the skills hub', () => {
 	const broadcaster = mockInstance(AgentUpdateBroadcaster);
 
 	beforeAll(async () => {
-		await setSkillsHubFlag(true);
+		setSkillsHubFlag(true);
 		mockInstance(Telemetry);
 		mockInstance(AgentRuntimeCacheService);
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
@@ -246,6 +246,32 @@ describe('Agent skills in the skills hub', () => {
 		).rejects.toThrow('This agent uses an older version of this skill.');
 	});
 
+	it('refuses a skill from the agent builder whose name a skill of its project has', async () => {
+		await createSkill(body('Triage'));
+		const agent = await createAgent([]);
+
+		await expect(
+			agentSkillsService.createAndAttachSkill(agent.id, project.id, body('TRIAGE'), {
+				user: editor,
+				modifiedBy: 'builder',
+			}),
+		).rejects.toThrow('That name is taken, choose another');
+	});
+
+	it('lets the agent builder use a name that only an instance skill has', async () => {
+		await createSkill(body('Triage'), { projectId: null });
+		const agent = await createAgent([]);
+
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Triage'),
+			{ user: editor, modifiedBy: 'builder' },
+		);
+
+		expect(created.id).toBeDefined();
+	});
+
 	it('creates, updates and detaches a skill from the agent builder', async () => {
 		const agent = await createAgent([]);
 		const context = { user: editor, modifiedBy: 'builder' as const };
@@ -291,19 +317,19 @@ describe('Agent skills in the skills hub', () => {
 		await saveInstructions(skill, 'Newer text.');
 		const version = published.activeVersion!;
 
-		await setSkillsHubFlag(false);
+		setSkillsHubFlag(false);
 		try {
 			// With the flag off, the legacy reader uses the columns that publish wrote.
 			const { skillRefs: refs, skills } = await skillRefs.readVersion(version, {});
 			expect(refs).toEqual([{ type: 'skill', id: skill }]);
 			expect(await instructionsOf(skills)).toEqual({ [skill]: 'Published text.' });
 		} finally {
-			await setSkillsHubFlag(true);
+			setSkillsHubFlag(true);
 		}
 	});
 
 	it('keeps skills on the agent row when the skills hub is off', async () => {
-		await setSkillsHubFlag(false);
+		setSkillsHubFlag(false);
 		try {
 			const agent = await createAgent([]);
 			const context = { user: editor, modifiedBy: 'builder' as const };
@@ -335,7 +361,7 @@ describe('Agent skills in the skills hub', () => {
 			expect(await Container.get(SkillRepository).findByIds([created.id])).toEqual([]);
 			expect(await skillRefs.refsForDraft(row, {})).toEqual([{ type: 'skill', id: created.id }]);
 		} finally {
-			await setSkillsHubFlag(true);
+			setSkillsHubFlag(true);
 		}
 	});
 
@@ -368,6 +394,27 @@ describe('Agent skills in the skills hub', () => {
 		expect(copy).toMatchObject({ projectId: null, agentId: duplicate.id });
 		const { skills } = await skillRefs.readDraft(duplicate, {});
 		expect(Object.values(skills)).toEqual([body('Private')]);
+	});
+
+	it('trims the name of a skill the agent page creates, and refuses a blank one', async () => {
+		const agent = await createAgent([]);
+		const context = { user: editor, modifiedBy: 'user' as const };
+
+		await expect(
+			agentSkillsService.createAndAttachSkill(agent.id, project.id, body('   '), context),
+		).rejects.toThrow('Skill name is required.');
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('  Summarize  '),
+			context,
+		);
+
+		// The answer and its hash match the stored skill, so the next edit passes the base check.
+		expect(created.skill.name).toBe('Summarize');
+		const { skills } = await skillRefs.readDraft(await reload(agent), {});
+		expect(skills[created.id]?.name).toBe('Summarize');
+		expect(created.skillHash).toBe(getAgentSkillHash(skills[created.id]!));
 	});
 
 	it('changes where a skill can be added only while no other agent uses it', async () => {
@@ -409,6 +456,39 @@ describe('Agent skills in the skills hub', () => {
 		await skillRefs.replaceDraftRefs(await reload(other), [], {});
 		expect(await skillRefs.refsForDraft(await reload(other), {})).toEqual([]);
 		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
+	});
+
+	it('renames and moves a skill in one save to a name that only the old scope holds', async () => {
+		const agent = await createAgent([]);
+		const context = { user: editor, modifiedBy: 'user' as const };
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Summarize'),
+			context,
+		);
+		const update = async (updates: Partial<AgentSkill>, availableTo: 'project' | 'agent') =>
+			await agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				created.id,
+				updates,
+				context,
+				undefined,
+				undefined,
+				availableTo,
+			);
+		await update({}, 'agent');
+		await createSkill(body('summarize'));
+
+		await update({ name: 'Condense' }, 'project');
+
+		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
+			projectId: project.id,
+			agentId: null,
+		});
+		const { skills } = await skillRefs.readDraft(await reload(agent), {});
+		expect(skills[created.id]?.name).toBe('Condense');
 	});
 
 	it('shares the skills of a duplicated agent', async () => {

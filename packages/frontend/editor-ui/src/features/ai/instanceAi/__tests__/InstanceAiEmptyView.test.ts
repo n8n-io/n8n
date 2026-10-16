@@ -597,8 +597,7 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		store.deleteThread.mockResolvedValue(true);
 		store.creditsQuota = 100;
-		store.showCreditWarning = false;
-		store.quotaLocked = false;
+		store.isLowCredits = false;
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		experimentMocks.splitBelowInputVariant.value = false;
@@ -919,7 +918,7 @@ describe('InstanceAiEmptyView', () => {
 	// fuse onto a sidebar input reads as a stray inset box floating above it.
 	it('renders the credit banner as a self-contained card in the split layout', () => {
 		experimentMocks.splitBelowInputVariant.value = true;
-		store.showCreditWarning = true;
+		store.isLowCredits = true;
 
 		const { getByTestId } = renderView();
 
@@ -1037,7 +1036,7 @@ describe('InstanceAiEmptyView', () => {
 
 	it('blocks the composer when credits are gone and does not let the banner be dismissed', () => {
 		store.isOutOfCredits = true;
-		store.showCreditWarning = true;
+		store.isLowCredits = true;
 
 		const { getByTestId, queryByTestId } = renderView();
 
@@ -1046,19 +1045,8 @@ describe('InstanceAiEmptyView', () => {
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
-	it('blocks the composer when the quota is locked', () => {
-		store.isOutOfCredits = true;
-		store.quotaLocked = true;
-		store.showCreditWarning = true;
-
-		const { getByTestId, queryByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-input-out-of-credits')).toHaveTextContent('true');
-		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
-	});
-
 	it('keeps the free nudge mounted and reveals it after the credit warning is dismissed', async () => {
-		store.showCreditWarning = true;
+		store.isLowCredits = true;
 
 		const { getByTestId } = renderView();
 		const nudge = getByTestId('instance-ai-free-nudge-stub');
@@ -1072,7 +1060,7 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it('keeps the free nudge ineligible when credits run out after the warning was dismissed', async () => {
-		store.showCreditWarning = true;
+		store.isLowCredits = true;
 
 		const { getByTestId, queryByTestId } = renderView();
 		const nudge = getByTestId('instance-ai-free-nudge-stub');

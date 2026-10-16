@@ -86,15 +86,23 @@ import {
 	buildFinishSetupTool,
 	buildResolveLlmTool,
 } from './interactive';
+import type {
+	NodeToolCredentialWriteResult,
+	ResolvedCredential,
+} from './interactive/finish-setup.tool';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
+import {
+	assignCredentialToNodeTools,
+	listAiGatewayManagedCredentialTypes,
+} from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
+import { SkillNameTakenError, skillNameTakenToolMessage } from '../skills/skill-name-taken.error';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -181,6 +189,12 @@ type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
 const STALE_SKILL_ERROR_MESSAGE =
 	'Skill changed. Call agent-context with type "skill", then retry with its skill and skillHash.';
 
+/** A taken name is a conflict too, but a retry with a fresh hash would fail the same way. */
+function updateSkillErrorMessage(error: unknown, message: string): string {
+	if (error instanceof SkillNameTakenError) return skillNameTakenToolMessage(error.skillName);
+	return error instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message;
+}
+
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	emptyInstructionsFollowUp: 'saving the config again.',
@@ -191,7 +205,10 @@ const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 
 const createSkillInputSchema = z
 	.object({
-		name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
+		name: agentSkillSchema.shape.name.describe(
+			'Human-readable skill name. It must be unique in the project: no other skill of this ' +
+				'project may have a name like it (case, spaces, hyphens and underscores do not count).',
+		),
 		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
 		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
 		references: agentSkillSchema.shape.references
@@ -549,7 +566,7 @@ export class AgentsBuilderToolsService {
 			),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
-					this.createFinishSetupTool(credentialService, agentId, projectId, track),
+					this.createFinishSetupTool(credentialService, agentId, projectId, user, track),
 					agentId,
 					projectId,
 					(result) => result.completed === true,
@@ -585,6 +602,7 @@ export class AgentsBuilderToolsService {
 		credentialService: InstanceAiCredentialService,
 		agentId: string,
 		projectId: string,
+		user: User,
 		track: BuilderTrackFn,
 	): BuiltTool {
 		return buildFinishSetupTool({
@@ -592,6 +610,8 @@ export class AgentsBuilderToolsService {
 			agentId,
 			projectId,
 			track,
+			writeCredentialsToNodeTools: async (credentials) =>
+				await this.writeCredentialsToNodeTools(agentId, projectId, user, credentials),
 			isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 			listIntegrationCredentialIds: async () => {
 				const agent = await this.agentsService.findById(agentId, projectId);
@@ -1179,10 +1199,7 @@ export class AgentsBuilderToolsService {
 					};
 				} catch (e) {
 					const message = e instanceof Error ? e.message : String(e);
-					return {
-						ok: false,
-						errors: [{ message: e instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message }],
-					};
+					return { ok: false, errors: [{ message: updateSkillErrorMessage(e, message) }] };
 				}
 			})
 			.build();
@@ -1241,10 +1258,13 @@ export class AgentsBuilderToolsService {
 						skills: created.skills.map(({ id, skill }) => ({ id, name: skill.name })),
 					};
 				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
+					const message =
+						e instanceof SkillNameTakenError
+							? `${skillNameTakenToolMessage(e.skillName)} The batch is all-or-nothing, so send every skill again.`
+							: e instanceof Error
+								? e.message
+								: String(e);
+					return { ok: false, errors: [{ message }] };
 				}
 			})
 			.build();
@@ -1363,6 +1383,45 @@ export class AgentsBuilderToolsService {
 		);
 		// Based on a fresh read, so the saved config can hold edits the model has not seen.
 		return { applied: true, config: saved.config, configHash: saved.configHash };
+	}
+
+	private async writeCredentialsToNodeTools(
+		agentId: string,
+		projectId: string,
+		user: User,
+		credentials: ResolvedCredential[],
+	): Promise<NodeToolCredentialWriteResult> {
+		const failed = (errors: Array<{ message: string }>): NodeToolCredentialWriteResult => ({
+			credentialTypes: [],
+			error: errors.map((e) => e.message).join('; '),
+		});
+		const editorLock = await this.getEditorLockFailure(agentId);
+		if (editorLock) return failed(editorLock.errors);
+		const { config, configHash } = await this.getConfigSnapshot(agentId, projectId);
+		if (!config) return failed([{ message: 'Agent has no JSON config yet.' }]);
+
+		const tools = structuredClone(config.tools ?? []);
+		const credentialTypes: string[] = [];
+		for (const { credentialType, id, name } of credentials) {
+			if (assignCredentialToNodeTools(tools, this.nodeTypes, credentialType, { id, name }) > 0) {
+				credentialTypes.push(credentialType);
+			}
+		}
+		if (credentialTypes.length === 0) return { credentialTypes };
+
+		const next = { ...config, tools };
+		const validated = this.validateBuilderConfig(next, config);
+		if (!validated.ok) return failed(validated.errors);
+		const saved = await this.saveBuilderConfig(
+			agentId,
+			projectId,
+			user,
+			validated.config,
+			configHash,
+			next,
+		);
+		if (!saved.ok) return failed(saved.errors);
+		return { credentialTypes, configHash: saved.configHash };
 	}
 
 	private async getFreshConfigSnapshot(
