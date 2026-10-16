@@ -42,6 +42,7 @@ import {
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
+import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -86,6 +87,7 @@ export class PublicApiControllerRegistry {
 		private readonly authStrategyRegistry: AuthStrategyRegistry,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly eventService: EventService,
+		private readonly rateLimitService: PublicApiRateLimitService,
 		private readonly idempotencyKeyService: IdempotencyKeyService,
 		private readonly logger: Logger,
 	) {}
@@ -237,6 +239,9 @@ export class PublicApiControllerRegistry {
 			}
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
+			middlewares.push(
+				...this.rateLimitService.createRouteLimiters(route.method, route.rateLimitAccess),
+			);
 
 			// Path param validation must run before the scope checks, so that a malformed param always
 			// returns 400, rather than 404 or 403 depending on the caller's access.
