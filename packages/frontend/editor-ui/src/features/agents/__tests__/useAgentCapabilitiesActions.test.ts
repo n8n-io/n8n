@@ -181,6 +181,7 @@ type SkillModalData = {
 		id?: string;
 		skill: AgentSkill;
 		availableTo?: 'project' | 'agent' | 'instance';
+		method?: 'manual' | 'upload';
 	}) => void;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;
