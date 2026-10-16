@@ -64,6 +64,11 @@ function wrapStores({ executionStore, stepStore, executionViewStore }: EngineSto
 				'loadExecution',
 				executionStore.loadExecution.bind(executionStore),
 			),
+			loadTriggerOutputs: storeOperation(
+				'execution',
+				'loadTriggerOutputs',
+				executionStore.loadTriggerOutputs.bind(executionStore),
+			),
 			transitionStatus: storeOperation(
 				'execution',
 				'transitionStatus',
@@ -124,7 +129,11 @@ function wrapStores({ executionStore, stepStore, executionViewStore }: EngineSto
 				'loadLatestStepSummaries',
 				stepStore.loadLatestStepSummaries.bind(stepStore),
 			),
-			loadAllSteps: storeOperation('step', 'loadAllSteps', stepStore.loadAllSteps.bind(stepStore)),
+			loadCompletedStepOutputs: storeOperation(
+				'step',
+				'loadCompletedStepOutputs',
+				stepStore.loadCompletedStepOutputs.bind(stepStore),
+			),
 			countSettledSteps: storeOperation(
 				'step',
 				'countSettledSteps',

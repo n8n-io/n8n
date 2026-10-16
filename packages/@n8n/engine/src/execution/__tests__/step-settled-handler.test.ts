@@ -56,7 +56,6 @@ function makeExecutionStore(
 		mode: 'production',
 		graph,
 		workflow: {},
-		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		finishedAt: null,
@@ -65,6 +64,7 @@ function makeExecutionStore(
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
+		loadTriggerOutputs: vi.fn().mockResolvedValue(null),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi
 			.fn()
@@ -120,7 +120,7 @@ function makeStepStore(
 		}),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
-		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadCompletedStepOutputs: vi.fn().mockResolvedValue([]),
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),

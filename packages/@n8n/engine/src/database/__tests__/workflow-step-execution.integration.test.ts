@@ -153,6 +153,29 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(id)).outputs).toEqual(outputs);
 	});
 
+	it('PgStepStore.loadCompletedStepOutputs returns the outputs of completed steps only, at every iteration', async () => {
+		const executionId = await createExecution();
+		const store = new PgStepStore(poolOf(dataSource));
+		await store.createSteps(executionId, [
+			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [[{ json: { t: 1 } }]] },
+			{ nodeId: 'loop', iteration: 0, status: 'completed', outputs: [[{ json: { pass: 0 } }]] },
+			{ nodeId: 'loop', iteration: 1, status: 'completed', outputs: [[{ json: { pass: 1 } }]] },
+			{ nodeId: 'a', iteration: 0, status: 'queued' },
+			{ nodeId: 'b', iteration: 0, status: 'skipped' },
+		]);
+
+		const loaded = await store.loadCompletedStepOutputs(executionId);
+
+		expect(loaded).toHaveLength(3);
+		expect(loaded).toEqual(
+			expect.arrayContaining([
+				{ nodeId: 'trigger', iteration: 0, outputs: [[{ json: { t: 1 } }]] },
+				{ nodeId: 'loop', iteration: 0, outputs: [[{ json: { pass: 0 } }]] },
+				{ nodeId: 'loop', iteration: 1, outputs: [[{ json: { pass: 1 } }]] },
+			]),
+		);
+	});
+
 	it('PgStepStore.createSteps is a no-op for an empty batch', async () => {
 		const store = new PgStepStore(poolOf(dataSource));
 		expect(await store.createSteps('00000000-0000-7000-8000-000000000000', [])).toEqual([]);

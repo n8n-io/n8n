@@ -58,6 +58,13 @@ export interface StepSummary {
 	filledOutputSlots: boolean[];
 }
 
+/** What an expression can read of a completed step. */
+export interface CompletedStepOutputs {
+	nodeId: string;
+	iteration: number;
+	outputs: StepSlots;
+}
+
 /** Thrown by `loadStep` when no step exists for the given id. */
 export class StepNotFoundError extends Error {
 	constructor(readonly stepId: string) {
@@ -233,13 +240,14 @@ export interface StepStore {
 	): Promise<Record<string, StepSummary>>;
 
 	/**
-	 * Every step of the execution, at every iteration.
+	 * The outputs of every completed step of the execution, at every iteration,
+	 * in no particular order. Steps that have not completed are left out.
 	 *
 	 * For the v1 shim, which resolves expressions against whatever the execution
 	 * has produced so far and cannot know in advance which steps a given
 	 * expression names. TODO(CAT-3017): load selectively instead.
 	 */
-	loadAllSteps(executionId: string): Promise<StepRecord[]>;
+	loadCompletedStepOutputs(executionId: string): Promise<CompletedStepOutputs[]>;
 
 	/**
 	 * How many of the execution's steps have settled (completed, failed,

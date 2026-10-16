@@ -17,6 +17,7 @@ import {
 } from '../execution/execution.types';
 import {
 	StepNotFoundError,
+	type CompletedStepOutputs,
 	type DueStep,
 	type NewStepRecord,
 	type StepRecord,
@@ -79,6 +80,12 @@ const INSERT_STEPS: PreparedStatement = {
 		ORDER BY candidate.position
 		ON CONFLICT DO NOTHING
 		RETURNING id, node_id AS "nodeId", iteration`,
+};
+
+const LOAD_COMPLETED_STEP_OUTPUTS: PreparedStatement = {
+	name: 'engine_load_completed_step_outputs',
+	text: `SELECT node_id AS "nodeId", iteration, outputs FROM workflow_step_execution
+		WHERE execution_id = $1::uuid AND status = 'completed' AND outputs IS NOT NULL`,
 };
 
 type ClaimedStepRow = Pick<
@@ -344,13 +351,11 @@ export class PgStepStore implements StepStore {
 		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
 	}
 
-	async loadAllSteps(executionId: string): Promise<StepRecord[]> {
-		const { rows } = await this.pool.query<StepRecord>(
-			`SELECT ${STEP_RECORD_COLUMNS} FROM workflow_step_execution
-			WHERE execution_id = $1
-			ORDER BY node_id, iteration`,
-			[executionId],
-		);
+	async loadCompletedStepOutputs(executionId: string): Promise<CompletedStepOutputs[]> {
+		const { rows } = await this.pool.query<CompletedStepOutputs>({
+			...LOAD_COMPLETED_STEP_OUTPUTS,
+			values: [executionId],
+		});
 		return rows;
 	}
 

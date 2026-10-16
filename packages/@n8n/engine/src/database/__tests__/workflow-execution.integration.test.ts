@@ -102,7 +102,7 @@ describe('workflow_execution table (integration)', () => {
 		});
 	});
 
-	it('PgExecutionStore.loadExecution leaves the workflow document behind', async () => {
+	it('PgExecutionStore.loadExecution leaves the workflow document and the trigger payload behind', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const created = repo.create({
 			id: generateId(),
@@ -118,21 +118,31 @@ describe('workflow_execution table (integration)', () => {
 		});
 		await repo.save(created);
 
-		const record = await new PgExecutionStore(poolOf(dataSource)).loadExecution(created.id);
+		const store = new PgExecutionStore(poolOf(dataSource));
+		const record = await store.loadExecution(created.id);
 
-		// The execution path never reads the document, so the query never ships it.
+		// The execution path never reads the document, and only the start reads
+		// the payload, so the query ships neither.
 		expect(record).toEqual({
 			id: created.id,
 			workflowId: 'wf-4',
 			status: 'running',
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
-			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
 			finishedAt: null,
 		});
+		expect(await store.loadTriggerOutputs(created.id)).toEqual([{ foo: 'bar' }]);
 	});
+
+	it.each(['loadExecution', 'loadTriggerOutputs'] as const)(
+		'PgExecutionStore.%s throws for an unknown id',
+		async (method) => {
+			const store = new PgExecutionStore(poolOf(dataSource));
+			await expect(store[method](generateId())).rejects.toBeInstanceOf(ExecutionNotFoundError);
+		},
+	);
 
 	it.each(['loadExecutionView', 'loadExecutionWithStepsView'] as const)(
 		'TypeOrmExecutionViewStore.%s throws for an unknown id',

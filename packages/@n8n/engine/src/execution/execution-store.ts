@@ -18,14 +18,16 @@ interface BaseExecutionRecord {
 	graph: WorkflowGraph;
 	/** Stored for the read path only. Nothing on the execution path reads it. */
 	workflow: WorkflowDocument;
-	triggerOutputs: TriggerOutputs | null;
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. */
 	responseExpectation: ResponseExpectation;
 }
 
 /** A new execution to persist. Timestamps are assigned by the store. */
-export type NewExecutionRecord = BaseExecutionRecord;
+export type NewExecutionRecord = BaseExecutionRecord & {
+	/** Read back once, by `loadTriggerOutputs`, when the execution starts. */
+	triggerOutputs: TriggerOutputs | null;
+};
 
 /**
  * What running an execution needs of its row. The execution path decides on
@@ -51,8 +53,15 @@ export interface ExecutionStore {
 	/** Persist a new execution record under the caller-minted `record.id`. */
 	createExecution(record: NewExecutionRecord): Promise<void>;
 
-	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
+	/** Load an execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;
+
+	/**
+	 * The trigger payload the execution was started with. Kept out of
+	 * `loadExecution`, which runs for every step, because only the start reads it.
+	 * Throws `ExecutionNotFoundError` if absent.
+	 */
+	loadTriggerOutputs(id: string): Promise<TriggerOutputs | null>;
 
 	/**
 	 * Compare-and-set status transition. Returns `true` iff this call performed

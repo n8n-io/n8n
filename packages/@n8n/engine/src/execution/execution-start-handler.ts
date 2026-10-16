@@ -31,7 +31,10 @@ export class ExecutionStartHandler {
 		);
 		if (!claimed) return;
 
-		const execution = await this.executionStore.loadExecution(event.executionId);
+		const [execution, triggerOutputs] = await Promise.all([
+			this.executionStore.loadExecution(event.executionId),
+			this.executionStore.loadTriggerOutputs(event.executionId),
+		]);
 
 		// This worker won the claim, so it is the one that announces the start.
 		// After the load, because the ids it carries save consumers a round trip.
@@ -61,7 +64,7 @@ export class ExecutionStartHandler {
 				nodeId: trigger.id,
 				iteration: 0,
 				status: 'completed',
-				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
+				outputs: triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
 			},
 		]);
 		if (!triggerStep) {
