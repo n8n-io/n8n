@@ -1,19 +1,18 @@
 <script setup lang="ts">
 /**
  * The "Add a check" panel of the checks view. Two ways in: type a rule (a
- * test message is drafted for it), or pick one of a batch of prepared cases.
- * Either way the case is written to the run's dataset, and the parent is told
- * so it can run the checks again — a run only holds the cases it started with.
+ * test message is drafted for it), or pick several of a batch of prepared
+ * cases and add them together. Either way the cases are written to the
+ * dataset and the parent is told. Nothing runs until the person runs it.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
 import { useAgentEvalsStore } from '../agentEvals.store';
 import type { AgentEvalCaseSource } from '../utils/agentEvalCases.utils';
-import AgentAvatar from './AgentAvatar.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -28,7 +27,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	close: [];
-	/** A case was written to the dataset. */
+	/** Cases were written to the dataset. */
 	added: [];
 }>();
 
@@ -45,8 +44,16 @@ const ruleInput = ref('');
 const prepared = ref<PreparedCase[]>([]);
 const loadingPrepared = ref(false);
 const expanded = ref(false);
-// 'rule' for the typed rule, or the key of the prepared case being added.
-const adding = ref<'rule' | number | null>(null);
+// 'rule' for the typed rule, 'picked' for the prepared cases being added.
+const adding = ref<'rule' | 'picked' | null>(null);
+const picked = ref<Set<number>>(new Set());
+
+function setPicked(key: number, value: boolean) {
+	const next = new Set(picked.value);
+	if (value) next.add(key);
+	else next.delete(key);
+	picked.value = next;
+}
 
 const canAdd = computed(
 	() => !props.disabled && props.caseSource !== null && !props.busy && adding.value === null,
@@ -97,7 +104,6 @@ async function writeCase(value: { input: string; whatToCheck: string }): Promise
 		if (isMounted) toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.addError'));
 		return false;
 	}
-	emit('added');
 	return true;
 }
 
@@ -124,23 +130,33 @@ async function onAddRule() {
 		}
 		if (!isMounted) return;
 
-		if (await writeCase({ input, whatToCheck: rule })) ruleInput.value = '';
+		if (await writeCase({ input, whatToCheck: rule })) {
+			ruleInput.value = '';
+			emit('added');
+		}
 	} finally {
 		if (isMounted) adding.value = null;
 	}
 }
 
-async function onAddPrepared(row: PreparedCase) {
-	if (!canAdd.value) return;
+/** Writes every picked case in order, then tells the parent once. */
+async function onAddPicked() {
+	if (!canAdd.value || picked.value.size === 0) return;
 
-	adding.value = row.key;
+	adding.value = 'picked';
+	const written = new Set<number>();
 	try {
-		const written = await writeCase({ input: row.input, whatToCheck: row.whatToCheck });
-		if (written && isMounted) {
-			prepared.value = prepared.value.filter((candidate) => candidate.key !== row.key);
+		for (const row of prepared.value.filter((candidate) => picked.value.has(candidate.key))) {
+			if (!(await writeCase({ input: row.input, whatToCheck: row.whatToCheck }))) break;
+			written.add(row.key);
 		}
 	} finally {
-		if (isMounted) adding.value = null;
+		if (isMounted) {
+			prepared.value = prepared.value.filter((candidate) => !written.has(candidate.key));
+			picked.value = new Set([...picked.value].filter((key) => !written.has(key)));
+			adding.value = null;
+		}
+		if (written.size > 0) emit('added');
 	}
 }
 
@@ -206,47 +222,73 @@ function toggleExpanded() {
 			<N8nText bold color="text-dark" size="small">
 				{{ i18n.baseText('agents.builder.agentEvals.checks.addCheckPrepared') }}
 			</N8nText>
-			<ul :class="$style.list">
-				<li
-					v-for="row in shownPrepared"
-					:key="row.key"
-					:class="$style.row"
-					data-testid="agent-eval-add-check-prepared-row"
-				>
-					<AgentAvatar kind="idle" size="md" />
-					<div :class="$style.rowText">
-						<N8nText color="text-light" size="small">{{ row.scenario }}</N8nText>
-						<N8nText color="text-dark">{{ row.input }}</N8nText>
-					</div>
-					<N8nButton
-						variant="outline"
-						size="small"
-						:disabled="!canAdd"
-						:loading="adding === row.key"
-						data-testid="agent-eval-add-check-prepared-add"
-						@click="onAddPrepared(row)"
+			<div :class="$style.list">
+				<ul :class="$style.rows">
+					<li
+						v-for="row in shownPrepared"
+						:key="row.key"
+						:class="$style.row"
+						data-testid="agent-eval-add-check-prepared-row"
 					>
-						{{ i18n.baseText('agents.builder.agentEvals.checks.addCheckSubmit') }}
+						<N8nCheckbox
+							:model-value="picked.has(row.key)"
+							:disabled="!canAdd"
+							:class="$style.pick"
+							@update:model-value="(value: boolean) => setPicked(row.key, value)"
+						>
+							<template #label>
+								<span :class="$style.rowText">
+									<N8nText color="text-dark" size="medium">{{
+										row.whatToCheck || row.input
+									}}</N8nText>
+									<N8nText
+										v-if="row.whatToCheck"
+										color="text-light"
+										size="small"
+										:class="$style.message"
+										>“{{ row.input }}”</N8nText
+									>
+								</span>
+							</template>
+						</N8nCheckbox>
+					</li>
+				</ul>
+				<footer :class="$style.footer">
+					<button
+						v-if="hasOverflow"
+						type="button"
+						:class="$style.moreToggle"
+						data-testid="agent-eval-add-check-more"
+						@click="toggleExpanded"
+					>
+						<N8nText color="text-light" size="small">
+							{{
+								expanded
+									? i18n.baseText('agents.builder.agentEvals.checks.addCheckFewer')
+									: i18n.baseText('agents.builder.agentEvals.checks.addCheckMore', {
+											interpolate: { count: String(hiddenCount) },
+										})
+							}}
+						</N8nText>
+					</button>
+					<N8nButton
+						variant="solid"
+						size="small"
+						:class="$style.addPicked"
+						:disabled="!canAdd || picked.size === 0"
+						:loading="adding === 'picked'"
+						data-testid="agent-eval-add-check-prepared-add"
+						@click="onAddPicked"
+					>
+						{{
+							i18n.baseText('agents.builder.agentEvals.checks.addChecks', {
+								adjustToNumber: picked.size,
+								interpolate: { count: String(picked.size) },
+							})
+						}}
 					</N8nButton>
-				</li>
-			</ul>
-			<button
-				v-if="hasOverflow"
-				type="button"
-				:class="$style.moreToggle"
-				data-testid="agent-eval-add-check-more"
-				@click="toggleExpanded"
-			>
-				<N8nText color="text-light" size="small">
-					{{
-						expanded
-							? i18n.baseText('agents.builder.agentEvals.checks.addCheckFewer')
-							: i18n.baseText('agents.builder.agentEvals.checks.addCheckMore', {
-									interpolate: { count: String(hiddenCount) },
-								})
-					}}
-				</N8nText>
-			</button>
+				</footer>
+			</div>
 		</div>
 	</section>
 </template>
@@ -283,7 +325,6 @@ function toggleExpanded() {
 	min-width: 0;
 	padding: 0;
 	border: none;
-	outline: auto;
 	background: transparent;
 	font-size: var(--font-size--sm);
 	color: var(--text-color--dark);
@@ -313,36 +354,57 @@ function toggleExpanded() {
 .list {
 	display: flex;
 	flex-direction: column;
-	margin: 0;
-	padding: 0;
-	list-style: none;
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	overflow: hidden;
+}
+
+.rows {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	margin: 0;
+	padding: var(--spacing--xs) var(--spacing--xs) 0;
+	list-style: none;
 }
 
 .row {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border-bottom: var(--border);
 }
 
-.row:last-of-type {
-	border-bottom: none;
+/* The checkbox sits on the rule's first line. */
+.pick {
+	align-items: flex-start;
+	width: 100%;
 }
 
 .rowText {
 	display: flex;
-	flex: 1;
 	flex-direction: column;
+	gap: var(--spacing--5xs);
 	min-width: 0;
 }
 
+/* A long message stops at two lines. */
+.message {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.footer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--xs);
+}
+
+.addPicked {
+	margin-left: auto;
+}
+
 .moreToggle {
-	align-self: flex-start;
-	padding: var(--spacing--4xs) var(--spacing--xs);
+	padding: var(--spacing--4xs) 0;
 	background: none;
 	border: none;
 	cursor: pointer;
