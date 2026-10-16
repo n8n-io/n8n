@@ -148,7 +148,9 @@ export class SystemAgentExecutionService {
 			if (
 				existing.agentId !== params.agentId ||
 				existing.accessScope !== 'user' ||
-				existing.ownerId !== params.user.id
+				existing.ownerId !== params.user.id ||
+				// The access check above ran for `params.projectId`, not for the project of this thread.
+				existing.projectId !== params.projectId
 			) {
 				throw new NotFoundError('Session not found');
 			}

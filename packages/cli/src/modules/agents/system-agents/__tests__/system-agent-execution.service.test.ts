@@ -1029,6 +1029,37 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		it('refuses to return an existing session of the user from another project', async () => {
+			const { service, threadRepository, txRunner } = setup();
+			threadRepository.findOneBy.mockResolvedValue({ ...thread, projectId: 'project-2' } as never);
+
+			await expect(
+				service.createThread({
+					agentId: AGENT_ID,
+					user,
+					projectId: 'project-1',
+					threadId: 'thread-1',
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('returns an existing session of the user in the same project', async () => {
+			const { service, threadRepository, txRunner } = setup();
+			const existing = { ...thread, projectId: 'project-1' };
+			threadRepository.findOneBy.mockResolvedValue(existing as never);
+
+			expect(
+				await service.createThread({
+					agentId: AGENT_ID,
+					user,
+					projectId: 'project-1',
+					threadId: 'thread-1',
+				}),
+			).toBe(existing);
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
 		it('refuses to create a session with the id of a thread of another user', async () => {
 			const { service, threadRepository, txRunner } = setup();
 			threadRepository.findOneBy.mockResolvedValue({ ...thread, ownerId: 'user-2' } as never);
