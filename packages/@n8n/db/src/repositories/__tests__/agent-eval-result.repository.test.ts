@@ -219,6 +219,41 @@ describe('AgentEvalResultRepository', () => {
 
 			await expect(repo.claimForRerun('res-1', 'run-1')).resolves.toBe(false);
 		});
+
+		it('does not claim a rerun when the driver omits the affected row count', async () => {
+			entityManager.update.mockResolvedValue({ generatedMaps: [], raw: [] });
+
+			await expect(repo.claimForRerun('res-1', 'run-1')).resolves.toBe(false);
+		});
+	});
+
+	describe('markUnfinishedAsError', () => {
+		it.each([undefined, new Date('2026-10-15T00:00:00Z')])(
+			'repairs only an unstarted row or the original attempt at %s',
+			async (runAt) => {
+				const qb = {
+					update: vi.fn().mockReturnThis(),
+					set: vi.fn().mockReturnThis(),
+					where: vi.fn().mockReturnThis(),
+					execute: vi.fn().mockResolvedValue({ affected: 1 }),
+				};
+				(entityManager.createQueryBuilder as Mock).mockReturnValue(qb);
+
+				await repo.markUnfinishedAsError('res-1', runAt, 'Original write failed');
+
+				expect(qb.set).toHaveBeenCalledWith({
+					status: 'error',
+					completedAt: expect.any(Date),
+					errorCode: 'case_dispatch_failed',
+					errorDetails: { message: 'Original write failed' },
+				});
+				type UnfinishedRow = { id: string; status: string; runAt?: Date };
+				const expectedRows: UnfinishedRow[] = [{ id: 'res-1', status: 'new' }];
+				if (runAt) expectedRows.push({ id: 'res-1', status: 'running', runAt });
+				expect(qb.where).toHaveBeenCalledWith(expectedRows);
+				expect(qb.execute).toHaveBeenCalledOnce();
+			},
+		);
 	});
 
 	describe('markAsCancelled', () => {

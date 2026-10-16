@@ -540,6 +540,20 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(getByTestId(BUTTON)).toBeDisabled();
 		});
 
+		it('ignores a queued apply-all click after a suggestion starts applying', async () => {
+			const { getByTestId, emitted, rerender } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2)] },
+			});
+			const button = getByTestId(BUTTON);
+			expect(button).toBeEnabled();
+			await rerender({ applyingSuggestionIds: ['result-1'] });
+
+			button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+			expect(emitted('apply-suggestions')).toBeUndefined();
+			expect(button).toBeDisabled();
+		});
+
 		it('applies settled suggestions and offers the checks view while another check is running', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, emitted } = renderComponent({

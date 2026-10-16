@@ -327,7 +327,7 @@ watch(
 	},
 );
 
-function onCheckAdded(deferRun = false) {
+function onCheckAdded(deferRun: boolean) {
 	if (deferRun || inFlight.value || props.rerunning) {
 		savedForNextRunCount.value++;
 		return;

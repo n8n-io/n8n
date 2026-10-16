@@ -810,6 +810,10 @@ describe('AgentEvalChecksPanel', () => {
 			// A click that still reaches the composable is ignored, not sent as a second write.
 			await user.click(within(getByTestId('agent-eval-check-c2')).getByText('apply suggestion'));
 			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
+			// A queued button event must also respect the active write.
+			getByTestId(BUTTON).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			await nextTick();
+			expect(store.applySuggestions).toHaveBeenCalledTimes(1);
 
 			finish({ configHash: 'h', results: [] });
 		});

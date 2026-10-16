@@ -517,6 +517,73 @@ describe('AgentEvalRunnerService', () => {
 			}
 		});
 
+		it('preserves cancellation when an active rerun exceeds the settlement deadline', async () => {
+			const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+			try {
+				seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await vi.waitFor(() => expect(resultRepository.countByStatus).toHaveBeenCalled());
+				runRepository.isCancellationRequested.mockResolvedValue(true);
+				now.mockReturnValue(1_000 + 65 * 60_000);
+				await finished;
+				expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
+					'run-1',
+					expect.objectContaining({ pending: 1 }),
+				);
+				expect(runRepository.markAsError).not.toHaveBeenCalled();
+				expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+			} finally {
+				now.mockRestore();
+			}
+		});
+
+		it.each(['cancellation poll', 'original write'])(
+			'reports a non-Error rejection from the %s',
+			async (failure) => {
+				seedFor([{ id: 'row-1', question: failure === 'original write' ? '' : 'First' }], {
+					error: 1,
+				});
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				const reason = `${failure} rejected`;
+				if (failure === 'cancellation poll') {
+					runRepository.isCancellationRequested
+						.mockResolvedValueOnce(false)
+						.mockResolvedValueOnce(false)
+						.mockRejectedValueOnce(reason);
+				} else {
+					resultRepository.markAsError.mockRejectedValueOnce(reason);
+				}
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+				expect(runRepository.markAsError).toHaveBeenCalledWith(
+					'run-1',
+					'case_dispatch_failed',
+					expect.objectContaining({ errors: [reason] }),
+					expect.objectContaining({ error: 1, pending: 0 }),
+					counts({ error: 1 }),
+				);
+				expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['removed', 'completed'] as const)(
+			'stops settlement when the run was %s by another worker',
+			async (state) => {
+				seedFor([{ id: 'row-1', question: 'First' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				runRepository.markAsCompleted.mockResolvedValue(false);
+				runRepository.findById.mockResolvedValue(
+					state === 'removed' ? null : mock({ id: 'run-1', status: 'completed' }),
+				);
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+				expect(runRepository.markAsCompleted).toHaveBeenCalledOnce();
+				expect(runRepository.findById).toHaveBeenCalledWith('run-1');
+				expect(runRepository.markAsError).not.toHaveBeenCalled();
+			},
+		);
+
 		it('runs each case with its input verbatim, persists results, aggregates the run', async () => {
 			seedFor(
 				[
