@@ -48,15 +48,15 @@ const i18n = useI18n();
 
 			<div v-if="!incomplete" :class="$style.benefits">
 				<div :class="$style.benefit">
-					<N8nIcon icon="workflow" size="small" />
+					<N8nIcon icon="workflow" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.build') }}</N8nText>
 				</div>
 				<div :class="$style.benefit">
-					<N8nIcon icon="flask-conical" size="small" />
+					<N8nIcon icon="flask-conical" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.debug') }}</N8nText>
 				</div>
 				<div :class="$style.benefit">
-					<N8nIcon icon="circle-help" size="small" />
+					<N8nIcon icon="circle-help" size="large" />
 					<N8nText size="large">{{ i18n.baseText('instanceAi.onboarding.benefit.help') }}</N8nText>
 				</div>
 			</div>
