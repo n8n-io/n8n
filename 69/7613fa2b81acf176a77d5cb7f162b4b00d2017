@@ -662,6 +662,7 @@ packages/@n8n/cli/docs/commands/package.md
   s_2397c9db9d923f::t_937612ca6328a6 52-54
   s_71ad2034164515::t_734ba3dd007431 73-75,203-204
   s_71ad2034164515::t_553a13d3783907 3,9-11,14-15,27,32,39-45,65-68,71,81,84-86,92,104-106,116-131,135-136
+  s_71ad2034164515::t_d4dd38a87466b3 91
 packages/@n8n/cli/src/commands/package/export.ts
   s_2397c9db9d923f::t_fb9dd5e142a9ac 90,96
   s_2397c9db9d923f::t_7be1fe92591eba 91,97,123-124,148-149,159-160
@@ -1088,6 +1089,7 @@ packages/@n8n/cli/src/commands/package/import.ts
   s_71ad2034164515::t_708c3eb90c66a1 40-45,50
   s_71ad2034164515::t_734ba3dd007431 14-16,35,46,52,159-161
   s_71ad2034164515::t_e46cf7d0c73fdf 55
+  s_71ad2034164515::t_d4dd38a87466b3 86
 packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
   s_71ad2034164515::t_a45c23ac173eca 101-102,123
   s_71ad2034164515::t_aec977eaf7bdb2 26,70,81-82,90-91
