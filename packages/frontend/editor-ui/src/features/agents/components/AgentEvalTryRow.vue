@@ -276,35 +276,38 @@ watch(
 					<N8nText bold color="text-dark" size="medium">{{
 						i18n.baseText('instanceAi.testAgentPreview.rule')
 					}}</N8nText>
-					<N8nText v-if="!editingWhatToCheck" color="text-dark" size="medium">{{
-						whatToCheck
-					}}</N8nText>
-					<div v-else :class="$style.whatToCheckEdit">
-						<N8nInput
-							v-model="whatToCheckDraft"
-							size="medium"
-							:data-test-id="testId && `${testId}-rule-input`"
-							@keydown.meta.enter="onSaveWhatToCheck"
-							@keydown.ctrl.enter="onSaveWhatToCheck"
-							@keydown.esc="onCancelEditWhatToCheck"
-						/>
-						<N8nButton
-							variant="solid"
-							size="small"
-							:disabled="!whatToCheckDraft.trim()"
-							:data-test-id="testId && `${testId}-rule-save`"
-							@click="onSaveWhatToCheck"
-						>
-							{{ i18n.baseText('generic.save') }}
-						</N8nButton>
-						<N8nButton
-							variant="outline"
-							size="small"
-							:data-test-id="testId && `${testId}-rule-cancel`"
-							@click="onCancelEditWhatToCheck"
-						>
-							{{ i18n.baseText('generic.cancel') }}
-						</N8nButton>
+					<!-- Settles in from above as the title leaves the header, so the rule reads as moving down. -->
+					<div :class="$style.ruleSlot">
+						<N8nText v-if="!editingWhatToCheck" color="text-dark" size="medium">{{
+							whatToCheck
+						}}</N8nText>
+						<div v-else :class="$style.whatToCheckEdit">
+							<N8nInput
+								v-model="whatToCheckDraft"
+								size="medium"
+								:data-test-id="testId && `${testId}-rule-input`"
+								@keydown.meta.enter="onSaveWhatToCheck"
+								@keydown.ctrl.enter="onSaveWhatToCheck"
+								@keydown.esc="onCancelEditWhatToCheck"
+							/>
+							<N8nButton
+								variant="solid"
+								size="small"
+								:disabled="!whatToCheckDraft.trim()"
+								:data-test-id="testId && `${testId}-rule-save`"
+								@click="onSaveWhatToCheck"
+							>
+								{{ i18n.baseText('generic.save') }}
+							</N8nButton>
+							<N8nButton
+								variant="outline"
+								size="small"
+								:data-test-id="testId && `${testId}-rule-cancel`"
+								@click="onCancelEditWhatToCheck"
+							>
+								{{ i18n.baseText('generic.cancel') }}
+							</N8nButton>
+						</div>
 					</div>
 				</div>
 				<N8nButton
@@ -531,6 +534,24 @@ watch(
 	flex-direction: column;
 	flex: 1;
 	min-width: 0;
+}
+
+// Plays once, when the row opens. Not on an edit: the slot stays mounted.
+.ruleSlot {
+	animation: rule-settle var(--duration--snappy) var(--easing--ease-out);
+}
+
+@keyframes rule-settle {
+	from {
+		opacity: 0;
+		transform: translateY(calc(-1 * var(--spacing--2xs)));
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ruleSlot {
+		animation: none;
+	}
 }
 
 .whatToCheckEdit {
