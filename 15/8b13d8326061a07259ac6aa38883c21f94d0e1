@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Ghost/Ghost.node.ts
+  s_2e1fa95fc44f8f::t_ac16009f179d6e 11-16,27-28,144-145,154,278
+packages/nodes-base/nodes/Ghost/test/Ghost.node.test.ts
+  s_2e1fa95fc44f8f::t_246eb019396196 1-36
+packages/nodes-base/nodes/Gitlab/Gitlab.node.ts
+  s_2e1fa95fc44f8f::t_6ca0bf01387962 10-15,25-26,1392-1393,1404,1408,1506,1508,1519,1521,1532,1551,1553
+packages/nodes-base/nodes/Gitlab/GitlabTrigger.node.ts
+  s_2e1fa95fc44f8f::t_36c6ffe3e0b070 10,81-87,94-95,197,241,280
+packages/nodes-base/nodes/Gitlab/__tests__/Gitlab.node.test.ts
+  s_2e1fa95fc44f8f::t_fc52641f6dec47 22,39,118-148,150-174,176,178-179,182,184-185,188,190-191,194,196,200,202,205-217
+packages/nodes-base/nodes/Gitlab/__tests__/GitlabTrigger.test.ts
+  s_2e1fa95fc44f8f::t_95aee47f8955e1 4,8,100-101,104-105,140-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "158b13d8326061a07259ac6aa38883c21f94d0e1",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
