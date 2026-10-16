@@ -173,7 +173,8 @@ describe('AddInstanceScopeToAgents migration', () => {
 			const projectThreadId = await insertThreadWithExecution(context, projectAgentId, projectId);
 			const instanceAgentId = await insertAgent(context, null, 'instance');
 			// An instance agent's thread carries the working project. The revert must
-			// work with these rows present. On SQLite they stay as orphans.
+			// work with these rows present. In a full revert,
+			// DeleteInstanceAgentsOnRevert deletes them first.
 			await insertThreadWithExecution(context, instanceAgentId, projectId);
 			return { projectAgentId, projectThreadId };
 		});
@@ -183,7 +184,8 @@ describe('AddInstanceScopeToAgents migration', () => {
 		await withContext(async (context) => {
 			expect(await readIds(context, 'agents')).toEqual([kept.projectAgentId]);
 			expect(await readIds(context, 'agent_execution_threads')).toContain(kept.projectThreadId);
-			// Filtered by thread: on SQLite, the instance agent's execution stays as an orphan.
+			// Filtered by thread: this test skips DeleteInstanceAgentsOnRevert, so on
+			// SQLite the instance agent's execution is not deleted here.
 			expect(await readExecutionIds(context, kept.projectThreadId)).toHaveLength(1);
 			await expect(insertAgent(context, null)).rejects.toThrow();
 			// The foreign keys still hold after the table was recreated.
