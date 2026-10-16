@@ -5,6 +5,7 @@ import {
 	getDescendantNodeIds,
 	getSuccessorNodeIds,
 	type GraphNode,
+	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
@@ -20,8 +21,23 @@ import {
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
-import type { StepRecord, StepStore } from './step-store';
+import { StepPrefetch } from './step-prefetch';
+import type { StepRecord, StepStore, StepSummary } from './step-store';
 import { validateStepContext } from './validate-step-context';
+
+interface PlanningReads {
+	loops: WorkflowLoop[];
+	terminalIterations: Map<string, number>;
+	steps: Record<StepKeyId, StepSummary>;
+}
+
+interface SettlementReads {
+	step: StepRecord;
+	execution: ExecutionRecord;
+	node: GraphNode;
+	hasFailedSteps: boolean;
+	planning: PlanningReads;
+}
 
 /**
  * Handles the `step:settled` orchestration event: decides the fate of the
@@ -45,12 +61,17 @@ export class StepSettledHandler {
 		private readonly responseSender: ExecutionResponseSender,
 	) {}
 
+	private readonly prefetched = new StepPrefetch<SettlementReads>();
+
+	/** Starts the reads `handle` needs for `event`, so they run while the event waits in the queue. */
+	prefetch(event: StepSettledEvent): void {
+		this.prefetched.put(event.stepId, this.loadReads(event));
+	}
+
 	async handle(event: StepSettledEvent): Promise<void> {
-		const [step, execution] = await Promise.all([
-			this.stepStore.loadStep(event.stepId),
-			this.executionStore.loadExecution(event.executionId),
-		]);
-		const node = validateStepContext(step, execution);
+		const { step, execution, node, hasFailedSteps, planning } = await (this.prefetched.take(
+			event.stepId,
+		) ?? this.loadReads(event));
 
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
@@ -67,12 +88,12 @@ export class StepSettledHandler {
 		if (step.status === 'completed' || step.status === 'skipped') {
 			// a failure elsewhere may still have its settled event queued behind
 			// this one, so it must end the execution here, before planning
-			if (await this.stepStore.hasFailedSteps(execution.id)) {
+			if (hasFailedSteps) {
 				await this.failExecution(execution, step, node);
 				return;
 			}
 
-			queued = await this.planSuccessors(execution, step);
+			queued = await this.planSuccessors(execution, step, planning);
 		}
 
 		// If we've queued steps, we know the execution isn't done yet, so we
@@ -104,8 +125,30 @@ export class StepSettledHandler {
 		await this.stepStore.cancelPendingSteps(execution.id);
 	}
 
-	/** Plans the settled step's direct successors, returning how many were queued. */
-	private async planSuccessors(execution: ExecutionRecord, step: StepRecord): Promise<number> {
+	/**
+	 * Everything `handle` reads, read speculatively: planning and the failure
+	 * probe are loaded even for a step whose outcome makes them unused.
+	 *
+	 * Each read runs after the step's own settlement committed, so the last
+	 * predecessor of a successor to settle always sees the others settled.
+	 */
+	private async loadReads(event: StepSettledEvent): Promise<SettlementReads> {
+		const [step, execution] = await Promise.all([
+			this.stepStore.loadStep(event.stepId),
+			this.executionStore.loadExecution(event.executionId),
+		]);
+		const node = validateStepContext(step, execution);
+		const [hasFailedSteps, planning] = await Promise.all([
+			this.stepStore.hasFailedSteps(execution.id),
+			this.loadPlanningReads(execution, step),
+		]);
+		return { step, execution, node, hasFailedSteps, planning };
+	}
+
+	private async loadPlanningReads(
+		execution: ExecutionRecord,
+		step: StepRecord,
+	): Promise<PlanningReads> {
 		const loops = deriveLoops(execution.graph);
 		// Only the candidates' own edges are resolved, so only the loops those
 		// edges leave need their latest row read.
@@ -119,6 +162,15 @@ export class StepSettledHandler {
 			execution.id,
 			decisionKeys(execution.graph, loops, step, terminalIterations),
 		);
+		return { loops, terminalIterations, steps };
+	}
+
+	/** Plans the settled step's direct successors, returning how many were queued. */
+	private async planSuccessors(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		{ loops, terminalIterations, steps }: PlanningReads,
+	): Promise<number> {
 		const { toQueue, toSkip } = decideSuccessors(
 			execution.graph,
 			loops,

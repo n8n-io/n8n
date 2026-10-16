@@ -26,6 +26,7 @@ import {
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
+import { StepPrefetch } from './step-prefetch';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -56,7 +57,17 @@ export class StepReadyHandler {
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
 
+	private readonly prefetched = new StepPrefetch<StepSlots>();
+
+	/** Starts gathering the inputs of `event`'s step, so the reads run while the event waits in the queue. */
+	prefetch(event: StepReadyEvent): void {
+		this.prefetched.put(event.stepId, this.loadInputs(event));
+	}
+
 	async handle(event: StepReadyEvent): Promise<void> {
+		// Taken before the claim, so a lost claim does not leave the entry behind.
+		const prefetchedInputs = this.prefetched.take(event.stepId);
+
 		// Claim via CAS so a duplicate/redelivered event is a no-op.
 		const step = await this.stepStore.claimStep(event.stepId);
 		if (!step) return;
@@ -97,7 +108,10 @@ export class StepReadyHandler {
 		const dispatch: { kind: 'resume'; cause: ResumeCause } | { kind: 'run'; inputs: StepSlots } =
 			step.resumeCause
 				? { kind: 'resume', cause: step.resumeCause }
-				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
+				: {
+						kind: 'run',
+						inputs: await (prefetchedInputs ?? this.gatherInputs(execution, step)),
+					};
 
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
@@ -228,6 +242,15 @@ export class StepReadyHandler {
 			terminalIterations,
 		);
 		return await runBatchStep(node.config, step.iteration, reader);
+	}
+
+	/** Predecessor rows are settled before a step is queued, so reading them before the claim reads the same values. */
+	private async loadInputs(event: StepReadyEvent): Promise<StepSlots> {
+		const [step, execution] = await Promise.all([
+			this.stepStore.loadStep(event.stepId),
+			this.executionStore.loadExecution(event.executionId),
+		]);
+		return await this.gatherInputs(execution, step);
 	}
 
 	/** Inputs for `node`, each slot taken from the row its edge reads. */

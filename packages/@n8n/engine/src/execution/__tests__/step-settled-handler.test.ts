@@ -200,6 +200,18 @@ describe('StepSettledHandler', () => {
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
 	});
 
+	it('plans from the reads taken when the event was prefetched', async () => {
+		const stepStore = makeStepStore();
+		const { handler, stepQueue } = makeHandler(stepStore);
+
+		handler.prefetch(event);
+		vi.mocked(stepStore.loadStep).mockRejectedValue(new Error('read again'));
+		await handler.handle(event);
+
+		expect(stepStore.loadStep).toHaveBeenCalledOnce();
+		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
+	});
+
 	it("plans the trigger's successors like any other node's", async () => {
 		// execution start only announces the trigger's settlement; the first
 		// steps are planned here, through the same rules as the rest
@@ -233,7 +245,6 @@ describe('StepSettledHandler', () => {
 
 		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
 		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
-		expect(stepStore.loadStepSummariesByKeys).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();

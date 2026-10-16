@@ -535,6 +535,42 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 	});
 
+	it('runs the step on the inputs gathered when the event was prefetched', async () => {
+		const stepStore = makeStepStore();
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		handler.prefetch(event);
+		await new Promise((resolve) => setImmediate(resolve));
+		vi.mocked(stepStore.loadStepsByKeys).mockRejectedValue(new Error('read again'));
+		await handler.handle(event);
+
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledOnce();
+		expect(executor.execute).toHaveBeenCalledWith(expect.objectContaining({ inputs: [{}] }));
+		expect(stepStore.completeStep).toHaveBeenCalledOnce();
+	});
+
+	it('drops a failed prefetch without a rejection when the claim is lost', async () => {
+		const stepStore = makeStepStore(
+			{},
+			{
+				claimStep: vi.fn().mockResolvedValue(null),
+				loadStepsByKeys: vi.fn().mockRejectedValue(new Error('read failed')),
+			},
+		);
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: makeExecutor(),
+		});
+
+		handler.prefetch(event);
+		await handler.handle(event);
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+	});
+
 	it('is a no-op when the step cannot be claimed (duplicate delivery)', async () => {
 		const stepStore = makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(null) });
 		const queue = makeQueue();

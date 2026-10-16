@@ -95,12 +95,19 @@ export function createEngineRuntime({
 }: EngineRuntimeOptions): EngineRuntime {
 	const rawOrchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
 	const rawStepQueue = new InMemoryWorkQueue<StepMessage>(logger);
-	const orchestrationQueue = instrumentation
-		? instrumentation.wrapQueue('orchestration', rawOrchestrationQueue)
-		: rawOrchestrationQueue;
-	const stepQueue = instrumentation
-		? instrumentation.wrapQueue('step', rawStepQueue)
-		: rawStepQueue;
+	// The handlers are built below; publishing only happens once the runtime starts.
+	const orchestrationQueue = prefetchOnPublish(
+		instrumentation
+			? instrumentation.wrapQueue('orchestration', rawOrchestrationQueue)
+			: rawOrchestrationQueue,
+		(message) => {
+			if (message.type === 'step:settled') settledHandler.prefetch(message);
+		},
+	);
+	const stepQueue = prefetchOnPublish(
+		instrumentation ? instrumentation.wrapQueue('step', rawStepQueue) : rawStepQueue,
+		(message) => readyHandler.prefetch(message),
+	);
 	const rawStores = createStores(dataSource);
 	const stores = instrumentation ? instrumentation.wrapStores(rawStores) : rawStores;
 	const { executionStore, stepStore, executionViewStore } = stores;
@@ -110,6 +117,14 @@ export function createEngineRuntime({
 		? new BatchingLifecycleEventPublisher(dependencies.lifecycleEventCallback)
 		: noopLifecycleEventPublisher;
 
+	const settledHandler = new StepSettledHandler(
+		executionStore,
+		stepStore,
+		stepQueue,
+		orchestrationQueue,
+		lifecycleEventPublisher,
+		responseSender,
+	);
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
 		new ExecutionStartHandler(
@@ -118,29 +133,20 @@ export function createEngineRuntime({
 			orchestrationQueue,
 			lifecycleEventPublisher,
 		),
-		new StepSettledHandler(
-			executionStore,
-			stepStore,
-			stepQueue,
-			orchestrationQueue,
-			lifecycleEventPublisher,
-			responseSender,
-		),
+		settledHandler,
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
-	const stepWorker = new StepWorker(
-		stepQueue,
-		new StepReadyHandler(
-			executionStore,
-			stepStore,
-			orchestrationQueue,
-			dependencies,
-			lifecycleEventPublisher,
-			responseSender,
-			// A deadline set after the sweeper armed would otherwise wait for its next pass.
-			() => waitSweeper.noteSuspended(),
-		),
+	const readyHandler = new StepReadyHandler(
+		executionStore,
+		stepStore,
+		orchestrationQueue,
+		dependencies,
+		lifecycleEventPublisher,
+		responseSender,
+		// A deadline set after the sweeper armed would otherwise wait for its next pass.
+		() => waitSweeper.noteSuspended(),
 	);
+	const stepWorker = new StepWorker(stepQueue, readyHandler);
 
 	const { app } = createEngineServer({
 		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),
@@ -177,5 +183,20 @@ export function createEngineRuntime({
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();
 		},
+	};
+}
+
+/** Calls `onPublish` before each message is queued, so its consumer's reads start right away. */
+function prefetchOnPublish<TMessage>(
+	queue: WorkQueue<TMessage>,
+	onPublish: (message: TMessage) => void,
+): WorkQueue<TMessage> {
+	return {
+		publish: async (message) => {
+			onPublish(message);
+			await queue.publish(message);
+		},
+		start: (handler) => queue.start(handler),
+		stop: async () => await queue.stop(),
 	};
 }
