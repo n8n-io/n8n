@@ -1,3 +1,11 @@
+## [2.44.3](https://github.com/n8n-io/n8n/compare/n8n@2.44.2...n8n@2.44.3) (2026-10-16)
+
+
+### Bug Fixes
+
+* **core:** Keep Observer detail lines instead of discarding the response ([#41157](https://github.com/n8n-io/n8n/issues/41157)) ([c09e0a9](https://github.com/n8n-io/n8n/commit/c09e0a94f57d7b046232b78f6cf2c9066784f87e))
+
+
 ## [2.44.2](https://github.com/n8n-io/n8n/compare/n8n@2.44.1...n8n@2.44.2) (2026-10-15)
 
 
