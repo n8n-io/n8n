@@ -46,6 +46,7 @@ const buildRuntime = (
 	return {
 		managedSetup: ref(managedSetup),
 		setupKind: ref('managed'),
+		nextSetupKind: ref(null),
 		managerCredentialId: ref(''),
 		loading: computed(() => isLoading.value),
 		load: vi.fn(),
@@ -63,6 +64,7 @@ const buildRuntime = (
 		reportManualBotRoute: vi.fn(),
 		publishApp: vi.fn(),
 		refreshCatalogState: vi.fn(),
+		reset: vi.fn(),
 	};
 };
 
@@ -207,6 +209,42 @@ describe('AgentChannelTeamsSetupView', () => {
 			expect(getByText('agents.channels.teams.setup.createCredential.title')).toBeVisible();
 		});
 		expect(queryByTestId('teams-managed-stepper')).not.toBeInTheDocument();
+	});
+
+	it('opens on the manual flow when it starts again for a picked credential', async () => {
+		const runtime = buildRuntime({
+			managedSetupAvailable: true,
+			managerCredentials: [],
+			adminConsentUrl: null,
+		});
+		runtime.nextSetupKind.value = 'manual';
+
+		const { queryByTestId, getByText } = renderView({
+			props: props(runtime, { modelValue: 'bot-2' }),
+			pinia: createTestingPinia(),
+		});
+
+		await waitFor(() => {
+			expect(getByText('agents.channels.teams.setup.createCredential.title')).toBeVisible();
+		});
+		expect(queryByTestId('teams-managed-stepper')).not.toBeInTheDocument();
+		expect(runtime.nextSetupKind.value).toBeNull();
+	});
+
+	it('opens on the recommended flow again for a preselected credential without a restart', async () => {
+		const runtime = buildRuntime({
+			managedSetupAvailable: true,
+			managerCredentials: [],
+			adminConsentUrl: null,
+		});
+		runtime.setupKind.value = 'manual';
+
+		const { getByTestId } = renderView({
+			props: props(runtime, { modelValue: 'bot-2' }),
+			pinia: createTestingPinia(),
+		});
+
+		await waitFor(() => expect(getByTestId('teams-managed-stepper')).toBeVisible());
 	});
 
 	/**

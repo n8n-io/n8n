@@ -2,6 +2,7 @@
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -14,7 +15,10 @@ import { AgentModificationTelemetryService } from '../agent-modification-telemet
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { Agent } from '../entities/agent.entity';
-import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
@@ -269,6 +273,75 @@ describe('AgentIntegrationPersistenceService', () => {
 					settings: { accessMode: 'private', allowedUsers: ['@alice'] },
 				},
 				{ type: 'linear', credentialId: 'linear-1' },
+			]);
+		});
+
+		describe('platform with one connection per agent', () => {
+			const teams = (credentialId: string): AgentIntegrationConfig => ({
+				type: 'teams',
+				credentialId,
+			});
+
+			function setupTeams(integrations: AgentIntegrationConfig[]) {
+				const context = setup({ integrations });
+				context.chatIntegrationRegistry.get.mockReturnValue(
+					mock<AgentChatIntegration>({ singleConnectionPerAgent: true }),
+				);
+				return context;
+			}
+
+			it('rejects a second credential that does not replace the first', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await expect(
+					service.applyIntegrationDelta(agent, { add: teams('teams-2') }, byUser),
+				).rejects.toThrow(BadRequestError);
+				expect(row.integrations).toEqual([teams('teams-1')]);
+			});
+
+			it('accepts a second credential that replaces the first', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await service.applyIntegrationDelta(
+					agent,
+					{ add: teams('teams-2'), remove: teams('teams-1') },
+					byUser,
+				);
+
+				expect(row.integrations).toEqual([teams('teams-2')]);
+			});
+
+			it('accepts the same credential again', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1')]);
+
+				await service.applyIntegrationDelta(agent, { add: teams('teams-1') }, byUser);
+
+				expect(row.integrations).toEqual([teams('teams-1')]);
+			});
+
+			it('still saves an agent that already holds two', async () => {
+				const { service, agent, row } = setupTeams([teams('teams-1'), teams('teams-2')]);
+
+				await service.applyIntegrationDelta(agent, { add: teams('teams-1') }, byUser);
+
+				expect(row.integrations).toEqual([teams('teams-1'), teams('teams-2')]);
+			});
+		});
+
+		it('keeps a second credential beside the first on a platform that allows it', async () => {
+			const { service, agent, row } = setup({
+				integrations: [{ type: 'discord', credentialId: 'discord-1' }],
+			});
+
+			await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'discord', credentialId: 'discord-2' } },
+				byUser,
+			);
+
+			expect(row.integrations).toEqual([
+				{ type: 'discord', credentialId: 'discord-1' },
+				{ type: 'discord', credentialId: 'discord-2' },
 			]);
 		});
 

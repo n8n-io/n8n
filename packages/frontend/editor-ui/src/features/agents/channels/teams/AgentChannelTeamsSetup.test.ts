@@ -1112,20 +1112,6 @@ describe('AgentChannelTeamsSetup', () => {
 				);
 			});
 
-			it('treats a credential swap as an app change', async () => {
-				const { getByTestId, rerender } = renderHost({ props: { viewProps: settingsProps() } });
-
-				await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
-				expect(getByTestId('save-label')).toBeEmptyDOMElement();
-				await rerender({ viewProps: settingsProps({ modelValue: 'cred-2' }) });
-
-				await waitFor(() =>
-					expect(getByTestId('save-label')).toHaveTextContent(
-						'agents.channels.teams.settings.saveAndDownload',
-					),
-				);
-			});
-
 			it('drops a saved identity override, so the app follows the agent again', async () => {
 				const { getByTestId } = renderHost({
 					props: { viewProps: settingsProps({ savedSettings: { displayName: 'Helpdesk' } }) },
