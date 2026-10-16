@@ -33,6 +33,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
+			if (process.env.N8N_SELF_HEALING_DEMO_ENABLED === 'true') {
+				await import('./self-healing/self-healing-demo.controller.js');
+			}
 			const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
 			const { SelfHealingResultService } = await import(
 				'./self-healing/self-healing-result.service.js'

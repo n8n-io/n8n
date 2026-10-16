@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Self-healing · Live demo</title>
+		<style>
+			:root {
+				color-scheme: dark;
+				--bg: #111214;
+				--panel: #1a1c1f;
+				--line: #33363d;
+				--text: #f5f3ee;
+				--muted: #a3a7af;
+				--accent: #ff805f;
+				--green: #8cd6ae;
+				--red: #ff9b98;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				background: var(--bg);
+				color: var(--text);
+				font:
+					16px/1.5 -apple-system,
+					BlinkMacSystemFont,
+					'Segoe UI',
+					sans-serif;
+			}
+			main {
+				max-width: 1120px;
+				margin: 0 auto;
+				padding: 46px 30px 60px;
+			}
+			header {
+				display: flex;
+				justify-content: space-between;
+				gap: 30px;
+				align-items: center;
+				margin-bottom: 34px;
+			}
+			.eyebrow {
+				color: var(--accent);
+				font-size: 12px;
+				font-weight: 650;
+				letter-spacing: 0.13em;
+				text-transform: uppercase;
+			}
+			h1 {
+				margin: 7px 0 8px;
+				font-size: 38px;
+				font-weight: 630;
+				letter-spacing: -0.045em;
+			}
+			h2 {
+				margin: 0 0 10px;
+				font-size: 20px;
+				font-weight: 600;
+			}
+			p {
+				margin: 0;
+				color: var(--muted);
+			}
+			a {
+				color: inherit;
+				text-decoration: none;
+			}
+			button,
+			.link {
+				border: 1px solid var(--line);
+				color: var(--text);
+				background: #24272c;
+				padding: 11px 16px;
+				border-radius: 8px;
+				font: inherit;
+				font-size: 14px;
+				font-weight: 600;
+				cursor: pointer;
+				display: inline-flex;
+				gap: 7px;
+				align-items: center;
+				justify-content: center;
+			}
+			button:hover,
+			.link:hover {
+				background: #30343a;
+				border-color: #686c76;
+			}
+			button:disabled {
+				opacity: 0.38;
+				cursor: default;
+			}
+			.primary {
+				background: var(--accent);
+				color: #24120e;
+				border-color: var(--accent);
+			}
+			.primary:hover {
+				background: #ff987e;
+				border-color: #ff987e;
+			}
+			.top-actions {
+				display: flex;
+				gap: 8px;
+				white-space: nowrap;
+			}
+			.card {
+				background: var(--panel);
+				border: 1px solid var(--line);
+				border-radius: 12px;
+				padding: 24px;
+			}
+			.flow {
+				display: grid;
+				grid-template-columns: 1fr 1fr 1fr;
+				gap: 14px;
+				margin: 20px 0;
+			}
+			.step {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 16px;
+				min-height: 236px;
+			}
+			.step p {
+				flex: 1;
+				font-size: 14px;
+			}
+			.number {
+				color: var(--accent);
+				font-size: 13px;
+				font-weight: 650;
+			}
+			.step h2 {
+				margin: 0;
+			}
+			.actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+			}
+			.secondary {
+				background: transparent;
+			}
+			.scenario {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 16px;
+			}
+			#workflow-name {
+				font-size: 18px;
+				font-weight: 600;
+				margin-bottom: 4px;
+			}
+			.tag {
+				display: inline-flex;
+				border-radius: 20px;
+				padding: 4px 11px;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--muted);
+				border: 1px solid var(--line);
+				white-space: nowrap;
+			}
+			.tag.success {
+				color: var(--green);
+				border-color: #315b44;
+				background: #1b3025;
+			}
+			.tag.error {
+				color: var(--red);
+				border-color: #643f3d;
+				background: #342321;
+			}
+			.tag.running {
+				color: var(--accent);
+				border-color: #6b483b;
+				background: #33251f;
+			}
+			.detail {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 14px;
+			}
+			.detail h2 {
+				font-size: 15px;
+			}
+			pre {
+				font:
+					13px/1.65 ui-monospace,
+					SFMono-Regular,
+					Menlo,
+					monospace;
+				margin: 12px 0 0;
+				white-space: pre-wrap;
+				overflow-wrap: anywhere;
+				color: #d9ddd9;
+			}
+			.small {
+				font-size: 13px;
+			}
+			.row {
+				display: flex;
+				justify-content: space-between;
+				gap: 12px;
+				align-items: center;
+			}
+			#activity {
+				margin-top: 16px;
+				border-top: 1px solid var(--line);
+				padding-top: 16px;
+			}
+			.activity-item {
+				display: flex;
+				gap: 10px;
+				font-size: 13px;
+				margin-bottom: 8px;
+				color: #d0d1d5;
+			}
+			.activity-item::before {
+				content: '•';
+				color: var(--accent);
+			}
+			#summary {
+				margin-top: 15px;
+				font-size: 14px;
+			}
+			#notice {
+				color: var(--red);
+				margin-bottom: 16px;
+			}
+			.footer {
+				display: flex;
+				justify-content: space-between;
+				gap: 25px;
+				margin-top: 24px;
+				color: var(--muted);
+				font-size: 12px;
+			}
+			.footer a {
+				text-decoration: underline;
+				text-underline-offset: 3px;
+			}
+			.hidden {
+				display: none !important;
+			}
+			.subtle {
+				font-size: 12px;
+				color: var(--muted);
+				margin-top: 12px;
+			}
+			@media (max-width: 850px) {
+				main {
+					padding: 24px 18px;
+				}
+				header {
+					display: block;
+				}
+				.top-actions {
+					margin-top: 20px;
+				}
+				.flow {
+					grid-template-columns: 1fr;
+				}
+				.step {
+					min-height: 0;
+				}
+				.detail {
+					grid-template-columns: 1fr;
+				}
+				h1 {
+					font-size: 32px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<header>
+				<div>
+					<div class="eyebrow">n8n · Live self-healing demo</div>
+					<h1>From failure to a reviewed fix.</h1>
+					<p>A real workflow, a real model, and a fix you approve.</p>
+				</div>
+				<div class="top-actions">
+					<button id="new-demo" class="secondary" data-action="prepare-repair">New demo</button
+					><a id="inbox-link" class="link" href="/inbox" target="n8n-demo">Open Inbox ↗</a>
+				</div>
+			</header>
+			<p id="login" class="subtle hidden">
+				Sign in to n8n first, then reload this page.
+				<a class="link" href="/signin" target="n8n-demo">Sign in</a>
+			</p>
+			<div id="notice" class="hidden" role="alert"></div>
+			<section class="card scenario">
+				<div>
+					<div id="workflow-name">Start with a new demo</div>
+					<p id="workflow-caption" class="small">
+						Create a published workflow with a broken total expression.
+					</p>
+				</div>
+				<a id="workflow-link" class="link hidden" target="n8n-demo">Open workflow ↗</a>
+			</section>
+			<section class="flow">
+				<article class="card step">
+					<span class="number">01 · TRIGGER A REAL FAILURE</span>
+					<h2>Send an order</h2>
+					<p>
+						Send an HTTP request to the published workflow. The broken expression creates a saved
+						failed execution.
+					</p>
+					<div class="actions">
+						<button id="send-order" class="primary" data-action="send-order">Send order</button
+						><a id="failure-link" class="link secondary hidden" target="n8n-demo">See failure ↗</a>
+					</div>
+				</article>
+				<article class="card step">
+					<span class="number">02 · ASK THE ASSISTANT</span>
+					<h2>Investigate the failure</h2>
+					<p>
+						The model reads the failure, makes a candidate fix, and tests it in the sandbox. This
+						step usually takes around a minute.
+					</p>
+					<button id="investigate" data-action="investigate" disabled>Start investigation</button>
+				</article>
+				<article class="card step">
+					<span class="number">03 · REVIEW, THEN REPLAY</span>
+					<h2>Approve in Inbox</h2>
+					<p>
+						Open the report. Compare the change and choose <strong>Apply and publish</strong>. Then
+						send the original order and a different one.
+					</p>
+					<div class="actions">
+						<a id="report-link" class="link hidden" target="n8n-demo">Review fix ↗</a
+						><button id="send-alternate" class="secondary" data-action="send-alternate" disabled>
+							Send different order
+						</button>
+					</div>
+				</article>
+			</section>
+			<section class="detail">
+				<article class="card">
+					<div class="row">
+						<h2>Latest HTTP request</h2>
+						<span id="http-status" class="tag">Ready to send</span>
+					</div>
+					<p class="small" id="request-label">Original order</p>
+					<pre id="request"></pre>
+					<div id="response-block" class="hidden">
+						<p class="subtle" id="response-label">Response</p>
+						<pre id="response"></pre>
+					</div>
+				</article>
+				<article class="card">
+					<div class="row">
+						<h2>Investigation</h2>
+						<span id="investigation-status" class="tag">Not started</span>
+					</div>
+					<p id="progress" class="small">Create a failure, then start the investigation.</p>
+					<div id="activity" class="hidden"></div>
+					<p id="summary"></p>
+				</article>
+			</section>
+			<div class="footer">
+				<span>Hosted demo controls · Investigation starts manually. Approval happens in n8n.</span
+				><span
+					><a href="https://github.com/n8n-io/n8n/pull/41020" target="_blank" rel="noreferrer"
+						>#41020</a
+					>
+					+
+					<a href="https://github.com/n8n-io/n8n/pull/40750" target="_blank" rel="noreferrer"
+						>#40750</a
+					></span
+				>
+			</div>
+			<p class="subtle">New demo creates a fresh workflow. Previous runs stay available in n8n.</p>
+		</main>
+		<script type="module" src="./demo.js"></script>
+	</body>
+</html>

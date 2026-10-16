@@ -18,13 +18,17 @@ import { InstanceAiModule } from '../instance-ai.module';
 import { InstanceAiService } from '../instance-ai.service';
 import { SelfHealingInvestigationService } from '../self-healing/self-healing-investigation.service';
 
-const { loadSuggestionEventRelay, createSuggestionEventRelay, loadResultController } = vi.hoisted(
-	() => ({
-		loadSuggestionEventRelay: vi.fn(),
-		createSuggestionEventRelay: vi.fn(),
-		loadResultController: vi.fn(),
-	}),
-);
+const {
+	loadSuggestionEventRelay,
+	createSuggestionEventRelay,
+	loadResultController,
+	loadDemoController,
+} = vi.hoisted(() => ({
+	loadSuggestionEventRelay: vi.fn(),
+	createSuggestionEventRelay: vi.fn(),
+	loadResultController: vi.fn(),
+	loadDemoController: vi.fn(),
+}));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
 	InstanceCredentialBroker: vi.fn(),
@@ -59,6 +63,10 @@ vi.mock('../self-healing/self-healing-results.controller', () => {
 	loadResultController();
 	return {};
 });
+vi.mock('../self-healing/self-healing-demo.controller', () => {
+	loadDemoController();
+	return {};
+});
 vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () => {
 	loadSuggestionEventRelay();
 	@Service()
@@ -88,11 +96,12 @@ describe('InstanceAiModule.init', () => {
 		const logger = mockInstance(Logger);
 		logger.scoped.mockReturnValue(logger);
 		vi.stubEnv('E2E_TESTS', 'false');
-		return { config, sweeper, investigations, logger };
+		vi.stubEnv('N8N_SELF_HEALING_DEMO_ENABLED', 'false');
+		return { config, sweeper, investigations, logger, sources };
 	}
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
-		const { config, investigations } = setup();
+		const { config, investigations, sources } = setup();
 
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
@@ -112,6 +121,21 @@ describe('InstanceAiModule.init', () => {
 		expect(sources.register).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'self_healing_result' }),
 		);
+	});
+
+	it('registers hosted controls only with both opt-in flags', async () => {
+		const { config, investigations } = setup();
+		vi.stubEnv('N8N_SELF_HEALING_DEMO_ENABLED', 'true');
+		await new InstanceAiModule().init();
+		expect(loadDemoController).not.toHaveBeenCalled();
+		config.workflowSuggestionsEnabled = true;
+		vi.stubEnv('N8N_SELF_HEALING_DEMO_ENABLED', 'false');
+		await new InstanceAiModule().init();
+		expect(loadDemoController).not.toHaveBeenCalled();
+		vi.stubEnv('N8N_SELF_HEALING_DEMO_ENABLED', 'true');
+		await new InstanceAiModule().init();
+		expect(loadDemoController).toHaveBeenCalledOnce();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(3));
 	});
 
 	it('starts reconciliation after the interrupted-run sweep finishes', async () => {

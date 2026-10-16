@@ -92,3 +92,32 @@ Full-repository checks remain in CI.
 Evidence and the browser recording are saved in the runtime directory. This demo
 uses SQLite and direct model credentials. It does not test production billing or
 distributed deployments. Full-repository checks remain in CI.
+
+## Hosted demo
+
+The hosted branch is `demo/self-healing-hosted-20261016`.
+It adds a standalone page at `/static/self-healing-demo/index.html`.
+Sign in to n8n, then open that page. Each browser can create a fresh demo workflow.
+The page saves its current demo reference for the signed-in user in browser storage.
+Previous workflows and reports remain in n8n.
+
+Deploy the pushed branch through Nathan:
+
+```text
+/nathan deploy demo/self-healing-hosted-20261016 test-self-healing-predrag --ai -e N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true -e N8N_SELF_HEALING_DEMO_ENABLED=true
+```
+
+The second flag registers the demo investigation start and status routes. Both routes
+require login and project workflow-update permission. The producer checks access to
+the workflow and failed execution. Status reads recheck current workflow ownership.
+The page uses normal workflow creation, publication, execution, and review APIs.
+It does not use the local developer bridge or copy the local model credentials.
+
+Nathan configures the hosted model and Daytona sandbox. Its current AI profile selects
+Claude Opus 5.5. The local hosted-page rehearsal used Claude Opus 4.8 and the local
+sandbox. Verify the hosted model and Daytona path after deployment.
+
+Hosted controls checks: 14 controller/module tests, 65 build tasks, backend lint,
+formatting, and JavaScript syntax checks. The browser rehearsal covered workflow
+creation and publication, a real failed webhook, a real model investigation, the
+Inbox report, Apply and publish, and two successful HTTP replays with totals 148.5 and 34.5. The source PR branches remain unchanged.
