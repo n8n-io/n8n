@@ -57,7 +57,7 @@ function createSource(type: InboxSourceType, rows: InboxItem[] = []) {
 				.filter((item) => {
 					if (item.state !== state) return false;
 					if (!boundary) return true;
-					const difference = Date.parse(item.createdAt) - boundary.createdAt.getTime();
+					const difference = Date.parse(item.updatedAt) - boundary.updatedAt.getTime();
 					return (
 						difference < 0 ||
 						(difference === 0 &&
@@ -83,8 +83,8 @@ describe('InboxService', () => {
 	let service: InboxService;
 
 	beforeEach(() => {
-		registry = new InboxSourceRegistry();
 		logger = mock<Logger>();
+		registry = new InboxSourceRegistry(logger);
 		service = new InboxService(registry, logger);
 	});
 
@@ -113,12 +113,12 @@ describe('InboxService', () => {
 		expect(reviews.list).toHaveBeenNthCalledWith(2, user, {
 			state: 'open',
 			limit: 3,
-			boundary: { mode: 'beforeTime', createdAt: new Date(timestamp(11)) },
+			boundary: { mode: 'beforeTime', updatedAt: new Date(timestamp(11)) },
 		});
 		expect(results.list).toHaveBeenNthCalledWith(2, user, {
 			state: 'open',
 			limit: 3,
-			boundary: { mode: 'afterItem', createdAt: new Date(timestamp(11)), id: 'a11' },
+			boundary: { mode: 'afterItem', updatedAt: new Date(timestamp(11)), id: 'a11' },
 		});
 		expect(reviews.count).not.toHaveBeenCalled();
 		expect(results.count).not.toHaveBeenCalled();
@@ -159,6 +159,21 @@ describe('InboxService', () => {
 		});
 	});
 
+	it('pages by latest update even when creation order differs', async () => {
+		const updatedReview = { ...review('updated-review', 8), updatedAt: timestamp(14) };
+		const newerReview = review('newer-review', 12);
+		registry.register(createSource('workflow_review', [updatedReview, newerReview]));
+		const updatedResult = { ...result('updated-result', 7), updatedAt: timestamp(13) };
+		registry.register(createSource('self_healing_result', [updatedResult]));
+		const first = await service.list(user, { state: 'open', limit: 1 });
+		const second = await service.list(user, { state: 'open', limit: 1, cursor: first.nextCursor! });
+		expect(first.data).toEqual([updatedReview]);
+		expect(second.data).toEqual([updatedResult]);
+		const third = await service.list(user, { state: 'open', limit: 1, cursor: second.nextCursor! });
+		expect(third.data).toEqual([newerReview]);
+		expect(third).toMatchObject({ hasMore: false, nextCursor: null });
+	});
+
 	it.each(['waiting', 'authored'] as const)(
 		'passes the %s category to Closed source reads',
 		async (category) => {
@@ -176,10 +191,10 @@ describe('InboxService', () => {
 		const source = createSource('workflow_review');
 		registry.register(source);
 		const cursor = {
-			version: 1,
+			version: 2,
 			state: 'open',
 			category: 'authored',
-			after: { type: 'workflow_review', id: 'r12', createdAt: timestamp(12) },
+			after: { type: 'workflow_review', id: 'r12', updatedAt: timestamp(12) },
 			activeSources: ['workflow_review'],
 			failedSources: [],
 		};
@@ -215,8 +230,18 @@ describe('InboxService', () => {
 	it.each([1, 2, 3])(
 		'pages through tied timestamps across sources exactly once with page size %i',
 		async (limit) => {
-			registry.register(createSource('self_healing_result', [result('1', 12), result('2', 12)]));
-			registry.register(createSource('workflow_review', [review('1', 12), review('2', 12)]));
+			registry.register(
+				createSource('self_healing_result', [
+					{ ...result('1', 7), updatedAt: timestamp(12) },
+					result('2', 12),
+				]),
+			);
+			registry.register(
+				createSource('workflow_review', [
+					{ ...review('1', 8), updatedAt: timestamp(12) },
+					review('2', 12),
+				]),
+			);
 			const keys: string[] = [];
 			let cursor: string | undefined;
 			do {
@@ -236,7 +261,7 @@ describe('InboxService', () => {
 	it('compares equal timestamps with different ISO precision by source order', async () => {
 		registry.register(createSource('self_healing_result', [result('a', 12)]));
 		registry.register(
-			createSource('workflow_review', [{ ...review('r', 12), createdAt: '2026-10-07T12:00:00Z' }]),
+			createSource('workflow_review', [{ ...review('r', 12), updatedAt: '2026-10-07T12:00:00Z' }]),
 		);
 		const page = await service.list(user, { state: 'open', limit: 2 });
 		expect(page.data.map(({ id }) => id)).toEqual(['r', 'a']);
@@ -425,9 +450,9 @@ describe('InboxService', () => {
 	it('treats a recognized source absent after restart as disabled', async () => {
 		registry.register(createSource('workflow_review', [review('r12', 12), review('r10', 10)]));
 		const cursor = encode({
-			version: 1,
+			version: 2,
 			state: 'open',
-			after: { type: 'self_healing_result', id: 'a11', createdAt: timestamp(11) },
+			after: { type: 'self_healing_result', id: 'a11', updatedAt: timestamp(11) },
 			activeSources: ['workflow_review', 'self_healing_result'],
 			failedSources: [],
 		});
@@ -438,9 +463,9 @@ describe('InboxService', () => {
 
 	describe('cursor validation', () => {
 		const validCursor = {
-			version: 1,
+			version: 2,
 			state: 'open',
-			after: { type: 'workflow_review', id: 'row', createdAt: timestamp(12) },
+			after: { type: 'workflow_review', id: 'row', updatedAt: timestamp(12) },
 			activeSources: ['workflow_review'],
 			failedSources: [],
 		};
@@ -448,7 +473,15 @@ describe('InboxService', () => {
 			['invalid encoding', '!!!'],
 			['invalid JSON', Buffer.from('not JSON').toString('base64url')],
 			['large cursor', 'x'.repeat(2049)],
-			['wrong version', encode({ ...validCursor, version: 2 })],
+			[
+				'creation-time cursor',
+				encode({
+					...validCursor,
+					version: 1,
+					after: { type: 'workflow_review', id: 'row', createdAt: timestamp(12) },
+				}),
+			],
+			['wrong version', encode({ ...validCursor, version: 3 })],
 			['wrong tab', encode({ ...validCursor, state: 'closed' })],
 			['unknown source', encode({ ...validCursor, activeSources: ['unknown'] })],
 			[
@@ -461,7 +494,7 @@ describe('InboxService', () => {
 			['empty anchor ID', encode({ ...validCursor, after: { ...validCursor.after, id: '' } })],
 			[
 				'invalid timestamp',
-				encode({ ...validCursor, after: { ...validCursor.after, createdAt: 'yesterday' } }),
+				encode({ ...validCursor, after: { ...validCursor.after, updatedAt: 'yesterday' } }),
 			],
 		])('rejects %s before reading sources', async (_name, cursor) => {
 			const source = createSource('workflow_review');
@@ -490,6 +523,22 @@ describe('InboxService', () => {
 			expect(reviews.count).toHaveBeenCalledWith(user);
 			expect(results.count).toHaveBeenCalledWith(user);
 			expect(reviews.list).not.toHaveBeenCalled();
+		});
+
+		it('returns unknown counts without reading a source whose availability check failed', async () => {
+			const reviews = createSource('workflow_review', [review('r12', 12)]);
+			const results = createSource('self_healing_result');
+			results.isEnabled.mockRejectedValue(new Error('Availability failed'));
+			registry.register(reviews);
+			registry.register(results);
+			await expect(service.getSummary(user)).resolves.toEqual({
+				counts: null,
+				partial: true,
+				failedSources: ['self_healing_result'],
+				disabledSources: [],
+			});
+			expect(reviews.count).toHaveBeenCalledWith(user);
+			expect(results.count).not.toHaveBeenCalled();
 		});
 
 		it('makes counts unknown when one source fails', async () => {

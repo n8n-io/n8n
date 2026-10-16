@@ -33,9 +33,9 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 <template>
 	<N8nCard
 		:class="[$style.card, { [$style.selected]: selected }]"
-		role="option"
+		role="button"
 		tabindex="0"
-		:aria-selected="selected"
+		:aria-current="selected ? 'true' : undefined"
 		:data-source="item.type"
 		data-test-id="inbox-row"
 		@click="emit('select')"
@@ -87,7 +87,7 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 				</N8nBadge>
 				<div :class="$style.metaActions">
 					<N8nText :class="$style.time" size="xsmall" color="text-light">
-						<N8nTimeAgo :date="item.createdAt" :locale="rootStore.defaultLocale" />
+						<N8nTimeAgo :date="item.updatedAt" :locale="rootStore.defaultLocale" />
 					</N8nText>
 				</div>
 			</div>

@@ -1,6 +1,7 @@
 import type { InboxSelfHealingItem, InboxWorkflowReviewItem } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { useUsersStore } from '@n8n/stores/users.store';
+import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import { useIntersectionObserver } from '@vueuse/core';
 
@@ -127,7 +128,7 @@ it('keeps healthy rows visible beside a failed group', () => {
 			],
 		},
 	});
-	expect(getByRole('option')).toHaveTextContent('Fix the workflow');
+	expect(getByRole('button', { name: /Fix the workflow/ })).toHaveTextContent('Fix the workflow');
 	getByRole('button', { name: 'Retry' }).click();
 	expect(emitted('retry')).toEqual([['authored']]);
 	expect(queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
@@ -151,9 +152,9 @@ it('collapses groups without requesting more data', async () => {
 	const header = getByRole('button', { name: 'Waiting for your review' });
 	await fireEvent.click(header);
 	expect(header).toHaveAttribute('aria-expanded', 'false');
-	expect(queryByRole('option')).not.toBeInTheDocument();
+	expect(queryByRole('button', { name: /Fix the workflow/ })).not.toBeInTheDocument();
 	await fireEvent.click(header);
-	expect(getByRole('option')).toHaveTextContent('Fix the workflow');
+	expect(getByRole('button', { name: /Fix the workflow/ })).toHaveTextContent('Fix the workflow');
 	expect(emitted('loadMore')).toBeUndefined();
 });
 it('uses the impersonal waiting label for administrators', () => {
@@ -219,10 +220,10 @@ it('waits for Retry after a failed Closed page and removes the sentinel on Open'
 	expect(target).toHaveProperty('value', null);
 });
 it('renders compact rows with an Assistant avatar and no source subtitle', () => {
-	const { getAllByRole, queryByText } = renderComponent({
+	const { getByRole, queryByText } = renderComponent({
 		props: { sections: [section('waiting', { items: [result(), review()] })] },
 	});
-	const [assistantRow, reviewRow] = getAllByRole('option');
+	const [assistantRow, reviewRow] = within(getByRole('list')).getAllByRole('button');
 	expect(within(assistantRow).getByTestId('inbox-assistant-avatar')).toBeInTheDocument();
 	expect(within(reviewRow).queryByTestId('inbox-assistant-avatar')).not.toBeInTheDocument();
 	expect(within(assistantRow).getByText('My workflow')).toBeInTheDocument();
@@ -257,17 +258,32 @@ it('separates partial-source recovery from a failed page retry', () => {
 	expect(emitted('retry')).toEqual([['waiting']]);
 });
 
-it('keeps review selection and keyboard activation across the extracted row', async () => {
-	const item = review();
-	const { getByRole, emitted } = renderComponent({
+it('uses Tab, Enter, and Space to select rows in an ordinary list', async () => {
+	const user = userEvent.setup();
+	const first = review();
+	const second = result();
+	const { getByRole, queryByRole, emitted, rerender } = renderComponent({
 		props: {
-			selectedKey: `${item.type}:${item.id}`,
-			sections: [section('waiting', { items: [item] })],
+			selectedKey: `${first.type}:${first.id}`,
+			sections: [section('waiting', { items: [first, second] })],
 		},
 	});
-	const row = getByRole('option', { selected: true });
-	expect(row).toHaveTextContent(item.title);
-	await fireEvent.keyDown(row, { key: 'Enter' });
-	await fireEvent.keyDown(row, { key: ' ' });
-	expect(emitted('select')).toEqual([[item], [item]]);
+	const list = getByRole('list', { name: 'Waiting for your review' });
+	const rows = within(list)
+		.getAllByRole('listitem')
+		.map((item) => within(item).getByRole('button'));
+	expect(queryByRole('listbox')).not.toBeInTheDocument();
+	expect(rows[0]).toHaveAttribute('aria-current', 'true');
+	expect(rows[1]).not.toHaveAttribute('aria-current');
+	getByRole('button', { name: 'Waiting for your review' }).focus();
+	await user.tab();
+	expect(rows[0]).toHaveFocus();
+	await user.keyboard('{Enter}');
+	await user.tab();
+	expect(rows[1]).toHaveFocus();
+	await user.keyboard(' ');
+	expect(emitted('select')).toEqual([[first], [second]]);
+	await rerender({ selectedKey: `${second.type}:${second.id}` });
+	expect(rows[0]).not.toHaveAttribute('aria-current');
+	expect(rows[1]).toHaveAttribute('aria-current', 'true');
 });

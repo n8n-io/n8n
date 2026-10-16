@@ -36,9 +36,9 @@ export type SelfHealingInboxAccess = {
 };
 
 type SelfHealingInboxBoundary =
-	| { mode: 'beforeTime'; createdAt: Date }
-	| { mode: 'beforeOrAtTime'; createdAt: Date }
-	| { mode: 'afterItem'; createdAt: Date; id: string };
+	| { mode: 'beforeTime'; updatedAt: Date }
+	| { mode: 'beforeOrAtTime'; updatedAt: Date }
+	| { mode: 'afterItem'; updatedAt: Date; id: string };
 
 type SelfHealingInboxQuery = {
 	state: InboxState;
@@ -92,17 +92,17 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				'workflow.name',
 			])
 			.andWhere(`(${inboxState}) = :state`, { state })
-			.orderBy('result.createdAt', 'DESC')
+			.orderBy('result.updatedAt', 'DESC')
 			.addOrderBy('result.id', 'ASC');
 
 		if (boundary?.mode === 'afterItem') {
 			query.andWhere(
-				'(result.createdAt < :createdAt OR (result.createdAt = :createdAt AND result.id > :id))',
-				{ createdAt: boundary.createdAt, id: boundary.id },
+				'(result.updatedAt < :updatedAt OR (result.updatedAt = :updatedAt AND result.id > :id))',
+				{ updatedAt: boundary.updatedAt, id: boundary.id },
 			);
 		} else if (boundary) {
 			const operator = boundary.mode === 'beforeOrAtTime' ? '<=' : '<';
-			query.andWhere(`result.createdAt ${operator} :createdAt`, { createdAt: boundary.createdAt });
+			query.andWhere(`result.updatedAt ${operator} :updatedAt`, { updatedAt: boundary.updatedAt });
 		}
 
 		const rows = await query.limit(limit).getMany();

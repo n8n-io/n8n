@@ -98,8 +98,8 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 	});
 
 	it.each([
-		{ mode: 'beforeTime', createdAt: new Date('2026-10-07T00:00:00.000Z') },
-		{ mode: 'afterItem', createdAt: new Date('2026-10-07T00:00:00.000Z'), id: 'last' },
+		{ mode: 'beforeTime', updatedAt: new Date('2026-10-07T00:00:00.000Z') },
+		{ mode: 'afterItem', updatedAt: new Date('2026-10-07T00:00:00.000Z'), id: 'last' },
 	] as const)('passes the $mode boundary to its repository', async (boundary) => {
 		mockVisibility();
 		workflowReviewInboxRepository.findRequests.mockResolvedValue([]);

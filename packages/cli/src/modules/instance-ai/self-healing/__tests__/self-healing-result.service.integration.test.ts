@@ -716,8 +716,8 @@ describe('Inbox source reads', () => {
 	it('filters inaccessible rows before the limit and counts', async () => {
 		const visible = await fixture();
 		const hidden = await fixture();
-		await results.update(visible.result.id, { createdAt: new Date('2026-10-01T00:00:00Z') });
-		await results.update(hidden.result.id, { createdAt: new Date('2026-10-02T00:00:00Z') });
+		await results.update(visible.result.id, { updatedAt: new Date('2026-10-01T00:00:00Z') });
+		await results.update(hidden.result.id, { updatedAt: new Date('2026-10-02T00:00:00Z') });
 
 		const rows = await service.listForInbox(visible.user, { state: 'open', limit: 1 });
 		expect(rows.map((row) => row.id)).toEqual([visible.result.id]);
@@ -823,27 +823,51 @@ describe('Inbox source reads', () => {
 		},
 	);
 
+	it('paginates by latest update even when a result was created earlier', async () => {
+		const { user, result, input } = await fixture();
+		const second = await service.complete(input);
+		const updatedAt = new Date('2026-10-03T00:00:00Z');
+		await results.update(result.id, {
+			createdAt: new Date('2026-10-01T00:00:00Z'),
+			updatedAt,
+		});
+		await results.update(second.id, {
+			createdAt: new Date('2026-10-02T00:00:00Z'),
+			updatedAt: new Date('2026-10-02T00:00:00Z'),
+		});
+		expect(await service.listForInbox(user, { state: 'open', limit: 1 })).toMatchObject([
+			{ id: result.id },
+		]);
+		expect(
+			await service.listForInbox(user, {
+				state: 'open',
+				limit: 1,
+				boundary: { mode: 'afterItem', updatedAt, id: result.id },
+			}),
+		).toMatchObject([{ id: second.id }]);
+	});
+
 	it('applies all shared boundary modes to tied result timestamps', async () => {
 		const { user, result, input } = await fixture();
 		const second = await service.complete(input);
 		const third = await service.complete(input);
-		const createdAt = new Date('2026-10-07T00:00:00.000Z');
-		for (const row of [result, second, third]) await results.update(row.id, { createdAt });
+		const updatedAt = new Date('2026-10-07T00:00:00.000Z');
+		for (const row of [result, second, third]) await results.update(row.id, { updatedAt });
 		const all = await service.listForInbox(user, { state: 'open', limit: 10 });
-		const boundary = { createdAt, id: all[0].id };
+		const boundary = { updatedAt, id: all[0].id };
 
 		expect(
 			await service.listForInbox(user, {
 				state: 'open',
 				limit: 10,
-				boundary: { mode: 'beforeTime', createdAt },
+				boundary: { mode: 'beforeTime', updatedAt },
 			}),
 		).toEqual([]);
 		expect(
 			await service.listForInbox(user, {
 				state: 'open',
 				limit: 10,
-				boundary: { mode: 'beforeOrAtTime', createdAt },
+				boundary: { mode: 'beforeOrAtTime', updatedAt },
 			}),
 		).toEqual(all);
 		expect(

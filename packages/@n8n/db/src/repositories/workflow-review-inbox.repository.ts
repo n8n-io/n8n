@@ -13,9 +13,9 @@ import {
 import { TransactionRunner } from '../services/transaction';
 
 export type WorkflowReviewInboxBoundary =
-	| { mode: 'beforeTime'; createdAt: Date }
-	| { mode: 'beforeOrAtTime'; createdAt: Date }
-	| { mode: 'afterItem'; createdAt: Date; id: string };
+	| { mode: 'beforeTime'; updatedAt: Date }
+	| { mode: 'beforeOrAtTime'; updatedAt: Date }
+	| { mode: 'afterItem'; updatedAt: Date; id: string };
 
 type InboxCategoryFilter = {
 	userId: string;
@@ -181,7 +181,7 @@ export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReview
 	async findRequests(options: FindInboxRequestsOptions): Promise<WorkflowReviewRequest[]> {
 		const { visibility, state, category, limit, boundary } = options;
 		const queryBuilder = this.createQueryBuilder('review')
-			.orderBy('review.createdAt', 'DESC')
+			.orderBy('review.updatedAt', 'DESC')
 			.addOrderBy('review.id', 'ASC');
 
 		applyInboxVisibility(queryBuilder, visibility);
@@ -191,13 +191,13 @@ export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReview
 		}
 		if (boundary?.mode === 'afterItem') {
 			queryBuilder.andWhere(
-				'(review.createdAt < :createdAt OR (review.createdAt = :createdAt AND review.id > :id))',
-				{ createdAt: boundary.createdAt, id: boundary.id },
+				'(review.updatedAt < :updatedAt OR (review.updatedAt = :updatedAt AND review.id > :id))',
+				{ updatedAt: boundary.updatedAt, id: boundary.id },
 			);
 		} else if (boundary) {
 			const operator = boundary.mode === 'beforeOrAtTime' ? '<=' : '<';
-			queryBuilder.andWhere(`review.createdAt ${operator} :createdAt`, {
-				createdAt: boundary.createdAt,
+			queryBuilder.andWhere(`review.updatedAt ${operator} :updatedAt`, {
+				updatedAt: boundary.updatedAt,
 			});
 		}
 
