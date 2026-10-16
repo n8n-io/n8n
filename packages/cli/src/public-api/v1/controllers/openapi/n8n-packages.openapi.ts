@@ -23,8 +23,7 @@ export const EXPORT_DESCRIPTION =
 	'variables, `variable:list` is also required. Exports that reference no variables\n' +
 	'do not need it.\n\n' +
 	'Agent definitions include referenced skills, custom tools, and schedules.\n' +
-	'Knowledge base files and runtime data are excluded. Agent package imports\n' +
-	'remain unavailable.\n';
+	'Knowledge base files and runtime data are excluded.\n';
 
 export const EXPORT_200_DESCRIPTION =
 	'A gzipped tar archive containing the exported package contents.';

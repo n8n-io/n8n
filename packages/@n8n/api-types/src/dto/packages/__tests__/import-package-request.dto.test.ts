@@ -255,7 +255,7 @@ describe('ImportPackageRequestDto', () => {
 		const result = ImportPackageRequestDto.safeParse(
 			withPackageFile({
 				credentialMissingMode: 'create-with-values',
-				workflowConflictPolicy: 'fail',
+				conflictPolicy: 'fail',
 			}),
 		);
 		expect(result.success).toBe(true);
