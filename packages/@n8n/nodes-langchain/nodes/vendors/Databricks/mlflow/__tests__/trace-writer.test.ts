@@ -355,4 +355,14 @@ describe('previews', () => {
 
 		expect(info.response_preview).toContain('25 days');
 	});
+
+	it('removes credential material from the plain-text previews', () => {
+		const token = ['dapi', '0123456789abcdef0123456789abcdef'].join('');
+		const withToken = { ...trace(), requestPreview: `my token is ${token}` };
+
+		const info = buildTraceInfo(withToken, '42');
+
+		expect(info.request_preview).toContain('[REDACTED]');
+		expect(info.request_preview).not.toContain(token);
+	});
 });
