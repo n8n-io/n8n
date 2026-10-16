@@ -18,3 +18,5 @@ export class AppArtifact extends WithTimestamps {
 	@Column({ type: 'varchar', length: 16, default: 'pending' })
 	uploadStatus: 'pending' | 'completed';
 }
+
+export type AppArtifactRef = Pick<AppArtifact, 'id' | 'storageKey'>;

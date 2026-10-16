@@ -7,12 +7,14 @@ import {
 	type ListAppsQueryDto,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { Logger } from '@n8n/backend-common';
+import { DbLock, DbLockService, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
+import { AppArtifactService } from './app-artifact.service';
 
 function toResponse(app: App): AppResponse {
 	return {
@@ -33,6 +35,9 @@ export class AppsService {
 	constructor(
 		private readonly appRepository: AppRepository,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly locks: DbLockService,
+		private readonly artifacts: AppArtifactService,
+		private readonly logger: Logger,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto): Promise<AppResponse> {
@@ -42,7 +47,7 @@ export class AppsService {
 
 	async getApp(projectId: string, appId: string): Promise<AppResponse> {
 		this.assertValidAppId(appId);
-		const app = await this.appRepository.findOneBy({ id: appId, projectId });
+		const app = await this.appRepository.findInProject(projectId, appId);
 		if (!app) throw new NotFoundError('App not found');
 		return toResponse(app);
 	}
@@ -71,10 +76,17 @@ export class AppsService {
 
 	async deleteApp(projectId: string, appId: string) {
 		this.assertValidAppId(appId);
-		// TODO: need to clean up resources related to app versions here, once it's added
-		const result = await this.appRepository.delete({ id: appId, projectId });
-		if (!result.affected) {
+		const deleted = await this.locks.withLockContext(
+			DbLock.APPS_STORAGE,
+			async (ctx) => await this.appRepository.deleteInProject(projectId, appId, ctx),
+		);
+		if (!deleted) {
 			throw new NotFoundError('App not found');
+		}
+		try {
+			await this.artifacts.cleanup();
+		} catch (error) {
+			this.logger.warn('Could not clean up artifacts after app deletion.', { appId, error });
 		}
 	}
 
