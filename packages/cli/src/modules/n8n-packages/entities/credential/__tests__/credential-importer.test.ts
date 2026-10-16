@@ -1,11 +1,13 @@
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import type { CredentialsEntity, ICredentialsDb, Project, SharedCredentials, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { CredentialTypes } from '@/credential-types';
+import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsOverwrites } from '@/credentials-overwrites';
 
 import type { ImportContext } from '../../../n8n-packages.types';
 import { CredentialImporter } from '../credential-importer';
@@ -32,6 +34,9 @@ const usable = (id: string, type = 'githubApi'): UsableCredential =>
 describe('CredentialImporter', () => {
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinder = mock<CredentialsFinderService>();
+	const eventService = mock<EventService>();
+	const credentialDescriptions = mock<CredentialDescriptionsService>();
+	const credentialsOverwrites = mock<CredentialsOverwrites>();
 	const credentialTypes = mock<CredentialTypes>();
 	const targetProject = mock<Project>({ id: 'project-target' });
 	const user = mock<User>({ id: 'user-1' });
@@ -96,6 +101,9 @@ describe('CredentialImporter', () => {
 			),
 			credentialsService,
 			credentialsFinder,
+			eventService,
+			credentialDescriptions,
+			credentialsOverwrites,
 		);
 	});
 
@@ -783,6 +791,54 @@ describe('CredentialImporter', () => {
 				expect(encrypted).not.toHaveProperty('description');
 			});
 
+			it('emits credentials-updated for the written credential', async () => {
+				credentialsService.update.mockResolvedValue(
+					stored({ name: 'Renamed', isResolvable: false, description: 'Team token' }),
+				);
+				credentialDescriptions.isEnabled.mockResolvedValue(true);
+				credentialsOverwrites.supportsManagedAuth.mockReturnValue(false);
+				credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
+
+				await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith('credentials-updated', {
+					user,
+					credentialType: 'githubApi',
+					credentialId: 'cred-1',
+					credentialName: 'Renamed',
+					credentialDescriptionLength: 10,
+					isDynamic: false,
+					usesExternalSecrets: false,
+					jweEnabled: false,
+					supportsManagedAuth: false,
+					usesManagedAuth: false,
+				});
+				expect(credentialsOverwrites.usesManagedAuth).toHaveBeenCalledWith('githubApi', {
+					accessToken: EXPRESSION,
+					server: 'https://api.github.com',
+				});
+			});
+
+			it('reports external secrets in the written data', async () => {
+				credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+
+				await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update({ data: { accessToken: '={{ $secrets.vault.githubToken }}' } })]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ usesExternalSecrets: true }),
+				);
+			});
+
 			it('leaves the stored token to prepareUpdateData', async () => {
 				await importer.applyUpdates(
 					context,
@@ -808,6 +864,7 @@ describe('CredentialImporter', () => {
 				expect(updated).toEqual([]);
 				expect(credentialsService.prepareUpdateData).not.toHaveBeenCalled();
 				expect(credentialsService.update).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 
 			it('writes one destination once across two scopes', async () => {
@@ -832,6 +889,7 @@ describe('CredentialImporter', () => {
 
 				expect(updated).toEqual(['cred-1', 'cred-2']);
 				expect(credentialsService.update).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
 			});
 
 			it.each(['keep-existing', 'fail'] as const)('writes nothing under %s', async (policy) => {

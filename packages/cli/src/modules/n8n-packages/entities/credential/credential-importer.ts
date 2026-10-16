@@ -1,11 +1,14 @@
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 
 import {
 	credentialDiffers,
@@ -40,6 +43,9 @@ export class CredentialImporter {
 		private readonly credentialMatcherFactory: CredentialMatcherFactory,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinder: CredentialsFinderService,
+		private readonly eventService: EventService,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	/**
@@ -256,8 +262,8 @@ export class CredentialImporter {
 	/**
 	 * Writes the planned updates under `overwrite`, one write for each destination credential.
 	 * Loads, decrypts and merges again, and skips a credential that no longer differs: another
-	 * scope of the import or a concurrent edit already wrote the same values. Returns the
-	 * source ids of the credentials it wrote.
+	 * scope of the import or a concurrent edit already wrote the same values. Emits
+	 * `credentials-updated` for each write. Returns the source ids of the credentials it wrote.
 	 */
 	async applyUpdates(
 		context: ImportContext,
@@ -288,10 +294,36 @@ export class CredentialImporter {
 			);
 			if (saved === null) throw credentialNotFound(group[0]);
 
+			await this.emitCredentialUpdated(context.user, saved, prepared.data);
 			updated.push(...group.map(({ sourceId }) => sourceId));
 		}
 
 		return updated;
+	}
+
+	/**
+	 * The same event as a credential save in the UI or the public API, so that its listeners
+	 * (agent runtime cache, activity, log streaming, telemetry) see an import update too.
+	 */
+	private async emitCredentialUpdated(
+		user: User,
+		saved: CredentialsEntity,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void> {
+		this.eventService.emit('credentials-updated', {
+			user,
+			credentialType: saved.type,
+			credentialId: saved.id,
+			credentialName: saved.name,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: saved.description?.length ?? 0,
+			}),
+			isDynamic: saved.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(data).length > 0,
+			jweEnabled: data.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(saved.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(saved.type, data),
+		});
 	}
 
 	/**

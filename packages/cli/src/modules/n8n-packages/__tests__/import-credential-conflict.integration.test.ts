@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -159,7 +160,9 @@ beforeAll(async () => {
 		features: ['feat:projectRole:admin', 'feat:folders'],
 		quotas: { 'quota:maxTeamProjects': 100 },
 	});
-	mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
+	const credentialTypes = mockInstance(CredentialTypes);
+	credentialTypes.recognizes.mockReturnValue(true);
+	credentialTypes.getParentTypes.mockReturnValue([]);
 });
 
 beforeEach(async () => {
@@ -690,6 +693,43 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 		expect(stored.credential.isResolvable).toBe(false);
 		expect(stored.credential.description).toBe('Team token');
 		expect(await Container.get(WorkflowRepository).count()).toBe(1);
+	});
+
+	it('emits credentials-updated once for each written credential', async () => {
+		const credential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'GitHub', data: { accessToken: 'stored-secret' } }),
+			{ project },
+		);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		const params = {
+			user: owner,
+			projectId: project.id,
+			credentialConflictPolicy: 'overwrite' as const,
+			workflowConflictPolicy: 'new-version' as const,
+			packageBuffer: await workflowPackage(credential, {
+				name: 'Renamed',
+				data: { accessToken: EXPRESSION },
+			}),
+		};
+
+		await importPackage(params);
+		const updatedEvents = () => emit.mock.calls.filter(([name]) => name === 'credentials-updated');
+		expect(updatedEvents()).toEqual([
+			[
+				'credentials-updated',
+				expect.objectContaining({
+					user: owner,
+					credentialId: credential.id,
+					credentialName: 'Renamed',
+					credentialType: credential.type,
+				}),
+			],
+		]);
+
+		emit.mockClear();
+		await importPackage(params);
+		expect(updatedEvents()).toEqual([]);
+		emit.mockRestore();
 	});
 
 	it('replaces a stored plain value with the package expression', async () => {
