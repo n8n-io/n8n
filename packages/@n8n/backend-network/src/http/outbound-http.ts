@@ -198,7 +198,7 @@ export class OutboundHttp {
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
 			withClientDefaults(requestOptions, options?.baseURL, options?.headers, options?.timeout);
 
-		const pool = options?.connectionPool;
+		const pool = options?.connectionPool ?? (options?.keepAlive ? {} : undefined);
 		const poolAgents = pool && buildPoolAgents(pool, ssrf);
 
 		function request<T = IN8nHttpResponse | Readable>(
