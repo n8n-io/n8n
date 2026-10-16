@@ -289,6 +289,72 @@ describe('Public API rate limiting', () => {
 		expect(response.headers['x-ratelimit-remaining']).toBe('1');
 	});
 
+	describe('when both limits run out at the same time', () => {
+		const now = new Date('2026-01-01T00:00:00Z');
+		const nowSeconds = now.getTime() / Time.seconds.toMilliseconds;
+
+		beforeEach(() => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(now);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('reports the limit that resets later', async () => {
+			const app = activate({
+				globalReadLimit: 1,
+				globalReadWindowSeconds: 60,
+				endpointReadLimit: 1,
+				endpointReadWindowSeconds: 10,
+			});
+
+			const response = await send(app, 'get', '/widgets');
+
+			expect(response.status).toBe(200);
+			expect(response.headers['x-ratelimit-remaining']).toBe('0');
+			expect(response.headers['x-ratelimit-reset']).toBe(String(nowSeconds + 60));
+		});
+
+		it('tells a blocked client to wait until both limits reset', async () => {
+			const app = activate({
+				globalReadLimit: 1,
+				globalReadWindowSeconds: 60,
+				endpointReadLimit: 1,
+				endpointReadWindowSeconds: 10,
+			});
+
+			await sendTimes(app, 1, 'get', '/widgets');
+			const blocked = await send(app, 'get', '/widgets');
+
+			expect(blocked.status).toBe(429);
+			expect(blocked.headers['retry-after']).toBe('60');
+			expect(blocked.headers['x-ratelimit-limit']).toBe('1');
+			expect(blocked.headers['x-ratelimit-reset']).toBe(String(nowSeconds + 60));
+		});
+
+		it('reports only the exceeded limit when the other limit is exactly used up', async () => {
+			const app = activate({
+				globalReadLimit: 2,
+				globalReadWindowSeconds: 60,
+				endpointReadLimit: 1,
+				endpointReadWindowSeconds: 10,
+			});
+
+			await sendTimes(app, 1, 'get', '/widgets');
+			const blocked = await send(app, 'get', '/widgets');
+
+			expect(blocked.status).toBe(429);
+			expect(blocked.headers['retry-after']).toBe('10');
+			expect(blocked.headers['x-ratelimit-limit']).toBe('1');
+
+			vi.advanceTimersByTime(11 * Time.seconds.toMilliseconds);
+
+			await sendTimes(app, 1, 'get', '/widgets');
+		});
+	});
+
 	it('does not count a HEAD request, which the registry rejects with 405', async () => {
 		const app = activate({ globalReadLimit: 1, endpointReadLimit: 1 });
 

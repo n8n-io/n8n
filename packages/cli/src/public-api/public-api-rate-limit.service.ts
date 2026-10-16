@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { Method, RateLimitAccessName } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { RequestHandler } from 'express';
+import type { RequestHandler, Response } from 'express';
 import type { AugmentedRequest, RateLimitInfo } from 'express-rate-limit';
 
 import { RateLimitService } from '@/services/rate-limit.service';
@@ -13,6 +13,17 @@ type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLim
 
 const ENDPOINT_LIMIT = 'endpointRateLimit';
 const ALL_ENDPOINTS_LIMIT = 'allEndpointsRateLimit';
+
+const resetMs = (limit: RateLimitInfo) => limit.resetTime?.getTime() ?? 0;
+
+const setRateLimitHeaders = (res: Response, limit: RateLimitInfo) => {
+	res.setHeader('X-RateLimit-Limit', limit.limit.toString());
+	res.setHeader('X-RateLimit-Remaining', limit.remaining.toString());
+	if (limit.resetTime) {
+		const resetSeconds = Math.ceil(resetMs(limit) / Time.seconds.toMilliseconds);
+		res.setHeader('X-RateLimit-Reset', resetSeconds.toString());
+	}
+};
 
 const READ_METHODS: ReadonlySet<Method> = new Set(['get', 'head']);
 
@@ -49,31 +60,37 @@ export class PublicApiRateLimitService {
 		].filter((limiter) => limiter !== undefined);
 		if (limiters.length === 0) return [];
 
-		return [...limiters, this.showLowestRemainingLimit];
+		return [...limiters, this.enforceLimits];
 	}
 
 	/**
-	 * Runs only when every limiter let the request pass. Each limiter writes its own headers, so the
-	 * last one would win. This shows the limit with the fewest requests left instead.
+	 * Runs after the limiters, which only count. Sends a 429 when the request is over any limit.
+	 * Otherwise sets the headers from the limit with the fewest requests left.
 	 */
-	private readonly showLowestRemainingLimit: RequestHandler = (
-		req: AugmentedRequest,
-		res,
-		next,
-	) => {
+	private readonly enforceLimits: RequestHandler = (req: AugmentedRequest, res, next) => {
 		const limits = [req[ENDPOINT_LIMIT], req[ALL_ENDPOINTS_LIMIT]].filter(
 			(limit?: RateLimitInfo) => limit !== undefined,
 		);
-		const lowest = limits.sort((a, b) => a.remaining - b.remaining)[0];
 
-		if (lowest) {
-			res.setHeader('X-RateLimit-Limit', lowest.limit.toString());
-			res.setHeader('X-RateLimit-Remaining', lowest.remaining.toString());
-			if (lowest.resetTime) {
-				const resetSeconds = Math.ceil(lowest.resetTime.getTime() / Time.seconds.toMilliseconds);
-				res.setHeader('X-RateLimit-Reset', resetSeconds.toString());
-			}
+		const exceeded = limits.filter((limit) => limit.used > limit.limit);
+		if (exceeded.length > 0) {
+			// The client can retry only when every exceeded limit has reset.
+			const [lastToReset] = exceeded.sort((a, b) => resetMs(b) - resetMs(a));
+			const retryAfterMs = resetMs(lastToReset) - Date.now();
+			setRateLimitHeaders(res, lastToReset);
+			res.setHeader(
+				'Retry-After',
+				Math.ceil(Math.max(0, retryAfterMs) / Time.seconds.toMilliseconds).toString(),
+			);
+			res.status(429).json({ message: 'Too many requests' });
+			return;
 		}
+
+		// On a tie, the later reset wins, so the reset time is never too early.
+		const [fewestLeft] = limits.sort(
+			(a, b) => a.remaining - b.remaining || resetMs(b) - resetMs(a),
+		);
+		if (fewestLeft) setRateLimitHeaders(res, fewestLeft);
 		next();
 	};
 

@@ -77,7 +77,8 @@ export class RateLimitService {
 	/**
 	 * Creates a rate limit middleware keyed by API key.
 	 * Runs AFTER authentication. Requests without an API key are not counted.
-	 * The limiter stores its numbers on the request under `requestPropertyName`.
+	 * The limiter only counts. It stores its numbers on the request under `requestPropertyName`
+	 * and never blocks, so a later middleware can see every limit before it sends a 429.
 	 */
 	createApiKeyRateLimitMiddleware(
 		limits: Required<RateLimiterLimits>,
@@ -86,10 +87,10 @@ export class RateLimitService {
 		return expressRateLimit({
 			limit: limits.limit,
 			windowMs: limits.windowMs,
-			legacyHeaders: true,
+			legacyHeaders: false,
 			standardHeaders: false,
-			message: { message: 'Too many requests' },
 			requestPropertyName,
+			handler: (_req, _res, next) => next(),
 			passOnStoreError: true,
 			// Only a 429 is uncounted, so a request one limiter blocks uses no quota of another limiter.
 			// Other error responses still count.
