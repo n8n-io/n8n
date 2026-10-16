@@ -266,6 +266,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 			<RestrictedNodePopover
 				:node-type-name="displayName"
 				:scope="restriction.scope"
+				:opt-in-available="restriction.optInAvailable"
 				:anchor="rowRef"
 				:active="active"
 			/>

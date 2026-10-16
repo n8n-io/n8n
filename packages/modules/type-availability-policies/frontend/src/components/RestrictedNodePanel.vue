@@ -5,15 +5,21 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
 import ContactAdminModal from './ContactAdminModal.vue';
-import { describeNodeTypeRestriction } from '../composables/useNodeTypeRestriction';
+import {
+	describeNodeTypeRestriction,
+	getRestrictionContact,
+} from '../composables/useNodeTypeRestriction';
+import { CONTACT_ADMIN_COPY } from '../type-availability-policies.constants';
 
 const {
 	nodeTypeName,
 	scope,
+	optInAvailable = false,
 	showReplace = true,
 } = defineProps<{
 	nodeTypeName: string;
 	scope?: NodeTypeAvailabilityScope;
+	optInAvailable?: boolean;
 	showReplace?: boolean;
 }>();
 
@@ -23,8 +29,10 @@ const i18n = useI18n();
 
 const isContactAdminOpen = ref(false);
 
+const verdict = computed(() => ({ scope, optInAvailable }));
+const audience = computed(() => getRestrictionContact(verdict.value));
 const description = computed(() =>
-	describeNodeTypeRestriction(nodeTypeName, scope, showReplace ? 'replace' : 'contact'),
+	describeNodeTypeRestriction(nodeTypeName, verdict.value, showReplace ? 'replace' : 'contact'),
 );
 </script>
 
@@ -43,7 +51,7 @@ const description = computed(() =>
 				data-test-id="node-restricted-contact-admin"
 				@click="isContactAdminOpen = true"
 			>
-				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+				{{ i18n.baseText(CONTACT_ADMIN_COPY[audience].action) }}
 			</N8nButton>
 			<N8nButton
 				v-if="showReplace"
@@ -56,7 +64,11 @@ const description = computed(() =>
 				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.replaceNode') }}
 			</N8nButton>
 		</div>
-		<ContactAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
+		<ContactAdminModal
+			v-model:open="isContactAdminOpen"
+			:node-type-name="nodeTypeName"
+			:audience="audience"
+		/>
 	</div>
 </template>
 

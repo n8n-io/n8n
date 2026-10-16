@@ -2,29 +2,40 @@
 import { ROLE } from '@n8n/api-types';
 import { N8nAvatar, N8nDialog, N8nLink, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 
 import {
+	CONTACT_ADMIN_COPY,
 	RESTRICTED_TYPE_COPY,
+	type ContactAudience,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
+import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
-const { nodeTypeName, kind = 'node' } = defineProps<{
+const {
+	nodeTypeName,
+	kind = 'node',
+	audience = 'instance',
+} = defineProps<{
 	nodeTypeName: string;
 	kind?: RestrictedTypeKind;
+	audience?: ContactAudience;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
+const policiesStore = useTypeAvailabilityPoliciesStore();
 
 const isLoading = ref(false);
 let lookupId = 0;
 
+const copy = computed(() => CONTACT_ADMIN_COPY[audience]);
 const description = computed(() =>
-	i18n.baseText(RESTRICTED_TYPE_COPY[kind].contactDescription, {
+	i18n.baseText(copy.value.dialogDescription[kind], {
 		interpolate: { nodeType: nodeTypeName },
 	}),
 );
@@ -34,16 +45,44 @@ const mailSubject = computed(() =>
 	}),
 );
 
-const owners = computed(() =>
-	usersStore.allUsers.filter(
-		(user) => user.role === ROLE.Owner && !user.isPendingUser && Boolean(user.email),
+type Admin = {
+	id: string;
+	firstName?: string | null;
+	lastName?: string | null;
+	fullName?: string;
+	email: string;
+};
+
+const instanceAdmins = computed<Admin[]>(() =>
+	usersStore.allUsers.flatMap((user) =>
+		user.role === ROLE.Owner && !user.isPendingUser && user.email
+			? [{ ...user, email: user.email }]
+			: [],
 	),
+);
+
+const projectAdmins = computed<Admin[]>(() =>
+	(policiesStore.policyProject?.relations ?? []).flatMap((relation) =>
+		relation.role === PROJECT_ADMIN_ROLE_SLUG && relation.email
+			? [
+					{
+						...relation,
+						email: relation.email,
+						fullName: [relation.firstName, relation.lastName].filter(Boolean).join(' '),
+					},
+				]
+			: [],
+	),
+);
+
+const admins = computed(() =>
+	audience === 'project' ? projectAdmins.value : instanceAdmins.value,
 );
 
 watch(
 	open,
 	async (isOpen) => {
-		if (!isOpen) return;
+		if (!isOpen || audience === 'project') return;
 
 		// A reopen can start a second lookup before the first resolves; only the latest one ends loading.
 		const id = ++lookupId;
@@ -62,7 +101,7 @@ function mailtoHref(email: string): string {
 <template>
 	<N8nDialog
 		v-model:open="open"
-		:header="i18n.baseText('typeAvailabilityPolicies.contactAdmin.title')"
+		:header="i18n.baseText(copy.dialogTitle)"
 		:description="description"
 		size="medium"
 		stacked
@@ -70,16 +109,16 @@ function mailtoHref(email: string): string {
 	>
 		<N8nLoading v-if="isLoading" :rows="2" variant="p" :class="$style.body" />
 		<ul
-			v-else-if="owners.length"
+			v-else-if="admins.length"
 			:class="[$style.body, $style.list]"
 			data-test-id="contact-admin-list"
 		>
-			<li v-for="owner in owners" :key="owner.id" :class="$style.owner">
-				<N8nAvatar :first-name="owner.firstName" :last-name="owner.lastName" size="small" />
+			<li v-for="admin in admins" :key="admin.id" :class="$style.admin">
+				<N8nAvatar :first-name="admin.firstName" :last-name="admin.lastName" size="small" />
 				<div :class="$style.identity">
-					<N8nText size="medium" color="text-dark">{{ owner.fullName }}</N8nText>
-					<N8nLink :to="mailtoHref(owner.email ?? '')" size="small" theme="text">
-						{{ owner.email }}
+					<N8nText size="medium" color="text-dark">{{ admin.fullName }}</N8nText>
+					<N8nLink :to="mailtoHref(admin.email)" size="small" theme="text">
+						{{ admin.email }}
 					</N8nLink>
 				</div>
 			</li>
@@ -92,7 +131,7 @@ function mailtoHref(email: string): string {
 			:class="$style.body"
 			data-test-id="contact-admin-empty"
 		>
-			{{ i18n.baseText('typeAvailabilityPolicies.contactAdmin.empty') }}
+			{{ i18n.baseText(copy.empty) }}
 		</N8nText>
 	</N8nDialog>
 </template>
@@ -111,7 +150,7 @@ function mailtoHref(email: string): string {
 	margin-top: var(--spacing--lg);
 }
 
-.owner {
+.admin {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);

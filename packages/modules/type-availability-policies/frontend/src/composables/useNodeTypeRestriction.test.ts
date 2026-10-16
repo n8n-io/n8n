@@ -4,11 +4,15 @@ import { ref } from 'vue';
 
 import {
 	describeAgentToolRestriction,
+	describeNodeTypeRestriction,
 	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
+	getRestrictionContact,
 	isNodeTypeRestricted,
+	resolveRestrictionContact,
 	useNodeTypeRestriction,
 } from './useNodeTypeRestriction';
+import { mockPolicyProject } from '../__tests__/mocks';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 type Scope = 'instance' | 'project';
@@ -112,14 +116,88 @@ describe('useNodeTypeRestriction', () => {
 	});
 
 	it('describes an agent tool restriction by scope', () => {
-		expect(describeAgentToolRestriction('Slack', 'instance')).toBe(
+		expect(describeAgentToolRestriction('Slack', { scope: 'instance' })).toBe(
 			"Slack is restricted on this instance. The agent can't use it.",
 		);
-		expect(describeAgentToolRestriction('Slack', 'project')).toBe(
+		expect(describeAgentToolRestriction('Slack', { scope: 'project' })).toBe(
 			"Slack is restricted in this project. The agent can't use it.",
 		);
 		expect(describeAgentToolRestriction('Slack')).toBe(
 			"Slack is restricted. The agent can't use it.",
 		);
+	});
+
+	describe('resolveRestrictionContact', () => {
+		it.each([
+			{ verdict: { scope: 'project' }, projectType: 'team', audience: 'project' },
+			{ verdict: { scope: 'instance' }, projectType: 'team', audience: 'instance' },
+			{
+				verdict: { scope: 'instance', optInAvailable: true },
+				projectType: 'team',
+				audience: 'project',
+			},
+			{ verdict: { scope: 'project' }, projectType: 'personal', audience: 'instance' },
+			{
+				verdict: { scope: 'instance', optInAvailable: true },
+				projectType: 'personal',
+				audience: 'instance',
+			},
+			{ verdict: { scope: 'project' }, projectType: null, audience: 'project' },
+			{
+				verdict: { scope: 'instance', optInAvailable: true },
+				projectType: null,
+				audience: 'instance',
+			},
+		] as const)(
+			'sends $verdict in a $projectType project to the $audience admin',
+			({ verdict, projectType, audience }) => {
+				expect(resolveRestrictionContact(verdict, projectType)).toBe(audience);
+			},
+		);
+	});
+
+	it('ignores the loaded project when the verdict names another project', () => {
+		mockPolicyProject({ id: 'team-project', type: 'team' });
+
+		expect(getRestrictionContact({ scope: 'instance', optInAvailable: true })).toBe('project');
+		expect(
+			getRestrictionContact({ scope: 'instance', optInAvailable: true }, 'other-project'),
+		).toBe('instance');
+	});
+
+	it('points the next step to a project admin for a project restriction', () => {
+		mockPolicyProject({ type: 'team' });
+
+		expect(describeNodeTypeRestriction('Slack', { scope: 'project' }, 'replace')).toBe(
+			"An administrator blocked 'Slack' in this project. Contact a project admin or replace the node to continue.",
+		);
+		expect(describeNodeTypeRestriction('Slack', { scope: 'instance' })).toBe(
+			"An administrator blocked 'Slack' on this instance. Contact an instance admin to continue.",
+		);
+	});
+
+	it('says a project admin can allow a delegated type', () => {
+		mockPolicyProject({ type: 'team' });
+		const verdict = { scope: 'instance', optInAvailable: true } as const;
+
+		expect(describeNodeTypeRestriction('Slack', verdict)).toBe(
+			"An administrator blocked 'Slack' on this instance. A project admin can allow it for this project. Contact one to continue.",
+		);
+		expect(describeAgentToolRestriction('Slack', verdict)).toBe(
+			"Slack needs approval in this project. The agent can't use it until a project admin allows it.",
+		);
+	});
+
+	it('exposes the opt-in state of the restriction', () => {
+		vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockReturnValue({
+			name: 'n8n-nodes-base.slack',
+			available: false,
+			scope: 'instance',
+			optInAvailable: true,
+		});
+
+		const { optInAvailable } = useNodeTypeRestriction(ref('n8n-nodes-base.slack'));
+
+		expect(optInAvailable.value).toBe(true);
 	});
 });
