@@ -87,7 +87,7 @@ vi.mock('../../tools', () => ({
 	),
 }));
 
-vi.mock('../../tools/filesystem/create-tools-from-mcp-server', () => ({
+vi.mock('../../tools/create-tools-from-mcp-server', () => ({
 	createToolsFromLocalMcpServer: vi.fn().mockReturnValue(new Map()),
 }));
 
@@ -109,7 +109,7 @@ vi.mock('../system-prompt', () => ({
 import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
-import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
+import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/create-tools-from-mcp-server';
 import { setTraceModelId, setTracePromptVersion } from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
@@ -716,7 +716,7 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
-	it('does not enable MCP-specific tool search guidance for local gateway tools alone', async () => {
+	it('does not enable MCP-specific tool search guidance for Browser Use tools alone', async () => {
 		const localMcpServer = {
 			getToolsByCategory: vi.fn().mockReturnValue([{ name: 'browser_navigate' }]),
 		};
@@ -745,7 +745,7 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
-	it('prefers local gateway tools over external MCP tools when names collide', async () => {
+	it('prefers Browser Use tools over external MCP tools when names collide', async () => {
 		const memoryConfig = {} as never;
 		const localMcpServer = {
 			getToolsByCategory: vi.fn().mockReturnValue([]),

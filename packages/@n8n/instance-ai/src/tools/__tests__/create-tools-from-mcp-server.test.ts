@@ -2,8 +2,8 @@ import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX } from '@n8n/api-types';
 import type { McpTool, McpToolCallResult } from '@n8n/api-types';
 import type { Mock, Mocked } from 'vitest';
 
-import { executeTool } from '../../../__tests__/tool-test-utils';
-import type { LocalMcpServer } from '../../../types';
+import { executeTool } from '../../__tests__/tool-test-utils';
+import type { LocalMcpServer } from '../../types';
 import { createToolsFromLocalMcpServer } from '../create-tools-from-mcp-server';
 
 const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
@@ -163,9 +163,9 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(tools.get('bad tool')).toBeUndefined();
 			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipped local gateway MCP tool with unsafe name',
+				'Skipped Browser Use MCP tool with unsafe name',
 				expect.objectContaining({
-					source: 'local gateway MCP',
+					source: 'Browser Use MCP',
 					toolName: 'bad tool',
 				}),
 			);
@@ -183,15 +183,15 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(tools.has('constructor')).toBe(false);
 			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipped local gateway MCP tool with unsafe name',
+				'Skipped Browser Use MCP tool with unsafe name',
 				expect.objectContaining({
-					source: 'local gateway MCP',
+					source: 'Browser Use MCP',
 					toolName: 'constructor',
 				}),
 			);
 		});
 
-		it('skips normalized name collisions between local gateway tools', () => {
+		it('skips normalized name collisions between Browser Use tools', () => {
 			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'custom_tool' },
@@ -203,9 +203,9 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(tools.get('custom_tool')).toBeDefined();
 			expect(tools.get('custom-tool')).toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipped local gateway MCP tool with unsafe name',
+				'Skipped Browser Use MCP tool with unsafe name',
 				expect.objectContaining({
-					source: 'local gateway MCP',
+					source: 'Browser Use MCP',
 					toolName: 'custom-tool',
 				}),
 			);
@@ -223,9 +223,9 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(tools.get('ＴＯＯＬ')).toBeUndefined();
 			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipped local gateway MCP tool with unsafe name',
+				'Skipped Browser Use MCP tool with unsafe name',
 				expect.objectContaining({
-					source: 'local gateway MCP',
+					source: 'Browser Use MCP',
 					toolName: 'ＴＯＯＬ',
 				}),
 			);
@@ -250,9 +250,9 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(tools.get('huge_tool')).toBeUndefined();
 			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipped local gateway MCP tool with unsupported schema',
+				'Skipped Browser Use MCP tool with unsupported schema',
 				expect.objectContaining({
-					source: 'local gateway MCP',
+					source: 'Browser Use MCP',
 					toolName: 'huge_tool',
 					limitType: 'objectProperties',
 				}),
@@ -261,7 +261,7 @@ describe('createToolsFromLocalMcpServer', () => {
 	});
 
 	describe('media output', () => {
-		it('returns native file parts from toMessage for gateway image results', () => {
+		it('returns native file parts from toMessage for MCP image results', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
@@ -283,7 +283,7 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(tool?.toMessage?.(SUCCESS_RESULT)).toBeUndefined();
 		});
 
-		it('returns AI SDK content output for gateway image results', () => {
+		it('returns AI SDK content output for MCP image results', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
@@ -300,7 +300,7 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
-		it('returns a native file part from toMessage for gateway resource results', () => {
+		it('returns a native file part from toMessage for MCP resource results', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
@@ -324,7 +324,7 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
-		it('returns AI SDK content output for gateway resource results', () => {
+		it('returns AI SDK content output for MCP resource results', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 

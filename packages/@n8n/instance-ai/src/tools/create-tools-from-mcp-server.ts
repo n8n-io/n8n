@@ -35,21 +35,21 @@ import {
 	createClaimedToolNames,
 	McpToolNameValidationError,
 	validateMcpToolName,
-} from '../../agent/mcp-tool-name-validation';
-import type { McpDescriptionTruncation } from '../../agent/sanitize-mcp-descriptions';
+} from '../agent/mcp-tool-name-validation';
+import type { McpDescriptionTruncation } from '../agent/sanitize-mcp-descriptions';
 import {
 	assertMcpJsonSchemaWithinLimits,
 	McpSchemaSanitizationError,
 	sanitizeMcpToolSchemas,
-} from '../../agent/sanitize-mcp-schemas';
-import type { Logger } from '../../logger';
-import { createToolRegistry } from '../../tool-registry';
-import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
+} from '../agent/sanitize-mcp-schemas';
+import type { Logger } from '../logger';
+import { createToolRegistry } from '../tool-registry';
+import type { InstanceAiToolRegistry, LocalMcpServer } from '../types';
 
 type McpContentBlock = McpToolCallResult['content'][number];
 
 // ---------------------------------------------------------------------------
-// Schemas shared across all gateway-gated tools
+// Schemas shared across MCP tools that require resource confirmation
 // ---------------------------------------------------------------------------
 
 const gatewayConfirmationSuspendSchema = z.object({
@@ -186,13 +186,13 @@ function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 // Factory
 // ---------------------------------------------------------------------------
 
-const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
+const BROWSER_USE_MCP_SOURCE = 'Browser Use MCP';
 
-function warnTruncatedLocalMcpDescription(logger: Logger) {
+function warnTruncatedMcpDescription(logger: Logger) {
 	return (truncation: McpDescriptionTruncation) => {
-		logger.warn('Truncated overlong local gateway MCP description', {
+		logger.warn('Truncated overlong Browser Use MCP description', {
 			toolName: truncation.toolName,
-			source: LOCAL_GATEWAY_MCP_SOURCE,
+			source: BROWSER_USE_MCP_SOURCE,
 			path: truncation.path,
 			originalLength: truncation.originalLength,
 			limit: truncation.limit,
@@ -200,11 +200,11 @@ function warnTruncatedLocalMcpDescription(logger: Logger) {
 	};
 }
 
-function warnSkippedLocalMcpSchema(logger: Logger) {
+function warnSkippedMcpSchema(logger: Logger) {
 	return (error: McpSchemaSanitizationError) => {
-		logger.warn('Skipped local gateway MCP tool with unsupported schema', {
+		logger.warn('Skipped Browser Use MCP tool with unsupported schema', {
 			toolName: error.details.toolName,
-			source: LOCAL_GATEWAY_MCP_SOURCE,
+			source: BROWSER_USE_MCP_SOURCE,
 			path: error.details.path,
 			depth: error.details.depth,
 			maxDepth: error.details.maxDepth,
@@ -215,9 +215,9 @@ function warnSkippedLocalMcpSchema(logger: Logger) {
 	};
 }
 
-function warnSkippedLocalMcpTool(logger: Logger) {
+function warnSkippedMcpTool(logger: Logger) {
 	return (error: McpToolNameValidationError) => {
-		logger.warn('Skipped local gateway MCP tool with unsafe name', {
+		logger.warn('Skipped Browser Use MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -256,21 +256,21 @@ export function createToolsFromLocalMcpServer({
 }): InstanceAiToolRegistry {
 	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);
-	const warnTool = warnSkippedLocalMcpTool(logger);
-	const warnSchema = warnSkippedLocalMcpSchema(logger);
+	const warnTool = warnSkippedMcpTool(logger);
+	const warnSchema = warnSkippedMcpSchema(logger);
 
 	for (const mcpTool of server.getAvailableTools()) {
 		const toolName = mcpTool.name;
 		const description = mcpTool.description ?? toolName;
 
 		try {
-			const normalizedName = validateMcpToolName(toolName, LOCAL_GATEWAY_MCP_SOURCE);
+			const normalizedName = validateMcpToolName(toolName, BROWSER_USE_MCP_SOURCE);
 			const claimedBy = claimedToolNames.get(normalizedName);
 			if (claimedBy) {
 				throw new McpToolNameValidationError(
-					`MCP tool "${toolName}" from ${LOCAL_GATEWAY_MCP_SOURCE} conflicts with "${claimedBy}"`,
+					`MCP tool "${toolName}" from ${BROWSER_USE_MCP_SOURCE} conflicts with "${claimedBy}"`,
 					toolName,
-					LOCAL_GATEWAY_MCP_SOURCE,
+					BROWSER_USE_MCP_SOURCE,
 				);
 			}
 			assertMcpJsonSchemaWithinLimits(mcpTool.inputSchema, { toolName });
@@ -414,12 +414,12 @@ export function createToolsFromLocalMcpServer({
 	}
 
 	const sanitizedTools = sanitizeMcpToolSchemas(tools, {
-		onError: warnSkippedLocalMcpSchema(logger),
-		onDescriptionTruncated: warnTruncatedLocalMcpDescription(logger),
+		onError: warnSkippedMcpSchema(logger),
+		onDescriptionTruncated: warnTruncatedMcpDescription(logger),
 	});
 	const safeTools = createToolRegistry();
 	addSafeMcpTools(safeTools, sanitizedTools, {
-		source: LOCAL_GATEWAY_MCP_SOURCE,
+		source: BROWSER_USE_MCP_SOURCE,
 		claimedToolNames: createClaimedToolNames([]),
 		warn: warnTool,
 	});
