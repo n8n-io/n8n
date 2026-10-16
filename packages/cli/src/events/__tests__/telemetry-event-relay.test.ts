@@ -3646,7 +3646,6 @@ describe('TelemetryEventRelay', () => {
 				user: { id: 'user123' },
 				agentIds: ['agent1', 'agent2'],
 				workflowIds: ['wf1', 'wf2', 'wf3'],
-				agentIds: ['agent1', 'agent2'],
 				projectIds: ['proj1'],
 				counts: {
 					agents: 2,
@@ -3683,7 +3682,6 @@ describe('TelemetryEventRelay', () => {
 				agentIds: ['agent1', 'agent2'],
 				reason: 'access-denied',
 				workflowIds: ['wf1', 'wf2'],
-				agentIds: ['agent1', 'agent2'],
 			};
 
 			eventService.emit('n8n-package-export-failed', event);
