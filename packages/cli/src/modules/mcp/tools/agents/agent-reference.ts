@@ -167,37 +167,28 @@ when the Agent only needs to call that service as an API.
 Integrations are persisted separately from editable config. get_agent reports them in a read-only
 integrations field, but config.replace and config.patch can't add, change, or remove them, and they
 never appear in the config schema above. Manage them exclusively with update_agent_integration,
-which validates the credential and persists the configuration without publishing. A configured
-channel stays inactive until publish_agent is called unless the Agent already has an active version;
-in that case, it connects immediately to the existing active snapshot.
+which validates credential access and saves the requested settings without publishing. Existing
+destination connections can be reused. New or unverified connections remain pending. The result
+includes channelSetupRequired with a setupUrl for each pending channel. Give these links to the user.
+The user must complete setup in the normal n8n channel flow before publication. Existing configured
+connections stay active while a replacement is pending. Pending channels provide no channel tools.
 
 ### Slack
 
 A Slack app sends events only to the request URL in its own configuration, so a Slack channel works
 only with a Slack app that points at this Agent. A slackApi credential made for another use, such as a
-Slack Trigger or another Agent, passes every credential check but the Agent receives nothing. Connect
-Slack in this order:
+Slack Trigger or another Agent, does not establish destination setup. Matching Agent IDs across
+instances are not enough either.
 
-1. Call update_agent_integration with action=connect, type=slack, and no credentialId. Nothing changes.
-   - status=workspace_selection_required lists managerCredentials with their workspaces. Ask the user
-     which workspace to use and confirm that n8n may create a Slack app there.
-   - code=slack_workspace_not_connected means no Slack workspace is connected to n8n yet. Give the
-     user agentUrl and ask them to connect the workspace once through Add channel, then retry.
-   - code=slack_manager_reconnect_required means the listed Slack workspace credentials must be
-     reconnected. Give the user agentUrl and ask them to reconnect through Add channel, then retry.
-   - code=slack_managed_setup_unavailable means this instance cannot create Slack apps. Relay
-     slackApp.requestUrl and slackApp.manifest so the user can configure a Slack app, then connect
-     with that app's slackApi credential.
-2. Call update_agent_integration again with the chosen managerCredentialId and workspaceId. n8n
-   creates the Slack app, installs it, and connects the channel. If the result has
-   status=install_approval_required, give the user installUrl; n8n connects the channel after they
-   approve the install. Call get_agent to confirm. If the result has
-   code=slack_app_built_for_another_agent, the Agent already uses a bot credential from another
-   Slack app: disconnect that credential, then install again.
+1. Call update_agent_integration with action=connect and type=slack. An accessible credentialId is
+   optional. The call saves pending intent. It does not create an app or change event routing.
+2. Give the user channelSetupRequired[].setupUrl. The normal UI supports managed and manual setup.
+   slackApp.requestUrl and slackApp.manifest describe the destination for manual setup.
+3. Call get_agent after the user completes setup. Confirm that the pending entry is gone before
+   publishing. An already published Agent continues to use its configured destination connections.
 
-When you connect with an explicit slackApi credential, the result has slackApp.configuredForAgent. It
-is true only when n8n built the Slack app for this Agent. If it is false, relay the warning and
-slackApp.requestUrl to the user instead of reporting the channel as ready.
+Supplying managerCredentialId and workspaceId does not install an app through MCP. Setup must finish
+in the UI. A credential match alone must never be reported as a configured Slack connection.
 
 ## MCP servers
 

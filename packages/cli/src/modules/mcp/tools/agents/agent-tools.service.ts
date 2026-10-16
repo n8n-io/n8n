@@ -30,6 +30,7 @@ import { z } from 'zod';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentChannelSetupService } from '@/modules/agents/agent-channel-setup.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
@@ -349,21 +350,21 @@ const updateIntegrationInput = {
 		.min(1)
 		.optional()
 		.describe(
-			'Accessible credential for this integration. Required for disconnect and for non-Slack connect operations. Omit it to connect Slack through managed setup',
+			'Accessible credential for this integration. Required for disconnect. New connections return a UI setup link and stay inactive until setup is complete',
 		),
 	managerCredentialId: z
 		.string()
 		.min(1)
 		.optional()
 		.describe(
-			'Slack managed setup only: the managerCredentialId returned by a Slack connect call without credentialId',
+			'Optional Slack workspace hint. The user must complete managed setup through the returned UI link',
 		),
 	workspaceId: z
 		.string()
 		.min(1)
 		.optional()
 		.describe(
-			'Slack managed setup only: the workspaceId returned by a Slack connect call without credentialId',
+			'Optional Slack workspace hint, used with managerCredentialId. This does not install an app',
 		),
 	settings: z
 		.record(z.unknown())
@@ -374,7 +375,7 @@ const updateIntegrationInput = {
 		.min(1)
 		.optional()
 		.describe(
-			'On connect, the credential of the same type this one takes over from. Swaps both in one operation instead of a separate disconnect',
+			'On connect, the destination credential this channel will replace after UI setup succeeds. The current connection stays active until then',
 		),
 } satisfies z.ZodRawShape;
 
@@ -461,6 +462,7 @@ export class McpAgentToolsService {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly slackSetup: McpAgentSlackSetup,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly channelSetupService: AgentChannelSetupService,
 	) {}
 
 	/**
@@ -1077,7 +1079,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					"Configure or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called. For Slack, connect without credentialId first: n8n returns the workspaces where it can create a Slack app for the Agent, or the steps the user must take in n8n. Then call again with managerCredentialId and workspaceId after the user confirms the workspace.",
+					'Request or disconnect a conversation channel. This is the only way to manage integrations; config.replace and config.patch cannot change them. Reuse configured destination connections. New or unverified channels stay pending and return channelSetupRequired with UI setup links. Supplying a credential or Slack workspace does not create an app, connect a channel, or change a webhook. Pending setup blocks publication. Existing destination connections stay active until replacement setup succeeds.',
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',
@@ -1175,6 +1177,7 @@ export class McpAgentToolsService {
 				descriptor: tool.descriptor,
 			})),
 			integrations: agent.integrations ?? [],
+			channelSetupRequired: this.channelSetupService.getRequirements(agent),
 		};
 	}
 
@@ -1723,7 +1726,7 @@ export class McpAgentToolsService {
 					...(integration.type === SLACK_INTEGRATION_TYPE
 						? {
 								setupGuidance:
-									'Call update_agent_integration with action=connect and no credentialId. n8n returns the workspaces where it can create a Slack app for this Agent, or the steps the user must take in n8n. A slackApi credential from another Slack app, such as one made for a Slack Trigger, does not send events to the Agent.',
+									'Call update_agent_integration with action=connect to save the intended channel and get its UI setup link. The user completes Slack app setup in n8n. A credential match alone does not configure event routing.',
 							}
 						: {}),
 					...(integration.type === 'telegram'
@@ -1830,28 +1833,54 @@ export class McpAgentToolsService {
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
 			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
+			channelSetupRequired: this.channelSetupService.getRequirements(saved),
 		};
 	}
 
 	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
-		const managedTarget = this.managedSlackTarget(input);
-		if (managedTarget) return await this.installManagedSlackApp(user, agent, managedTarget);
-		if (!input.credentialId) {
-			if (input.type !== SLACK_INTEGRATION_TYPE) {
-				throw new UserError('credentialId is required to connect this integration');
-			}
-			return await this.slackSetup.describeSetup(
-				agent,
-				user,
-				this.getAgentUrl(agent.projectId, agent.id),
-			);
-		}
-
-		const connected = await this.connectWithCredential(user, input, agent, input.credentialId);
-		if (input.type !== SLACK_INTEGRATION_TYPE) return connected;
+		const target = this.managedSlackTarget(input);
+		const credentialId = input.credentialId ?? '';
+		const saved = await this.integrationManagementService.requestConnection({
+			agent,
+			user,
+			integration: {
+				type: input.type,
+				credentialId,
+				...(input.settings ? { settings: input.settings } : {}),
+			},
+			...(input.replacesCredentialId
+				? { replaces: { type: input.type, credentialId: input.replacesCredentialId } }
+				: {}),
+			modifiedBy: 'mcp',
+		});
+		const channelSetupRequired = this.channelSetupService.getRequirements(saved);
+		const pending = channelSetupRequired.find(
+			(entry) => entry.type === input.type && entry.credentialId === credentialId,
+		);
+		const slackSetup =
+			pending && input.type === SLACK_INTEGRATION_TYPE
+				? await this.slackSetup.describeSetup(saved)
+				: {};
 		return {
-			...connected,
-			...(await this.slackSetup.describeBotCredential(agent, user, input.credentialId)),
+			ok: true,
+			agentId: agent.id,
+			integration: { type: input.type, credentialId },
+			configured: !pending,
+			connected: !pending && saved.activeVersionId !== null,
+			published: saved.activeVersionId !== null,
+			activeVersionId: saved.activeVersionId,
+			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			channelSetupRequired,
+			...slackSetup,
+			...(pending
+				? {
+						status: 'setup_required',
+						agentUrl: pending.setupUrl,
+						nextStep:
+							'Open setupUrl and complete channel setup in n8n. The saved Agent cannot publish until setup is complete.',
+						...(target ? { workspace: target } : {}),
+					}
+				: {}),
 		};
 	}
 
@@ -1870,110 +1899,10 @@ export class McpAgentToolsService {
 		}
 		if (input.credentialId || input.replacesCredentialId || input.settings) {
 			throw new UserError(
-				'Managed Slack setup creates its own credential. Omit credentialId, replacesCredentialId, and settings',
+				'Omit credentialId, replacesCredentialId, and settings when supplying Slack workspace hints',
 			);
 		}
 		return { managerCredentialId, workspaceId };
-	}
-
-	private async installManagedSlackApp(
-		user: User,
-		agent: Agent,
-		target: { managerCredentialId: string; workspaceId: string },
-	) {
-		// Managed setup stores the new bot token as a credential in the project.
-		if (
-			!(await userHasScopes(user, ['credential:create'], false, { projectId: agent.projectId }))
-		) {
-			throw new ForbiddenError('You do not have permission to create credentials in this project.');
-		}
-
-		const result = await this.slackSetup.install(agent, user, target);
-		if (result.status === 'manual_install_required') {
-			return {
-				ok: true,
-				status: 'install_approval_required',
-				agentId: agent.id,
-				configured: false,
-				appId: result.appId,
-				installUrl: result.installUrl,
-				nextStep:
-					'Give installUrl to the user. After they approve the install in Slack, n8n connects the channel. Call get_agent to confirm the Slack integration.',
-			};
-		}
-
-		// installApp returns a bot credential that this Agent already has instead of
-		// building a new app. That credential can come from another Agent's app.
-		if (!(await this.slackSetup.isAppConfiguredForAgent(agent, user, result.credentialId))) {
-			return {
-				ok: false,
-				code: 'slack_app_built_for_another_agent',
-				agentId: agent.id,
-				configured: false,
-				integration: { type: SLACK_INTEGRATION_TYPE, credentialId: result.credentialId },
-				error:
-					'This Agent already uses a Slack bot credential that n8n did not build for this Agent.',
-				nextStep:
-					'Disconnect integration.credentialId from this Agent with update_agent_integration action=disconnect. Then call the install again, and n8n builds a new Slack app for this Agent.',
-			};
-		}
-
-		const installed = {
-			ok: true,
-			agentId: agent.id,
-			integration: { type: SLACK_INTEGRATION_TYPE, credentialId: result.credentialId },
-			configured: true,
-			appId: result.appId,
-			slackApp: { configuredForAgent: true },
-		};
-		// The install is already saved, so skip the MCP access guard of resolveAgent:
-		// a concurrent change to that setting must not turn this result into an error.
-		const saved = await this.agentsService.findByIdForUser(agent.id, user);
-		if (!saved) return installed;
-		const published = saved.activeVersionId !== null;
-		return {
-			...installed,
-			connected: published,
-			published,
-			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
-		};
-	}
-
-	private async connectWithCredential(
-		user: User,
-		input: UpdateIntegrationInput,
-		agent: Agent,
-		credentialId: string,
-	) {
-		const candidate = {
-			type: input.type,
-			credentialId,
-			...(input.settings ? { settings: input.settings } : {}),
-		};
-		const { savedAgent: saved } = await this.integrationManagementService.connect({
-			agent,
-			user,
-			integration: candidate,
-			...(input.replacesCredentialId
-				? { replaces: { type: input.type, credentialId: input.replacesCredentialId } }
-				: {}),
-			modifiedBy: 'mcp',
-		});
-		const result = {
-			ok: true,
-			agentId: input.agentId,
-			integration: { type: input.type, credentialId },
-			configured: true,
-			published: saved.activeVersionId !== null,
-			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
-		};
-		if (saved.activeVersionId === null) return { ...result, connected: false };
-		return {
-			...result,
-			connected: true,
-		};
 	}
 
 	private credentialProvider(user: User, projectId: string): CredentialProvider {

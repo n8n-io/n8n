@@ -94,6 +94,7 @@ describe('AgentIntegrationManagementService', () => {
 	) {
 		agentRepository.findIntegrationState.mockResolvedValue({
 			integrations,
+			pendingChannelSetup: null,
 			versionId: 'draft-1',
 			activeVersionId,
 		});
@@ -107,6 +108,23 @@ describe('AgentIntegrationManagementService', () => {
 	}
 
 	describe('adding a channel', () => {
+		it.each([undefined, 'stale'])(
+			'rejects an omitted or stale pending reference before connection effects (%s)',
+			async (setupId) => {
+				const { service, agentRepository, chatService, persistenceService } = makeService();
+				const agent = makeAgent({
+					pendingChannelSetup: { requested: [{ integration, setupId: 'pending' }] },
+				});
+				agentRepository.findById.mockResolvedValue(agent);
+				agentRepository.findIntegrationState.mockResolvedValue(agent);
+				await expect(
+					service.connect({ agent, user: user as never, integration, setupId }),
+				).rejects.toThrow();
+				expect(chatService.connect).not.toHaveBeenCalled();
+				expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+				expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+			},
+		);
 		it('brings the connection up before the durable write, then broadcasts it', async () => {
 			const { service, persistenceService, chatService, implementation, agentUpdateBroadcaster } =
 				makeService();
@@ -129,7 +147,9 @@ describe('AgentIntegrationManagementService', () => {
 			await connecting;
 
 			expect(implementation.validateConfig).toHaveBeenCalledWith(integration);
-			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
+			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId, {
+				setup: {},
+			});
 			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
 				agent,
 				{ add: integration },
@@ -259,6 +279,7 @@ describe('AgentIntegrationManagementService', () => {
 				agent.id,
 				integration,
 				agent.projectId,
+				{ setupId: undefined },
 			);
 			expect(chatService.connect).not.toHaveBeenCalled();
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
@@ -442,7 +463,9 @@ describe('AgentIntegrationManagementService', () => {
 			const { savedAgent } = await service.connect({ agent, user: user as never, integration });
 
 			expect(chatService.validateBeforeConnect).toHaveBeenCalled();
-			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
+			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId, {
+				setup: undefined,
+			});
 			// The controller reports "configured" vs "connected" off this value, so a
 			// started runtime must not come back looking unpublished.
 			expect(savedAgent.activeVersionId).not.toBeNull();

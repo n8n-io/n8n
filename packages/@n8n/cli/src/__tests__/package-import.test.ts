@@ -4,6 +4,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import type { N8nClient } from '../client';
 import PackageImport from '../commands/package/import';
+import { formatOutput } from '../output';
 
 vi.mock('node:fs');
 
@@ -130,30 +131,52 @@ describe('package import command', () => {
 		expect(conflictPolicy.default).toBeUndefined();
 	});
 
-	it('returns Agent summaries and publication failures without failing the definition import', async () => {
-		const result = {
-			agents: [
-				{
-					sourceAgentId: 'source',
-					localId: 'target',
-					name: 'Reviewer',
-					projectId: 'project',
-					activeVersionId: null,
-					status: 'created',
-					publishing: { state: 'failed', error: 'Publication refused' },
-				},
-			],
-			workflows: [],
-			bindings: { agents: { source: 'target' }, workflows: {}, credentials: {} },
-			counts: { agents: { created: 1, updated: 0, skipped: 0 } },
-		};
-		const { command, internals } = stubCommand(
-			{ file: '/tmp/agent.n8np', conflictPolicy: 'new-version' },
-			vi.fn().mockResolvedValue(result),
-		);
-		await expect(command.run()).resolves.toBeUndefined();
-		expect(internals.output).toHaveBeenCalledWith(result, expect.anything());
-	});
+	it.each(['failed', 'blocked'] as const)(
+		'returns Agent summaries when publication is %s without failing the definition import',
+		async (state) => {
+			const setupUrl = 'https://n8n.example/projects/project/agents/target?channelSetup=pending';
+			const result = {
+				agents: [
+					{
+						sourceAgentId: 'source',
+						localId: 'target',
+						name: 'Reviewer',
+						projectId: 'project',
+						activeVersionId: null,
+						status: 'created',
+						publishing:
+							state === 'failed'
+								? { state, error: 'Publication refused' }
+								: { state, blockedReason: 'channel-setup-required' },
+						channelSetupRequired: [
+							{
+								setupId: 'pending',
+								agentId: 'target',
+								projectId: 'project',
+								type: 'slack',
+								credentialId: 'channel',
+								path: ['integrations', 0],
+								reason: 'destination-setup-required',
+								setupUrl,
+							},
+						],
+					},
+				],
+				workflows: [],
+				bindings: { agents: { source: 'target' }, workflows: {}, credentials: {} },
+				counts: { agents: { created: 1, updated: 0, skipped: 0 } },
+			};
+			const { command, internals } = stubCommand(
+				{ file: '/tmp/agent.n8np', conflictPolicy: 'new-version' },
+				vi.fn().mockResolvedValue(result),
+			);
+			await expect(command.run()).resolves.toBeUndefined();
+			expect(internals.output).toHaveBeenCalledWith(result, expect.anything());
+			expect(JSON.parse(formatOutput(result, { format: 'json' }))).toEqual(result);
+			expect(formatOutput(result, { format: 'table' })).toContain(setupUrl);
+			expect(formatOutput(result, { format: 'table' })).toContain('"status":"created"');
+		},
+	);
 
 	// Real oclif parsing exercises the flag default and alias resolution, which
 	// the stubbed `parse` above cannot.

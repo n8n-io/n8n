@@ -79,6 +79,9 @@ describe('SlackMethodsService', () => {
 					accessToken: 'xoxb-token',
 					signatureSecret: 'signing-secret',
 					agentId: 'agent-1',
+					agentProjectId: 'project-1',
+					agentWebhookUrl:
+						'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
 				},
 				projectId: 'project-1',
 			},

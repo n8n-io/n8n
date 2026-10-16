@@ -70,10 +70,13 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const route = useRoute();
+const router = useRouter();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
-const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus, channelSetupRequired } =
+	integrationStatus;
 
 const runtimeContext = {
 	projectId: computed(() => props.projectId),
@@ -124,6 +127,7 @@ const channelList = computed(() => withN8nChat(catalog.value ?? []));
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
 const channelModalView = ref<ChannelView>('list');
+const channelSetupId = ref<string>();
 
 function isIconName(icon: unknown): icon is IconName {
 	return typeof icon === 'string' && icon in updatedIconSet;
@@ -142,12 +146,18 @@ const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	setup_required: 'agents.builder.validation.issue.setupRequired',
 };
 
 const channelIssueMessages = computed(() => {
 	const messages = new Map<string, string[]>();
 	for (const issue of props.validationIssues) {
-		if (issue.capability.kind !== 'channel' || !issue.capability.id) continue;
+		if (
+			issue.capability.kind !== 'channel' ||
+			!issue.capability.id ||
+			issue.code === 'setup_required'
+		)
+			continue;
 		const message = i18n.baseText(ISSUE_KEYS[issue.code], {
 			interpolate: { id: issue.capability.id },
 		});
@@ -166,7 +176,17 @@ function channelRuntimeErrorMessage(channel: string): string {
 const channelRows = computed(() =>
 	[
 		...(isN8nChatEnabled.value ? [N8N_CHAT_INTEGRATION_TYPE] : []),
-		...props.connectedTriggers.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE),
+		...Array.from(
+			new Set([
+				...props.connectedTriggers,
+				...Object.keys(connectedCredentials.value).filter(integrationStatus.isConfigured),
+			]),
+		).filter(
+			(channel) =>
+				channel !== N8N_CHAT_INTEGRATION_TYPE &&
+				(!channelSetupRequired.value.some(({ type }) => type === channel) ||
+					integrationStatus.isConfigured(channel)),
+		),
 	].map((channel) => {
 		const integration = channelList.value.find(({ type }) => type === channel);
 		const credentialId = connectedCredentials.value[channel];
@@ -187,6 +207,35 @@ const channelRows = computed(() =>
 				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),
 		};
 	}),
+);
+
+const pendingChannelRows = computed(() =>
+	channelSetupRequired.value.map((pending, index) => {
+		const channel = channelList.value.find(({ type }) => type === pending.type);
+		let label = channel?.label ?? pending.type;
+		const credentialName = credentialNamesById.value[pending.credentialId];
+		if (credentialName) label = `${label} (${credentialName})`;
+		else if (channelSetupRequired.value.filter(({ type }) => type === pending.type).length > 1) {
+			label = i18n.baseText('agents.channels.setupRequired.connection', {
+				interpolate: { channel: label, number: index + 1 },
+			});
+		}
+		return { ...pending, label, icon: channelIcon(channel?.icon) };
+	}),
+);
+
+watch(
+	() => [route?.query.channelSetup, channelSetupRequired.value, props.disabled] as const,
+	([setupId, pending, disabled]) => {
+		if (disabled || typeof setupId !== 'string') return;
+		const channel = pending.find((entry) => entry.setupId === setupId);
+		if (!channel) return;
+		openPendingChannel(channel.setupId, channel.type);
+		const query = { ...route.query };
+		delete query.channelSetup;
+		void router.replace({ query });
+	},
+	{ immediate: true },
 );
 
 async function loadChannelDetails() {
@@ -243,14 +292,23 @@ onBeforeUnmount(() => {
 });
 
 function openChannelModal() {
+	channelSetupId.value = undefined;
 	channelModalView.value = 'list';
 	channelModalOpen.value = true;
 }
 
 function openChannelEdit(channelType: string, connected: boolean) {
+	channelSetupId.value = undefined;
 	const hasEditableChannelView = channelList.value.some(({ type }) => type === channelType);
 	const mode = connected ? 'edit' : 'setup';
 	channelModalView.value = hasEditableChannelView ? `${channelType}_${mode}` : 'list';
+	channelModalOpen.value = true;
+}
+
+function openPendingChannel(setupId: string, channelType: string) {
+	if (props.disabled) return;
+	channelSetupId.value = setupId;
+	channelModalView.value = `${channelType}_setup`;
 	channelModalOpen.value = true;
 }
 
@@ -311,7 +369,7 @@ function handleChannelDisconnected(channelType: string) {
 	>
 		<AgentChipRow
 			:label="i18n.baseText('agents.builder.channel.title')"
-			:item-count="channelRows.length"
+			:item-count="channelRows.length + pendingChannelRows.length"
 			:add-label="i18n.baseText('agents.builder.channel.add')"
 			add-button-test-id="agent-channels-add-channel"
 			:disabled="props.disabled"
@@ -335,6 +393,18 @@ function handleChannelDisconnected(channelType: string) {
 					{{ channel.label }}
 				</AgentChipButton>
 			</AgentItemContextMenu>
+			<AgentChipButton
+				v-for="channel in pendingChannelRows"
+				:key="channel.setupId"
+				:icon="channel.icon"
+				:invalid="true"
+				:invalid-reasons="[i18n.baseText('agents.builder.validation.issue.setupRequired')]"
+				:disabled="props.disabled || removingChannel"
+				data-testid="agent-channel-setup-required"
+				@click="openPendingChannel(channel.setupId, channel.type)"
+			>
+				{{ channel.label }} · {{ i18n.baseText('agents.channels.setupRequired.label') }}
+			</AgentChipButton>
 		</AgentChipRow>
 
 		<AgentSchedulesRow
@@ -359,6 +429,7 @@ function handleChannelDisconnected(channelType: string) {
 			v-model:view="channelModalView"
 			:agent-id="agentId"
 			:project-id="projectId"
+			:setup-id="channelSetupId"
 			:is-published="isPublished"
 			:disabled="props.disabled"
 			:simple-setup="simpleChannelSetup"

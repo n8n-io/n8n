@@ -35,6 +35,7 @@ export class AgentSlackIntegrationsController {
 			projectId: req.params.projectId,
 			agentId,
 			appConfigurationToken: payload.appConfigurationToken,
+			setupId: payload.setupId,
 			user: req.user,
 		});
 	}
@@ -107,6 +108,7 @@ export class AgentSlackIntegrationsController {
 			user: req.user,
 			managerCredentialId: payload.managerCredentialId,
 			workspaceId: payload.workspaceId,
+			setupId: payload.setupId,
 		});
 	}
 

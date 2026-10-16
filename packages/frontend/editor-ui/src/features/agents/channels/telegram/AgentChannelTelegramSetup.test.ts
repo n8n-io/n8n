@@ -20,6 +20,32 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 const renderComponent = createComponentRenderer(AgentChannelTelegramSetup);
 
 describe('AgentChannelTelegramSetup', () => {
+	it('opens retained access settings before the channel is connected', () => {
+		const { getByText, queryByText } = renderComponent({
+			props: {
+				mode: 'edit',
+				integration: {
+					type: 'telegram',
+					label: 'Telegram',
+					icon: 'telegram',
+					credentialTypes: ['telegramApi'],
+				},
+				credentials: [],
+				credentialPermissions: { create: true },
+				agentName: 'Agent',
+				projectId: 'project-id',
+				agentId: 'agent-id',
+				connected: false,
+				savedSettings: { accessMode: 'private', allowedUsers: ['reviewer'] },
+			},
+		});
+
+		expect(getByText('reviewer')).toBeVisible();
+		expect(
+			queryByText('agents.builder.addTrigger.telegram.validation.required'),
+		).not.toBeInTheDocument();
+	});
+
 	it('shows connection errors below the connect button', () => {
 		const { getByText } = renderComponent({
 			props: {

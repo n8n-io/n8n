@@ -34,6 +34,7 @@ import { ConflictError } from '@n8n/errors';
 import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.error';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentChannelSetupService } from '@/modules/agents/agent-channel-setup.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
@@ -187,8 +188,9 @@ describe('McpAgentToolsService', () => {
 		outboundHttp,
 		urlService,
 		projectScopeService,
-		new McpAgentSlackSetup(slackManagedSetup, slackManualSetup, mockLogger()),
+		new McpAgentSlackSetup(slackManualSetup),
 		agentSkillRefs,
+		new AgentChannelSetupService(urlService),
 	);
 
 	let tools: Map<string, RegisteredTool>;
@@ -1843,7 +1845,7 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
-		it('tells the client to use managed setup for Slack in kind=integrations', async () => {
+		it('includes setup guidance for Slack in kind=integrations', async () => {
 			integrationPersistenceService.listChatIntegrations.mockReturnValue([
 				{ type: 'slack', label: 'Slack', icon: 'slack', credentialTypes: ['slackApi'] },
 				{ type: 'linear', label: 'Linear', icon: 'linear', credentialTypes: ['linearApi'] },
@@ -1855,7 +1857,7 @@ describe('McpAgentToolsService', () => {
 			});
 
 			const [slack, linear] = result.structuredContent.data as Array<Record<string, unknown>>;
-			expect(slack.setupGuidance).toEqual(expect.stringContaining('no credentialId'));
+			expect(slack.setupGuidance).toEqual(expect.any(String));
 			expect(linear).not.toHaveProperty('setupGuidance');
 		});
 
@@ -2246,557 +2248,118 @@ describe('McpAgentToolsService', () => {
 		});
 	});
 
-	describe('update_agent_integration connect', () => {
-		const input = {
-			agentId: 'agent-1',
-			action: 'connect',
-			type: 'slack',
-			credentialId: 'cred-1',
-		};
+	describe('update_agent_integration destination setup', () => {
+		const input = { agentId: 'agent-1', action: 'connect', type: 'slack', credentialId: 'cred-1' };
+		const requested = { type: 'slack', credentialId: 'cred-1' };
 
-		beforeEach(() => {
-			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: 'v1' }));
-			integrationManagementService.connect.mockResolvedValue({
-				integration: { type: 'slack', credentialId: 'cred-1' },
-				savedAgent: agentEntity({
-					activeVersionId: 'v1',
-					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-				}),
-			});
-		});
+		it.each([null, 'v1'])(
+			'returns setup instructions with active version %s without connecting',
+			async (activeVersionId) => {
+				const saved = agentEntity({
+					activeVersionId,
+					integrations: [{ type: 'slack', credentialId: 'existing' }],
+					pendingChannelSetup: { requested: [{ integration: requested, setupId: 'setup-1' }] },
+				});
+				integrationManagementService.requestConnection.mockResolvedValue(saved);
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes: string[]) => !scopes.includes('agent:publish'),
+				);
+				const result = await callTool('update_agent_integration', input);
+				expect(result.structuredContent).toMatchObject({
+					ok: true,
+					configured: false,
+					connected: false,
+					activeVersionId,
+					status: 'setup_required',
+					channelSetupRequired: [
+						{
+							setupId: 'setup-1',
+							agentId: 'agent-1',
+							projectId: 'project-1',
+							type: 'slack',
+							path: ['integrations', 0],
+							reason: 'destination-setup-required',
+							setupUrl: 'https://n8n.test/projects/project-1/agents/agent-1?channelSetup=setup-1',
+						},
+					],
+					slackApp: { configuredForAgent: false, manifest: slackManifest },
+				});
+				expect(integrationManagementService.connect).not.toHaveBeenCalled();
+				expect(slackManagedSetup.installApp).not.toHaveBeenCalled();
+				expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			},
+		);
 
-		it('persists and connects the channel without publishing for a published Agent', async () => {
-			userHasScopesMock.mockImplementation(
-				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
+		it('reports a reused destination connection without setup requirements', async () => {
+			integrationManagementService.requestConnection.mockResolvedValue(
+				agentEntity({ activeVersionId: 'v1', integrations: [requested] }),
 			);
-
 			const result = await callTool('update_agent_integration', input);
-
-			expect(integrationManagementService.connect).toHaveBeenCalledWith({
-				agent: expect.objectContaining({ id: 'agent-1' }),
-				user,
-				integration: { type: 'slack', credentialId: 'cred-1' },
-				modifiedBy: 'mcp',
-			});
-			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:update'], false, {
-				projectId: 'project-1',
-			});
-			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:publish'], false, {
-				projectId: 'project-1',
-			});
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				configured: true,
 				connected: true,
-				published: true,
-				activeVersionId: 'v1',
+				channelSetupRequired: [],
 			});
-		});
-
-		it('persists without publishing, connecting, or broadcasting for an unpublished Agent', async () => {
-			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: null }));
-			integrationManagementService.connect.mockResolvedValue({
-				integration: { type: 'slack', credentialId: 'cred-1' },
-				savedAgent: agentEntity({
-					activeVersionId: null,
-					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-				}),
-			});
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(integrationManagementService.connect).toHaveBeenCalledWith({
-				agent: expect.objectContaining({ id: 'agent-1' }),
-				user,
-				integration: { type: 'slack', credentialId: 'cred-1' },
-				modifiedBy: 'mcp',
-			});
-			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
-			expect(result.structuredContent).toMatchObject({
-				ok: true,
-				configured: true,
-				connected: false,
-				published: false,
-				activeVersionId: null,
-			});
-		});
-
-		it('forwards a replacement so the swap happens in one operation', async () => {
-			await callTool('update_agent_integration', {
-				...input,
-				replacesCredentialId: 'cred-0',
-			});
-
-			expect(integrationManagementService.connect).toHaveBeenCalledWith({
-				agent: expect.objectContaining({ id: 'agent-1' }),
-				user,
-				integration: { type: 'slack', credentialId: 'cred-1' },
-				replaces: { type: 'slack', credentialId: 'cred-0' },
-				modifiedBy: 'mcp',
-			});
-		});
-
-		it('requires settings for telegram integrations', async () => {
-			integrationManagementService.connect.mockRejectedValueOnce(
-				new Error('Telegram integration settings are required'),
-			);
-			const result = await callTool('update_agent_integration', { ...input, type: 'telegram' });
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: 'Telegram integration settings are required',
-			});
-			expect(integrationManagementService.connect).toHaveBeenCalled();
-		});
-
-		it('rejects a credential whose type the integration does not support', async () => {
-			integrationManagementService.connect.mockRejectedValueOnce(
-				new Error('Slack integrations do not support telegramApi credentials'),
-			);
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: 'Slack integrations do not support telegramApi credentials',
-			});
-			expect(integrationManagementService.connect).toHaveBeenCalled();
-		});
-	});
-
-	describe('update_agent_integration Slack credential', () => {
-		const input = {
-			agentId: 'agent-1',
-			action: 'connect',
-			type: 'slack',
-			credentialId: 'cred-1',
-		};
-
-		beforeEach(() => {
-			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: 'v1' }));
-			integrationManagementService.connect.mockResolvedValue({
-				integration: { type: 'slack', credentialId: 'cred-1' },
-				savedAgent: agentEntity({
-					activeVersionId: 'v1',
-					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
-				}),
-			});
-		});
-
-		it('returns the request URL and a warning for a Slack app that n8n did not create', async () => {
-			const result = await callTool('update_agent_integration', input);
-
-			expect(slackManagedSetup.isAppConfiguredForAgent).toHaveBeenCalledWith(
-				'cred-1',
-				expect.objectContaining({ id: 'agent-1' }),
-				user,
-			);
-			expect(result.isError).toBeUndefined();
-			expect(result.structuredContent).toMatchObject({
-				ok: true,
-				configured: true,
-				connected: true,
-				slackApp: {
-					configuredForAgent: false,
-					requestUrl: slackManifest.settings.event_subscriptions.request_url,
-					manifest: slackManifest,
-				},
-				warning: expect.stringContaining('could not confirm'),
-			});
-		});
-
-		it('reports the app as unverified when the check fails after the connect is saved', async () => {
-			slackManagedSetup.isAppConfiguredForAgent.mockRejectedValue(new Error('decrypt failed'));
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(integrationManagementService.connect).toHaveBeenCalled();
-			expect(result.isError).toBeUndefined();
-			expect(result.structuredContent).toMatchObject({
-				ok: true,
-				configured: true,
-				slackApp: {
-					configuredForAgent: false,
-					requestUrl: slackManifest.settings.event_subscriptions.request_url,
-				},
-				warning: expect.stringContaining('could not confirm'),
-			});
-		});
-
-		it('returns no warning for a Slack app that n8n created', async () => {
-			slackManagedSetup.isAppConfiguredForAgent.mockResolvedValue(true);
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(result.structuredContent).toMatchObject({
-				ok: true,
-				slackApp: { configuredForAgent: true },
-			});
-			expect(result.structuredContent).not.toHaveProperty('warning');
 			expect(slackManualSetup.getManifest).not.toHaveBeenCalled();
-		});
-
-		it('does not describe a Slack app for other integration types', async () => {
-			integrationManagementService.connect.mockResolvedValue({
-				integration: { type: 'linear', credentialId: 'cred-1' },
-				savedAgent: agentEntity({ activeVersionId: 'v1' }),
-			});
-
-			const result = await callTool('update_agent_integration', { ...input, type: 'linear' });
-
-			expect(result.structuredContent).not.toHaveProperty('slackApp');
-			expect(slackManagedSetup.isAppConfiguredForAgent).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('update_agent_integration Slack managed setup', () => {
-		const input = { agentId: 'agent-1', action: 'connect', type: 'slack' };
-
-		beforeEach(() => {
-			// A fresh install stores this Agent's ID on the new bot credential.
-			slackManagedSetup.isAppConfiguredForAgent.mockResolvedValue(true);
-		});
-		const managerCredential = {
-			id: 'manager-1',
-			name: 'Workspace credentials',
-			connected: true,
-			reconnectRequired: false,
-			workspaces: [{ id: 'T1', name: 'Acme', connected: false }],
-		};
-
-		it('reports the setup steps when this instance cannot create Slack apps', async () => {
-			slackManagedSetup.getSetupState.mockResolvedValue({
-				managedSetupAvailable: false,
-				managerCredentials: [],
-			});
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				ok: false,
-				code: 'slack_managed_setup_unavailable',
-				configured: false,
-				agentUrl: 'https://n8n.test/projects/project-1/agents/agent-1',
-				slackApp: { requestUrl: slackManifest.settings.event_subscriptions.request_url },
-			});
 			expect(integrationManagementService.connect).not.toHaveBeenCalled();
-			expect(slackManagedSetup.installApp).not.toHaveBeenCalled();
 		});
 
-		it('links to the Agent when no Slack workspace is connected', async () => {
-			slackManagedSetup.getSetupState.mockResolvedValue({
-				managedSetupAvailable: true,
-				managerCredentials: [],
-			});
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				ok: false,
-				code: 'slack_workspace_not_connected',
-				agentUrl: 'https://n8n.test/projects/project-1/agents/agent-1',
-			});
-			expect(slackManagedSetup.installApp).not.toHaveBeenCalled();
-		});
-
-		it('names the workspace credentials to reconnect when none is ready to use', async () => {
-			slackManagedSetup.getSetupState.mockResolvedValue({
-				managedSetupAvailable: true,
-				managerCredentials: [
-					{ ...managerCredential, reconnectRequired: true },
-					{ ...managerCredential, id: 'manager-2', connected: false },
-					{ ...managerCredential, id: 'manager-3', workspaces: [] },
-				],
-			});
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				ok: false,
-				code: 'slack_manager_reconnect_required',
-				agentUrl: 'https://n8n.test/projects/project-1/agents/agent-1',
-				managerCredentials: [
-					{ managerCredentialId: 'manager-1', name: 'Workspace credentials' },
-					{ managerCredentialId: 'manager-2', name: 'Workspace credentials' },
-					{ managerCredentialId: 'manager-3', name: 'Workspace credentials' },
-				],
-			});
-			expect(slackManagedSetup.installApp).not.toHaveBeenCalled();
-		});
-
-		it('lists the workspaces to choose from without installing anything', async () => {
-			slackManagedSetup.getSetupState.mockResolvedValue({
-				managedSetupAvailable: true,
-				managerCredentials: [
-					managerCredential,
-					{ ...managerCredential, id: 'manager-2', reconnectRequired: true },
-				],
-			});
-
-			const result = await callTool('update_agent_integration', input);
-
-			expect(slackManagedSetup.getSetupState).toHaveBeenCalledWith({
-				projectId: 'project-1',
-				agentId: 'agent-1',
+		it('retains an explicit replacement in the request to the shared service', async () => {
+			integrationManagementService.requestConnection.mockResolvedValue(agentEntity());
+			await callTool('update_agent_integration', { ...input, replacesCredentialId: 'existing' });
+			expect(integrationManagementService.requestConnection).toHaveBeenCalledWith({
+				agent: expect.objectContaining({ id: 'agent-1' }),
 				user,
-			});
-			expect(result.structuredContent).toEqual({
-				ok: true,
-				status: 'workspace_selection_required',
-				agentId: 'agent-1',
-				configured: false,
-				managerCredentials: [
-					{
-						managerCredentialId: 'manager-1',
-						name: 'Workspace credentials',
-						workspaces: [{ workspaceId: 'T1', name: 'Acme', connected: false }],
-					},
-				],
-				nextStep: expect.any(String),
-			});
-			expect(slackManagedSetup.installApp).not.toHaveBeenCalled();
-			expect(integrationManagementService.connect).not.toHaveBeenCalled();
-			expect(telemetry.track).toHaveBeenCalledWith(
-				USER_CALLED_MCP_TOOL_EVENT,
-				expect.objectContaining({
-					tool_name: 'update_agent_integration',
-					parameters: expect.objectContaining({ setup: 'managed_discovery' }),
-				}),
-			);
-		});
-
-		it('installs the Slack app in the chosen workspace and connects the channel', async () => {
-			const saved = agentEntity({
-				activeVersionId: 'v1',
-				integrations: [{ type: 'slack', credentialId: 'bot-1' }],
-			});
-			agentsService.findByIdForUser
-				.mockResolvedValueOnce(agentEntity({ activeVersionId: 'v1' }))
-				.mockResolvedValueOnce(saved);
-			slackManagedSetup.installApp.mockResolvedValue({
-				status: 'connected',
-				appId: 'A1',
-				credentialId: 'bot-1',
-			});
-
-			const result = await callTool('update_agent_integration', {
-				...input,
-				managerCredentialId: 'manager-1',
-				workspaceId: 'T1',
-			});
-
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['credential:create'], false, {
-				projectId: 'project-1',
-			});
-			expect(slackManagedSetup.installApp).toHaveBeenCalledWith({
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				user,
-				managerCredentialId: 'manager-1',
-				workspaceId: 'T1',
+				integration: requested,
+				replaces: { type: 'slack', credentialId: 'existing' },
 				modifiedBy: 'mcp',
 			});
-			expect(result.structuredContent).toEqual({
-				ok: true,
-				agentId: 'agent-1',
-				integration: { type: 'slack', credentialId: 'bot-1' },
-				configured: true,
-				connected: true,
-				appId: 'A1',
-				slackApp: { configuredForAgent: true },
-				published: true,
-				activeVersionId: 'v1',
-				configHash: getAgentConfigHash({
-					...baseConfig,
-					integrations: [{ type: 'slack', credentialId: 'bot-1' }],
+		});
+
+		it('saves a request without a bot credential and leaves Slack app installation to the UI', async () => {
+			integrationManagementService.requestConnection.mockResolvedValue(
+				agentEntity({
+					pendingChannelSetup: {
+						requested: [{ integration: { type: 'slack', credentialId: '' }, setupId: 'setup-1' }],
+					},
 				}),
-			});
-			expect(integrationManagementService.connect).not.toHaveBeenCalled();
-		});
-
-		it('reports an install on an unpublished Agent as configured but not connected', async () => {
-			agentsService.findByIdForUser.mockResolvedValue(
-				agentEntity({ integrations: [{ type: 'slack', credentialId: 'bot-1' }] }),
 			);
-			slackManagedSetup.installApp.mockResolvedValue({
-				status: 'connected',
-				appId: 'A1',
-				credentialId: 'bot-1',
-			});
-
 			const result = await callTool('update_agent_integration', {
-				...input,
-				managerCredentialId: 'manager-1',
-				workspaceId: 'T1',
-			});
-
-			expect(result.structuredContent).toMatchObject({
-				ok: true,
-				configured: true,
-				connected: false,
-				published: false,
-			});
-		});
-
-		it('still reports a saved install when MCP access is turned off meanwhile', async () => {
-			agentsService.findByIdForUser
-				.mockResolvedValueOnce(agentEntity({ activeVersionId: 'v1' }))
-				.mockResolvedValueOnce(agentEntity({ activeVersionId: 'v1', availableInMCP: false }));
-			slackManagedSetup.installApp.mockResolvedValue({
-				status: 'connected',
-				appId: 'A1',
-				credentialId: 'bot-1',
-			});
-
-			const result = await callTool('update_agent_integration', {
-				...input,
-				managerCredentialId: 'manager-1',
-				workspaceId: 'T1',
-			});
-
-			expect(result.isError).toBeUndefined();
-			expect(result.structuredContent).toMatchObject({
-				ok: true,
-				configured: true,
-				published: true,
-			});
-		});
-
-		it('still reports a saved install when the Agent is gone before the result is read', async () => {
-			agentsService.findByIdForUser
-				.mockResolvedValueOnce(agentEntity({ activeVersionId: 'v1' }))
-				.mockResolvedValueOnce(null);
-			slackManagedSetup.installApp.mockResolvedValue({
-				status: 'connected',
-				appId: 'A1',
-				credentialId: 'bot-1',
-			});
-
-			const result = await callTool('update_agent_integration', {
-				...input,
-				managerCredentialId: 'manager-1',
-				workspaceId: 'T1',
-			});
-
-			expect(result.structuredContent).toEqual({
-				ok: true,
 				agentId: 'agent-1',
-				integration: { type: 'slack', credentialId: 'bot-1' },
-				configured: true,
-				appId: 'A1',
-				slackApp: { configuredForAgent: true },
-			});
-		});
-
-		it('rejects an existing bot credential whose Slack app belongs to another Agent', async () => {
-			slackManagedSetup.installApp.mockResolvedValue({
-				status: 'connected',
-				appId: 'A0',
-				credentialId: 'leftover-bot',
-			});
-			slackManagedSetup.isAppConfiguredForAgent.mockResolvedValue(false);
-
-			const result = await callTool('update_agent_integration', {
-				...input,
+				action: 'connect',
+				type: 'slack',
 				managerCredentialId: 'manager-1',
 				workspaceId: 'T1',
 			});
-
-			expect(slackManagedSetup.isAppConfiguredForAgent).toHaveBeenCalledWith(
-				'leftover-bot',
-				expect.objectContaining({ id: 'agent-1' }),
-				user,
-			);
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				ok: false,
-				code: 'slack_app_built_for_another_agent',
-				configured: false,
-				integration: { type: 'slack', credentialId: 'leftover-bot' },
-				nextStep: expect.stringContaining('action=disconnect'),
-			});
-		});
-
-		it('returns the install URL when Slack requires the user to approve the install', async () => {
-			slackManagedSetup.installApp.mockResolvedValue({
-				status: 'manual_install_required',
-				appId: 'A1',
-				installUrl: 'https://slack.com/oauth/v2/authorize?state=abc',
-			});
-
-			const result = await callTool('update_agent_integration', {
-				...input,
-				managerCredentialId: 'manager-1',
-				workspaceId: 'T1',
-			});
-
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
-				status: 'install_approval_required',
+				status: 'setup_required',
 				configured: false,
-				appId: 'A1',
-				installUrl: 'https://slack.com/oauth/v2/authorize?state=abc',
 			});
-		});
-
-		it('rejects an install when the user cannot create credentials', async () => {
-			userHasScopesMock.mockImplementation(
-				async (_user: unknown, scopes: string[]) => !scopes.includes('credential:create'),
+			expect(integrationManagementService.requestConnection).toHaveBeenCalledWith(
+				expect.objectContaining({ integration: { type: 'slack', credentialId: '' } }),
 			);
-
-			const result = await callTool('update_agent_integration', {
-				...input,
-				managerCredentialId: 'manager-1',
-				workspaceId: 'T1',
-			});
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: 'You do not have permission to create credentials in this project.',
-			});
 			expect(slackManagedSetup.installApp).not.toHaveBeenCalled();
+			expect(slackManualSetup.createApp).not.toHaveBeenCalled();
 		});
 
-		it.each([
-			[{ managerCredentialId: 'manager-1' }, 'Pass managerCredentialId and workspaceId together'],
-			[{ workspaceId: 'T1' }, 'Pass managerCredentialId and workspaceId together'],
-			[
-				{ managerCredentialId: 'manager-1', workspaceId: 'T1', credentialId: 'cred-1' },
-				'Managed Slack setup creates its own credential',
-			],
-			[
-				{ managerCredentialId: 'manager-1', workspaceId: 'T1', replacesCredentialId: 'cred-0' },
-				'Managed Slack setup creates its own credential',
-			],
-			[
-				{ managerCredentialId: 'manager-1', workspaceId: 'T1', settings: { a: 1 } },
-				'Managed Slack setup creates its own credential',
-			],
-			[
-				{ managerCredentialId: 'manager-1', workspaceId: 'T1', type: 'linear' },
-				'managerCredentialId and workspaceId apply only to Slack',
-			],
-		])('rejects an invalid managed setup input %o', async (extra, message) => {
-			const result = await callTool('update_agent_integration', { ...input, ...extra });
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({ error: expect.stringContaining(message) });
-			expect(slackManagedSetup.installApp).not.toHaveBeenCalled();
-			expect(integrationManagementService.connect).not.toHaveBeenCalled();
-		});
-
-		it('requires a credential for other integration types', async () => {
-			const result = await callTool('update_agent_integration', { ...input, type: 'linear' });
-
+		it('returns credential validation failures from the shared service', async () => {
+			integrationManagementService.requestConnection.mockRejectedValueOnce(
+				new Error('Credential not found or not accessible'),
+			);
+			const result = await callTool('update_agent_integration', input);
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({
-				error: 'credentialId is required to connect this integration',
+				error: 'Credential not found or not accessible',
 			});
-			expect(slackManagedSetup.getSetupState).not.toHaveBeenCalled();
+		});
+
+		it('requires update access before saving pending intent', async () => {
+			userHasScopesMock.mockResolvedValue(false);
+			const result = await callTool('update_agent_integration', input);
+			expect(result.isError).toBe(true);
+			expect(integrationManagementService.requestConnection).not.toHaveBeenCalled();
 		});
 	});
 

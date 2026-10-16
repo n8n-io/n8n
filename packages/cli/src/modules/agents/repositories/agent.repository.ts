@@ -27,7 +27,10 @@ export type AgentSummary = Pick<
 >;
 
 /** Integration and publication state for channel runtime decisions. */
-export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
+export type AgentIntegrationState = Pick<
+	Agent,
+	'integrations' | 'pendingChannelSetup' | 'versionId' | 'activeVersionId'
+>;
 
 export type AgentImportIdentity = Pick<Agent, 'id' | 'name' | 'projectId' | 'sourceAgentId'>;
 
@@ -498,7 +501,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	/** Read current channel state without loading the agent definition. */
 	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
 		return await this.findOne({
-			select: ['integrations', 'versionId', 'activeVersionId'],
+			select: ['integrations', 'pendingChannelSetup', 'versionId', 'activeVersionId'],
 			where: { id },
 		});
 	}
@@ -513,6 +516,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		integrations: AgentIntegrationConfig[],
 		expected: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
 		versionId: string | null,
+		pendingChannelSetup?: Agent['pendingChannelSetup'],
 	): Promise<boolean> {
 		const result = await this.update(
 			{
@@ -521,7 +525,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				versionId: expected.versionId ?? IsNull(),
 				activeVersionId: expected.activeVersionId ?? IsNull(),
 			},
-			{ integrations, versionId, revision: () => 'revision + 1' },
+			{ integrations, pendingChannelSetup, versionId, revision: () => 'revision + 1' },
 		);
 
 		return (result.affected ?? 0) > 0;
@@ -685,6 +689,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				name: agent.name,
 				schema: agent.schema,
 				integrations: agent.integrations,
+				pendingChannelSetup: agent.pendingChannelSetup,
 				tools: agent.tools,
 				skills: agent.skills,
 				versionId: agent.versionId,

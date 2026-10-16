@@ -10,6 +10,7 @@ import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
 import type { Agent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { isUnconfiguredAgent } from './utils/agent-capabilities';
+import { getDraftIntegrations } from './utils/agent-channel-setup';
 
 export { isUnconfiguredAgent };
 
@@ -101,7 +102,12 @@ export interface AgentModificationEvent {
 export function captureAgentMutation(agent: Agent, skillRefs: AgentSkillRefs) {
 	const schema = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 	const integrations = agent.integrations ?? [];
-	return { schema, integrations, wasUnconfigured: isUnconfiguredAgent(schema, integrations) };
+	return {
+		schema,
+		integrations,
+		wasUnconfigured: isUnconfiguredAgent(schema, integrations),
+		...(agent.pendingChannelSetup ? { pendingChannelSetup: agent.pendingChannelSetup } : {}),
+	};
 }
 
 export type AgentMutationSnapshot = ReturnType<typeof captureAgentMutation>;
@@ -126,8 +132,8 @@ export function buildAgentMutationEvent(
 		changedParts: diffAgentConfigParts(
 			previous.schema,
 			config,
-			previous.integrations,
-			agent.integrations ?? [],
+			getDraftIntegrations(previous),
+			getDraftIntegrations(agent),
 			sidecarChanges,
 		),
 		wasUnconfigured: previous.wasUnconfigured,

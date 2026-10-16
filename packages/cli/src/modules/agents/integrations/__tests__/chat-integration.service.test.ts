@@ -144,6 +144,9 @@ function buildServiceWith(
 ) {
 	const registry = opts.registry ?? new ChatIntegrationRegistry();
 	const agentRepository = opts.agentRepository ?? mock<AgentRepository>();
+	agentRepository.findByIdAndProjectId.mockResolvedValue(
+		makeAgent({ integrations: [slackIntegration, linearIntegration, telegramIntegration] }),
+	);
 	const credentialsService = opts.credentialsService ?? mock<CredentialsService>();
 	const publisher = opts.publisher ?? mock<Publisher>();
 	const urlService = opts.urlService ?? mock<UrlService>();
@@ -291,6 +294,53 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 
 describe('ChatIntegrationService', () => {
 	const logger = mock<Logger>();
+
+	it('checks destination routing when peer or outbound startup skips external hooks', async () => {
+		const registry = new ChatIntegrationRegistry();
+		const integration = new FakeIntegration('slack', false);
+		integration.isDestinationConfigured = vi.fn().mockResolvedValue(false);
+		const createAdapter = vi.spyOn(integration, 'createAdapter');
+		registry.register(integration);
+		const { service, credentialsService } = buildServiceWith({ registry });
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+		for (const options of [{ skipExternalHooks: true }, { ingressEnabled: false }]) {
+			await expect(
+				service.connect('agent-1', slackIntegration, 'project-1', options),
+			).rejects.toThrow('Complete channel setup');
+		}
+		expect(createAdapter).not.toHaveBeenCalled();
+	});
+
+	it('keeps pending connections inactive through startup, peer requests, and tools', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('slack', false));
+		const { service, agentRepository, credentialsService } = buildServiceWith({ registry });
+		const agent = makeAgent({
+			activeVersionId: 'published',
+			pendingChannelSetup: { requested: [{ integration: slackIntegration, setupId: 'pending' }] },
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentRepository.findOne.mockResolvedValue(agent);
+
+		await expect(service.startChannel(agent, slackIntegration)).rejects.toThrow(
+			'Complete channel setup',
+		);
+		await service.handleIntegrationChanged({
+			agentId: agent.id,
+			integration: slackIntegration,
+			action: 'connect',
+		});
+		await service.handleLeaderChannelRequest({
+			agentId: agent.id,
+			integration: slackIntegration,
+			action: 'connect',
+			requestId: 'request-1',
+			replyTo: 'peer-1',
+		});
+		expect(await service.getChatInstanceForTools(agent.id, slackIntegration)).toBeUndefined();
+		expect(service.getWebhookHandler(agent.id, 'slack')).toBeUndefined();
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+	});
 
 	const buildService = () =>
 		new ChatIntegrationService(
@@ -1356,6 +1406,9 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			registry.register(new FakeIntegration('linear', false));
 
 			const built = buildServiceWith({ isLeader: false, multiMainEnabled: true, registry });
+			built.agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ integrations: [telegram] }),
+			);
 			built.leaderChannelRelay.requestWithoutAck.mockResolvedValue();
 			const connectLocal = spyOnPrivate(built.service, 'connectLocal').mockResolvedValue();
 			const disconnectLocal = spyOnPrivate(built.service, 'disconnectLocal').mockResolvedValue();
@@ -1557,7 +1610,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			await service.handleLeaderChannelRequest(request);
 
-			expect(connectLocal).toHaveBeenCalledWith('agent-1', telegram, 'p1');
+			expect(connectLocal).toHaveBeenCalledWith('agent-1', telegram, 'p1', { setup: undefined });
 			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(request);
 		});
 
@@ -1651,7 +1704,9 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			// The connection key excludes settings, so a live key is exactly what a
 			// settings edit arrives on — skipping the rebuild would keep the leader
 			// enforcing the previous allowlist.
-			expect(connectLocal).toHaveBeenCalledWith('agent-1', { ...telegram, settings }, 'p1');
+			expect(connectLocal).toHaveBeenCalledWith('agent-1', { ...telegram, settings }, 'p1', {
+				setup: undefined,
+			});
 			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(
 				expect.objectContaining({ requestId: 'lch_1' }),
 			);

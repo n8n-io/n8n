@@ -12,7 +12,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -46,6 +46,7 @@ import {
 } from '../utils/agent-channel';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
+import { isConfiguredIntegration, requirePendingChannel } from '../utils/agent-channel-setup';
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces
@@ -93,6 +94,8 @@ interface ChatAgentConnection {
 }
 
 interface ConnectOptions {
+	/** Only the UI setup service may start a connection before its fenced write. */
+	setup?: { setupId?: string };
 	ingressEnabled?: boolean;
 	skipExternalHooks?: boolean;
 	settings?: AgentIntegrationSettings;
@@ -249,6 +252,7 @@ export class ChatIntegrationService {
 		agentId: string,
 		integration: AgentIntegrationConfig,
 		projectId: string,
+		setup?: { setupId?: string },
 	): Promise<void> {
 		if (!isCredentialAgentIntegration(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
@@ -257,6 +261,27 @@ export class ChatIntegrationService {
 
 		const credential = await this.decryptCredentialForProject(integration.credentialId, projectId);
 		await implementation.onBeforeConnect({
+			agentId,
+			projectId,
+			integration,
+			credentialId: integration.credentialId,
+			credential,
+			ingressEnabled: true,
+			setupAuthorized: !!setup,
+			webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
+		});
+	}
+
+	async canReuseConnection(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+		projectId: string,
+	): Promise<boolean> {
+		await this.assertStartupPreconditions(agentId, integration, projectId);
+		const implementation = this.integrationRegistry.require(integration.type);
+		if (!implementation.isDestinationConfigured) return true;
+		const credential = await this.decryptCredentialForProject(integration.credentialId, projectId);
+		return await implementation.isDestinationConfigured({
 			agentId,
 			projectId,
 			integration,
@@ -291,6 +316,7 @@ export class ChatIntegrationService {
 		if (!this.shouldRouteToLeader(integration.type, ingress)) {
 			return await this.connectLocal(agentId, integration, projectId, options);
 		}
+		await this.assertDestinationConnection(agentId, integration, projectId, options.setup);
 
 		// Runtime state for this key on this main is ours alone and the leader knows
 		// nothing about it: an outbound preview connection a local connect would have
@@ -299,7 +325,12 @@ export class ChatIntegrationService {
 		await this.disconnectLocal(agentId, integration, { skipExternalHooks: true });
 
 		try {
-			await this.leaderChannelRelay.request({ agentId, integration, action: 'connect' });
+			await this.leaderChannelRelay.request({
+				agentId,
+				integration,
+				action: 'connect',
+				setup: options.setup,
+			});
 		} catch (error) {
 			// A lost acknowledgement can still leave the leader polling, which would
 			// keep a runtime claim for a channel this request is about to report as
@@ -344,16 +375,10 @@ export class ChatIntegrationService {
 				extra: { agentId, integrationType: integration.type },
 			});
 		}
-
 		const ingressEnabled = options.ingressEnabled ?? true;
-		if (!ingressEnabled) {
-			// An outbound Preview connection is not a channel, so it has no status.
-			await this.establishConnection(agentId, integration, projectId, options);
-			return;
-		}
-
 		const ref = agentChannelRef(agentId, integration);
 		try {
+			await this.assertDestinationConnection(agentId, integration, projectId, options.setup);
 			await this.establishConnection(agentId, integration, projectId, options);
 		} catch (error) {
 			// Outside `establishConnection` so that everything a startup does is
@@ -361,11 +386,11 @@ export class ChatIntegrationService {
 			// its internal cleanup block, and a failure in either is exactly the kind
 			// a user needs reported: an inaccessible credential, or one already
 			// claimed. Recorded once, here, whichever step failed.
-			await this.statusReporter.recordFailure(ref, error);
+			if (ingressEnabled) await this.statusReporter.recordFailure(ref, error);
 			throw error;
 		}
 
-		await this.statusReporter.recordConnected(ref);
+		if (ingressEnabled) await this.statusReporter.recordConnected(ref);
 	}
 
 	private async establishConnection(
@@ -388,6 +413,7 @@ export class ChatIntegrationService {
 		const integrationImpl = this.integrationRegistry.require(integration.type);
 
 		const ctx = await this.createConnectionContext(agentId, projectId, integration, ingressEnabled);
+		ctx.setupAuthorized = !!options.setup;
 
 		// Pre-connect hook — webhook-based platforms use this to detect
 		// credential conflicts (e.g. a Telegram bot token already in use) and
@@ -1350,9 +1376,10 @@ export class ChatIntegrationService {
 	}
 
 	private async applyLeaderChannelRequest(
-		{ agentId, integration, action }: PubSubCommandMap['agent-chat-leader-channel-request'],
+		payload: PubSubCommandMap['agent-chat-leader-channel-request'],
 		key: string,
 	): Promise<void> {
+		const { agentId, integration, action } = payload;
 		if (action === 'disconnect') {
 			await this.disconnectLocal(agentId, integration);
 			return;
@@ -1367,7 +1394,7 @@ export class ChatIntegrationService {
 			throw new UnexpectedError(`Agent ${agentId} not found on the leader instance`);
 		}
 
-		await this.connectLocal(agentId, integration, agent.projectId);
+		await this.connectLocal(agentId, integration, agent.projectId, { setup: payload.setup });
 
 		// Leadership can change during startup. A poller must not outlive our
 		// term, and the requester has to hear that its channel is not running.
@@ -1376,6 +1403,26 @@ export class ChatIntegrationService {
 			throw new OperationalError(
 				'This instance stopped being the leader while the channel was starting up',
 			);
+		}
+	}
+
+	private async assertDestinationConnection(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+		projectId: string,
+		setup?: { setupId?: string },
+	): Promise<void> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) throw new UserError('Agent not found for channel connection.');
+		if (setup) {
+			if (setup.setupId) requirePendingChannel(agent, setup.setupId, integration.type);
+			return;
+		}
+		if (!isConfiguredIntegration(agent, integration)) {
+			throw new UserError('Complete channel setup in the Agent editor before connecting.');
+		}
+		if (!(await this.canReuseConnection(agentId, integration, projectId))) {
+			throw new UserError('Complete channel setup for this destination in the Agent editor.');
 		}
 	}
 

@@ -26,6 +26,7 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 import type { IntegrationRef } from './utils/agent-channel';
+import { assertChannelSetupReference, requirePendingChannel } from './utils/agent-channel-setup';
 
 interface IntegrationChangeOptions extends IntegrationDelta {
 	agent: Agent;
@@ -77,10 +78,26 @@ export class AgentIntegrationManagementService {
 		user: User;
 		integration: unknown;
 		replaces?: IntegrationRef;
+		setupId?: string;
 		modifiedBy?: AgentActor;
 		pushRef?: string;
 	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: Agent }> {
-		const integration = await this.validateConfig(options.integration);
+		let integration = await this.validateConfig(options.integration);
+		let replaces = options.replaces;
+		if (options.setupId) {
+			if (!isCredentialAgentIntegration(integration))
+				throw new BadRequestError('This channel does not require setup.');
+			const current = await this.agentRepository.findById(options.agent.id);
+			if (!current) throw new NotFoundError(`Agent "${options.agent.id}" not found`);
+			const pending = requirePendingChannel(current, options.setupId, integration.type);
+			replaces ??= pending.replaces;
+			integration = await this.validateConfig({
+				...pending.integration,
+				...integration,
+				settings: integration.settings ?? pending.integration.settings,
+				approval: integration.approval ?? pending.integration.approval,
+			});
+		}
 		// n8n Chat has no credential to look up or claim.
 		if (isCredentialAgentIntegration(integration)) {
 			await this.assertUsableCredential(options.agent, options.user, integration);
@@ -90,12 +107,47 @@ export class AgentIntegrationManagementService {
 			agent: options.agent,
 			user: options.user,
 			add: integration,
-			...(options.replaces ? { remove: options.replaces } : {}),
+			...(replaces ? { remove: replaces } : {}),
+			setupId: options.setupId,
 			modifiedBy: options.modifiedBy ?? 'user',
 			pushRef: options.pushRef,
 		});
 
 		return { integration, savedAgent: result.agent };
+	}
+
+	async requestConnection(options: {
+		agent: Agent;
+		user: User;
+		integration: unknown;
+		replaces?: IntegrationRef;
+		modifiedBy: AgentActor;
+	}): Promise<Agent> {
+		const integration = await this.validateConfig(options.integration);
+		if (isCredentialAgentIntegration(integration) && integration.credentialId) {
+			await this.assertUsableCredential(options.agent, options.user, integration);
+		}
+		const result = await this.applyChange({
+			...options,
+			request: { integration, replaces: options.replaces },
+		});
+		return result.agent;
+	}
+
+	async cancelSetup(options: {
+		agent: Agent;
+		user: User;
+		setupId: string;
+		type: string;
+		modifiedBy?: AgentActor;
+		pushRef?: string;
+	}): Promise<Agent> {
+		const result = await this.applyChange({
+			...options,
+			modifiedBy: options.modifiedBy ?? 'user',
+			cancelSetup: { setupId: options.setupId, type: options.type },
+		});
+		return result.agent;
 	}
 
 	async disconnect(options: {
@@ -203,6 +255,10 @@ export class AgentIntegrationManagementService {
 			});
 		} finally {
 			if (remove) await this.releaseRemoved(agent, remove, result);
+			for (const removed of result.removedIntegrations ?? []) {
+				if (remove && matchesIntegrationRef(removed, remove)) continue;
+				await this.chatService.disconnectChannel(agent.id, removed);
+			}
 		}
 	}
 
@@ -216,7 +272,13 @@ export class AgentIntegrationManagementService {
 		try {
 			return await this.persistenceService.applyIntegrationDelta(
 				agent,
-				{ add, remove },
+				{
+					add,
+					remove,
+					setupId: options.setupId,
+					request: options.request,
+					cancelSetup: options.cancelSetup,
+				},
 				{ user: options.user, modifiedBy: options.modifiedBy },
 			);
 		} catch (error) {
@@ -232,12 +294,12 @@ export class AgentIntegrationManagementService {
 	}
 
 	private async startAddedRuntime(
-		{ agent, add }: IntegrationChangeOptions,
+		{ agent, add, setupId }: IntegrationChangeOptions,
 		previous: IntegrationRuntimeState,
 	): Promise<boolean> {
 		if (!add) return false;
 		try {
-			return await this.startRuntime(agent, add, previous.published);
+			return await this.startRuntime(agent, add, previous.published, { setupId });
 		} catch (error) {
 			// A failed reconnect has already released the previous runtime.
 			if (previous.wasLive) await this.restorePersistedRuntime(agent, previous.persisted);
@@ -249,12 +311,16 @@ export class AgentIntegrationManagementService {
 		agent,
 		add,
 		cleanupRemovedIntegration,
+		setupId,
 	}: IntegrationChangeOptions): Promise<IntegrationRuntimeState> {
 		// The caller's entity can predate a publish or another channel write.
 		const state =
 			add || cleanupRemovedIntegration
 				? await this.agentRepository.findIntegrationState(agent.id)
 				: null;
+		if (add) {
+			assertChannelSetupReference(state ?? agent, add, setupId);
+		}
 		const published = state ? state.activeVersionId !== null : agent.activeVersionId !== null;
 		// Leader-routed channels report live even for drafts. Check publication first.
 		const wasLive = !!add && published && this.chatService.isChannelLive(agent.id, add);
@@ -342,17 +408,18 @@ export class AgentIntegrationManagementService {
 		agent: Agent,
 		add: AgentIntegrationConfig,
 		published: boolean,
+		setup?: { setupId?: string },
 	): Promise<boolean> {
 		// n8n Chat has no channel runtime; the persisted entry is all there is.
 		if (!isCredentialAgentIntegration(add)) return false;
 		if (!published) {
-			await this.chatService.validateBeforeConnect(agent.id, add, agent.projectId);
+			await this.chatService.validateBeforeConnect(agent.id, add, agent.projectId, setup);
 			return false;
 		}
 
 		// `connect` runs the pre-connect hook itself; running it twice would repeat
 		// an external call for no benefit.
-		await this.chatService.connect(agent.id, add, agent.projectId);
+		await this.chatService.connect(agent.id, add, agent.projectId, { setup });
 		return true;
 	}
 

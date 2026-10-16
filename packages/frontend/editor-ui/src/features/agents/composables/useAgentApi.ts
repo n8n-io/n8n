@@ -400,6 +400,7 @@ export const warmAgentKnowledgeSandbox = async (
 
 /** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
 export interface ConnectIntegrationOptions {
+	setupId?: string;
 	replaces?: { credentialId: string };
 	/** Channel actions that need approval before they run. */
 	approval?: AgentApproval;
@@ -424,6 +425,7 @@ export const connectIntegration = async (
 			...(settings ? { settings } : {}),
 			...(options?.replaces ? { replaces: options.replaces } : {}),
 			...(options?.approval ? { approval: options.approval } : {}),
+			...(options?.setupId ? { setupId: options.setupId } : {}),
 		},
 	);
 };
@@ -435,12 +437,13 @@ export const disconnectIntegration = async (
 	type: string,
 	credentialId: string,
 	deleteExternalResource?: boolean,
+	setupId?: string,
 ): Promise<AgentDisconnectIntegrationResponse> => {
 	return await makeRestApiRequest<AgentDisconnectIntegrationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type, credentialId, deleteExternalResource },
+		{ type, credentialId, deleteExternalResource, ...(setupId ? { setupId } : {}) },
 	);
 };
 

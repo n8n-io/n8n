@@ -27,6 +27,7 @@ export const agentConfigValidationIssueCodeSchema = z.enum([
 	'incompatible_credential',
 	'missing_reference',
 	'incompatible_reference',
+	'setup_required',
 ]);
 export type AgentConfigValidationIssueCode = z.infer<typeof agentConfigValidationIssueCodeSchema>;
 

@@ -14,6 +14,8 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
+import { UrlService } from '@n8n/backend-services';
+import { AgentChannelSetupService } from '../agent-channel-setup.service';
 import { LockedError } from '@n8n/errors';
 import {
 	expectProjectScopedAgentRoutes,
@@ -54,6 +56,9 @@ function makeController({
 			statusReporter,
 			instanceSettings,
 			collaborationService,
+			new AgentChannelSetupService(
+				mock<UrlService>({ getInstanceBaseUrl: () => 'https://n8n.example' }),
+			),
 		),
 		managementService,
 		chatIntegrationService,
@@ -616,6 +621,32 @@ describe('AgentIntegrationsController channel status', () => {
 		expect(response.integrations).toEqual([
 			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
 			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
+		]);
+	});
+
+	it('reports pending setup separately from the working destination connection', async () => {
+		const intended = {
+			type: 'slack',
+			credentialId: 'new-credential',
+		} satisfies AgentIntegrationConfig;
+		const { response } = await statusOf(
+			{
+				...publishedAgent,
+				pendingChannelSetup: { requested: [{ integration: intended, setupId: 'pending' }] },
+			},
+			[liveRow(slack)],
+		);
+		expect(response.integrations).toContainEqual({ ...slack, status: 'connected' });
+		expect(response.integrations).not.toContainEqual(
+			expect.objectContaining({ credentialId: intended.credentialId }),
+		);
+		expect(response.channelSetupRequired).toEqual([
+			expect.objectContaining({
+				setupId: 'pending',
+				integration: intended,
+				path: ['integrations', 0],
+				setupUrl: 'https://n8n.example/projects/project-1/agents/agent-1?channelSetup=pending',
+			}),
 		]);
 	});
 

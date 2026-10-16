@@ -10,6 +10,7 @@ import type {
 } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { requirePendingChannel } from '../../../utils/agent-channel-setup';
 import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -61,6 +62,7 @@ export interface GetManagedSetupStateOptions {
 }
 
 export interface InstallManagedSlackAppOptions extends GetManagedSetupStateOptions {
+	setupId?: string;
 	managerCredentialId: string;
 	workspaceId: string;
 	modifiedBy?: AgentActor;
@@ -263,15 +265,9 @@ export class SlackManagedSetupService {
 	): Promise<InstallSlackManagedAppResponse> {
 		this.assertSetupAvailable();
 		const agent = await this.methods.getAgent(options.agentId, options.projectId);
-		const existing = await this.findManagedBotCredential(
-			agent.integrations ?? [],
-			options.workspaceId,
-			options.managerCredentialId,
-			options.user,
-		);
-		if (existing) {
-			return { status: 'connected', appId: existing.appId, credentialId: existing.credentialId };
-		}
+		if (options.setupId) requirePendingChannel(agent, options.setupId, 'slack');
+		const reused = await this.reuseDestinationApp(options, agent);
+		if (reused) return reused;
 
 		const { manager, workspace } = await this.getInstallWorkspace(options, agent);
 
@@ -281,6 +277,7 @@ export class SlackManagedSetupService {
 			manager,
 			workspace.name,
 		);
+		this.methods.assertSetupDestination(agent, session);
 		const response = await this.callManagerSlackApi(manager, 'apps.managedInstall', {
 			app_id: session.appId,
 			team_id: options.workspaceId,
@@ -310,6 +307,31 @@ export class SlackManagedSetupService {
 			}
 		}
 		throw this.methods.slackError('install the Slack app', response);
+	}
+
+	private async reuseDestinationApp(
+		options: InstallManagedSlackAppOptions,
+		agent: Agent,
+	): Promise<InstallSlackManagedAppResponse | undefined> {
+		const existing = await this.findManagedBotCredential(
+			agent.integrations ?? [],
+			options.workspaceId,
+			options.managerCredentialId,
+			options.user,
+		);
+		if (!existing) return undefined;
+		if (options.setupId) {
+			if (!(await this.isAppConfiguredForAgent(existing.credentialId, agent, options.user)))
+				return undefined;
+			await this.methods.completeChannelSetup(
+				agent,
+				options.user,
+				existing.credentialId,
+				options.setupId,
+				options.modifiedBy,
+			);
+		}
+		return { status: 'connected', appId: existing.appId, credentialId: existing.credentialId };
 	}
 
 	async getAppSettings(
@@ -384,14 +406,20 @@ export class SlackManagedSetupService {
 		);
 		if (!credential || credential.type !== SLACK_CREDENTIAL_TYPE) return false;
 		const data = await this.credentialsService.decrypt(credential, true);
-		const agentId = stringProperty(data, 'agentId');
-		if (agentId) return agentId === agent.id;
+		const destinationUrl = stringProperty(data, 'agentWebhookUrl');
+		if (destinationUrl) {
+			return (
+				stringProperty(data, 'agentId') === agent.id &&
+				stringProperty(data, 'agentProjectId') === agent.projectId &&
+				destinationUrl === this.methods.webhookUrl(agent.projectId, agent.id)
+			);
+		}
 		return await this.managedAppSendsEventsTo(data, agent, user);
 	}
 
 	/**
-	 * Managed credentials made before n8n recorded the Agent ID only know their
-	 * app, so read the app's request URL from Slack instead.
+	 * Older managed credentials lack destination routing evidence. Verify their
+	 * app's request URLs during the UI setup flow.
 	 */
 	private async managedAppSendsEventsTo(
 		data: ICredentialDataDecryptedObject,
@@ -412,9 +440,12 @@ export class SlackManagedSetupService {
 			const eventSubscriptions = settings
 				? childRecord(settings, 'event_subscriptions')
 				: undefined;
+			const interactivity = settings ? childRecord(settings, 'interactivity') : undefined;
+			const requestUrl = this.methods.webhookUrl(agent.projectId, agent.id);
 			return (
-				stringProperty(eventSubscriptions, 'request_url') ===
-				this.methods.webhookUrl(agent.projectId, agent.id)
+				stringProperty(eventSubscriptions, 'request_url') === requestUrl &&
+				stringProperty(interactivity, 'request_url') === requestUrl &&
+				settings?.socket_mode_enabled !== true
 			);
 		} catch {
 			// The manager credential is gone or not usable here, so n8n cannot confirm the app.
@@ -886,6 +917,8 @@ export class SlackManagedSetupService {
 			await this.setManagedAppIcon(manager, setup.appId);
 
 			const session = {
+				setupId: options.setupId,
+				requestUrl: this.methods.webhookUrl(options.projectId, options.agentId),
 				projectId: options.projectId,
 				agentId: options.agentId,
 				userId: options.user.id,

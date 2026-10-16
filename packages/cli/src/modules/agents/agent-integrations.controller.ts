@@ -1,6 +1,7 @@
 import {
 	AgentConnectIntegrationDto,
 	AgentDisconnectIntegrationDto,
+	isCredentialAgentIntegration,
 	type AgentDisconnectIntegrationResponse,
 	type AgentIntegrationConnectResponse,
 	type AgentIntegrationStatusResponse,
@@ -12,6 +13,7 @@ import type { Request, Response } from 'express';
 import { InstanceSettings } from 'n8n-core';
 
 import { AgentIntegrationManagementService } from './agent-integration-management.service';
+import { AgentChannelSetupService } from './agent-channel-setup.service';
 import { AgentChannelStatusReporter } from './integrations/agent-channel-status-reporter';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildChannelStatusReport } from './integrations/channel-status-report';
@@ -35,6 +37,7 @@ export class AgentIntegrationsController {
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly collaborationService: CollaborationService,
+		private readonly channelSetupService: AgentChannelSetupService,
 	) {}
 
 	@Post('/:agentId/integrations/connect')
@@ -60,6 +63,7 @@ export class AgentIntegrationsController {
 			agent,
 			user: req.user,
 			integration: req.body,
+			setupId: payload.setupId,
 			...(payload.replaces
 				? { replaces: { type: payload.type, credentialId: payload.replaces.credentialId } }
 				: {}),
@@ -87,6 +91,16 @@ export class AgentIntegrationsController {
 			agentId,
 			'disconnect integration for',
 		);
+		if (payload.setupId) {
+			await this.integrationManagementService.cancelSetup({
+				agent,
+				user: req.user,
+				setupId: payload.setupId,
+				type,
+				pushRef: req.headers?.['push-ref'],
+			});
+			return { status: 'disconnected' };
+		}
 		const { warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user: req.user,
@@ -110,8 +124,17 @@ export class AgentIntegrationsController {
 
 		const statuses = await this.channelStatusRepository.findByAgentId(agentId);
 		const now = new Date();
+		const requirements = this.channelSetupService.getRequirements(agent);
 
 		return {
+			channelSetupRequired: requirements.flatMap((requirement) => {
+				const pending = agent.pendingChannelSetup?.requested.find(
+					(entry) => entry.setupId === requirement.setupId,
+				);
+				return pending && isCredentialAgentIntegration(pending.integration)
+					? [{ ...requirement, integration: pending.integration }]
+					: [];
+			}),
 			...buildChannelStatusReport(
 				agent.integrations,
 				agent.activeVersionId,

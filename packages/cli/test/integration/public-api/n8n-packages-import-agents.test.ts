@@ -188,6 +188,56 @@ async function records() {
 	};
 }
 
+it('returns a saved definition and a channel setup link when publication is blocked', async () => {
+	const sourceCredential = await createCredentials(
+		{ type: 'slackApi', name: 'Source channel', data: '' },
+		sourceProject,
+	);
+	const targetCredential = await createCredentials(
+		{ type: 'slackApi', name: 'Destination channel', data: '' },
+		destination,
+	);
+	await agents.update(sourceAgents[0].id, {
+		integrations: [
+			{
+				type: 'slack',
+				credentialId: sourceCredential.id,
+				settings: { messagingExperience: 'agent' },
+			},
+		],
+	});
+	const response = await upload(await download(), {
+		publishingPolicy: 'publish-all',
+		bindings: JSON.stringify({ credentials: { [sourceCredential.id]: targetCredential.id } }),
+	});
+	expect(response.statusCode).toBe(200);
+	const result = ImportResultDto.parse(response.body);
+	const imported = result.agents.find(({ sourceAgentId }) => sourceAgentId === sourceAgents[0].id)!;
+	expect(imported).toMatchObject({
+		status: 'created',
+		activeVersionId: null,
+		publishing: { state: 'blocked', blockedReason: 'channel-setup-required' },
+		channelSetupRequired: [
+			{
+				agentId: imported.localId,
+				credentialId: targetCredential.id,
+				type: 'slack',
+				path: ['integrations', 0],
+			},
+		],
+	});
+	const saved = await agents.findById(imported.localId);
+	expect(saved!.integrations).toEqual([]);
+	expect(saved!.pendingChannelSetup!.requested[0].integration).toMatchObject({
+		credentialId: targetCredential.id,
+		settings: { messagingExperience: 'agent' },
+	});
+	expect(imported.channelSetupRequired[0].setupUrl).toContain(
+		`/agents/${imported.localId}?channelSetup=`,
+	);
+	expect(imported).not.toHaveProperty('pendingChannelSetup');
+});
+
 it.each(['loose', 'project'] as const)(
 	'round trips complete Agents through a %s package',
 	async (shape) => {
@@ -235,6 +285,7 @@ it.each(['loose', 'project'] as const)(
 				activeVersionId: null,
 				status: 'created',
 				publishing: { state: 'unchanged' },
+				channelSetupRequired: [],
 			});
 			const saved = await agents.findById(localId);
 			expect(saved).toMatchObject({

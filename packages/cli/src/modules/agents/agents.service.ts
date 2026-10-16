@@ -70,6 +70,7 @@ import type {
 } from './utils/agent-definition';
 import { buildAgentMutationEvent } from './agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
+import { prepareChannelSetup } from './utils/agent-channel-setup';
 
 type CreateAgentOptions =
 	| DraftAgentCreateOptions
@@ -195,7 +196,7 @@ export class AgentsService {
 			name,
 			projectId,
 			schema: storedConfig,
-			...(integrations.length > 0 ? { integrations } : {}),
+			...prepareChannelSetup({ integrations: [] }, integrations),
 			...(tools ? { tools: tools as Agent['tools'] } : {}),
 			versionId: uuid(),
 			availableInMCP,
@@ -290,7 +291,7 @@ export class AgentsService {
 			projectId,
 			name: definition.config?.name ?? definition.name,
 			schema: storedConfig,
-			integrations,
+			...prepareChannelSetup({ integrations: [] }, integrations),
 			skills: definition.skills,
 			tools: definition.tools,
 			sourceAgentId: metadata?.sourceAgentId ?? null,

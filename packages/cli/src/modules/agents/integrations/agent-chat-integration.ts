@@ -47,6 +47,8 @@ export interface AgentChannelPreconditionContext {
 export interface AgentChatIntegrationContext extends AgentChannelPreconditionContext {
 	integration: AgentIntegrationConfig;
 	credential: Record<string, unknown>;
+	/** Set only by the normal UI setup services, including manual setup. */
+	setupAuthorized?: boolean;
 	/** Whether this connection may receive events from the external platform. */
 	ingressEnabled: boolean;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
@@ -430,6 +432,9 @@ export abstract class AgentChatIntegration {
 	 * outage is transient, and must never block a publish.
 	 */
 	assertStartupPreconditions?(ctx: AgentChannelPreconditionContext): Promise<void>;
+
+	/** Check destination setup from local state. Do not contact the platform. */
+	isDestinationConfigured?(ctx: AgentChatIntegrationContext): Promise<boolean>;
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;

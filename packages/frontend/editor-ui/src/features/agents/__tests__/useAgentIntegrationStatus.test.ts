@@ -91,6 +91,37 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.runtimeErrors.value.telegram).toBe('Credential cred-telegram not found');
 	});
 
+	it('keeps a configured channel while the draft requests another, including cancellation', async () => {
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		const response = {
+			integrations: [{ type: 'slack', credentialId: 'working', status: 'connected' }],
+			channelSetupRequired: [{ setupId: 'pending', type: 'slack', credentialId: 'requested' }],
+		};
+		apiMocks.getIntegrationStatus.mockResolvedValue(response);
+		await status.fetchStatus(['slack']);
+		syncAgentIntegrationStatusCache(
+			projectId,
+			agentId,
+			['slack'],
+			[{ type: 'slack', credentialId: 'requested', status: 'starting' }],
+		);
+		expect(status.isConnected('slack')).toBe(true);
+		expect(status.connectedCredentials.value.slack).toBe('working');
+		apiMocks.getIntegrationStatus.mockResolvedValue({ ...response, channelSetupRequired: [] });
+		await status.cancelSetup('pending');
+		expect(apiMocks.disconnectIntegration).toHaveBeenCalledWith(
+			{},
+			projectId,
+			agentId,
+			'slack',
+			'requested',
+			false,
+			'pending',
+		);
+		expect(status.channelSetupRequired.value).toEqual([]);
+		expect(status.isConnected('slack')).toBe(true);
+	});
+
 	it('drops a stale runtime error once the channel starts', async () => {
 		const status = useAgentIntegrationStatus(projectId, agentId);
 		apiMocks.getIntegrationStatus.mockResolvedValue({

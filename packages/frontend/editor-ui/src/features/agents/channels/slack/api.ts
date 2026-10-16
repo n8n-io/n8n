@@ -34,9 +34,11 @@ export const createSlackAgentApp = async (
 	projectId: string,
 	agentId: string,
 	appConfigurationToken: string,
+	setupId?: string,
 ): Promise<CreateSlackAgentAppResponse> =>
 	await makeRestApiRequest(context, 'POST', `${integrationPath(projectId, agentId)}/app`, {
 		appConfigurationToken,
+		...(setupId ? { setupId } : {}),
 	});
 
 export const getSlackAgentAppManifest = async (
@@ -82,12 +84,13 @@ export const installSlackManagedApp = async (
 	agentId: string,
 	managerCredentialId: string,
 	workspaceId: string,
+	setupId?: string,
 ): Promise<InstallSlackManagedAppResponse> =>
 	await makeRestApiRequest(
 		context,
 		'POST',
 		`${integrationPath(projectId, agentId)}/managed/install`,
-		{ managerCredentialId, workspaceId },
+		{ managerCredentialId, workspaceId, ...(setupId ? { setupId } : {}) },
 	);
 
 export const getSlackManagedAppSettings = async (

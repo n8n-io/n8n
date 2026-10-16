@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -10,6 +10,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentChannelSetupService } from '../agent-channel-setup.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
@@ -38,6 +39,7 @@ const configuredConfig: AgentJsonConfig = {
 type SetupOptions = {
 	/** Persisted channels; also seeds the caller's entity unless `stale` overrides it. */
 	integrations?: AgentIntegrationConfig[];
+	pendingChannelSetup?: Agent['pendingChannelSetup'];
 	/** What the caller's entity believes is persisted, when that has gone stale. */
 	stale?: AgentIntegrationConfig[];
 	versionId?: string | null;
@@ -65,6 +67,7 @@ function setup(options: SetupOptions = {}) {
 		revision: 0,
 		schema: options.schema === undefined ? configuredConfig : options.schema,
 		integrations: options.integrations ?? [],
+		pendingChannelSetup: options.pendingChannelSetup ?? null,
 		versionId: options.versionId ?? 'version-1',
 		activeVersionId: options.activeVersionId === undefined ? 'version-1' : options.activeVersionId,
 		setupCompletedAt: null,
@@ -76,11 +79,12 @@ function setup(options: SetupOptions = {}) {
 		integrations: [...(row.integrations ?? [])],
 	}));
 	agentRepository.updateIntegrations.mockImplementation(
-		async (_id, integrations, expected, versionId) => {
+		async (_id, integrations, expected, versionId, pendingChannelSetup) => {
 			if (row.revision !== expected.revision) return false;
 			if (row.versionId !== expected.versionId) return false;
 			if (row.activeVersionId !== expected.activeVersionId) return false;
 			row.integrations = integrations;
+			if (pendingChannelSetup !== undefined) row.pendingChannelSetup = pendingChannelSetup;
 			row.versionId = versionId;
 			row.revision += 1;
 			return true;
@@ -103,6 +107,7 @@ function setup(options: SetupOptions = {}) {
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
+			new AgentChannelSetupService(mock<UrlService>()),
 		),
 		agent,
 		row,
@@ -202,6 +207,7 @@ describe('AgentIntegrationPersistenceService', () => {
 				[{ type: 'slack', credentialId: 'slack-1' }],
 				{ revision: 0, versionId: 'version-1', activeVersionId: 'version-1' },
 				expect.not.stringMatching('^version-1$'),
+				null,
 			);
 		});
 

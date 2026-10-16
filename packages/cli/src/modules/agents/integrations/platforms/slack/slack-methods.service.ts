@@ -30,6 +30,7 @@ import { AgentIntegrationManagementService } from '../../../agent-integration-ma
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { stringProperty } from '../../integration-helpers';
+import { requirePendingChannel } from '../../../utils/agent-channel-setup';
 
 const DEFAULT_SLACK_APP_NAME = 'n8n Agent';
 
@@ -206,6 +207,7 @@ export class SlackMethodsService {
 		session: SlackAppSetupSession,
 		modifiedBy?: AgentActor,
 	): Promise<string> {
+		this.assertSetupDestination(agent, session);
 		const credentialData = {
 			name: this.credentialName(session.teamName, agent.name),
 			type: SLACK_CREDENTIAL_TYPE,
@@ -213,6 +215,8 @@ export class SlackMethodsService {
 				accessToken,
 				signatureSecret: session.signingSecret,
 				agentId: session.agentId,
+				agentProjectId: session.projectId,
+				agentWebhookUrl: session.requestUrl ?? this.webhookUrl(session.projectId, session.agentId),
 				...(session.managerCredentialId
 					? {
 							managedAppId: session.appId,
@@ -226,24 +230,45 @@ export class SlackMethodsService {
 		const credential = session.managerCredentialId
 			? await this.credentialsService.createManagedCredential(credentialData, user)
 			: await this.credentialsService.createUnmanagedCredential(credentialData, user);
-		const integration = {
-			type: 'slack',
-			credentialId: credential.id,
-			settings: { messagingExperience: 'agent' },
-		} satisfies AgentIntegrationConfig;
 		try {
-			await this.integrationManagementService.connect({
-				agent,
-				user,
-				integration,
-				...(modifiedBy ? { modifiedBy } : {}),
-			});
+			await this.completeChannelSetup(agent, user, credential.id, session.setupId, modifiedBy);
 		} catch (error) {
 			await this.deleteUnreferencedCredential(agent.id, credential.id, user);
 			throw error;
 		}
 		await this.clearManagedAppSession(session);
 		return credential.id;
+	}
+
+	assertSetupDestination(agent: Agent, session: SlackAppSetupSession): void {
+		if (session.setupId) requirePendingChannel(agent, session.setupId, 'slack');
+		if (
+			session.agentId !== agent.id ||
+			session.projectId !== agent.projectId ||
+			(session.requestUrl && session.requestUrl !== this.webhookUrl(agent.projectId, agent.id))
+		) {
+			throw new BadRequestError(
+				'Slack setup no longer matches this destination. Start setup again.',
+			);
+		}
+	}
+
+	async completeChannelSetup(
+		agent: Agent,
+		user: User,
+		credentialId: string,
+		setupId?: string,
+		modifiedBy?: AgentActor,
+	): Promise<void> {
+		const integration: AgentIntegrationConfig = { type: 'slack', credentialId };
+		if (!setupId) integration.settings = { messagingExperience: 'agent' };
+		await this.integrationManagementService.connect({
+			agent,
+			user,
+			integration,
+			setupId,
+			modifiedBy,
+		});
 	}
 
 	/**
@@ -293,6 +318,7 @@ export class SlackMethodsService {
 					managerCredentialId: session.managerCredentialId,
 					workspaceId: session.teamId,
 					userId: session.userId,
+					setupId: session.setupId,
 				}),
 			);
 		}

@@ -21,7 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const manualRef = ref<AgentChannelViewExpose>();
-const currentSettings = computed(() => manualRef.value?.currentSettings);
+const currentSettings = computed(() => props.savedSettings ?? manualRef.value?.currentSettings);
 const managedActionInFlight = ref(false);
 const validationError = computed(() => manualRef.value?.validationError ?? null);
 const loading = computed(

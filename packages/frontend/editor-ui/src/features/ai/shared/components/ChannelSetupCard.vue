@@ -61,6 +61,8 @@ const {
 	connectedCredentials,
 	integrationSettings,
 	integrationApproval,
+	channelSetupRequired,
+	cancelSetup,
 	loadingMap,
 	errorMessages,
 	errorIsConflict,
@@ -75,6 +77,26 @@ const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
 const catalogLoading = ref(false);
 const catalogLoadFailed = ref(false);
+const setupId = ref<string>();
+const pendingChannels = computed(() =>
+	channelSetupRequired.value.filter((entry) => entry.type === props.integrationType),
+);
+const pendingSetup = computed(() =>
+	pendingChannels.value.find((entry) => entry.setupId === setupId.value),
+);
+const setupCredentials = computed(() => {
+	const pending = pendingSetup.value;
+	if (!pending) return connectedCredentials.value;
+	return { ...connectedCredentials.value, [pending.type]: pending.credentialId };
+});
+
+watch(
+	pendingChannels,
+	(pending) => {
+		if (!setupId.value && pending.length === 1) setupId.value = pending[0].setupId;
+	},
+	{ immediate: true },
+);
 
 const currentIntegration = computed<ChatIntegrationDescriptor>(() => {
 	return (
@@ -100,9 +122,18 @@ const {
 } = useAgentChannelSetup({
 	projectId: () => props.projectId,
 	currentIntegration,
-	connectedCredentials,
+	connectedCredentials: setupCredentials,
 	fetchStatus,
 });
+
+watch(
+	() => pendingSetup.value?.setupId,
+	() => {
+		const pending = pendingSetup.value;
+		if (pending) selectedCredentials.value[pending.type] = pending.credentialId;
+	},
+	{ immediate: true },
+);
 
 const projectIdRef = computed(() => props.projectId);
 const agentIdRef = computed(() => props.agentId);
@@ -112,11 +143,12 @@ const runtimes: Record<string, AgentChannelRuntime> = Object.fromEntries(
 		createAgentChannelRuntime(platform, {
 			projectId: projectIdRef,
 			agentId: agentIdRef,
+			setupId,
 			selectedCredentialId: computed(() => getChannelCredentialId(platform.type)),
 			credentialModalOpen,
 			fetchStatus,
-			isConnected: isIntegrationConnected,
-			isConfigured: isIntegrationConfigured,
+			isConnected: (type) => !pendingSetup.value && isIntegrationConnected(type),
+			isConfigured: (type) => !pendingSetup.value && isIntegrationConfigured(type),
 		}),
 	]),
 );
@@ -154,7 +186,9 @@ const connectedDescription = computed(() => {
 
 const currentChannelCredentialId = computed(() => getChannelCredentialId(props.integrationType));
 const currentCredentials = computed(() => getCredentials(props.integrationType));
-const isConfigured = computed(() => isIntegrationConfigured(props.integrationType));
+const isConfigured = computed(
+	() => !pendingSetup.value && isIntegrationConfigured(props.integrationType),
+);
 const isLoading = computed(() => loadingMap.value[props.integrationType] ?? false);
 const errorMessage = computed(() => errorMessages.value[props.integrationType] ?? '');
 
@@ -193,7 +227,8 @@ async function skipSetup() {
 
 	connectionInFlight.value = true;
 	try {
-		await disconnect(props.integrationType, '');
+		if (setupId.value) await cancelSetup(setupId.value);
+		else if (pendingChannels.value.length === 0) await disconnect(props.integrationType, '');
 		notifyAgentUpdated();
 		finish(false);
 	} catch {
@@ -216,8 +251,11 @@ async function writeChannelConfig(): Promise<boolean> {
 	try {
 		await channelViewRef.value?.beforeSave?.();
 		// Connect replaces the whole entry, so an approval already on it must ride along.
-		const approval = integrationApproval.value[props.integrationType];
+		const approval = pendingSetup.value
+			? pendingSetup.value.integration.approval
+			: integrationApproval.value[props.integrationType];
 		await connect(props.integrationType, credentialId, channelViewRef.value?.currentSettings, {
+			...(setupId.value ? { setupId: setupId.value } : {}),
 			...(approval ? { approval } : {}),
 		});
 		notifyAgentUpdated();
@@ -342,6 +380,26 @@ watch(
 				</N8nButton>
 			</div>
 
+			<div v-else-if="pendingChannels.length > 1 && !setupId" :class="$style.pendingChoices">
+				<N8nText size="small">{{ i18n.baseText('agents.channels.setupRequired.choose') }}</N8nText>
+				<N8nButton
+					v-for="(pending, index) in pendingChannels"
+					:key="pending.setupId"
+					variant="ghost"
+					size="small"
+					:disabled="isBlocked()"
+					data-testid="channel-setup-card-pending"
+					@click="setupId = pending.setupId"
+				>
+					{{
+						currentCredentials.find((credential) => credential.id === pending.credentialId)?.name ??
+						i18n.baseText('agents.channels.setupRequired.connection', {
+							interpolate: { channel: integrationLabel, number: index + 1 },
+						})
+					}}
+				</N8nButton>
+			</div>
+
 			<component
 				v-else
 				:is="currentPlatform.setupComponent"
@@ -358,7 +416,9 @@ watch(
 				:connected-description="connectedDescription"
 				:error-message="errorMessage"
 				:error-is-conflict="errorIsConflict[integrationType]"
-				:saved-settings="integrationSettings[integrationType]"
+				:saved-settings="
+					pendingSetup ? pendingSetup.integration.settings : integrationSettings[integrationType]
+				"
 				:is-published="Boolean(agent?.activeVersionId)"
 				:agent-name="agent?.name ?? agentId"
 				:project-id="projectId"
@@ -415,6 +475,13 @@ watch(
 
 .bodyWrapper {
 	padding: 0 var(--spacing--sm);
+}
+
+.pendingChoices {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
 }
 
 .catalogError {

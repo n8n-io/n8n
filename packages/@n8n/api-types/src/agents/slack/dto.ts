@@ -4,11 +4,13 @@ import { Z } from '../../zod-class';
 
 export class CreateSlackAgentAppDto extends Z.class({
 	appConfigurationToken: z.string().min(1),
+	setupId: z.string().min(1).optional(),
 }) {}
 
 export class InstallSlackManagedAppDto extends Z.class({
 	managerCredentialId: z.string().min(1),
 	workspaceId: z.string().min(1),
+	setupId: z.string().min(1).optional(),
 }) {}
 
 export class UpdateSlackManagedAppSettingsDto extends Z.class({

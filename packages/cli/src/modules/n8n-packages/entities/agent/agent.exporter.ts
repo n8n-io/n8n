@@ -5,6 +5,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
+import { getDraftIntegrations } from '@/modules/agents/utils/agent-channel-setup';
 
 import type { PreparedAgentExport } from './agent-export.types';
 import { AgentSerializer } from './agent.serializer';
@@ -59,6 +60,7 @@ export class AgentExporter {
 			];
 		} else {
 			definition = await this.definitionService.readDraft(agent);
+			integrations = getDraftIntegrations(agent);
 		}
 
 		const content = this.serializer.serialize(agent, definition, integrations);

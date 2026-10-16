@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentIntegrationStatusResponse } from '@n8n/api-types';
 
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -79,6 +80,13 @@ const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessage
 const connectedCredentials = ref<Record<string, string>>({});
 const configured = ref<Record<string, boolean>>({});
 const managedCredential = ref(false);
+const channelSetupRequired = ref<AgentIntegrationStatusResponse['channelSetupRequired']>([]);
+const route = { query: {} as Record<string, string> };
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => route,
+	useRouter: () => ({ replace: vi.fn() }),
+}));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
@@ -99,6 +107,7 @@ vi.mock('../composables/useAgentIntegrationStatus', function mockIntegrationStat
 		useAgentIntegrationStatus: function useAgentIntegrationStatus() {
 			return {
 				connectedCredentials,
+				channelSetupRequired,
 				fetchStatus: fetchStatusSpy,
 				disconnect: disconnectSpy,
 				loadingMap: ref({}),
@@ -123,7 +132,7 @@ vi.mock('../composables/useAgentsN8nChatFlag', () => ({
 vi.mock('../components/AgentChannelModal.vue', () => ({
 	default: {
 		name: 'AgentChannelModal',
-		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription'],
+		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription', 'setupId'],
 		template:
 			'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" :data-is-published="isPublished" :data-view="view" :data-saved-description="savedDescription" />',
 	},
@@ -161,6 +170,8 @@ function mountSection(
 describe('AgentTriggersSection', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
+		channelSetupRequired.value = [];
+		route.query = {};
 		setActivePinia(createPinia());
 		vi.mocked(credentialsApi.getUsableCredentials).mockResolvedValue([]);
 		connectedCredentials.value = {};
@@ -230,6 +241,31 @@ describe('AgentTriggersSection', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
+	});
+
+	it('opens the pending channel named by the setup link and keeps the configured channel visible', async () => {
+		connectedCredentials.value = { slack: 'working' };
+		configured.value = { slack: true };
+		channelSetupRequired.value = ['first', 'second'].map((setupId) => ({
+			setupId,
+			type: 'slack',
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			credentialId: setupId,
+			path: ['integrations', 0],
+			reason: 'destination-setup-required',
+			setupUrl: '/setup',
+			integration: { type: 'slack', credentialId: setupId },
+		}));
+		route.query.channelSetup = 'second';
+		const wrapper = mountSection();
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentChannelModal' }).props()).toMatchObject({
+			setupId: 'second',
+			view: 'slack_setup',
+		});
+		expect(screen.getByRole('button', { name: 'slack' })).toBeVisible();
+		expect(wrapper.findAll('[data-testid="agent-channel-setup-required"]')).toHaveLength(2);
 	});
 
 	it.each(['credential-1', ''])(

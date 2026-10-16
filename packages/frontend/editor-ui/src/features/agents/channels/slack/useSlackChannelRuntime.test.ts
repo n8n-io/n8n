@@ -55,10 +55,12 @@ function createRuntime(
 	selectedCredentialId = '',
 	credentialModalOpen = ref(false),
 	ensureAgentPersisted = vi.fn().mockResolvedValue(undefined),
+	setupId?: string,
 ) {
 	return useSlackChannelRuntime({
 		projectId: ref('project-1'),
 		agentId: ref('agent-1'),
+		setupId: ref(setupId),
 		selectedCredentialId: ref(selectedCredentialId),
 		credentialModalOpen,
 		fetchStatus: vi.fn().mockResolvedValue(undefined),
@@ -219,21 +221,31 @@ describe('useSlackChannelRuntime', () => {
 		expect(runtime.settingsSaveError.value).toBe('service_limits_exceeded');
 	});
 
-	it('completes managed installation and refreshes Slack state', async () => {
-		const onConnected = vi.fn();
-		const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
-		const runtime = createRuntime('', ref(false), ensureAgentPersisted);
+	it.each([undefined, 'pending'])(
+		'completes managed installation for the selected setup (%s)',
+		async (setupId) => {
+			const onConnected = vi.fn();
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+			const runtime = createRuntime('', ref(false), ensureAgentPersisted, setupId);
 
-		await runtime.installManagedApp('manager', 'T1', onConnected);
+			await runtime.installManagedApp('manager', 'T1', onConnected);
 
-		expect(ensureAgentPersisted).toHaveBeenCalledOnce();
-		expect(mocks.install).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'manager', 'T1');
-		expect(ensureAgentPersisted.mock.invocationCallOrder[0]).toBeLessThan(
-			mocks.install.mock.invocationCallOrder[0],
-		);
-		expect(mocks.getSetup).toHaveBeenCalled();
-		expect(onConnected).toHaveBeenCalledOnce();
-	});
+			expect(ensureAgentPersisted).toHaveBeenCalledOnce();
+			expect(mocks.install).toHaveBeenCalledWith(
+				{},
+				'project-1',
+				'agent-1',
+				'manager',
+				'T1',
+				setupId,
+			);
+			expect(ensureAgentPersisted.mock.invocationCallOrder[0]).toBeLessThan(
+				mocks.install.mock.invocationCallOrder[0],
+			);
+			expect(mocks.getSetup).toHaveBeenCalled();
+			expect(onConnected).toHaveBeenCalledOnce();
+		},
+	);
 
 	it('refreshes managed setup after the credential modal closes', async () => {
 		const credentialModalOpen = ref(false);

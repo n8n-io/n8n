@@ -38,7 +38,7 @@ export function buildChannelStatusReport(
 	statuses: AgentChannelStatus[],
 	isLive: IsLiveRow,
 	publishedIntegrations: AgentIntegrationConfig[] = [],
-): Omit<AgentIntegrationStatusResponse, 'n8nChat'> {
+): Omit<AgentIntegrationStatusResponse, 'n8nChat' | 'channelSetupRequired'> {
 	const liveByChannel = new Map<string, AgentChannelStatus[]>();
 	for (const row of statuses) {
 		if (!isLive(row)) continue;

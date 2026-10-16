@@ -3,6 +3,7 @@ export * from './agent-config-lifecycle';
 export * from './agent-config-validation.schema';
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
+export * from './agent-channel-setup.schema';
 export * from './agent-json-config.schema';
 export * from './agent-node-tool-operations';
 export * from './agent-personalisation';

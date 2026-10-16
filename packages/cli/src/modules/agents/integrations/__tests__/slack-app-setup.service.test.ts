@@ -224,16 +224,61 @@ describe('Slack setup services', () => {
 		};
 	});
 
-	async function beginInstall() {
+	async function beginInstall(setupId?: string) {
 		requestMock.mockResolvedValueOnce(slackAppCreatedResponse());
 		const { installUrl } = await service.createApp({
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			appConfigurationToken: 'xoxe-config',
 			user,
+			setupId,
 		});
 		return new URL(installUrl).searchParams.get('state') ?? '';
 	}
+
+	it.each([false, true])(
+		'checks pending setup identity at the OAuth callback (stale=%s)',
+		async (stale) => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue({
+				...agent,
+				pendingChannelSetup: {
+					requested: [
+						{
+							setupId: 'pending',
+							integration: { type: 'slack', credentialId: 'source-credential' },
+						},
+					],
+				},
+			} as never);
+			userRepository.findOne.mockResolvedValue(user);
+			const state = await beginInstall('pending');
+			if (stale) agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+			requestMock.mockResolvedValueOnce(slackOAuthResponse());
+			credentialsService.createUnmanagedCredential.mockResolvedValue({
+				id: 'new-credential',
+			} as never);
+			const completion = service.completeInstall({
+				projectId: agent.projectId,
+				agentId: agent.id,
+				code: 'code',
+				state,
+			});
+			if (stale) {
+				await expect(completion).rejects.toThrow('Channel setup changed');
+				expect(requestMock).toHaveBeenCalledTimes(1);
+				expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
+				expect(integrationManagementService.connect).not.toHaveBeenCalled();
+				return;
+			}
+			await completion;
+			expect(integrationManagementService.connect).toHaveBeenCalledWith(
+				expect.objectContaining({
+					setupId: 'pending',
+					integration: { type: 'slack', credentialId: 'new-credential' },
+				}),
+			);
+		},
+	);
 
 	it('creates a Slack app from an agent manifest and returns an install URL with state', async () => {
 		requestMock.mockResolvedValueOnce(slackAppCreatedResponse());
@@ -337,6 +382,7 @@ describe('Slack setup services', () => {
 			clientSecret: 'client-secret',
 			signingSecret: 'signing-secret',
 			redirectUrl: callbackUrl,
+			requestUrl: 'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
 		});
 		expect(credentialsService.createManagedCredential).not.toHaveBeenCalled();
 		expect(integrationManagementService.connect).not.toHaveBeenCalled();
@@ -428,6 +474,9 @@ describe('Slack setup services', () => {
 					accessToken: 'xoxb-installed-token',
 					signatureSecret: 'signing-secret',
 					agentId: 'agent-1',
+					agentProjectId: 'project-1',
+					agentWebhookUrl:
+						'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
 				},
 				projectId: 'project-1',
 			},
@@ -1145,6 +1194,9 @@ describe('Slack setup services', () => {
 					signatureSecret: 'signing-secret',
 					agentId: 'agent-1',
 					managedAppId: 'A123',
+					agentProjectId: 'project-1',
+					agentWebhookUrl:
+						'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/webhooks/slack',
 					teamId: 'T456',
 					managerCredentialId: 'manager',
 				},
@@ -1611,7 +1663,12 @@ describe('Slack setup services', () => {
 		function exportedManifest(requestUrl: string) {
 			return slackResponse({
 				ok: true,
-				manifest: { settings: { event_subscriptions: { request_url: requestUrl } } },
+				manifest: {
+					settings: {
+						event_subscriptions: { request_url: requestUrl },
+						interactivity: { request_url: requestUrl },
+					},
+				},
 			});
 		}
 
@@ -1620,6 +1677,8 @@ describe('Slack setup services', () => {
 			credentialsService.decrypt.mockResolvedValue({
 				accessToken: 'xoxb-token',
 				agentId: 'agent-1',
+				agentProjectId: 'project-1',
+				agentWebhookUrl: agentRequestUrl,
 			});
 
 			await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(true);
