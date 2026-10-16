@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHmac } from 'crypto';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -93,6 +93,9 @@ export async function rememberAgentChannelSetup(
 		type: credential.type,
 		data: updated,
 	});
+	if (!encrypted.data) {
+		throw new UnexpectedError('The configured channel credential data is missing.');
+	}
 	const saved = await credentialsRepository.updateDataIfUnchanged(
 		credential.id,
 		credential.type,

@@ -1874,7 +1874,7 @@ export class McpAgentToolsService {
 			connected: !pending && saved.activeVersionId !== null,
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 			channelSetupRequired,
 			...slackSetup,
 			...(pending
