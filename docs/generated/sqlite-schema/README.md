@@ -96,7 +96,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
 | [instance_ai_thread_grants](instance_ai_thread_grants.md) | 5 |  | table |
 | [instance_ai_thread_tabs](instance_ai_thread_tabs.md) | 5 |  | table |
-| [instance_ai_threads](instance_ai_threads.md) | 8 |  | table |
+| [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 | [instance_ai_workflow_snapshots](instance_ai_workflow_snapshots.md) | 7 |  | table |
 | [instance_credential_assignment](instance_credential_assignment.md) | 4 |  | table |
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
@@ -322,7 +322,6 @@ erDiagram
 "instance_ai_thread_grants" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_tabs" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_thread_tabs" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"instance_ai_threads" }o--o| "self_healing_result" : "FOREIGN KEY (selfHealingResultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1347,7 +1346,6 @@ erDiagram
   TEXT metadata
   varchar_36_ projectId FK
   varchar_255_ resourceId
-  varchar_36_ selfHealingResultId FK
   TEXT title
   datetime_3_ updatedAt
 }

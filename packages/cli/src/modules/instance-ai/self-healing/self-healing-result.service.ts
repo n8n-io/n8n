@@ -23,7 +23,6 @@ import { z } from 'zod';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
-import { WorkflowSuggestionRepository } from '../workflow-suggestions/database/workflow-suggestion.repository';
 import {
 	WorkflowSuggestionService,
 	type PreparedWorkflowSuggestion,
@@ -74,7 +73,6 @@ export class SelfHealingResultService {
 		private readonly txRunner: TransactionRunner,
 		private readonly users: UserRepository,
 		private readonly roles: RoleService,
-		private readonly proposalRecords: WorkflowSuggestionRepository,
 		private readonly chat: SelfHealingChatService,
 	) {}
 
@@ -193,15 +191,14 @@ export class SelfHealingResultService {
 			workflowId,
 			result.executionId,
 		);
-		return await this.toDetail(result, suggestion, execution, reviewer.id);
+		return this.toDetail(result, suggestion, execution);
 	}
 
-	private async toDetail(
+	private toDetail(
 		result: SelfHealingResult,
 		suggestion: WorkflowSuggestionProposalDetail | null,
 		execution: SelfHealingExecutionReference,
-		viewerId: string,
-	): Promise<SelfHealingResultDetail> {
+	): SelfHealingResultDetail {
 		return {
 			resultId: result.id,
 			workflowId: result.workflowId,
@@ -218,7 +215,6 @@ export class SelfHealingResultService {
 			dismissedById: result.dismissedById,
 			continuedAt: result.continuedAt?.toISOString() ?? null,
 			continuedById: result.continuedById,
-			chatThreadId: await this.chat.findThreadId(result.id, viewerId),
 			reviewState: getSelfHealingReviewState(result, suggestion),
 			suggestion,
 			execution,
@@ -230,7 +226,7 @@ export class SelfHealingResultService {
 		projectId: string,
 		workflowId: string,
 		resultId: string,
-		action: WorkflowSuggestionAppliedVersion['action'],
+		action: WorkflowSuggestionAppliedVersion['action'] | 'chat',
 		clientId?: string,
 	): Promise<SelfHealingResultActionResponse> {
 		const { result, reviewer } = await this.getResultForEditor(
@@ -239,84 +235,73 @@ export class SelfHealingResultService {
 			workflowId,
 			resultId,
 		);
+		if (result.dismissedAt || result.continuedAt) {
+			throw new ConflictError('This result is already closed. Refresh the page to see its status.');
+		}
+		if (
+			action === 'chat'
+				? result.outcome === 'fix_ready'
+				: result.outcome !== 'fix_ready' || !result.suggestionId
+		) {
+			throw new ConflictError(
+				"This action isn't available for this result. Refresh the page to see its available actions.",
+			);
+		}
+		if (action === 'chat') await this.chat.assertAvailable(reviewer);
+		const execution =
+			action === 'chat'
+				? await this.executionReferences.getReference(reviewer, workflowId, result.executionId)
+				: undefined;
+		let chatThreadId: string | undefined;
+		const prepareChat = async (ctx: OperationContext) => {
+			chatThreadId = await this.chat.prepare(reviewer, result, ctx, execution);
+		};
 		let publishError: string | undefined;
-		if (action === 'approve-and-publish') {
-			if (!result.suggestionId || result.outcome !== 'fix_ready') {
-				throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
-			}
-			({ publishError } = await this.actions.approveAndPublish(
-				reviewer,
-				projectId,
-				workflowId,
-				result.suggestionId,
-				clientId,
-			));
-		} else if (result.suggestionId && !result.dismissedAt) {
-			const proposal = await this.proposalRecords.getSuggestion(result.suggestionId, {
-				workflowId,
-				projectId,
-			});
-			if (proposal.state === 'pending') {
-				let applied: WorkflowSuggestionProposalDetail;
-				try {
-					applied = await this.actions.apply(
-						reviewer,
-						projectId,
-						workflowId,
-						proposal.id,
-						clientId,
-					);
-				} catch (error) {
-					if (!(error instanceof ConflictError)) throw error;
-					applied = await this.suggestions.getProposal(
-						reviewer,
-						projectId,
-						workflowId,
-						proposal.id,
-					);
-					if (applied.closedReason !== 'applied') throw error;
-				}
-				if (applied.closedReason !== 'applied') {
+		if (result.suggestionId) {
+			const options = {
+				requirePending: true,
+				...(action === 'chat' ? { onApplied: prepareChat } : {}),
+			};
+			const applied =
+				action === 'approve-and-publish'
+					? await this.actions.approveAndPublish(
+							reviewer,
+							projectId,
+							workflowId,
+							result.suggestionId,
+							clientId,
+							options,
+						)
+					: await this.actions.apply(
+							reviewer,
+							projectId,
+							workflowId,
+							result.suggestionId,
+							clientId,
+							options,
+						);
+			publishError = applied.publishError;
+		} else {
+			await this.txRunner.run({}, async (ctx) => {
+				await this.suggestions.requireEditor(reviewer.id, workflowId, ctx);
+				await this.requireCurrentProject(workflowId, projectId, ctx);
+				if (!(await this.results.recordContinuation(resultId, reviewer.id, ctx))) {
 					throw new ConflictError(
-						'The suggestion is no longer available to apply. Refresh the result.',
+						'This result is already closed. Refresh the page to see its status.',
 					);
 				}
-			}
-		} else if (!result.suggestionId) {
-			await this.requireCurrentProject(workflowId, projectId);
-			await this.results.recordContinuation(resultId, reviewer.id, {});
+				await prepareChat(ctx);
+			});
 		}
 		return {
 			...(await this.getDetail(reviewer, projectId, workflowId, resultId)),
+			...(chatThreadId !== undefined ? { chatThreadId } : {}),
 			...(publishError !== undefined ? { publishError } : {}),
 		};
 	}
 
-	async prepareChat(
-		user: User,
-		projectId: string,
-		workflowId: string,
-		resultId: string,
-		clientId?: string,
-	): Promise<SelfHealingResultDetail> {
-		const reviewer = await this.suggestions.requireEditor(user.id, workflowId);
-		await this.chat.assertAvailable(reviewer);
-		const detail = await this.act(reviewer, projectId, workflowId, resultId, 'apply', clientId);
-		await this.txRunner.run({}, async (ctx) => {
-			const result = await this.results.lockForContinuation(
-				resultId,
-				{ projectId, workflowId },
-				ctx,
-			);
-			const actor = await this.suggestions.requireEditor(reviewer.id, workflowId, ctx);
-			await this.requireCurrentProject(workflowId, projectId, ctx);
-			await this.chat.prepare(actor, result, ctx, detail.execution);
-		});
-		return await this.getDetail(reviewer, projectId, workflowId, resultId);
-	}
-
 	async dismiss(user: User, projectId: string, workflowId: string, resultId: string) {
-		const found = await this.txRunner.run({}, async (ctx) => {
+		const outcome = await this.txRunner.run({}, async (ctx) => {
 			const { result, reviewer } = await this.getResultForEditor(
 				user,
 				projectId,
@@ -324,7 +309,7 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
-			if (result.dismissedAt || result.continuedAt) return true;
+			if (result.dismissedAt || result.continuedAt) return 'already_closed';
 			if (result.suggestionId) {
 				const outcome = await this.actions.discardPending(
 					reviewer,
@@ -333,21 +318,23 @@ export class SelfHealingResultService {
 					result.suggestionId,
 					ctx,
 				);
-				if (outcome === 'unavailable') return false;
-				if (outcome === 'already_closed') return true;
+				if (outcome !== 'discarded') return outcome;
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 			if (result.outcome !== 'fix_ready') {
-				await this.results.dismissResult(result.id, user.id, ctx);
+				if (!(await this.results.dismissResult(result.id, user.id, ctx))) return 'already_closed';
 			}
-			return true;
+			return 'discarded';
 		});
 		// Commit outdated reconciliation before rejecting a stale project route.
-		if (!found) {
+		if (outcome === 'unavailable') {
 			throw new NotFoundError(
 				'This result is no longer available in this project. Refresh the page.',
 			);
+		}
+		if (outcome === 'already_closed') {
+			throw new ConflictError('This result is already closed. Refresh the page to see its status.');
 		}
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}

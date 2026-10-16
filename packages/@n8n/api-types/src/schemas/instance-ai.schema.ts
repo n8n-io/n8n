@@ -1853,7 +1853,6 @@ export type InstanceAiThreadSourcePersisted =
  *   mid-thread rather than as a first message
  * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
  *   change request, dropped into the composer
- * - `handoff_self_healing_result` — continue from a saved Assistant report
  * - `template_adjustment` — "start from this template and help me adapt it",
  *   from the in-app template preview or an n8n.io deep link
  * - `template_example` — a featured example card on the empty state
@@ -1873,7 +1872,6 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_fix_with_ai',
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
-	'handoff_self_healing_result',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',

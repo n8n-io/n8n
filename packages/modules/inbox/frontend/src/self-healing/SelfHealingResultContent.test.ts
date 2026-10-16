@@ -2,6 +2,7 @@ import type { WorkflowSuggestionActivity } from '@n8n/api-types';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { componentRegistry, type SlotWorkflowDiffProps } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
 import { defineComponent } from 'vue';
@@ -81,23 +82,26 @@ describe('SelfHealingResultContent', () => {
 		expect(queryByRole('tab', { name: 'Trace' })).not.toBeInTheDocument();
 	});
 
-	it('offers publishing, both continuation destinations, and discard', async () => {
+	it('offers publishing, the editor, and discard for a ready fix', async () => {
 		const user = userEvent.setup();
-		const { getByRole, emitted } = renderContent();
+		const { getByRole, queryByRole, queryByText, emitted } = renderContent({ canChat: false });
 
-		await user.click(getByRole('button', { name: 'Approve and publish' }));
+		await user.click(getByRole('button', { name: 'Apply and publish' }));
 		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
-		await user.click(getByRole('button', { name: 'Apply and open in chat' }));
 		await user.click(getByRole('button', { name: 'Discard' }));
 
-		expect(emitted('action')).toEqual([['approve-and-publish'], ['editor'], ['chat'], ['dismiss']]);
+		expect(queryByRole('button', { name: /open in chat/i })).not.toBeInTheDocument();
+		expect(
+			queryByText('Chat is unavailable. You can still review the report.'),
+		).not.toBeInTheDocument();
+		expect(emitted('action')).toEqual([['approve-and-publish'], ['editor'], ['dismiss']]);
 	});
 
 	it('keeps editing available when publication is not allowed', async () => {
 		const user = userEvent.setup();
 		const { getByRole, getByText, emitted } = renderContent({ canPublish: false });
 
-		expect(getByRole('button', { name: 'Approve and publish' })).toBeDisabled();
+		expect(getByRole('button', { name: 'Apply and publish' })).toBeDisabled();
 		expect(getByText('Publish permission is required')).toBeInTheDocument();
 		await user.click(getByRole('button', { name: 'Apply and open in editor' }));
 		expect(emitted('action')).toEqual([['editor']]);
@@ -106,12 +110,7 @@ describe('SelfHealingResultContent', () => {
 	it('disables every fix decision while a decision is pending', async () => {
 		const { getByRole, emitted } = renderContent({ pendingAction: 'editor' });
 
-		for (const name of [
-			'Approve and publish',
-			'Apply and open in editor',
-			'Apply and open in chat',
-			'Discard',
-		]) {
+		for (const name of ['Apply and publish', 'Apply and open in editor', 'Discard']) {
 			expect(getByRole('button', { name })).toBeDisabled();
 		}
 		await userEvent.click(getByRole('button', { name: 'Discard' }));
@@ -123,28 +122,26 @@ describe('SelfHealingResultContent', () => {
 		{ outcome: 'needs_you', proposal: suggestion({ resultKind: 'needs_you' }) },
 		{ outcome: 'could_not_fix', proposal: null },
 	] as const)(
-		'offers both destinations for $outcome and labels pending changes explicitly',
+		'offers chat and discard for $outcome and labels suggested changes explicitly',
 		async ({ outcome, proposal }) => {
 			const { getByRole, queryByRole, getByTestId, emitted } = renderContent({
 				detail: result({ outcome, suggestion: proposal }),
 			});
 
 			expect(getByTestId('self-healing-outcome-notice')).toBeInTheDocument();
-			expect(queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
+			expect(queryByRole('button', { name: 'Apply and publish' })).not.toBeInTheDocument();
+			expect(queryByRole('button', { name: /open in editor/i })).not.toBeInTheDocument();
 			expect(queryByRole('tab', { name: 'Changes' }) !== null).toBe(proposal !== null);
-			await userEvent.click(
-				getByRole('button', { name: proposal ? 'Apply and open in editor' : 'Open in editor' }),
-			);
 			await userEvent.click(
 				getByRole('button', { name: proposal ? 'Apply and open in chat' : 'Open in chat' }),
 			);
-			await userEvent.click(getByRole('button', { name: 'Dismiss' }));
-			expect(emitted('action')).toEqual([['editor'], ['chat'], ['dismiss']]);
+			await userEvent.click(getByRole('button', { name: 'Discard' }));
+			expect(emitted('action')).toEqual([['chat'], ['dismiss']]);
 		},
 	);
 
-	it('keeps a dismissed report available for a new private chat', async () => {
-		const { getByRole, queryByRole, getByTestId, emitted } = renderContent({
+	it('shows a discarded result in its status and activity', () => {
+		const { getByTestId } = renderContent({
 			detail: result({
 				outcome: 'could_not_fix',
 				suggestion: null,
@@ -155,51 +152,63 @@ describe('SelfHealingResultContent', () => {
 		});
 
 		expect(getByTestId('self-healing-report')).toBeInTheDocument();
-		expect(queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
-		await userEvent.click(getByRole('button', { name: 'Open in chat' }));
-		expect(emitted('action')).toEqual([['chat']]);
+		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Discarded');
 		expect(getByTestId('self-healing-activity')).toHaveTextContent('Completed the investigation');
 		expect(getByTestId('self-healing-activity')).toHaveTextContent(
-			/A user\s*\|\s*Dismissed the result/,
+			/A user\s*\|\s*Discarded the result/,
 		);
 	});
 
-	it('retains the report and dismissal when chat is unavailable', () => {
+	it('retains the report and discard when chat is unavailable', () => {
 		const { getByRole, getByText } = renderContent({
 			detail: result({ outcome: 'needs_you', suggestion: null }),
 			canChat: false,
 		});
 
 		expect(getByRole('button', { name: 'Open in chat' })).toBeDisabled();
-		expect(getByRole('button', { name: 'Dismiss' })).toBeEnabled();
+		expect(getByRole('button', { name: 'Discard' })).toBeEnabled();
 		expect(getByText('Chat is unavailable. You can still review the report.')).toBeInTheDocument();
 	});
 
-	it('opens an applied result without applying it again or claiming publication', async () => {
-		const { getByRole, queryByRole, getByTestId, emitted } = renderContent({
+	it('does not claim that applied changes are published', () => {
+		const { getByTestId, queryByTestId } = renderContent({
 			detail: result({ reviewState: 'applied' }),
 		});
 
-		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed | Applied');
-		expect(getByTestId('self-healing-closed-notice')).toHaveTextContent(
-			"Check the workflow's publication status",
-		);
-		expect(queryByRole('button', { name: 'Approve and publish' })).not.toBeInTheDocument();
-		expect(queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
-		await userEvent.click(getByRole('button', { name: 'Open in editor' }));
-		expect(emitted('action')).toEqual([['editor']]);
+		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Applied');
+		expect(getByTestId('self-healing-status-card')).not.toHaveTextContent(/Closed|Published/);
+		expect(queryByTestId('self-healing-closed-notice')).not.toBeInTheDocument();
 	});
 
-	it.each(['outdated', 'discarded'] as const)(
-		'keeps navigation available for %s suggestions without applying changes',
+	it.each(['applied', 'outdated', 'discarded', 'dismissed', 'continued'] as const)(
+		'keeps %s results read-only',
 		(reviewState) => {
-			const { getByTestId, queryByRole } = renderContent({ detail: result({ reviewState }) });
+			const { getByTestId, queryByTestId, queryByRole, queryByText } = renderContent({
+				detail: result({ reviewState }),
+				canPublish: false,
+				canChat: false,
+			});
 
-			expect(getByTestId('self-healing-closed-notice')).toBeInTheDocument();
-			expect(queryByRole('button', { name: 'Open in editor' })).toBeInTheDocument();
-			expect(queryByRole('button', { name: 'Open in chat' })).toBeInTheDocument();
-			expect(queryByRole('button', { name: 'Apply and open in editor' })).not.toBeInTheDocument();
-			expect(queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
+			if (reviewState === 'applied') {
+				expect(queryByTestId('self-healing-closed-notice')).not.toBeInTheDocument();
+			} else {
+				expect(getByTestId('self-healing-closed-notice')).toBeInTheDocument();
+			}
+			expect(getByTestId('self-healing-report')).toBeInTheDocument();
+			expect(getByTestId('self-healing-activity')).toBeInTheDocument();
+			for (const name of [
+				'Apply and publish',
+				'Apply and open in editor',
+				'Apply and open in chat',
+				'Open in chat',
+				'Discard',
+			]) {
+				expect(queryByRole('button', { name })).not.toBeInTheDocument();
+			}
+			expect(queryByText('Publish permission is required')).not.toBeInTheDocument();
+			expect(
+				queryByText('Chat is unavailable. You can still review the report.'),
+			).not.toBeInTheDocument();
 		},
 	);
 
@@ -224,16 +233,16 @@ describe('SelfHealingResultContent', () => {
 		expect(diffProps?.targetSnapshot).not.toHaveProperty('createdAt');
 	});
 
-	it('keeps partial-apply actions available while reviewing the saved changes', async () => {
-		const { getByRole, queryByTestId, emitted } = renderContent({
+	it('keeps partial-apply chat available while reviewing the saved changes', async () => {
+		const { getByRole, queryByRole, queryByTestId, emitted } = renderContent({
 			detail: result({ outcome: 'needs_you', suggestion: suggestion({ resultKind: 'needs_you' }) }),
 			tab: 'changes',
 		});
 
 		expect(queryByTestId('self-healing-activity-panel')).not.toBeInTheDocument();
-		await userEvent.click(getByRole('button', { name: 'Apply and open in editor' }));
+		expect(queryByRole('button', { name: /open in editor/i })).not.toBeInTheDocument();
 		await userEvent.click(getByRole('button', { name: 'Apply and open in chat' }));
-		expect(emitted('action')).toEqual([['editor'], ['chat']]);
+		expect(emitted('action')).toEqual([['chat']]);
 	});
 
 	it('falls back to Activity when a linked Changes tab has no proposal', () => {
@@ -246,24 +255,46 @@ describe('SelfHealingResultContent', () => {
 		expect(queryByTestId('saved-workflow-diff')).not.toBeInTheDocument();
 	});
 
-	it('shows unknown measurements separately from measured zeroes', () => {
+	it.each([
+		{
+			deployment: 'Cloud',
+			isCloud: true,
+			visible: ['credits'],
+			hidden: ['promptTokens', 'totalTokens'],
+		},
+		{
+			deployment: 'self-hosted',
+			isCloud: false,
+			visible: ['promptTokens', 'totalTokens'],
+			hidden: ['credits'],
+		},
+	])('shows known $deployment usage, including zeroes', async ({ isCloud, visible, hidden }) => {
+		useSettingsStore().settings.deployment = { type: isCloud ? 'cloud' : 'default' };
 		const detail = result({
 			usage: {
 				credits: 0,
-				turns: null,
+				turns: 3,
 				durationSeconds: null,
 				promptTokens: 0,
 				completionTokens: null,
-				totalTokens: null,
+				totalTokens: 0,
 			},
 		});
-		const { getByTestId } = renderContent({ detail });
+		const { getByTestId, queryByTestId, rerender } = renderContent({ detail });
 
-		expect(getByTestId('self-healing-usage-credits')).toHaveTextContent('Credits0');
-		expect(getByTestId('self-healing-usage-promptTokens')).toHaveTextContent('Input tokens0');
-		for (const field of ['turns', 'duration', 'completionTokens', 'totalTokens']) {
-			expect(getByTestId(`self-healing-usage-${field}`)).toHaveTextContent('Not available');
+		for (const field of visible) {
+			expect(getByTestId(`self-healing-usage-${field}`)).toHaveTextContent('0');
 		}
+		for (const field of [...hidden, 'turns', 'duration', 'completionTokens']) {
+			expect(queryByTestId(`self-healing-usage-${field}`)).not.toBeInTheDocument();
+		}
+
+		await rerender({
+			detail: result({
+				usage: { ...detail.usage, credits: null, promptTokens: null, totalTokens: null },
+			}),
+		});
+		expect(queryByTestId('self-healing-usage')).not.toBeInTheDocument();
 	});
 
 	it('links only an available original execution and preserves the report without it', async () => {
@@ -326,7 +357,7 @@ describe('SelfHealingResultContent', () => {
 			}),
 		});
 
-		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed | Continued');
+		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Continued');
 		expect(getByTestId('self-healing-activity')).toHaveTextContent(
 			'Continued working on the workflow',
 		);

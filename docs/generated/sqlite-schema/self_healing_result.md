@@ -23,7 +23,7 @@ CREATE TABLE "self_healing_result" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 | dismissedAt | datetime(3) |  | true |  |  |  |
 | dismissedById | varchar |  | true |  | [user](user.md) |  |
 | executionId | varchar(36) |  | false |  |  |  |
-| id | varchar(36) |  | false | [instance_ai_threads](instance_ai_threads.md) |  |  |
+| id | varchar(36) |  | false |  |  |  |
 | outcome | varchar(16) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | report | TEXT |  | false |  |  |  |
@@ -67,7 +67,6 @@ erDiagram
 "self_healing_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--o| "user" : "FOREIGN KEY (continuedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "self_healing_result" }o--o| "user" : "FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"instance_ai_threads" }o--o| "self_healing_result" : "FOREIGN KEY (selfHealingResultId) REFERENCES self_healing_result (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--o| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -106,16 +105,6 @@ erDiagram
   TEXT personalizationAnswers
   varchar_128_ roleSlug FK
   TEXT settings
-  datetime_3_ updatedAt
-}
-"instance_ai_threads" {
-  datetime_3_ createdAt
-  varchar id PK
-  TEXT metadata
-  varchar_36_ projectId FK
-  varchar_255_ resourceId
-  varchar_36_ selfHealingResultId FK
-  TEXT title
   datetime_3_ updatedAt
 }
 "project" {

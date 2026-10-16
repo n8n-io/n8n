@@ -96,7 +96,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_resources](public.instance_ai_resources.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_thread_tabs](public.instance_ai_thread_tabs.md) | 5 |  | BASE TABLE |
-| [public.instance_ai_threads](public.instance_ai_threads.md) | 8 |  | BASE TABLE |
+| [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
 | [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
 | [public.instance_monitoring_report](public.instance_monitoring_report.md) | 10 |  | BASE TABLE |
@@ -341,7 +341,6 @@ erDiagram
 "public.instance_ai_thread_tabs" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_tabs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
-"public.instance_ai_threads" }o--o| "public.self_healing_result" : "FOREIGN KEY (#quot;selfHealingResultId#quot;) REFERENCES self_healing_result(id) ON DELETE SET NULL"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -1361,7 +1360,6 @@ erDiagram
   json metadata
   varchar_36_ projectId FK
   varchar_255_ resourceId
-  varchar_36_ selfHealingResultId FK
   text title
   timestamp_3__with_time_zone updatedAt
 }

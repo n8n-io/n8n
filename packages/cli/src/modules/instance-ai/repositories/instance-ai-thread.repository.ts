@@ -26,18 +26,8 @@ export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread>
 		});
 	}
 
-	async findSelfHealingChat(resultId: string, userId: string, ctx: OperationContext) {
-		return await this.managerFor(ctx).findOneBy(InstanceAiThread, {
-			selfHealingResultId: resultId,
-			resourceId: userId,
-		});
-	}
-
 	async createSelfHealingChat(
-		input: Pick<
-			InstanceAiThread,
-			'id' | 'resourceId' | 'projectId' | 'selfHealingResultId' | 'title' | 'metadata'
-		>,
+		input: Pick<InstanceAiThread, 'id' | 'resourceId' | 'projectId' | 'title' | 'metadata'>,
 		openingMessage: AgentDbMessage & { type: 'llm'; role: 'user' },
 		ctx: OperationContext,
 	) {

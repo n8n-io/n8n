@@ -42,19 +42,9 @@ const WorkflowDiffView = computed(() => componentRegistry.get('workflow-diff'));
 const isOpen = computed(() => props.detail.reviewState === 'open');
 const isInformational = computed(() => props.detail.outcome !== 'fix_ready');
 const hasSuggestion = computed(() => props.detail.suggestion !== null);
-const hasPendingSuggestion = computed(
-	() => isOpen.value && props.detail.suggestion?.state === 'pending',
-);
-const editorLabel = computed(() =>
-	i18n.baseText(
-		hasPendingSuggestion.value
-			? 'inbox.selfHealing.action.applyAndOpenInEditor'
-			: 'inbox.selfHealing.action.openInEditor',
-	),
-);
 const chatLabel = computed(() =>
 	i18n.baseText(
-		hasPendingSuggestion.value
+		hasSuggestion.value
 			? 'inbox.selfHealing.action.applyAndOpenInChat'
 			: 'inbox.selfHealing.action.openInChat',
 	),
@@ -79,7 +69,7 @@ const statusLabel = computed(() => {
 	const state = props.detail.reviewState;
 	return state === 'open'
 		? `${i18n.baseText('inbox.tabs.open')} | ${outcomeLabel.value}`
-		: `${i18n.baseText('inbox.tabs.closed')} | ${i18n.baseText(`inbox.selfHealing.state.${state}`)}`;
+		: i18n.baseText(`inbox.selfHealing.state.${state}`);
 });
 
 const statusClass = computed(() => {
@@ -123,24 +113,26 @@ function onTabChange(tab: string) {
 					data-test-id="self-healing-result-tabs"
 					@update:model-value="onTabChange"
 				/>
-				<div :class="$style.decisionActions">
+				<div v-if="isOpen" :class="$style.decisionActions">
 					<N8nButton
-						v-if="!isInformational && isOpen"
+						v-if="!isInformational"
 						size="medium"
-						:label="i18n.baseText('inbox.selfHealing.action.approveAndPublish')"
+						:label="i18n.baseText('inbox.selfHealing.action.applyAndPublish')"
 						:disabled="pending || !canPublish"
 						:loading="pendingAction === 'approve-and-publish'"
 						@click="emit('action', 'approve-and-publish')"
 					/>
 					<N8nButton
+						v-if="!isInformational"
 						variant="outline"
 						size="medium"
-						:label="editorLabel"
+						:label="i18n.baseText('inbox.selfHealing.action.applyAndOpenInEditor')"
 						:disabled="pending"
 						:loading="pendingAction === 'editor'"
 						@click="emit('action', 'editor')"
 					/>
 					<N8nButton
+						v-if="isInformational"
 						variant="outline"
 						size="medium"
 						icon="message-circle"
@@ -150,16 +142,9 @@ function onTabChange(tab: string) {
 						@click="emit('action', 'chat')"
 					/>
 					<N8nButton
-						v-if="isOpen"
 						variant="ghost"
 						size="medium"
-						:label="
-							i18n.baseText(
-								isInformational
-									? 'inbox.selfHealing.action.dismiss'
-									: 'inbox.selfHealing.action.discard',
-							)
-						"
+						:label="i18n.baseText('inbox.selfHealing.action.discard')"
 						:disabled="pending"
 						:loading="pendingAction === 'dismiss'"
 						@click="emit('action', 'dismiss')"
@@ -174,7 +159,12 @@ function onTabChange(tab: string) {
 			>
 				{{ i18n.baseText('inbox.selfHealing.action.publishUnavailable') }}
 			</N8nText>
-			<N8nText v-if="!canChat" size="small" color="text-light" :class="$style.permissionHint">
+			<N8nText
+				v-if="isOpen && isInformational && !canChat"
+				size="small"
+				color="text-light"
+				:class="$style.permissionHint"
+			>
 				{{ i18n.baseText('inbox.selfHealing.action.chatUnavailable') }}
 			</N8nText>
 			<div :class="$style.detailBody">
@@ -203,7 +193,7 @@ function onTabChange(tab: string) {
 							}}
 						</N8nCallout>
 						<N8nCallout
-							v-if="detail.reviewState !== 'open'"
+							v-if="detail.reviewState !== 'open' && detail.reviewState !== 'applied'"
 							theme="secondary"
 							data-test-id="self-healing-closed-notice"
 						>

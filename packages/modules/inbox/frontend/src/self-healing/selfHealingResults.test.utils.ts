@@ -101,7 +101,6 @@ export function result(overrides: Partial<SelfHealingResultDetail> = {}): SelfHe
 		dismissedById: null,
 		continuedAt: null,
 		continuedById: null,
-		chatThreadId: null,
 		reviewState: 'open',
 		suggestion: suggestion(),
 		execution: { status: 'available', id: 'execution-1' },

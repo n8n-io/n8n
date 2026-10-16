@@ -1,7 +1,7 @@
 import type { SelfHealingExecutionReference } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { ForbiddenError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
 
@@ -27,10 +27,6 @@ export class SelfHealingChatService {
 		await this.threads.getPersonalProjectForChat(user.id, {});
 	}
 
-	async findThreadId(resultId: string, userId: string): Promise<string | null> {
-		return (await this.threads.findSelfHealingChat(resultId, userId, {}))?.id ?? null;
-	}
-
 	async prepare(
 		user: User,
 		result: SelfHealingResult,
@@ -38,14 +34,6 @@ export class SelfHealingChatService {
 		execution?: SelfHealingExecutionReference,
 	): Promise<string> {
 		const project = await this.threads.getPersonalProjectForChat(user.id, ctx);
-		const existing = await this.threads.findSelfHealingChat(result.id, user.id, ctx);
-		if (existing) {
-			if (existing.projectId !== project.id) {
-				throw new ConflictError('The continuation chat is not in your personal project.');
-			}
-			return existing.id;
-		}
-
 		const context = buildThreadContextBlock([
 			buildThreadArtifactsBlock(undefined, [
 				{
@@ -61,7 +49,6 @@ export class SelfHealingChatService {
 				id: randomUUID(),
 				resourceId: user.id,
 				projectId: project.id,
-				selfHealingResultId: result.id,
 				title: result.summary,
 				metadata: {
 					source: 'self_healing_result',

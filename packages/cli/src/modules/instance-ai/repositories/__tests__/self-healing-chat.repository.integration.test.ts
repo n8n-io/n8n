@@ -1,7 +1,6 @@
 import { createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner, type User } from '@n8n/db';
+import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { createUser } from '@test-integration/db/users';
@@ -65,8 +64,8 @@ describe('Self-healing private chat persistence', () => {
 			},
 			{},
 		);
-		const prepare = async (reviewer: User = user) =>
-			await txRunner.run({}, async (ctx) => await service.prepare(reviewer, result, ctx));
+		const prepare = async () =>
+			await txRunner.run({}, async (ctx) => await service.prepare(user, result, ctx));
 		return { user, project, workflow, result, prepare };
 	}
 
@@ -81,8 +80,12 @@ describe('Self-healing private chat persistence', () => {
 		expect(await threads.findOneByOrFail({ id: threadId })).toMatchObject({
 			resourceId: user.id,
 			projectId: project.id,
-			selfHealingResultId: result.id,
 			title: result.summary,
+			metadata: {
+				source: 'self_healing_result',
+				origin: 'internal',
+				sourceContext: { resultId: result.id, outcome: result.outcome },
+			},
 		});
 		expect(parseStoredMessages(await memory.getMessages(threadId))).toEqual([
 			expect.objectContaining({
@@ -93,18 +96,11 @@ describe('Self-healing private chat persistence', () => {
 		]);
 	});
 
-	it('reuses each reviewer’s private chat without copying an unavailable execution reference', async () => {
-		const { user, workflow, result, prepare } = await fixture();
-		const first = await prepare();
-		expect(await prepare()).toBe(first);
-		const other = await createUser();
-		expect(await service.findThreadId(result.id, other.id)).toBeNull();
-		const second = await prepare(other);
-		expect(second).not.toBe(first);
-		expect(await service.findThreadId(result.id, user.id)).toBe(first);
-		expect(await service.findThreadId(result.id, other.id)).toBe(second);
-		expect(await messages.countBy({ threadId: first })).toBe(1);
-		expect(parseStoredMessages(await memory.getMessages(first))[0]?.attachments).toEqual([
+	it('omits an unavailable execution reference', async () => {
+		const { workflow, prepare } = await fixture();
+		const threadId = await prepare();
+		expect(await messages.countBy({ threadId })).toBe(1);
+		expect(parseStoredMessages(await memory.getMessages(threadId))[0]?.attachments).toEqual([
 			{ type: 'workflow', id: workflow.id },
 		]);
 	});
@@ -119,43 +115,15 @@ describe('Self-healing private chat persistence', () => {
 			}),
 		).rejects.toThrow('The workflow could not be saved.');
 		expect(preparedId).toBeDefined();
-		expect(await threads.countBy({ selfHealingResultId: result.id })).toBe(0);
+		expect(await threads.countBy({ id: preparedId })).toBe(0);
 		expect(await messages.countBy({ threadId: preparedId })).toBe(0);
-	});
-
-	it('enforces one private chat per result and owner independently of editable metadata', async () => {
-		const { user, project, result, prepare } = await fixture();
-		const normal = await threads.save(
-			threads.create({
-				id: randomUUID(),
-				resourceId: user.id,
-				projectId: project.id,
-				metadata: { sourceContext: { resultId: result.id } },
-			}),
-		);
-		expect(await service.findThreadId(result.id, user.id)).toBeNull();
-		const threadId = await prepare();
-		expect(threadId).not.toBe(normal.id);
-		await expect(
-			threads.insert({
-				id: randomUUID(),
-				resourceId: user.id,
-				projectId: project.id,
-				selfHealingResultId: result.id,
-			}),
-		).rejects.toThrow();
-		expect(await threads.findSelfHealingChat(result.id, user.id, {})).toMatchObject({
-			id: threadId,
-		});
 	});
 
 	it('keeps the private conversation after the result is deleted', async () => {
 		const { result, prepare } = await fixture();
 		const threadId = await prepare();
 		await results.delete(result.id);
-		expect(await threads.findOneByOrFail({ id: threadId })).toMatchObject({
-			selfHealingResultId: null,
-		});
+		expect(await threads.findOneBy({ id: threadId })).not.toBeNull();
 		expect(parseStoredMessages(await memory.getMessages(threadId))).toHaveLength(1);
 	});
 });

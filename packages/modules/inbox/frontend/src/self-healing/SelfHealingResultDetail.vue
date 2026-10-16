@@ -98,11 +98,12 @@ async function retryDetail() {
 
 async function onAction(action: SelfHealingResultAction) {
 	const before = detail.value;
-	if (!before || pendingAction.value || !store.isSelected(props.selection)) return;
-	if (action !== 'chat' && action !== 'editor' && before.reviewState !== 'open') return;
+	if (before?.reviewState !== 'open' || pendingAction.value || !store.isSelected(props.selection))
+		return;
 	if (action === 'approve-and-publish' && (!canPublish.value || before.outcome !== 'fix_ready'))
 		return;
-	if (action === 'chat' && !chat?.available.value) return;
+	if (action === 'editor' && before.outcome !== 'fix_ready') return;
+	if (action === 'chat' && (before.outcome === 'fix_ready' || !chat?.available.value)) return;
 
 	const target = { ...props.selection };
 	const isSelected = props.isSelected;

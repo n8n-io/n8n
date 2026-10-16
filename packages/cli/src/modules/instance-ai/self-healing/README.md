@@ -20,9 +20,9 @@ suggestion explanations and error context. Persistence does not scrub these fiel
 
 | Outcome | Suggestion | Actions |
 | --- | --- | --- |
-| `fix_ready` | Required | Approve and publish, Apply and open in editor/chat, Discard |
-| `needs_you` | Optional | Apply and open in editor/chat when changes exist; otherwise Open in editor/chat, Dismiss |
-| `could_not_fix` | None | Open in editor/chat, Dismiss |
+| `fix_ready` | Required | Apply and publish, Apply and open in editor, Discard |
+| `needs_you` | Optional | Apply and open in chat when changes exist; otherwise Open in chat, Discard |
+| `could_not_fix` | None | Open in chat, Discard |
 
 The report is one string. Usage contains `credits`, `turns`, `durationSeconds`, `promptTokens`,
 `completionTokens`, and `totalTokens`. The usage object and all measurement fields are required;
@@ -48,42 +48,38 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `POST /:resultId/dismiss`
 - `POST /:resultId/chat`
 
-Current workflow editors can review results. Approval also requires publish access.
+Current workflow editors can review results. Apply and publish also requires publish access.
 Each action resolves its suggestion from the result and returns the updated review.
 Send the editor client ID in `push-ref` for Apply actions.
-Read the returned review state before navigating. A competing action can close the suggestion first.
-Apply saves ready or partial suggested changes to the workflow draft without publishing.
-Approve and publish accepts only `fix_ready` suggestions.
+The first successful action closes the result. Later actions return a conflict.
+The publish and editor actions accept only `fix_ready` suggestions.
+Chat accepts only `needs_you` and `could_not_fix` results.
+It saves partial suggested changes to the workflow draft when present.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. If Apply fails, keep the review open and show the error.
 
-Both Discard and Dismiss buttons call `POST /:resultId/dismiss`.
+The Discard button calls `POST /:resultId/dismiss` for all outcomes.
 Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
 from the suggestion; informational results also record dismissal in the same transaction.
-Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. `publishError` describes that request only. The response includes the workflow
 ID and the suggestion's recorded applied version. Open the normal editor for publication status
-and recovery. Repeating a review action does not save or publish again.
+and recovery.
 
-The editor uses Apply. The chat endpoint calls the same Apply action before it creates or opens
-a private chat. Apply saves pending ready or partial changes through the existing suggestion
-service. It keeps the existing transaction and version receipt. For a report without a suggestion,
-Apply records `continuedAt` and `continuedById` once. Both actions close the result without
-publishing. Applied results retain their Applied state. Already dismissed, discarded, or outdated
-results retain their existing closure. Navigation errors do not reopen the result.
+The editor uses Apply. The chat endpoint uses the same Apply action and creates a private chat
+in the workflow save transaction. For a report without a suggestion, chat records `continuedAt`
+and `continuedById` in the chat creation transaction. Both actions close the result without
+publishing. If chat creation fails, the transaction rolls back and the result stays open.
 
-Each reviewer has one private chat per result in their personal project. The server-owned
-`instance_ai_threads.selfHealingResultId` field and reviewer ID identify that chat. The detail's
-`chatThreadId` always identifies the caller's chat, or is null if the caller has no chat.
-A transaction serializes chat creation and saves the report once. The workflow attachment includes
-the execution ID only when the reviewer can read it. Repeated requests reuse the saved chat.
-If chat creation fails after Apply, the draft and closure stay saved. An explicit retry can create
-the chat without applying the changes again.
+The new chat belongs to the reviewer in their personal project. The action response includes its
+`chatThreadId`. Detail reads do not return a chat destination. The chat contains the saved report
+and a workflow attachment. The attachment includes the execution ID only when the reviewer can
+read it. Closed results remain readable, but they have no action buttons.
 
 Opening a saved chat does not start an Assistant run or send a follow-up prompt. Normal chat owns
 later messages and run errors. Normal ownership and tool permissions apply. The background
-conversation and grants stay separate. Deleting a chat does not reopen the result.
+conversation and grants stay separate. After a lost response or navigation error, the saved chat
+remains in normal chat history. Navigation errors and chat deletion do not reopen the result.
 
 ## Availability
 

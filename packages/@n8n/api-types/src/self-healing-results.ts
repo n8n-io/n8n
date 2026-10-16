@@ -52,14 +52,14 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 	dismissedById: string | null;
 	continuedAt: string | null;
 	continuedById: string | null;
-	/** The current user's private chat for this result. */
-	chatThreadId: string | null;
 	reviewState: SelfHealingReviewState;
 	suggestion: WorkflowSuggestionProposalDetail | null;
 	execution: SelfHealingExecutionReference;
 };
 
 export type SelfHealingResultActionResponse = SelfHealingResultDetail & {
+	/** The chat created by this action. */
+	chatThreadId?: string;
 	/** This request error does not establish whether the saved version is live. */
 	publishError?: string;
 };

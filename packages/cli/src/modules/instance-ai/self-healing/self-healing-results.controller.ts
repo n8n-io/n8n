@@ -59,11 +59,12 @@ export class SelfHealingResultsController {
 	@ProjectScope('workflow:update')
 	async prepareChat(req: ResultRequest) {
 		const { projectId, workflowId, resultId } = req.params;
-		return await this.results.prepareChat(
+		return await this.results.act(
 			req.user,
 			projectId,
 			workflowId,
 			resultId,
+			'chat',
 			req.headers['push-ref'],
 		);
 	}

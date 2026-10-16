@@ -15,11 +15,17 @@ API. Editor actions use the apply endpoint. Chat actions use the chat endpoint,
 which uses the same apply-and-close service. Pending suggestions, including partial
 changes, are saved to the real workflow draft first. Results without suggestions
 are closed too. The frontend then updates the Inbox and navigates.
-Chat opens the caller's saved private thread with the report as context.
-Repeated clicks reuse that thread. Opening it does not start an Assistant run.
+Actions are available only while a result is open. The first successful action
+closes it. Closed results show the saved report, activity, and workflow changes.
+Fix ready offers Apply and publish or Apply and open in editor.
+Needs attention offers Apply and open in chat when it has suggested changes.
+Other informational results offer Open in chat. Every open result offers Discard.
+Chat creates a private thread with the report as context.
+Opening it does not start an Assistant run.
 Navigation failure does not reopen the result or undo saved changes.
 After a lost response, the frontend refreshes the result and shows an error.
-The user can retry the action. A refresh does not navigate or retry publication.
+The user can retry the action if the result is still open.
+A refresh does not navigate or retry publication.
 Publishing remains a separate action. Self-healing remains off by default.
 
 Frontend feature module. Consumed from source by the editor-ui shell through

@@ -10,6 +10,7 @@ import {
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 
@@ -20,55 +21,53 @@ const props = defineProps<{
 }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
-
-function measurement(value: number | null) {
-	return value === null
-		? i18n.baseText('inbox.selfHealing.usage.unavailable')
-		: value.toLocaleString(rootStore.defaultLocale);
-}
+const settingsStore = useSettingsStore();
 
 const usageRows = computed(() => {
 	const usage = props.detail.usage;
-	return [
-		{
-			key: 'credits',
-			label: i18n.baseText('inbox.selfHealing.usage.credits'),
-			value: measurement(usage.credits),
-		},
-		{
-			key: 'turns',
-			label: i18n.baseText('inbox.selfHealing.usage.turns'),
-			value: measurement(usage.turns),
-		},
-		{
+	const measurements = settingsStore.isCloudDeployment
+		? [
+				{
+					key: 'credits',
+					label: i18n.baseText('inbox.selfHealing.usage.credits'),
+					value: usage.credits,
+				},
+			]
+		: [
+				{
+					key: 'promptTokens',
+					label: i18n.baseText('inbox.selfHealing.usage.promptTokens'),
+					value: usage.promptTokens,
+				},
+				{
+					key: 'completionTokens',
+					label: i18n.baseText('inbox.selfHealing.usage.completionTokens'),
+					value: usage.completionTokens,
+				},
+				{
+					key: 'totalTokens',
+					label: i18n.baseText('inbox.selfHealing.usage.totalTokens'),
+					value: usage.totalTokens,
+				},
+			];
+	const rows = measurements.flatMap((row) =>
+		row.value === null
+			? []
+			: [{ ...row, value: row.value.toLocaleString(rootStore.defaultLocale) }],
+	);
+	if (usage.durationSeconds !== null) {
+		rows.push({
 			key: 'duration',
 			label: i18n.baseText('inbox.selfHealing.usage.duration'),
-			value:
-				usage.durationSeconds === null
-					? i18n.baseText('inbox.selfHealing.usage.unavailable')
-					: i18n.baseText('inbox.selfHealing.usage.durationValue', {
-							interpolate: {
-								minutes: String(Math.floor(usage.durationSeconds / 60)),
-								seconds: String(Math.floor(usage.durationSeconds % 60)),
-							},
-						}),
-		},
-		{
-			key: 'promptTokens',
-			label: i18n.baseText('inbox.selfHealing.usage.promptTokens'),
-			value: measurement(usage.promptTokens),
-		},
-		{
-			key: 'completionTokens',
-			label: i18n.baseText('inbox.selfHealing.usage.completionTokens'),
-			value: measurement(usage.completionTokens),
-		},
-		{
-			key: 'totalTokens',
-			label: i18n.baseText('inbox.selfHealing.usage.totalTokens'),
-			value: measurement(usage.totalTokens),
-		},
-	];
+			value: i18n.baseText('inbox.selfHealing.usage.durationValue', {
+				interpolate: {
+					minutes: String(Math.floor(usage.durationSeconds / 60)),
+					seconds: String(Math.floor(usage.durationSeconds % 60)),
+				},
+			}),
+		});
+	}
+	return rows;
 });
 </script>
 
@@ -135,11 +134,7 @@ const usageRows = computed(() => {
 					size="medium"
 					data-test-id="self-healing-execution-link"
 				>
-					{{
-						i18n.baseText('inbox.selfHealing.metadata.executionLink', {
-							interpolate: { id: detail.execution.id },
-						})
-					}}
+					{{ i18n.baseText('inbox.selfHealing.metadata.executionLink') }}
 				</N8nLink>
 				<N8nText
 					v-else
@@ -151,7 +146,7 @@ const usageRows = computed(() => {
 				</N8nText>
 			</div>
 		</N8nCard>
-		<N8nCard :class="$style.card" data-test-id="self-healing-usage">
+		<N8nCard v-if="usageRows.length" :class="$style.card" data-test-id="self-healing-usage">
 			<template #header>
 				<N8nText bold color="text-light" size="medium">{{
 					i18n.baseText('inbox.selfHealing.usage.title')

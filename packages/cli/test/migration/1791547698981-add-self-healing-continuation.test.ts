@@ -18,8 +18,6 @@ describe('Self-healing continuation migration', () => {
 	const projectId = randomUUID();
 	const workflowId = randomUUID();
 	const resultId = randomUUID();
-	const threadId = randomUUID();
-	const messageId = randomUUID();
 
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
@@ -53,17 +51,6 @@ describe('Self-healing continuation migration', () => {
 				executionId: 'retained-execution',
 				usage: '{}',
 			});
-			await insert(context, 'instance_ai_threads', {
-				id: threadId,
-				resourceId: reviewerId,
-				projectId,
-			});
-			await insert(context, 'instance_ai_messages', {
-				id: messageId,
-				threadId,
-				role: 'user',
-				content: '{"content":"Saved message"}',
-			});
 		});
 	});
 
@@ -94,20 +81,14 @@ describe('Self-healing continuation migration', () => {
 	}
 
 	async function expectSavedData(context: TestMigrationContext) {
-		for (const [table, id] of [
-			['self_healing_result', resultId],
-			['instance_ai_threads', threadId],
-			['instance_ai_messages', messageId],
-		]) {
-			const rows = await context.runQuery<unknown[]>(
-				`SELECT * FROM ${context.escape.tableName(table)} WHERE ${context.escape.columnName('id')} = :id`,
-				{ id },
-			);
-			expect(rows).toHaveLength(1);
-		}
+		const rows = await context.runQuery<unknown[]>(
+			`SELECT * FROM ${context.escape.tableName('self_healing_result')} WHERE ${context.escape.columnName('id')} = :resultId`,
+			{ resultId },
+		);
+		expect(rows).toHaveLength(1);
 	}
 
-	it('preserves reports and chat messages across migration, rollback, and reapplication', async () => {
+	it('preserves reports across migration, rollback, and reapplication', async () => {
 		await runSingleMigration(migration);
 		await withContext(expectSavedData);
 		await undoLastSingleMigration();
@@ -118,11 +99,6 @@ describe('Self-healing continuation migration', () => {
 		await withContext(async (context) => {
 			const table = context.escape.tableName;
 			const column = context.escape.columnName;
-			await context.runQuery(
-				`UPDATE ${table('instance_ai_threads')} SET ${column('selfHealingResultId')} = :resultId
-			 WHERE ${column('id')} = :threadId`,
-				{ resultId, threadId },
-			);
 			await context.runQuery(
 				`UPDATE ${table('self_healing_result')} SET ${column('continuedAt')} = CURRENT_TIMESTAMP,
 			 ${column('continuedById')} = :reviewerId WHERE ${column('id')} = :resultId`,
@@ -143,17 +119,6 @@ describe('Self-healing continuation migration', () => {
 			);
 			expect(result.continuedAt).not.toBeNull();
 			expect(result.continuedById).toBeNull();
-			await context.runQuery(
-				`DELETE FROM ${table('self_healing_result')} WHERE ${column('id')} = :resultId`,
-				{
-					resultId,
-				},
-			);
-			const [thread] = await context.runQuery<Array<{ selfHealingResultId: string | null }>>(
-				`SELECT ${column('selfHealingResultId')} FROM ${table('instance_ai_threads')} WHERE ${column('id')} = :threadId`,
-				{ threadId },
-			);
-			expect(thread.selfHealingResultId).toBeNull();
 		});
 	});
 });

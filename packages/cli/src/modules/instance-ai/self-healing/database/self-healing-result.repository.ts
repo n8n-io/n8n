@@ -160,22 +160,6 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		);
 	}
 
-	async lockForContinuation(
-		id: string,
-		scope: Pick<SelfHealingResult, 'workflowId' | 'projectId'>,
-		ctx: OperationContext,
-	) {
-		const manager = this.managerFor(ctx);
-		// A no-op write serializes continuations on both SQLite and PostgreSQL.
-		await manager
-			.createQueryBuilder()
-			.update(SelfHealingResult)
-			.set({ updatedAt: () => manager.connection.driver.escape('updatedAt') })
-			.where({ id, ...scope })
-			.execute();
-		return await this.getResult(id, scope, ctx);
-	}
-
 	async recordContinuation(id: string, userId: string, ctx: OperationContext) {
 		const result = await this.managerFor(ctx).update(
 			SelfHealingResult,
