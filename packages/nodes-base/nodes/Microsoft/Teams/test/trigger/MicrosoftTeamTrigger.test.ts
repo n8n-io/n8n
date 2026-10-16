@@ -460,6 +460,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				return result;
 			});
 			await vi.waitFor(() => expect(microsoftApiRequest.call).toHaveBeenCalledTimes(1));
+			await new Promise((resolve) => setImmediate(resolve));
 			expect(settled).toBe(false);
 
 			resolvePatch({});
@@ -579,7 +580,10 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
 				expect(res.status).toHaveBeenCalledWith(202);
 				expect(result).toEqual({ noWebhookResponse: true });
-				expect(ctx.logger.debug).toHaveBeenCalled();
+				expect(ctx.logger.debug).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: ignored lifecycle event',
+					expect.objectContaining({ lifecycleEvent }),
+				);
 			},
 		);
 
@@ -613,6 +617,28 @@ describe('Microsoft Teams Trigger Node', () => {
 				'Microsoft Teams Trigger: ignored lifecycle notifications during a manual test run',
 				expect.objectContaining({ workflowId: 'wf1' }),
 			);
+		});
+
+		it('emits the change notifications of a mixed batch during a manual test run', async () => {
+			const change1 = {
+				subscriptionId: 'sub1',
+				clientState: 'secret',
+				resourceData: { id: 'm1', message: 'first' },
+			};
+			const { ctx, res } = arrange({
+				value: [change1, lifecycleItem('reauthorizationRequired')],
+				mode: 'manual',
+			});
+
+			const result = await webhook(ctx);
+
+			expect(res.status).toHaveBeenCalledWith(202);
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				noWebhookResponse: true,
+				workflowData: [[{ json: change1.resourceData }]],
+			});
 		});
 	});
 });

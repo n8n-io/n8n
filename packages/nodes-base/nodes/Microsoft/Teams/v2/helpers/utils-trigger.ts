@@ -24,10 +24,10 @@ export function generateClientState(): string {
 	return randomBytes(32).toString('hex');
 }
 
-// Graph caps Teams subscriptions at 4320 minutes.
+// Graph caps Teams subscriptions at 4320 minutes. 4318 keeps a margin for clock skew.
 const SUBSCRIPTION_TTL_MINUTES = 4318;
 
-export function newSubscriptionExpiry(): string {
+function newSubscriptionExpiry(): string {
 	return new Date(Date.now() + SUBSCRIPTION_TTL_MINUTES * 60 * 1000).toISOString();
 }
 
@@ -107,6 +107,11 @@ export function isLifecycleNotification(item: unknown): item is LifecycleNotific
 	);
 }
 
+/**
+ * Runs after `webhook()` sent the 202. Never throws: a throw skips the static-data
+ * save and core would answer an ended response. Lists the subscriptions at most once
+ * per request.
+ */
 export async function handleLifecycleNotifications(
 	this: IWebhookFunctions,
 	items: LifecycleNotification[],
@@ -117,6 +122,8 @@ export async function handleLifecycleNotifications(
 		? webhookData.subscriptionIds
 		: [];
 	const meta = { workflowId: this.getWorkflow().id, nodeName: this.getNode().name };
+	const log = (level: 'debug' | 'warn', message: string, fields: Record<string, unknown>) =>
+		this.logger[level](`Microsoft Teams Trigger: ${message}`, { ...meta, ...fields });
 
 	// One listing per request; a rejected listing is never fetched again.
 	let ownList: Promise<SubscriptionResponse[]> | undefined;
@@ -126,6 +133,7 @@ export async function handleLifecycleNotifications(
 	const gone = new Set<string>();
 	const unresolved = new Set<string>();
 	const patched = new Set<string>();
+	const renewed = new Set<string>();
 	let needsReconcile = false;
 
 	for (const { subscriptionId, lifecycleEvent } of items) {
@@ -145,10 +153,9 @@ export async function handleLifecycleNotifications(
 					break;
 				}
 				if (!isOwn) {
-					this.logger.debug('Microsoft Teams Trigger: skipped renewal: unknown subscription', {
-						...meta,
-						subscriptionId: String(subscriptionId).slice(0, 64),
-						lifecycleEvent: String(lifecycleEvent).slice(0, 64),
+					log('debug', 'skipped renewal: unknown subscription', {
+						subscriptionId: subscriptionId.slice(0, 64),
+						lifecycleEvent: lifecycleEvent.slice(0, 64),
 					});
 					needsReconcile = true;
 					break;
@@ -162,23 +169,15 @@ export async function handleLifecycleNotifications(
 						buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id: subscriptionId }]),
 						{ expirationDateTime: newSubscriptionExpiry() },
 					);
-					this.logger.debug('Microsoft Teams Trigger: renewed subscription', {
-						...meta,
-						subscriptionId,
-						lifecycleEvent,
-					});
+					renewed.add(subscriptionId);
+					log('debug', 'renewed subscription', { subscriptionId, lifecycleEvent });
 				} catch (error) {
 					if (error instanceof NodeApiError && error.httpCode === '404') {
 						gone.add(subscriptionId);
 						needsReconcile = true;
-						this.logger.debug('Microsoft Teams Trigger: subscription gone, will re-create', {
-							...meta,
-							subscriptionId,
-							lifecycleEvent,
-						});
+						log('debug', 'subscription gone, will re-create', { subscriptionId, lifecycleEvent });
 					} else {
-						this.logger.warn('Microsoft Teams Trigger: failed to renew subscription', {
-							...meta,
+						log('warn', 'failed to renew subscription', {
 							subscriptionId,
 							lifecycleEvent,
 							error: ensureError(error).message,
@@ -192,25 +191,18 @@ export async function handleLifecycleNotifications(
 				needsReconcile = true;
 				break;
 			default:
-				this.logger.debug('Microsoft Teams Trigger: ignored lifecycle event', {
-					...meta,
-					subscriptionId: String(subscriptionId).slice(0, 64),
-					lifecycleEvent: String(lifecycleEvent).slice(0, 64),
+				log('debug', 'ignored lifecycle event', {
+					subscriptionId: subscriptionId.slice(0, 64),
+					lifecycleEvent: lifecycleEvent.slice(0, 64),
 				});
 		}
 	}
 
 	if (!needsReconcile) return;
+	// Type narrowing only: the subscriptions were created with this URL.
+	if (webhookUrl === undefined) return;
 
-	const affectedIds = [...gone, ...unresolved];
-	if (webhookUrl === undefined) {
-		this.logger.warn('Microsoft Teams Trigger: no webhook URL, skipped re-create', {
-			...meta,
-			subscriptionIds: affectedIds,
-		});
-		return;
-	}
-
+	const affectedIds = [...gone, ...unresolved].slice(0, 20).map((id) => id.slice(0, 64));
 	let subscriptions: SubscriptionResponse[];
 	let requiredResources: string[];
 	try {
@@ -221,34 +213,31 @@ export async function handleLifecycleNotifications(
 		);
 		requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
 	} catch (error) {
-		this.logger.warn(
-			'Microsoft Teams Trigger: failed to list subscriptions or resolve resources, skipped re-create',
-			{ ...meta, subscriptionIds: affectedIds, error: ensureError(error).message },
-		);
+		log('warn', 'failed to list subscriptions or resolve resources, skipped re-create', {
+			subscriptionIds: affectedIds,
+			error: ensureError(error).message,
+		});
 		return;
 	}
 
+	// An id renewed in this request stays live even when its listed expiry passed meanwhile.
 	const live = subscriptions.filter(
 		(subscription) =>
 			!gone.has(subscription.id) &&
-			new Date(subscription.expirationDateTime).getTime() > Date.now(),
+			(renewed.has(subscription.id) ||
+				new Date(subscription.expirationDateTime).getTime() > Date.now()),
 	);
 	const liveResources = new Set(live.map((subscription) => subscription.resource));
-	const secret = webhookData.webhookSecret;
-	const clientState = typeof secret === 'string' && secret.length > 0 ? secret : undefined;
+	const clientState =
+		typeof webhookData.webhookSecret === 'string' ? webhookData.webhookSecret : undefined;
 	const created: string[] = [];
 	for (const resource of requiredResources.filter((path) => !liveResources.has(path))) {
 		try {
 			const subscription = await createSubscription.call(this, webhookUrl, resource, clientState);
 			created.push(subscription.id);
-			this.logger.debug('Microsoft Teams Trigger: re-created subscription', {
-				...meta,
-				resource,
-				subscriptionId: subscription.id,
-			});
+			log('debug', 're-created subscription', { resource, subscriptionId: subscription.id });
 		} catch (error) {
-			this.logger.warn('Microsoft Teams Trigger: failed to re-create subscription', {
-				...meta,
+			log('warn', 'failed to re-create subscription', {
 				resource,
 				subscriptionIds: affectedIds,
 				error: ensureError(error).message,

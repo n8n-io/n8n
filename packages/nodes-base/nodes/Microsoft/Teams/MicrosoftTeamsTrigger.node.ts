@@ -501,7 +501,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		// Ack before any Graph call: a slow answer makes Graph re-deliver.
 		res.status(202).end();
 		if (this.getMode() === 'manual') {
-			// A test run would list by the production URL and write production ids into the test static data.
+			// A test run would list by the production URL and write production ids into the
+			// test static data.
 			this.logger.debug(
 				'Microsoft Teams Trigger: ignored lifecycle notifications during a manual test run',
 				{ workflowId: this.getWorkflow().id, nodeName: this.getNode().name },

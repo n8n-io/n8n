@@ -24,8 +24,8 @@ export interface ResourceData {
 
 export interface LifecycleNotification {
 	subscriptionId: string;
-	subscriptionExpirationDateTime: string;
-	tenantId: string;
+	subscriptionExpirationDateTime?: string;
+	tenantId?: string;
 	clientState?: string;
 	lifecycleEvent: string;
 }
