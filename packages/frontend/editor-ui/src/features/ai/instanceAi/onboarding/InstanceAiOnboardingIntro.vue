@@ -36,7 +36,7 @@ const i18n = useI18n();
 		:data-test-id="incomplete ? 'assistant-setup-incomplete' : 'assistant-setup-intro'"
 	>
 		<div :class="[$style.content, incomplete && $style.wide]">
-			<N8nIcon icon="sparkles" :size="32" :class="$style.heroIcon" />
+			<N8nIcon icon="n8n-assistant" :size="32" :class="$style.heroIcon" />
 			<N8nHeading tag="h1" size="2xlarge" bold :class="$style.title">
 				{{ i18n.baseText('instanceAi.onboarding.title') }}
 			</N8nHeading>
