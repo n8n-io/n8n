@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { INode, N8nOAuth2BrowserFlowMode } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, resolveOAuthClientMode } from 'n8n-workflow';
 
-import { SYSTEM_TRUSTED_SOURCE_ID } from '@/modules/inbound-auth-core/system-trusted-source.seeder';
+import { SYSTEM_TRUSTED_SOURCE_ID } from '@/modules/inbound-auth-core/constants';
 
 /**
  * Scopes advertised for per-workflow MCP trigger resources. Empty on purpose:
