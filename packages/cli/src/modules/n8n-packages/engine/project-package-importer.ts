@@ -227,6 +227,7 @@ export class ProjectPackageImporter {
 		let dataTablesCreated = 0;
 		let dataTablesUpdated = 0;
 		const seeded: string[] = [];
+		const incomplete: string[] = [];
 		const credentialsUpdated: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
@@ -251,6 +252,7 @@ export class ProjectPackageImporter {
 			dataTablesCreated += content.dataTablePlan.creations.length;
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
+			incomplete.push(...content.credentialResult.incomplete);
 			credentialsUpdated.push(...content.credentialResult.updated);
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
@@ -281,6 +283,7 @@ export class ProjectPackageImporter {
 				matched,
 				stubbed,
 				seeded,
+				incomplete,
 				updated: credentialsUpdated,
 			}),
 			dataTables: {

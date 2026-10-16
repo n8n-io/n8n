@@ -123,6 +123,7 @@ export interface CredentialBindResult {
 	matched: string[];
 	stubbed: string[];
 	seeded: string[];
+	incomplete: string[];
 }
 
 export interface CredentialApplyResult extends CredentialBindResult {

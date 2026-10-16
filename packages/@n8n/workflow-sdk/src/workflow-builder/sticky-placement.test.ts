@@ -5,7 +5,7 @@
  * at toJSON({ tidyUp: true }). These tests pin the placement contract for that case.
  */
 
-import type { NodeJSON, WorkflowJSON } from '../types/base';
+import type { NodeJSON, NodePorts, WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
 import { DEFAULT_NODE_SIZE, DEFAULT_STICKY_SIZE, STICKY_NODE_TYPE } from './constants';
 import { node, sticky, trigger } from './node-builders/node-builder';
@@ -127,6 +127,114 @@ describe('sticky note placement with tidyUp', () => {
 				expect(overlaps(a, b)).toBe(false);
 			}
 		}
+	});
+
+	it('keeps a sticky without anchors or an explicit position clear of workflow nodes', () => {
+		const { start, fetch, compute } = buildChain();
+		const builder = workflow('wf', 'Test')
+			.add(start.to(fetch).to(compute))
+			.add(sticky('## Workflow notes', { name: 'Workflow notes' }));
+
+		// CONTEXT-238: MCP regenerates node IDs before it serializes the workflow with tidyUp.
+		builder.regenerateNodeIds();
+		const json = builder.toJSON({ tidyUp: true });
+
+		const box = stickyBox(json, 'Workflow notes');
+		const overlappingNodes = [start, fetch, compute]
+			.filter(({ name }) => overlaps(box, nodeBox(json, name)))
+			.map(({ name }) => name);
+
+		expect(overlappingNodes).toEqual([]);
+	});
+
+	it('keeps free-floating notes clear of each other and a long column of nodes', () => {
+		const builder = workflow('wf', 'Test');
+		const obstacles = Array.from({ length: 51 }, (_, index) =>
+			node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: `Step ${index}`, position: [100, 300 + index * 192] },
+			}),
+		);
+		for (const obstacle of obstacles) {
+			builder.add(obstacle);
+		}
+		const json = builder
+			.add(sticky('## One', { name: 'One' }))
+			.add(sticky('## Two', { name: 'Two' }))
+			.toJSON({ tidyUp: true });
+
+		const boxes = ['One', 'Two'].map((name) => stickyBox(json, name));
+		expect(overlaps(boxes[0], boxes[1])).toBe(false);
+		for (const box of boxes) {
+			for (const { name } of obstacles) {
+				expect(overlaps(box, nodeBox(json, name))).toBe(false);
+			}
+		}
+	});
+
+	it.each([false, true])('keeps a sticky clear of a rootless cycle with tidyUp=%s', (tidyUp) => {
+		const { fetch, compute } = buildChain();
+		const json = workflow('wf', 'Test')
+			.add(fetch.to(compute))
+			.connect(compute, 0, fetch, 0)
+			.add(sticky('## Workflow notes', { name: 'Workflow notes' }))
+			.toJSON({ tidyUp });
+
+		const box = stickyBox(json, 'Workflow notes');
+		for (const { name } of [fetch, compute]) {
+			expect(overlaps(box, nodeBox(json, name))).toBe(false);
+		}
+	});
+
+	it.each([
+		{
+			dimension: 'height',
+			mainOutputs: 8,
+			nonMainInputs: 0,
+			configurable: false,
+			x: 100,
+			width: 96,
+			height: 288,
+		},
+		{
+			dimension: 'width',
+			mainOutputs: 1,
+			nonMainInputs: 8,
+			configurable: true,
+			x: 0,
+			width: 416,
+			height: 96,
+		},
+	])('uses the declared node $dimension to keep a sticky clear', (testCase) => {
+		const router = node({
+			type: 'n8n-nodes-base.switch',
+			version: 3.2,
+			config: { name: 'Router', position: [testCase.x, 300] },
+		});
+		const nodePorts = new Map<string, NodePorts>([
+			[
+				router.name,
+				{
+					mainInputs: 1,
+					mainOutputs: testCase.mainOutputs,
+					nonMainInputs: testCase.nonMainInputs,
+					configuration: false,
+					configurable: testCase.configurable,
+				},
+			],
+		]);
+		const json = workflow('wf', 'Test')
+			.add(router)
+			.add(sticky('## Workflow notes', { name: 'Workflow notes' }))
+			.toJSON({ tidyUp: true, nodePorts });
+
+		const routerBox = {
+			...nodeBox(json, router.name),
+			width: testCase.width,
+			height: testCase.height,
+		};
+		expect(overlaps(stickyBox(json, 'Workflow notes'), routerBox)).toBe(false);
 	});
 
 	it('keeps an explicit position and size the caller passed', () => {

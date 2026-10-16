@@ -269,6 +269,7 @@ describe('CredentialImporter', () => {
 				matched: [],
 				stubbed: ['missing-cred'],
 				seeded: [],
+				incomplete: [],
 			});
 		});
 
@@ -290,6 +291,7 @@ describe('CredentialImporter', () => {
 				matched: [],
 				stubbed: [],
 				seeded: [],
+				incomplete: [],
 			});
 		});
 
@@ -380,6 +382,7 @@ describe('CredentialImporter', () => {
 				matched: ['cred-source'],
 				stubbed: [],
 				seeded: [],
+				incomplete: [],
 			});
 		});
 
@@ -921,6 +924,7 @@ describe('CredentialImporter', () => {
 			const missingCredential = packageCredential({
 				id: 'missing-cred',
 				packageData: { token: '={{ $secrets.github.token }}' },
+				packageDataIsComplete: true,
 			});
 
 			const result = await importer.apply(
@@ -947,6 +951,7 @@ describe('CredentialImporter', () => {
 				matched: [],
 				stubbed: [],
 				seeded: ['missing-cred'],
+				incomplete: [],
 			});
 		});
 
@@ -1006,6 +1011,7 @@ describe('CredentialImporter', () => {
 			);
 			expect(result.stubbed).toEqual(['missing-cred']);
 			expect(result.seeded).toEqual([]);
+			expect(result.incomplete).toEqual([]);
 		});
 	});
 });

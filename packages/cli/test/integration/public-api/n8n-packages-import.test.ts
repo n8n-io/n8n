@@ -258,6 +258,7 @@ describe('POST /n8n-packages/import', () => {
 				matched: [],
 				stubbed: [],
 				seeded: [],
+				incomplete: [],
 				updated: [],
 			},
 			dataTables: {
@@ -531,6 +532,7 @@ describe('POST /n8n-packages/import', () => {
 			matched: [],
 			stubbed: ['missing-credential'],
 			seeded: [],
+			incomplete: [],
 			updated: [],
 		});
 		expect(response.body.bindings.credentials).toEqual({

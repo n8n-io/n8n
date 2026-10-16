@@ -677,6 +677,7 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 			matched: [],
 			stubbed: [],
 			seeded: [],
+			incomplete: [],
 			updated: [credential.id],
 		});
 		expect(result.bindings.credentials).toEqual({ [credential.id]: credential.id });
@@ -945,6 +946,7 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 			matched: [],
 			stubbed: [],
 			seeded: [],
+			incomplete: [],
 			updated: [credential.id],
 		});
 		expect(update).toHaveBeenCalledTimes(1);

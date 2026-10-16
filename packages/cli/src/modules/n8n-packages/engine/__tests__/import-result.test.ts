@@ -110,9 +110,10 @@ describe('reconcileCredentialSummary', () => {
 				matched: ['cred-1', 'cred-2'],
 				stubbed: [],
 				seeded: [],
+				incomplete: [],
 				updated: ['cred-1'],
 			}),
-		).toEqual({ matched: ['cred-2'], stubbed: [], seeded: [], updated: ['cred-1'] });
+		).toEqual({ matched: ['cred-2'], stubbed: [], seeded: [], incomplete: [], updated: ['cred-1'] });
 	});
 
 	it('unions the outcomes of every scope', () => {
@@ -122,12 +123,14 @@ describe('reconcileCredentialSummary', () => {
 				matched: ['cred-1', 'cred-1', 'cred-2', 'cred-2'],
 				stubbed: ['cred-3', 'cred-3'],
 				seeded: ['cred-4', 'cred-4'],
+				incomplete: ['cred-5', 'cred-5'],
 				updated: ['cred-1'],
 			}),
 		).toEqual({
 			matched: ['cred-2'],
 			stubbed: ['cred-3'],
 			seeded: ['cred-4'],
+			incomplete: ['cred-5'],
 			updated: ['cred-1'],
 		});
 	});
