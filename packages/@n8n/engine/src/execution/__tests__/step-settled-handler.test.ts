@@ -481,13 +481,49 @@ describe('StepSettledHandler', () => {
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 	});
 
-	it('reads the execution status off the steps again after every settlement', async () => {
+	it('reads the execution status off the steps again after a settlement that queues nothing', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{ countSettledSteps: vi.fn().mockResolvedValue(4) },
+		);
+		const { handler, executionStore } = makeHandler(stepStore);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it('reads the execution status off the steps again after queueing work for a waiting execution', async () => {
+		const stepStore = makeStepStore();
+		const { handler, executionStore } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ status: 'waiting' }),
+		});
+
+		await handler.handle(event);
+
+		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it('does not refresh the status of a running execution after queueing work', async () => {
 		const stepStore = makeStepStore();
 		const { handler, executionStore } = makeHandler(stepStore);
 
 		await handler.handle(event);
 
-		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
+	});
+
+	it('does not refresh the status of an execution it just finished', async () => {
+		const stepStore = makeStepStore(
+			{ id: 'step-m', nodeId: 'm' },
+			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+		);
+		const { handler, executionStore } = makeHandler(stepStore);
+
+		await handler.handle({ ...event, stepId: 'step-m' });
+
+		expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed');
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
 	});
 
 	it('plans successors for a waiting execution', async () => {

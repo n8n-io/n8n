@@ -46,9 +46,13 @@ export class StepSettledHandler {
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
-		const [step, execution] = await Promise.all([
+		// The failure probe is read beside the loads, so it costs no round trip of
+		// its own. A failure that lands after it still stops planning, because
+		// `createSteps` refuses to insert once a step has failed.
+		const [step, execution, failedElsewhere] = await Promise.all([
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),
+			this.stepStore.hasFailedSteps(event.executionId),
 		]);
 		const node = validateStepContext(step, execution);
 
@@ -67,7 +71,7 @@ export class StepSettledHandler {
 		if (step.status === 'completed' || step.status === 'skipped') {
 			// a failure elsewhere may still have its settled event queued behind
 			// this one, so it must end the execution here, before planning
-			if (await this.stepStore.hasFailedSteps(execution.id)) {
+			if (failedElsewhere) {
 				await this.failExecution(execution, step, node);
 				return;
 			}
@@ -77,10 +81,15 @@ export class StepSettledHandler {
 
 		// If we've queued steps, we know the execution isn't done yet, so we
 		// definitely don't need to mark it finished.
-		if (queued === 0) await this.finishExecutionIfDone(execution, step, node);
+		if (queued === 0) {
+			// A finished execution is no longer live, so the refresh would write nothing.
+			if (await this.finishExecutionIfDone(execution, step, node)) return;
+		} else if (execution.status === 'running') {
+			// The queued rows keep it runnable, so the refresh would write nothing.
+			// The settlement of those rows refreshes again.
+			return;
+		}
 
-		// If this call just finished the execution, it is no longer live, and the
-		// refresh leaves it alone.
 		await this.executionStore.refreshLiveStatus(execution.id);
 	}
 
@@ -170,12 +179,14 @@ export class StepSettledHandler {
 	 * `(node, iteration)`, only exist for reachable nodes, and never unsettle, so
 	 * the count comparison cannot pass early — in-flight events and unplanned
 	 * successors both leave steps outstanding.
+	 *
+	 * Returns whether this call recorded the outcome.
 	 */
 	private async finishExecutionIfDone(
 		execution: ExecutionRecord,
 		step: StepRecord,
 		node: GraphNode,
-	): Promise<void> {
+	): Promise<boolean> {
 		const reachable = this.reachableNodeIds(execution);
 		const loops = deriveLoops(execution.graph);
 		const terminalIterations = await loadTerminalIterations(
@@ -190,10 +201,10 @@ export class StepSettledHandler {
 		const expected = countExpectedSettledSteps(loops, reachable, terminalIterations);
 		// A loop still running owes an unknown number of steps, so there is nothing
 		// to compare against yet.
-		if (expected === undefined) return;
+		if (expected === undefined) return false;
 
 		const settled = await this.stepStore.countSettledSteps(execution.id);
-		if (settled < expected) return;
+		if (settled < expected) return false;
 
 		const failed = await this.stepStore.hasFailedSteps(execution.id);
 		const finished = await this.executionStore.finishExecution(
@@ -209,6 +220,7 @@ export class StepSettledHandler {
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
 		}
+		return finished !== null;
 	}
 
 	/**
