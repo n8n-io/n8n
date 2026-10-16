@@ -117,6 +117,7 @@ function renderModal({
 	| 'onRemove'
 	| 'outdated'
 	| 'onUseLatestVersion'
+	| 'getDefaultName'
 > = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -723,6 +724,23 @@ describe('AgentSkillModal', () => {
 			await fireEvent.click(getByTestId('agent-modal-back'));
 			expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
 			expect(getByTestId('agent-skill-picker')).toBeVisible();
+		});
+
+		it('asks for a default name where "available to" puts the new skill', async () => {
+			listAttachableSkills.mockResolvedValue([]);
+			const getDefaultName = vi.fn().mockResolvedValue('New skill 3');
+			const { getByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+				getDefaultName,
+			});
+
+			// "Create" from the "This agent" tab makes the skill available to this agent only.
+			await fireEvent.click(getByTestId('agent-skill-picker-create-this-agent'));
+			await fireEvent.click(getByTestId('agent-skill-add-manually'));
+
+			expect(getDefaultName).toHaveBeenCalledWith('agent');
+			await waitFor(() => expect(getTitleInput(document.body)).toHaveValue('New skill 3'));
 		});
 
 		it('opens a read-only preview from a row click and adds the skill from there', async () => {
