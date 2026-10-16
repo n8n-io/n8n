@@ -812,3 +812,8 @@ export {
 export { ScimConfigPatchDto } from './scim';
 export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
 export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';
+
+export { CreateAutomationMapDto } from './automation-maps/create-automation-map.dto';
+export { UpdateAutomationMapDto } from './automation-maps/update-automation-map.dto';
+export { ListAutomationMapsQueryDto } from './automation-maps/list-automation-maps-query.dto';
+export { PreviewAutomationMapScopeDto } from './automation-maps/preview-automation-map-scope.dto';
