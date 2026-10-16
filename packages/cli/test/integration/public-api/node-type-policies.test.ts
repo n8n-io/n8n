@@ -570,7 +570,7 @@ describe('node type policies public API policy documents', () => {
 
 describe('node type policies public API attachments', () => {
 	test.each(['instance', 'project'])(
-		'GET returns every attachment in evaluation order for %s scope',
+		'GET and PUT return every attachment in evaluation order for %s scope',
 		async (scope) => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const effectivePath =
@@ -596,15 +596,16 @@ describe('node type policies public API attachments', () => {
 				version: configured.body.version,
 			});
 			expect(replaced.statusCode).toBe(200);
+			expect(replaced.body).toEqual({
+				attachments: [attachments[3], attachments[1], attachments[2], attachments[0]],
+				version: configured.body.version + 1,
+			});
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			const read = await agent.get(path);
 
 			expect(read.statusCode).toBe(200);
-			expect(read.body).toEqual({
-				attachments: [attachments[3], attachments[1], attachments[2], attachments[0]],
-				version: replaced.body.version,
-			});
+			expect(read.body).toEqual(replaced.body);
 			expect(emitSpy.mock.calls.filter(([event]) => event.startsWith('node-type-policy-'))).toEqual(
 				[],
 			);
@@ -639,14 +640,30 @@ describe('node type policies public API attachments', () => {
 		});
 		expect(instance.statusCode).toBe(200);
 
-		const stale = await agent
-			.put(`/node-type-policies/scopes/${instance.body.scopeId}/attachments`)
-			.send({ attachments: [], version: 0 });
+		const path = `/node-type-policies/scopes/${instance.body.scopeId}/attachments`;
+		const read = await agent.get(path);
+		expect(read.statusCode).toBe(200);
+		const replaced = await agent.put(path).send({
+			attachments: read.body.attachments.map(({ policyId }: { policyId: string }) => ({
+				policyId,
+				priority: 5,
+				isFloor: false,
+			})),
+			version: read.body.version,
+		});
+		expect(replaced.statusCode).toBe(200);
+
+		const stale = await agent.put(path).send({ attachments: [], version: read.body.version });
 
 		expect(stale.statusCode).toBe(409);
-		const persisted = await agent.get('/node-type-policies/instance');
-		expect(persisted.body.rules).toEqual([DENY_RULE]);
-		expect(persisted.body.version).toBe(instance.body.version);
+		const persisted = await agent.get(path);
+		expect(persisted.statusCode).toBe(200);
+		expect(persisted.body).toEqual(replaced.body);
+		const updated = await agent
+			.put(path)
+			.send({ attachments: [], version: persisted.body.version });
+		expect(updated.statusCode).toBe(200);
+		expect(updated.body).toEqual({ attachments: [], version: persisted.body.version + 1 });
 	});
 
 	test.each([undefined, -1, 0.5])('PUT rejects invalid version %s with 400', async (version) => {

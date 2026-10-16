@@ -788,7 +788,7 @@ export class TypeAvailabilityPolicyService {
 			after: { attachments: result.after, version: result.versionAfter },
 		});
 
-		return { attachments: result.after, version: result.versionAfter };
+		return { attachments: orderedAttachments(result.after), version: result.versionAfter };
 	}
 
 	/**

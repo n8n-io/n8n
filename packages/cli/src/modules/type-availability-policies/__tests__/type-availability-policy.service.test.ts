@@ -897,6 +897,42 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(result.version).toBe(2);
 		});
 
+		it.each([
+			[KIND, null],
+			[KIND, 'project-1'],
+			[CREDENTIAL_TYPES_KIND, null],
+			[CREDENTIAL_TYPES_KIND, 'project-1'],
+		])('returns %s attachments for project %s in evaluation order', async (kind, projectId) => {
+			const scope = makeScope({ kind, projectId, version: 1 });
+			const stored: PolicyAttachment[] = [
+				{ policyId: 'normal-late', rules: [RULE], priority: 10, isFloor: false },
+				{ policyId: 'floor-late', rules: [], priority: 20, isFloor: true },
+				{ policyId: 'normal-early', rules: [], priority: -5, isFloor: false },
+				{ policyId: 'floor-early', rules: [RULE], priority: 0, isFloor: true },
+			];
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+			scopeRepository.findScopeById.mockResolvedValueOnce(
+				makeScope({ kind, projectId, version: 2 }),
+			);
+			policyRepository.findManyByIds.mockResolvedValue([]);
+			attachmentRepository.listAttachmentsForScope
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce(stored);
+
+			const result = await service.replaceAttachments(
+				kind,
+				scope.id,
+				stored.map(({ policyId, priority, isFloor }) => ({ policyId, priority, isFloor })),
+				scope.version,
+				'user-1',
+			);
+
+			expect(result).toEqual({
+				attachments: [stored[3], stored[1], stored[2], stored[0]],
+				version: 2,
+			});
+		});
+
 		it('rejects attaching a document with a delegate rule to a project scope, and writes nothing', async () => {
 			scopeRepository.findScopeByIdAndKind.mockResolvedValue(makeScope({ projectId: 'project-1' }));
 			policyRepository.findManyByIds.mockResolvedValue([
