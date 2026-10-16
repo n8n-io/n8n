@@ -1,4 +1,6 @@
 export { default as Archive } from './custom/brand/archive--outline-16.svg';
+export { default as ArrowBlockDown } from './custom/brand/arrow-block-down--outline-16.svg';
+export { default as ArrowBlockUp } from './custom/brand/arrow-block-up--outline-16.svg';
 export { default as ArrowDown } from './custom/brand/arrow-down--outline-16.svg';
 export { default as ArrowLeft } from './custom/brand/arrow-left--outline-16.svg';
 export { default as ArrowRight } from './custom/brand/arrow-right--outline-16.svg';
@@ -93,6 +95,7 @@ export { default as Hash } from './custom/brand/hash--outline-16.svg';
 export { default as History } from './custom/brand/history--outline-16.svg';
 export { default as Hourglass } from './custom/brand/hourglass--outline-16.svg';
 export { default as House } from './custom/brand/home--outline-16.svg';
+export { default as Inbox } from './custom/brand/inbox--outline-16.svg';
 export { default as Info } from './custom/brand/info-circle--outline-16.svg';
 export { default as Italic } from './custom/brand/text-italics--outline-16.svg';
 export { default as KeyRound } from './custom/brand/key--outline-16.svg';

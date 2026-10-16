@@ -64,6 +64,8 @@ import XCircleFilled from './custom/brand/x-circle--solid-16.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 import {
 	Archive as BrandArchive,
+	ArrowBlockDown as BrandArrowBlockDown,
+	ArrowBlockUp as BrandArrowBlockUp,
 	ArrowDown as BrandArrowDown,
 	ArrowLeft as BrandArrowLeft,
 	ArrowRight as BrandArrowRight,
@@ -158,6 +160,7 @@ import {
 	History as BrandHistory,
 	Hourglass as BrandHourglass,
 	House as BrandHouse,
+	Inbox as BrandInbox,
 	Info as BrandInfo,
 	Italic as BrandItalic,
 	KeyRound as BrandKeyRound,
@@ -284,7 +287,6 @@ import IconLucideHeading1 from '~icons/lucide/heading-1';
 import IconLucideHeading2 from '~icons/lucide/heading-2';
 import IconLucideHeading3 from '~icons/lucide/heading-3';
 import IconLucideImage from '~icons/lucide/image';
-import IconLucideInbox from '~icons/lucide/inbox';
 import IconLucideLanguages from '~icons/lucide/languages';
 import IconLucideLaptop from '~icons/lucide/laptop';
 import IconLucideLifeBuoy from '~icons/lucide/life-buoy';
@@ -467,7 +469,7 @@ export const deprecatedIconSet = {
 	home: BrandHouse,
 	hourglass: BrandHourglass,
 	image: IconLucideImage,
-	inbox: IconLucideInbox,
+	inbox: BrandInbox,
 	info: BrandInfo,
 	'info-circle': BrandInfo,
 	key: BrandKeyRound,
@@ -635,6 +637,8 @@ export const updatedIconSet = {
 	'align-right': IconLucideAlignRight,
 	archive: BrandArchive,
 	'archive-restore': IconLucideArchiveRestore,
+	'arrow-block-down': BrandArrowBlockDown,
+	'arrow-block-up': BrandArrowBlockUp,
 	'arrow-down': BrandArrowDown,
 	'arrow-left': BrandArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,
@@ -744,7 +748,7 @@ export const updatedIconSet = {
 	hourglass: BrandHourglass,
 	house: BrandHouse,
 	image: IconLucideImage,
-	inbox: IconLucideInbox,
+	inbox: BrandInbox,
 	info: BrandInfo,
 	italic: BrandItalic,
 	'key-round': BrandKeyRound,
