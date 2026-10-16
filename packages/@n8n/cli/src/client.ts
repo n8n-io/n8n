@@ -1,3 +1,4 @@
+// The root barrel pulls workflow types into the bundled client declarations.
 import type { ExportPackageRequestDto } from '@n8n/api-types/dist/dto/packages/export-package-request.dto';
 import type {
 	ImportPackageRequestDto,

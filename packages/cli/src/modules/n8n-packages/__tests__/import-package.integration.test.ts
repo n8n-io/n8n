@@ -2545,7 +2545,7 @@ describe('credential-missing-mode: create-with-values', () => {
 		const result = await importPackage({
 			user: owner,
 			credentialMissingMode: 'create-with-values',
-			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
 			packageBuffer: await buildImportPackageBuffer(
 				[
 					serializedWorkflow({
@@ -2632,7 +2632,7 @@ describe('credential-missing-mode: create-with-values', () => {
 			user: importer,
 			packageBuffer,
 			credentialMissingMode: 'create-with-values',
-			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
 			variableParentPolicy: undefined,
 		});
 
@@ -2657,7 +2657,7 @@ describe('credential-missing-mode: create-with-values', () => {
 			user: owner,
 			credentialMissingMode: 'create-with-values',
 			missingNodeTypeMode: 'import-anyway',
-			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
 			packageBuffer: await buildImportPackageBuffer(
 				[
 					serializedWorkflow({
@@ -2732,7 +2732,7 @@ describe('credential-missing-mode: create-with-values', () => {
 			user: owner,
 			credentialMissingMode: 'create-with-values',
 			conflictPolicy: ImportConflictPolicy.NewVersion,
-			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+			publishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 			packageBuffer: await buildImportPackageBuffer(
 				[
 					{
