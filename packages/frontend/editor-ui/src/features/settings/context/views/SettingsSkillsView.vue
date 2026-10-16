@@ -245,6 +245,28 @@ function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string
 	return skill.scope;
 }
 
+/**
+ * Why the scope of a saved skill cannot change, if it cannot. The backend refuses a move
+ * while an agent uses the skill, and a move needs the delete permission where the skill is,
+ * because it takes the skill out of that scope.
+ */
+function scopeLock(
+	detail: Pick<SkillListItem, 'usedByAgents' | 'canDelete'>,
+): Pick<AgentSkillModalData, 'scopeLockedReason'> {
+	if (detail.usedByAgents > 0) {
+		return {
+			scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.inUse', {
+				interpolate: { count: detail.usedByAgents },
+				adjustToNumber: detail.usedByAgents,
+			}),
+		};
+	}
+	if (!detail.canDelete) {
+		return { scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.noDelete') };
+	}
+	return {};
+}
+
 async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
@@ -254,22 +276,13 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
 			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
-		// The backend refuses to move a skill while an agent uses it.
-		const inUse = detail.usedByAgents > 0;
 		openModal({
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
 			scopeOptions: options,
 			initialScope: currentValue,
-			...(inUse
-				? {
-						scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.inUse', {
-							interpolate: { count: detail.usedByAgents },
-							adjustToNumber: detail.usedByAgents,
-						}),
-					}
-				: {}),
+			...scopeLock(detail),
 			existingSkillNames: [],
 			onConfirm: async ({ skill, scope }) =>
 				await onSave(
