@@ -14,7 +14,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUserHelpers } from '@/app/composables/useUserHelpers';
-import { VIEWS } from '@/app/constants';
+import { AUTHENTICATION_DOCS_URL, VIEWS } from '@/app/constants';
 
 import { useSSOStore } from '../sso.store';
 
@@ -67,7 +67,7 @@ onMounted(() => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.authentication')"
 			:description="i18n.baseText('settings.authentication.description')"
-			:show-docs-link="false"
+			:docs-url="AUTHENTICATION_DOCS_URL"
 		/>
 
 		<N8nSettingsSection

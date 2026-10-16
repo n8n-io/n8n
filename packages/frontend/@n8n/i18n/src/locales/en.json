@@ -5973,7 +5973,7 @@
 	"dataTable.cell.oversized": "Value too large to display",
 	"dataTable.cell.oversized.tooltip": "The value can be modified using the data table node",
 	"settings.authentication": "Authentication",
-	"settings.authentication.description": "Choose how people sign in to this instance.",
+	"settings.authentication.description": "Choose how people sign in to this instance: single sign-on (SSO) through your identity provider, or LDAP.",
 	"settings.authentication.back": "Back to Authentication",
 	"settings.authentication.methods.title": "Sign-in methods",
 	"settings.authentication.sso.title": "Single sign-on (SSO)",

@@ -29,6 +29,15 @@ describe('SettingsAuthenticationView', () => {
 		canUserAccessRouteByName.mockReset().mockReturnValue(true);
 	});
 
+	it('links to the docs section that covers SSO, LDAP and two-factor auth', () => {
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('settings-page-header-docs')).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/administer/manage-users-and-access/verify-user-identity',
+		);
+	});
+
 	it('lists SSO, LDAP and the two-factor requirement', () => {
 		const { getByTestId } = renderView();
 
