@@ -1,0 +1,21 @@
+packages/cli/test/temp-unhandled-debug.ts
+  ai_agent 1-16
+packages/cli/vitest.config.integration.ts
+  s_e5ac11fb92a0ab::t_c91d2bd4f80417 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fd2af3717f3c172b06755542ead8710159a13d04",
+  "prompts": {},
+  "sessions": {
+    "s_e5ac11fb92a0ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc385048-38ab-49d4-91fd-be1db22d34e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
