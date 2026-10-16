@@ -12,6 +12,8 @@ import { UnexpectedError } from '@n8n/errors';
 export type InboxSourceBoundary =
 	// Include only earlier timestamps.
 	| { mode: 'beforeTime'; createdAt: Date }
+	// Include equal timestamps for sources ordered after the cursor source.
+	| { mode: 'beforeOrAtTime'; createdAt: Date }
 	// Include earlier timestamps, or equal timestamps with a greater ID in database order.
 	| { mode: 'afterItem'; createdAt: Date; id: string };
 

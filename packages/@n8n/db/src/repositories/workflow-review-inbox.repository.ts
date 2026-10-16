@@ -14,6 +14,7 @@ import { TransactionRunner } from '../services/transaction';
 
 export type WorkflowReviewInboxBoundary =
 	| { mode: 'beforeTime'; createdAt: Date }
+	| { mode: 'beforeOrAtTime'; createdAt: Date }
 	| { mode: 'afterItem'; createdAt: Date; id: string };
 
 type InboxCategoryFilter = {
@@ -194,7 +195,10 @@ export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReview
 				{ createdAt: boundary.createdAt, id: boundary.id },
 			);
 		} else if (boundary) {
-			queryBuilder.andWhere('review.createdAt < :createdAt', { createdAt: boundary.createdAt });
+			const operator = boundary.mode === 'beforeOrAtTime' ? '<=' : '<';
+			queryBuilder.andWhere(`review.createdAt ${operator} :createdAt`, {
+				createdAt: boundary.createdAt,
+			});
 		}
 
 		queryBuilder.take(limit);

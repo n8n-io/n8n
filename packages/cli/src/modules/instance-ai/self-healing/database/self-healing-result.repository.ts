@@ -37,6 +37,7 @@ export type SelfHealingInboxAccess = {
 
 type SelfHealingInboxBoundary =
 	| { mode: 'beforeTime'; createdAt: Date }
+	| { mode: 'beforeOrAtTime'; createdAt: Date }
 	| { mode: 'afterItem'; createdAt: Date; id: string };
 
 type SelfHealingInboxQuery = {
@@ -100,7 +101,8 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				{ createdAt: boundary.createdAt, id: boundary.id },
 			);
 		} else if (boundary) {
-			query.andWhere('result.createdAt < :createdAt', { createdAt: boundary.createdAt });
+			const operator = boundary.mode === 'beforeOrAtTime' ? '<=' : '<';
+			query.andWhere(`result.createdAt ${operator} :createdAt`, { createdAt: boundary.createdAt });
 		}
 
 		const rows = await query.limit(limit).getMany();
