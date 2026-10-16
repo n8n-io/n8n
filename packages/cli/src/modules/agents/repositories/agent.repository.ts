@@ -478,7 +478,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
-		await this.update({ id: In(agentIds) }, { availableInMCP });
+		await this.update({ id: In(agentIds) }, { availableInMCP, revision: () => 'revision + 1' });
 	}
 
 	/**

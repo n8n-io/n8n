@@ -182,7 +182,13 @@ async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedIm
 		folders: [],
 		workflows: await parser.getWorkflows(reader),
 		options,
-		credentialRequest: { requirements: [], matchingMode: 'id-only', missingMode: 'must-preexist' },
+		credentialRequest: {
+			requirements: [],
+			matchingMode: 'id-only',
+			missingMode: 'must-preexist',
+			conflictPolicy: 'keep-existing',
+			updateScope: { projectIds: new Set([options.projectId!]) },
+		},
 		dataTableRequest: {
 			requirements: [],
 			packageDataTables: [],
@@ -305,8 +311,8 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(broadcaster.notify).toHaveBeenCalled();
 	expect(connect).not.toHaveBeenCalled();
 	expect(schedule).not.toHaveBeenCalled();
-	const setupCompleted = telemetry.track.mock.calls.filter(
-		([event]) => event === TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+	const setupCompleted = telemetry.track.mock.calls.filter(([event]) =>
+		Object.is(event, TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED),
 	);
 	expect(setupCompleted).toHaveLength(2);
 	for (const agent of [saved, child]) {
