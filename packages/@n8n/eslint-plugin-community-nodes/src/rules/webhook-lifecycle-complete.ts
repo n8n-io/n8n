@@ -31,7 +31,8 @@ function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string)
 	return (
 		property.value.type === AST_NODE_TYPES.FunctionExpression ||
 		property.value.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-		property.value.type === AST_NODE_TYPES.Identifier
+		(property.value.type === AST_NODE_TYPES.Identifier && property.value.name !== 'undefined') ||
+		property.value.type === AST_NODE_TYPES.MemberExpression
 	);
 }
 

@@ -85,6 +85,19 @@ async function deleteFn(this: IHookFunctions): Promise<boolean> { return true; }
 			}),
 		},
 		{
+			name: 'lifecycle methods referenced from object properties',
+			code: createTriggerNode({
+				preamble: 'const GenericFunctions = { createWebhook: async () => true };',
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						create: GenericFunctions.createWebhook,
+						async delete() { return true; },
+					},
+				}`,
+			}),
+		},
+		{
 			name: 'non-trigger node without webhookMethods',
 			code: createTriggerNode({
 				group: 'transform',
@@ -196,6 +209,24 @@ export class RegularClass {
 					default: {
 						async checkExists() { return true; },
 						async create() { return true; },
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'trigger node with undefined delete method',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						async create() { return true; },
+						delete: undefined,
 					},
 				}`,
 			}),
