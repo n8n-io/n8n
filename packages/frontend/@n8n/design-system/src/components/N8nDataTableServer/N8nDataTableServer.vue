@@ -611,11 +611,10 @@ const table = useVueTable({
 
 .table-scroll {
 	max-height: 100%;
+	// No reserved scrollbar gutter: the header and the row dividers run the full width, and a
+	// scrollbar shows only while the rows overflow.
 	overflow: auto;
-	scrollbar-gutter: stable;
 	position: relative;
-	// The gutter stays reserved when nothing scrolls. The row colour keeps it from showing as a strip.
-	background-color: var(--color--background--light-3);
 }
 
 th.loading-row {
