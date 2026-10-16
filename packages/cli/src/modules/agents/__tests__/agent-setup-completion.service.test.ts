@@ -80,6 +80,7 @@ describe('AgentSetupCompletionService', () => {
 			});
 			const emit = await service.recordIfSetupComplete(
 				agent,
+				storedSkillRefs(agent),
 				projectId,
 				credentialProvider,
 				user,
@@ -89,6 +90,7 @@ describe('AgentSetupCompletionService', () => {
 			expect(agent.setupCompletedAt).toBeInstanceOf(Date);
 			expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
 				agent,
+				storedSkillRefs(agent),
 				projectId,
 				tasks,
 				credentialProvider,
