@@ -156,6 +156,13 @@ const referencesError = computed(() => {
 	if (referencesCountError.value) return referencesCountError.value;
 	if (referencesTotalError.value) return referencesTotalError.value;
 	if (referencesValid.value) return '';
+	// Name the file, so the user knows which reference blocks the save.
+	const [first] = invalidReferences.value;
+	if (first && !first.content.trim()) {
+		return i18n.baseText('agents.builder.skills.references.emptyFile', {
+			interpolate: { path: first.path },
+		});
+	}
 	return i18n.baseText('agents.builder.skills.references.invalidSummary');
 });
 
@@ -315,11 +322,18 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 		</template>
 
 		<template v-else-if="isSkillFileSelected">
-			<slot name="fields-start" />
-			<N8nText v-if="referencesError" size="small" color="danger">{{ referencesError }}</N8nText>
+			<!-- A form-level notice, above the fields, so it does not read as an error of the first one. -->
+			<N8nText
+				v-if="referencesError"
+				size="small"
+				color="danger"
+				data-testid="agent-skill-references-error"
+				>{{ referencesError }}</N8nText
+			>
 			<N8nText v-if="props.errors?.references && !referencesError" size="small" color="danger">{{
 				props.errors.references
 			}}</N8nText>
+			<slot name="fields-start" />
 
 			<div :class="$style.field">
 				<N8nFormInput

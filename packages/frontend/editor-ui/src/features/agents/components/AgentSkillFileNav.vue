@@ -13,10 +13,13 @@ const props = withDefaults(
 		selectedPath: string;
 		addReferenceDisabled?: boolean;
 		readOnly?: boolean;
+		/** Reference files that block a save, marked so the user can find them. */
+		invalidPaths?: string[];
 	}>(),
 	{
 		addReferenceDisabled: false,
 		readOnly: false,
+		invalidPaths: () => [],
 	},
 );
 
@@ -28,6 +31,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const references = computed(() => props.skill.references ?? []);
+
+function isInvalid(path: string) {
+	return props.invalidPaths.includes(path);
+}
 
 function isSelected(path: string) {
 	return props.selectedPath === path;
@@ -94,7 +101,14 @@ function testIdForPath(path: string) {
 					:data-testid="testIdForPath(reference.path)"
 					@click="emit('select', reference.path)"
 				>
-					<N8nIcon icon="file-text" :size="16" :class="$style.icon" />
+					<N8nIcon
+						:icon="isInvalid(reference.path) ? 'triangle-alert' : 'file-text'"
+						:size="16"
+						:class="[$style.icon, isInvalid(reference.path) && $style.invalidIcon]"
+						:data-testid="
+							isInvalid(reference.path) ? `${testIdForPath(reference.path)}-invalid` : undefined
+						"
+					/>
 					<N8nText size="small" :class="$style.path">{{ reference.path }}</N8nText>
 				</button>
 				<N8nButton
@@ -208,6 +222,10 @@ function testIdForPath(path: string) {
 	margin-left: auto;
 	margin-right: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.invalidIcon {
+	color: var(--color--danger);
 }
 
 .selected {

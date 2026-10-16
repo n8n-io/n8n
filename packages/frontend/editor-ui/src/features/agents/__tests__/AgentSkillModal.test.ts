@@ -456,6 +456,51 @@ describe('AgentSkillModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
+	it('opens the empty reference on a blocked save, marks it, and names it on SKILL.md', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Research');
+		await fireEvent.update(
+			getByTestId('agent-skill-description-input').querySelector('input')!,
+			'Use for research',
+		);
+		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
+		await fireEvent.click(getByTestId('agent-skill-add-reference'));
+		await fireEvent.click(getByTestId('agent-skill-file-nav-item'));
+		expect(queryByTestId('agent-skill-reference-editor')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		// The save is blocked and the modal opens the file that blocks it.
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(getByTestId('agent-skill-reference-editor')).toBeInTheDocument();
+		expect(
+			getByTestId('agent-skill-reference-nav-item-references-reference-md-invalid'),
+		).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('agent-skill-file-nav-item'));
+		// The notice names the empty file instead of the general summary.
+		expect(getByTestId('agent-skill-references-error')).toHaveTextContent(
+			'agents.builder.skills.references.emptyFile',
+		);
+	});
+
+	it('opens SKILL.md on a blocked save when its fields are missing and a reference is open', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({ onConfirm });
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Research');
+		await fireEvent.click(getByTestId('agent-skill-add-reference'));
+		await fireEvent.update(getByTestId('agent-skill-reference-editor'), '# Guide');
+
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(queryByTestId('agent-skill-reference-editor')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-description-input')).toBeInTheDocument();
+	});
+
 	it('focuses the name when a new skill is started by hand', async () => {
 		const { getByTestId } = renderModal();
 
