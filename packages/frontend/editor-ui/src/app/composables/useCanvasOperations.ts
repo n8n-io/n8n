@@ -172,7 +172,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
@@ -271,7 +270,6 @@ export function useCanvasOperations() {
 
 	const i18n = useI18n();
 	const toast = useToast();
-	const { warnAboutRestrictedNodes } = useRestrictedNodeWarning();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
 	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
@@ -1276,9 +1274,6 @@ export function useCanvasOperations() {
 		if (!options.keepPristine) {
 			uiStore.markStateDirty();
 		}
-
-		// Paste, import, templates and the AI builder all add nodes here, so one check covers them.
-		warnAboutRestrictedNodes(addedNodes.map((node) => node.type));
 
 		return addedNodes;
 	}

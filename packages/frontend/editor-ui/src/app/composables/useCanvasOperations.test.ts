@@ -1790,46 +1790,6 @@ describe('useCanvasOperations', () => {
 				parameters: {},
 			});
 		});
-
-		it('warns when an added node type is restricted', async () => {
-			const nodeTypesStore = useNodeTypesStore();
-			const nodeTypeName = 'n8n-nodes-base.slack';
-			nodeTypesStore.nodeTypes = {
-				[nodeTypeName]: {
-					1: mockNodeTypeDescription({ name: nodeTypeName, displayName: 'Slack' }),
-				},
-			};
-			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
-				(name) => ({ name, available: name !== nodeTypeName, scope: 'instance' }),
-			);
-			const toast = useToast();
-			const nodes = [mockNode({ name: 'Node 1', type: nodeTypeName, position: [32, 32] })];
-
-			const { addNodes } = useCanvasOperations();
-			await addNodes(nodes, {});
-
-			expect(toast.showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'warning', title: 'This node is restricted' }),
-			);
-		});
-
-		it('does not warn when the added node type is available', async () => {
-			const nodeTypesStore = useNodeTypesStore();
-			const nodeTypeName = 'type';
-			nodeTypesStore.nodeTypes = {
-				[nodeTypeName]: { 1: mockNodeTypeDescription({ name: nodeTypeName }) },
-			};
-			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
-				(name) => ({ name, available: true }),
-			);
-			const toast = useToast();
-			const nodes = [mockNode({ name: 'Node 1', type: nodeTypeName, position: [32, 32] })];
-
-			const { addNodes } = useCanvasOperations();
-			await addNodes(nodes, {});
-
-			expect(toast.showMessage).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('addNodesAndConnections', () => {
@@ -7375,34 +7335,6 @@ describe('useCanvasOperations', () => {
 				expect(toast.showError).not.toHaveBeenCalled();
 				expect(workflowDocumentStoreInstance.addTags).toHaveBeenCalledWith(['new-1']);
 			});
-		});
-
-		it('warns about a restricted node when pasting but still adds it', async () => {
-			const toast = useToast();
-			const nodeTypesStore = useNodeTypesStore();
-			nodeTypesStore.nodeTypes = {
-				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
-			};
-			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
-				(name) => ({ name, available: name !== SET_NODE_TYPE, scope: 'instance' }),
-			);
-
-			const nodes = [createTestNode({ name: 'Set', type: SET_NODE_TYPE })];
-			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
-				(importedNodes, connections) =>
-					createTestWorkflowObject({ nodes: importedNodes, connections }),
-			);
-
-			const canvasOperations = useCanvasOperations();
-			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
-
-			expect(result.nodes?.map((node) => node.type)).toContain(SET_NODE_TYPE);
-			expect(workflowDocumentStoreInstance.addNode).toHaveBeenCalledWith(
-				expect.objectContaining({ type: SET_NODE_TYPE }),
-			);
-			expect(toast.showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'warning', title: 'This node is restricted' }),
-			);
 		});
 	});
 

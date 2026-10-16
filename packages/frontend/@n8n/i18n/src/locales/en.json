@@ -2550,8 +2550,6 @@
 	"typeAvailabilityPolicies.restrictedNode.agentTool.instance": "{nodeType} is restricted on this instance. The agent can't use it.",
 	"typeAvailabilityPolicies.restrictedNode.agentTool.project": "{nodeType} is restricted in this project. The agent can't use it.",
 	"typeAvailabilityPolicies.restrictedNode.agentTool.generic": "{nodeType} is restricted. The agent can't use it.",
-	"typeAvailabilityPolicies.restrictedNodes.title": "Some nodes are restricted",
-	"typeAvailabilityPolicies.restrictedNodes.description": "An administrator blocked {nodeTypes}. Contact an instance admin or replace these nodes to continue.",
 	"typeAvailabilityPolicies.restrictedCredentialType.title": "This credential type is restricted",
 	"typeAvailabilityPolicies.restrictedCredentialType.popover.description": "An administrator blocked this credential type. Workflows can't use credentials of this type until an instance administrator grants access.",
 	"typeAvailabilityPolicies.contactAdmin.title": "Instance admins",

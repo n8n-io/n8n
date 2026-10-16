@@ -47,12 +47,11 @@ answer for the active project. The shell reads restriction through these or thro
 
 Pick the UX by what the surface does with the type:
 
-| Surface                                  | Pattern                                                                               |
-| ---------------------------------------- | ------------------------------------------------------------------------------------- |
-| A picker or a list of types              | Sort restricted rows last and show `RestrictedNodePopover` on them                    |
-| A node or tool that is already placed    | The canvas lock badge, `RestrictedNodePanel` or `RestrictedToolCallout`               |
-| A flow that closes before it can explain | The shell's `useRestrictedNodeWarning` toast                                          |
-| New nodes on the canvas                  | Nothing: `addNodes` in the shell warns on paste, import, templates and the AI builder |
+| Surface                                  | Pattern                                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------------- |
+| A picker or a list of types              | Sort restricted rows last and show `RestrictedNodePopover` on them      |
+| A node or tool that is already placed    | The canvas lock badge, `RestrictedNodePanel` or `RestrictedToolCallout` |
+| A flow that closes before it can explain | The shell's `useRestrictedNodeWarning` toast                            |
 
 Tests stub the store through `mockRestrictedNodeTypes` and `mockRestrictedCredentialTypes` from the module's `__tests__/mocks`.
 
