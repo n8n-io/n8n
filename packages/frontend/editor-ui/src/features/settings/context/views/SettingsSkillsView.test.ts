@@ -376,6 +376,22 @@ describe('SettingsSkillsView', () => {
 			);
 		});
 
+		it('locks the scope when the user may edit but not delete the skill', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail({ canEdit: true, canDelete: false }));
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+			await new Promise(process.nextTick);
+
+			expect(lastModalData().readOnly).toBe(false);
+			expect(lastModalData().scopeLockedReason).toBe(
+				'You need permission to delete this skill to move it, because moving removes it from where it is now.',
+			);
+		});
+
 		it('moves an unused skill to the scope the user picks', async () => {
 			skillsStore.skills = [skill()];
 			skillsStore.count = 1;

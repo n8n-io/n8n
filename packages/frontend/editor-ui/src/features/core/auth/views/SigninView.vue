@@ -14,6 +14,7 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { getSsoRedirectPath } from '@/app/utils/urlUtils';
 
 import type { IFormBoxConfig } from '@/Interface';
 import {
@@ -178,9 +179,7 @@ const onSsoLogin = async () => {
 	notificationsStore.setNotificationsSuppressed(false);
 	ssoLoading.value = true;
 	try {
-		window.location.href = await ssoStore.getSsoLoginUrl(
-			typeof route.query?.redirect === 'string' ? route.query.redirect : '',
-		);
+		window.location.href = await ssoStore.getSsoLoginUrl(getSsoRedirectPath(route.query?.redirect));
 	} catch (error) {
 		ssoLoading.value = false;
 		toast.showError(error, locale.baseText('auth.signin.error'));

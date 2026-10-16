@@ -433,4 +433,45 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		expect(getSharedResponseSchemas().size).toBe(0);
 	});
+
+	it('documents Idempotency-Key on a non-idempotent POST', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(201)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+		const parameters = operation.config.parameters ?? [];
+
+		expect(parameters).toEqual(
+			expect.arrayContaining([
+				{
+					$ref: '../../../../shared/spec/parameters/idempotencyKey.yml',
+				},
+			]),
+		);
+		expect(operation.config.responses[409]).toEqual({
+			$ref: '../../../../shared/spec/responses/conflict.yml',
+		});
+		expect(operation.config.responses[422]).toEqual({
+			$ref: '../../../../shared/spec/responses/unprocessableEntity.yml',
+		});
+	});
+
+	it('omits Idempotency-Key on an idempotent POST', () => {
+		class WidgetsPublicController {
+			@Post('/:widgetId/activate')
+			@ApiResponse(200)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.parameters).toBeUndefined();
+		expect(operation.config.responses[409]).toBeUndefined();
+		expect(operation.config.responses[422]).toBeUndefined();
+	});
 });

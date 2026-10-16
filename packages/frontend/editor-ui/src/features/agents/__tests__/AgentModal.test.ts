@@ -189,6 +189,19 @@ describe('AgentModal', () => {
 		expect(document.activeElement).toBe(wrapper.get('[data-test-id="first-body-field"]').element);
 	});
 
+	it('focuses a marked container instead of the field inside it', async () => {
+		const wrapper = mountModal(
+			{},
+			{
+				default:
+					'<div data-test-id="marked" tabindex="-1" data-agent-modal-autofocus><input /></div>',
+			},
+		);
+		await flushPromises();
+
+		expect(document.activeElement).toBe(wrapper.get('[data-test-id="marked"]').element);
+	});
+
 	it('uses the dialog fallback focus when the body has no interactive control', async () => {
 		const wrapper = mountModal(
 			{ editableTitle: true },

@@ -369,7 +369,7 @@ describe('AgentChannelTeamsManagedApp', () => {
 		});
 
 		expect(getByTestId('teams-managed-app-bot')).toHaveTextContent(
-			'agents.channels.teams.settings.linkedBot',
+			'agents.channels.teams.settings.linkedBot agents.channels.teams.settings.findInAzure',
 		);
 		expect(getByTestId('teams-managed-app-bot-link')).toHaveAttribute(
 			'href',

@@ -39,6 +39,7 @@ import type {
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
+import type { RedactionChannels } from './redaction-channels';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
@@ -2406,6 +2407,8 @@ export interface ExecuteWorkflowData extends DynamicCredentialsUsage {
 	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
+	/** Redaction channels the sub-execution reports to its caller, so the caller's execution redacts the copy of its output. Absent when no channel is redacted. */
+	subWorkflowRedaction?: RedactionChannels;
 }
 
 /**

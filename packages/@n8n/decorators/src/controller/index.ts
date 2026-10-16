@@ -13,6 +13,7 @@ export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
 export { Licensed } from './licensed';
 export { RequiresUserQuota } from './requires-user-quota';
+export { RateLimitAccess } from './rate-limit-access';
 export { Deprecated } from './deprecated';
 export { GlobalScope, ProjectScope } from './scoped';
 export type {
@@ -28,6 +29,7 @@ export type {
 	ErrorResponse,
 	HandlerName,
 	Method,
+	RateLimitAccessName,
 	MultipartUploadLimits,
 	RequestBodyMedia,
 	RequestBodyMediaOptions,

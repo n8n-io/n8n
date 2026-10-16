@@ -28,7 +28,7 @@ import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { findIntroducedNameClashes, findNameClashGroups } from './skills/skill-names';
-import { SkillService } from './skills/skill.service';
+import { SkillService, withTrimmedName } from './skills/skill.service';
 import {
 	SkillsTelemetry,
 	type SkillTelemetryMethod,
@@ -144,10 +144,13 @@ export class AgentSkillsService {
 		);
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
-		// With the hub off, skills keep `allowedTools` as on master. Hub skills ignore it.
+		// With the hub off, skills keep `allowedTools` as on master. Hub skills ignore it, and
+		// get the trimmed name the hub stores, so the answer and its hash match the saved skill.
 		const bodies = skills.map((skill) => {
 			const validated = this.validateSkill(skill);
-			return this.agentSkillRefs.usesSkillsHub ? toStoredSkill(validated) : validated;
+			return this.agentSkillRefs.usesSkillsHub
+				? withTrimmedName(toStoredSkill(validated))
+				: validated;
 		});
 		if (this.agentSkillRefs.usesSkillsHub) {
 			await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
