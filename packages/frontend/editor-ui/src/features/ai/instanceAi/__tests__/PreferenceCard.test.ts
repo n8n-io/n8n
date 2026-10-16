@@ -227,7 +227,7 @@ describe('PreferenceCard', () => {
 			// Only the chevron icon stays. No bookmark, no warning.
 			const icons = header.querySelectorAll('[data-icon]');
 			expect(Array.from(icons).map((icon) => icon.getAttribute('data-icon'))).toEqual([
-				'chevron-right',
+				'chevron-right-12',
 			]);
 		});
 
