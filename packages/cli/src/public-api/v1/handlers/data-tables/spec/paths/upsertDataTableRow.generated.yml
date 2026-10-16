@@ -5,6 +5,7 @@ summary: Upsert a row in a data table
 description: Update an existing row, or insert a new one if no row matches the filter conditions.
 x-required-scope: dataTableRow:upsert
 parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: string
       format: nanoid
@@ -174,5 +175,9 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

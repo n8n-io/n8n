@@ -731,6 +731,32 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeOn(expr, visits(fits + 2))).toEqual({ handled: false });
 			expect(nativeOn(expr, visits(fits))).toEqual({ handled: true, value: false });
 		});
+
+		// `$('hasOwnProperty')` resolves through a plain object lookup on the
+		// host and hands back Object.prototype.hasOwnProperty, not item data.
+		test('a node reference call that returns no item shape hands off to the engine', () => {
+			const { hasOwnProperty } = Object.prototype;
+			const prototypeNode = {
+				$: () => ({ all: () => hasOwnProperty, first: () => hasOwnProperty }),
+			};
+			expect(nativeOn("{{ $('hasOwnProperty').all().name }}", prototypeNode)).toEqual({
+				handled: false,
+			});
+			expect(nativeOn("{{ $('hasOwnProperty').first() }}", prototypeNode)).toEqual({
+				handled: false,
+			});
+			const item = { json: { a: 1 } };
+			const node = { $: () => ({ all: () => [item], first: () => item, last: () => undefined }) };
+			expect(nativeOn("{{ $('Source').all().length }}", node)).toEqual({ handled: true, value: 1 });
+			expect(nativeOn("{{ $('Source').first().json.a }}", node)).toEqual({
+				handled: true,
+				value: 1,
+			});
+			expect(nativeOn("{{ $('Source').last() }}", node)).toEqual({
+				handled: true,
+				value: undefined,
+			});
+		});
 	});
 
 	// extendSyntax rewrites calls to extension-named methods into extend()

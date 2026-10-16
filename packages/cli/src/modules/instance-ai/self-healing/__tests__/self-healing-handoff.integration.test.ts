@@ -24,6 +24,8 @@ import { InstanceAiThreadRepository } from '../../repositories/instance-ai-threa
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
 
+vi.mock('../../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
+
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
 const assistant = mockInstance(InstanceAiService);
@@ -39,7 +41,7 @@ const settings = mockInstance(InstanceAiSettingsService, {
 const testServer = setupTestServer({
 	modules: ['instance-ai'],
 	endpointGroups: ['instance-ai'],
-	setupTimeout: 30_000,
+	setupTimeout: 60_000,
 });
 
 beforeAll(async () => {
@@ -86,7 +88,7 @@ async function savedResult() {
 	return { backgroundUser, workflow, ownerProject, execution, result, url };
 }
 
-it('continues a saved report in a new private chat owned by the current editor', async () => {
+it('uses normal chat APIs to continue a saved report privately without changing its review state', async () => {
 	testServer.license.enable('feat:sharing');
 	const { backgroundUser, workflow, ownerProject, execution, result, url } = await savedResult();
 	const editor = await createUser();

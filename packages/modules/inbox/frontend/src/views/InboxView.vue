@@ -15,6 +15,7 @@ import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
+import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
 
 const store = useInboxStore();
 const settingsStore = useSettingsStore();
@@ -68,6 +69,11 @@ function isSelectedReview(id: string) {
 	return selected?.type === 'workflow_review' && selected.id === id;
 }
 
+function isSelectedResult(id: string) {
+	const selected = selectionFromRoute(router.currentRoute.value);
+	return selected?.type === 'self_healing_result' && selected.id === id;
+}
+
 // Reset on entry. A layout-swap copy can unmount after the next view has mounted.
 store.reset();
 store.activeTab = route.query.state === 'closed' ? 'closed' : 'open';
@@ -92,6 +98,7 @@ function onSelect(item: InboxItem) {
 function onClearSelection() {
 	if (!isOnInbox()) return;
 	const query = { ...route.query };
+	for (const key of ['projectId', 'workflowId']) delete query[key];
 	void router.replace({ name: INBOX_VIEW, query });
 }
 function onActiveTabChange(tab: 'open' | 'closed') {
@@ -183,6 +190,17 @@ onBeforeUnmount(() => {
 				>
 					<InboxEmptyState />
 				</WorkflowReviewDetail>
+				<SelfHealingResultDetail
+					v-else-if="
+						selection?.type === 'self_healing_result' &&
+						!store.disabledSources.includes(selection.type)
+					"
+					:selection="selection"
+					:tab="detailTab"
+					:on-item-change="onItemChange"
+					:is-selected="isSelectedResult"
+					@update:tab="onDetailTabChange"
+				/>
 				<template v-else>
 					<div :class="$style.columnTitle" />
 					<div :class="$style.mainBody">

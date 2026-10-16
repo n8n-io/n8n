@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
-import type { SlotWorkflowDiffProps } from '@n8n/frontend-module-sdk';
+import type { SlotWorkflowDiffProps, SlotWorkflowDiffSnapshot } from '@n8n/frontend-module-sdk';
 import { deepCopy } from 'n8n-workflow';
 import { computed, markRaw } from 'vue';
 
@@ -10,7 +9,10 @@ import WorkflowDiffView from './WorkflowDiffView.vue';
 
 const props = defineProps<SlotWorkflowDiffProps>();
 
-function toWorkflow(snapshot: WorkflowReviewVersionSnapshot | undefined): IWorkflowDb | undefined {
+function toWorkflow(
+	snapshot: SlotWorkflowDiffSnapshot | undefined,
+	side: 'source' | 'target',
+): IWorkflowDb | undefined {
 	if (!snapshot) return undefined;
 	return markRaw(
 		deepCopy({
@@ -18,9 +20,10 @@ function toWorkflow(snapshot: WorkflowReviewVersionSnapshot | undefined): IWorkf
 			name: props.workflowName,
 			active: false,
 			isArchived: false,
-			createdAt: snapshot.createdAt,
-			updatedAt: snapshot.createdAt,
-			versionId: snapshot.versionId,
+			createdAt: snapshot.createdAt ?? '',
+			updatedAt: snapshot.createdAt ?? '',
+			// Graph-only snapshots still need separate canvas document identities.
+			versionId: snapshot.versionId ?? side,
 			activeVersionId: null,
 			nodes: snapshot.nodes,
 			connections: snapshot.connections,
@@ -29,8 +32,8 @@ function toWorkflow(snapshot: WorkflowReviewVersionSnapshot | undefined): IWorkf
 	);
 }
 
-const sourceWorkflow = computed(() => toWorkflow(props.sourceSnapshot));
-const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot));
+const sourceWorkflow = computed(() => toWorkflow(props.sourceSnapshot, 'source'));
+const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot, 'target'));
 </script>
 
 <template>

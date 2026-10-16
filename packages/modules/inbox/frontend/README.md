@@ -1,13 +1,32 @@
 # @n8n/frontend-module-inbox
 
-The shared Inbox lists workflow reviews. Review details, comments, and decisions live in `src/reviews`. The editor supplies only the workflow diff renderer through the SDK component registry. Backend services keep their existing access rules and actions.
+The shared Inbox lists workflow reviews and saved Assistant results. Review details, comments, and decisions live in `src/reviews`. The editor supplies the workflow diff renderer and Assistant chat handoff through the SDK. Backend services keep their existing access rules and actions.
 
-Open has two groups: Waiting for review and Authored by you. Each group has its
-own cursor, Load more button, and retry.
+Open has two groups: Waiting for review and Authored by you. Assistant results go
+in Waiting for review. Each group has its own cursor, Load more button, and retry.
 Closed is a flat list with infinite scroll. Group collapse state persists per user.
 
 Review decisions update the loaded rows and counts in place. Approving a selected
 review opens the Closed tab, as before.
+
+Assistant details live in `src/self-healing`. They show saved reports, workflow
+changes, review activity, and usage. Result actions use the existing self-healing
+API. Editor actions use the apply endpoint. Chat actions use the chat endpoint,
+which uses the same apply-and-close service. Pending suggestions, including partial
+changes, are saved to the real workflow draft first. Results without suggestions
+are closed too. The frontend then updates the Inbox and navigates.
+Actions are available only while a result is open. The first successful action
+closes it. Closed results show the saved report, activity, and workflow changes.
+Fix ready offers Apply and publish or Apply and open in editor.
+Needs attention offers Apply and open in chat when it has suggested changes.
+Other informational results offer Open in chat. Every open result offers Discard.
+Chat creates a private thread with the report as context.
+Opening it does not start an Assistant run.
+Navigation failure does not reopen the result or undo saved changes.
+After a lost response, the frontend refreshes the result and shows an error.
+The user can retry the action if the result is still open.
+A refresh does not navigate or retry publication.
+Publishing remains a separate action. Self-healing remains off by default.
 
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.

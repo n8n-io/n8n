@@ -15,7 +15,7 @@ import { fetchInbox, fetchInboxSummary } from './inbox.api';
 import { INBOX_PAGE_LIMIT, type InboxItemChange, type InboxSectionKey } from './inbox.constants';
 import { toError } from './reviews/workflowReviews.utils';
 
-const sourceTypes: InboxSourceType[] = ['workflow_review'];
+const sourceTypes: InboxSourceType[] = ['workflow_review', 'self_healing_result'];
 
 type ListState = {
 	items: InboxItem[];
@@ -30,7 +30,7 @@ type ListState = {
 };
 
 function isSourceType(value: unknown): value is InboxSourceType {
-	return value === 'workflow_review';
+	return value === 'workflow_review' || value === 'self_healing_result';
 }
 
 function disabledTypesFromError(error: unknown): InboxSourceType[] {
@@ -189,7 +189,7 @@ export const useInboxStore = defineStore('inbox', () => {
 			removeDisabledSources,
 			reconcileSources,
 		),
-		// A category can query only part of the source set.
+		// Authored does not query Assistant results, so absence says nothing about that source.
 		authored: createInboxListSlice(requestPage('open', 'authored'), removeDisabledSources, (page) =>
 			reconcileSources(page, true),
 		),

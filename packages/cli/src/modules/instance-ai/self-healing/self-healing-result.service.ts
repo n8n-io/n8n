@@ -2,23 +2,28 @@ import {
 	type SelfHealingResultUsage,
 	type WorkflowSuggestionGraph,
 	selfHealingResultContentSchema,
+	type InboxSelfHealingItem,
 	type SelfHealingExecutionReference,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
 	type WorkflowSuggestionAppliedVersion,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
+import { RoleService } from '@n8n/backend-services';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
+	UserRepository,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import type { Scope } from '@n8n/permissions';
 import isEqual from 'lodash/isEqual';
 
+import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingResult } from './database/self-healing-result.entity';
@@ -26,6 +31,7 @@ import type { SelfHealingInvestigation } from './database/self-healing-investiga
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
+import { SelfHealingChatService } from './self-healing-chat.service';
 
 export type SelfHealingResultInput = {
 	output: SelfHealingOutput;
@@ -37,10 +43,13 @@ export type SelfHealingResultInput = {
 };
 
 export function getSelfHealingReviewState(
-	result: Pick<SelfHealingResult, 'dismissedAt'>,
+	result: Pick<SelfHealingResult, 'dismissedAt' | 'continuedAt'>,
 	suggestion: Pick<WorkflowSuggestionProposalDetail, 'closedReason'> | null,
 ): SelfHealingResultDetail['reviewState'] {
-	return result.dismissedAt ? 'dismissed' : (suggestion?.closedReason ?? 'open');
+	if (suggestion?.closedReason === 'applied') return 'applied';
+	if (result.dismissedAt) return 'dismissed';
+	if (suggestion?.closedReason) return suggestion.closedReason;
+	return result.continuedAt ? 'continued' : 'open';
 }
 
 @Service()
@@ -53,7 +62,38 @@ export class SelfHealingResultService {
 		private readonly executionReferences: SelfHealingExecutionReferenceService,
 		private readonly txRunner: TransactionRunner,
 		private readonly investigations: SelfHealingInvestigationRepository,
+		private readonly users: UserRepository,
+		private readonly roles: RoleService,
+		private readonly chat: SelfHealingChatService,
 	) {}
+
+	private async getInboxAccess(userId: string) {
+		const user = await this.users.findByIdWithRole(userId);
+		if (!user || user.disabled) {
+			throw new ForbiddenError('Workflow edit access is required.');
+		}
+		const scopes: Scope[] = ['workflow:read', 'workflow:update'];
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roles.rolesWithScope('project', scopes),
+			this.roles.rolesWithScope('workflow', scopes),
+		]);
+		return { user, globalScopes: scopes, projectRoles, workflowRoles };
+	}
+
+	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxSelfHealingItem[]> {
+		const rows = await this.results.listForInbox(await this.getInboxAccess(user.id), query);
+		return rows.map((row) => ({
+			...row,
+			type: 'self_healing_result',
+			createdAt: row.createdAt.toISOString(),
+			updatedAt: row.updatedAt.toISOString(),
+			completedAt: row.completedAt.toISOString(),
+		}));
+	}
+
+	async countForInbox(user: User) {
+		return await this.results.countForInbox(await this.getInboxAccess(user.id));
+	}
 
 	async complete({
 		investigationId,
@@ -201,6 +241,8 @@ export class SelfHealingResultService {
 			completedAt: result.completedAt.toISOString(),
 			dismissedAt: result.dismissedAt?.toISOString() ?? null,
 			dismissedById: result.dismissedById,
+			continuedAt: result.continuedAt?.toISOString() ?? null,
+			continuedById: result.continuedById,
 			reviewState: getSelfHealingReviewState(result, suggestion),
 			suggestion,
 			execution,
@@ -212,7 +254,7 @@ export class SelfHealingResultService {
 		projectId: string,
 		workflowId: string,
 		resultId: string,
-		action: WorkflowSuggestionAppliedVersion['action'],
+		action: WorkflowSuggestionAppliedVersion['action'] | 'chat',
 		clientId?: string,
 	): Promise<SelfHealingResultActionResponse> {
 		const { result, reviewer } = await this.getResultForEditor(
@@ -221,32 +263,73 @@ export class SelfHealingResultService {
 			workflowId,
 			resultId,
 		);
-		if (result.outcome !== 'fix_ready' || !result.suggestionId) {
-			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
+		if (result.dismissedAt || result.continuedAt) {
+			throw new ConflictError('This result is already closed. Refresh the page to see its status.');
 		}
-		const { publishError, ...suggestion } =
-			action === 'approve-and-publish'
-				? await this.actions.approveAndPublish(
-						reviewer,
-						projectId,
-						workflowId,
-						result.suggestionId,
-						clientId,
-					)
-				: await this.actions.apply(reviewer, projectId, workflowId, result.suggestionId, clientId);
-		const execution = await this.executionReferences.getReference(
-			reviewer,
-			workflowId,
-			result.executionId,
-		);
+		if (
+			action === 'chat'
+				? result.outcome === 'fix_ready'
+				: result.outcome !== 'fix_ready' || !result.suggestionId
+		) {
+			throw new ConflictError(
+				"This action isn't available for this result. Refresh the page to see its available actions.",
+			);
+		}
+		if (action === 'chat') await this.chat.assertAvailable(reviewer);
+		const execution =
+			action === 'chat'
+				? await this.executionReferences.getReference(reviewer, workflowId, result.executionId)
+				: undefined;
+		let chatThreadId: string | undefined;
+		const prepareChat = async (ctx: OperationContext) => {
+			chatThreadId = await this.chat.prepare(reviewer, result, ctx, execution);
+		};
+		let publishError: string | undefined;
+		if (result.suggestionId) {
+			const options = {
+				requirePending: true,
+				...(action === 'chat' ? { onApplied: prepareChat } : {}),
+			};
+			const applied =
+				action === 'approve-and-publish'
+					? await this.actions.approveAndPublish(
+							reviewer,
+							projectId,
+							workflowId,
+							result.suggestionId,
+							clientId,
+							options,
+						)
+					: await this.actions.apply(
+							reviewer,
+							projectId,
+							workflowId,
+							result.suggestionId,
+							clientId,
+							options,
+						);
+			publishError = applied.publishError;
+		} else {
+			await this.txRunner.run({}, async (ctx) => {
+				await this.suggestions.requireEditor(reviewer.id, workflowId, ctx);
+				await this.requireCurrentProject(workflowId, projectId, ctx);
+				if (!(await this.results.recordContinuation(resultId, reviewer.id, ctx))) {
+					throw new ConflictError(
+						'This result is already closed. Refresh the page to see its status.',
+					);
+				}
+				await prepareChat(ctx);
+			});
+		}
 		return {
-			...this.toDetail(result, suggestion, execution),
+			...(await this.getDetail(reviewer, projectId, workflowId, resultId)),
+			...(chatThreadId !== undefined ? { chatThreadId } : {}),
 			...(publishError !== undefined ? { publishError } : {}),
 		};
 	}
 
 	async dismiss(user: User, projectId: string, workflowId: string, resultId: string) {
-		const found = await this.txRunner.run({}, async (ctx) => {
+		const outcome = await this.txRunner.run({}, async (ctx) => {
 			const { result, reviewer } = await this.getResultForEditor(
 				user,
 				projectId,
@@ -254,7 +337,7 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
-			if (result.dismissedAt) return true;
+			if (result.dismissedAt || result.continuedAt) return 'already_closed';
 			if (result.suggestionId) {
 				const outcome = await this.actions.discardPending(
 					reviewer,
@@ -263,21 +346,23 @@ export class SelfHealingResultService {
 					result.suggestionId,
 					ctx,
 				);
-				if (outcome === 'unavailable') return false;
-				if (outcome === 'already_closed') return true;
+				if (outcome !== 'discarded') return outcome;
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 			if (result.outcome !== 'fix_ready') {
-				await this.results.dismissResult(result.id, user.id, ctx);
+				if (!(await this.results.dismissResult(result.id, user.id, ctx))) return 'already_closed';
 			}
-			return true;
+			return 'discarded';
 		});
 		// Commit outdated reconciliation before rejecting a stale project route.
-		if (!found) {
+		if (outcome === 'unavailable') {
 			throw new NotFoundError(
 				'This result is no longer available in this project. Refresh the page.',
 			);
+		}
+		if (outcome === 'already_closed') {
+			throw new ConflictError('This result is already closed. Refresh the page to see its status.');
 		}
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}

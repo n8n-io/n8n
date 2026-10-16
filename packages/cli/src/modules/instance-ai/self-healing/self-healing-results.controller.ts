@@ -54,4 +54,18 @@ export class SelfHealingResultsController {
 		const { projectId, workflowId, resultId } = req.params;
 		return await this.results.dismiss(req.user, projectId, workflowId, resultId);
 	}
+
+	@Post('/:resultId/chat')
+	@ProjectScope('workflow:update')
+	async prepareChat(req: ResultRequest) {
+		const { projectId, workflowId, resultId } = req.params;
+		return await this.results.act(
+			req.user,
+			projectId,
+			workflowId,
+			resultId,
+			'chat',
+			req.headers['push-ref'],
+		);
+	}
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Scope } from '@n8n/permissions';
 
 import type { WorkflowSuggestionProposalDetail } from './workflow-suggestions';
 
@@ -38,7 +39,13 @@ export type SelfHealingExecutionReference =
 	| { status: 'available'; id: string }
 	| { status: 'unavailable' };
 
-export type SelfHealingReviewState = 'open' | 'applied' | 'discarded' | 'outdated' | 'dismissed';
+export type SelfHealingReviewState =
+	| 'open'
+	| 'applied'
+	| 'discarded'
+	| 'outdated'
+	| 'dismissed'
+	| 'continued';
 
 export type SelfHealingResultDetail = SelfHealingResultContent & {
 	resultId: string;
@@ -50,12 +57,22 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 	updatedAt: string;
 	dismissedAt: string | null;
 	dismissedById: string | null;
+	continuedAt: string | null;
+	continuedById: string | null;
 	reviewState: SelfHealingReviewState;
 	suggestion: WorkflowSuggestionProposalDetail | null;
 	execution: SelfHealingExecutionReference;
 };
 
 export type SelfHealingResultActionResponse = SelfHealingResultDetail & {
+	/** The chat created by this action. */
+	chatThreadId?: string;
 	/** This request error does not establish whether the saved version is live. */
 	publishError?: string;
+};
+
+/** Fields the result view reads from the normal workflow endpoint. */
+export type SelfHealingResultWorkflowMetadata = {
+	name: string;
+	scopes: Scope[];
 };
