@@ -1,0 +1,22 @@
+packages/nodes-base/utils/sql-query-parameters.test.ts
+  s_bef64c16cb8405::t_f02d35a078f4a0 1-6,31-43,49-82
+  s_bef64c16cb8405::t_cbc86c488853c1 83-84
+packages/nodes-base/utils/sql-query-parameters.ts
+  s_bef64c16cb8405::t_25e9f3c6c885bc 17-19,22-23,38,41-44,50,52-54,56-57,59-62,64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "408258ebdd0b58d7d691bb37dd18a893b8e0f2df",
+  "prompts": {},
+  "sessions": {
+    "s_bef64c16cb8405": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cb8dc37-f44c-4585-a8f1-ed3cd9dbf43c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
