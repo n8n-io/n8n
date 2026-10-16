@@ -1,8 +1,15 @@
 import { randomBytes } from 'crypto';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { TeamResponse, ChannelResponse, SubscriptionResponse } from './types';
+import type {
+	TeamResponse,
+	ChannelResponse,
+	SubscriptionResponse,
+	LifecycleNotification,
+} from './types';
 import { verifySignature as verifySignatureGeneric } from '../../../../../utils/webhook-signature-verification';
 import {
 	buildTeamsPath,
@@ -90,6 +97,165 @@ export async function listOwnSubscriptions(
 		'/v1.0/subscriptions',
 	)) as SubscriptionResponse[];
 	return subscriptions.filter((subscription) => subscription.notificationUrl === webhookUrl);
+}
+
+export function isLifecycleNotification(item: unknown): item is LifecycleNotification {
+	return (
+		isRecord(item) &&
+		typeof item.lifecycleEvent === 'string' &&
+		typeof item.subscriptionId === 'string'
+	);
+}
+
+export async function handleLifecycleNotifications(
+	this: IWebhookFunctions,
+	items: LifecycleNotification[],
+): Promise<void> {
+	const webhookData = this.getWorkflowStaticData('node');
+	const webhookUrl = this.getNodeWebhookUrl('default');
+	const storedIds: unknown[] = Array.isArray(webhookData.subscriptionIds)
+		? webhookData.subscriptionIds
+		: [];
+	const meta = { workflowId: this.getWorkflow().id, nodeName: this.getNode().name };
+
+	// One listing per request; a rejected listing is never fetched again.
+	let ownList: Promise<SubscriptionResponse[]> | undefined;
+	const ownSubscriptions = async () =>
+		await (ownList ??= listOwnSubscriptions.call(this, webhookUrl));
+
+	const gone = new Set<string>();
+	const unresolved = new Set<string>();
+	const patched = new Set<string>();
+	let needsReconcile = false;
+
+	for (const { subscriptionId, lifecycleEvent } of items) {
+		switch (lifecycleEvent) {
+			case 'reauthorizationRequired': {
+				if (gone.has(subscriptionId) || patched.has(subscriptionId)) break;
+
+				let isOwn: boolean;
+				try {
+					isOwn =
+						storedIds.includes(subscriptionId) ||
+						(await ownSubscriptions()).some((subscription) => subscription.id === subscriptionId);
+				} catch {
+					// Route to the reconcile, which awaits the same rejected listing and warns once.
+					unresolved.add(subscriptionId);
+					needsReconcile = true;
+					break;
+				}
+				if (!isOwn) {
+					this.logger.debug('Microsoft Teams Trigger: skipped renewal: unknown subscription', {
+						...meta,
+						subscriptionId: String(subscriptionId).slice(0, 64),
+						lifecycleEvent: String(lifecycleEvent).slice(0, 64),
+					});
+					needsReconcile = true;
+					break;
+				}
+
+				patched.add(subscriptionId);
+				try {
+					await microsoftApiRequest.call(
+						this,
+						'PATCH',
+						buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id: subscriptionId }]),
+						{ expirationDateTime: newSubscriptionExpiry() },
+					);
+					this.logger.debug('Microsoft Teams Trigger: renewed subscription', {
+						...meta,
+						subscriptionId,
+						lifecycleEvent,
+					});
+				} catch (error) {
+					if (error instanceof NodeApiError && error.httpCode === '404') {
+						gone.add(subscriptionId);
+						needsReconcile = true;
+						this.logger.debug('Microsoft Teams Trigger: subscription gone, will re-create', {
+							...meta,
+							subscriptionId,
+							lifecycleEvent,
+						});
+					} else {
+						this.logger.warn('Microsoft Teams Trigger: failed to renew subscription', {
+							...meta,
+							subscriptionId,
+							lifecycleEvent,
+							error: ensureError(error).message,
+						});
+					}
+				}
+				break;
+			}
+			case 'subscriptionRemoved':
+				gone.add(subscriptionId);
+				needsReconcile = true;
+				break;
+			default:
+				this.logger.debug('Microsoft Teams Trigger: ignored lifecycle event', {
+					...meta,
+					subscriptionId: String(subscriptionId).slice(0, 64),
+					lifecycleEvent: String(lifecycleEvent).slice(0, 64),
+				});
+		}
+	}
+
+	if (!needsReconcile) return;
+
+	const affectedIds = [...gone, ...unresolved];
+	if (webhookUrl === undefined) {
+		this.logger.warn('Microsoft Teams Trigger: no webhook URL, skipped re-create', {
+			...meta,
+			subscriptionIds: affectedIds,
+		});
+		return;
+	}
+
+	let subscriptions: SubscriptionResponse[];
+	let requiredResources: string[];
+	try {
+		subscriptions = await ownSubscriptions();
+		const resourcePaths = await getResourcePath.call(
+			this,
+			this.getNodeParameter('event', 0) as string,
+		);
+		requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
+	} catch (error) {
+		this.logger.warn(
+			'Microsoft Teams Trigger: failed to list subscriptions or resolve resources, skipped re-create',
+			{ ...meta, subscriptionIds: affectedIds, error: ensureError(error).message },
+		);
+		return;
+	}
+
+	const live = subscriptions.filter(
+		(subscription) =>
+			!gone.has(subscription.id) &&
+			new Date(subscription.expirationDateTime).getTime() > Date.now(),
+	);
+	const liveResources = new Set(live.map((subscription) => subscription.resource));
+	const secret = webhookData.webhookSecret;
+	const clientState = typeof secret === 'string' && secret.length > 0 ? secret : undefined;
+	const created: string[] = [];
+	for (const resource of requiredResources.filter((path) => !liveResources.has(path))) {
+		try {
+			const subscription = await createSubscription.call(this, webhookUrl, resource, clientState);
+			created.push(subscription.id);
+			this.logger.debug('Microsoft Teams Trigger: re-created subscription', {
+				...meta,
+				resource,
+				subscriptionId: subscription.id,
+			});
+		} catch (error) {
+			this.logger.warn('Microsoft Teams Trigger: failed to re-create subscription', {
+				...meta,
+				resource,
+				subscriptionIds: affectedIds,
+				error: ensureError(error).message,
+			});
+		}
+	}
+	webhookData.subscriptionIds = [...live.map((subscription) => subscription.id), ...created];
 }
 
 export function verifyWebhook(this: IWebhookFunctions): boolean {
