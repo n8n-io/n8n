@@ -670,6 +670,53 @@ describe('Microsoft Teams Trigger subscription lifecycle', () => {
 			expect(result.workflowData).toEqual([[{ json: expect.objectContaining({ id: 'm1' }) }]]);
 		});
 
+		it('does not throw on a non-object notification when no secret is stored', async () => {
+			staticData = { subscriptionIds: ['sub1'] };
+			ctx.getWorkflowStaticData.mockReturnValue(staticData);
+			receive(42 as unknown as object);
+
+			await expect(new MicrosoftTeamsTrigger().webhook.call(ctx)).resolves.toBeDefined();
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+		});
+
+		it('recreates a gone subscription even when another renewal in the batch fails', async () => {
+			staticData.subscriptionIds = ['sub1', 'sub2'];
+			ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) => {
+				const params: Record<string, unknown> = {
+					event: 'newChannelMessage',
+					teamId: 'team123',
+					watchAllChannels: true,
+				};
+				return name in params ? params[name] : fallback;
+			});
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+				{
+					id: 'sub2',
+					notificationUrl: webhookUrl,
+					resource: '/teams/team123/channels/channelB/messages',
+					expirationDateTime: '2026-10-17T00:00:00.000Z',
+				},
+			]);
+			(microsoftApiRequest.call as Mock).mockImplementation(
+				async (_ctx, method: string, resource: string) => {
+					if (method === 'PATCH' && resource.endsWith('/sub1')) throw notFound();
+					if (method === 'PATCH') throw forbidden();
+					if (method === 'GET') return { value: [{ id: 'channelA' }, { id: 'channelB' }] };
+					return { id: 'sub1-new' };
+				},
+			);
+			receive(lifecycle('reauthorizationRequired'), lifecycle('reauthorizationRequired', 'sub2'));
+
+			await expect(new MicrosoftTeamsTrigger().webhook.call(ctx)).rejects.toThrow(
+				'Could not renew the Microsoft Teams subscription',
+			);
+			expect(calls('POST')).toHaveLength(1);
+			expect(calls('POST')[0][3]).toEqual(
+				expect.objectContaining({ resource: '/teams/team123/channels/channelA/messages' }),
+			);
+			expect(staticData.subscriptionIds).toEqual(['sub2', 'sub1-new']);
+		});
+
 		it('keeps delivering messages after a renewal', async () => {
 			const trigger = new MicrosoftTeamsTrigger();
 
@@ -720,6 +767,40 @@ describe('Microsoft Teams Trigger subscription lifecycle', () => {
 				'Could not renew the Microsoft Teams subscription',
 				expect.objectContaining({ error: expect.any(Error) }),
 			);
+		});
+
+		it('recreates a subscription that is gone when activation renews it', async () => {
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([active('sub1')]);
+			(microsoftApiRequest.call as Mock).mockImplementation(async (_ctx, method: string) => {
+				if (method === 'PATCH') throw notFound();
+				return { id: 'sub-new' };
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(ctx);
+
+			expect(result).toBe(true);
+			expect(calls('POST')).toEqual([
+				[
+					ctx,
+					'POST',
+					'/v1.0/subscriptions',
+					expect.objectContaining({ resource: channelResource, clientState: 'secret' }),
+				],
+			]);
+			expect(staticData.subscriptionIds).toEqual(['sub-new']);
+			expect(ctx.logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('fails activation when a gone subscription cannot be recreated', async () => {
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([active('sub1')]);
+			(microsoftApiRequest.call as Mock).mockImplementation(async (_ctx, method: string) => {
+				if (method === 'PATCH') throw notFound();
+				throw forbidden();
+			});
+
+			await expect(
+				new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(ctx),
+			).rejects.toThrow(NodeApiError);
 		});
 
 		it('ignores subscriptions that expire within five minutes', async () => {

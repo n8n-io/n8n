@@ -293,6 +293,13 @@ describe('Microsoft Teams Helpers Functions', () => {
 			).toBe(false);
 		});
 
+		it('isLifecycleNotification returns false for non-object notifications', () => {
+			expect(isLifecycleNotification(null)).toBe(false);
+			expect(isLifecycleNotification(undefined)).toBe(false);
+			expect(isLifecycleNotification(42)).toBe(false);
+			expect(isLifecycleNotification('reauthorizationRequired')).toBe(false);
+		});
+
 		it('getStoredSubscriptionIds returns only string ids', () => {
 			expect(getStoredSubscriptionIds({ subscriptionIds: ['a', 1, null, 'b'] })).toEqual([
 				'a',

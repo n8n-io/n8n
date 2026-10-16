@@ -6,7 +6,6 @@ import type {
 	TeamResponse,
 	ChannelResponse,
 	SubscriptionResponse,
-	WebhookNotification,
 	LifecycleNotification,
 } from './types';
 import { verifySignature as verifySignatureGeneric } from '../../../../../utils/webhook-signature-verification';
@@ -37,9 +36,14 @@ export function isNotFoundError(error: unknown): boolean {
 }
 
 export function isLifecycleNotification(
-	notification: WebhookNotification | LifecycleNotification,
+	notification: unknown,
 ): notification is LifecycleNotification {
-	return 'lifecycleEvent' in notification && typeof notification.lifecycleEvent === 'string';
+	return (
+		typeof notification === 'object' &&
+		notification !== null &&
+		'lifecycleEvent' in notification &&
+		typeof notification.lifecycleEvent === 'string'
+	);
 }
 
 export function getStoredSubscriptionIds(webhookData: IDataObject): string[] {
@@ -121,6 +125,30 @@ export async function renewSubscription(
 	});
 }
 
+export async function renewSubscriptions(
+	this: TriggerFunctions,
+	subscriptionIds: string[],
+): Promise<{ goneIds: string[]; errors: unknown[] }> {
+	const results = await Promise.allSettled(
+		subscriptionIds.map(
+			async (subscriptionId) => await renewSubscription.call(this, subscriptionId),
+		),
+	);
+	const goneIds: string[] = [];
+	const errors: unknown[] = [];
+
+	results.forEach((result, index) => {
+		if (result.status === 'fulfilled') return;
+		if (isNotFoundError(result.reason)) {
+			goneIds.push(subscriptionIds[index]);
+		} else {
+			errors.push(result.reason);
+		}
+	});
+
+	return { goneIds, errors };
+}
+
 export async function getActiveSubscriptions(
 	this: TriggerFunctions,
 	webhookUrl: string | undefined,
@@ -147,7 +175,7 @@ export async function getRequiredResources(this: TriggerFunctions): Promise<stri
 }
 
 export async function restoreSubscriptions(
-	this: IWebhookFunctions,
+	this: TriggerFunctions,
 	removedIds: string[],
 ): Promise<void> {
 	const webhookUrl = getNotificationUrl.call(this);
@@ -198,19 +226,15 @@ export async function handleLifecycleNotifications(
 			.map((notification) => notification.subscriptionId),
 	);
 
-	await Promise.all(
-		[...idsToRenew].map(async (subscriptionId) => {
-			try {
-				await renewSubscription.call(this, subscriptionId);
-			} catch (error) {
-				if (!isNotFoundError(error)) throw error;
-				removedIds.add(subscriptionId);
-			}
-		}),
-	);
+	const { goneIds, errors } = await renewSubscriptions.call(this, [...idsToRenew]);
+	const missingIds = [...removedIds, ...goneIds];
 
-	if (removedIds.size > 0) {
-		await restoreSubscriptions.call(this, [...removedIds]);
+	if (missingIds.length > 0) {
+		await restoreSubscriptions.call(this, missingIds);
+	}
+
+	if (errors.length > 0) {
+		throw errors[0];
 	}
 }
 

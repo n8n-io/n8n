@@ -25,7 +25,8 @@ import {
 	handleLifecycleNotifications,
 	isLifecycleNotification,
 	isNotFoundError,
-	renewSubscription,
+	renewSubscriptions,
+	restoreSubscriptions,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
@@ -375,15 +376,18 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				webhookData.subscriptionIds = activeSubscriptions.map((sub) => sub.id);
 
-				const renewals = await Promise.allSettled(
-					activeSubscriptions.map(async (sub) => await renewSubscription.call(this, sub.id)),
+				const { goneIds, errors } = await renewSubscriptions.call(
+					this,
+					activeSubscriptions.map((sub) => sub.id),
 				);
-				for (const renewal of renewals) {
-					if (renewal.status === 'rejected') {
-						this.logger.warn('Could not renew the Microsoft Teams subscription', {
-							error: ensureError(renewal.reason),
-						});
-					}
+				for (const error of errors) {
+					this.logger.warn('Could not renew the Microsoft Teams subscription', {
+						error: ensureError(error),
+					});
+				}
+
+				if (goneIds.length > 0) {
+					await restoreSubscriptions.call(this, goneIds);
 				}
 
 				return true;
