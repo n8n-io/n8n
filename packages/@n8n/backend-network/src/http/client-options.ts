@@ -32,8 +32,12 @@ export interface HttpRequestClientOptions {
 
 	/**
 	 * Reuse connections across requests on this client.
-	 * The client creates its agents once, with these settings, and every request goes through them.
+	 * The client creates its agents once, with these settings, and `request()` sends through them.
+	 * `keepAlive` defaults to `true`.
 	 * Call `close()` on the client to release them.
+	 *
+	 * Redirect hops create their own agents, and `requestLegacy()` does not use the pool.
+	 * `maxSockets` and `close()` do not apply to them.
 	 *
 	 * A request on this client must not set `proxy`, `agentOptions` or `skipSslCertificateValidation`.
 	 * The client throws if it does, because the shared agents cannot apply them.

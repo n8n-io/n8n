@@ -296,8 +296,14 @@ function lazy<T>(factory: () => T): () => T {
 const POOL_SETTINGS = ['proxy', 'agentOptions', 'skipSslCertificateValidation'] as const;
 
 function buildPoolAgents(pool: HttpConnectionPoolOptions, ssrf: SsrfOption): NodeAgents {
-	// No `servername`: Node derives SNI from each request's host, so one pool serves any host.
+	// Node derives SNI from each request's host, so one pool serves any host.
+	if (pool.agentOptions?.servername) {
+		throw new UnexpectedError(
+			'`connectionPool.agentOptions.servername` is not supported: the pool serves every host of the client. Remove it.',
+		);
+	}
 	return buildNodeAgents(resolveProxyOption(getUrlFromProxyConfig(pool.proxy)), ssrf, {
+		keepAlive: true,
 		...pool.agentOptions,
 		...(pool.skipSslCertificateValidation === true && { rejectUnauthorized: false }),
 	});

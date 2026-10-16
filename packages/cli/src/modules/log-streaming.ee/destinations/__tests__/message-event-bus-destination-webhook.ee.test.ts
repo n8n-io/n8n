@@ -4,6 +4,7 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { IHttpRequestOptions, MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
@@ -395,6 +396,15 @@ describe('MessageEventBusDestinationWebhook', () => {
 			});
 
 			expect(connectionPool?.agentOptions?.timeout).toBe(1234);
+		});
+
+		it('should default the agent idle timeout', async () => {
+			const { connectionPool } = await sendThroughDestination({
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				url: 'https://example.com/webhook',
+			});
+
+			expect(connectionPool?.agentOptions?.timeout).toBe(LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS);
 		});
 	});
 

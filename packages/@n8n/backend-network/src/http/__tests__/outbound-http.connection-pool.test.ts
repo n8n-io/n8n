@@ -105,6 +105,28 @@ describe('OutboundHttp.requests with a connection pool', () => {
 		client.close();
 	});
 
+	it('keeps connections alive by default', async () => {
+		const target = await start(http.createServer(), 'http');
+		const client = makeOutboundHttp().requests({
+			useDefaultSsrfPolicy: 'unsafe',
+			connectionPool: {},
+		});
+
+		await sendSequentially(async () => await client.request({ url: target.url }), 3);
+
+		expect(target.connections).toHaveLength(1);
+		client.close();
+	});
+
+	it('rejects a pool with a fixed servername', () => {
+		expect(() =>
+			makeOutboundHttp().requests({
+				useDefaultSsrfPolicy: 'unsafe',
+				connectionPool: { agentOptions: { servername: 'example.com' } },
+			}),
+		).toThrow('servername');
+	});
+
 	it('reuses one TLS connection for sequential HTTPS requests', async () => {
 		const target = await start(
 			https.createServer({
@@ -183,14 +205,15 @@ describe('OutboundHttp.requests with a connection pool', () => {
 		client.close();
 	});
 
-	it('closes connections to an environment proxy on close()', async () => {
+	it('reuses one connection to an environment proxy and closes it on close()', async () => {
 		const proxy = await start(http.createServer(), 'http');
 		process.env.HTTP_PROXY = proxy.url;
 		const client = makeOutboundHttp().requests({
 			useDefaultSsrfPolicy: 'unsafe',
 			connectionPool: { agentOptions: { keepAlive: true } },
 		});
-		await client.request({ url: 'http://target.invalid/x' });
+		await sendSequentially(async () => await client.request({ url: 'http://target.invalid/x' }), 3);
+		expect(proxy.connections).toHaveLength(1);
 		expect(proxy.openConnections()).toBe(1);
 
 		client.close();
