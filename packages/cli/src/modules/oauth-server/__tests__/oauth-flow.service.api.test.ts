@@ -717,6 +717,85 @@ describe('complete against a registered source', () => {
 		expect(result).toEqual({ valid: false, reason: 'source_unusable' });
 		expect(httpRequest).not.toHaveBeenCalled();
 	});
+
+	describe('refresh', () => {
+		test('rotates the grant at the token endpoint as a confidential client', async () => {
+			const { resourceUrl } = await triggerAtIdp();
+			const accessToken = await signIdpToken(resourceUrl);
+			const { service, httpRequest } = flowWithTokenEndpoint([
+				tokenRoute({
+					access_token: accessToken,
+					token_type: 'Bearer',
+					expires_in: 900,
+					refresh_token: 'idp-refresh-2',
+				}),
+			]);
+
+			const result = await service.refresh('idp-refresh', resourceUrl);
+
+			expect(result).toEqual({
+				valid: true,
+				token: accessToken,
+				refreshToken: 'idp-refresh-2',
+				expiresIn: 900,
+			});
+			// RFC 6749 §6 with the RFC 8707 resource, authenticated as the registered client.
+			expect(httpRequest).toHaveBeenCalledTimes(1);
+			const [request] = httpRequest.mock.calls[0];
+			expect(request).toMatchObject({ url: `${IDP_ISSUER}/token`, method: 'POST' });
+			expect(Object.fromEntries(new URLSearchParams(request.body as string))).toEqual({
+				grant_type: 'refresh_token',
+				refresh_token: 'idp-refresh',
+				resource: resourceUrl,
+			});
+			expect((request.headers as Record<string, unknown>).authorization).toBe(
+				`Basic ${Buffer.from('n8n-client:s3cret').toString('base64')}`,
+			);
+		});
+
+		// RFC 6749 §6: an issuer that returns no refresh token keeps the presented one valid.
+		test('keeps the presented refresh token and reads the lifetime off the token when the issuer omits both', async () => {
+			const { resourceUrl } = await triggerAtIdp();
+			const { service } = flowWithTokenEndpoint([
+				tokenRoute({ access_token: await signIdpToken(resourceUrl) }),
+			]);
+
+			const result = await service.refresh('idp-refresh', resourceUrl);
+
+			expect(result).toMatchObject({ valid: true, refreshToken: 'idp-refresh' });
+			if (result.valid) {
+				expect(result.expiresIn).toBeGreaterThan(3500);
+				expect(result.expiresIn).toBeLessThanOrEqual(3600);
+			}
+		});
+
+		test('refuses a refresh token the issuer rejects', async () => {
+			const { resourceUrl } = await triggerAtIdp();
+			const { service } = flowWithTokenEndpoint([tokenRoute({ error: 'invalid_grant' }, 400)]);
+
+			expect(await service.refresh('idp-refresh', resourceUrl)).toEqual({
+				valid: false,
+				reason: 'invalid_grant',
+			});
+		});
+
+		test('refuses a source that lost its redirect-login capability', async () => {
+			const { source, resourceUrl } = await triggerAtIdp();
+			const { service, httpRequest } = flowWithTokenEndpoint([]);
+			await store.update(source.id, {
+				config: {
+					...source.config,
+					authentication: { ...source.config.authentication, client: undefined },
+				},
+			});
+
+			expect(await service.refresh('idp-refresh', resourceUrl)).toEqual({
+				valid: false,
+				reason: 'source_unusable',
+			});
+			expect(httpRequest).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('refresh', () => {
@@ -734,7 +813,7 @@ describe('refresh', () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 		const granted = await grantFor(resourceUrl);
 
-		const refreshed = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
+		const refreshed = await flow.refresh(granted.refreshToken, resourceUrl);
 
 		expect(refreshed.valid).toBe(true);
 		if (refreshed.valid) {
@@ -752,7 +831,7 @@ describe('refresh', () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 		const granted = await grantFor(resourceUrl);
 
-		await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
+		await flow.refresh(granted.refreshToken, resourceUrl);
 
 		await expect(
 			tokenService.verifyOAuthAccessToken(granted.token, resourceUrl),
@@ -765,10 +844,10 @@ describe('refresh', () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 		const granted = await grantFor(resourceUrl);
 
-		const first = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
+		const first = await flow.refresh(granted.refreshToken, resourceUrl);
 		expect(first.valid).toBe(true);
 
-		const replay = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrl);
+		const replay = await flow.refresh(granted.refreshToken, resourceUrl);
 
 		expect(replay).toEqual({ valid: false, reason: 'invalid_grant' });
 	});
@@ -777,7 +856,7 @@ describe('refresh', () => {
 		const resourceUrl = await createProtectedFormWorkflow();
 		await grantFor(resourceUrl);
 
-		const result = await flow.refreshVirtualClientToken('not-a-refresh-token', resourceUrl);
+		const result = await flow.refresh('not-a-refresh-token', resourceUrl);
 
 		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
 	});
@@ -788,22 +867,22 @@ describe('refresh', () => {
 		const resourceUrlB = await createProtectedFormWorkflow();
 		const granted = await grantFor(resourceUrlA);
 
-		const result = await flow.refreshVirtualClientToken(granted.refreshToken, resourceUrlB);
+		const result = await flow.refresh(granted.refreshToken, resourceUrlB);
 
 		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
 	});
 
 	test('refuses a resource URL that is not a first-party protected resource', async () => {
-		await expect(
-			flow.refreshVirtualClientToken('any-token', resourceUrlFor(randomUUID())),
-		).rejects.toThrow(UserError);
+		await expect(flow.refresh('any-token', resourceUrlFor(randomUUID()))).rejects.toThrow(
+			UserError,
+		);
 	});
 
 	test('rotates a chat grant the same way', async () => {
 		const chatResourceUrl = await createProtectedChatWorkflow();
 		const granted = await grantFor(chatResourceUrl, member.id);
 
-		const refreshed = await flow.refreshVirtualClientToken(granted.refreshToken, chatResourceUrl);
+		const refreshed = await flow.refresh(granted.refreshToken, chatResourceUrl);
 
 		expect(refreshed.valid).toBe(true);
 		if (refreshed.valid) {
@@ -819,7 +898,7 @@ describe('refresh', () => {
 		let current = (await grantFor(resourceUrl)).refreshToken;
 
 		for (let i = 0; i < 3; i++) {
-			const refreshed = await flow.refreshVirtualClientToken(current, resourceUrl);
+			const refreshed = await flow.refresh(current, resourceUrl);
 			if (!refreshed.valid) throw new Error(`rotation ${i} failed: ${refreshed.reason}`);
 			current = refreshed.refreshToken;
 		}

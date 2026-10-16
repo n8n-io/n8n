@@ -860,8 +860,7 @@ async function prepareWebhookAdditionalData({
 			url: req.originalUrl,
 			ip: req.ip ?? '',
 		});
-	additionalData.refreshN8nOAuth2Flow =
-		oauth2FlowProxy.refreshVirtualClientToken.bind(oauth2FlowProxy);
+	additionalData.refreshN8nOAuth2Flow = oauth2FlowProxy.refresh.bind(oauth2FlowProxy);
 
 	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
 	// request, instead of resolving the resource a second time.

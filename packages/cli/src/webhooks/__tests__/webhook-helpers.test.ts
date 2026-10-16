@@ -2142,7 +2142,7 @@ describe('executeWebhook additional data', () => {
 		const beginPromise = new Promise<never>(() => {});
 		const refreshPromise = new Promise<never>(() => {});
 		oauth2FlowProxy.begin.mockReturnValue(beginPromise);
-		oauth2FlowProxy.refreshVirtualClientToken.mockReturnValue(refreshPromise);
+		oauth2FlowProxy.refresh.mockReturnValue(refreshPromise);
 
 		const additionalData = await resolveAdditionalData();
 
