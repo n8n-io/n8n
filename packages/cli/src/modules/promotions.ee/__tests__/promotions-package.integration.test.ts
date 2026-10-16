@@ -75,6 +75,7 @@ import { createProjectVariable, createVariable } from '@test-integration/db/vari
 import { initNodeTypes, initCredentialsTypes, setupTestServer } from '@test-integration/utils';
 
 import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
+import { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import { PromotionConnectionProjectRepository } from '../database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
@@ -83,6 +84,7 @@ import { PromotionBindingPreflightService } from '../promotion-binding-preflight
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionConfigResolver } from '../promotion-config.resolver';
 import { PromotionProvidersService } from '../promotion-providers.service';
+import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
@@ -140,6 +142,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await Container.get(AgentRepository).delete({});
 	// Delete children before parents to satisfy the foreign keys.
+	await Container.get(PromotionRunRepository).delete({});
 	await linkRepository.delete({});
 	await configRepository.delete({});
 	await connectionRepository.delete({});
@@ -199,6 +202,8 @@ beforeEach(async () => {
 		Container.get(PromotionBindingPreflightService),
 		Container.get(PackageDirectoryInventoryReader),
 		Container.get(PackageImportConfig),
+		Container.get(PromotionRunRepository),
+		Container.get(PromotionReviewsService),
 		logger,
 	);
 	Container.set(PromotionsService, service);

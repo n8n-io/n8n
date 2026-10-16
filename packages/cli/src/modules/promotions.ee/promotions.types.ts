@@ -61,6 +61,8 @@ export type PromotionOperationInput = Readonly<{
 	providerType: PromotionProviderType;
 	authType: PromotionProviderAuthType;
 	encryptedAuth: string;
+	/** The Git host base URL from the same read as `encryptedAuth`. Null for plain Git. */
+	hostBaseUrl: string | null;
 	target: PromotionConnectionTarget;
 	config: ResolvedPromotionConfig;
 }>;

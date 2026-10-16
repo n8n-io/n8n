@@ -26,6 +26,9 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import type { PromotionConfigResolver } from '../promotion-config.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
+import type { PromotionRun } from '../database/entities/promotion-run.entity';
+import type { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
+import type { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
@@ -71,6 +74,8 @@ describe('PromotionsService', () => {
 	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
 	const packageImportConfig = mock<PackageImportConfig>();
+	const runRepository = mock<PromotionRunRepository>();
+	const reviewsService = mock<PromotionReviewsService>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -89,6 +94,7 @@ describe('PromotionsService', () => {
 		providerType: 'git',
 		authType: 'ssh-key',
 		encryptedAuth: 'enc:auth',
+		hostBaseUrl: null,
 		target: { schemaVersion: 1, remoteUrl: REMOTE_URL },
 		config,
 		...over,
@@ -139,8 +145,12 @@ describe('PromotionsService', () => {
 			bindingPreflight,
 			inventoryReader,
 			packageImportConfig,
+			runRepository,
+			reviewsService,
 			logger,
 		);
+		runRepository.insertRun.mockResolvedValue(mock<PromotionRun>({ id: 'run-1' }));
+		reviewsService.openMergeRequest.mockResolvedValue({ warnings: [] });
 		providersService.decryptCredentials.mockResolvedValue({
 			authType: 'ssh-key',
 			privateKey: 'PRIV',
@@ -406,6 +416,143 @@ describe('PromotionsService', () => {
 			);
 		});
 
+		describe('review hook', () => {
+			const branched = () =>
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				});
+
+			it('opens a review for the pushed promotion branch and returns the merge request', async () => {
+				const input = branched();
+				resolver.resolveForConnection.mockResolvedValue(input);
+				reviewsService.openMergeRequest.mockResolvedValue({
+					mergeRequest: { reviewId: 'review1', iid: 3, webUrl: 'https://gitlab/mr/3' },
+					warnings: [],
+				});
+
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'first line\nsecond line',
+				});
+
+				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
+					input,
+					actor,
+					{
+						branchName: result.git.branchName,
+						baseBranchName: 'staging',
+						commitSha: 'newsha',
+						title: 'first line',
+						body: 'second line',
+					},
+					'run-1',
+				);
+				expect(result.mergeRequest).toEqual({
+					reviewId: 'review1',
+					iid: 3,
+					webUrl: 'https://gitlab/mr/3',
+				});
+				expect(result.warnings).toBeUndefined();
+			});
+
+			it('does not open a review for a direct push to the base branch', async () => {
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				});
+
+				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
+				expect(runRepository.insertRun).toHaveBeenCalledWith({
+					configId: CONFIG_ID,
+					createdById: 'actor',
+					direction: 'promote',
+					type: 'git',
+					details: { schemaVersion: 1, branchName: 'staging', commitSha: 'newsha' },
+					reviewId: null,
+				});
+				expect(result.mergeRequest).toBeUndefined();
+				expect(result.warnings).toBeUndefined();
+			});
+
+			it('returns the push with warnings when the review could not be opened', async () => {
+				resolver.resolveForConnection.mockResolvedValue(branched());
+				reviewsService.openMergeRequest.mockResolvedValue({
+					warnings: [
+						{
+							message: 'The branch was pushed, but no merge request was opened: GitLab is down',
+						},
+					],
+				});
+
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				});
+
+				expect(result.git.commitSha).toBe('newsha');
+				expect(result.mergeRequest).toBeUndefined();
+				expect(result.warnings).toEqual([
+					{ message: 'The branch was pushed, but no merge request was opened: GitLab is down' },
+				]);
+			});
+
+			it('keeps the push and skips the review when the run cannot be recorded', async () => {
+				resolver.resolveForConnection.mockResolvedValue(branched());
+				runRepository.insertRun.mockRejectedValue(new Error('db down'));
+
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				});
+
+				expect(result.git.commitSha).toBe('newsha');
+				expect(result.mergeRequest).toBeUndefined();
+				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
+				expect(result.warnings).toEqual([
+					{ message: 'The push succeeded, but n8n could not record the promotion run.' },
+				]);
+			});
+
+			it('says that no merge request was opened when a GitLab branched promote cannot record the run', async () => {
+				resolver.resolveForConnection.mockResolvedValue({
+					...branched(),
+					providerType: 'gitlab',
+				});
+				runRepository.insertRun.mockRejectedValue(new Error('db down'));
+
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: 'm',
+				});
+
+				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
+				expect(result.warnings).toEqual([
+					{
+						message:
+							'The push succeeded, but n8n could not record the promotion run, so no merge request was opened.',
+					},
+				]);
+			});
+
+			it('uses the first non-empty line as the merge request title', async () => {
+				resolver.resolveForConnection.mockResolvedValue(branched());
+
+				const result = await service.promote('conn1', actor, {
+					canExportVariableValues: true,
+					commitMessage: '\nReal title\nMore detail',
+				});
+
+				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
+					expect.anything(),
+					actor,
+					expect.objectContaining({ title: 'Real title', body: 'More detail' }),
+					'run-1',
+				);
+				expect(result.git.commitSha).toBe('newsha');
+			});
+		});
+
 		it('stops before the commit when descriptor invalidation fails', async () => {
 			resolver.resolveForConnection.mockResolvedValue(
 				operationInput({
@@ -421,6 +568,7 @@ describe('PromotionsService', () => {
 				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
 			).rejects.toThrow('Descriptor removal failed');
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			expect(runRepository.insertRun).not.toHaveBeenCalled();
 			await expect(workingDirectory.readDescriptor(CONFIG_ID)).resolves.not.toBeNull();
 		});
 
@@ -688,6 +836,50 @@ describe('PromotionsService', () => {
 			).rejects.toBe(readError);
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
+		it('keeps the pushed selection and reports a warning when the review could not be opened', async () => {
+			const input = operationInput({
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+			});
+			resolver.resolveForProject.mockResolvedValue(input);
+			const files = {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			};
+			await writeExportTree(packageFolder, files);
+			mockExport(files);
+			reviewsService.openMergeRequest.mockResolvedValue({
+				warnings: [{ message: 'no merge request' }],
+			});
+
+			ownedByP1('w1');
+			const result = await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1'],
+				commitMessage: 'm',
+				canExportVariableValues: true,
+			});
+
+			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
+				input,
+				actor,
+				{
+					branchName: result.git.branchName,
+					baseBranchName: 'staging',
+					commitSha: 'selsha',
+					title: 'm',
+					body: '',
+				},
+				'run-1',
+			);
+			expect(result.warnings).toEqual([{ message: 'no merge request' }]);
+			// The package keeps the pushed selection. No rollback happened.
+			await expect(
+				readFile(path.join(packageFolder, 'projects/alpha/workflows/w1/workflow.json'), 'utf8'),
+			).resolves.toBe(workflowFile('w1'));
+			await expect(stat(`${packageFolder}.pre-selection`)).rejects.toThrow();
 		});
 
 		it('refuses a selection when the export does not match the selected workflows', async () => {
