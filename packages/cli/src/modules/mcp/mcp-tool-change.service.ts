@@ -95,9 +95,10 @@ export class McpToolChangeService {
 		if (!this.globalConfig.multiMainSetup.enabled) return;
 		void this.publisher
 			.publishCommand({ command: 'mcp-tools-changed', payload: { channel, revision } })
-			.catch((error: unknown) =>
-				this.logger.warn('Failed to notify other main processes of MCP tool changes', { error }),
-			);
+			.catch((error: unknown) => {
+				if (this.localRevisions.get(channel) === revision) this.localRevisions.delete(channel);
+				this.logger.warn('Failed to notify other main processes of MCP tool changes', { error });
+			});
 	}
 
 	@OnPubSubEvent('mcp-tools-changed', { instanceType: 'main' })

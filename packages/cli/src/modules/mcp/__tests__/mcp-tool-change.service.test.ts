@@ -114,13 +114,12 @@ describe('McpToolChangeService', () => {
 		listener.mockClear();
 		const event = { channel: 'channel', revision: 'v2' };
 		Container.set(McpToolChangeService, service);
+		const registration = Container.get(PubSubMetadata)
+			.getHandlers()
+			.find(({ eventName }) => eventName === 'mcp-tools-changed');
+		if (!registration) throw new Error('Missing MCP tool change handler');
 		const metadata = new PubSubMetadata();
-		metadata.register({
-			eventName: 'mcp-tools-changed',
-			eventHandlerClass: McpToolChangeService,
-			methodName: 'onToolsChanged',
-			filter: { instanceType: 'main' },
-		});
+		metadata.register(registration);
 		const eventBus = new PubSubEventBus();
 		new PubSubRegistry(
 			logger,
@@ -154,6 +153,41 @@ describe('McpToolChangeService', () => {
 		await Promise.resolve();
 		expect(listener).toHaveBeenCalledTimes(1);
 		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	test('retries a failed publication without repeating the local notification', async () => {
+		config.multiMainSetup.enabled = true;
+		publisher.publishCommand.mockRejectedValueOnce(new Error('Redis unavailable'));
+		const listener = vi.fn();
+		unsubscribe.push((await service.getBus('channel')).subscribe(listener));
+		await Promise.resolve();
+		listener.mockClear();
+
+		service.observe('channel', 'v1');
+		await Promise.resolve();
+		service.observe('channel', 'v1');
+		await Promise.resolve();
+		service.observe('channel', 'v1');
+
+		expect(publisher.publishCommand).toHaveBeenCalledTimes(2);
+		expect(publisher.publishCommand).toHaveBeenLastCalledWith({
+			command: 'mcp-tools-changed',
+			payload: { channel: 'channel', revision: 'v1' },
+		});
+		expect(listener).toHaveBeenCalledExactlyOnceWith({ kind: 'tools_list_changed' });
+	});
+
+	test('keeps a newer revision when an earlier publication fails', async () => {
+		config.multiMainSetup.enabled = true;
+		publisher.publishCommand.mockRejectedValueOnce(new Error('Redis unavailable'));
+
+		service.observe('channel', 'v1');
+		service.observe('channel', 'v2');
+		await Promise.resolve();
+		service.observe('channel', 'v2');
+
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(publisher.publishCommand).toHaveBeenCalledTimes(2);
 	});
 
 	test('enforces a process-wide subscription limit across request handlers', async () => {
