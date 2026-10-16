@@ -1,4 +1,4 @@
-import { createSkillLoadTool } from '@n8n/agents';
+import { createSkillLoadTool, filterRuntimeSkillSource } from '@n8n/agents';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -9,10 +9,13 @@ import {
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
 	warmRuntimeSkills,
 } from '../runtime-skills';
-import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
+import {
+	AGENT_BUILDING_SKILL_IDS,
+	CONFIG_EVALS_SKILL_ID,
+	disabledInstanceAiSkillIds,
+} from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
-const AGENTS_MODULE_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
 
 describe('Instance AI runtime skills', () => {
 	afterEach(() => {
@@ -127,9 +130,11 @@ describe('Instance AI runtime skills', () => {
 		const topLevel = source.registry.skills.filter((skill) => !skill.parents).map(({ id }) => id);
 
 		expect(topLevel.sort()).toEqual([
+			'agent-builder',
 			'data-table-manager',
 			'debugging-executions',
 			'instance-awareness',
+			'intent-recognition',
 			'n8n-docs-assistant',
 			'planned-task-runtime',
 			'planning',
@@ -185,7 +190,7 @@ describe('Instance AI runtime skills', () => {
 	});
 
 	it('shares the Computer Use credential setup reference with agent-builder', async () => {
-		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
+		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find(
 			(entry) => entry.id === 'credential-setup-with-computer-use',
 		);
@@ -267,12 +272,14 @@ describe('Instance AI runtime skills', () => {
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: false,
 				instanceContextEnabled: true,
+				agentBuildingEnabled: true,
 			}),
 		).toContain(CONFIG_EVALS_SKILL_ID);
 		expect(
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
 				instanceContextEnabled: true,
+				agentBuildingEnabled: true,
 			}),
 		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
@@ -294,20 +301,27 @@ describe('Instance AI runtime skills', () => {
 		}
 	});
 
-	it('excludes bundled Agents module skills unless the module is enabled', async () => {
-		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
+	it('hides the Agents module skills when the skill gates say the module is off', async () => {
+		const source = filterRuntimeSkillSource(
+			loadInstanceAiRuntimeSkillSource(),
+			disabledInstanceAiSkillIds({
+				configEvalsEnabled: true,
+				instanceContextEnabled: true,
+				agentBuildingEnabled: false,
+			}),
+		);
 
-		for (const skillId of AGENTS_MODULE_SKILL_IDS) {
+		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
 			expect(source.registry.skills).not.toContainEqual(expect.objectContaining({ id: skillId }));
 			await expect(source.loadSkill(skillId)).resolves.toBeNull();
 		}
 	});
 
-	it('loads bundled Agents module skills when the module is enabled', async () => {
-		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
+	it('loads the bundled Agents module skills', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
 		const loadTool = createSkillLoadTool(source);
 
-		for (const skillId of AGENTS_MODULE_SKILL_IDS) {
+		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
 			expect(source.registry.skills).toContainEqual(expect.objectContaining({ id: skillId }));
 			await expect(source.loadSkill(skillId)).resolves.toMatchObject({ name: skillId });
 
@@ -316,8 +330,18 @@ describe('Instance AI runtime skills', () => {
 		}
 	});
 
+	it('loads every bundled skill whatever N8N_ENABLED_MODULES contains', async () => {
+		const unset = await loadRuntimeSkillSourceWithEnabledModules(undefined);
+		const withoutAgents = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
+
+		expect(withoutAgents.registry.skillsHash).toBe(unset.registry.skillsHash);
+		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
+			expect(unset.registry.skills).toContainEqual(expect.objectContaining({ id: skillId }));
+		}
+	});
+
 	it('loads the bundled agent-builder skill', async () => {
-		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
+		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find((entry) => entry.name === 'agent-builder');
 
 		expect(skill).toBeDefined();
@@ -631,6 +655,9 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(loaded?.instructions).toContain('unreconstructable-context');
 		expect(loaded?.instructions).toContain('do this unprompted');
+		expect(loaded?.instructions).toContain('## Before you name a cause');
+		expect(loaded?.instructions).toContain('credentials(action="test")');
+		expect(skill?.description).toContain('a live run you started');
 	});
 });
 

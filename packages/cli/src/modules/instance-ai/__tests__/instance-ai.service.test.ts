@@ -65,6 +65,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
+		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({ registry: { skills: [] } })),
 		setupSandboxWorkspace: vi.fn(),
 		traceSandboxOperation: vi.fn(
 			async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
@@ -267,7 +268,9 @@ import {
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
+	disabledInstanceAiSkillIds,
 	loadInstanceAiPromptSkills,
+	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	streamAgentRun,
 	isQuotaExhaustedError,
@@ -600,7 +603,7 @@ type TerminalGuardOrderServiceInternals = {
 	) => void;
 	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
-	creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+	creditService: { claimRunUsage: Mock };
 	failedInternalFollowUpStreaks: Map<string, number>;
 	schedulePlannedTasks: Mock;
 	createPlannedTaskState: Mock;
@@ -698,10 +701,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
-	service.creditService = {
-		claimRunUsage: vi.fn(async () => {}),
-		ensureQuotaLockApplied: vi.fn(async () => {}),
-	};
+	service.creditService = { claimRunUsage: vi.fn(async () => {}) };
 	service.failedInternalFollowUpStreaks = new Map();
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.preserveHitlOnShutdown = new Set();
@@ -825,18 +825,16 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				snapshotMode,
 				instanceContextEnabled,
 				boundGates: undefined as ContextGates | undefined,
-				resumeAgentBuild: false,
 			})),
 		),
 		...[true, false].map((enabled) => ({
 			snapshotMode: 'off',
 			instanceContextEnabled: !enabled,
 			boundGates: { instanceContextEnabled: enabled, nodeUsageEnabled: !enabled },
-			resumeAgentBuild: enabled,
 		})),
 	];
 	it.each(environmentGates)('starts with gates %j', async (gates) => {
-		const { snapshotMode, instanceContextEnabled, boundGates, resumeAgentBuild } = gates;
+		const { snapshotMode, instanceContextEnabled, boundGates } = gates;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -848,7 +846,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				proxyRunConfig?: undefined,
 				instanceContextGates?: ContextGates,
 				experimentGates?: undefined,
-				resumeAgentBuild?: boolean,
 			) => Promise<{
 				instanceContextEnabled: boolean;
 				nodeUsageEnabled: boolean;
@@ -922,7 +919,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			creditService: { claimRunUsage: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
@@ -1024,10 +1021,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
-		service.creditService = {
-			claimRunUsage: vi.fn(),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
-		};
+		service.creditService = { claimRunUsage: vi.fn() };
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
 			init: vi.fn(async () => {}),
@@ -1036,6 +1030,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createSandbox as Mock).mockResolvedValue(sandbox);
 		(createWorkspace as Mock).mockReturnValue(workspace);
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+		const agentBuildingAvailable = snapshotMode === 'seeded';
+		if (agentBuildingAvailable) {
+			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
+		}
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1046,8 +1044,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			undefined,
 			undefined,
 			boundGates,
-			undefined,
-			resumeAgentBuild,
+		);
+		// The agent-building skills follow whether the context has a builder delegate.
+		expect(disabledInstanceAiSkillIds).toHaveBeenCalledWith(
+			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
 		);
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,
@@ -1060,7 +1060,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				...expectedGates,
 				configEvalsEnabled: true,
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
-				resumeAgentBuild,
 			}),
 		);
 		expect(service.settingsService.getPermissions).toHaveBeenCalled();
@@ -1176,8 +1175,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 
 		// Runtime skills and workspace setup share the verified bundles of the sandbox.
-		const { resolveVerifiedBundles } = (createLazyWorkspaceRuntimeSkillSource as Mock).mock
-			.calls[0]?.[0] as { resolveVerifiedBundles: () => Promise<unknown> };
+		const { resolveVerifiedBundles, bundleSource } = (createLazyWorkspaceRuntimeSkillSource as Mock)
+			.mock.calls[0]?.[0] as {
+			resolveVerifiedBundles: () => Promise<unknown>;
+			bundleSource: unknown;
+		};
+		// The sandbox stores every bundled skill, the same set that the image and snapshot bake.
+		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalled();
+		expect(bundleSource).toBeDefined();
+		expect(bundleSource).toBe((loadInstanceAiRuntimeSkillSource as Mock).mock.results[0]?.value);
 		const verifiedBundles = await resolveVerifiedBundles();
 		expect(verifiedBundles).toEqual(new Map());
 		const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
@@ -1312,7 +1318,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			creditService: { claimRunUsage: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
@@ -1412,10 +1418,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.aiUsageService = {
 			isParameterValueSharingAllowed: vi.fn(async () => allowSendingParameterValues),
 		};
-		service.creditService = {
-			claimRunUsage: vi.fn(),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
-		};
+		service.creditService = { claimRunUsage: vi.fn() };
 		(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
 		(createWorkspace as Mock).mockReturnValue({
 			init: vi.fn(async () => {}),
@@ -2973,7 +2976,6 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 				undefined,
 				'group-1',
 				expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
-				toolName === 'build-agent',
 			);
 			expect(service.processResumedStream).toHaveBeenCalledWith(
 				rebuiltAgent,
@@ -3078,7 +3080,6 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			undefined,
 			'group-1',
 			expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
-			false,
 		);
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			rebuiltAgent,
@@ -3212,7 +3213,6 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			runHandoff: { handoffReason?: string } | undefined,
 			messageGroupId?: string,
 			instanceContextGates?: { instanceContextEnabled: boolean; nodeUsageEnabled: boolean },
-			resumeAgentBuild?: boolean,
 		) => Promise<{ agent: unknown; modelId?: unknown } | undefined>;
 		buildFreshInstanceAgent: Mock;
 		threadPushRef: { get: Mock };
@@ -3251,7 +3251,6 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			undefined,
 			'group-1',
 			gates,
-			enabled,
 		);
 
 		expect(service.createExecutionEnvironment).toHaveBeenCalledWith(
@@ -3263,8 +3262,6 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			undefined,
 			undefined,
 			gates,
-			undefined,
-			enabled,
 		);
 	});
 
@@ -6433,7 +6430,7 @@ describe('createAgentMemoryOptions', () => {
 			'observerMessageTokens' | 'reflectorObservationTokens'
 		>;
 		runState: { getObserverThresholdTokens: Mock };
-		creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+		creditService: { claimRunUsage: Mock };
 		logger: { warn: Mock };
 	};
 
@@ -6441,10 +6438,7 @@ describe('createAgentMemoryOptions', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
 		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
 		service.runState = { getObserverThresholdTokens: vi.fn().mockReturnValue(undefined) };
-		service.creditService = {
-			claimRunUsage: vi.fn(async () => {}),
-			ensureQuotaLockApplied: vi.fn(async () => {}),
-		};
+		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
@@ -7698,8 +7692,6 @@ describe('InstanceAiService — instance-context turn event', () => {
 					undefined,
 					undefined,
 					saved.instanceContext,
-					undefined,
-					false,
 				);
 				expect(checkpoint.persistence?.hostMetadata?.buildMode).toBe('default');
 				instanceContext = restored.state.instanceContext!;

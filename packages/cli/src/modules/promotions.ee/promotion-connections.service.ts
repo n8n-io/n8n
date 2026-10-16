@@ -14,7 +14,7 @@ import type {
 	PromotionPromoteConfigPublicDto,
 	UpdatePromotionConnectionDto,
 } from '@n8n/api-types';
-import { promotionConnectionTargetSchema } from '@n8n/api-types';
+import { isPromotionGitHostType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -32,6 +32,11 @@ import {
 	type PromotionConnectionFilter,
 } from './database/repositories/promotion-connection.repository';
 import { resolveStoredConfig } from './promotion-config-settings';
+import {
+	resolvePromotionGitTarget,
+	resolvePromotionTarget,
+	storePromotionTarget,
+} from './git-hosts/git-host-target';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
@@ -86,6 +91,7 @@ export class PromotionConnectionsService {
 	async create(input: CreatePromotionConnectionDto): Promise<PromotionConnectionPublicDto> {
 		const provider = await this.providersService.getEntity(input.providerId);
 		this.gitService.validateRemoteUrl(input.target.remoteUrl, provider.authType);
+		const target = storePromotionTarget(provider, input.target);
 
 		const writes = requestedConfigWrites(input.configs);
 		// Branch validation runs Git, so it happens before the transaction opens.
@@ -101,7 +107,7 @@ export class PromotionConnectionsService {
 							name: input.name,
 							scope: input.scope,
 							providerId: input.providerId,
-							target: input.target,
+							target,
 						},
 						ctx,
 					);
@@ -158,14 +164,32 @@ export class PromotionConnectionsService {
 		const provider = input.providerId
 			? await this.providersService.getEntity(input.providerId)
 			: current.provider;
-		const target: PromotionConnectionTarget = input.target ?? current.target;
-		this.gitService.validateRemoteUrl(target.remoteUrl, provider.authType);
-
-		await this.connectionRepository.updateConnection(id, {
-			...(input.name !== undefined && { name: input.name }),
-			...(input.target !== undefined && { target: input.target }),
-			...(input.providerId !== undefined && { providerId: input.providerId }),
-		});
+		const requested: PromotionConnectionTarget =
+			input.target ?? resolvePromotionTarget(current.provider, current.target);
+		this.gitService.validateRemoteUrl(requested.remoteUrl, provider.authType);
+		const changesTarget = input.target !== undefined || provider.id !== current.providerId;
+		const target =
+			input.target === undefined &&
+			isPromotionGitHostType(provider.type) &&
+			'repositoryPath' in current.target
+				? current.target
+				: changesTarget
+					? storePromotionTarget(provider, requested)
+					: current.target;
+		if (input.target !== undefined || input.providerId !== undefined) {
+			const updated = await this.connectionRepository.updateConnection(id, current.providerId, {
+				...(input.name !== undefined && { name: input.name }),
+				...(changesTarget && { target }),
+				...(input.providerId !== undefined && { providerId: input.providerId }),
+			});
+			if (!updated) {
+				throw new ConflictError(
+					'The connection changed during the update. Reload it and try again.',
+				);
+			}
+		} else if (input.name !== undefined) {
+			await this.connectionRepository.renameConnection(id, input.name);
+		}
 		return await this.findOne(id);
 	}
 
@@ -293,7 +317,12 @@ export class PromotionConnectionsService {
 			id: connection.id,
 			name: connection.name,
 			scope: connection.scope,
-			target: connection.target,
+			target: {
+				...resolvePromotionTarget(connection.provider, connection.target),
+				...('repositoryPath' in connection.target && {
+					repositoryPath: connection.target.repositoryPath,
+				}),
+			},
 			provider: this.providersService.toSummary(connection.provider),
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
@@ -384,14 +413,18 @@ export class PromotionConnectionsService {
 
 		// Read the target the same way an operation does, so the reported state and the
 		// enforced state cannot drift. A target this version cannot read is not usable.
-		const target = promotionConnectionTargetSchema.safeParse(connection.target);
-		if (!target.success) return { hasCheckout, matchesConfig: false };
+		let target: PromotionConnectionTarget;
+		try {
+			target = resolvePromotionGitTarget(connection.provider, connection.target);
+		} catch {
+			return { hasCheckout, matchesConfig: false };
+		}
 
 		const matchesConfig = await this.workingDirectory.matchesDescriptor(
 			buildCacheDescriptor({
 				connectionId: connection.id,
 				configId: config.id,
-				target: target.data,
+				target,
 				config: resolved,
 			}),
 		);

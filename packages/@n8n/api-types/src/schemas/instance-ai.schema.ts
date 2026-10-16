@@ -27,14 +27,11 @@ export const UNLIMITED_CREDITS = -1;
  * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
- * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
- * disabled, or the amounts are deliberately withheld from a cohort that must not see a balance.
+ * `creditsQuota` is {@link UNLIMITED_CREDITS} when the AI service proxy is disabled.
  */
 export type InstanceAiCredits = {
 	creditsQuota: number;
 	creditsClaimed: number;
-	/** Whether the pool has been locked by the activation cap. */
-	quotaLocked?: boolean;
 };
 
 /**

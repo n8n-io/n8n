@@ -33,7 +33,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import { WorkflowPublishGuardProxy } from '@n8n/backend-services';
 import { createAdmin, createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 

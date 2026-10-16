@@ -37,7 +37,11 @@ import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@n8n/backend-services';
+import {
+	RoleService,
+	RestrictedNodeTypesProviderProxy,
+	type WorkflowPublishGuardProxy,
+} from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
@@ -45,10 +49,10 @@ import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-p
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
-import { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
+
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';

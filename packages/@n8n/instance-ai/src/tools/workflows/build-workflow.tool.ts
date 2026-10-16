@@ -1483,13 +1483,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(t): t is { nodeName: string; nodeType: string } =>
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
-				// Setup routing is scoped to nodes this build actually changed:
-				// pre-existing nodes the build merely round-tripped must not route
-				// the user into setup for an unrelated edit. Undefined = unscoped
-				// (new workflow, or prior state unreadable).
-				const changedNodeNames = savedWorkflowSnapshot
+				// Setup routing is scoped to nodes this work item's builds actually
+				// changed: pre-existing nodes the build merely round-tripped must not
+				// route the user into setup for an unrelated edit. Earlier builds of the
+				// same work item (or the same run) stay in scope, so a fix that leaves a
+				// new node alone keeps its pending setup. Undefined = unscoped (workflow
+				// created by this work item, or prior state unreadable).
+				const runId = buildContext?.runId ?? context.runId;
+				// The file path is the fallback work item id. It stays the same across
+				// work items, so only the run can match then.
+				const scopeWorkItemId = resolvedWorkItemId === filePath ? undefined : resolvedWorkItemId;
+				const priorScope = binding.setupScope;
+				const sameWork =
+					(scopeWorkItemId !== undefined && priorScope?.workItemId === scopeWorkItemId) ||
+					(runId !== undefined && priorScope?.runId === runId);
+				const buildChanges = savedWorkflowSnapshot
 					? computeChangedNodeNames(json, savedWorkflowSnapshot)
 					: undefined;
+				const changedNodeNames = !sameWork
+					? buildChanges
+					: priorScope?.nodeNames && buildChanges
+						? [...new Set([...priorScope.nodeNames, ...buildChanges])]
+						: undefined;
 				const isInSetupScope = (nodeName: string | undefined) =>
 					changedNodeNames === undefined ||
 					(nodeName !== undefined && changedNodeNames.includes(nodeName));
@@ -1555,7 +1570,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						scriptedGateCount: waitGateScripts?.length ?? 0,
 						savedWorkflowId: saved.id,
 					});
-					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
 					binding = await saveWorkflowSourceFileBinding(context, {
@@ -1565,6 +1579,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
 						setupPending: undefined,
+						setupScope: { workItemId: scopeWorkItemId, runId, nodeNames: changedNodeNames },
 						...(setupPreferences
 							? {
 									setupPreferences: {
