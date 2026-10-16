@@ -141,7 +141,9 @@ class PackageCredentialSaveDenyCheck implements RegisteredPolicyCheck {
 const licenseMocker = new LicenseMocker();
 
 mockInstance(ActiveWorkflowManager);
-mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
+const credentialTypes = mockInstance(CredentialTypes);
+credentialTypes.recognizes.mockReturnValue(true);
+credentialTypes.getParentTypes.mockReturnValue([]);
 
 async function importPackage(
 	params: Pick<ImportPackageRequest, 'user' | 'packageBuffer'> & Partial<ImportPackageRequest>,
