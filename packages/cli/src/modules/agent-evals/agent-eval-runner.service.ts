@@ -1,5 +1,9 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import type { AgentEvalVerdict, AgentEvalRunSummary } from '@n8n/api-types';
+import {
+	INSTANCE_AI_EVAL_AGENT_MAX_TIMEOUT_MS,
+	type AgentEvalVerdict,
+	type AgentEvalRunSummary,
+} from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
@@ -48,8 +52,8 @@ const MAX_CASES = 500;
 // `setTimeout` holds its delay in a 32-bit int and silently coerces anything
 // larger to 1ms, so a deadline past ~24.8 days must be clamped, not passed on.
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
-// Reruns allow a one-hour execution budget. Leave five minutes for judging.
-const RESULT_SETTLEMENT_TIMEOUT_MS = 65 * 60_000;
+// Cover the maximum agent execution budget, plus five minutes for judging.
+const RESULT_SETTLEMENT_TIMEOUT_MS = INSTANCE_AI_EVAL_AGENT_MAX_TIMEOUT_MS + 5 * 60_000;
 const RESULT_SETTLEMENT_POLL_MS = 1_000;
 
 /** A dataset row resolved into a runnable case via the dataset's column mapping. */
@@ -65,6 +69,12 @@ interface ResolvedCase {
 interface CaseUsage {
 	inputTokens: number;
 	outputTokens: number;
+}
+
+interface RunDeadline {
+	hasExpired: () => boolean;
+	clear: () => void;
+	deadlineMinutes: number;
 }
 
 /**
@@ -433,7 +443,6 @@ export class AgentEvalRunnerService {
 				dispatchFailures.push(message);
 				unfinishedOriginals.set(seeded[index].id, message);
 			}
-			let wasCancelled = cancelObserved;
 
 			if (dispatchFailures.length > 0) {
 				this.logger.error(
@@ -442,100 +451,134 @@ export class AgentEvalRunnerService {
 				);
 			}
 
-			// A settled sibling can be rerun while the original pool is active.
-			// Fence the terminal write against those attempts, including other mains.
-			const settlementDeadline = Date.now() + RESULT_SETTLEMENT_TIMEOUT_MS;
-			while (true) {
-				for (const [resultId, message] of unfinishedOriginals) {
-					try {
-						await this.resultRepository.markUnfinishedAsError(
-							resultId,
-							originalAttempts.get(resultId),
-							message,
-						);
-						unfinishedOriginals.delete(resultId);
-					} catch (error) {
-						this.logger.warn(`[AgentEvalRunner] Could not settle original case ${resultId}`, {
-							error,
-						});
-					}
-				}
-				if (!wasCancelled) {
-					try {
-						wasCancelled = await this.runRepository.isCancellationRequested(runId);
-					} catch (error) {
-						dispatchFailures.push(error instanceof Error ? error.message : String(error));
-					}
-				}
-				const counts = await this.resultRepository.countByStatus(runId);
-				const metrics: IDataObject = { ...toSummaryCounts(counts), usage: { ...totalUsage } };
-				if (Date.now() >= settlementDeadline) {
-					if (wasCancelled) {
-						await this.runRepository.markAsCancelled(runId, metrics);
-					} else {
-						await this.runRepository.markAsError(
-							runId,
-							'result_settlement_timeout',
-							{
-								message: 'A result did not settle after the original batch finished.',
-							},
-							metrics,
-						);
-					}
-					break;
-				}
-				if (counts.new > 0 || counts.running > 0) {
-					await sleep(RESULT_SETTLEMENT_POLL_MS);
-					continue;
-				}
-				// Dispatch failures use the same claim fence as successful completion.
-				const finalCounts = counts;
-
-				let settled;
-				// Every branch records the tally under `metrics`, so pollers never find a
-				// settled run whose counts are missing or filed elsewhere.
-				if (wasCancelled) {
-					// A user stop outranks the deadline: it's intent, not a failure.
-					settled = await this.runRepository.markAsCancelled(runId, metrics, finalCounts);
-				} else if (deadline.hasExpired() && stoppedCases > 0) {
-					settled = await this.runRepository.markAsError(
-						runId,
-						'timeout',
-						{
-							message: `Run exceeded its ${deadline.deadlineMinutes}-minute deadline; ${stoppedCases} case(s) were not started.`,
-						},
-						metrics,
-						finalCounts,
-					);
-				} else if (dispatchFailures.length > 0) {
-					settled = await this.runRepository.markAsError(
-						runId,
-						'case_dispatch_failed',
-						{
-							message: `${dispatchFailures.length} failure(s) occurred outside case execution.`,
-							errors: dispatchFailures,
-						},
-						metrics,
-						finalCounts,
-					);
-				} else {
-					if (deadline.hasExpired()) {
-						// Overran, but nothing was left to skip. Logged for anyone tuning the
-						// limit, since the run itself still succeeded.
-						this.logger.debug(
-							`[AgentEvalRunner] Run ${runId} overran its ${deadline.deadlineMinutes}-minute deadline, but every case had finished`,
-						);
-					}
-					settled = await this.runRepository.markAsCompleted(runId, metrics, finalCounts);
-				}
-				if (settled) break;
-				const current = await this.runRepository.findById(runId);
-				if (!current || current.status !== 'running') break;
-				await sleep(RESULT_SETTLEMENT_POLL_MS);
-			}
+			await this.settleRun({
+				runId,
+				unfinishedOriginals,
+				originalAttempts,
+				dispatchFailures,
+				cancelObserved,
+				totalUsage,
+				deadline,
+				stoppedCases,
+			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			await this.failRun(runId, message);
+		}
+	}
+
+	private async settleRun(ctx: {
+		runId: string;
+		unfinishedOriginals: Map<string, string>;
+		originalAttempts: Map<string, Date>;
+		dispatchFailures: string[];
+		cancelObserved: boolean;
+		totalUsage: CaseUsage;
+		deadline: RunDeadline;
+		stoppedCases: number;
+	}): Promise<void> {
+		const {
+			runId,
+			unfinishedOriginals,
+			originalAttempts,
+			dispatchFailures,
+			cancelObserved,
+			totalUsage,
+			deadline,
+			stoppedCases,
+		} = ctx;
+		let wasCancelled = cancelObserved;
+
+		// A settled sibling can be rerun while the original pool is active.
+		// Fence the terminal write against those attempts, including other mains.
+		const settlementDeadline = Date.now() + RESULT_SETTLEMENT_TIMEOUT_MS;
+		while (true) {
+			for (const [resultId, message] of unfinishedOriginals) {
+				try {
+					await this.resultRepository.markUnfinishedAsError(
+						resultId,
+						originalAttempts.get(resultId),
+						message,
+					);
+					unfinishedOriginals.delete(resultId);
+				} catch (error) {
+					this.logger.warn(`[AgentEvalRunner] Could not settle original case ${resultId}`, {
+						error,
+					});
+				}
+			}
+			if (!wasCancelled) {
+				try {
+					wasCancelled = await this.runRepository.isCancellationRequested(runId);
+				} catch (error) {
+					dispatchFailures.push(error instanceof Error ? error.message : String(error));
+				}
+			}
+			const counts = await this.resultRepository.countByStatus(runId);
+			const metrics: IDataObject = { ...toSummaryCounts(counts), usage: { ...totalUsage } };
+			if (Date.now() >= settlementDeadline) {
+				if (wasCancelled) {
+					await this.runRepository.markAsCancelled(runId, metrics);
+				} else {
+					await this.runRepository.markAsError(
+						runId,
+						'result_settlement_timeout',
+						{
+							message: 'A result did not settle after the original batch finished.',
+						},
+						metrics,
+					);
+				}
+				break;
+			}
+			if (counts.new > 0 || counts.running > 0) {
+				await sleep(RESULT_SETTLEMENT_POLL_MS);
+				continue;
+			}
+			// Dispatch failures use the same claim fence as successful completion.
+			const finalCounts = counts;
+
+			let settled;
+			// Every branch records the tally under `metrics`, so pollers never find a
+			// settled run whose counts are missing or filed elsewhere.
+			if (wasCancelled) {
+				// A user stop outranks the deadline: it's intent, not a failure.
+				settled = await this.runRepository.markAsCancelled(runId, metrics, finalCounts);
+			} else if (deadline.hasExpired() && stoppedCases > 0) {
+				settled = await this.runRepository.markAsError(
+					runId,
+					'timeout',
+					{
+						message: `Run exceeded its ${deadline.deadlineMinutes}-minute deadline; ${stoppedCases} case(s) were not started.`,
+					},
+					metrics,
+					finalCounts,
+				);
+			} else if (dispatchFailures.length > 0) {
+				settled = await this.runRepository.markAsError(
+					runId,
+					'case_dispatch_failed',
+					{
+						message: `${dispatchFailures.length} failure(s) occurred outside case execution.`,
+						errors: dispatchFailures,
+					},
+					metrics,
+					finalCounts,
+				);
+			} else {
+				if (deadline.hasExpired()) {
+					// Overran, but nothing was left to skip. Logged for anyone tuning the
+					// limit, since the run itself still succeeded.
+					this.logger.debug(
+						`[AgentEvalRunner] Run ${runId} overran its ${deadline.deadlineMinutes}-minute deadline, but every case had finished`,
+					);
+				}
+				settled = await this.runRepository.markAsCompleted(runId, metrics, finalCounts);
+			}
+			if (settled) break;
+			const current = await this.runRepository.findById(runId);
+			if (current?.status !== 'running') break;
+			await sleep(RESULT_SETTLEMENT_POLL_MS);
 		}
 	}
 
@@ -543,11 +586,7 @@ export class AgentEvalRunnerService {
 	 * Arm the run-level deadline; expiring trips the run's abort. Non-positive
 	 * disables. Bounds when the last case may *start*, not when the run ends.
 	 */
-	private startRunDeadline(abort: AbortController): {
-		hasExpired: () => boolean;
-		clear: () => void;
-		deadlineMinutes: number;
-	} {
+	private startRunDeadline(abort: AbortController): RunDeadline {
 		const deadlineMinutes = this.globalConfig.evaluation.agentEvalsRunTimeoutMinutes;
 		if (deadlineMinutes <= 0) {
 			return { hasExpired: () => false, clear: () => undefined, deadlineMinutes };
