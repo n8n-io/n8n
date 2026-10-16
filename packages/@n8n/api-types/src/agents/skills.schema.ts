@@ -118,6 +118,12 @@ export class ListSkillsQueryDto extends Z.class({
 }) {}
 
 /**
+ * A skills hub name, trimmed first. A name of only spaces is refused, and padding is not
+ * stored, so it cannot make a name look free or show as an untitled row.
+ */
+const skillNameSchema = z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH);
+
+/**
  * Asks for a name that no skill in the scope has yet, as `/workflows/new` does for a
  * workflow: the requested name, or the same name with the first free number after it.
  */
@@ -127,8 +133,7 @@ export class SkillNewNameQueryDto extends Z.class({
 	projectId: z.string().max(36).optional(),
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
-	/** Trimmed first, so a name of only spaces is refused instead of suggested as "". */
-	name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH),
+	name: skillNameSchema,
 }) {}
 
 export type SkillNewNameResponse = { name: string };
@@ -143,7 +148,7 @@ export class CreateSkillDto extends Z.class({
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
 	/** Hub skills ignore `allowedTools`, so a create that sends it is refused. */
-	skill: agentSkillSchema.omit({ allowedTools: true }),
+	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
 }) {}
 
 /**
@@ -151,7 +156,7 @@ export class CreateSkillDto extends Z.class({
  * started from: a save based on an older version is refused with 409.
  */
 export class SaveSkillDto extends Z.class({
-	name: agentSkillShape.name.optional(),
+	name: skillNameSchema.optional(),
 	description: agentSkillShape.description.optional(),
 	instructions: agentSkillShape.instructions.optional(),
 	references: agentSkillShape.references.optional(),

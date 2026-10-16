@@ -379,6 +379,30 @@ describe('SkillService', () => {
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
 
+		it('trims a new name before it checks and stores it', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+
+			const result = await service.save('skill_a', { baseSkillHash, name: '  Renamed  ' }, user.id);
+
+			expect(result.skill.name).toBe('Renamed');
+			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
+				'skill_a',
+				3,
+				expect.objectContaining({ name: 'Renamed' }),
+				user.id,
+				expect.anything(),
+			);
+		});
+
+		it('refuses a new name of only spaces', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+
+			await expect(
+				service.save('skill_a', { baseSkillHash, name: '   ' }, user.id),
+			).rejects.toThrow('Skill name is required.');
+			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+		});
+
 		it('does not check the name when the save keeps it', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
