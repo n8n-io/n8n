@@ -1,12 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { LicenseMetricsRepository } from '@n8n/db';
+import type { DbConnection, LicenseMetricsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
 import type { CacheService } from '@n8n/backend-services';
 
 import { PrometheusWorkflowStatisticsMetricsService } from '../workflow-statistics-metrics.service';
+import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 
 vi.mock('prom-client');
 
@@ -23,6 +25,9 @@ const MOCK_METRICS = {
 } as const;
 
 describe('PrometheusWorkflowStatisticsMetricsService', () => {
+	const dbConnection = mock<DbConnection>({
+		connectionState: { connected: true, migrated: true },
+	});
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 		includeWorkflowStatistics: true,
@@ -51,8 +56,14 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(MOCK_METRICS);
 		service = new PrometheusWorkflowStatisticsMetricsService(
 			config,
-			cacheService,
-			licenseMetricsRepository,
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				mock(),
+				licenseMetricsRepository,
+				mock(),
+				mock(),
+				mock(),
+			),
 		);
 	});
 

@@ -16,9 +16,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
-import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import {
+	EngineDidNotAdmitError,
+	type EngineDataPlaneProxyService,
+} from '@/services/engine-data-plane-proxy.service';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import type { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import type { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
 const node = (id: string, name: string, type: string): INode => ({
@@ -126,6 +130,7 @@ describe('EngineV2Dispatcher', () => {
 	const proxy = mock<EngineDataPlaneProxyService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const pushRegistry = mock<EngineV2PushRegistry>();
+	const payloadFiles = mock<EngineV2PayloadFiles>();
 
 	let dispatcher: EngineV2Dispatcher;
 
@@ -133,7 +138,14 @@ describe('EngineV2Dispatcher', () => {
 		vi.clearAllMocks();
 		proxy.isAvailable.mockReturnValue(true);
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
-		dispatcher = new EngineV2Dispatcher(proxy, credentialsPermissionChecker, pushRegistry);
+		payloadFiles.claimForExecution.mockResolvedValue(undefined);
+		payloadFiles.discard.mockResolvedValue(undefined);
+		dispatcher = new EngineV2Dispatcher(
+			proxy,
+			credentialsPermissionChecker,
+			pushRegistry,
+			payloadFiles,
+		);
 	});
 
 	describe('routesToEngineV2', () => {
@@ -216,7 +228,10 @@ describe('EngineV2Dispatcher', () => {
 				const executionId = createExecutionIdV2();
 
 				const started = await dispatcher.start(
-					webhookRunData(undefined, { engineV2Response: { executionId, responseMode } }),
+					webhookRunData(undefined, {
+						engineV2ExecutionId: executionId,
+						engineV2Response: { responseMode },
+					}),
 				);
 
 				expect(started).toBe(executionId);
@@ -726,6 +741,63 @@ describe('EngineV2Dispatcher', () => {
 
 				const [executionId] = pushRegistry.register.mock.calls[0];
 				expect(pushRegistry.release).toHaveBeenCalledExactlyOnceWith(executionId);
+			});
+		});
+
+		describe('the trigger files', () => {
+			const outputs: INodeExecutionData[][] = [[{ json: { at: '2026-09-03T07:00:00.000Z' } }]];
+
+			it('moves them under the execution before the data plane is called', async () => {
+				const executionId = await dispatcher.start(triggerRunData(outputs));
+
+				expect(payloadFiles.claimForExecution).toHaveBeenCalledExactlyOnceWith(
+					outputs,
+					executionId,
+				);
+				// The data plane reads the files under the execution path, so they must
+				// be there when it starts.
+				expect(payloadFiles.claimForExecution.mock.invocationCallOrder[0]).toBeLessThan(
+					proxy.startExecution.mock.invocationCallOrder[0],
+				);
+				// The execution owns the files now.
+				expect(payloadFiles.discard).not.toHaveBeenCalled();
+			});
+
+			it('deletes them when the data plane refused the run before saving it', async () => {
+				const refusal = new EngineDidNotAdmitError('Engine did not admit the execution');
+				proxy.startExecution.mockRejectedValueOnce(refusal);
+
+				await expect(dispatcher.start(triggerRunData(outputs))).rejects.toBe(refusal);
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(outputs);
+			});
+
+			it('keeps them when the start fails in a way that can come after the save', async () => {
+				// A server error or a lost response: the data plane can hold a run that
+				// reads these files, and deleting that execution deletes them.
+				proxy.startExecution.mockRejectedValueOnce(new Error('socket hang up'));
+
+				await expect(dispatcher.start(triggerRunData(outputs))).rejects.toThrow('socket hang up');
+
+				expect(payloadFiles.discard).not.toHaveBeenCalled();
+			});
+
+			it('deletes them when the run is refused before it is dispatched', async () => {
+				proxy.isAvailable.mockReturnValue(false);
+
+				await expect(dispatcher.start(triggerRunData(outputs))).rejects.toThrow(UserError);
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(outputs);
+				expect(proxy.startExecution).not.toHaveBeenCalled();
+			});
+
+			it('deletes them when they cannot be moved, and does not dispatch', async () => {
+				payloadFiles.claimForExecution.mockRejectedValueOnce(new Error('disk gone'));
+
+				await expect(dispatcher.start(triggerRunData(outputs))).rejects.toThrow('disk gone');
+
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(outputs);
+				expect(proxy.startExecution).not.toHaveBeenCalled();
 			});
 		});
 	});

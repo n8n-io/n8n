@@ -55,6 +55,13 @@ jobs:
         working-directory: packages/cli
         run: ${{ matrix.test-cmd }}
 
+      # A packaged backend module opts in by defining `test:postgres`.
+      - name: Run packaged backend module PostgreSQL tests
+        if: matrix.TEST_IMAGE_POSTGRES != ''
+        env:
+          COVERAGE_ENABLED: 'false'
+        run: pnpm --filter './packages/modules/*/backend' --if-present run test:postgres --maxWorkers=100%
+
       # Regenerates the schema docs for this leg's database (sqlite temp file /
       # postgres testcontainer) and fails if they differ from what's committed.
       # tbls runs as a Docker image in CI.

@@ -6,7 +6,7 @@ import {
 	TestCredentialRequestDto,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedCredentials,
@@ -36,7 +36,6 @@ import { z } from 'zod';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialDescriptionsService } from './credential-descriptions.service';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
@@ -85,6 +84,7 @@ export class CredentialsController {
 		}
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(
 		req: CredentialRequest.GetMany,
@@ -112,10 +112,14 @@ export class CredentialsController {
 
 	@Get('/for-workflow')
 	async getProjectCredentials(req: CredentialRequest.ForWorkflow) {
-		const options = z
+		const { forAgent, ...scope } = z
 			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
+			.and(z.object({ forAgent: z.enum(['true', 'false']).optional() }))
 			.parse(req.query);
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
+		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
+			...scope,
+			excludePersonalRoute: forAgent === 'true',
+		});
 	}
 
 	@Get('/new')

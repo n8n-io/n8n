@@ -137,23 +137,30 @@ export class ExecutionContextService {
 
 	/**
 	 * Seals the identity a trigger authenticated its caller with. The token stays in
-	 * `identity` as evidence; `grant` lets the run re-verify that token after the
-	 * protected resource stops resolving (see {@link OAuthResourceGrant}), and `subject`
-	 * seals the resolved n8n user so a bound run resolves without re-verifying the token.
+	 * `identity` as evidence. `grant` is the gate that admitted the caller (see
+	 * {@link OAuthResourceGrant}), so the run can re-take that decision after the
+	 * protected resource stops resolving. `subject` seals the resolved n8n user, so a
+	 * bound run resolves without re-verifying the token. `binding` names the
+	 * trusted-source identity the caller came through, so a resolve fails once that
+	 * binding is no longer active. `version: 2` marks the seal as one that always
+	 * carries a grant.
 	 */
 	async buildTriggerIdentityCredentials(
 		token: string,
 		resource: string,
-		grant?: OAuthResourceGrant,
+		grant: OAuthResourceGrant,
 		subject?: string,
+		binding?: IN8NOAuthMetadata['binding'],
 	): Promise<string> {
 		const metadata: IN8NOAuthMetadata = {
 			source: 'n8n-oauth',
+			version: 2,
 			resource,
 			establishedAt: Date.now(),
 			executionPath: [],
-			...(grant ? { grant } : {}),
+			grant,
 			...(subject ? { subject } : {}),
+			...(binding ? { binding } : {}),
 		};
 		const payload: ICredentialContext = {
 			version: 1,

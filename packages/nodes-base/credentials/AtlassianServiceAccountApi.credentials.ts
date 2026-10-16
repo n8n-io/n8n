@@ -18,7 +18,20 @@ import {
 
 const TOKEN_URL = 'https://auth.atlassian.com/oauth/token';
 
-export async function getAccessToken(credentials: ICredentialDataDecryptedObject): Promise<string> {
+/**
+ * Epoch-millisecond expiry for the minted token, stored alongside it so core can tell a live
+ * token from one that has to be renewed when the gateway answers an ambiguous 403/404 (ENT-408).
+ * An omitted or unusable `expires_in` yields '', which core reads as "unknown" and retries on.
+ */
+function expiresAtFrom(response: object): string {
+	const expiresIn = Number((response as { expires_in?: unknown }).expires_in);
+	if (!Number.isFinite(expiresIn) || expiresIn <= 0) return '';
+	return String(Date.now() + expiresIn * 1000);
+}
+
+export async function getAccessToken(
+	credentials: ICredentialDataDecryptedObject,
+): Promise<{ accessToken: string; n8n_expires_at: string }> {
 	const stringOrEmpty = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 	const clientId = stringOrEmpty(credentials.clientId);
 	const clientSecret = stringOrEmpty(credentials.clientSecret);
@@ -61,7 +74,7 @@ export async function getAccessToken(credentials: ICredentialDataDecryptedObject
 		throw new OperationalError('Atlassian authentication did not return an access token');
 	}
 
-	return response.access_token;
+	return { accessToken: response.access_token, n8n_expires_at: expiresAtFrom(response) };
 }
 
 export class AtlassianServiceAccountApi implements ICredentialType {
@@ -81,6 +94,14 @@ export class AtlassianServiceAccountApi implements ICredentialType {
 			typeOptions: {
 				expirable: true,
 			},
+			default: '',
+		},
+		{
+			// Written by `preAuthentication`, read by core's refresh-and-resend gate. Declared so it
+			// survives `applyDefaultsAndOverwrites`, which drops undeclared credential fields.
+			displayName: 'Access Token Expires At',
+			name: 'n8n_expires_at',
+			type: 'hidden',
 			default: '',
 		},
 		{
@@ -114,8 +135,7 @@ export class AtlassianServiceAccountApi implements ICredentialType {
 	];
 
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		const accessToken = await getAccessToken(credentials);
-		return { accessToken };
+		return await getAccessToken(credentials);
 	}
 
 	async authenticate(

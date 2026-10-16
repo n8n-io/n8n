@@ -13,6 +13,8 @@ export function toOtelSettingsResponse(config: OtelConfig): OtelSettingsResponse
 		tracesSampleRate: config.tracesSampleRate,
 		startupConnectivityTimeoutMs: config.startupConnectivityTimeoutMs,
 		includeNodeSpans: config.includeNodeSpans,
+		emitWorkflowStartSpan: config.emitWorkflowStartSpan,
+		emitNodeStartSpan: config.emitNodeStartSpan,
 		injectOutbound: config.injectOutbound,
 		productionExecutionsOnly: config.productionExecutionsOnly,
 	};

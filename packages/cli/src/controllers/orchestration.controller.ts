@@ -18,6 +18,7 @@ export class OrchestrationController {
 	@GlobalScope('orchestration:read')
 	@Post('/worker/status')
 	async getWorkersStatusAll(req: AuthenticatedRequest) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (!this.licenseService.isWorkerViewLicensed()) return;
 
 		return await this.workerStatusService.requestWorkerStatus(req.user.id);

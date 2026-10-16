@@ -318,7 +318,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<PageViewLayout full-width data-test-id="workflow-review-requests-view">
+	<PageViewLayout :class="$style.layout" full-width data-test-id="workflow-review-requests-view">
 		<div ref="contentRef" :class="$style.content">
 			<N8nResizeWrapper
 				:class="$style.sidebarResizer"
@@ -328,6 +328,7 @@ onUnmounted(() => {
 				data-test-id="workflow-reviews-sidebar-resizer"
 			>
 				<WorkflowReviewRequestsSidebar
+					:class="$style.sidebar"
 					:sections="sidebarSections"
 					:loading="isLoadingActiveTab"
 					:initial-load-failed="activeTabInitialLoadFailed"
@@ -432,6 +433,12 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
+.layout {
+	padding-top: 0;
+}
+
 .content {
 	--review-tab-bar--height: var(--height--sm);
 	--review-tab-bar--indicator-overhang: 15px;
@@ -459,6 +466,15 @@ onUnmounted(() => {
 	min-height: 0;
 	overflow: hidden;
 	padding: 0 0 var(--spacing--md) var(--spacing--md);
+}
+
+.sidebar,
+.main {
+	padding-top: var(--spacing--lg);
+
+	@include breakpoints.breakpoint('sm-and-down') {
+		padding-top: var(--spacing--sm);
+	}
 }
 
 .columnTitle {

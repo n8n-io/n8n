@@ -151,7 +151,15 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 		const hashObject: Hash = (await this.get(key)) ?? {};
 
-		Object.assign(hashObject, hash);
+		for (const [field, value] of Object.entries(hash)) {
+			// Skip `__proto__`. On a plain object, `hash['__proto__'] = value` does not add a field.
+			// It changes the object's prototype.
+			if (field === '__proto__') {
+				continue;
+			}
+
+			hashObject[field] = value;
+		}
 
 		await this.set(key, hashObject);
 	}
@@ -181,7 +189,12 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		{
 			fallbackValue,
 			refreshFn,
-		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T | undefined> } = {},
+			ttl,
+		}: {
+			fallbackValue?: T;
+			refreshFn?: (key: string) => Promise<T | undefined>;
+			ttl?: number;
+		} = {},
 	) {
 		if (!this.cache) await this.init();
 
@@ -201,7 +214,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			this.emit('metrics.cache.update');
 
 			const refreshValue = await refreshFn(key);
-			await this.set(key, refreshValue);
+			await this.set(key, refreshValue, ttl);
 
 			return refreshValue;
 		}
@@ -304,7 +317,10 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		} else {
 			const hashObject = await this.cache.store.get<Hash<T>>(cacheKey);
 
-			hashValue = hashObject?.[hashKey] as MaybeHash<T>;
+			hashValue =
+				hashObject && Object.hasOwn(hashObject, hashKey)
+					? (hashObject[hashKey] as MaybeHash<T>)
+					: undefined;
 		}
 
 		if (hashValue !== undefined) {

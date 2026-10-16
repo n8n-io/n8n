@@ -3,7 +3,14 @@ import type { AgentSseEvent } from '@n8n/api-types';
 import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
-import { emitChunkEvents, initSseStream, type FlushableResponse } from '../agent-sse-stream';
+import {
+	emitChunkEvents,
+	initSseStream,
+	toChatErrorEvent,
+	type FlushableResponse,
+} from '../agent-sse-stream';
+import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { SteeredMessageEvent } from '../types/agent-steering';
 
 // ---------------------------------------------------------------------------
@@ -168,11 +175,10 @@ describe('agent-sse-stream — connection setup', () => {
 // stringifyError — tested through emitChunkEvents
 // ---------------------------------------------------------------------------
 
-vi.mock('n8n-workflow', () => ({
-	LoggerProxy: {
-		warn: vi.fn(),
-	},
-}));
+vi.mock(import('n8n-workflow'), async (importOriginal) => {
+	const actual = await importOriginal();
+	return { ...actual, LoggerProxy: { ...actual.LoggerProxy, warn: vi.fn() } };
+});
 
 describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 	it('extracts .message from an Error instance', async () => {
@@ -264,16 +270,31 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('leaves completion delivery to the caller when it receives a finish chunk', async () => {
+	it('forwards the finish reason and leaves completion delivery to the caller', async () => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
-			{ type: 'finish', finishReason: 'stop' },
+			{
+				type: 'finish',
+				finishReason: 'stop',
+				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+			},
 		]);
 
 		expect(events).toEqual([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+	});
+
+	it('forwards the guardrail code when a hook stopped the run', async () => {
+		const events = await collectEvents([
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+		]);
+
+		expect(events).toEqual([
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
 		]);
 	});
 
@@ -316,6 +337,7 @@ describe('agent-sse-stream — stream completion', () => {
 					input: { question: 'Second question' },
 				},
 			},
+			{ type: 'finish', finishReason: 'other' },
 		]);
 	});
 });
@@ -499,6 +521,30 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 			},
 		]);
 	});
+});
+
+describe('agent-sse-stream — toChatErrorEvent', () => {
+	it.each([
+		[new AgentTurnAlreadyRunningError(), 'turn_already_running'],
+		[new AgentN8nChatUnavailableError(), 'agent_unavailable'],
+		[new Error('boom'), undefined],
+	] as const)('maps %s to errorCode %s', (error, errorCode) => {
+		expect(toChatErrorEvent(error, 'fallback')).toEqual({
+			type: 'error',
+			message: error.message,
+			...(errorCode && { errorCode }),
+		});
+	});
+});
+
+it('scrubs secrets from the error message it sends to the client', () => {
+	const event = toChatErrorEvent(
+		new Error('Request failed: Authorization: Bearer sk-abcdef1234567890abcdef1234567890'),
+		'fallback',
+	);
+	expect(event.type === 'error' && event.message).not.toContain(
+		'sk-abcdef1234567890abcdef1234567890',
+	);
 });
 
 describe('agent-sse-stream — subagent-chunk', () => {

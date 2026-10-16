@@ -9,6 +9,7 @@ import type { Scope } from '../../types.ee';
 export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'agent:create',
 	'agent:read',
+	'agent:export',
 	'agent:update',
 	'agent:delete',
 	'agent:list',
@@ -77,11 +78,17 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'projectAiPreference:create',
 	'projectAiPreference:update',
 	'projectAiPreference:delete',
+	'projectSkill:list',
+	'projectSkill:read',
+	'projectSkill:create',
+	'projectSkill:update',
+	'projectSkill:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'agent:create',
 	'agent:read',
+	'agent:export',
 	'agent:update',
 	'agent:delete',
 	'agent:list',
@@ -137,11 +144,17 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'projectAiPreference:create',
 	'projectAiPreference:update',
 	'projectAiPreference:delete',
+	'projectSkill:list',
+	'projectSkill:read',
+	'projectSkill:create',
+	'projectSkill:update',
+	'projectSkill:delete',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'agent:create',
 	'agent:read',
+	'agent:export',
 	'agent:update',
 	'agent:delete',
 	'agent:list',
@@ -195,10 +208,16 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'projectAiPreference:create',
 	'projectAiPreference:update',
 	'projectAiPreference:delete',
+	'projectSkill:list',
+	'projectSkill:read',
+	'projectSkill:create',
+	'projectSkill:update',
+	'projectSkill:delete',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'agent:read',
+	'agent:export',
 	'agent:list',
 	'agent:execute',
 	'credential:list',
@@ -222,6 +241,8 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'projectVariable:read',
 	'projectAiPreference:list',
 	'projectAiPreference:read',
+	'projectSkill:list',
+	'projectSkill:read',
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];

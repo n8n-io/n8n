@@ -33,7 +33,7 @@ const requirement = (id: string): PackageCredentialRequirement => ({
 	id,
 	name: id,
 	type: 'githubApi',
-	usedByWorkflows: ['ignored'],
+	usedBy: [{ kind: 'workflow', id: 'ignored' }],
 });
 
 const scope = (input: {
@@ -44,7 +44,7 @@ const scope = (input: {
 	removedFolders?: RemovedFolderSummary[];
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
-	dataTable?: { matched: number; created: number; requirements: number };
+	dataTable?: { matched: number; created: number; updated?: number; requirements: number };
 	variables?: {
 		matched: number;
 		missing: number;
@@ -95,22 +95,27 @@ const scope = (input: {
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
-		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
+		dataTablePlan: {
+			creations: new Array(dt.created),
+			updates: new Array(dt.updated ?? 0),
+			columnAlignments: [],
+			failures: [],
+			matchedCount: dt.matched,
+		},
 		variablePlan: {
 			matched: [
 				...Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
 				...overwrittenVariableNames,
 			],
-			missing: missingVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			missing: missingVariableNames.map((name) => ({ name })),
 			creations: [...createdVariableNames, ...stubbedVariableNames, ...existingVariableNames].map(
-				(name) => ({ name, usedByWorkflows: [] }),
+				(name) => ({ name }),
 			),
-			conflicts: overwrittenVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			conflicts: overwrittenVariableNames.map((name) => ({ name })),
 			overwrites: overwrittenVariableNames.map((name) => ({
 				variableId: `id-of-${name}`,
 				name,
 				value: 'from-package',
-				usedByWorkflows: [],
 			})),
 		},
 		variableResult: {
@@ -140,6 +145,8 @@ const scope = (input: {
 			matchingMode: 'id-only',
 			missingMode: 'create-stub',
 			credentialBindings: undefined,
+			conflictPolicy: 'overwrite',
+			updateScope: { projectIds: new Set([context.projectId]) },
 		},
 		dataTableRequest: mock<DataTableImportRequest>({
 			requirements: dt.requirements === 0 ? undefined : new Array(dt.requirements),
@@ -153,7 +160,7 @@ const scope = (input: {
 			requirements: (tags.requirementIds ?? []).map((id) => ({
 				id,
 				name: `name-of-${id}`,
-				usedByWorkflows: ['ignored'],
+				usedBy: [{ kind: 'workflow', id: 'ignored' }],
 			})),
 			missingMode: 'create',
 			conflictPolicy: 'skip',
@@ -167,6 +174,7 @@ const request = mock<ResolvedImportPackageRequest>({
 	workflowIdPolicy: 'new',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
+	credentialConflictPolicy: 'overwrite',
 	workflowPublishingPolicy: 'preserve-published-state',
 	folderConflictPolicy: 'overwrite',
 	variableMissingMode: 'create-stub',
@@ -204,9 +212,11 @@ describe('emitPackageImportedEvent', () => {
 						bindings: new Map([['credA', 'target-a']]),
 						matched: ['credA'],
 						stubbed: [],
+						seeded: [],
+						incomplete: [],
 					},
 					requirements: [requirement('credA')],
-					dataTable: { matched: 1, created: 0, requirements: 1 },
+					dataTable: { matched: 1, created: 0, updated: 1, requirements: 2 },
 					variables: { matched: 1, missing: 0, requirements: 1 },
 					tags: { matched: ['T1'], created: ['T2'], requirementIds: ['T1', 'T2'] },
 				}),
@@ -214,11 +224,17 @@ describe('emitPackageImportedEvent', () => {
 					projectId: 'P2',
 					outcomes: [outcome('wf3', 'WF3', 'updated')],
 					credentialResult: {
-						bindings: new Map([['credB', 'stub-b']]),
+						bindings: new Map([
+							['credB', 'stub-b'],
+							['credC', 'seed-c'],
+							['credD', 'incomplete-d'],
+						]),
 						matched: [],
 						stubbed: ['credB'],
+						seeded: ['credC'],
+						incomplete: ['credD'],
 					},
-					requirements: [requirement('credB')],
+					requirements: [requirement('credB'), requirement('credC'), requirement('credD')],
 					dataTable: { matched: 0, created: 2, requirements: 2 },
 					variables: {
 						matched: 0,
@@ -249,14 +265,14 @@ describe('emitPackageImportedEvent', () => {
 		// Credential ids are resolved through each scope's binding map (source id -> target id).
 		expect(payload.credentialIds).toEqual({
 			matched: ['target-a'],
-			created: ['stub-b'],
+			created: ['stub-b', 'seed-c', 'incomplete-d'],
 			updated: [],
 		});
 		expect(payload.counts).toEqual({
 			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
 			folders: { removed: 0 },
-			credentials: { matched: 1, created: 1, requirements: 2 },
-			dataTables: { matched: 1, created: 2, requirements: 3 },
+			credentials: { matched: 1, created: 3, requirements: 4 },
+			dataTables: { matched: 1, created: 2, updated: 1, requirements: 4 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0; its
 			// overwritten name matched first but is counted as updated, not matched.
 			variables: { matched: 1, missing: 0, created: 1, stubbed: 1, updated: 1, requirements: 4 },
@@ -264,6 +280,7 @@ describe('emitPackageImportedEvent', () => {
 			tags: { matched: 1, created: 1, renamed: 1, reconciled: 1, skipped: 1, requirements: 5 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
+		expect(payload.options.credentialConflictPolicy).toBe('overwrite');
 		expect(payload.options.variableMissingMode).toBe('create-stub');
 		expect(payload.options.variableConflictPolicy).toBe('overwrite');
 		expect(payload.options.variableParentPolicy).toBe('global');
@@ -281,7 +298,13 @@ describe('emitPackageImportedEvent', () => {
 				scope({
 					projectId: 'P1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+					},
 					// Of three missing requirements, one was created with a value and one already existed.
 					variables: { matched: 0, missing: 3, requirements: 3, createdWithValue: 1, existing: 1 },
 				}),
@@ -312,13 +335,25 @@ describe('emitPackageImportedEvent', () => {
 				scope({
 					projectId: 'P1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+					},
 					variables: { matched: 0, missing: 1, requirements: 1, createdWithValue: 1 },
 				}),
 				scope({
 					projectId: 'P2',
 					outcomes: [outcome('wf2', 'WF2', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+					},
 					variables: { matched: 0, missing: 1, requirements: 1, existing: 1 },
 				}),
 			],
@@ -356,7 +391,13 @@ describe('emitPackageImportedEvent', () => {
 					removedFolders: [
 						{ folderId: 'F-stale', name: 'stale', projectId: 'P1', parentFolderId: null },
 					],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+					},
 				}),
 			],
 		});
@@ -385,7 +426,13 @@ describe('emitPackageImportedEvent', () => {
 					projectId: 'P1',
 					folderId: 'F1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+					},
 				}),
 			],
 		});

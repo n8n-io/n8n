@@ -34,6 +34,7 @@ import {
 	escapeFilter,
 	formatUrl,
 	getLdapIds,
+	getLdapSynchronizationsWithCount,
 	getLdapUsers,
 	getMappingAttributes,
 	mapLdapUserToDbUser,
@@ -374,6 +375,13 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		this.syncTimer = setInterval(async () => {
 			await this.runSync('live');
 		}, this.config.synchronizationInterval * 60000);
+	}
+
+	async getSynchronizations(
+		offset: number,
+		limit: number,
+	): Promise<[AuthProviderSyncHistory[], number]> {
+		return await getLdapSynchronizationsWithCount(offset, limit);
 	}
 
 	/**

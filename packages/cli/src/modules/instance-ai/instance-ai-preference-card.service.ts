@@ -57,6 +57,7 @@ export class InstanceAiPreferenceCardService {
 		// The same pair the MCP undo fires, so one number covers every way a user takes back an
 		// assistant write, whatever the surface.
 		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			user_id: user.id,
 			count: 1,
 			source: 'rejected',
 			scope_types: [scope],
@@ -64,6 +65,7 @@ export class InstanceAiPreferenceCardService {
 			seconds_since_saved: secondsSinceSaved(removed),
 		});
 		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			user_id: user.id,
 			surface: 'aia',
 			outcome: 'rejected',
 			scope_type: scope,
@@ -123,6 +125,7 @@ export class InstanceAiPreferenceCardService {
 			},
 		});
 		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			user_id: user.id,
 			surface: 'aia',
 			outcome: 'accepted_after_edit',
 			scope_type: after.scope,
@@ -131,6 +134,7 @@ export class InstanceAiPreferenceCardService {
 		// The card edits the same row the settings page edits, so it reports the same event.
 		// `surface` is what tells the two apart.
 		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			user_id: user.id,
 			scope_type: after.scope,
 			text_length: preference.content.length,
 			// The same answer the move event gives, so a change of project cannot read as no
@@ -141,6 +145,7 @@ export class InstanceAiPreferenceCardService {
 		});
 		if (moved) {
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+				user_id: user.id,
 				surface: 'aia',
 				offered_scope: before.scope,
 				accepted_scope: after.scope,

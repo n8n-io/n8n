@@ -47,6 +47,16 @@ describe('settling the action card', () => {
 				value: JSON.stringify({ approved: true }),
 			},
 			content: '✅ Approved by Alice',
+			resumeData: { approved: true },
+		},
+		{
+			name: 'session approval',
+			callback: {
+				actionId: 'resume:run-1:tool-1:0',
+				value: JSON.stringify({ approved: true, scope: 'session' }),
+			},
+			content: '✅ Approved by Alice',
+			resumeData: { approved: true, scope: 'session' },
 		},
 		{
 			name: 'non-approval selection',
@@ -56,6 +66,7 @@ describe('settling the action card', () => {
 				label: 'Continue',
 			},
 			content: '✅ Continue selected by Alice',
+			resumeData: { type: 'button', value: 'continue' },
 		},
 		// Teams and any other platform that carries the full payload in the card:
 		// the decision is in the button value, so no store is needed to name it.
@@ -64,22 +75,32 @@ describe('settling the action card', () => {
 			actionId: 'resume:run-1:tool-1:0',
 			value: JSON.stringify({ approved: true }),
 			content: '✅ Approved by Alice',
+			resumeData: { approved: true },
 		},
 		{
 			name: 'store-less decline',
 			actionId: 'resume:run-1:tool-1:1',
 			value: JSON.stringify({ approved: false }),
 			content: '🚫 Declined by Alice',
+			resumeData: { approved: false },
 		},
 		{
 			name: 'background approval after a restart',
 			actionId: 'bg:96fa13fa-75db-4439-b7c8-cd04a2c2f9b7:abcdefghijklmnopqrstuv:1',
 			value: '',
 			content: '✅ Approved by Alice',
+			resumeData: { approved: true },
+		},
+		{
+			name: 'background session approval after a restart',
+			actionId: 'bg:96fa13fa-75db-4439-b7c8-cd04a2c2f9b7:abcdefghijklmnopqrstuv:s',
+			value: '',
+			content: '✅ Approved by Alice',
+			resumeData: { approved: true, scope: 'session' },
 		},
 	])(
 		'names the decision on a $name card',
-		async ({ callback, actionId = 'callback-key', value, content }) => {
+		async ({ callback, actionId = 'callback-key', value, content, resumeData }) => {
 			const background = actionId.startsWith('bg:');
 			const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
@@ -108,6 +129,7 @@ describe('settling the action card', () => {
 			} as never);
 
 			expect(deleteMessage).not.toHaveBeenCalled();
+			expect(resumeForChat).toHaveBeenCalledWith(expect.objectContaining({ resumeData }));
 			expect(settleActionMessage).toHaveBeenCalledWith({
 				agentId: 'agent-1',
 				integration: { type: 'discord', credentialId: 'cred-1' },
@@ -121,7 +143,6 @@ describe('settling the action card', () => {
 					expect.objectContaining({
 						runId: 'background-job-96fa13fa-75db-4439-b7c8-cd04a2c2f9b7',
 						toolCallId: 'abcdefghijklmnopqrstuv',
-						resumeData: { approved: true },
 					}),
 				);
 				expect(settleActionMessage.mock.invocationCallOrder[0]).toBeGreaterThan(

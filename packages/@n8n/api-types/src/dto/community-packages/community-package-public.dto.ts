@@ -47,10 +47,8 @@ export class ListCommunityPackagesQueryDto extends Z.class({}, { strict: true })
 export class InstallCommunityPackagePublicDto extends Z.class({
 	name: z.string().openapi(installCommunityPackageFieldDocs.name),
 	version: z.string().optional().openapi(installCommunityPackageFieldDocs.version),
-	verify: z.boolean().optional().openapi(installCommunityPackageFieldDocs.verify),
 }) {}
 
 export class UpdateCommunityPackagePublicDto extends Z.class({
 	version: z.string().optional().openapi(updateCommunityPackageFieldDocs.version),
-	verify: z.boolean().optional().openapi(updateCommunityPackageFieldDocs.verify),
 }) {}

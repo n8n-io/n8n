@@ -20,6 +20,13 @@ export type DatabricksIndexInfo = {
 	/** DIRECT_ACCESS: keys of schema_json. DELTA_SYNC: columns_to_sync, or the Unity Catalog columns */
 	schemaColumns?: string[];
 	sourceTable?: string;
+	/** Vector search endpoint that serves the index */
+	endpointName?: string;
+	/**
+	 * STANDARD or STORAGE_OPTIMIZED. The first filtered query starts the GET and caches the promise,
+	 * so concurrent and later queries share one read. Resolves undefined when the GET is refused
+	 */
+	endpointType?: Promise<string | undefined>;
 };
 
 export interface DatabricksVectorStoreConfig {
@@ -123,6 +130,7 @@ export function parseIndexInfo(raw: unknown): DatabricksIndexInfo {
 		embedding,
 		schemaColumns,
 		sourceTable: optionalString(deltaSpec?.source_table),
+		endpointName: optionalString(raw.endpoint_name),
 	};
 }
 
@@ -299,7 +307,7 @@ export class DatabricksVectorStore extends VectorStore {
 		options?: { ids?: string[] },
 	): Promise<string[]> {
 		if (documents.length === 0) return [];
-		this.assertDirectAccess();
+		this.assertWritableContentColumn();
 		const vectors = await this.embeddings.embedDocuments(documents.map((doc) => doc.pageContent));
 		return await this.addVectors(vectors, documents, options);
 	}
@@ -309,14 +317,8 @@ export class DatabricksVectorStore extends VectorStore {
 		documents: DocumentInterface[],
 		options?: { ids?: string[] },
 	): Promise<string[]> {
-		const vectorColumn = this.assertDirectAccess();
+		const vectorColumn = this.assertWritableContentColumn();
 		const { primaryKey, name } = this.index;
-		// The row below would write the document text over its own primary key
-		if (this.contentColumn === primaryKey) {
-			throw new UserError(
-				`Column ${primaryKey} is the primary key of ${name}. Select another content column`,
-			);
-		}
 		const schemaColumns = new Set(this.index.schemaColumns ?? []);
 		const ids = documents.map((doc, i) => options?.ids?.[i] ?? doc.id ?? randomUUID());
 
@@ -347,6 +349,33 @@ export class DatabricksVectorStore extends VectorStore {
 		return ids;
 	}
 
+	/** Both writes below would land on a column the row already fills from somewhere else. */
+	private assertWritableContentColumn(): string {
+		const vectorColumn = this.assertDirectAccess();
+		const { primaryKey, name, schemaColumns } = this.index;
+		if (this.contentColumn === primaryKey) {
+			throw new UserError(
+				`Column ${primaryKey} is the primary key of ${name}. Select another Content Column`,
+			);
+		}
+		if (this.contentColumn === vectorColumn) {
+			throw new UserError(
+				`Column ${vectorColumn} holds the embedding vector of ${name}. Select another Content Column`,
+			);
+		}
+		// An index that declares an empty schema is known, not unknown: letting it
+		// through trades this message for a raw Databricks schema error.
+		if (schemaColumns !== undefined && !schemaColumns.includes(this.contentColumn)) {
+			const selectable = schemaColumns.filter((column) => !this.reserved.has(column));
+			throw new UserError(
+				selectable.length > 0
+					? `Index ${name} has no column ${this.contentColumn}. Select a Content Column from: ${selectable.join(', ')}`
+					: `Index ${name} has no column ${this.contentColumn}, and declares no other column to select`,
+			);
+		}
+		return vectorColumn;
+	}
+
 	// Databricks enforces `index_type` here; a Delta Sync index rejects upsert-data even when it holds its own vectors
 	private assertDirectAccess(): string {
 		const { indexType, embedding, name } = this.index;
@@ -370,6 +399,7 @@ export class DatabricksVectorStore extends VectorStore {
 			effectiveFilter && Object.keys(effectiveFilter).length > 0
 				? JSON.stringify(effectiveFilter)
 				: undefined;
+		if (filtersJson) await this.assertFilterable();
 
 		const response = await databricksRequest(
 			this.fetch,
@@ -417,5 +447,50 @@ export class DatabricksVectorStore extends VectorStore {
 			}),
 			Number(row[scoreAt]),
 		]);
+	}
+
+	// Databricks accepts filters_json on STANDARD endpoints only; STORAGE_OPTIMIZED takes filter_string.
+	// An unknown type also refuses, so a filter never reaches an endpoint that can ignore it
+	private async assertFilterable(): Promise<void> {
+		const { name, endpointName } = this.index;
+		// The node shares one index description per run, so the GET happens once per run, and only
+		// for filtered queries: the column dropdown and unfiltered runs never pay for it. Caching the
+		// promise keeps concurrent tool calls on one GET; a refused read caches as unknown. A transport
+		// error evicts, like the describe cache in the node, so one blip does not poison the run
+		this.index.endpointType ??= endpointName
+			? this.readEndpointType(endpointName).catch((error: unknown) => {
+					this.index.endpointType = undefined;
+					throw error;
+				})
+			: Promise.resolve(undefined);
+		const endpointType = await this.index.endpointType;
+		if (endpointType === 'STANDARD') return;
+
+		const endpoint = sanitizeMessage(endpointName ?? '(unknown)');
+		if (!endpointType) {
+			throw new UserError(
+				`Could not read the type of the endpoint that serves index ${name}. The Metadata Filter works on STANDARD endpoints only. Check that you can read endpoint ${endpoint}`,
+			);
+		}
+		const hint =
+			endpointType === 'STORAGE_OPTIMIZED'
+				? ' A STORAGE_OPTIMIZED endpoint needs a SQL filter string (filter_string), which this node does not support yet.'
+				: '';
+		throw new UserError(
+			`Index ${name} runs on endpoint ${endpoint} of type ${sanitizeMessage(endpointType)}. The Metadata Filter works on STANDARD endpoints only.${hint} See https://docs.databricks.com/aws/en/ai-search/filtering-guide`,
+		);
+	}
+
+	private async readEndpointType(endpointName: string): Promise<string | undefined> {
+		const response = await this.fetch(
+			`${this.host}/api/2.0/vector-search/endpoints/${toPathSegment(endpointName)}`,
+		);
+		// No read on the endpoint: the type stays unknown and the filtered query fails
+		if (!response.ok) {
+			await response.body?.cancel();
+			return undefined;
+		}
+		const endpoint: unknown = await response.json();
+		return optionalString(isRecord(endpoint) ? endpoint.endpoint_type : undefined);
 	}
 }

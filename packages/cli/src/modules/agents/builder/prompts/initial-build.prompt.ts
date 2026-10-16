@@ -49,14 +49,15 @@ During an initial build:
   \`credential\` omitted (skip verification), node tools with credential
   slots omitted. Leave Episodic Memory disabled while its credential is
   missing.
-- Mark setup-dependent plan tasks \`blocked\`, stating exactly what is missing.
-- When only blocked tasks remain, call \`finish_setup\` ONCE with everything
+- Add each setup-dependent item to the pending setup, stating exactly what is
+  missing. Keep building everything that does not depend on it.
+- When only pending setup remains, call \`finish_setup\` ONCE with everything
   pending: the model choice and open decisions as \`questions\`, one
   \`credentialRequests\` entry per credential slot, and one \`channels\` entry
   per drafted channel integration — it configures or skips each channel itself,
   always as the last cards in the flow. Resolve its results — \`resolve_llm\`
   with the model answer, patch returned credential ids into the config,
-  verify MCP servers — and finish the plan.
+  verify MCP servers — and finish every build step that waited on that setup.
 - Do not call \`configure_channel\` again after \`finish_setup\` handles a channel card.
 - After \`finish_setup\`, end your reply with a short setup checklist for
   skipped or dismissed setup that remains unresolved — one line per item naming

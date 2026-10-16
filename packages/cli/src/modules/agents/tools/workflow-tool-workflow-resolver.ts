@@ -55,7 +55,9 @@ export async function normalizeWorkflowToolRefs(
 	config: AgentJsonConfig,
 	projectId: string,
 ): Promise<void> {
-	const legacyRefs = extractAgentWorkflowRefs(config).filter((ref) => ref.workflowId === undefined);
+	const legacyRefs = extractAgentWorkflowRefs(config).filter(
+		(ref) => ref.enabled !== false && ref.workflowId === undefined,
+	);
 	if (legacyRefs.length === 0) return;
 
 	const values = [...new Set(legacyRefs.map((ref) => ref.workflow))];

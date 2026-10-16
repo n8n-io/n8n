@@ -1,12 +1,15 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.42.0",
+  "version": "2.44.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
     "*": {
       "aws-credentials": [
         "dist/credentials/common/aws/index.d.ts"
+      ],
+      "google-service-account": [
+        "dist/credentials/common/google/index.d.ts"
       ]
     }
   },
@@ -30,7 +33,8 @@
   },
   "files": [
     "dist",
-    "aws-credentials.js"
+    "aws-credentials.js",
+    "google-service-account.js"
   ],
   "n8n": {
     "credentials": [
@@ -269,6 +273,7 @@
       "dist/credentials/MicrosoftOutlookOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftSharePointOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftSql.credentials.js",
+      "dist/credentials/MicrosoftTeamsManagerOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftTeamsOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftToDoOAuth2Api.credentials.js",
       "dist/credentials/MindeeInvoiceApi.credentials.js",
@@ -383,6 +388,7 @@
       "dist/credentials/StravaOAuth2Api.credentials.js",
       "dist/credentials/StripeApi.credentials.js",
       "dist/credentials/SupabaseApi.credentials.js",
+      "dist/credentials/SupabaseOAuth2Api.credentials.js",
       "dist/credentials/SurveyMonkeyApi.credentials.js",
       "dist/credentials/SurveyMonkeyOAuth2Api.credentials.js",
       "dist/credentials/SyncroMspApi.credentials.js",
@@ -424,6 +430,7 @@
       "dist/credentials/WebflowOAuth2Api.credentials.js",
       "dist/credentials/WekanApi.credentials.js",
       "dist/credentials/WhatsAppApi.credentials.js",
+      "dist/credentials/WhatsAppBotApi.credentials.js",
       "dist/credentials/WhatsAppTriggerApi.credentials.js",
       "dist/credentials/WiseApi.credentials.js",
       "dist/credentials/WooCommerceApi.credentials.js",
@@ -700,6 +707,7 @@
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlook.node.js",
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlookTrigger.node.js",
       "dist/nodes/Microsoft/SharePoint/MicrosoftSharePoint.node.js",
+      "dist/nodes/Microsoft/SharePoint/MicrosoftSharePointTrigger.node.js",
       "dist/nodes/Microsoft/Sql/MicrosoftSql.node.js",
       "dist/nodes/Microsoft/Storage/AzureStorage.node.js",
       "dist/nodes/Microsoft/Teams/MicrosoftTeams.node.js",
@@ -916,7 +924,6 @@
     "@types/mailparser": "^3.4.4",
     "@types/mime-types": "catalog:",
     "@types/mssql": "^9.1.5",
-    "@types/nodemailer": "catalog:",
     "@types/oracledb": "catalog:",
     "@types/promise-ftp": "^1.3.4",
     "@types/qs": "catalog:",
@@ -994,7 +1001,7 @@
     "minifaker": "1.34.1",
     "moment-timezone": "catalog:",
     "mongodb": "6.11.0",
-    "mqtt": "5.7.2",
+    "mqtt": "5.16.0",
     "mqtt-packet": "catalog:",
     "mssql": "12.7.0",
     "mysql2": "catalog:",

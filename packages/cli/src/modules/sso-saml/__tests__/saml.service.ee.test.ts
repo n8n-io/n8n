@@ -11,6 +11,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
+import type { BindingContext } from 'samlify/types/src/entity';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
@@ -167,6 +168,7 @@ describe('SamlService', () => {
 	let cipher: Cipher;
 	let cacheService: Mocked<CacheService>;
 	let outboundHttp: Mocked<OutboundHttp>;
+	let urlService: MockProxy<UrlService>;
 	let httpRequest: Mock;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
@@ -226,6 +228,7 @@ describe('SamlService', () => {
 		httpRequest = vi.fn();
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: httpRequest }));
+		urlService = mock<UrlService>({ getInstanceBaseUrl: () => 'http://localhost:5678' });
 
 		vi.spyOn(ssoHelpers, 'reloadAuthenticationMethod').mockImplementation(
 			async () => await Promise.resolve(),
@@ -234,7 +237,7 @@ describe('SamlService', () => {
 
 		samlService = new SamlService(
 			logger,
-			mock<UrlService>(),
+			urlService,
 			validator,
 			userRepository,
 			settingsRepository,
@@ -279,6 +282,26 @@ describe('SamlService', () => {
 			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
 
 			expect(samlService.isSignedSamlRequestsEnabled()).toBe(true);
+		});
+	});
+
+	describe('getLoginRequestUrl', () => {
+		it('passes each relay state with its request and uses the instance URL by default', async () => {
+			const idp = mock<IdentityProviderInstance>();
+			const sp = mock<ServiceProviderInstance>();
+			sp.createLoginRequest.mockReturnValue(mock<BindingContext>());
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(idp);
+			vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(sp);
+
+			await samlService.getLoginRequestUrl('http://localhost:5678/first', 'redirect');
+			await samlService.getLoginRequestUrl(undefined, 'post');
+
+			expect(sp.createLoginRequest).toHaveBeenNthCalledWith(1, idp, 'redirect', {
+				relayState: 'http://localhost:5678/first',
+			});
+			expect(sp.createLoginRequest).toHaveBeenNthCalledWith(2, idp, 'post', {
+				relayState: 'http://localhost:5678',
+			});
 		});
 	});
 

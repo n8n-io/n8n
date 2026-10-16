@@ -742,6 +742,54 @@ describe('build-agent tool', () => {
 		});
 	});
 
+	describe('artifact changes', () => {
+		it('reports a created agent with its name', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Created it.'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(context.domainContext!.onArtifactChanged).toHaveBeenCalledWith({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'New Agent',
+			});
+		});
+
+		it('reports an existing agent whose config the builder changed', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						toolCallChunk('call-1', 'write_config'),
+						toolResultChunk('call-1', { configMutated: true }),
+					],
+					'Updated it.',
+				),
+			);
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(context.domainContext!.onArtifactChanged).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'agent', id: 'agent-existing', projectId: 'proj-1' }),
+			);
+		});
+
+		it('reports nothing when the builder did not change an existing agent', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Looked at it.'));
+
+			await runTool(context, { message: 'What does it do?', agentId: 'agent-existing' });
+
+			expect(context.domainContext!.onArtifactChanged).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('configUpdated', () => {
 		it.each(['write_config', 'patch_config', 'publish_agent', 'unpublish_agent'])(
 			'is true when the work summary has a succeeded %s call',

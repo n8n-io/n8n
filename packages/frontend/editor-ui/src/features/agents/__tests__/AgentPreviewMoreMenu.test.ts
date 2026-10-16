@@ -389,6 +389,7 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 		['workflow', 'Workflow', 'workflow'],
 		['webhook', 'Webhook', 'webhook'],
 		['instance-ai', 'agentSessions.origin.instanceAi', 'sparkles'],
+		['n8n_chat_production', 'agentSessions.origin.n8nChat', 'message-square'],
 		['chat', 'agentSessions.origin.preview', 'bolt-filled'],
 		['n8n_chat', 'agentSessions.origin.preview', 'bolt-filled'],
 		[null, 'agentSessions.origin.preview', 'bolt-filled'],

@@ -25,20 +25,22 @@ import {
 	getBrowserStatus,
 	getGatewayStatus,
 } from './instanceAi.api';
-import type {
-	FrontendModuleSettings,
-	InstanceAiAdminSettingsResponse,
-	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiUserPreferencesResponse,
-	InstanceAiProviderConnection,
-	InstanceAiPermissions,
-	InstanceAiPermissionMode,
-	InstanceAiModelCatalogResponse,
-	ToolCategory,
-	InstanceAiVerifyModelRequest,
-	InstanceAiVerifySandboxRequest,
-	InstanceAiVerifySearchRequest,
-	InstanceAiVerificationResponse,
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type ComputerUseChannel,
+	type FrontendModuleSettings,
+	type InstanceAiAdminSettingsResponse,
+	type InstanceAiAdminSettingsUpdateRequest,
+	type InstanceAiUserPreferencesResponse,
+	type InstanceAiProviderConnection,
+	type InstanceAiPermissions,
+	type InstanceAiPermissionMode,
+	type InstanceAiModelCatalogResponse,
+	type ToolCategory,
+	type InstanceAiVerifyModelRequest,
+	type InstanceAiVerifySandboxRequest,
+	type InstanceAiVerifySearchRequest,
+	type InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
@@ -46,7 +48,6 @@ import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
-import { DEFAULT_INSTANCE_AI_PERMISSIONS, type ComputerUseChannel } from '@n8n/api-types';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -181,7 +182,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		hasPermission(['rbac'], { rbac: { scope: 'credential:manageInstance' } }),
 	);
 
-	async function fetch(): Promise<void> {
+	async function fetch(): Promise<boolean> {
 		isLoading.value = true;
 		try {
 			const promises: [
@@ -205,11 +206,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				instanceModelCredentials.value = imc;
 			}
 			clearDraft();
+			return true;
 		} catch {
 			toast.showError(
 				new Error(i18n.baseText('settings.n8nAgent.toast.loadError')),
 				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
 			);
+			return false;
 		} finally {
 			isLoading.value = false;
 		}

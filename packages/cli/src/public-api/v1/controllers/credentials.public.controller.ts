@@ -12,7 +12,7 @@ import {
 	TransferCredentialPublicDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	ApiDescription,
@@ -38,8 +38,9 @@ import type { NextFunction, Request, Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -93,7 +94,7 @@ function toCredentialPublicDto(
 	};
 }
 
-/** The delete response adds `usageScope` to the standard credential fields. Carry over from legacy EOV handler. */
+/** The delete response adds `usageScope` to the standard credential fields. */
 function toDeleteCredentialPublicDto(
 	credential: CredentialsEntity,
 	includeDescription: boolean,
@@ -130,6 +131,7 @@ export class CredentialsPublicController {
 		private readonly eventService: EventService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	@Middleware()
@@ -333,7 +335,30 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		return toCredentialPublicDto(updatedCredential, await this.credentialDescriptions.isEnabled());
+		const includeDescription = await this.credentialDescriptions.isEnabled();
+		// Without `data` in the body the stored data is unchanged, so its flags still apply.
+		const credentialData =
+			decryptedDataForDeps ?? (await this.credentialsService.decrypt(existingCredential, true));
+
+		this.eventService.emit('credentials-updated', {
+			user: req.user,
+			credentialType: updatedCredential.type,
+			credentialId: updatedCredential.id,
+			credentialName: updatedCredential.name,
+			...(includeDescription && {
+				credentialDescriptionLength: updatedCredential.description?.length ?? 0,
+			}),
+			isDynamic: updatedCredential.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(credentialData).length > 0,
+			jweEnabled: credentialData.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(updatedCredential.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+				updatedCredential.type,
+				credentialData,
+			),
+		});
+
+		return toCredentialPublicDto(updatedCredential, includeDescription);
 	}
 
 	private assertKnownCredentialType(type: string): void {

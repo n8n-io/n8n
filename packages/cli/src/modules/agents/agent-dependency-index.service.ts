@@ -44,6 +44,13 @@ export class AgentDependencyIndexService {
 		for (const { agentId } of dependencies) this.runtimeCache.clearRuntimes(agentId);
 	}
 
+	async invalidateRuntimesForCredential(credentialId: string): Promise<void> {
+		const credentials = await this.credentialDependencyRepository.findByCredentialIds([
+			credentialId,
+		]);
+		for (const { agentId } of credentials) this.runtimeCache.clearRuntimes(agentId);
+	}
+
 	async buildIndex(): Promise<void> {
 		let afterId: string | null = null;
 

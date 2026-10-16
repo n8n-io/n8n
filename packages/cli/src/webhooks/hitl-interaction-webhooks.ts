@@ -58,7 +58,14 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const execution = await this.getExecution(parsed.executionId);
 		if (!execution) return { ok: false, status: 404 };
 
-		if (execution.status === 'running' || execution.finished || execution.data?.resultData?.error) {
+		if (
+			execution.status === 'running' ||
+			// oxlint-disable-next-line typescript/no-deprecated
+			execution.finished ||
+			execution.data?.resultData?.error ||
+			// A run parked at a node boundary is not waiting for this interaction.
+			execution.data?.waitReason === 'suspended'
+		) {
 			// Replayed or late interaction: nothing left to resume.
 			return { ok: false, status: 409 };
 		}

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 /**
  * The durable scheduler's shared vocabulary: schedule definitions, recurrence
  * kinds, misfire handling and the task lifecycle.
@@ -121,6 +120,9 @@ export type ScheduledJobMisfirePolicy =
  * value: changing this constant only affects jobs provisioned from now on.
  */
 export const DEFAULT_MISFIRE_GRACE_SECONDS = 60;
+
+/** Longest delay, in seconds, a Node.js timer honors. Node fires a longer one after about 1 ms. */
+export const MAX_TIMER_DELAY_SECONDS = Math.floor((2 ** 31 - 1) / 1000);
 
 /**
  * Where a scheduled task is in its lifecycle, from waiting to run to a final outcome.

@@ -346,9 +346,15 @@ const requestNodeGroupsOpenApi = nestingDescriptor({
 	},
 });
 
+export const workflowActiveDeprecationDocs = {
+	description: 'Deprecated. Check whether `activeVersionId` is not null instead.',
+	deprecated: true,
+} as const satisfies ZodOpenAPIMetadata;
+
 export const workflowCreateReadOnlyFieldDocs = {
 	id: { type: 'string', readOnly: true, example: '2tUt1wbLX592XDdX' },
-	active: { type: 'boolean', readOnly: true },
+	active: { type: 'boolean', readOnly: true, ...workflowActiveDeprecationDocs },
+	activeVersionId: alsoNullable({ type: 'string', readOnly: true }),
 	createdAt: { type: 'string', format: 'date-time', readOnly: true },
 	updatedAt: { type: 'string', format: 'date-time', readOnly: true },
 	isArchived: { type: 'boolean', readOnly: true },

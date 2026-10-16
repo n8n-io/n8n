@@ -17,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -55,6 +56,7 @@ const workflow = {
 function buildContext(run: ReturnType<typeof vi.fn>, extras: Partial<WorkflowToolContext> = {}) {
 	return {
 		workflowLoader: {} as never,
+		executor: mock<EphemeralNodeExecutor>(),
 		workflowRunner: { run } as unknown as WorkflowRunner,
 		subworkflowPolicyChecker: mock<SubworkflowPolicyChecker>(),
 		activeExecutions: { has: vi.fn().mockReturnValue(false) } as unknown as ActiveExecutions,

@@ -3,6 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	type CredentialDecryptContext,
 	type CredentialSaveContext,
+	type CredentialTransferContext,
 	type PolicyCheckClass,
 	type PolicyCheckMetadata,
 	type PolicyCheckResult,
@@ -16,9 +17,8 @@ import { Container, Service } from '@n8n/di';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { classifyHttpError } from '@/errors/http-error-classifier';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { serializeInternalRestError } from '@/errors/http-error-serializers';
+import { classifyRestError, serializeInternalRestError } from '@n8n/backend-services';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
@@ -97,6 +97,11 @@ const credentialUpdateContext: CredentialSaveContext = {
 	credential: { id: 'payload-cred', type: 'slackApi' },
 	storedCredential: { id: 'cred-1', type: 'slackApi' },
 	projectId: 'proj-1',
+};
+
+const credentialTransferContext: CredentialTransferContext = {
+	credential: { id: 'cred-1', type: 'slackApi' },
+	targetProjectId: 'proj-2',
 };
 
 const decryptContext: CredentialDecryptContext = {
@@ -185,6 +190,10 @@ class OtherPointsCheck implements RegisteredPolicyCheck {
 	}
 
 	async onCredentialSave(): Promise<PolicyCheckResult> {
+		return { violations: [slackBlocked] };
+	}
+
+	async onCredentialTransfer(): Promise<PolicyCheckResult> {
 		return { violations: [slackBlocked] };
 	}
 }
@@ -430,6 +439,29 @@ describe('PolicyDecisionService', () => {
 			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('wf-claimed');
 		});
 
+		it('names an agent as an agent, not as a workflow', async () => {
+			const { service, audit } = auditedServiceWith(SlackCheck);
+			const agent = {
+				id: 'agent-1',
+				name: 'Support agent',
+				nodes: [],
+				artifactKind: 'agent' as const,
+			};
+
+			await service.enforce(
+				'workflowSave',
+				{ workflow: agent, storedWorkflow: agent, projectId: 'proj-1' },
+				asAlice,
+			);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				agentId: 'agent-1',
+				agentName: 'Support agent',
+				projectId: 'proj-1',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
+		});
+
 		it('records the project a transfer moves into', async () => {
 			const { service, audit } = auditedServiceWith(OtherPointsCheck);
 
@@ -461,6 +493,19 @@ describe('PolicyDecisionService', () => {
 				credentialType: 'slackApi',
 			});
 			expect(JSON.stringify(audit.mock.calls[0][1])).not.toContain('payload-cred');
+		});
+
+		it('records the project a credential transfer moves into', async () => {
+			const { service, audit } = auditedServiceWith(OtherPointsCheck);
+
+			await service.enforce('credentialTransfer', credentialTransferContext, unattended);
+
+			expect(audit.mock.calls[0][1]).toMatchObject({
+				credentialId: 'cred-1',
+				credentialType: 'slackApi',
+				projectId: 'proj-2',
+			});
+			expect(audit.mock.calls[0][1]).not.toHaveProperty('workflowId');
 		});
 
 		it('records the credential and the node asking for it', async () => {
@@ -705,7 +750,7 @@ describe('PolicyDecisionService', () => {
 			const error = await proxy
 				.enforceWorkflowSave(saveContext, unattended)
 				.catch((e: unknown) => e);
-			const { status, body } = serializeInternalRestError(classifyHttpError(error as Error));
+			const { status, body } = serializeInternalRestError(classifyRestError(error as Error));
 
 			expect(status).toBe(503);
 			expect(JSON.stringify(body)).not.toContain('policy store');

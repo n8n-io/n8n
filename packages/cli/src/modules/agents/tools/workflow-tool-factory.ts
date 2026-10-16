@@ -31,6 +31,7 @@ import {
 	createRunExecutionData,
 	isTerminalExecutionStatus,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	TimeoutExecutionCancelledError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
@@ -40,6 +41,7 @@ import { z } from 'zod';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -151,6 +153,7 @@ export type WorkflowToolExecutionMode = Extract<WorkflowExecuteMode, 'manual' | 
 
 export interface WorkflowToolContext {
 	workflowLoader: WorkflowToolWorkflowLoader;
+	executor: EphemeralNodeExecutor;
 	workflowRunner: WorkflowRunner;
 	subworkflowPolicyChecker: SubworkflowPolicyChecker;
 	activeExecutions: ActiveExecutions;
@@ -362,29 +365,29 @@ export function getFixedWorkflowToolInputs(
 	inputs: WorkflowToolInputsConfig | undefined,
 ): Record<string, unknown> {
 	if (!inputs) return {};
-	const fixed: Record<string, unknown> = {};
+	const fixed: Array<[string, unknown]> = [];
 	for (const [name, binding] of Object.entries(inputs)) {
 		if (binding.mode === 'fixed') {
-			fixed[name] = binding.value;
+			fixed.push([name, binding.value]);
 		}
 	}
-	return fixed;
+	return Object.fromEntries(fixed);
 }
 
-/**
- * Drop fixed-bound keys from the LLM-facing schema so the model is not asked
- * for values the user already configured.
- */
-export function omitFixedFieldsFromSchema(
+/** Advertise AI inputs and their guidance. Configured values stay out of the model schema. */
+export function buildWorkflowToolInputSchema(
 	schema: z.ZodObject<z.ZodRawShape>,
 	inputs: WorkflowToolInputsConfig | undefined,
 ): z.ZodObject<z.ZodRawShape> {
-	const fixedKeys = Object.keys(getFixedWorkflowToolInputs(inputs));
-	if (fixedKeys.length === 0) return schema;
+	if (!inputs) return schema;
 
 	const shape = { ...schema.shape };
-	for (const key of fixedKeys) {
-		delete shape[key];
+	for (const [name, binding] of Object.entries(inputs)) {
+		if (binding.mode !== 'ai') {
+			delete shape[name];
+		} else if (Object.hasOwn(shape, name) && binding.description?.trim()) {
+			shape[name] = shape[name].describe(binding.description.trim());
+		}
 	}
 
 	const catchall = schema._def.catchall as z.ZodTypeAny | undefined;
@@ -394,23 +397,55 @@ export function omitFixedFieldsFromSchema(
 	return z.object(shape);
 }
 
-/**
- * Merge LLM-supplied args with fixed tool-config values (fixed wins), then
- * parse the result against the full declared schema so fixed values are
- * coerced to their field's declared type (e.g. numeric IDs stored as strings
- * are converted to numbers for number fields). Without this, fixed bindings
- * bypass the schema and reach the sub-workflow with the wrong runtime type.
- */
+/** Merge configured values over model arguments. Validate and coerce them to the trigger types. */
 export function mergeWorkflowToolInput(
 	llmInput: Record<string, unknown>,
 	inputs: WorkflowToolInputsConfig | undefined,
 	fullSchema: z.ZodObject<z.ZodRawShape>,
+	expressionValues: Record<string, unknown> = {},
 ): Record<string, unknown> {
 	const merged: Record<string, unknown> = {
 		...llmInput,
 		...getFixedWorkflowToolInputs(inputs),
+		...expressionValues,
 	};
 	return fullSchema.parse(merged);
+}
+
+async function resolveWorkflowToolInput(
+	input: Record<string, unknown>,
+	inputs: WorkflowToolInputsConfig | undefined,
+	fullSchema: z.ZodObject<z.ZodRawShape>,
+	context: WorkflowToolContext,
+	toolName: string,
+): Promise<Record<string, unknown>> {
+	const modelInput: IDataObject = buildWorkflowToolInputSchema(fullSchema, inputs).parse(input);
+	const expressions: Record<string, string> = {};
+	const acceptsExtraInputs = !(fullSchema._def.catchall instanceof z.ZodNever);
+	for (const [name, binding] of Object.entries(inputs ?? {})) {
+		if (
+			binding.mode === 'expression' &&
+			(Object.hasOwn(fullSchema.shape, name) || acceptsExtraInputs)
+		) {
+			expressions[name] = binding.value;
+		}
+	}
+	if (Object.keys(expressions).length === 0) {
+		return mergeWorkflowToolInput(modelInput, inputs, fullSchema);
+	}
+
+	const resolved = await context.executor.evaluateExpressions(
+		{
+			projectId: context.projectId,
+			nodeType: WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+			nodeTypeVersion: 2.2,
+			nodeParameters: {},
+			nodeName: toolName,
+		},
+		expressions,
+		[{ json: modelInput }],
+	);
+	return mergeWorkflowToolInput(modelInput, inputs, fullSchema, resolved);
 }
 
 // ---------------------------------------------------------------------------
@@ -1006,7 +1041,7 @@ async function buildWorkflowTool(
 
 	return assembleWorkflowTool(descriptor, context, {
 		reference: { workflowId: workflow.id, workflowName: workflow.name },
-		inputSchema: omitFixedFieldsFromSchema(fullInputSchema, descriptor.inputs),
+		inputSchema: buildWorkflowToolInputSchema(fullInputSchema, descriptor.inputs),
 		triggerType,
 	});
 }
@@ -1055,7 +1090,7 @@ function assembleWorkflowTool(
 			// A continuation means this workflow already ran on without us, so re-running
 			// it would be wrong. Skip the reload too: a settled run's output should still
 			// come back even if the workflow was archived since. The input is not parsed
-			// again either — fixed tool inputs were merged in on the original call.
+			// again either — configured inputs were resolved on the original call.
 			const pending = WAIT_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 			let current: Awaited<ReturnType<typeof loadCurrentWorkflow>> | undefined;
 			let result: WorkflowToolExecutionResult;
@@ -1065,11 +1100,12 @@ function assembleWorkflowTool(
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
-				const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
-				const parsedInput = mergeWorkflowToolInput(
-					currentSchema.parse(input),
+				const parsedInput = await resolveWorkflowToolInput(
+					input,
 					toolInputs,
 					currentFullSchema,
+					context,
+					toolName,
 				);
 				result = await executeWorkflow(
 					current.workflow,
