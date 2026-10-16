@@ -16,6 +16,7 @@ import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import { ConflictError } from '@n8n/errors';
+import { AgentTaskCancellationRepository } from './repositories/agent-task-cancellation.repository';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
@@ -100,6 +101,7 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
+	wake?: { jobIds: string[]; planStopId?: string };
 	resourceId: string;
 	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
 	hideUserMessageFromTranscript?: boolean;
@@ -182,6 +184,7 @@ export class AgentExecutionService {
 	private readonly sideCallUsageInFlightByExecution = new Map<string, Set<Promise<void>>>();
 
 	constructor(
+		private readonly cancellations: AgentTaskCancellationRepository,
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
@@ -224,6 +227,8 @@ export class AgentExecutionService {
 		const prepared = lockedQueueThread
 			? { thread: lockedQueueThread, created: false }
 			: await this.prepareThread(params, ctx);
+		if (params.wake)
+			await this.cancellations.assertWakeAdmission(params.threadId, params.wake, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
@@ -249,6 +254,19 @@ export class AgentExecutionService {
 			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+		await this.cancellations.recordAdmission(
+			params.threadId,
+			inserted.id,
+			{
+				planStopId: params.wake?.planStopId,
+				userInitiated:
+					!params.wake &&
+					!params.hideUserMessageFromTranscript &&
+					params.userMessage !== null &&
+					!params.resumeRunId,
+			},
+			ctx,
+		);
 		const inputMessageIds = await this.reserveInput(
 			params,
 			inserted.id,
@@ -348,6 +366,8 @@ export class AgentExecutionService {
 		) {
 			throw new AgentTurnAlreadyRunningError();
 		}
+		// A validated stop report must finish before later user input can run.
+		if (params.wake?.planStopId) return { queueItem: null, predecessorId: undefined };
 		const head = await this.queueRepository.findHead(threadId, ctx);
 		if (head?.id !== queueItemId && (head || queueItemId)) throw new AgentTurnAlreadyRunningError();
 		return { queueItem: head, predecessorId: undefined };
