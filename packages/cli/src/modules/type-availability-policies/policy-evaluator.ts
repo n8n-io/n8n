@@ -53,7 +53,12 @@ export type PackageResolver = (typeName: string) => string | null;
 
 export const nodeTypePackageResolver: PackageResolver = (typeName) => {
 	const lastDotIndex = typeName.lastIndexOf('.');
-	return lastDotIndex !== -1 ? typeName.substring(0, lastDotIndex) : typeName;
+	if (lastDotIndex === -1) return typeName;
+
+	const hasSlashAfterDot = typeName.indexOf('/', lastDotIndex) !== -1;
+	const dotIndex = hasSlashAfterDot ? typeName.indexOf('.') : lastDotIndex;
+
+	return dotIndex !== -1 ? typeName.substring(0, dotIndex) : typeName;
 };
 
 /** `ancestors` lists what a credential type is built on through `extends`; empty for node types. */

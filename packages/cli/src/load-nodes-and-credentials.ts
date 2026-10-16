@@ -705,8 +705,14 @@ export class LoadNodesAndCredentials {
 		const lastDotIndex = fullNodeType.lastIndexOf('.');
 		if (lastDotIndex === -1) return false;
 
-		const packageName = fullNodeType.substring(0, lastDotIndex);
-		const nodeType = fullNodeType.substring(lastDotIndex + 1);
+		// Edge case: If there's a slash after the last dot (e.g. pkg.foo/bar), split at the first dot.
+		// Otherwise, the last dot is our true package/node separator.
+		const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
+		const dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
+		if (dotIndex === -1) return false;
+
+		const packageName = fullNodeType.substring(0, dotIndex);
+		const nodeType = fullNodeType.substring(dotIndex + 1);
 
 		const { loaders } = this;
 		const loader = loaders[packageName];
@@ -726,8 +732,14 @@ export class LoadNodesAndCredentials {
 			throw new UnrecognizedNodeTypeError('', fullNodeType);
 		}
 
-		const packageName = fullNodeType.substring(0, lastDotIndex);
-		const nodeType = fullNodeType.substring(lastDotIndex + 1);
+		const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
+		const dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
+		if (dotIndex === -1) {
+			throw new UnrecognizedNodeTypeError('', fullNodeType);
+		}
+
+		const packageName = fullNodeType.substring(0, dotIndex);
+		const nodeType = fullNodeType.substring(dotIndex + 1);
 
 		const { loaders } = this;
 		const loader = loaders[packageName];
@@ -768,8 +780,14 @@ export class LoadNodesAndCredentials {
 
 	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
 		const lastDotIndex = fullNodeType.lastIndexOf('.');
-		const packageName =
-			lastDotIndex !== -1 ? fullNodeType.substring(0, lastDotIndex) : fullNodeType;
+		let dotIndex = lastDotIndex;
+
+		if (lastDotIndex !== -1) {
+			const hasSlashAfterDot = fullNodeType.indexOf('/', lastDotIndex) !== -1;
+			dotIndex = hasSlashAfterDot ? fullNodeType.indexOf('.') : lastDotIndex;
+		}
+
+		const packageName = dotIndex !== -1 ? fullNodeType.substring(0, dotIndex) : fullNodeType;
 
 		const loader = this.loaders[packageName];
 		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
