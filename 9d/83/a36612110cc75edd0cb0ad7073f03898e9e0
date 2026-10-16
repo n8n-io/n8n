@@ -1,0 +1,19 @@
+packages/modules/inbox/frontend/src/inbox.store.test.ts
+  s_c857b09ef73c87::t_29aff1adbd7acb 341-342,344-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d83a36612110cc75edd0cb0ad7073f03898e9e0",
+  "prompts": {},
+  "sessions": {
+    "s_c857b09ef73c87": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12f07-4673-7b72-8c91-78defcf53094",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

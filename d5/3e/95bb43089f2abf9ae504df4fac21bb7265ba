@@ -1,0 +1,29 @@
+packages/@n8n/db/src/migrations/common/1792083059437-AddTaskStopToAgentExecutionThreads.ts
+  s_fbba0b32ee6f59::t_a76602c2fc24f9 3
+packages/cli/test/migration/1792083059654-add-plan-task-to-agent-background-job.test.ts
+  s_fbba0b32ee6f59::t_a76602c2fc24f9 13
+packages/@n8n/db/src/migrations/common/1792083059203-AddSourceExecutionToAgentBackgroundJob.ts
+  s_fbba0b32ee6f59::t_a76602c2fc24f9 3
+packages/@n8n/db/src/migrations/common/1792083059654-AddPlanTaskToAgentBackgroundJob.ts
+  s_fbba0b32ee6f59::t_a76602c2fc24f9 3
+packages/cli/test/migration/1792083059437-add-task-stop-to-agent-execution-threads.test.ts
+  s_fbba0b32ee6f59::t_a76602c2fc24f9 13
+packages/cli/test/migration/1792083059203-add-source-execution-to-agent-background-job.test.ts
+  s_fbba0b32ee6f59::t_a76602c2fc24f9 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d53e95bb43089f2abf9ae504df4fac21bb7265ba",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
