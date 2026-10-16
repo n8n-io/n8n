@@ -187,9 +187,11 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 	takeReport(): ShadowReport | undefined {
 		if (this.runs === 0) return undefined;
 
+		const total = Object.values(this.counts).reduce((sum, count) => sum + count, 0);
 		const report: ShadowReport = {
 			...this.counts,
-			evaluations: Object.values(this.counts).reduce((sum, count) => sum + count, 0),
+			// Missing-input runs are not compared, so they stay out of `evaluations`.
+			evaluations: total - this.counts.legacy_missing_input,
 			quickjs_timeouts: this.timeouts,
 			legacy_latency_buckets: this.legacyLatency,
 			quickjs_latency_buckets: this.quickjsLatency,

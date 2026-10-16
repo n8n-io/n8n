@@ -24,7 +24,9 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 			quickjs_fe_timeout_ms: z.number().describe('QuickJS timeout for one shadow evaluation'),
 			quickjs_fe_evaluations: z
 				.number()
-				.describe('Distinct expressions compared in this report, up to 5000; repeats count once'),
+				.describe(
+					'Distinct expressions compared in this report, up to 5000; repeats count once. Runs with missing input are not in it',
+				),
 			quickjs_fe_same: z.number(),
 			quickjs_fe_different: z.number(),
 			quickjs_fe_unchecked: z

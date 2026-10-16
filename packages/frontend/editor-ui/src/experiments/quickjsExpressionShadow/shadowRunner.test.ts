@@ -85,7 +85,7 @@ describe('QuickJsExpressionShadow', () => {
 
 			const report = shadow.takeReport();
 			expect(report).toMatchObject({
-				evaluations: 1,
+				evaluations: 0,
 				legacy_missing_input: 1,
 				legacy_error_quickjs_ok: 0,
 				both_error: 0,
@@ -122,7 +122,7 @@ describe('QuickJsExpressionShadow', () => {
 		run(shadow, '{{ $json.name }}', ok('Ada'));
 
 		expect(shadow.takeReport()).toMatchObject({
-			evaluations: 2,
+			evaluations: 1,
 			legacy_missing_input: 1,
 			same: 1,
 		});
