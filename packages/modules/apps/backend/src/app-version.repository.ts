@@ -1,0 +1,100 @@
+import {
+	BaseRepository,
+	chunkIds,
+	isUniqueConstraintError,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
+import { Service } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
+import { DataSource, In, IsNull } from '@n8n/typeorm';
+
+import { AppVersion } from './app-version.entity';
+
+@Service()
+export class AppVersionRepository extends BaseRepository<AppVersion> {
+	constructor(dataSource: DataSource, txRunner: TransactionRunner) {
+		super(AppVersion, dataSource.manager, txRunner);
+	}
+
+	async insertVersion(
+		data: Pick<AppVersion, 'id' | 'appId' | 'sourceArtifactId' | 'label'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		try {
+			await this.managerFor(ctx).insert(AppVersion, {
+				...data,
+				bundleArtifactId: null,
+				buildTaskId: null,
+				buildStatus: 'queued',
+			});
+		} catch (error) {
+			if (isUniqueConstraintError(error)) {
+				throw new ConflictError('App version already exists. Save the source as a new version.');
+			}
+			throw error;
+		}
+	}
+
+	async findVersionById(versionId: string, ctx: OperationContext = {}): Promise<AppVersion | null> {
+		return await this.managerFor(ctx).findOneBy(AppVersion, { id: versionId });
+	}
+
+	async findVersion(
+		appId: string,
+		versionId: string,
+		ctx: OperationContext = {},
+	): Promise<AppVersion | null> {
+		return await this.managerFor(ctx).findOneBy(AppVersion, { id: versionId, appId });
+	}
+
+	async listForApp(appId: string, ctx: OperationContext = {}): Promise<AppVersion[]> {
+		return await this.managerFor(ctx).find(AppVersion, {
+			where: { appId },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+	}
+
+	async attachBundle(
+		appId: string,
+		versionId: string,
+		artifactId: number,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			AppVersion,
+			{
+				id: versionId,
+				appId,
+				bundleArtifactId: IsNull(),
+				buildStatus: In(['queued', 'running']),
+			},
+			{ bundleArtifactId: artifactId, buildStatus: 'succeeded' },
+		);
+		return result.affected === 1;
+	}
+
+	async setLabel(
+		appId: string,
+		versionId: string,
+		label: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(AppVersion, { id: versionId, appId }, { label });
+	}
+
+	async clearBundles(appId: string, versionIds: string[], ctx: OperationContext): Promise<void> {
+		for (const ids of chunkIds(versionIds)) {
+			await this.managerFor(ctx).update(
+				AppVersion,
+				{ id: In(ids), appId },
+				{ bundleArtifactId: null },
+			);
+		}
+	}
+
+	async removeVersions(appId: string, versionIds: string[], ctx: OperationContext): Promise<void> {
+		for (const ids of chunkIds(versionIds))
+			await this.managerFor(ctx).delete(AppVersion, { id: In(ids), appId });
+	}
+}

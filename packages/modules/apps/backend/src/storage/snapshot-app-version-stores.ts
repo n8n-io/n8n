@@ -1,0 +1,114 @@
+import { DbLock, DbLockService } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { ConflictError, NotFoundError } from '@n8n/errors';
+
+import { AppArchive } from './app-archive';
+import {
+	AppSourceVersionStore,
+	AppBuildResultStore,
+	type AppFiles,
+	type NewSourceVersion,
+} from './app-version-stores';
+import { AppArtifactService } from '../app-artifact.service';
+import { AppVersionRepository } from '../app-version.repository';
+import { AppRepository } from '../app.repository';
+
+@Service()
+export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
+	constructor(
+		private readonly archives: AppArchive,
+		private readonly artifacts: AppArtifactService,
+		private readonly versions: AppVersionRepository,
+		private readonly apps: AppRepository,
+		private readonly locks: DbLockService,
+	) {
+		super();
+	}
+
+	async createVersion(version: NewSourceVersion, files: AppFiles): Promise<void> {
+		const artifact = await this.artifacts.upload(await this.archives.pack(files));
+		try {
+			await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
+				if (!(await this.apps.findInProject(version.projectId, version.appId, ctx))) {
+					throw new NotFoundError('App not found.');
+				}
+				await this.artifacts.completeUpload(artifact, ctx);
+				await this.versions.insertVersion(
+					{
+						id: version.id,
+						appId: version.appId,
+						label: version.label,
+						sourceArtifactId: artifact.id,
+					},
+					ctx,
+				);
+				if (
+					!(await this.apps.advanceDraft(
+						version.projectId,
+						version.appId,
+						version.expectedDraftVersionId,
+						version.id,
+						ctx,
+					))
+				) {
+					throw new ConflictError('The app draft changed. Reload the source before saving.');
+				}
+			});
+		} catch (error) {
+			await this.artifacts.discard(artifact);
+			throw error;
+		}
+	}
+
+	async readSource(versionId: string): Promise<AppFiles> {
+		const version = await this.versions.findVersionById(versionId);
+		if (!version) throw new NotFoundError('App version not found.');
+		return await this.archives.unpack(await this.artifacts.read(version.sourceArtifactId));
+	}
+
+	async listSourceFiles(versionId: string): Promise<string[]> {
+		return [...(await this.readSource(versionId)).keys()].sort();
+	}
+
+	async readSourceFile(versionId: string, filePath: string): Promise<Buffer | null> {
+		return (await this.readSource(versionId)).get(filePath) ?? null;
+	}
+}
+
+@Service()
+export class SnapshotAppBuildResultStore extends AppBuildResultStore {
+	constructor(
+		private readonly archives: AppArchive,
+		private readonly artifacts: AppArtifactService,
+		private readonly versions: AppVersionRepository,
+		private readonly locks: DbLockService,
+	) {
+		super();
+	}
+
+	async recordSuccess(versionId: string, files: AppFiles): Promise<void> {
+		const artifact = await this.artifacts.upload(await this.archives.pack(files, true));
+		try {
+			await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
+				const version = await this.versions.findVersionById(versionId, ctx);
+				if (!version) throw new NotFoundError('App version not found.');
+				await this.artifacts.completeUpload(artifact, ctx);
+				if (!(await this.versions.attachBundle(version.appId, versionId, artifact.id, ctx))) {
+					throw new ConflictError(
+						'This app version cannot accept a bundle. Check its build status.',
+					);
+				}
+			});
+		} catch (error) {
+			await this.artifacts.discard(artifact);
+			throw error;
+		}
+	}
+
+	async readBundle(versionId: string): Promise<AppFiles> {
+		const version = await this.versions.findVersionById(versionId);
+		if (!version) throw new NotFoundError('App version not found.');
+		if (version.bundleArtifactId === null) throw new NotFoundError('App bundle not found.');
+		return await this.archives.unpack(await this.artifacts.read(version.bundleArtifactId), true);
+	}
+}
