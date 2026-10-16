@@ -53,10 +53,7 @@ packages:
 catalog:
   '@ai-sdk/alibaba': ^2.0.66
   '@ai-sdk/amazon-bedrock': ^5.0.115
-  # Exact pin: this package skips minimumReleaseAge, but its exact-pinned
-  # `@ai-sdk/provider*` deps do not. A range would resolve a release whose deps
-  # are still too new. Pin a release whose deps match `ai`.
-  '@ai-sdk/anthropic': 4.0.79
+  '@ai-sdk/anthropic': ^4.0.79
   '@ai-sdk/azure': ^4.0.101
   '@ai-sdk/cohere': ^4.0.60
   '@ai-sdk/deepseek': ^3.0.64
