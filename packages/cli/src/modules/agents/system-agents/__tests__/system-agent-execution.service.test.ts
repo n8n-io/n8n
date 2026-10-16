@@ -519,6 +519,22 @@ describe('SystemAgentExecutionService', () => {
 			expect(prepared[0].options.abortSignal).toBeUndefined();
 		});
 
+		it('refuses a run id that does not match the open suspension', async () => {
+			const { service, provider, checkpointStorage } = setup();
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+
+			await expect(
+				service.resume({
+					agentId: AGENT_ID,
+					user,
+					threadId: 'thread-1',
+					runId: 'run-old',
+					resumeData: {},
+				}),
+			).rejects.toThrow('This action is no longer waiting for input');
+			expect(provider.prepareTurn).not.toHaveBeenCalled();
+		});
+
 		it('refuses when no tool call waits for input', async () => {
 			const { service, provider, checkpointStorage } = setup();
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);

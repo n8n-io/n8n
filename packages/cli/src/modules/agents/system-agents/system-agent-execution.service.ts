@@ -403,8 +403,11 @@ export class SystemAgentExecutionService {
 				toolCall.suspended &&
 				(params.toolCallId === undefined || toolCall.toolCallId === params.toolCallId),
 		);
-		if (!checkpoint || !pending) throw new UserError('This action is no longer waiting for input');
-		const runId = params.runId ?? pending.runId;
+		// A client run id must name the open suspension, not an earlier run.
+		if (!checkpoint || !pending || (params.runId !== undefined && params.runId !== pending.runId)) {
+			throw new UserError('This action is no longer waiting for input');
+		}
+		const { runId } = pending;
 		const resourceId = this.resourceIdFor(params.user);
 		if (checkpoint.persistence?.resourceId !== resourceId) {
 			throw new NotFoundError('Session not found');
