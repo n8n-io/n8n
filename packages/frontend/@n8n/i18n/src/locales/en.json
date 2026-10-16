@@ -9473,6 +9473,7 @@
 	"agents.channels.whatsapp.setup.connect.connected": "Connected. Send the number a message to try it.",
 	"agents.channels.whatsapp.settings.identityLabel": "Appearance in WhatsApp",
 	"agents.channels.whatsapp.settings.editInManager": "Edit in WhatsApp Manager",
+	"agents.channels.whatsapp.settings.findMetaApp": "Find your Meta app",
 	"agents.channels.whatsapp.settings.label": "Conversations",
 	"agents.channels.whatsapp.settings.typingIndicator": "Typing indicator",
 	"agents.channels.whatsapp.settings.typingIndicatorHint": "People see “typing…” while the agent works, and their message shows as read",

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { N8nButton, N8nCopyInput, N8nIcon, N8nStepper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCopyInput, N8nIcon, N8nLink, N8nStepper, N8nText } from '@n8n/design-system';
 import {
 	resolveWhatsAppSettings,
 	type AgentJsonConfig,
@@ -632,6 +632,19 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 				</N8nText>
 			</div>
 
+			<N8nLink
+				:href="META_APP_DASHBOARD_URL"
+				target="_blank"
+				rel="noopener noreferrer"
+				size="small"
+				data-testid="whatsapp-find-meta-app"
+			>
+				<span :class="$style.linkContent">
+					{{ i18n.baseText('agents.channels.whatsapp.settings.findMetaApp') }}
+					<N8nIcon icon="arrow-up-right" size="xsmall" />
+				</span>
+			</N8nLink>
+
 			<N8nText
 				v-if="connected && !isPublished"
 				:class="$style.hint"
@@ -692,6 +705,12 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 
 .error {
 	color: var(--color--danger);
+}
+
+.linkContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .verified {

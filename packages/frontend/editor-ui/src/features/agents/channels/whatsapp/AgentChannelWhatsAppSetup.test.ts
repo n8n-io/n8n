@@ -972,6 +972,18 @@ describe('AgentChannelWhatsAppSetup', () => {
 			expect(queryByTestId('whatsapp-connect')).toBeNull();
 		});
 
+		it('links to the Meta app dashboard in a new tab', async () => {
+			const { getByTestId } = renderComponent({
+				props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }),
+			});
+			await flushPromises();
+
+			const link = getByTestId('whatsapp-find-meta-app');
+			expect(link).toHaveAttribute('href', 'https://developers.facebook.com/apps');
+			expect(link).toHaveAttribute('target', '_blank');
+			expect(link).toHaveTextContent('agents.channels.whatsapp.settings.findMetaApp');
+		});
+
 		it('shows a credential problem under the identity', async () => {
 			vi.mocked(checkWhatsAppCredential).mockResolvedValue({
 				status: 'failed',
