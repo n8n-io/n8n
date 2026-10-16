@@ -163,6 +163,11 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		return this.connections.get(nodeTypeName);
 	}
 
+	/** Whether registry nodes can use a credential type, by the same rule as `loadAll`. */
+	isSupportedCredentialType(name: string): boolean {
+		return isSupportedMcpRegistryCredentialType(this.getCredentialTypes(), name);
+	}
+
 	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
 		const entry = this.nodeTypes[nodeType];
 		if (!entry) throw new UnrecognizedNodeTypeError(this.packageName, nodeType);

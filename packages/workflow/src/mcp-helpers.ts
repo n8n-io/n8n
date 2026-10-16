@@ -24,9 +24,18 @@ interface McpRegistryConnectionBase {
 	attribution?: string;
 }
 
+/** The endpoint of a binding that connects somewhere else than its row, such as the AI Gateway. */
+export interface McpRegistryBindingEndpoint {
+	url: string;
+	hostname: string;
+	transport: 'httpStreamable' | 'sse';
+}
+
 export interface McpRegistryCredentialBinding {
 	credentialType: McpRegistryCredentialType;
 	selector: string;
+	/** Set when this option connects to another endpoint than its row. */
+	endpoint?: McpRegistryBindingEndpoint;
 }
 
 export interface ResolvedMcpRegistryConnection {

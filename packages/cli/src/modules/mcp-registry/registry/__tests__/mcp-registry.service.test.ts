@@ -18,7 +18,12 @@ import type { McpRegistryServerRepository } from '../mcp-registry-server.reposit
 import { McpRegistryService } from '../mcp-registry.service';
 import type { McpRegistryServer } from '../mcp-registry.types';
 import { toEntity } from '../mcp-registry.types';
-import { firecrawlAiGatewayMockServer, linearMockServer, notionMockServer } from '../mock-servers';
+import {
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
+	linearMockServer,
+	notionMockServer,
+} from '../mock-servers';
 
 const DB_NOW = new Date('2026-05-01T00:00:00.000Z');
 
@@ -113,6 +118,26 @@ function createService(options: CreateServiceOptions = {}) {
 describe('McpRegistryService', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	describe('AI Gateway pairs', () => {
+		it('reads the pair partner of a requested row, and returns only the requested rows', async () => {
+			const { service, loadNodesAndCredentials } = createService({
+				storedServers: [firecrawlMockServer, linearMockServer, firecrawlAiGatewayMockServer],
+				aiGateway: { enabled: true },
+			});
+			const loader = Object.create(McpRegistryNodeLoader.prototype) as McpRegistryNodeLoader;
+			loader.isSupportedCredentialType = vi.fn().mockReturnValue(true);
+			loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
+
+			const firecrawl = await service.get('firecrawl');
+			const bySlugs = await service.getBySlugs(['firecrawl']);
+
+			expect(firecrawl?.aiGateway?.slug).toBe('n8n-connect-firecrawl');
+			expect(bySlugs.map(({ slug, aiGateway }) => ({ slug, paired: !!aiGateway }))).toEqual([
+				{ slug: 'firecrawl', paired: true },
+			]);
+		});
 	});
 
 	describe('getAll / get', () => {

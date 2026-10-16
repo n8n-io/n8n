@@ -8,6 +8,7 @@ import {
 	type McpAiGatewayCredentialType,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
+	type McpRegistryCredentialBinding,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
@@ -49,6 +50,11 @@ export function getMcpRegistryCredentialOptions(
 	if (server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE) {
 		return [getAiGatewayCredentialOption(server.slug)];
 	}
+	// Last, because the first option is the node default and saved workflows omit defaults.
+	if (server.aiGateway) {
+		const ownOptions = getMcpRegistryCredentialOptions({ ...server, aiGateway: undefined });
+		return [...ownOptions, getAiGatewayCredentialOption(server.aiGateway.slug)];
+	}
 	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
 	return [
 		{
@@ -76,6 +82,16 @@ export function isSupportedMcpRegistryCredentialType(
 	}
 }
 
+/** A paired server's AI Gateway option connects to the AI Gateway, not to the server's own remote. */
+function getBindingEndpoint(
+	server: McpRegistryServer,
+	credentialType: string,
+): Pick<McpRegistryCredentialBinding, 'endpoint'> {
+	return server.aiGateway && isMcpAiGatewayAuthentication(credentialType)
+		? { endpoint: server.aiGateway.endpoint }
+		: {};
+}
+
 export function resolveMcpRegistryConnection(
 	server: McpRegistryServer,
 ): McpRegistryConnection | null {
@@ -89,7 +105,7 @@ export function resolveMcpRegistryConnection(
 	const credentialBindings = getMcpRegistryCredentialOptions(server).flatMap(
 		({ credentialType, value }) =>
 			isMcpOAuth2Authentication(credentialType) || isMcpAiGatewayAuthentication(credentialType)
-				? [{ credentialType, selector: value }]
+				? [{ credentialType, selector: value, ...getBindingEndpoint(server, credentialType) }]
 				: [],
 	);
 
@@ -131,7 +147,10 @@ export function prepareMcpRegistryConnection({
 	credentialData,
 	headers: preparedHeaders,
 }: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult {
-	if (!connection.credentialBindings.some((binding) => binding.credentialType === credentialType)) {
+	const binding = connection.credentialBindings.find(
+		(candidate) => candidate.credentialType === credentialType,
+	);
+	if (!binding) {
 		return {
 			ok: false,
 			error: {
@@ -157,6 +176,22 @@ export function prepareMcpRegistryConnection({
 	}
 
 	const { nodeTypeName, transport } = connection;
+
+	if (binding.endpoint) {
+		// The row's own headers are for the row's server, not for the AI Gateway.
+		return {
+			ok: true,
+			value: {
+				nodeTypeName,
+				credentialType,
+				transport: binding.endpoint.transport,
+				endpointUrl: binding.endpoint.url,
+				headers,
+				allowedDomains: binding.endpoint.hostname,
+			},
+		};
+	}
+
 	// Credential headers win over registry-configured ones on a name clash
 	const mergedHeaders = { ...connection.headers, ...headers };
 

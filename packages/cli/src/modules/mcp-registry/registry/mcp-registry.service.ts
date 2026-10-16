@@ -14,6 +14,7 @@ import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
+import { pairAiGatewayServers, withAiGatewayPartnerSlugs } from './mcp-registry-ai-gateway';
 import { McpRegistryCapabilities } from './mcp-registry-capabilities';
 import {
 	listMcpRegistryServers,
@@ -22,7 +23,7 @@ import {
 } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import { isAiGatewayMcpServer, toEntity, fromEntity } from './mcp-registry.types';
-import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
+import { canLoadMcpRegistryServer, MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
 
 /**
  * Compares a fetched AI Gateway row with its stored row as the database stores
@@ -69,9 +70,10 @@ export class McpRegistryService {
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
 		const servers = await this.getStoredServers(includeDeprecated);
-		return servers.filter(({ requiredCapabilities }) =>
+		const supportedServers = servers.filter(({ requiredCapabilities }) =>
 			this.capabilities.supports(requiredCapabilities),
 		);
+		return this.pair(supportedServers);
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
@@ -79,7 +81,8 @@ export class McpRegistryService {
 		if (!entity) return undefined;
 
 		const server = fromEntity(entity);
-		return this.capabilities.supports(server.requiredCapabilities) ? server : undefined;
+		if (!this.capabilities.supports(server.requiredCapabilities)) return undefined;
+		return (await this.withPartners([server]))[0];
 	}
 
 	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
@@ -88,9 +91,33 @@ export class McpRegistryService {
 		}
 
 		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
-		return entities
+		const servers = entities
 			.map(fromEntity)
 			.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities));
+		return await this.withPartners(servers);
+	}
+
+	/** Pairs AI Gateway rows with their registry twins (`pairAiGatewayServers`). */
+	private pair(servers: McpRegistryServer[]): McpRegistryServer[] {
+		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
+		if (!(loader instanceof McpRegistryNodeLoader)) return servers;
+		const isSupportedCredentialType = (name: string) => loader.isSupportedCredentialType(name);
+		return pairAiGatewayServers(servers, (server) =>
+			canLoadMcpRegistryServer(server, isSupportedCredentialType),
+		);
+	}
+
+	/** Pairs the given rows. It also reads their pair partners, but returns only the given rows. */
+	private async withPartners(servers: McpRegistryServer[]): Promise<McpRegistryServer[]> {
+		const slugs = new Set(servers.map(({ slug }) => slug));
+		const partnerSlugs = withAiGatewayPartnerSlugs([...slugs]).filter((slug) => !slugs.has(slug));
+		const partners =
+			partnerSlugs.length > 0
+				? (await this.repository.findBy(partnerSlugs.map((slug) => ({ slug }))))
+						.map(fromEntity)
+						.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities))
+				: [];
+		return this.pair([...servers, ...partners]).filter(({ slug }) => slugs.has(slug));
 	}
 
 	/**

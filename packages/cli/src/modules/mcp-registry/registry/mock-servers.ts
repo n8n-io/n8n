@@ -211,3 +211,21 @@ export const firecrawlAiGatewayMockServer = {
 	status: 'active',
 	requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],
 } satisfies McpRegistryServer;
+
+/** A registry server whose AI Gateway twin is `firecrawlAiGatewayMockServer`. */
+export const firecrawlMockServer = {
+	name: 'dev.firecrawl/mcp',
+	slug: 'firecrawl',
+	title: 'Firecrawl',
+	description: "Firecrawl's MCP server scrapes, crawls and searches the web.",
+	tagline: 'Connect to the Firecrawl MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-09-01T10:00:00.000Z',
+	icons: [{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/svg+xml' }],
+	authType: 'oauth2',
+	remotes: [{ type: 'streamable-http', url: 'https://mcp.firecrawl.dev/mcp' }],
+	tools: [{ name: 'firecrawl_scrape', title: 'Scrape', annotations: { readOnlyHint: true } }],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+} satisfies McpRegistryServer;

@@ -9,6 +9,7 @@ import type {
 
 import {
 	getMcpRegistryAiGatewayCredentialTypeName,
+	getMcpRegistryCredentialOptions,
 	getMcpRegistryCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
@@ -19,6 +20,7 @@ import {
 	AI_GATEWAY_MANAGED_AUTH_TYPE,
 	mcpRegistryExtendsCredentialSchema,
 	mcpRegistryUsesCredentialsSchema,
+	type McpRegistryAiGatewayPair,
 	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
@@ -324,6 +326,65 @@ function withRemoteDefaults(
 }
 
 /**
+ * Adds the Gateway credits choice of a paired server. It goes first in the
+ * selector, but the default stays the own option, because saved workflows omit
+ * default values.
+ */
+function addAiGatewayChoice(
+	description: INodeTypeDescription,
+	server: McpRegistryServer,
+	aiGateway: McpRegistryAiGatewayPair,
+): void {
+	const [ownOption] = getMcpRegistryCredentialOptions({ ...server, aiGateway: undefined });
+	const aiGatewayOption = { name: 'Gateway credits', value: 'aiGateway' };
+	description.credentials = [
+		// A single own credential has no selector yet, so it gets one.
+		...(description.credentials ?? []).map((credential) =>
+			credential.displayOptions
+				? credential
+				: { ...credential, displayOptions: { show: { authentication: [ownOption.value] } } },
+		),
+		{
+			name: getMcpRegistryAiGatewayCredentialTypeName(aiGateway.slug),
+			required: true,
+			displayOptions: { show: { authentication: [aiGatewayOption.value] } },
+		},
+	];
+
+	const authenticationProperty = description.properties.find(
+		({ name }) => name === 'authentication',
+	);
+	if (authenticationProperty) {
+		authenticationProperty.options = [aiGatewayOption, ...(authenticationProperty.options ?? [])];
+		return;
+	}
+	description.properties = [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			noDataExpression: true,
+			options: [aiGatewayOption, { name: ownOption.name, value: ownOption.value }],
+			default: ownOption.value,
+		},
+		...description.properties,
+	];
+}
+
+/** Whether the loader can load the server, by the same rules as `serverToNodeDescription`. */
+export function canLoadMcpRegistryServer(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): boolean {
+	return (
+		resolveMcpRegistryConnection(server) !== null &&
+		getNodeDescriptionCredentials(server, isKnownCredentialType).length > 0 &&
+		(server.authType === 'usesCredentials' ||
+			serverToCredentialDescription(server, isKnownCredentialType) !== null)
+	);
+}
+
+/**
  * Registry MCP server → service-specific credential type depending on auth type for the server
  */
 export function serverToCredentialDescription(
@@ -369,7 +430,8 @@ export function serverToNodeDescription(
 	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
 
-	if (server.status === 'deprecated') {
+	// A paired AI Gateway row stays loaded for saved workflows. Its twin offers it.
+	if (server.status === 'deprecated' || server.pairedSlug) {
 		description.hidden = true;
 	} else {
 		delete description.hidden;
@@ -395,6 +457,7 @@ export function serverToNodeDescription(
 	if (authenticationProperty) {
 		description.properties = [authenticationProperty, ...description.properties];
 	}
+	if (server.aiGateway) addAiGatewayChoice(description, server, server.aiGateway);
 	description.builderHint = {
 		...description.builderHint,
 		searchHint: `Agent-optimised ${server.title} integration. When wiring an ai_tool to an AI Agent for ${server.title}, use THIS node, not the native action node — this variant exposes ${server.title}'s tools in the shape AI Agents expect and ships pre-configured connection details.`,

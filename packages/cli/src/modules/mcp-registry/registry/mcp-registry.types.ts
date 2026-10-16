@@ -1,3 +1,4 @@
+import type { McpRegistryBindingEndpoint } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
@@ -157,7 +158,19 @@ const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
 
 export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);
 
-export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema>;
+/** Set by `pairAiGatewayServers` when the server is read. Never stored. */
+export interface McpRegistryAiGatewayPair {
+	/** Slug of the AI Gateway row. */
+	slug: string;
+	endpoint: McpRegistryBindingEndpoint;
+}
+
+export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema> & {
+	/** On a registry row: the AI Gateway row that offers Gateway credits for it. */
+	aiGateway?: McpRegistryAiGatewayPair;
+	/** On an AI Gateway row: the slug of the registry row that offers it. */
+	pairedSlug?: string;
+};
 export type McpRegistryIcon = McpRegistryServer['icons'][number];
 export type McpRegistryRemote = McpRegistryServer['remotes'][number];
 export type McpRegistryRemoteType = McpRegistryRemote['type'];
@@ -175,7 +188,16 @@ export function parseMcpRegistryServer(value: unknown): McpRegistryServer | null
 }
 
 export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
-	const { slug, status, version, updatedAt, ...rest } = server;
+	// The pair fields are derived when the server is read, so they are never stored.
+	const {
+		slug,
+		status,
+		version,
+		updatedAt,
+		aiGateway: _pair,
+		pairedSlug: _pairedSlug,
+		...rest
+	} = server;
 	let mappedStatus = status;
 	// make sure that unknown statuses get mapped to a valid value
 	if (!serverStatuses.includes(status)) {

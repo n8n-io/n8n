@@ -5,10 +5,12 @@ import {
 	serverToNodeDescription,
 	serverToCredentialDescription,
 } from '../node-description-transform';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	databricksGenieTemplatedMockServer,
 	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
 	gmailDirectExtendMockServer,
 	githubUsesCredentialsMockServer,
 	notionMockServer,
@@ -863,6 +865,47 @@ describe('Gateway credits MCP server', () => {
 			hidden: true,
 			properties: [],
 		});
+	});
+});
+
+describe('a server paired with its AI Gateway twin', () => {
+	it('offers Gateway credits first, keeps the own option as the default, and hides the AI Gateway node', () => {
+		const [twin, aiGatewayRow] = pairAiGatewayServers(
+			[firecrawlMockServer, firecrawlAiGatewayMockServer],
+			() => true,
+		);
+
+		const twinNode = serverToNodeDescription(
+			twin,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+		const aiGatewayNode = serverToNodeDescription(
+			aiGatewayRow,
+			deepCopy(baseDescription),
+			isKnownCredentialType,
+		);
+
+		expect(twinNode?.credentials).toEqual([
+			{
+				name: 'firecrawlMcpOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
+			},
+			{
+				name: 'n8nConnectFirecrawlMcpAiGatewayApi',
+				required: true,
+				displayOptions: { show: { authentication: ['aiGateway'] } },
+			},
+		]);
+		expect(twinNode?.properties.find(({ name }) => name === 'authentication')).toMatchObject({
+			options: [
+				{ name: 'Gateway credits', value: 'aiGateway' },
+				{ name: 'OAuth2', value: 'oAuth2' },
+			],
+			default: 'oAuth2',
+		});
+		expect(aiGatewayNode?.hidden).toBe(true);
 	});
 });
 

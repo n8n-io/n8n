@@ -30,6 +30,8 @@ export interface McpRegistrySearchResult {
 }
 
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
+	// Its twin offers this AI Gateway row as Gateway credits.
+	if (server.pairedSlug) return null;
 	const connection = resolveMcpRegistryConnection(server);
 	if (!connection) return null;
 	const defaultCredential = connection.credentialBindings[0];

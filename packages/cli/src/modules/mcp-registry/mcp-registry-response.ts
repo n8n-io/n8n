@@ -7,6 +7,8 @@ import type { McpRegistryServer } from './registry/mcp-registry.types';
 export function toMcpRegistryServerResponse(
 	server: McpRegistryServer,
 ): McpRegistryServerResponse | null {
+	// Its twin offers this AI Gateway row as Gateway credits.
+	if (server.pairedSlug) return null;
 	const connection = resolveMcpRegistryConnection(server);
 	if (!connection) return null;
 	const credentials = getMcpRegistryCredentialOptions(server).filter((option) =>
