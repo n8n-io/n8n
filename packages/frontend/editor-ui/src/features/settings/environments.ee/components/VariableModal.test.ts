@@ -13,6 +13,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import useEnvironmentsStore from '../environments.store';
 import type { EnvironmentVariable } from '../environments.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -748,6 +749,57 @@ describe('VariableModal', () => {
 
 			// Modal should still be open
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('protected instance', () => {
+		const existingVariable: EnvironmentVariable = {
+			id: '1',
+			key: 'EXISTING_VAR',
+			value: 'existing value',
+		};
+
+		beforeEach(() => {
+			mockedStore(useSourceControlStore).preferences.branchReadOnly = true;
+		});
+
+		it.each([
+			['without a create handler', {}],
+			['with a create handler', { onCreate: vi.fn() }],
+		])('should block saving a new variable %s', async (_name, extraProps) => {
+			const { getByTestId } = renderModal({
+				props: { mode: 'new', ...extraProps },
+				global,
+				pinia,
+			});
+
+			const keyInput = getByTestId('variable-modal-key-input').querySelector('input')!;
+			await userEvent.type(keyInput, 'NEW_VAR');
+
+			expect(getByTestId('variable-modal-save-button')).toBeDisabled();
+		});
+
+		it('should lock the key and allow editing the value', async () => {
+			const { getByTestId } = renderModal({
+				props: { mode: 'edit', variable: existingVariable },
+				global,
+				pinia,
+			});
+
+			const keyInput = getByTestId('variable-modal-key-input').querySelector('input')!;
+			const valueInput = getByTestId('variable-modal-value-input').querySelector('textarea')!;
+			expect(keyInput).toBeDisabled();
+			expect(valueInput).toBeEnabled();
+
+			await userEvent.clear(valueInput);
+			await userEvent.type(valueInput, 'updated value');
+			await userEvent.click(getByTestId('variable-modal-save-button'));
+
+			expect(environmentsStore.updateVariable).toHaveBeenCalledWith({
+				id: '1',
+				key: 'EXISTING_VAR',
+				value: 'updated value',
+			});
 		});
 	});
 });
