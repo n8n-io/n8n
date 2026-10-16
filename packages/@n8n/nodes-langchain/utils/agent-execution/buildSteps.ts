@@ -1,4 +1,5 @@
 import { AIMessage } from '@langchain/core/messages';
+import omit from 'lodash/omit';
 import { nodeNameToToolName } from 'n8n-workflow';
 import type { EngineResponse, EngineResult, IDataObject } from 'n8n-workflow';
 
@@ -116,12 +117,13 @@ function buildAnthropicContentBlocks(
 					data: thinkingContent,
 				};
 
-	// toolInput is the tool call arguments. The non-thinking path sends the same object as args.
+	// toolInput is the tool call arguments. `tool` is a toolkit routing field added by
+	// createEngineRequests. The model did not send it, so omit it from the replayed input.
 	const toolUseBlocks: ToolUseContentBlock[] = toolCalls.map(({ toolInput, toolId, toolName }) => ({
 		type: 'tool_use',
 		id: toolId,
 		name: toolName,
-		input: { ...toolInput },
+		input: omit(toolInput, 'tool'),
 	}));
 
 	return [thinkingBlock, ...toolUseBlocks];

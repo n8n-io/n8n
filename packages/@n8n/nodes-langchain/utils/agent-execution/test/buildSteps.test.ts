@@ -2086,5 +2086,49 @@ describe('buildSteps', () => {
 				input: { topic: 'solar panels', depth: 2 },
 			});
 		});
+
+		it('should omit the toolkit routing field from the replayed tool arguments', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'MCP Client',
+							input: { query: 'open tickets', tool: 'list_tickets' },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_mcp_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_mcp',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { tickets: [] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.tool).toBe('list_tickets');
+			expect(result[0].action.messageLog![0].content[1]).toEqual({
+				type: 'tool_use',
+				id: 'call_mcp_1',
+				name: 'list_tickets',
+				input: { query: 'open tickets' },
+			});
+		});
 	});
 });
