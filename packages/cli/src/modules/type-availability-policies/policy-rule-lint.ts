@@ -3,8 +3,8 @@ import type { PolicyRule, PolicySelector } from './policy-rule.types';
 import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint';
 
 /**
- * `ruleId` names a package or type this instance has not loaded, so it matches nothing yet.
- * An installed node that `NODES_EXCLUDE` or `NODES_INCLUDE` filters out counts as not loaded.
+ * `ruleId` names a package or type this instance has not loaded. The rule still applies by
+ * name, for example to an imported workflow. `NODES_EXCLUDE` and `NODES_INCLUDE` count too.
  */
 export type NotLoadedWarning = {
 	readonly kind: 'notLoaded';

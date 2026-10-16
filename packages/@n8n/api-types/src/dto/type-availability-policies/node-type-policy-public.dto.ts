@@ -15,9 +15,9 @@ import { publicApiPaginationSchema } from '../pagination/pagination.dto';
  */
 
 /**
- * A saved rule that cannot match yet: `shadowed` when an earlier rule in the same list already
- * covers it, `notLoaded` when it names a package or type this instance has not loaded. A type
- * is also not loaded when `NODES_EXCLUDE` or `NODES_INCLUDE` filters it out.
+ * A saved rule worth a second look: `shadowed` when an earlier rule in the same list already
+ * covers it, so it never matches. `notLoaded` when it names a package or type this instance
+ * has not loaded, so nothing here uses it yet. `NODES_EXCLUDE` and `NODES_INCLUDE` count too.
  */
 const ruleWarningSchema = z.discriminatedUnion('kind', [
 	z.object({ kind: z.literal('shadowed'), ruleId: z.string(), shadowedByRuleId: z.string() }),
