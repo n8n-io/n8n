@@ -168,14 +168,13 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			},
 		];
 
-		it('hides the confirmed try and shows how many cases are left', () => {
-			const { getByText, queryByTestId, queryByText } = renderComponent({
+		it('hides the confirmed try and shows the completed check count', () => {
+			const { getByText, queryByTestId } = renderComponent({
 				props: { caseRuns },
 			});
 
 			expect(getByText('Running 2 checks, 1 done')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-try')).not.toBeInTheDocument();
-			expect(queryByText(/Saved as your first check/)).not.toBeInTheDocument();
 		});
 
 		it('uses the singular count for a single running check', () => {
@@ -221,7 +220,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			});
 
 			expect(getByTestId('instance-ai-test-agent-examples-run-failed')).toBeInTheDocument();
-			expect(queryByText(/Checking, \d+ left/)).not.toBeInTheDocument();
+			expect(queryByText(/Running \d+ checks?, \d+ done/)).not.toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
 
 			await user.click(getByTestId('instance-ai-test-agent-examples-retry-run'));
