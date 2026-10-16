@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import {
 	AuthenticationDriver,
+	LocalAuthorizationServer,
 	Reject,
 	TrustedSourceStore,
 	type AdvertisedResource,
@@ -36,6 +37,7 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 
 	constructor(
 		private readonly store: TrustedSourceStore,
+		private readonly localServer: LocalAuthorizationServer,
 		logger: Logger,
 	) {
 		super();
@@ -160,6 +162,14 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 				reason: 'audience-mismatch',
 				detail: 'JWT audience is not allowed',
 			};
+		}
+
+		// The local server forgets a revoked token while its JWT still verifies until `exp`.
+		if (
+			authentication.keys.kind === 'local-keystore' &&
+			!(await this.localServer.isAccessTokenActive(extracted.credential.token))
+		) {
+			return { ok: false, reason: 'revoked' };
 		}
 
 		const {

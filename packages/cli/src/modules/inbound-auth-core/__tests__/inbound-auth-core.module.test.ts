@@ -25,6 +25,8 @@ import { PublicApiProtectedResource } from '../public-api-protected-resource';
 import { InboundResourceAdmission } from '../resource-admission';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbGate } from '../trusted-source.gate';
+import { LocalAuthorizationServerProxy } from '../local-authorization-server.proxy';
+import { TrustedSourceDiscoveryService } from '../trusted-source-discovery.service';
 import { TrustedSourceDbStore } from '../trusted-source.store';
 
 // A mocked module's factory runs on its first import, so the first `init()` that imports the
@@ -97,6 +99,18 @@ describe('InboundAuthCoreModule', () => {
 
 			await expect(server.getMetadata()).rejects.toThrow(OperationalError);
 			await expect(server.getJwks()).rejects.toThrow(OperationalError);
+			await expect(server.isAccessTokenActive('token')).resolves.toBe(false);
+		});
+
+		it('discovers the system trusted source once the OAuth2 server registers itself', async () => {
+			const discovery = mock<TrustedSourceDiscoveryService>();
+			Container.set(TrustedSourceDiscoveryService, discovery);
+
+			await Container.get(LocalAuthorizationServerProxy).registerProvider(
+				mock<LocalAuthorizationServer>(),
+			);
+
+			expect(discovery.refresh).toHaveBeenCalledWith('n8n-internal');
 		});
 
 		it('binds the OAuth2 AuthenticationService', () => {

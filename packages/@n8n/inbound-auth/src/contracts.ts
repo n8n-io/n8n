@@ -200,6 +200,9 @@ export abstract class LocalAuthorizationServer {
 	abstract getMetadata(): Promise<AuthorizationServerMetadata>;
 
 	abstract getJwks(): Promise<{ keys: Jwk[] }>;
+
+	/** Whether the server still honours an access token it signed: a revoked one verifies, yet is refused. */
+	abstract isAccessTokenActive(token: string): Promise<boolean>;
 }
 
 export abstract class TrustedSourceGate {

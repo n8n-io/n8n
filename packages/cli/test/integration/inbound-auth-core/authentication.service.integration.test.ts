@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import {
 	AuthenticationService,
 	JwkSchema,
-	type LocalAuthorizationServer,
+	LocalAuthorizationServer,
 	trustedSourceConfigSchemaFor,
 	type Extracted,
 	type Jwk,
@@ -43,6 +43,7 @@ const client = mock<OAuthDiscoveryClient>();
 const localServer = mock<LocalAuthorizationServer>({
 	getMetadata: async () => ({ issuer: baseUrl, jwks_uri: `${baseUrl}/.well-known/jwks.json` }),
 	getJwks: async () => ({ keys: [jwk] }),
+	isAccessTokenActive: async () => true,
 });
 
 type Row = { id: string; issuer: string };
@@ -131,6 +132,7 @@ beforeAll(async () => {
 
 	// `loadModules` imports the module; the bindings come from `init`.
 	Container.set(TrustedSourceDiscoveryService, mock<TrustedSourceDiscoveryService>());
+	Container.set(LocalAuthorizationServer, localServer);
 	await new InboundAuthCoreModule().init();
 	service = Container.get(AuthenticationService);
 
