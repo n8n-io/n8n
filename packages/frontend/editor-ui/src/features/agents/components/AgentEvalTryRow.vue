@@ -240,7 +240,7 @@ watch(
 				type="button"
 				:class="$style.expandToggle"
 				:data-test-id="testId && `${testId}-toggle`"
-				:aria-expanded="view === 'complete' ? expanded : undefined"
+				:aria-expanded="expanded"
 				:aria-label="i18n.baseText('instanceAi.testAgentPreview.conversation')"
 			>
 				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="small" />

@@ -1182,14 +1182,13 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const ownsProgress = () => rerunningResults.get(result.id) === pending;
 		revisionByResult.set(result.id, ++resultRevision);
 		let timer: ReturnType<typeof setTimeout> | undefined;
-		let stopped = false;
 		let errors = 0;
 		const deadline = Date.now() + RUN_POLL_TIMEOUT_MS;
 		const confirmationDeadline = Date.now() + RESULT_CONFIRMATION_TIMEOUT_MS;
 		const schedule = () => {
-			if (stopped || !ownsProgress()) return;
+			if (!ownsProgress()) return;
 			timer = setTimeout(async () => {
-				if (stopped || !ownsProgress()) return;
+				if (!ownsProgress()) return;
 				const current = findCachedResult(result.id)?.result;
 				const confirmationExpired =
 					recovering && current?.runAt === result.runAt && Date.now() >= confirmationDeadline;
@@ -1217,8 +1216,6 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			}, RUN_POLL_INTERVAL_MS);
 		};
 		const stop = (exhausted = false) => {
-			if (stopped) return;
-			stopped = true;
 			clearTimeout(timer);
 			if (!ownsProgress()) return;
 			const current = findCachedResult(result.id)?.result;

@@ -29,6 +29,7 @@ import {
 import { generateAgentScenarioSeed } from '../agent-scenario-seed';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
+import { createWebSearchMock } from '../web-search-mock';
 
 // The service resolves the agents-module surface lazily; top-level vi.mock
 // keeps those specifiers from loading the real module graph (and avoids the
@@ -54,6 +55,7 @@ vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
 vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }));
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
+vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn(() => vi.fn()) }));
 
 const logger = mock<Logger>();
 const settingsService = mock<AgentsSettingsService>();
@@ -216,6 +218,113 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			]);
 		},
 	);
+
+	it('records search progress only for the matching active call and ignores late endings', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		const onProgress = vi.fn().mockResolvedValue(undefined);
+		const search = { query: 'shipping' };
+		const searchResult = { query: 'shipping', results: [] };
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+				close: vi.fn(),
+				generate: vi.fn(async () => {
+					for (const toolName of ['Slack_Tool', 'web_search']) {
+						handlers.get(AgentEvent.ToolExecutionStart)?.({
+							type: AgentEvent.ToolExecutionStart,
+							toolName,
+							toolCallId: toolName,
+							args: search,
+						});
+					}
+					const { onSearch } = vi.mocked(createWebSearchMock).mock.calls[0][0];
+					onSearch(search, searchResult);
+					handlers.get(AgentEvent.ToolExecutionEnd)?.({
+						type: AgentEvent.ToolExecutionEnd,
+						toolName: 'web_search',
+						toolCallId: 'web_search',
+						result: searchResult,
+						isError: false,
+					});
+					// A delegated search has no active parent call to update.
+					onSearch({ query: 'returns' }, { query: 'returns', results: [] });
+					// A runtime can report completion without a prior start event.
+					handlers.get(AgentEvent.ToolExecutionEnd)?.({
+						type: AgentEvent.ToolExecutionEnd,
+						toolName: 'lookup',
+						toolCallId: 'orphan',
+						result: 'found',
+						isError: false,
+					});
+					return makeGenerateResult({
+						toolCalls: [{ tool: 'lookup', input: {}, output: 'found' }],
+					});
+				}),
+			},
+		});
+		const result = await buildService().executeWithLlmMock('agent-1', user, request, 'Search', {
+			onProgress,
+		});
+		expect(onProgress.mock.calls[2][0]).toEqual([
+			expect.objectContaining({ tool: 'Slack_Tool', mocked: false, interceptedRequests: [] }),
+			expect.objectContaining({
+				tool: 'web_search',
+				status: 'running',
+				mocked: true,
+				interceptedRequests: [expect.objectContaining({ requestBody: search })],
+			}),
+		]);
+		expect(onProgress).toHaveBeenCalledTimes(6);
+		expect(
+			result.toolCalls.find((call) => call.tool === 'web_search')?.interceptedRequests,
+		).toHaveLength(2);
+		expect(result.toolCalls.find((call) => call.toolCallId === 'orphan')).toMatchObject({
+			kind: 'other',
+			output: 'found',
+		});
+		handlers.get(AgentEvent.ToolExecutionEnd)?.({
+			type: AgentEvent.ToolExecutionEnd,
+			toolName: 'lookup',
+			toolCallId: 'late',
+			result: 'ignored',
+			isError: false,
+		});
+		await Promise.resolve();
+		expect(onProgress).toHaveBeenCalledTimes(6);
+	});
+
+	it('classifies delegated MCP records from their intercepted request metadata', async () => {
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				close: vi.fn(),
+				generate: vi.fn(async () => {
+					vi.mocked(createMcpMockFetch).mock.calls[0][0].onToolCall({
+						serverName: 'child',
+						toolName: 'lookup',
+						args: {},
+						result: { text: 'found', isError: false },
+					});
+					const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
+						onMcpToolCallSettled: (event: {
+							serverName: string;
+							toolName: string;
+							success: boolean;
+						}) => void;
+					};
+					instrumentation.onMcpToolCallSettled({
+						serverName: 'child',
+						toolName: 'lookup',
+						success: true,
+					});
+					return makeGenerateResult({ toolCalls: [] });
+				}),
+			},
+		});
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+		expect(result.toolCalls).toEqual([
+			expect.objectContaining({ tool: 'child_lookup', kind: 'mcp', mocked: true }),
+		]);
+	});
 
 	it('reports tool progress before generation finishes and flushes writes before returning', async () => {
 		const handlers = new Map<AgentEvent, AgentEventHandler>();

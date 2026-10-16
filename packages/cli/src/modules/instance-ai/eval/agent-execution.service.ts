@@ -265,7 +265,9 @@ export class EvalAgentExecutionService {
 		});
 
 		const toolLedger: ToolLedger = new Map();
-		let onLedgerChange: ((toolName: string) => void) | undefined;
+		let onLedgerChange:
+			| ((toolName: string, entries: InstanceAiEvalInterceptedRequest[]) => void)
+			| undefined;
 		const credentialHelpers: EvalMockedCredentialsHelper[] = [];
 		const recorder = createAgentModelTurnRecorder(
 			createAiProxyFetch(this.outboundHttp),
@@ -324,7 +326,7 @@ export class EvalAgentExecutionService {
 				requestBody: call.args,
 				mockResponse: call.result,
 			});
-			onLedgerChange?.(key);
+			onLedgerChange?.(key, entries);
 		};
 
 		// Fallback web_search mock — always created (sub-agents may enable web
@@ -348,7 +350,7 @@ export class EvalAgentExecutionService {
 					requestBody: args,
 					mockResponse: result,
 				});
-				onLedgerChange?.('web_search');
+				onLedgerChange?.('web_search', entries);
 			},
 		});
 
@@ -403,7 +405,7 @@ export class EvalAgentExecutionService {
 							mockHandler,
 							toolContext.toolName,
 							toolLedger,
-							() => onLedgerChange?.(toolContext.toolName),
+							(entries) => onLedgerChange?.(toolContext.toolName, entries),
 						);
 					},
 				},
@@ -420,24 +422,24 @@ export class EvalAgentExecutionService {
 		const progressCalls = new Map<string, InstanceAiEvalAgentToolCallRecord>();
 		let progressWrites = Promise.resolve();
 		let progressClosed = false;
-		const publishProgress = () => {
-			if (progressClosed || !hooks?.onProgress) return;
+		const onProgress = hooks?.onProgress;
+		const publishProgress = (
+			writeProgress: (calls: InstanceAiEvalAgentToolCallRecord[]) => Promise<void>,
+		) => {
 			const calls = [...progressCalls.values()].map((call) => ({ ...call }));
 			progressWrites = progressWrites
-				.then(async () => await hooks.onProgress?.(calls))
+				.then(async () => await writeProgress(calls))
 				.catch((error: unknown) => {
 					this.logger.warn('[EvalAgentMock] Could not record tool progress', { error });
 				});
 		};
-		if (hooks?.onProgress) {
+		if (onProgress) {
 			// A send-and-wait tool records its mocked send before the tool ends.
 			// Notify synchronously; the existing queue owns persistence and ordering.
-			onLedgerChange = (toolName) => {
-				if (progressClosed) return;
+			onLedgerChange = (toolName, interceptedRequests) => {
 				let changed = false;
 				for (const [id, call] of progressCalls) {
 					if (call.tool !== toolName || call.status !== 'running') continue;
-					const interceptedRequests = toolLedger.get(toolName) ?? [];
 					progressCalls.set(id, {
 						...call,
 						mocked: interceptedRequests.length > 0,
@@ -445,7 +447,7 @@ export class EvalAgentExecutionService {
 					});
 					changed = true;
 				}
-				if (changed) publishProgress();
+				if (changed) publishProgress(onProgress);
 			};
 			agent.on(AgentEvent.ToolExecutionStart, (event) => {
 				if (progressClosed || event.type !== AgentEvent.ToolExecutionStart) return;
@@ -458,7 +460,7 @@ export class EvalAgentExecutionService {
 					mocked: false,
 					interceptedRequests: [],
 				});
-				publishProgress();
+				publishProgress(onProgress);
 			});
 			agent.on(AgentEvent.ToolExecutionEnd, (event) => {
 				if (progressClosed || event.type !== AgentEvent.ToolExecutionEnd) return;
@@ -475,7 +477,7 @@ export class EvalAgentExecutionService {
 					mocked: interceptedRequests.length > 0,
 					interceptedRequests: [...interceptedRequests],
 				});
-				publishProgress();
+				publishProgress(onProgress);
 			});
 		}
 
@@ -606,7 +608,6 @@ export class EvalAgentExecutionService {
 					skippedFeatures,
 					{
 						modelTurns: recorder.turns,
-						toolLedger,
 						credentialHelpers,
 						toolCalls: terminalToolCalls(),
 					},
@@ -614,7 +615,6 @@ export class EvalAgentExecutionService {
 			}
 			return this.errorResult(`Agent run failed: ${message}`, seed, skippedFeatures, {
 				modelTurns: recorder.turns,
-				toolLedger,
 				credentialHelpers,
 				toolCalls: terminalToolCalls(),
 			});
@@ -624,7 +624,7 @@ export class EvalAgentExecutionService {
 				if (call.status === 'running')
 					progressCalls.set(id, { ...call, status: 'error', error: 'execution_stopped' });
 			}
-			if (progressCalls.size > 0) publishProgress();
+			if (onProgress && progressCalls.size > 0) publishProgress(onProgress);
 			progressClosed = true;
 			await progressWrites;
 			await recorder.flush();
@@ -675,7 +675,7 @@ export class EvalAgentExecutionService {
 		mockHandler: EvalLlmMockHandler,
 		toolName: string,
 		ledger: ToolLedger,
-		onRecorded?: () => void,
+		onRecorded?: (entries: InstanceAiEvalInterceptedRequest[]) => void,
 	): EvalLlmMockHandler {
 		return async (requestOptions, node) => {
 			const response = await mockHandler(requestOptions, node);
@@ -691,7 +691,7 @@ export class EvalAgentExecutionService {
 				requestBody: requestOptions.body,
 				mockResponse: snapshotLedgerBody(response?.body),
 			});
-			onRecorded?.();
+			onRecorded?.(entries);
 			this.logger.debug(
 				`[EvalAgentMock] Intercepted ${requestOptions.method ?? 'GET'} ${requestOptions.url} from tool "${toolName}" (${node.type})`,
 			);
@@ -705,9 +705,8 @@ export class EvalAgentExecutionService {
 		skippedFeatures: InstanceAiEvalAgentSkippedFeature[] = [],
 		partial?: {
 			modelTurns: InstanceAiEvalAgentExecutionResult['modelTurns'];
-			toolLedger: ToolLedger;
 			credentialHelpers: EvalMockedCredentialsHelper[];
-			toolCalls?: InstanceAiEvalAgentToolCallRecord[];
+			toolCalls: InstanceAiEvalAgentToolCallRecord[];
 		},
 	): InstanceAiEvalAgentExecutionResult {
 		this.logger.error(`[EvalAgentMock] ${message}`);
@@ -716,16 +715,7 @@ export class EvalAgentExecutionService {
 			success: false,
 			errors: [message],
 			finalText: '',
-			toolCalls:
-				partial?.toolCalls ??
-				(partial
-					? [...partial.toolLedger.entries()].map(([tool, interceptedRequests]) => ({
-							tool,
-							kind: salvagedToolKind(interceptedRequests),
-							mocked: interceptedRequests.length > 0,
-							interceptedRequests,
-						}))
-					: []),
+			toolCalls: partial?.toolCalls ?? [],
 			modelTurns: partial?.modelTurns ?? [],
 			seed: seed ?? { openingMessage: '', globalContext: '', toolHints: {}, warnings: [] },
 			skippedFeatures,
@@ -800,22 +790,6 @@ export function pruneConfigForEval(original: AgentJsonConfig): {
  * tools, `sanitizeToolName` for workflow tools, the stored descriptor name
  * for custom tools.
  */
-/**
- * Best-effort kind for a salvaged ledger entry on the failure path, where the
- * summary map is gone: MCP and web-search entries are self-describing via
- * nodeType; anything else with a nodeType came through the node/workflow
- * engine seam.
- */
-function salvagedToolKind(
-	interceptedRequests: InstanceAiEvalInterceptedRequest[],
-): InstanceAiEvalAgentToolCallRecord['kind'] {
-	const nodeType = interceptedRequests.find((request) => request.nodeType)?.nodeType;
-	if (!nodeType) return 'other';
-	if (nodeType.startsWith('mcp:')) return 'mcp';
-	if (nodeType === 'web-search:fallback') return 'other';
-	return 'node';
-}
-
 export function summarizeTools(
 	config: AgentJsonConfig,
 	customTools: NonNullable<AgentEntity['tools']>,
