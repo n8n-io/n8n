@@ -1,10 +1,10 @@
 import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { AppArtifactService } from './app-artifact.service';
 import { AppVersionRepository } from './app-version.repository';
 import { AppRepository } from './app.repository';
 import { AppsConfig } from './apps.config';
+import { AppSourceVersionStore, AppBuildResultStore } from './storage/app-version-stores';
 
 @Service()
 export class AppRetentionService {
@@ -13,21 +13,22 @@ export class AppRetentionService {
 		private readonly versions: AppVersionRepository,
 		private readonly config: AppsConfig,
 		private readonly locks: DbLockService,
-		private readonly artifacts: AppArtifactService,
+		private readonly sourceVersions: AppSourceVersionStore,
+		private readonly buildResults: AppBuildResultStore,
 	) {}
 
 	async prune(appId: string, signal?: AbortSignal): Promise<void> {
 		signal?.throwIfAborted();
-		const pruned = await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
+		await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
 			const app = await this.apps.findForRetention(appId, ctx);
 			if (!app) return;
-			const versions = await this.versions.listForApp(appId, ctx);
+			const versions = await this.versions.listForRetention(appId, ctx);
 			const protectedIds = new Set([app.draftVersionId, app.publishedVersionId]);
 			for (const version of versions) {
 				if (version.buildStatus === 'queued' || version.buildStatus === 'running')
 					protectedIds.add(version.id);
 			}
-			const built = versions.filter((version) => version.bundleArtifactId !== null);
+			const built = versions.filter((version) => version.hasBundle);
 			if (built[0]) protectedIds.add(built[0].id);
 
 			const bundlesToRemove = this.oldestExcess(
@@ -35,7 +36,7 @@ export class AppRetentionService {
 				protectedIds,
 				this.config.maxBundlesPerApp,
 			);
-			await this.versions.clearBundles(appId, bundlesToRemove, ctx);
+			await this.buildResults.removeBundles(appId, bundlesToRemove, ctx);
 			const removedBundles = new Set(bundlesToRemove);
 			for (const version of built) {
 				if (!removedBundles.has(version.id)) protectedIds.add(version.id);
@@ -45,10 +46,8 @@ export class AppRetentionService {
 				protectedIds,
 				this.config.maxVersionsPerApp,
 			);
-			await this.versions.removeVersions(appId, versionsToRemove, ctx);
-			return bundlesToRemove.length > 0 || versionsToRemove.length > 0;
+			await this.sourceVersions.removeVersions(appId, versionsToRemove, ctx);
 		});
-		if (pruned) await this.artifacts.cleanup(signal);
 	}
 
 	private oldestExcess(
