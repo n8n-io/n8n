@@ -6,7 +6,7 @@
  */
 import { camelCase } from 'change-case';
 
-import type { McpRegistryServer } from './mcp-registry.types';
+import { isAiGatewayMcpServer, type McpRegistryServer } from './mcp-registry.types';
 import {
 	getConfiguredEndpointUrl,
 	resolveMcpRegistryConnection,
@@ -36,6 +36,8 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 	if (!connection) return null;
 	const defaultCredential = connection.credentialBindings[0];
 	if (!defaultCredential) return null;
+	// The agent entry of a gateway-only row stores no credential: 'none' means Gateway credits.
+	const isAiGatewayOnly = isAiGatewayMcpServer(server);
 	return {
 		slug: server.slug,
 		name: camelCase(server.slug),
@@ -43,8 +45,8 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		description: server.tagline,
 		url: getConfiguredEndpointUrl(connection),
 		transport: toAgentMcpTransport(connection.transport),
-		authentication: defaultCredential.credentialType,
-		credentialType: defaultCredential.credentialType,
+		authentication: isAiGatewayOnly ? 'none' : defaultCredential.credentialType,
+		credentialType: isAiGatewayOnly ? '' : defaultCredential.credentialType,
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),

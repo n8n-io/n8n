@@ -5,6 +5,7 @@ import {
 	type ICredentialTypes,
 	isMcpAiGatewayAuthentication,
 	isMcpOAuth2Authentication,
+	isMcpRegistryAuthentication,
 	type McpAiGatewayCredentialType,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
@@ -104,7 +105,7 @@ export function resolveMcpRegistryConnection(
 	const nodeTypeName = `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`;
 	const credentialBindings = getMcpRegistryCredentialOptions(server).flatMap(
 		({ credentialType, value }) =>
-			isMcpOAuth2Authentication(credentialType) || isMcpAiGatewayAuthentication(credentialType)
+			isMcpRegistryAuthentication(credentialType)
 				? [{ credentialType, selector: value, ...getBindingEndpoint(server, credentialType) }]
 				: [],
 	);

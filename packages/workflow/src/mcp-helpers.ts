@@ -134,6 +134,13 @@ export function isMcpAiGatewayAuthentication(
 	return authentication.endsWith('McpAiGatewayApi');
 }
 
+/** Returns `true` for either credential kind that an MCP registry binding can hold. */
+export function isMcpRegistryAuthentication(
+	authentication: string,
+): authentication is McpRegistryCredentialType {
+	return isMcpOAuth2Authentication(authentication) || isMcpAiGatewayAuthentication(authentication);
+}
+
 /** Return true when an MCP OAuth2 token is close enough to expiry to refresh it. */
 export function shouldRefreshMcpOAuth2Token(tokenData: unknown, grantType?: unknown): boolean {
 	if (!isRecord(tokenData)) return false;
