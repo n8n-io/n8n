@@ -14,7 +14,7 @@ function augment<T>(value: T): T {
 
 	if (Array.isArray(value)) return augmentArray(value) as T;
 
-	return augmentObject(value) as T;
+	return augmentObject(value);
 }
 
 export function augmentArray<T>(data: T[]): T[] {
@@ -127,7 +127,7 @@ export function augmentObject<T extends object>(data: T): T {
 				return true;
 			}
 
-			newData[key] = newValue as IDataObject;
+			newData[key] = newValue;
 
 			if (deletedProperties.has(key)) {
 				deletedProperties.delete(key);

@@ -66,7 +66,7 @@ async function rejectIfSetupStillRequired(
 	if (!graph) return { ok: true };
 
 	const checkpoint = graph.tasks.find((task) => task.id === checkpointTaskId);
-	if (!checkpoint || checkpoint.kind !== 'checkpoint') return { ok: true };
+	if (checkpoint?.kind !== 'checkpoint') return { ok: true };
 	if (checkpoint.status !== 'running') return { ok: true };
 
 	const dependentWorkflows = graph.tasks

@@ -5688,12 +5688,111 @@ describe('NodeHelpers', () => {
 			expect(getActiveCredentialTypes(node, nodeType)).toBeNull();
 		});
 
+		describe('with a default-valued authentication parameter', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([
+					{ name: 'passwordApi', displayOptions: { show: { authentication: ['password'] } } },
+					{ name: 'tokenApi', displayOptions: { show: { authentication: ['token'] } } },
+				]),
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'Password', value: 'password' },
+							{ name: 'Token', value: 'token' },
+						],
+						default: 'password',
+					},
+				],
+			};
+
+			it('should resolve the default when the parameter is not stored', () => {
+				// Saved nodes omit parameters left at their default value
+				expect(getActiveCredentialTypes(makeNode({ resource: 'entry' }), nodeType)).toEqual(
+					new Set(['passwordApi']),
+				);
+			});
+
+			it('should use the stored value when it is not the default', () => {
+				expect(getActiveCredentialTypes(makeNode({ authentication: 'token' }), nodeType)).toEqual(
+					new Set(['tokenApi']),
+				);
+			});
+
+			it('should not change the node parameters', () => {
+				const node = makeNode({ resource: 'entry' });
+				getActiveCredentialTypes(node, nodeType);
+				expect(node.parameters).toEqual({ resource: 'entry' });
+			});
+		});
+
+		it('should resolve a default-valued parameter that shows a credential-type selector', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Predefined', value: 'predefinedCredentialType' },
+						],
+						default: 'predefinedCredentialType',
+					},
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['extends:oAuth2Api'],
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+				],
+			};
+			const node = makeNode({ nodeCredentialType: 'slackApi' });
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should evaluate a noDataExpression discriminator by its resolved value', () => {
+			// A discriminator with noDataExpression stored as "=value" resolves to the
+			// literal at execution. The check must see the same literal, not treat the
+			// leading "=" as an expression and report every gated credential.
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([
+					{ name: 'aApi', displayOptions: { show: { authentication: ['aApi'] } } },
+					{ name: 'bApi', displayOptions: { show: { authentication: ['bApi'] } } },
+				]),
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						noDataExpression: true,
+						options: [
+							{ name: 'A', value: 'aApi' },
+							{ name: 'B', value: 'bApi' },
+						],
+						default: 'aApi',
+					},
+				],
+			};
+			expect(getActiveCredentialTypes(makeNode({ authentication: '=bApi' }), nodeType)).toEqual(
+				new Set(['bApi']),
+			);
+		});
+
 		it('should return null when evaluating the node configuration throws', () => {
 			const nodeType = makeNodeType([{ name: 'testApi' }]);
 			const throwingParameters = new Proxy(
 				{},
 				{
 					get() {
+						throw new Error('malformed parameters');
+					},
+					ownKeys() {
 						throw new Error('malformed parameters');
 					},
 				},

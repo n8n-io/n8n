@@ -23,12 +23,13 @@ describe('McpToolResolver media output', () => {
 			],
 		};
 		const tool = resolveTool();
+		expect(tool.outputTrust).toBe('untrusted');
 
 		expect(tool.toModelOutput?.(result)).toEqual({
 			type: 'content',
 			value: [
 				{ type: 'text', text: 'Current screenshot' },
-				{ type: 'image-data', data: 'base64-image', mediaType: 'image/png' },
+				{ type: 'file', data: { type: 'data', data: 'base64-image' }, mediaType: 'image/png' },
 			],
 		});
 		expect(await tool.toMessage?.(result)).toEqual({
@@ -57,7 +58,9 @@ describe('McpToolResolver media output', () => {
 
 		expect(tool.toModelOutput?.(result)).toEqual({
 			type: 'content',
-			value: [{ type: 'file-data', data: 'base64-pdf', mediaType: 'application/pdf' }],
+			value: [
+				{ type: 'file', data: { type: 'data', data: 'base64-pdf' }, mediaType: 'application/pdf' },
+			],
 		});
 		expect(await tool.toMessage?.(result)).toEqual({
 			role: 'assistant',

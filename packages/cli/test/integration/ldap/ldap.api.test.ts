@@ -46,7 +46,7 @@ beforeAll(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
-	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
+	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encryptWithInstanceKey(
 		defaultLdapConfig.bindingAdminPassword,
 	);
 });
@@ -62,8 +62,6 @@ beforeEach(async () => {
 	]);
 
 	await Container.get(UserRepository).delete({ id: Not(owner.id) });
-
-	vi.mock('@/telemetry');
 
 	await setCurrentAuthenticationMethod('email');
 });

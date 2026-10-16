@@ -22,6 +22,12 @@ vi.mock('../legacy-request-adapter', () => ({
 	proxyRequestToAxios: vi.fn(),
 }));
 
+/** Shaped like cli's `PolicyViolationError`, which core cannot import. */
+const policyRefusal = () =>
+	Object.assign(new Error('Credential type "slackApi" is blocked by an instance policy'), {
+		isPolicyRefusal: true,
+	});
+
 describe('httpRequestWithAuthentication', () => {
 	const baseUrl = 'https://api.example.com';
 	const tokenUrl = 'https://auth.example.com';
@@ -125,6 +131,185 @@ describe('httpRequestWithAuthentication', () => {
 		);
 	});
 
+	// An explicit preAuthenticationRetryStatusCode replaces the default, so a caller can leave 401 out.
+	test('does NOT refresh on 401 when preAuthenticationRetryStatusCode excludes it', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401);
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'testSessionAuth',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+				{ preAuthenticationRetryStatusCode: [403, 404] },
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === error401,
+		);
+
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+	});
+
+	// By default this path's generic preAuthentication retry only fires on exactly
+	// 401 (unlike the legacy requestWithAuthentication, which retries on any error —
+	// see the "requestWithAuthentication (legacy)" suite below) — a 404/403 here
+	// surfaces immediately with no refresh attempt.
+	test('does NOT refresh or resend on a 404 for preAuthentication credentials by default', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		const error404 = Object.assign(new Error('404 - not found'), {
+			response: { status: 404 },
+		});
+		request.mockRejectedValueOnce(error404);
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'testSessionAuth',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === error404,
+		);
+
+		expect(request).toHaveBeenCalledTimes(1);
+		// Only the initial pre-request call (credentialsExpired: false); no refresh attempt
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			true,
+		);
+	});
+
+	// A gateway that signals expiry with something other than 401 (e.g. the Atlassian
+	// gateway's 403/404 quirk, ENT-408) can opt a preAuthentication credential in via this
+	// override, without needing an explicit retry wrapper of its own.
+	test('refreshes and resends on a 404 when preAuthenticationRetryStatusCode includes it', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		const error404 = Object.assign(new Error('404 - not found'), {
+			response: { status: 404 },
+		});
+		request.mockRejectedValueOnce(error404).mockResolvedValueOnce({ ok: true });
+
+		const result = await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			requestOptions,
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+			{ preAuthenticationRetryStatusCode: [401, 403, 404] },
+		);
+
+		expect(result).toEqual({ ok: true });
+		expect(request).toHaveBeenCalledTimes(2);
+	});
+
+	// `skipPreAuthenticationRetryWhileTokenIsFresh`: a 403/404 also means "does not exist", so
+	// gate those on the expiry the credential stored, or a batch of missing resources costs one
+	// token exchange plus one credential write each.
+	describe('skipPreAuthenticationRetryWhileTokenIsFresh', () => {
+		const options = {
+			preAuthenticationRetryStatusCode: [401, 403, 404],
+			skipPreAuthenticationRetryWhileTokenIsFresh: true,
+		};
+
+		const runWith = async (
+			credentials: ICredentialDataDecryptedObject,
+			status: number,
+			requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` },
+		) => {
+			mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+			mockThis.getCredentials.mockResolvedValue(credentials);
+			mockAdditionalData.credentialsHelper.preAuthentication
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce({ accessToken: 'fresh' });
+			mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+			request
+				.mockRejectedValueOnce(
+					Object.assign(new Error(`${status} - failed`), { response: { status } }),
+				)
+				.mockResolvedValueOnce({ ok: true });
+
+			return await httpRequestWithAuthentication.call(
+				mockThis,
+				'testServiceAccount',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+				options,
+			);
+		};
+
+		test('does not retry a 404 while the stored token is still live', async () => {
+			await expect(
+				runWith({ accessToken: 'live', n8n_expires_at: String(Date.now() + 3_600_000) }, 404),
+			).rejects.toThrow(NodeApiError);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			// only the unforced call that runs before the request
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+		});
+
+		test('retries a 404 once the stored token is at its expiry', async () => {
+			const result = await runWith(
+				{ accessToken: 'stale', n8n_expires_at: String(Date.now() - 1_000) },
+				404,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+
+		test.each([
+			['unknown', {}],
+			['unparsable', { n8n_expires_at: 'tomorrow' }],
+		])('retries a 404 when the stored expiry is %s', async (_label, stored) => {
+			const result = await runWith({ accessToken: 'stale', ...stored }, 404);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+
+		test('still retries a 401 while the stored token reads as live, since the server rejected it', async () => {
+			const result = await runWith(
+				{ accessToken: 'revoked', n8n_expires_at: String(Date.now() + 3_600_000) },
+				401,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	test('refreshes but does NOT resend a drained form-data body on 401; the original error surfaces', async () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
@@ -194,6 +379,25 @@ describe('httpRequestWithAuthentication', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(request).toHaveBeenCalledTimes(1);
+	});
+
+	test('rethrows a policy refusal from the credential read unchanged, with no request sent', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		const refusal = policyRefusal();
+		mockThis.getCredentials.mockRejectedValue(refusal);
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'slackApi',
+				{ method: 'GET', url: `${baseUrl}/items` },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(refusal);
+
+		expect(request).not.toHaveBeenCalled();
 	});
 });
 
@@ -292,5 +496,59 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 
 		expect(result).toEqual({ ok: true });
 		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+	});
+
+	// Unlike the OAuth2 path (which only refreshes on `tokenExpiredStatusCode`, default
+	// 401), this legacy preAuthentication path has no status-code gate at all: any
+	// thrown error triggers a refresh-and-resend, regardless of what status caused it.
+	// This test settles whether a non-OAuth2 credential (e.g. one whose gateway answers
+	// 404/403 instead of 401 on an expired token) already retries correctly today.
+	test.each([404, 403, 500])(
+		'refreshes and resends on a %i, with no status-code gate on this path',
+		async (status) => {
+			const requestError = Object.assign(new Error(`${status} - some gateway error`), {
+				response: { status },
+			});
+			proxyRequestToAxiosMock
+				.mockRejectedValueOnce(requestError)
+				.mockResolvedValueOnce({ ok: true });
+
+			const result = await requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				{ method: 'POST', uri: 'https://api.example.com/items', body: { name: 'x' } },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+				{ helpers: mockThis.helpers },
+				expect.anything(),
+				'testPreAuth',
+				mockNode,
+				true,
+			);
+		},
+	);
+
+	test('rethrows a policy refusal from the credential read unchanged, with no request sent', async () => {
+		const refusal = policyRefusal();
+		mockThis.getCredentials.mockRejectedValue(refusal);
+
+		await expect(
+			requestWithAuthentication.call(
+				mockThis,
+				'slackApi',
+				{ method: 'GET', uri: 'https://api.example.com/items' },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(refusal);
+
+		expect(proxyRequestToAxiosMock).not.toHaveBeenCalled();
 	});
 });

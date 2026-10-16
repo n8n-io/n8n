@@ -1,5 +1,8 @@
 import type { ExecutionNodeError, OrchestrationContext } from '../../../types';
-import type { RemediationMetadata } from '../../../workflow-loop/workflow-loop-state';
+import type {
+	RemediationMetadata,
+	VerificationClaim,
+} from '../../../workflow-loop/workflow-loop-state';
 
 export interface VerifyToolInput {
 	workItemId?: string;
@@ -11,6 +14,8 @@ export interface VerifyToolInput {
 	includeData?: boolean;
 	maxDataChars?: number;
 	fixtureOverrides?: Record<string, Array<Record<string, unknown>>>;
+	/** Nodes this change is about — see the tool input description. */
+	fixTargetNodeNames?: string[];
 	/** Nodes whose override may pin zero items — the explicit opt-in for an empty-branch test. */
 	allowZeroItemFixtures?: string[];
 }
@@ -28,6 +33,8 @@ export type ExecutionRunResult = Awaited<
 export interface VerificationNodePreview {
 	nodeName: string;
 	itemCount?: number;
+	/** Per-output counts for multi-output nodes (Filter, IF, Switch); `itemCount` sums them. */
+	outputs?: Array<{ index: number; name?: string; itemCount?: number }>;
 	preview: string;
 	truncated: boolean;
 	chars: number;
@@ -47,6 +54,7 @@ export interface VerifyBuiltWorkflowOutput {
 	nodeErrors?: ExecutionNodeError[];
 	nodesNotReached?: string[];
 	coverageNote?: string;
+	claim?: VerificationClaim;
 	data?: Record<string, unknown>;
 	error?: string;
 	remediation?: RemediationMetadata;

@@ -10,8 +10,7 @@ import type { Project } from '@n8n/db';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
-import type { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
+import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
 import { Telemetry } from '@/telemetry';
 
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -22,6 +21,7 @@ import * as utils from '../shared/utils';
 mockInstance(Telemetry);
 
 const agents: Record<string, SuperAgentTest> = {};
+type CompactedInsightsEvent = Awaited<ReturnType<typeof createCompactedInsightsEvent>>;
 const testServer = utils.setupTestServer({
 	endpointGroups: ['insights', 'license', 'auth'],
 	enabledFeatures: ['feat:insights:viewSummary', 'feat:insights:viewDashboard'],
@@ -139,7 +139,7 @@ describe('GET /insights/summary', () => {
 		let accessibleProject: Project;
 		let inaccessibleProject: Project;
 
-		let accessibleWorkflowInsights: InsightsByPeriod;
+		let accessibleWorkflowInsights: CompactedInsightsEvent;
 
 		beforeAll(async () => {
 			testServer.license.setDefaults({
@@ -206,11 +206,49 @@ describe('GET /insights/summary', () => {
 			const response = await insightsViewer.get('/insights/summary').expect(200);
 
 			expect(response.body.data.total.value).toBe(accessibleWorkflowInsights.value);
+			expect(response.body.data).not.toHaveProperty('billable');
 		});
 
 		afterAll(async () => {
 			await truncateDatabase();
 		});
+	});
+
+	test('does not expose stored billable rows on the summary', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createCompactedInsightsEvent(workflow, {
+			type: 'success',
+			value: 10,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 1 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'failure',
+			value: 2,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 1 }),
+		});
+		await createCompactedInsightsEvent(workflow, {
+			type: 'billable',
+			value: 9,
+			periodUnit: 'day',
+			periodStart: DateTime.utc().minus({ days: 1 }),
+		});
+
+		const response = await agents.owner
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.data.total.value).toBe(12);
+		expect(response.body.data).not.toHaveProperty('billable');
+
+		await truncateDatabase();
 	});
 });
 
@@ -426,7 +464,7 @@ describe('GET /insights/by-workflow', () => {
 		let inaccessibleProject: Project;
 		let inaccessibleWorkflowName: string;
 
-		let accessibleWorkflowInsights: InsightsByPeriod;
+		let accessibleWorkflowInsights: CompactedInsightsEvent;
 
 		beforeAll(async () => {
 			testServer.license.setDefaults({
@@ -512,7 +550,7 @@ describe('GET /insights/by-time', () => {
 		let accessibleProject: Project;
 		let inaccessibleProject: Project;
 
-		let accessibleWorkflowInsights: InsightsByPeriod;
+		let accessibleWorkflowInsights: CompactedInsightsEvent;
 
 		beforeAll(async () => {
 			testServer.license.setDefaults({
@@ -575,7 +613,7 @@ describe('GET /insights/by-time/time-saved', () => {
 		let accessibleProject: Project;
 		let inaccessibleProject: Project;
 
-		let accessibleWorkflowInsights: InsightsByPeriod;
+		let accessibleWorkflowInsights: CompactedInsightsEvent;
 
 		beforeAll(async () => {
 			testServer.license.setDefaults({

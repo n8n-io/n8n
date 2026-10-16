@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { SerializableAgentState } from '@n8n/instance-ai';
+import type { SerializableAgentState } from '@n8n/agents';
 
 import { InstanceAiCheckpointRepository } from '../instance-ai-checkpoint.repository';
 import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';

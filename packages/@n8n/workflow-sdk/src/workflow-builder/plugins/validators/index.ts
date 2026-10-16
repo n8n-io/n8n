@@ -22,5 +22,6 @@ export { mergeNodeValidator } from './merge-node-validator';
 export { missingTriggerValidator } from './missing-trigger-validator';
 export { noNodesValidator } from './no-nodes-validator';
 export { setNodeValidator } from './set-node-validator';
+export { structuredOutputParserValidator } from './structured-output-parser-validator';
 export { toolNodeValidator } from './tool-node-validator';
 export { unknownConfigKeysValidator } from './unknown-config-keys-validator';

@@ -25,10 +25,23 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			template: `
 				<div>
 					<ul>
-						<template v-for="item in items" :key="item.value || item.label">
-							<li v-if="item.value">
-								<button :data-test-id="'role-' + item.value" @click="$emit('update:modelValue', item.value)">
-									<slot name="item" :item="item" />
+						<template v-for="entry in items" :key="entry.value || entry.label">
+							<template v-if="entry.items">
+								<li v-for="item in entry.items" :key="item.value">
+									<button
+										:data-test-id="'role-' + item.value"
+										@click="$emit('update:modelValue', item.value)"
+									>
+										<slot name="item" :item="item" />
+									</button>
+								</li>
+							</template>
+							<li v-else-if="entry.value">
+								<button
+									:data-test-id="'role-' + entry.value"
+									@click="$emit('update:modelValue', entry.value)"
+								>
+									<slot name="item" :item="entry" />
 								</button>
 							</li>
 						</template>

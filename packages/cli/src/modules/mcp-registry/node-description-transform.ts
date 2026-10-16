@@ -172,6 +172,12 @@ function serverToExtendedCredentialDescription(
 	const remote = resolveMcpRegistryConnection(server);
 	if (!remote) return null;
 
+	// A row that fixes `scope` makes the parent's "Custom Scopes" toggle dead
+	// weight, so hide it unless the row sets `customScopes` itself.
+	if (validated.overrides.scope !== undefined && validated.overrides.customScopes === undefined) {
+		validated.overrides.customScopes = false;
+	}
+
 	const overrideProperties: INodeProperties[] = Object.entries(validated.overrides).map(
 		([name, value]) => ({
 			displayName: name,

@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
-import { type CollectionSearchOptions, searchGraphCollection } from '../helpers/graphSearch';
+import { type CollectionSearchOptions, searchGraphCollection } from '../../helpers/graphSearch';
 import {
 	addUniqueConstraintHint,
 	assertPathSegment,
@@ -16,9 +16,9 @@ import {
 	NON_INDEXED_QUERY_HEADERS,
 	nonIndexedFilterThresholdError,
 	odataFieldEqualsClause,
-} from '../helpers/utils';
-import { resolveSiteId } from '../site';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
+} from '../../helpers/utils';
+import { resolveSiteId } from '../../site';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 /** Keeps the item field hidden until a list is chosen. */
 export const untilListSelected = { list: [''] };

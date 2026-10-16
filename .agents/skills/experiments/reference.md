@@ -66,7 +66,7 @@ Use this guide for code under `packages/frontend/editor-ui/src/experiments/` and
 - Wire experiments at the narrowest host surface that owns the decision.
 - Keep experiment components inside the experiment folder unless they become generally reusable.
 - All user-facing text in Vue code must use i18n. Follow `n8n:content-design` when writing or revising copy.
-- Follow `n8n:design-system` for Vue component structure, n8n design-system components, and CSS variables.
+- Follow `n8n:ui-design` for Vue component structure, n8n design-system components, and CSS variables.
 - At the end of scaffold or wiring work, tell the user what remains manual, such as PostHog configuration, route guards, modal registration, or extra workflow payload files.
 
 ## Test

@@ -17,8 +17,13 @@ export interface WorkflowImportContext extends ImportContext {
 export interface PreparedWorkflow {
 	entity: WorkflowEntity;
 	sourceWorkflowId: string;
-	/** Whether the workflow was published (active) in the source instance. */
-	sourcePublished: boolean;
+	/**
+	 * From `workflow-metadata.json`. Absent when the source published a version this package does
+	 * not carry, which leaves the target's publish state alone.
+	 */
+	sourcePublished?: boolean;
+	/** From `workflow.json`. */
+	sourceArchived: boolean;
 	/**
 	 * Source id of the package folder this workflow is nested under or null for a scope-root workflow that lands in the request's
 	 * target folder.
@@ -121,7 +126,7 @@ export type PersistedWorkflowOutcome =
 			item: PersistedWorkflowPlanItem;
 			/**
 			 * Why this workflow must stay inactive even if the policy wants it published — it depends on
-			 * a credential that was stubbed, or a node type this instance does not have.
+			 * a credential that was stubbed or created incomplete, or a node type this instance does not have.
 			 */
 			blockedFromPublish?: WorkflowPublishingBlockedReason;
 	  };

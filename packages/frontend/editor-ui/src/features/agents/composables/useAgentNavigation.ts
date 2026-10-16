@@ -1,5 +1,5 @@
 import { useRouter } from 'vue-router';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useRouteWorkflowId, useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAgentReturnContextStore } from '../agentReturnContext.store';
 import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
@@ -11,6 +11,7 @@ import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
 export function useAgentNavigation() {
 	const router = useRouter();
 	const workflowId = useWorkflowId();
+	const routeWorkflowId = useRouteWorkflowId();
 	const workflowsStore = useWorkflowsStore();
 	const returnContext = useAgentReturnContextStore();
 
@@ -20,14 +21,22 @@ export function useAgentNavigation() {
 	 * trips omit it so the return lands on the canvas.
 	 */
 	function rememberOrigin(agentId: string, originNodeId?: string) {
-		// Only a persisted workflow has a real id to return to; a brand-new
-		// (unsaved) workflow has no meaningful "back to workflow" target.
-		if (workflowsStore.isNewWorkflow) return;
+		const currentRoute = router.currentRoute.value;
 
-		const wfId = workflowsStore.workflowId || workflowId.value;
+		// Prefer the injected id. Embedded workflow artifacts shadow the route id.
+		const wfId = workflowId.value || workflowsStore.workflowId;
 		if (!wfId) return;
+		const isEmbeddedWorkflow = wfId !== routeWorkflowId.value;
 
-		returnContext.set({ workflowId: wfId, nodeId: originNodeId ?? '', agentId });
+		// Only a persisted standalone workflow has a real route to return to.
+		if (!isEmbeddedWorkflow && workflowsStore.isNewWorkflow) return;
+
+		returnContext.set({
+			workflowId: wfId,
+			nodeId: originNodeId ?? '',
+			agentId,
+			...(isEmbeddedWorkflow ? { returnPath: currentRoute.fullPath } : {}),
+		});
 	}
 
 	async function navigateWithOrigin(

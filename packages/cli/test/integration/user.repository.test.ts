@@ -1,6 +1,6 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
+import { ProjectRelationRepository, ProjectRepository, type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createAdmin, createChatUser, createMember, createOwner } from './shared/db/users';
@@ -199,6 +199,50 @@ describe('UserRepository', () => {
 				expect(users.map((u) => u.id).sort()).toStrictEqual([u1.id, u2.id].sort());
 				expect(users.map((u) => u.id)).not.toContain(u3.id);
 			});
+		});
+	});
+
+	describe('changeEmail()', () => {
+		beforeEach(async () => {
+			await testDb.truncate(['User']);
+		});
+
+		test('should change the email and rename the personal project when the current email matches', async () => {
+			const user = await createMember();
+			const newEmail = randomEmail();
+
+			const result = await userRepository.changeEmail(user.id, user.email, newEmail);
+
+			expect(result).toBe('changed');
+			const updated = await userRepository.findOneByOrFail({ id: user.id });
+			expect(updated.email).toBe(newEmail);
+
+			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+				user.id,
+			);
+			expect(project.name).toContain(newEmail);
+		});
+
+		test('should not change the email when the current email does not match', async () => {
+			const user = await createMember();
+			const newEmail = randomEmail();
+
+			const result = await userRepository.changeEmail(user.id, 'stale@example.com', newEmail);
+
+			expect(result).toBe('stale');
+			const updated = await userRepository.findOneByOrFail({ id: user.id });
+			expect(updated.email).toBe(user.email);
+		});
+
+		test('should report when another user already owns the target email', async () => {
+			const user = await createMember();
+			const other = await createMember();
+
+			const result = await userRepository.changeEmail(user.id, user.email, other.email);
+
+			expect(result).toBe('email-taken');
+			const updated = await userRepository.findOneByOrFail({ id: user.id });
+			expect(updated.email).toBe(user.email);
 		});
 	});
 });

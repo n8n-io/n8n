@@ -4,13 +4,13 @@ tags:
 summary: Stop an execution
 description: Stop an execution by id.
 x-required-scope: execution:stop
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
-      type: string
+      type: integer
+      minimum: 1
     required: true
+    description: The ID of the execution.
     name: executionId
     in: path
 responses:
@@ -76,3 +76,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

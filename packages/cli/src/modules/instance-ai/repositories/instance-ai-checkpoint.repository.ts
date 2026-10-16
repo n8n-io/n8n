@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 
 import { Service } from '@n8n/di';
-import type { SerializableAgentState } from '@n8n/instance-ai';
+import type { SerializableAgentState } from '@n8n/agents';
 import { DataSource, IsNull, Repository } from '@n8n/typeorm';
 
 import { InstanceAiCheckpoint } from '../entities/instance-ai-checkpoint.entity';

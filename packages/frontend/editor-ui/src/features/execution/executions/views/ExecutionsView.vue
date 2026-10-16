@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useExecutionsStore } from '../executions.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { storeToRefs } from 'pinia';
@@ -46,6 +46,10 @@ const projectId = computed(() => {
 	const value = route.params?.projectId;
 	return typeof value === 'string' ? value : undefined;
 });
+
+const filtersKey = computed(() => `project:${projectId.value ?? 'overview'}`);
+// Restore before the filter component is set up, so it shows the same filters.
+executionsStore.restoreFilters(filtersKey.value);
 
 const workflowCount = computed(() => workflowsListStore.allWorkflows.length);
 const hasFetchedWorkflowsForProject = computed(() =>
@@ -85,7 +89,9 @@ onBeforeMount(async () => {
 });
 
 watch(projectId, async () => {
-	await loadWorkflowsForCurrentProject();
+	executionsStore.reset();
+	executionsStore.restoreFilters(filtersKey.value);
+	await Promise.all([executionsStore.initialize(), loadWorkflowsForCurrentProject()]);
 });
 
 onMounted(async () => {
@@ -118,7 +124,7 @@ function onDocumentVisibilityChange() {
 
 async function onRefreshData() {
 	try {
-		await executionsStore.fetchExecutions();
+		await executionsStore.refreshExecutions();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.refreshData.title'));
 	}
@@ -127,6 +133,7 @@ async function onRefreshData() {
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
+	executionsStore.saveFilters(filtersKey.value);
 	await executionsStore.initialize();
 }
 
@@ -163,6 +170,7 @@ async function onExecutionStop() {
 	</PageViewLayout>
 	<GlobalExecutionsList
 		v-else
+		:key="filtersKey"
 		:executions="allExecutions"
 		:filters="filters"
 		:total="executionsCount"

@@ -1,0 +1,22 @@
+{
+	"id": "intent-explicit-agent-creative-publisher",
+	"userMessage": "Build me an agent that decides what faceless YouTube videos to make and drafts each script.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["agent-builder"]
+			},
+			{
+				"toolName": "build-agent"
+			}
+		],
+		"noneOfToolCalls": [
+			{
+				"toolName": "build-workflow"
+			}
+		]
+	},
+	"rationale": "An explicit Agent request with open-ended topic selection and creative work must use the Agent build path. This trims publishing integrations from the sourced failure so the case tests routing only.",
+	"timeoutMs": 120000
+}

@@ -1,3 +1,5 @@
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 import type {
@@ -335,6 +337,92 @@ describe('Send and Wait utils tests', () => {
 				webhookResponse: expect.any(String),
 				workflowData: [[{ json: { data: { approved: false, respondedAt: expect.any(String) } } }]],
 			});
+		});
+
+		it('should remove the Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
+			const securityConfig = Container.get(SecurityConfig);
+			securityConfig.disableFormHtmlSandboxing = true;
+
+			try {
+				const mockRender = vi.fn();
+				const mockSetHeader = vi.fn();
+				const mockRemoveHeader = vi.fn();
+
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+				} as any);
+
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					render: mockRender,
+					setHeader: mockSetHeader,
+					removeHeader: mockRemoveHeader,
+				} as any);
+
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						responseType: 'freeText',
+						message: 'Test message',
+						options: {},
+					};
+					return params[parameterName];
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockSetHeader).not.toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					expect.anything(),
+				);
+				expect(mockRemoveHeader).toHaveBeenCalledWith('Content-Security-Policy');
+				expect(mockRender).toHaveBeenCalledWith('form-trigger', expect.anything());
+			} finally {
+				securityConfig.disableFormHtmlSandboxing = false;
+			}
+		});
+
+		it('should remove the Content-Security-Policy header on the custom form when form HTML sandboxing is disabled', async () => {
+			const securityConfig = Container.get(SecurityConfig);
+			securityConfig.disableFormHtmlSandboxing = true;
+
+			try {
+				const mockRender = vi.fn();
+				const mockSetHeader = vi.fn();
+				const mockRemoveHeader = vi.fn();
+
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+				} as any);
+
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					render: mockRender,
+					setHeader: mockSetHeader,
+					removeHeader: mockRemoveHeader,
+				} as any);
+
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						responseType: 'customForm',
+						message: 'Test message',
+						defineForm: 'fields',
+						'formFields.values': [
+							{ fieldLabel: 'Field 1', fieldType: 'text', requiredField: true },
+						],
+						options: {},
+					};
+					return params[parameterName];
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockSetHeader).not.toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					expect.anything(),
+				);
+				expect(mockRemoveHeader).toHaveBeenCalledWith('Content-Security-Policy');
+				expect(mockRender).toHaveBeenCalledWith('form-trigger', expect.anything());
+			} finally {
+				securityConfig.disableFormHtmlSandboxing = false;
+			}
 		});
 
 		it('should handle freeText GET webhook', async () => {

@@ -22,10 +22,10 @@ describe('Confluence Node', () => {
 		]);
 	});
 
-	it('should stay hidden and off the AI-tool surface while operations land', () => {
-		expect(node.description.hidden).toBe(true);
+	it('should be visible in the nodes panel and usable as an AI tool', () => {
+		expect(node.description.hidden).toBeUndefined();
 		expect(node.description.properties.length).toBeGreaterThan(0);
-		expect(node.description.usableAsTool).toBeUndefined();
+		expect(node.description.usableAsTool).toBe(true);
 	});
 
 	it('should expose the page resource with its operations', () => {

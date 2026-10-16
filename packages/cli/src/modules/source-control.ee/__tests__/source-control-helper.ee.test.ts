@@ -596,7 +596,7 @@ describe('Source Control Helper', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
 			vi.resetModules();
-			vi.unmock('node:fs/promises');
+			vi.doUnmock('node:fs/promises');
 		});
 
 		it('should return default mapping if the file path is not valid', async () => {
@@ -617,7 +617,7 @@ describe('Source Control Helper', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
 			vi.resetModules();
-			vi.unmock('node:fs/promises');
+			vi.doUnmock('node:fs/promises');
 		});
 
 		it('should return default folders if the file path is not valid', async () => {
@@ -637,7 +637,7 @@ describe('Source Control Helper', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
 			vi.resetModules();
-			vi.unmock('node:fs/promises');
+			vi.doUnmock('node:fs/promises');
 		});
 
 		it('should return empty array if the file path is not valid (ENOENT)', async () => {

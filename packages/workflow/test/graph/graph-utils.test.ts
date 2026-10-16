@@ -330,6 +330,65 @@ describe('graphUtils', () => {
 				{ errorCode: 'Input Edge To Non-Root Node', node: 'C' },
 			]);
 		});
+
+		// The option lifts the count of entry and exit nodes only. The selection
+		// must still be a whole slice, so an edge into or out of the middle of it
+		// stays an error. Connectivity is the caller's check, not this one: see
+		// `findDisconnectedSelectionError` in node-grouping-validation.
+		describe('with relaxBoundaryRules on', () => {
+			const relaxed = { relaxBoundaryRules: true };
+
+			it('should accept multiple root nodes with inputs', () => {
+				const graphIds = new Set(['A', 'B', 'C']);
+				const adjacencyList = new Map<string, Set<IConnection>>([
+					['A', new Set([makeConnection('C')])],
+					['B', new Set([makeConnection('C')])],
+					['X', new Set([makeConnection('A')])],
+					['Y', new Set([makeConnection('B')])],
+				]);
+
+				expect(
+					parseExtractableSubgraphSelection(graphIds, adjacencyList, relaxed),
+				).not.toBeInstanceOf(Array);
+			});
+
+			it('should accept multiple leaf nodes with outputs', () => {
+				const graphIds = new Set(['A', 'B', 'C']);
+				const adjacencyList = new Map<string, Set<IConnection>>([
+					['A', new Set([makeConnection('B'), makeConnection('C')])],
+					['B', new Set([makeConnection('X')])],
+					['C', new Set([makeConnection('X')])],
+				]);
+
+				expect(
+					parseExtractableSubgraphSelection(graphIds, adjacencyList, relaxed),
+				).not.toBeInstanceOf(Array);
+			});
+
+			it('should still return an error for an input edge to a non-root node', () => {
+				const graphIds = new Set(['A', 'B']);
+				const adjacencyList = new Map<string, Set<IConnection>>([
+					['X', new Set([makeConnection('B')])],
+					['A', new Set([makeConnection('B')])],
+					['B', new Set()],
+				]);
+
+				expect(parseExtractableSubgraphSelection(graphIds, adjacencyList, relaxed)).toEqual([
+					{ errorCode: 'Input Edge To Non-Root Node', node: 'B' },
+				]);
+			});
+
+			it('should still return an error for an output edge from a non-leaf node', () => {
+				const graphIds = new Set(['A', 'B']);
+				const adjacencyList = new Map<string, Set<IConnection>>([
+					['A', new Set([makeConnection('B'), makeConnection('X')])],
+				]);
+
+				expect(parseExtractableSubgraphSelection(graphIds, adjacencyList, relaxed)).toEqual([
+					{ errorCode: 'Output Edge From Non-Leaf Node', node: 'A' },
+				]);
+			});
+		});
 	});
 	describe('hasPath', () => {
 		it('should return true for a direct path between start and end', () => {

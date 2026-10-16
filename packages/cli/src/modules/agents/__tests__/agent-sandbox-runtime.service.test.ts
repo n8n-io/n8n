@@ -33,16 +33,16 @@ const instanceId = 'instance-1';
 const projectId = 'project-1';
 const agentId = 'agent-1';
 const principalHash = hashAgentSandboxPrincipal({
-	type: 'integration-user',
+	type: 'integration-thread',
 	connectionId: 'connection/raw:id',
 	platform: 'slack',
-	platformUserId: 'U/raw:123',
+	platformThreadId: 'U/raw:123',
 });
 const otherPrincipalHash = hashAgentSandboxPrincipal({
 	type: 'n8n-user',
 	userId: 'user/123:raw',
 });
-const workspaceSandboxId = 'ed4a5e7b-acf0-5f78-b2b3-8fc4182d3c0c';
+const workspaceSandboxId = 'cd7bd5bf-d6c4-5a24-a100-43c5158ab50d';
 const otherWorkspaceSandboxId = '4197eecc-3092-54b8-9196-a4fecccea156';
 const knowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
 
@@ -311,6 +311,18 @@ describe('AgentSandboxRuntimeService', () => {
 				apiKey: 'sandbox-key',
 			}),
 		);
+	});
+
+	it('marks the n8n sandbox knowledge sandbox ephemeral when configured, but never the workspace', async () => {
+		const service = makeService({
+			configOverrides: { sandboxEphemeral: true },
+			sandboxSettingsService: makeSandboxSettingsService('n8n-sandbox'),
+		});
+
+		await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		await service.acquireKnowledgeSandbox(projectId, agentId);
+
+		expect(createSandboxMock.mock.calls.map(([config]) => config.ephemeral)).toEqual([false, true]);
 	});
 
 	it('reports how to configure a missing n8n sandbox service URL', async () => {

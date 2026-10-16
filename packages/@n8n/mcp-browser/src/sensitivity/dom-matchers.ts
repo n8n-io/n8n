@@ -276,6 +276,83 @@ export function opaqueTokenCandidates(el: Element): SecretHit[] {
 	];
 }
 
+/**
+ * Opaque tokens in the values of the fields a container PRESENTS, for a
+ * container its own signals already confirmed. A value is not text content, so
+ * the passes that read `elementText` never reach one, and an unnamed field is
+ * not sensitive on its own either.
+ *
+ * A field is read token by token rather than whole: a console commonly presents
+ * the issued value ready to paste, so the field holds a prefix the page wrote
+ * (`Bearer <token>`) as well as the token. Redacting the token is what keeps the
+ * hit equal to the run a later occurrence of the same secret produces elsewhere.
+ * A `.env` line is the same shape, so the name side is masked with the value but
+ * blocked from capture, as it is in a labelled cell.
+ *
+ * Editable fields are excluded: the same dialog often takes a name for the
+ * credential, and a name long enough to clear the opaque floor would otherwise
+ * be masked out from under the caller that typed it.
+ */
+export function opaqueFieldValues(container: Element): SecretHit[] {
+	const hits: SecretHit[] = [];
+	for (const field of Array.from(container.querySelectorAll('input, textarea'))) {
+		if (!isPresentedField(field)) continue;
+		for (const value of sensitiveInputValues(field)) hits.push(...opaqueValueHits(value));
+	}
+	return hits;
+}
+
+/** A field holding what the page issued, rather than what the caller typed. */
+function isPresentedField(field: Element): boolean {
+	return field.hasAttribute('readonly') || field.hasAttribute('disabled');
+}
+
+/** The opaque runs in one field value, with any name side masked but not capturable. */
+function opaqueValueHits(value: string): SecretHit[] {
+	// `assignmentNames` leaves `NAME= value` alone because in prose that shape
+	// is `dGhpcw== copy` — a padded value with a control's label merged after
+	// it. A field's value carries no merged label, so the spacing is spacing.
+	const names = new Set(assignmentNames(value.replace(/=\s+/g, '=')));
+	return opaqueTokens(value).map((token) =>
+		names.has(token)
+			? { type: 'password', value: token, captureBlocked: ASSIGNMENT_NAME }
+			: { type: 'password', value: token },
+	);
+}
+
+/**
+ * Hits for a field its own signals already confirmed, read at the one
+ * granularity that field is read at anywhere.
+ *
+ * A presented field is read token by token, for the reason `opaqueFieldValues`
+ * is: the page wrote the framing around the value. It matters here because
+ * `readonly` plus `spellcheck=false` plus a long value confirms a field on its
+ * own, so a presented field in a confirmed container is read by both passes. Two
+ * granularities would yield overlapping hits, `buildReplacements` would give the
+ * longer one the span, and the marker the model sees would resolve back to the
+ * framing — capturable.
+ *
+ * Tokens are the hits only when one of them can be the secret. The field's own
+ * signals confirmed it holds one, so where no token can be, the value stands as
+ * the hit: with no opaque run it is a secret only as a whole — a passphrase, or
+ * an issued value under the floor — and where the only run that cleared the floor
+ * is a name, the secret is the part that did not clear it. That value carries the
+ * name with it, so capturing it would store both.
+ *
+ * An editable field is whole for a different reason: it holds what the caller
+ * typed, so there is no framing to leave behind.
+ */
+export function sensitiveFieldHits(field: Element): SecretHit[] {
+	return sensitiveInputValues(field).flatMap((value) => {
+		const tokens = isPresentedField(field) ? opaqueValueHits(value) : [];
+		if (tokens.some((hit) => !hit.captureBlocked)) return tokens;
+		// Every token blocked can only mean every one is a name, so the whole run
+		// still leads with one.
+		if (tokens.length > 0) return [{ type: 'password', value, captureBlocked: ASSIGNMENT_NAME }];
+		return [{ type: 'password', value }];
+	});
+}
+
 // Scored on the inner match, reported as the whole token: a shape this class
 // misses must not be split into fragments.
 export function highEntropyCandidates(text: string): SecretHit[] {

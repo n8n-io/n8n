@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import {
 	aggregateNodeGroupLayoutOffsets,
 	buildNodeGroupLayoutComponents,
@@ -24,6 +25,14 @@ function makeNode(id: string, x: number, y: number): INodeUi {
 		parameters: {},
 		disabled: false,
 	} as INodeUi;
+}
+
+function makeSticky(id: string, x: number, y: number, width: number, height: number): INodeUi {
+	return {
+		...makeNode(id, x, y),
+		type: STICKY_NODE_TYPE,
+		parameters: { width, height },
+	};
 }
 
 function makeGroupComponent(groupId: string, expandedRect: BoundingBox): GroupLayoutComponent {
@@ -96,6 +105,16 @@ describe('useCanvasNodeGroupLayout', () => {
 
 		expect(offsets.get('x')?.x).toBeGreaterThan(0);
 		expect(offsets.get('x')?.y).toBe(0);
+	});
+
+	it('does not push sticky notes out of expanded groups', () => {
+		const offsets = layout([
+			makeNode('a', 100, 200),
+			makeNode('b', 400, 200),
+			makeSticky('sticky', 120, 180, 520, 360),
+		]);
+
+		expect(offsets.has('sticky')).toBe(false);
 	});
 
 	it('pushes components in the lower region down', () => {

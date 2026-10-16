@@ -26,13 +26,36 @@
 			"outputs": ["dist/**"],
 			"env": ["RELEASE"]
 		},
+		// Both emit declarations only under `RELEASE`, so `RELEASE` has to be part of the cache
+		// key. Without it a cached non-release `dist`, which has no `.d.ts`, would be restored
+		// onto a release build and ship a package with no types.
+		"@n8n/design-system#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"@n8n/design-system#build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"@n8n/chat#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"@n8n/chat#build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
 		"typecheck": {
 			"dependsOn": ["^build"]
 		},
 		"format": {},
 		"format:check": {},
 		"lint": {
-			"dependsOn": ["^build", "@n8n/eslint-config#build"]
+			"dependsOn": ["^build", "@n8n/eslint-config#build", "@n8n/oxlint-config#build"]
 		},
 		// The n8n-nodes-base lint script also validates load-options methods
 		// against dist/methods/*.json, which only its own build emits.
@@ -49,7 +72,8 @@
 		"test": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
@@ -60,7 +84,8 @@
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:unit:changed": {
 			"dependsOn": ["^build", "build"],
@@ -71,7 +96,8 @@
 		"test:integration": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED"]
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
+			"passThroughEnv": ["CHANGED_FILES"]
 		},
 		"test:integration:changed": {
 			"dependsOn": ["^build", "build"],

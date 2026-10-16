@@ -1,6 +1,13 @@
 import { setActivePinia } from 'pinia';
-import { useLogStreamingStore } from './logStreaming.store';
 import { createTestingPinia } from '@pinia/testing';
+import { saveDestinationToDb } from '@n8n/rest-api-client/api/eventbus.ee';
+
+import { useLogStreamingStore } from './logStreaming.store';
+
+vi.mock('@n8n/rest-api-client/api/eventbus.ee', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/rest-api-client/api/eventbus.ee')>()),
+	saveDestinationToDb: vi.fn(),
+}));
 
 describe('LogStreamingStore', () => {
 	let logStreamingStore: ReturnType<typeof useLogStreamingStore>;
@@ -96,6 +103,52 @@ describe('LogStreamingStore', () => {
 			expect(nodeEventGroup).toBeDefined();
 			expect(nodeEventGroup!.selected).toBe(false);
 			expect(nodeEventGroup!.indeterminate).toBe(false);
+		});
+	});
+
+	describe('event group boundaries', () => {
+		it('should not put a longer group under one that only shares leading characters', () => {
+			logStreamingStore.addEventName('n8n.foo.created');
+			logStreamingStore.addEventName('n8n.foobar.created');
+
+			logStreamingStore.addDestination({
+				id: 'boundaryDestination',
+				label: 'Boundary Destination',
+				enabled: true,
+				subscribedEvents: [],
+				anonymizeAuditMessages: false,
+			});
+
+			const groups = logStreamingStore.items.boundaryDestination.eventGroups;
+			const fooGroup = groups.find((group) => group.name === 'n8n.foo');
+			const foobarGroup = groups.find((group) => group.name === 'n8n.foobar');
+
+			// `n8n.foobar` starts with `n8n.foo`, but the two are distinct groups on a
+			// segment boundary: neither must swallow the other's events.
+			expect(fooGroup!.children.map((c) => c.name)).toEqual(['n8n.foo.created']);
+			expect(foobarGroup!.children.map((c) => c.name)).toEqual(['n8n.foobar.created']);
+		});
+	});
+
+	describe('saveDestination', () => {
+		it('updates the destination after a successful save', async () => {
+			vi.mocked(saveDestinationToDb).mockResolvedValueOnce({});
+			const destination = { id: 'destinationId', label: 'Updated label' };
+			await expect(logStreamingStore.saveDestination(destination)).resolves.toBe(true);
+			expect(logStreamingStore.items.destinationId.destination).toEqual(destination);
+		});
+
+		it('should pass save errors to the caller', async () => {
+			const error = new Error('Invalid URL');
+			const savedDestination = { ...logStreamingStore.items.destinationId.destination };
+			vi.mocked(saveDestinationToDb).mockRejectedValueOnce(error);
+
+			await expect(
+				logStreamingStore.saveDestination({
+					id: 'destinationId',
+				}),
+			).rejects.toBe(error);
+			expect(logStreamingStore.items.destinationId.destination).toEqual(savedDestination);
 		});
 	});
 });

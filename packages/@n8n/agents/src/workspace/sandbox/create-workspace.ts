@@ -60,6 +60,7 @@ function buildSandbox(
 	if (provider === 'n8n-sandbox') {
 		return new N8nSandboxServiceSandbox({
 			id: config.id,
+			...(config.ephemeral !== undefined ? { ephemeral: config.ephemeral } : {}),
 			apiKey: config.apiKey,
 			serviceUrl: config.serviceUrl,
 			timeout: config.timeout ?? 300_000,

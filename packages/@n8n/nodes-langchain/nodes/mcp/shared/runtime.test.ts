@@ -48,6 +48,7 @@ const baseConnectionConfig: McpConnectionConfig = {
 
 const createTestEgressFilter = (): NodeEgressFilter => ({
 	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 	createSecureLookup: vi.fn(),
 	validateRedirectSync: vi.fn(),
 });
@@ -65,6 +66,49 @@ const sampleTool = {
 		properties: { query: { type: 'string' } },
 	},
 };
+
+function createRegistryConfig(attribution?: string): ResolvedMcpConfig {
+	return {
+		...baseConfig,
+		registryCredential: {
+			connection: {
+				nodeTypeName: 'n8n-nodes-mcp-registry.databricksGenie',
+				transport: 'httpStreamable',
+				credentialBindings: [],
+				endpointUrl: 'https://mcp.example.com/mcp',
+				endpointHostname: 'mcp.example.com',
+				attribution,
+			},
+			credentialType: 'oAuth2Api',
+			prepareConnection: vi.fn(),
+		},
+	};
+}
+
+/** Connect a registry-backed toolkit whose single tool returns a one-block content array. */
+async function buildRegistryTools(attribution?: string) {
+	const client = mock<Client>({
+		callTool: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'rows' }] }),
+	});
+	vi.spyOn(utils, 'connectMcpClientForCredential').mockResolvedValue({ ok: true, result: client });
+	vi.spyOn(utils, 'getAllTools').mockResolvedValue([sampleTool] as McpTool[]);
+
+	const result = await buildMcpToolkit(createSupplyDataCtx(), 0, createRegistryConfig(attribution));
+	return (result.response as StructuredToolkit).getTools();
+}
+
+/** Run one registry-backed tool call through the agent tool-call (`execute`) path. */
+async function runRegistryToolCall(attribution?: string) {
+	const client = mock<Client>({
+		callTool: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'rows' }] }),
+		close: vi.fn(),
+	});
+	vi.spyOn(utils, 'connectMcpClientForCredential').mockResolvedValue({ ok: true, result: client });
+	vi.spyOn(utils, 'getAllTools').mockResolvedValue([sampleTool] as McpTool[]);
+
+	const ctx = createExecuteCtx([{ json: { tool: buildMcpToolName('MCP', 'search') } }]);
+	return await executeMcpTool(ctx, () => createRegistryConfig(attribution));
+}
 
 function createSupplyDataCtx(overrides: Record<string, unknown> = {}) {
 	return mock<ISupplyDataFunctions>({
@@ -221,6 +265,21 @@ describe('runtime', () => {
 			expect(tools).toHaveLength(1);
 			expect(tools[0].name).toBe(buildMcpToolName('MCP', 'search'));
 		});
+
+		it('exposes the registry attribution as tool metadata and leaves the result alone', async () => {
+			const tools = await buildRegistryTools('Powered by Genie');
+
+			expect(tools[0]).toMatchObject({ metadata: { attribution: 'Powered by Genie' } });
+			expect(await tools[0].invoke({ query: 'sales' })).toBe(
+				JSON.stringify([{ type: 'text', text: 'rows' }]),
+			);
+		});
+
+		it('sets no attribution metadata when the row has none', async () => {
+			const tools = await buildRegistryTools(undefined);
+
+			expect(tools[0]).not.toHaveProperty('metadata.attribution');
+		});
 	});
 
 	describe('executeMcpTool', () => {
@@ -234,6 +293,12 @@ describe('runtime', () => {
 			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow(
 				'Execution was cancelled',
 			);
+		});
+
+		it('returns the tool result unchanged on the agent tool-call path', async () => {
+			const result = await runRegistryToolCall('Powered by Genie');
+
+			expect(result[0][0].json.response).toEqual([{ type: 'text', text: 'rows' }]);
 		});
 
 		it('throws when item.json.tool is missing', async () => {
@@ -541,8 +606,8 @@ describe('runtime', () => {
 				expect(manager.size).toBe(1);
 
 				fire();
-				expect(close).toHaveBeenCalledTimes(1);
 				expect(manager.size).toBe(0);
+				await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
 			},
 		);
 	});

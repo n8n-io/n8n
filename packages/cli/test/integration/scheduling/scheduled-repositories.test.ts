@@ -90,6 +90,7 @@ describe('scheduled repositories', () => {
 		name,
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: 60,
+		concurrencyLimit: null,
 		...selfOwned(name),
 		taskType: 'scheduleTrigger',
 		payload: {},
@@ -102,6 +103,7 @@ describe('scheduled repositories', () => {
 		fireAt: null,
 		nextRunAt: secondsFromNow(-60),
 		maxAttempts: 1,
+		timeoutSeconds: 300,
 		...overrides,
 	});
 
@@ -143,6 +145,7 @@ describe('scheduled repositories', () => {
 						scheduledFor,
 						runAt: scheduledFor,
 						maxAttempts: 1,
+						timeoutSeconds: 300,
 					},
 				]);
 			});
@@ -167,6 +170,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]);
 					await jobRepository.advanceMany(trx, [
@@ -198,6 +202,7 @@ describe('scheduled repositories', () => {
 						scheduledFor,
 						runAt: scheduledFor,
 						maxAttempts: 1,
+						timeoutSeconds: 300,
 					},
 				]),
 			).rejects.toThrow('insertIgnoringDuplicates must run within a transaction');
@@ -459,6 +464,17 @@ describe('scheduled repositories', () => {
 			expect(ids).toEqual([idByName.get('wf:node:0'), idByName.get('wf:node:1')]);
 		});
 
+		it('stores a concurrency limit, and leaves an omitted one unlimited', async () => {
+			const jobs = [newJobRow('wf:node:0'), newJobRow('wf:node:1', { concurrencyLimit: 2 })];
+
+			await dataSource.transaction(async (trx) => await jobRepository.insertMany(trx, jobs));
+
+			const unlimited = await jobRepository.findOneByOrFail({ name: 'wf:node:0' });
+			const limited = await jobRepository.findOneByOrFail({ name: 'wf:node:1' });
+			expect(unlimited.concurrencyLimit).toBeNull();
+			expect(limited.concurrencyLimit).toBe(2);
+		});
+
 		it('returns the existing id for a name already taken, without duplicating the row', async () => {
 			// A prior writer already holds `wf:node:0`; a second provisioning run inserts it
 			// again alongside a fresh name. orIgnore skips the taken row, and the read-back by
@@ -555,34 +571,59 @@ describe('scheduled repositories', () => {
 		});
 	});
 
-	describe('ScheduledJobRepository.updateMisfirePolicy', () => {
-		it('rewrites the policy and grace of the given jobs only', async () => {
+	describe('ScheduledJobRepository.updateRunOptions', () => {
+		it('rewrites the attempts, policy and grace of the given jobs only', async () => {
 			const updated = await createJob({
+				maxAttempts: 1,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			});
 			const untouched = await createJob({
+				maxAttempts: 1,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			});
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [updated.id], {
+					await jobRepository.updateRunOptions(trx, [updated.id], {
+						maxAttempts: 5,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
+						concurrencyLimit: null,
 					}),
 			);
 
 			const after = await jobRepository.findOneByOrFail({ id: updated.id });
+			expect(after.maxAttempts).toBe(5);
 			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Skip);
 			expect(after.misfireGraceSeconds).toBe(120);
 			expect(after.intervalSeconds).toBe(updated.intervalSeconds);
 			expect(after.nextRunAt).toEqual(updated.nextRunAt);
 
 			const other = await jobRepository.findOneByOrFail({ id: untouched.id });
+			expect(other.maxAttempts).toBe(1);
 			expect(other.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
 			expect(other.misfireGraceSeconds).toBe(60);
+		});
+
+		it('rewrites the concurrency limit of the given jobs', async () => {
+			const job = await createJob({ concurrencyLimit: null });
+
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.updateRunOptions(trx, [job.id], {
+						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
+						misfirePolicy: job.misfirePolicy,
+						misfireGraceSeconds: job.misfireGraceSeconds,
+						concurrencyLimit: 3,
+					}),
+			);
+
+			const after = await jobRepository.findOneByOrFail({ id: job.id });
+			expect(after.concurrencyLimit).toBe(3);
 		});
 
 		it('leaves the queued occurrences of an updated job in place', async () => {
@@ -591,9 +632,12 @@ describe('scheduled repositories', () => {
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [job.id], {
+					await jobRepository.updateRunOptions(trx, [job.id], {
+						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 60,
+						concurrencyLimit: null,
 					}),
 			);
 
@@ -605,14 +649,36 @@ describe('scheduled repositories', () => {
 
 			await dataSource.transaction(
 				async (trx) =>
-					await jobRepository.updateMisfirePolicy(trx, [], {
+					await jobRepository.updateRunOptions(trx, [], {
+						maxAttempts: job.maxAttempts,
+						timeoutSeconds: 300,
 						misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 						misfireGraceSeconds: 120,
+						concurrencyLimit: null,
 					}),
 			);
 
 			const after = await jobRepository.findOneByOrFail({ id: job.id });
 			expect(after.misfirePolicy).toBe(ScheduledJobMisfirePolicy.Coalesce);
+		});
+	});
+
+	describe('ScheduledJobRepository.findOwnerMemberIds', () => {
+		it('lists each member once, for this owner and task type only, skipping member-less jobs', async () => {
+			const agent = { ownerType: 'agent', ownerId: 'agent-1' };
+			const taskType = 'agent:scheduled-task';
+			// Two jobs under one member must yield that member once.
+			await createJob({ ...agent, ownerMemberId: 'task-1', taskType });
+			await createJob({ ...agent, ownerMemberId: 'task-1', taskType });
+			await createJob({ ...agent, ownerMemberId: 'task-2', taskType });
+			// Not this task type, not a member, not this owner.
+			await createJob({ ...agent, ownerMemberId: 'timer-1', taskType: 'agent:wakeup' });
+			await createJob({ ...agent, ownerMemberId: null, taskType });
+			await createJob({ ...agent, ownerId: 'agent-2', ownerMemberId: 'task-9', taskType });
+
+			const memberIds = await jobRepository.findOwnerMemberIds(agent, taskType);
+
+			expect(memberIds.sort()).toEqual(['task-1', 'task-2']);
 		});
 	});
 
@@ -663,6 +729,38 @@ describe('scheduled repositories', () => {
 		});
 	});
 
+	describe('ScheduledJobRepository.deleteIfPayloadUnchanged', () => {
+		it.skipIf(!isPostgres)(
+			'keeps a row whose restamp was in flight when the delete started',
+			async () => {
+				const observed = { n8nVersion: '0.0.1' };
+				const restamped = { n8nVersion: '0.0.2' };
+				const job = await createJob({ payload: observed });
+
+				const restamp = secondaryDataSource!.createQueryRunner();
+				try {
+					await restamp.connect();
+					await restamp.startTransaction();
+					await jobRepository.updatePayload(restamp.manager, [job.id], restamped);
+
+					const pendingDelete = dataSource.transaction(
+						async (trx) => await jobRepository.deleteIfPayloadUnchanged(trx, job.id, observed),
+					);
+					// The delete must reach the row before the restamp commits.
+					await new Promise((resolve) => setTimeout(resolve, 200));
+					await restamp.commitTransaction();
+
+					expect(await pendingDelete).toBe(0);
+					expect(await jobRepository.findOneByOrFail({ id: job.id })).toMatchObject({
+						payload: restamped,
+					});
+				} finally {
+					await restamp.release();
+				}
+			},
+		);
+	});
+
 	describe('ScheduledTaskRepository.insertIgnoringDuplicates', () => {
 		it('inserts occurrences and returns how many were recorded', async () => {
 			const job = await createJob();
@@ -678,6 +776,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]),
 			);
@@ -704,6 +803,7 @@ describe('scheduled repositories', () => {
 							scheduledFor,
 							runAt: scheduledFor,
 							maxAttempts: 1,
+							timeoutSeconds: 300,
 						},
 					]),
 			);
@@ -727,6 +827,7 @@ describe('scheduled repositories', () => {
 				scheduledFor,
 				runAt: scheduledFor,
 				maxAttempts: 1,
+				timeoutSeconds: 300,
 			};
 
 			const first = await dataSource.transaction(
@@ -754,6 +855,7 @@ describe('scheduled repositories', () => {
 					scheduledFor: when,
 					runAt: when,
 					maxAttempts: 1,
+					timeoutSeconds: 300,
 				};
 			});
 
@@ -779,6 +881,7 @@ describe('scheduled repositories', () => {
 					scheduledFor,
 					runAt: scheduledFor,
 					maxAttempts: 1,
+					timeoutSeconds: 300,
 				};
 
 				const [first, second] = await Promise.all([
@@ -1038,6 +1141,21 @@ describe('scheduled repositories', () => {
 			expect(snapshot.due).toBe(0);
 			expect(snapshot.running).toBe(1);
 			expect(snapshot.oldestPendingAgeMs).toBeNull();
+		});
+
+		it('counts a task held back by its concurrencyLimit as due', async () => {
+			const job = await createJob({ concurrencyLimit: 1 });
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: secondsFromNow(60),
+			});
+			await createTask(job.id, { status: 'pending', runAt: secondsFromNow(-30) });
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.due).toBe(1);
+			expect(snapshot.oldestPendingAgeMs).not.toBeNull();
 		});
 
 		it('reports all-zero counts and a null age on an empty queue', async () => {

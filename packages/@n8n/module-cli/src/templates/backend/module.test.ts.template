@@ -1,0 +1,10 @@
+import { ModuleMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
+
+import { {{PascalName}}Module } from '../{{name}}.module';
+
+describe('{{PascalName}}Module', () => {
+	it('registers the module entrypoint', () => {
+		expect(Container.get(ModuleMetadata).get('{{name}}')?.class).toBe({{PascalName}}Module);
+	});
+});

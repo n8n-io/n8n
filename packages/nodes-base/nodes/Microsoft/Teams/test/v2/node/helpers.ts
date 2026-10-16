@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IExecuteFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -18,7 +19,7 @@ export function createExecuteContext(): MockProxy<IExecuteFunctions> {
 export function setParams(ctx: MockProxy<IExecuteFunctions>, params: Record<string, unknown>) {
 	ctx.getNodeParameter.mockImplementation(
 		(name: string, _itemIndex?: number, fallback?: unknown) =>
-			(name in params ? params[name] : fallback) as NodeParameterValueType,
+			get(params, name, fallback) as NodeParameterValueType,
 	);
 }
 

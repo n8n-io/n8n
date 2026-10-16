@@ -17,6 +17,7 @@ import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
 import { mock } from 'vitest-mock-extended';
 import { faker } from '@faker-js/faker';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import type { INodeUi } from '@/Interface';
 import type {
 	IUsedCredential,
@@ -49,6 +50,7 @@ const mockDocumentStore = {
 	updateNodeProperties: vi.fn(),
 	getExpressionHandler: vi.fn(() => ({})),
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	getWorkflowObjectAccessorSnapshot: vi.fn(() => ({}) as unknown as WorkflowObjectAccessors),
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -247,7 +249,7 @@ describe('useNodeHelpers()', () => {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: false,
+				currentUserCanUse: false,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -277,21 +279,21 @@ describe('useNodeHelpers()', () => {
 			expect(result).toEqual([]);
 		});
 
-		it('should return an empty array when user has access to all credentials', () => {
+		it('should return an empty array when user can use all credentials', () => {
 			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
 
 			const credentialWithAccess1: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			const credentialWithAccess2: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -322,14 +324,14 @@ describe('useNodeHelpers()', () => {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			const credentialWithoutAccess: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: false,
+				currentUserCanUse: false,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -709,6 +711,154 @@ describe('useNodeHelpers()', () => {
 			const hints = getNodeHints(workflow, node, nodeType);
 
 			expect(hints).toHaveLength(1);
+		});
+	});
+
+	describe('input issues in getNodeIssues', () => {
+		const nodeTypeWithRequiredInput: INodeTypeDescription = {
+			displayName: 'Agent',
+			name: 'agent',
+			group: ['transform'],
+			version: 1,
+			description: 'Agent node',
+			defaults: { name: 'Agent' },
+			inputs: [
+				NodeConnectionTypes.Main,
+				{ type: NodeConnectionTypes.AiLanguageModel, displayName: 'Model', required: true },
+			],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [],
+		};
+
+		it('reports a required input with nothing connected', () => {
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+			const workflow = {
+				getNode: () => node,
+				connectionsByDestinationNode: {},
+			} as unknown as Workflow;
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(nodeTypeWithRequiredInput, node, workflow, [
+				'typeUnknown',
+				'parameters',
+				'credentials',
+				'execution',
+			]);
+
+			expect(result?.input?.[NodeConnectionTypes.AiLanguageModel]).toBeDefined();
+		});
+
+		it('reports both unconnected inputs when they share a connection type', () => {
+			// An agent with a fallback declares Chat Model and Fallback Model, both
+			// `ai_languageModel`. Keyed by type, so one must not hide the other.
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+			const workflow = {
+				getNode: () => node,
+				connectionsByDestinationNode: {},
+			} as unknown as Workflow;
+
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([
+				{ type: NodeConnectionTypes.AiLanguageModel, displayName: 'Chat Model', required: true },
+				{
+					type: NodeConnectionTypes.AiLanguageModel,
+					displayName: 'Fallback Model',
+					required: true,
+				},
+			]);
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(nodeTypeWithRequiredInput, node, workflow, [
+				'typeUnknown',
+				'parameters',
+				'credentials',
+				'execution',
+			]);
+
+			expect(result?.input?.[NodeConnectionTypes.AiLanguageModel]).toHaveLength(2);
+		});
+
+		it('records the input issue when a parameter change makes an input required', () => {
+			// The NDV calls this after a parameter change, so a newly required input
+			// shows its warning without a workflow reload.
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+			const gatedType: INodeTypeDescription = {
+				...nodeTypeWithRequiredInput,
+				inputs: `={{ $parameter.hasOutputParser ? [{ type: "${NodeConnectionTypes.AiLanguageModel}", displayName: "Model", required: true }] : [] }}`,
+			};
+
+			mockDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockDocumentStore.setNodeIssue = vi.fn();
+			mockDocumentStore.getWorkflowObjectAccessorSnapshot = vi.fn().mockReturnValue({
+				getNode: () => node,
+				connectionsByDestinationNode: {},
+			});
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(gatedType);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([
+				{ type: NodeConnectionTypes.AiLanguageModel, displayName: 'Model', required: true },
+			]);
+
+			const { updateNodeInputIssuesByName } = useNodeHelpers();
+			updateNodeInputIssuesByName('Agent');
+
+			expect(mockDocumentStore.setNodeIssue).toHaveBeenCalledWith({
+				node: 'Agent',
+				type: 'input',
+				value: expect.objectContaining({
+					[NodeConnectionTypes.AiLanguageModel]: expect.anything(),
+				}),
+			});
+		});
+
+		it('clears the input issue once the required input is satisfied', () => {
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+
+			mockDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockDocumentStore.setNodeIssue = vi.fn();
+			mockDocumentStore.getWorkflowObjectAccessorSnapshot = vi.fn().mockReturnValue({
+				getNode: (name: string) =>
+					name === 'Model' ? createTestNode({ name: 'Model', type: 'model' }) : node,
+				connectionsByDestinationNode: {
+					Agent: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[{ node: 'Model', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+						],
+					},
+				},
+			});
+			mockedStore(useNodeTypesStore).getNodeType = vi
+				.fn()
+				.mockReturnValue(nodeTypeWithRequiredInput);
+			vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([
+				{ type: NodeConnectionTypes.AiLanguageModel, displayName: 'Model', required: true },
+			]);
+
+			const { updateNodeInputIssuesByName } = useNodeHelpers();
+			updateNodeInputIssuesByName('Agent');
+
+			expect(mockDocumentStore.setNodeIssue).toHaveBeenCalledWith({
+				node: 'Agent',
+				type: 'input',
+				value: null,
+			});
+		});
+
+		it('skips the input check when input issues are ignored', () => {
+			// The tool-config panel passes an accessor built from getNode alone and
+			// opts out of input issues. The shared check reads the connection map,
+			// so it must not run against such a partial accessor.
+			const node = createTestNode({ name: 'Agent', type: 'agent' });
+			const partialAccessor = { getNode: () => node } as unknown as Workflow;
+
+			const { getNodeIssues } = useNodeHelpers();
+			const result = getNodeIssues(nodeTypeWithRequiredInput, node, partialAccessor, [
+				'typeUnknown',
+				'parameters',
+				'credentials',
+				'execution',
+				'input',
+			]);
+
+			expect(result?.input).toBeUndefined();
 		});
 	});
 

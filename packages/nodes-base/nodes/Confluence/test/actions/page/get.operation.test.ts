@@ -360,21 +360,35 @@ describe('Confluence page:get operation', () => {
 			);
 		});
 
+		const duplicates = Array.from({ length: 7 }, (_, i) => ({
+			id: String(100 + i),
+			title: 'Duplicate',
+			spaceId: String(i),
+		}));
+
+		/** Answers the page lookup with `duplicates` and the space lookup with `spaces`. */
+		function mockAmbiguousTitle(spaces?: IDataObject[]) {
+			apiRequest.mockImplementation(async (_method, endpoint) => {
+				if (endpoint !== '/wiki/api/v2/spaces') return { results: duplicates };
+				if (spaces === undefined) throw new Error('space lookup unavailable');
+				return { results: spaces };
+			});
+		}
+
+		async function captureTitleError(ctx: IExecuteFunctions) {
+			return await execute
+				.call(ctx, 0)
+				.then(() => null)
+				.catch((thrown: NodeOperationError) => thrown);
+		}
+
 		it('throws with up to five candidates when multiple pages match', async () => {
-			const results = Array.from({ length: 7 }, (_, i) => ({
-				id: String(100 + i),
-				title: 'Duplicate',
-				spaceId: String(i),
-			}));
-			apiRequest.mockResolvedValue({ results });
+			mockAmbiguousTitle([]);
 			const ctx = createContext({
 				page: { mode: 'title', value: 'Duplicate' },
 			});
 
-			const error = await execute
-				.call(ctx, 0)
-				.then(() => null)
-				.catch((thrown: NodeOperationError) => thrown);
+			const error = await captureTitleError(ctx);
 
 			expect(error).toBeInstanceOf(NodeOperationError);
 			expect(error?.message).toContain('Found 7 pages titled "Duplicate"');
@@ -383,6 +397,43 @@ describe('Confluence page:get operation', () => {
 			expect(error?.message).not.toContain('ID 105');
 			expect(error?.message).toContain('…');
 			expect(error?.message).toContain('Scope the lookup with the Space field');
+		});
+
+		// A numeric space ID does not tell the user which space to pick in the Space field
+		it('names the candidate spaces the way the Space dropdown does', async () => {
+			mockAmbiguousTitle([
+				{ id: '0', name: 'Node QA KB', key: 'QAKB' },
+				{ id: '4', name: 'Keyless Space' },
+			]);
+			const ctx = createContext({
+				page: { mode: 'title', value: 'Duplicate' },
+			});
+
+			const error = await captureTitleError(ctx);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/wiki/api/v2/spaces',
+				{},
+				{ ids: '0,1,2,3,4', limit: 250 },
+			);
+			expect(error?.message).toContain('"Duplicate" (space Node QA KB (QAKB), ID 100)');
+			expect(error?.message).toContain('"Duplicate" (space Keyless Space, ID 104)');
+			// Spaces the lookup did not cover keep the ID rather than losing the candidate
+			expect(error?.message).toContain('"Duplicate" (space 1, ID 101)');
+		});
+
+		it('still reports the ambiguity when the space lookup fails', async () => {
+			mockAmbiguousTitle(undefined);
+			const ctx = createContext({
+				page: { mode: 'title', value: 'Duplicate' },
+			});
+
+			const error = await captureTitleError(ctx);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect(error?.message).toContain('Found 7 pages titled "Duplicate"');
+			expect(error?.message).toContain('"Duplicate" (space 0, ID 100)');
 		});
 
 		it('throws when the title is empty', async () => {
@@ -394,19 +445,29 @@ describe('Confluence page:get operation', () => {
 	});
 
 	describe('sub-tree (includeDescendants)', () => {
-		function mockTree(descendantsByNode: Record<string, IDataObject[]>) {
+		const stubPage = (id: string) => ({ id, title: `Page ${id}` });
+
+		function mockTree(
+			descendantsByNode: Record<string, IDataObject[]>,
+			options: {
+				root?: IDataObject;
+				hydrate?: (ids: string[]) => IDataObject[];
+			} = {},
+		) {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				const match = /^\/wiki\/api\/v2\/pages\/(\d+)\/descendants$/.exec(endpoint);
-				if (match) return { results: descendantsByNode[match[1]] ?? [] };
+				const descendantsOf = /^\/wiki\/api\/v2\/pages\/(\d+)\/descendants$/.exec(endpoint);
+				if (descendantsOf) return { results: descendantsByNode[descendantsOf[1]] ?? [] };
+				const single = /^\/wiki\/api\/v2\/pages\/(\d+)$/.exec(endpoint);
+				if (single) return options.root ?? stubPage(single[1]);
 				if (endpoint === '/wiki/api/v2/pages') {
 					const ids = String((qs as IDataObject).id).split(',');
-					return { results: ids.map((id) => ({ id, title: `Page ${id}` })) };
+					return { results: (options.hydrate ?? ((batch) => batch.map(stubPage)))(ids) };
 				}
 				throw new Error(`unexpected endpoint ${endpoint}`);
 			});
 		}
 
-		it('discovers descendants and hydrates them in one batched request, root included', async () => {
+		it('fetches the root on its own and hydrates the descendants in one batched request', async () => {
 			mockTree({
 				'100': [
 					{ id: '101', type: 'page', depth: 1 },
@@ -422,26 +483,75 @@ describe('Confluence page:get operation', () => {
 
 			const result = (await execute.call(ctx, 0)) as IDataObject[];
 
-			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(apiRequest).toHaveBeenCalledTimes(3);
 			expect(apiRequest).toHaveBeenNthCalledWith(
 				1,
+				'GET',
+				'/wiki/api/v2/pages/100',
+				{},
+				{ 'body-format': 'storage' },
+			);
+			expect(apiRequest).toHaveBeenNthCalledWith(
+				2,
 				'GET',
 				'/wiki/api/v2/pages/100/descendants',
 				{},
 				{ depth: 10, limit: 250 },
 			);
 			expect(apiRequest).toHaveBeenNthCalledWith(
-				2,
+				3,
 				'GET',
 				'/wiki/api/v2/pages',
 				{},
-				{ id: '100,101,102', 'body-format': 'storage', limit: 250 },
+				{ id: '101,102', 'body-format': 'storage', limit: 250 },
 			);
 			expect(result.map((page) => page.id)).toEqual(['100', '101', '102']);
 		});
 
+		it('emits the walk order, root first, whatever order the hydration returns', async () => {
+			mockTree(
+				{
+					'500': [
+						{ id: '300', type: 'page', depth: 1 },
+						{ id: '100', type: 'page', depth: 2 },
+						{ id: '400', type: 'page', depth: 1 },
+					],
+				},
+				{ hydrate: (ids) => [...ids].sort().map(stubPage) },
+			);
+			const ctx = createContext({
+				page: { mode: 'id', value: '500' },
+				includeDescendants: true,
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(result.map((page) => page.id)).toEqual(['500', '300', '100', '400']);
+		});
+
+		it('drops a descendant the hydration does not return', async () => {
+			mockTree(
+				{
+					'100': [
+						{ id: '101', type: 'page', depth: 1 },
+						{ id: '102', type: 'page', depth: 1 },
+					],
+				},
+				{ hydrate: (ids) => ids.filter((id) => id !== '102').map(stubPage) },
+			);
+			const ctx = createContext({
+				page: { mode: 'id', value: '100' },
+				includeDescendants: true,
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(result.map((page) => page.id)).toEqual(['100', '101']);
+		});
+
 		it('follows the discovery cursor and deduplicates repeated records', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+				if (endpoint === '/wiki/api/v2/pages/100') return { id: '100' };
 				if (endpoint === '/wiki/api/v2/pages/100/descendants') {
 					if ((qs as IDataObject).cursor === undefined) {
 						return {
@@ -475,6 +585,7 @@ describe('Confluence page:get operation', () => {
 
 		it('stops discovery when the server echoes a cursor it already returned', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+				if (endpoint === '/wiki/api/v2/pages/100') return { id: '100' };
 				if (endpoint === '/wiki/api/v2/pages/100/descendants') {
 					return {
 						results:
@@ -531,6 +642,65 @@ describe('Confluence page:get operation', () => {
 			]);
 			// The folder and whiteboard are traversal-only records, never hydrated
 			expect(result.map((page) => page.id)).toEqual(['100', '101', '201', '301']);
+		});
+
+		it('keeps draft descendants out of the hydration and the Max Pages budget', async () => {
+			mockTree({
+				'100': [
+					{ id: '101', type: 'page', status: 'current', depth: 1 },
+					{ id: '102', type: 'page', status: 'draft', depth: 1 },
+					{ id: '103', type: 'page', status: 'current', depth: 2 },
+					{ id: '104', type: 'page', status: 'archived', depth: 2 },
+					{ id: '900', type: 'whiteboard', status: 'current', depth: 1 },
+					{ id: '105', type: 'page', status: 'current', depth: 3 },
+				],
+			});
+			const ctx = createContext({
+				page: { mode: 'id', value: '100' },
+				includeDescendants: true,
+				maxPages: 4,
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/wiki/api/v2/pages',
+				{},
+				{ id: '101,103,104', 'body-format': 'storage', limit: 250 },
+			);
+			expect(result.map((page) => page.id)).toEqual(['100', '101', '103', '104']);
+		});
+
+		it('emits the root even when it is a draft', async () => {
+			mockTree(
+				{ '100': [{ id: '101', type: 'page', status: 'current', depth: 1 }] },
+				{ root: { id: '100', status: 'draft', title: 'Unpublished' } },
+			);
+			const ctx = createContext({
+				page: { mode: 'id', value: '100' },
+				includeDescendants: true,
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(result.map((page) => page.id)).toEqual(['100', '101']);
+			expect(result[0].status).toBe('draft');
+		});
+
+		it('still traverses a draft at the maximum depth to reach its published children', async () => {
+			mockTree({
+				'100': [{ id: '101', type: 'page', status: 'draft', depth: 10 }],
+				'101': [{ id: '201', type: 'page', status: 'current', depth: 1 }],
+			});
+			const ctx = createContext({
+				page: { mode: 'id', value: '100' },
+				includeDescendants: true,
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(result.map((page) => page.id)).toEqual(['100', '201']);
 		});
 
 		it('stops the walk at Max Pages, root included', async () => {
@@ -599,6 +769,7 @@ describe('Confluence page:get operation', () => {
 			await expect(execute.call(ctx, 0)).rejects.toThrow(
 				'Max Pages must be a finite number of at least 1',
 			);
+			expect(apiRequest).not.toHaveBeenCalled();
 		});
 
 		it('skips discovery entirely when Max Pages is 1', async () => {
@@ -614,9 +785,9 @@ describe('Confluence page:get operation', () => {
 			expect(apiRequest).toHaveBeenCalledTimes(1);
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/pages',
+				'/wiki/api/v2/pages/100',
 				{},
-				{ id: '100', 'body-format': 'storage', limit: 250 },
+				{ 'body-format': 'storage' },
 			);
 			expect(result.map((page) => page.id)).toEqual(['100']);
 		});
@@ -642,7 +813,7 @@ describe('Confluence page:get operation', () => {
 			);
 			expect(bulkCalls).toHaveLength(2);
 			expect(String((bulkCalls[0][3] as IDataObject).id).split(',')).toHaveLength(250);
-			expect(String((bulkCalls[1][3] as IDataObject).id).split(',')).toHaveLength(11);
+			expect(String((bulkCalls[1][3] as IDataObject).id).split(',')).toHaveLength(10);
 			expect(result).toHaveLength(261);
 		});
 
@@ -652,6 +823,10 @@ describe('Confluence page:get operation', () => {
 				content: [{ type: 'paragraph', content: [{ type: 'text', text: 'body text' }] }],
 			});
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+				if (endpoint === '/wiki/api/v2/pages/100') {
+					expect((qs as IDataObject)['body-format']).toBe('atlas_doc_format');
+					return { id: '100', body: { atlas_doc_format: { value: adf } } };
+				}
 				if (endpoint === '/wiki/api/v2/pages/100/descendants') {
 					return { results: [{ id: '101', type: 'page', depth: 1 }] };
 				}

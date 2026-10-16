@@ -133,6 +133,7 @@ describe('createToolsFromLocalMcpServer', () => {
 			const tools = createToolsFromLocalMcpServer({ server, logger: mockLogger });
 			expect(tools.has('write_file')).toBe(true);
 			expect(tools.has('read_file')).toBe(true);
+			expect(tools.get('write_file')?.outputTrust).toBe('untrusted');
 		});
 
 		it('falls back to record schema when inputSchema conversion fails', () => {
@@ -290,7 +291,11 @@ describe('createToolsFromLocalMcpServer', () => {
 				type: 'content',
 				value: [
 					{ type: 'text', text: 'current browser screenshot' },
-					{ type: 'image-data', data: 'base64-screenshot', mediaType: 'image/png' },
+					{
+						type: 'file',
+						data: { type: 'data', data: 'base64-screenshot' },
+						mediaType: 'image/png',
+					},
 				],
 			});
 		});
@@ -325,7 +330,13 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			expect(tool?.toModelOutput?.(PDF_RESULT)).toEqual({
 				type: 'content',
-				value: [{ type: 'file-data', data: 'base64-pdf', mediaType: 'application/pdf' }],
+				value: [
+					{
+						type: 'file',
+						data: { type: 'data', data: 'base64-pdf' },
+						mediaType: 'application/pdf',
+					},
+				],
 			});
 		});
 	});

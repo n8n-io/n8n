@@ -8,7 +8,7 @@ import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';

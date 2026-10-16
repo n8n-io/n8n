@@ -11,7 +11,7 @@ import { Container } from '@n8n/di';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import type { InstanceCredentialUse } from '@/credentials/instance-credential-use.registry';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UnprocessableRequestError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 
 import {
@@ -120,7 +120,7 @@ describe('instance credentials', () => {
 
 	describe('assigned to an instance credential use', () => {
 		const sandboxPayload = {
-			name: 'AI Assistant sandbox',
+			name: 'n8n Assistant sandbox',
 			type: 'httpHeaderAuth',
 			data: { name: 'x-api-key', value: 'secret' },
 		};

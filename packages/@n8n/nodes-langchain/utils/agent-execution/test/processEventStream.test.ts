@@ -147,3 +147,42 @@ describe('processEventStream', () => {
 		});
 	});
 });
+
+describe('processEventStream - finalizeOutput', () => {
+	it('streams the added text as a last chunk before end on a final answer', async () => {
+		const ctx = mock<IExecuteFunctions>();
+		const result = await processEventStream(
+			ctx,
+			toStream([streamChunk('Done'), modelEnd({ content: 'Done' })]),
+			0,
+			(output) => `${output}\n\n(Powered by Genie)`,
+		);
+
+		expect(result.output).toBe('Done\n\n(Powered by Genie)');
+		const calls = vi.mocked(ctx.sendChunk).mock.calls.map((call) => call.slice(0, 3));
+		expect(calls).toEqual([
+			['begin', 0],
+			['item', 0, 'Done'],
+			['item', 0, '\n\n(Powered by Genie)'],
+			['end', 0],
+		]);
+	});
+
+	it('does not touch a turn that requests tools', async () => {
+		const ctx = mock<IExecuteFunctions>();
+		const result = await processEventStream(
+			ctx,
+			toStream([
+				modelEnd({
+					content: '',
+					tool_calls: [{ id: 'c1', name: 'Genie_ask', args: {}, type: 'tool_call' }],
+				}),
+			]),
+			0,
+			(output) => `${output}!!`,
+		);
+
+		expect(result.output).toBe('');
+		expect(ctx.sendChunk).not.toHaveBeenCalledWith('item', 0, expect.anything());
+	});
+});

@@ -400,6 +400,191 @@ describe('analyzeHtmlSensitivity', () => {
 		});
 	});
 
+	// A console renders the issued value into a readonly textbox, so the dialog's
+	// own text carries no token. `elementText` walks text nodes only, and the field
+	// is unnamed, so neither of the other passes reaches the value either.
+	it('finds an unlabelled input value in a reveal dialog', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" readonly value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A dialog that presents nothing but the field and an icon-only copy control
+	// has no text of its own, and the copy control's label lives in `aria-label`.
+	// The copy signal alone confirms the dialog, so the field pass must not be
+	// gated on the dialog having text.
+	it('finds an unlabelled input value in a reveal dialog whose only signal is an icon-only copy control', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><input type="text" readonly value="${OPAQUE}"><button type="button" aria-label="Copy key"><svg></svg></button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A reveal control that flips `type=password` to `type=text` leaves an editable
+	// field holding the secret. The exclusion below is on the field being editable
+	// AND unnamed: any of the usual credential signals still carries it, through the
+	// input pass rather than the container pass.
+	it.each([
+		['an associated label', '<label for="k">API key</label><input id="k" type="text"'],
+		['an aria-label', '<input type="text" aria-label="Secret key"'],
+		['a password autocomplete', '<input type="text" autocomplete="new-password"'],
+		['a sensitive test id', '<input type="text" data-testid="api-key-input"'],
+	])('finds a revealed editable field carrying %s', (_signal, markup) => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p>${markup} value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A name the agent types is not a value the page issued. It can clear the
+	// opaque floor on length and entropy alone, so the field being editable is what
+	// keeps it out.
+	it('leaves an editable field in a reveal dialog alone', () => {
+		const typed = 'n8n-credential-prod-2026';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" value="${typed}"><input type="text" readonly value="${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+		expect(result.ok && result.hits.some((hit) => hit.value === typed)).toBe(false);
+	});
+
+	// A console often presents the issued value ready to paste into a header, so
+	// the field holds a prefix as well as the token. The prefix is a word the page
+	// wrote, not part of the secret, so the token inside the value is the target.
+	it('finds a prefixed input value in a reveal dialog', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><p>You won't be able to view it again.</p><input type="text" readonly value="Bearer ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
+	});
+
+	// A console commonly presents the value as a `.env` line to paste. The name
+	// side clears the length floor, so it is masked with the value — but capturing
+	// it would store the name as the credential, exactly as in a labelled cell.
+	it('blocks capture of the name side of an assignment in a presented field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="GOOGLE_CLIENT_SECRET=${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
+	// `NAME= value` is not an assignment to `assignmentNames`, because in prose it
+	// is `dGhpcw== copy` — a padded value with a button label merged after it. A
+	// field's value carries no merged label, so the shape can only be an assignment.
+	it('blocks capture of an assignment name spaced after the equals in a presented field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="GOOGLE_CLIENT_SECRET= ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
+	// The other side of the rule above: trailing `=` is base64 padding, not an
+	// assignment, so a padded value stays capturable.
+	it('keeps a padded base64 value in a presented field capturable', () => {
+		const padded = 'notrealZGVtb1NlY3JldFZhbHVlMTIzNDU2Nzg5MA==';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="${padded}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: padded }]);
+	});
+
+	// `readonly` plus `spellcheck=false` plus a long value is enough for the input
+	// pass to call the field sensitive on its own, so both passes read it. Read at
+	// two granularities the field yields overlapping hits, the longer one takes the
+	// span in `buildReplacements`, and the marker the model sees resolves back to
+	// the framing — so one field must be read at one granularity.
+	it('reads a prefixed field the input pass also reaches token by token', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly spellcheck="false" value="Bearer ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: OPAQUE }]);
+	});
+
+	// The same overlap on an assignment: a whole-value hit would carry the name
+	// side into a capturable hit, which is what `ASSIGNMENT_NAME` exists to stop.
+	it('reads an assignment field the input pass also reaches token by token', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly spellcheck="false" value="GOOGLE_CLIENT_SECRET=${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
+	// A name can clear the opaque floor when the value beside it does not, which
+	// leaves the name as the only token — and a name is never the hit. The field's
+	// own signals already confirmed it holds a secret, so the value has to stand as
+	// the hit, and it carries the name with it so it must not be capturable.
+	it('keeps the whole value of a presented field whose only opaque run is a name', () => {
+		const assignment = 'GOOGLE_CLIENT_SECRET=nyk7Qp2';
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="text" readonly spellcheck="false" value="${assignment}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: assignment, captureBlocked: ASSIGNMENT_NAME },
+		]);
+	});
+
+	// Tokens are the hits only when the value has one. A presented value with no
+	// opaque run is a secret only as a whole, so it stays one hit rather than none.
+	it('keeps the whole value of a presented field with no opaque run', () => {
+		const phrase = 'please contact support';
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="text" readonly spellcheck="false" value="${phrase}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: phrase }]);
+	});
+
+	// An editable field holds what the caller typed, not what the page wrote, so
+	// there is no framing to strip and the value is the secret whole.
+	it('keeps the whole value of an editable sensitive field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="password" value="Bearer ${OPAQUE}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: `Bearer ${OPAQUE}` }]);
+	});
+
 	it('walks same-origin iframe and shadow-root bundle children', () => {
 		const result = analyzeHtmlSensitivity(
 			probe('<p>outer</p>', [
@@ -461,6 +646,21 @@ describe('analyzeHtmlSensitivity', () => {
 		);
 
 		expect(result.ok && result.hits).toContainEqual({ type: 'secret', value: OPAQUE });
+	});
+
+	it('finds an unlabelled input value in a reveal-button plus copy-button container', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`
+				<section>
+					<h2>API keys</h2>
+					<input type="text" readonly value="${OPAQUE}">
+					<button>Reveal key</button>
+					<button>Copy</button>
+				</section>
+			`),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: OPAQUE });
 	});
 
 	it('finds sensitive aria-label containers', () => {

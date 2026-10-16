@@ -12,3 +12,11 @@ export {
 	rejectIfUnsupportedNativeWebSearch,
 	type AgentConfigValidationMessages,
 } from './config-normalization';
+export {
+	classifyMcpTool,
+	compileMcpToolPermissions,
+	resolveMcpToolPermission,
+	type CompiledMcpToolPermissions,
+	type McpToolAnnotations,
+	type McpToolDescriptor,
+} from './mcp-tool-permissions';

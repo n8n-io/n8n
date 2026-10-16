@@ -3,10 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_PATH_SUFFIX } from 'n8n-workflow';
 
-import type {
-	ProtectedResource,
-	ProtectedResourceResolver,
-} from '@/services/protected-resource.registry';
+import type { ProtectedResource, ProtectedResourceResolver } from '@n8n/backend-services/auth';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
@@ -14,9 +11,9 @@ import {
 	CHAT_TRIGGER_CONSENT_HINTS,
 	CHAT_TRIGGER_SCOPES,
 	isOAuthProtectedChatTrigger,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
 
 /** The trigger a chat path resolves to, however the subclass found it. */
@@ -58,11 +55,8 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 	protected abstract findChatTrigger(path: string): Promise<ChatTriggerLookupResult | undefined>;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.baseUrl);
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(resourceUrl, this.baseUrl, this.logger);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 
@@ -104,6 +98,7 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 			// triggers, each its own resource.
 			id: `workflow-chat:${workflowId}:${path}`,
 			isFirstParty: true,
+			surface: 'trigger' as const,
 			getResourceUrl: () => resourceUrl,
 			getAudiences: () => audiences,
 			getAllowedRedirectUris: async () => [resourceUrl],

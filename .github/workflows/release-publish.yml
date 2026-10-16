@@ -22,7 +22,7 @@ jobs:
       rc_branch: ${{ steps.determine-info.outputs.rc_branch }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           fetch-tags: true
@@ -31,7 +31,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Determine track from package version number
@@ -52,7 +52,7 @@ jobs:
       RELEASE: ${{ needs.determine-version-info.outputs.version }} # Used by Vite build process
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
@@ -61,15 +61,15 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Install script dependencies
-        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+        run: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
 
       - name: Check for new unpublished packages
         run: node .github/scripts/detect-new-packages.mjs
 
       - name: Dry-run publishing
         run: |
-          pnpm --filter n8n publish --no-git-checks --dry-run
-          pnpm publish -r --filter '!n8n' --no-git-checks --dry-run
+          "$PNPM_HOME/pnpm" --filter n8n publish --no-git-checks --dry-run
+          "$PNPM_HOME/pnpm" publish -r --filter '!n8n' --no-git-checks --dry-run
 
       - name: Pre publishing changes
         run: |
@@ -90,13 +90,14 @@ jobs:
           if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
             PUBLISH_TAG="release-${PUBLISH_TAG}"
           fi
-          pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
+          "$PNPM_HOME/pnpm" publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
 
       # If we don't use the --tag rc, all releases will default to "latest".
       - name: Publish n8n to NPM with rc tag
         env:
           PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
-        run: pnpm --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
+        run: |
+          "$PNPM_HOME/pnpm" --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
 
       - name: Cleanup rc tag
         run: npm dist-tag rm n8n rc
@@ -243,7 +244,7 @@ jobs:
       (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: master
           sparse-checkout: .github/scripts/slack

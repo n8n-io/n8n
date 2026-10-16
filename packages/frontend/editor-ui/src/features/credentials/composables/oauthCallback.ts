@@ -1,4 +1,6 @@
+import { getResourcePermissions } from '@n8n/permissions';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
 
 export const OAUTH_CALLBACK_SUCCESS = 'success';
 export const OAUTH_CALLBACK_ERROR = 'error';
@@ -69,6 +71,29 @@ export function hasOAuthTokenData(credential: unknown): boolean {
 		return false;
 	}
 	return isOAuthTokenDataSet(credential.data);
+}
+
+/**
+ * Whether a saved OAuth credential can authenticate now. `fetched` is the
+ * credential read with its data. Without data, fall back to the listing: a
+ * user who can read but not edit a shared credential counts as connected.
+ */
+export function isOAuthCredentialConnected(
+	stored: Pick<ICredentialsResponse, 'isResolvable' | 'connectedByMe' | 'scopes'> | undefined,
+	fetched?: ICredentialsDecryptedResponse | ICredentialsResponse,
+): boolean | undefined {
+	if (fetched?.isResolvable) return fetched.connectedByMe;
+	const data = fetched?.data;
+	if (data && typeof data === 'object') {
+		// Only the authorization code and PKCE grants need the user to sign in.
+		return (
+			Boolean(data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType))) ||
+			isOAuthTokenDataSet(data)
+		);
+	}
+	if (stored?.isResolvable) return stored.connectedByMe;
+	const permissions = getResourcePermissions(stored?.scopes).credential;
+	return permissions.read === true && !permissions.update;
 }
 
 export interface WaitForOAuthCallbackOptions {

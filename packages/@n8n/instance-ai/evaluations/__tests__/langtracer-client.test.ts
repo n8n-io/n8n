@@ -1,7 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { afterEach, vi } from 'vitest';
 
-import { LangTracerClient } from '../langtracer/client';
+import { findLangTracerSuite, LangTracerClient } from '../langtracer/client';
 
 const config = { baseUrl: 'https://lt.example', apiKey: 'lt_test' };
 
@@ -17,6 +17,22 @@ function mockFetch(response: { ok?: boolean; status?: number; body: unknown }) {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe('findLangTracerSuite', () => {
+	const suites = [
+		{ id: 8, slug: 'baseline', name: 'Baseline' },
+		{ id: 10, slug: 'agents', name: 'Agents' },
+	];
+
+	it('matches a suite by slug or numeric ID', () => {
+		expect(findLangTracerSuite(suites, 'baseline')).toEqual(suites[0]);
+		expect(findLangTracerSuite(suites, '8')).toEqual(suites[0]);
+	});
+
+	it('returns undefined when no suite matches', () => {
+		expect(findLangTracerSuite(suites, 'unknown')).toBeUndefined();
+	});
+});
 
 describe('LangTracerClient writes', () => {
 	it('getSuite unwraps the { data } envelope reads return', async () => {

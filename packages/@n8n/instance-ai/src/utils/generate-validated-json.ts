@@ -9,6 +9,7 @@
  */
 
 import type { ModelConfig } from '@n8n/agents';
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { z } from 'zod';
 
 import { createEvalAgent, extractText } from './eval-agents';
@@ -18,6 +19,8 @@ export type ValidatedJsonResult<T> =
 	| {
 			ok: false;
 			reason: 'generation_failed' | 'invalid_json' | 'schema_mismatch';
+			/** The model or agent error, for `generation_failed`. */
+			message?: string;
 			issues?: z.ZodIssue[];
 	  };
 
@@ -28,12 +31,6 @@ export interface GenerateValidatedJsonOptions<T> {
 	schema: z.ZodType<T>;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
-}
-
-function stripMarkdownFences(text: string): string {
-	const trimmed = text.trim();
-	const fencedMatch = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
-	return fencedMatch ? fencedMatch[1].trim() : trimmed;
 }
 
 export async function generateValidatedJson<T>(
@@ -51,13 +48,14 @@ export async function generateValidatedJson<T>(
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },
 		]);
 		text = extractText(result);
-	} catch {
-		return { ok: false, reason: 'generation_failed' };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return { ok: false, reason: 'generation_failed', message };
 	}
 
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(stripMarkdownFences(text));
+		parsed = JSON.parse(extractJsonCandidate(text));
 	} catch {
 		return { ok: false, reason: 'invalid_json' };
 	}

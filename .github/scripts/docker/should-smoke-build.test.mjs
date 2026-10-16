@@ -1,7 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildableDeps, isBumpOnly, nativePinsChanged } from './should-smoke-build.mjs';
+import {
+	buildableDeps,
+	isBumpOnly,
+	nativePinsChanged,
+	packageManagerChanged,
+} from './should-smoke-build.mjs';
 
 const workspace = ({ kafka = '1.9.1', vm = '^7.0.0', sentry = '10.70.0', allowVm = true } = {}) => `
 catalog:
@@ -84,5 +89,27 @@ describe('nativePinsChanged', () => {
 
 	it('reports no change for an identical file', () => {
 		assert.equal(nativePinsChanged(workspace(), workspace()).changed, false);
+	});
+});
+
+describe('packageManagerChanged', () => {
+	it('detects a pnpm version change', () => {
+		assert.equal(
+			packageManagerChanged(
+				JSON.stringify({ packageManager: 'pnpm@11.25.0' }),
+				JSON.stringify({ packageManager: 'pnpm@12.3.4' }),
+			),
+			true,
+		);
+	});
+
+	it('ignores unrelated manifest changes', () => {
+		assert.equal(
+			packageManagerChanged(
+				JSON.stringify({ packageManager: 'pnpm@12.3.4', version: '1.0.0' }),
+				JSON.stringify({ packageManager: 'pnpm@12.3.4', version: '1.0.1' }),
+			),
+			false,
+		);
 	});
 });

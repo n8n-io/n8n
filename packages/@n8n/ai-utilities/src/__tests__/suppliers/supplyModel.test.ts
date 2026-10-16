@@ -20,6 +20,7 @@ vi.mock('@langchain/openai', () => ({
 
 vi.mock('src/utils/http-proxy-agent', () => ({
 	getProxyAgent: vi.fn().mockReturnValue({ __agent: true }),
+	aiClientFetch: vi.fn(),
 }));
 
 vi.mock('src/utils/n8n-llm-tracing', () => ({
@@ -41,17 +42,20 @@ vi.mock('src/adapters/langchain-chat-model', () => ({
 const ChatOpenAI = vi.mocked(openai.ChatOpenAI);
 const LangchainChatModelAdapter = vi.mocked(langchainChatModelAdapter.LangchainChatModelAdapter);
 const getProxyAgent = vi.mocked(httpProxyAgent.getProxyAgent);
+const aiClientFetch = vi.mocked(httpProxyAgent.aiClientFetch);
 const makeN8nLlmFailedAttemptHandler = vi.mocked(
 	failedAttemptHandler.makeN8nLlmFailedAttemptHandler,
 );
 const N8nLlmTracing = vi.mocked(n8nLlmTracing.N8nLlmTracing);
 
 describe('supplyModel', () => {
+	const egressFilter = { createSecureLookup: vi.fn() };
 	const mockCtx = {
 		getNode: vi.fn(),
 		addOutputData: vi.fn(),
 		addInputData: vi.fn(),
 		getNextRunIndex: vi.fn(),
+		helpers: { getSecureEgressFilter: vi.fn().mockReturnValue(egressFilter) },
 	} as unknown as ISupplyDataFunctions;
 
 	beforeEach(() => {
@@ -80,6 +84,7 @@ describe('supplyModel', () => {
 					model: 'gpt-4',
 					apiKey: 'test-key',
 					configuration: expect.objectContaining({
+						fetch: aiClientFetch,
 						baseURL: 'https://api.openai.com',
 					}),
 					onFailedAttempt: expect.any(Function),
@@ -190,10 +195,14 @@ describe('supplyModel', () => {
 				timeout: 12345,
 			});
 
-			expect(getProxyAgent).toHaveBeenCalledWith('https://api.openai.com', {
-				headersTimeout: 12345,
-				bodyTimeout: 12345,
-			});
+			expect(getProxyAgent).toHaveBeenCalledWith(
+				'https://api.openai.com',
+				{
+					headersTimeout: 12345,
+					bodyTimeout: 12345,
+				},
+				egressFilter,
+			);
 
 			expect(ChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({

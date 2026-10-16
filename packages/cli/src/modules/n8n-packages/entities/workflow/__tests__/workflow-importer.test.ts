@@ -71,6 +71,7 @@ describe('WorkflowImporter.apply', () => {
 				decidedId: 'created-id',
 				parentFolderId: 'folder-1',
 				sourcePublished: false,
+				sourceArchived: false,
 			},
 			{
 				action: 'update',
@@ -80,6 +81,7 @@ describe('WorkflowImporter.apply', () => {
 				existing: existingUpdate,
 				parentFolderId: null,
 				sourcePublished: false,
+				sourceArchived: false,
 			},
 			{
 				action: 'skip',
@@ -88,6 +90,7 @@ describe('WorkflowImporter.apply', () => {
 				existing: existingSkip,
 				parentFolderId: null,
 				sourcePublished: false,
+				sourceArchived: false,
 			},
 		] satisfies WorkflowPlanItem[];
 		const plan: WorkflowImportPlan = {
@@ -120,7 +123,12 @@ describe('WorkflowImporter.apply', () => {
 			user,
 			expect.any(WorkflowEntity),
 			'existing-update',
-			{ publicApi: true, source: 'import', allowArchivedUpdate: false },
+			{
+				publicApi: true,
+				source: 'import',
+				allowArchivedUpdate: false,
+				allowUnresolvedErrorWorkflow: true,
+			},
 		);
 	});
 
@@ -146,6 +154,7 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
 				},
 			] satisfies WorkflowPlanItem[],
 			conflicts: [],
@@ -215,6 +224,7 @@ describe('WorkflowImporter.apply', () => {
 					decidedId: 'created',
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
 				},
 			],
 			conflicts: [],
@@ -269,6 +279,7 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			conflicts: [],
@@ -285,6 +296,7 @@ describe('WorkflowImporter.apply', () => {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: true,
+			allowUnresolvedErrorWorkflow: true,
 		});
 		expect(archive).not.toHaveBeenCalled();
 		expect(unarchive).not.toHaveBeenCalled();
@@ -313,6 +325,7 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			conflicts: [],
@@ -351,6 +364,7 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
 				},
 			],
 			conflicts: [],
@@ -392,6 +406,7 @@ describe('WorkflowImporter.plan', () => {
 					entity,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			{
@@ -432,6 +447,7 @@ describe('WorkflowImporter.plan', () => {
 					entity,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			{

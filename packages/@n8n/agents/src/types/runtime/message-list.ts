@@ -5,4 +5,6 @@ export interface SerializedMessageList {
 	historyIds: string[];
 	inputIds: string[];
 	responseIds: string[];
+	/** IDs only. Resumed runs load their content from the current skill catalog. */
+	activeSkillIds?: string[];
 }

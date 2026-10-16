@@ -33,7 +33,7 @@ import {
 import { useAsyncState } from '@vueuse/core';
 import pickBy from 'lodash/pickBy';
 import type { ComponentExposed } from 'vue-component-type-helpers';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 import VariablesUsageBadge from '@/features/settings/environments.ee/components/VariablesUsageBadge.vue';
@@ -405,7 +405,7 @@ onMounted(() => {
 					<template v-if="data.value">
 						<span v-n8n-truncate:20="data.value" />
 					</template>
-					<N8nBadge v-else theme="warning"> Value missing </N8nBadge>
+					<N8nBadge v-else variant="warning"> Value missing </N8nBadge>
 				</td>
 				<td>
 					<VariablesUsageBadge v-if="data.key" :name="data.key" />
@@ -425,7 +425,7 @@ onMounted(() => {
 							placement="top"
 						>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								data-test-id="variable-row-edit-button"
 								class="mr-xs"
@@ -443,7 +443,7 @@ onMounted(() => {
 							placement="top"
 						>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								data-test-id="variable-row-delete-button"
 								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"
@@ -473,6 +473,8 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+@use '@/app/css/variables' as *;
+
 .scope-badge {
 	text-transform: none;
 	display: flex;

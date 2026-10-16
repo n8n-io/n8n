@@ -6,7 +6,7 @@ import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecution
 
 /**
  * Guard for adopting AI-simulated execution output as pinned data. Output of a
- * node the AI Assistant simulated during workflow verification is fabricated
+ * node the n8n Assistant simulated during workflow verification is fabricated
  * sample data; every surface that turns displayed output into workflow pins
  * asks the same explicit confirmation through this guard.
  */

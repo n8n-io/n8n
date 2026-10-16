@@ -12,7 +12,7 @@
  * why only a rewrite breaks this.
  *
  * The cost of merging is a merge commit per run, plus already-published fixes staying in the
- * branch's log (the rebase used to drop them as empty). Neither reaches anything downstream:
+ * branch's log. Neither reaches anything downstream:
  * a bundle is published as one squashed, deliberately obfuscated commit, and the squash is
  * taken from the tree, not the history. For a list of what a bundle actually carries, read
  * the fix PRs merged into the branch since the last cut, not `base..bundle`.
@@ -26,9 +26,13 @@
  * of being re-litigated on every later run. Contrast `sync-master-to-3x.mjs`, which
  * auto-resolves mechanical files and opens a conflict PR.
  *
+ * PUBLIC HISTORY ONLY: the base is fetched directly from the public repo. Private master can
+ * temporarily contain a bundle cut that public master does not have yet. Using the private base
+ * would strand that commit on a recreated bundle branch after the private mirror replaces it.
+ *
  * Runs from a full checkout (fetch-depth 0) of any branch. Assumes credentials are NOT
- * persisted by checkout — every fetch and the push go through an explicit token URL, which
- * matters because the repository is private.
+ * persisted by checkout. The bundle fetch and push use an explicit token URL. The public base
+ * fetch is anonymous.
  *
  * Env: BUNDLE_BRANCH (e.g. bundle/2.x), BASE_BRANCH (e.g. master),
  *      GH_TOKEN (installation token with contents:write),
@@ -48,6 +52,10 @@ import {
 const BOT_NAME = 'n8n-assistant[bot]';
 const BOT_EMAIL = 'n8n-assistant[bot]@users.noreply.github.com';
 
+// Hard-coded like the mirror in sec-sync-public-to-private.yml, and fetched anonymously: the
+// installation token this script holds is scoped to the private repo.
+const PUBLIC_REMOTE = 'https://github.com/n8n-io/n8n.git';
+
 function required(env, name) {
 	const value = env[name];
 	if (!value) throw new Error(`${name} env var is required`);
@@ -61,7 +69,7 @@ export function annotation(title, message) {
 }
 
 function createBundleBranch({ git, log, bundle, base, baseSha, remote }) {
-	log(`${bundle} does not exist yet; creating it at ${base} ${baseSha}.`);
+	log(`${bundle} does not exist yet; creating it at public ${base} ${baseSha}.`);
 	git(['checkout', '--force', '-B', bundle, baseSha]);
 
 	const push = attempt(git, ['push', remote, `HEAD:refs/heads/${bundle}`]);
@@ -78,9 +86,11 @@ function createBundleBranch({ git, log, bundle, base, baseSha, remote }) {
  * caller re-runs from a fresh fetch rather than forcing anything.
  */
 function mergeBaseIntoBundle({ git, log, bundle, base, remote }) {
-	// Pin both sides to the fetched SHAs — fetching by URL never updates the origin/* tracking
-	// refs, so FETCH_HEAD is the only handle. Base first: the second fetch overwrites it.
-	git(['fetch', remote, base]);
+	// Pin the base to the public SHA. Private master can temporarily contain an unpublished cut.
+	const publicFetch = attempt(git, ['fetch', PUBLIC_REMOTE, base]);
+	if (!publicFetch.ok) {
+		throw new Error(`Could not fetch ${base} from the public repo:\n${publicFetch.out}`);
+	}
 	const baseSha = git(['rev-parse', 'FETCH_HEAD']);
 
 	const listed = attempt(git, ['ls-remote', '--heads', remote, `refs/heads/${bundle}`]);
@@ -107,7 +117,9 @@ function mergeBaseIntoBundle({ git, log, bundle, base, remote }) {
 		'--format=%h %s',
 		`${baseSha}..${preHead}`,
 	]);
-	log(`Merging ${base} ${baseSha} into ${bundle}. Commits on ${bundle}:\n${pending || '(none)'}`);
+	log(
+		`Merging public ${base} ${baseSha} into ${bundle}. Commits on ${bundle}:\n${pending || '(none)'}`,
+	);
 
 	// The content the merge must produce — and whether the two sides conflict at all. Computed
 	// without touching the working tree, so a conflict costs the branch nothing.
@@ -139,7 +151,7 @@ function mergeBaseIntoBundle({ git, log, bundle, base, remote }) {
 		if (push.out) log(push.out);
 		return { status: 'rejected' };
 	}
-	log(`Merged ${base} into ${bundle} — nothing rewritten.`);
+	log(`Merged public ${base} into ${bundle}; nothing was rewritten.`);
 	return { status: 'merged' };
 }
 

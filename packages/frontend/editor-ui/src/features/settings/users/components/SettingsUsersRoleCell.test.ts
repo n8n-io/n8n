@@ -25,14 +25,25 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				<div>
 					<div data-test-id="select-trigger" :data-disabled="disabled"><slot /></div>
 					<ul>
-						<template v-for="item in items" :key="item.value || item.label">
-							<li v-if="item.value">
+						<template v-for="entry in items" :key="entry.value || entry.label">
+							<template v-if="entry.items">
+								<li v-for="item in entry.items" :key="item.value">
+									<button
+										:data-test-id="'role-' + item.value"
+										:disabled="item.disabled"
+										@click="!item.disabled && $emit('update:modelValue', item.value)"
+									>
+										<slot name="item" :item="item" />
+									</button>
+								</li>
+							</template>
+							<li v-else-if="entry.value">
 								<button
-									:data-test-id="'role-' + item.value"
-									:disabled="item.disabled"
-									@click="!item.disabled && $emit('update:modelValue', item.value)"
+									:data-test-id="'role-' + entry.value"
+									:disabled="entry.disabled"
+									@click="!entry.disabled && $emit('update:modelValue', entry.value)"
 								>
-									<slot name="item" :item="item" />
+									<slot name="item" :item="entry" />
 								</button>
 							</li>
 						</template>

@@ -1,6 +1,5 @@
-import { executeTool } from '../../../__tests__/tool-test-utils';
+import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
 import { PlanValidationError } from '../../../planned-tasks/planned-task-service';
-import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
 import { createPlanTool } from '../plan.tool';
 
@@ -27,7 +26,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			subscribe: vi.fn(),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: vi.fn(),
@@ -477,5 +475,40 @@ describe('createPlanTool — createPlan validation failures', () => {
 				suspend: vi.fn(),
 			}),
 		).rejects.toBe(storageError);
+	});
+});
+
+describe('createPlanTool — task title contract', () => {
+	it('accepts a task with a title', () => {
+		const tool = createPlanTool(createMockContext());
+
+		const parsed = parseToolInput(tool, planInput());
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects a task whose title is blank', () => {
+		const tool = createPlanTool(createMockContext());
+
+		const parsed = parseToolInput(tool, {
+			...planInput(),
+			tasks: [{ ...validTasks()[0], title: '   ' }],
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('trims surrounding whitespace off the title', () => {
+		const tool = createPlanTool(createMockContext());
+
+		const parsed = parseToolInput(tool, {
+			...planInput(),
+			tasks: [{ ...validTasks()[0], title: '\nBuild Slack notifier\n' }],
+		});
+
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data).toMatchObject({
+			tasks: [{ title: 'Build Slack notifier' }],
+		});
 	});
 });

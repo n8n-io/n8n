@@ -8,6 +8,7 @@
  *
  * Also truncates oversized payloads (file uploads, bulk data) that don't help
  * the LLM generate a better mock response.
+ * This adapter deliberately keeps its own vocabulary so judge inputs remain byte-stable.
  */
 
 import { Logger } from '@n8n/backend-common';

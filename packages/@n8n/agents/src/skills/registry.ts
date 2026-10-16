@@ -29,6 +29,11 @@ export class InvalidRuntimeSkillError extends Error {
 
 export interface LoadRuntimeSkillSourceFromDirectoryOptions {
 	exclude?: string[];
+	/**
+	 * Transforms the received instructions, for example replacing placeholders, before
+	 * the skill is registered and served through `load_skill`.
+	 */
+	transformInstructions?: (instructions: string) => string;
 }
 
 export function createRuntimeSkillSource(skills: RuntimeSkill[]): RuntimeSkillSource {
@@ -65,8 +70,10 @@ export function filterRuntimeSkillSource(
 	source: RuntimeSkillSource,
 	excludeSkillIds: string[],
 ): RuntimeSkillSource {
-	const excluded = new Set(excludeSkillIds);
-	const skills = source.registry.skills.filter((skill) => !excluded.has(skill.id));
+	const { skills, excluded, hiddenFiles } = excludeRuntimeSkills(
+		source.registry.skills,
+		excludeSkillIds,
+	);
 	const { loadFile } = source;
 
 	return {
@@ -80,7 +87,10 @@ export function filterRuntimeSkillSource(
 		...(loadFile
 			? {
 					loadFile: async (skillId: string, filePath: string) =>
-						excluded.has(skillId) ? null : await loadFile(skillId, filePath),
+						excluded.has(skillId) ||
+						hiddenFiles.has(linkedFileKey(skillId, posix.normalize(filePath)))
+							? null
+							: await loadFile(skillId, filePath),
 				}
 			: {}),
 	};
@@ -90,12 +100,20 @@ export function loadRuntimeSkillSourceFromDirectory(
 	rootDir: string,
 	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},
 ): RuntimeSkillSource {
-	const excludedSkillIds = new Set(options.exclude ?? []);
-	const skills = loadRuntimeSkillsFromDirectory(rootDir).filter(
-		(skill) => !excludedSkillIds.has(skill.id),
+	const { transformInstructions = (instructions) => instructions } = options;
+
+	// Exclude before building the source, so hashes, parents, and linked files match the result.
+	const { skills } = excludeRuntimeSkills(
+		resolveReferenceParents(loadRuntimeSkillsFromDirectory(rootDir)),
+		options.exclude ?? [],
 	);
-	const source = createRuntimeSkillSource(skills);
-	const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
+	const transformedSkills = skills.map((skill) => ({
+		...skill,
+		instructions: transformInstructions(skill.instructions),
+	}));
+
+	const source = createRuntimeSkillSource(transformedSkills);
+	const skillsById = new Map(transformedSkills.map((skill) => [skill.id, skill]));
 
 	return {
 		...source,
@@ -120,10 +138,63 @@ export function loadRuntimeSkillSourceFromDirectory(
 	};
 }
 
+type ExcludableSkill = Pick<RuntimeSkill, 'id' | 'parents' | 'reference' | 'linkedFiles'>;
+
+/**
+ * Removes the excluded skills, plus references left without a parent. A hidden
+ * reference's file is also removed from its owner's linked files, so it cannot
+ * be read through the owner.
+ */
+function excludeRuntimeSkills<T extends ExcludableSkill>(
+	allSkills: T[],
+	excludeSkillIds: string[],
+): { skills: T[]; excluded: Set<string>; hiddenFiles: Set<string> } {
+	const excluded = new Set(excludeSkillIds);
+	if (excluded.size === 0) return { skills: allSkills, excluded, hiddenFiles: new Set() };
+
+	const remaining = new Set(
+		allSkills.filter((skill) => !excluded.has(skill.id)).map((skill) => skill.id),
+	);
+	const skills = allSkills.flatMap((skill) => {
+		if (excluded.has(skill.id)) return [];
+		if (!skill.parents) return [skill];
+		const parents = skill.parents.filter((id) => remaining.has(id));
+		// A reference with no remaining parent cannot be discovered, so it is hidden too.
+		if (parents.length === 0) {
+			excluded.add(skill.id);
+			return [];
+		}
+		return [parents.length === skill.parents.length ? skill : { ...skill, parents }];
+	});
+	const hiddenFiles = new Set(
+		allSkills.flatMap((skill) =>
+			skill.reference && excluded.has(skill.id)
+				? [linkedFileKey(skill.reference.owner, skill.reference.path)]
+				: [],
+		),
+	);
+	if (hiddenFiles.size === 0) return { skills, excluded, hiddenFiles };
+
+	const visibleSkills = skills.map((skill) =>
+		skill.linkedFiles
+			? {
+					...skill,
+					linkedFiles: {
+						...skill.linkedFiles,
+						references: skill.linkedFiles.references.filter(
+							(file) => !hiddenFiles.has(linkedFileKey(skill.id, file.path)),
+						),
+					},
+				}
+			: skill,
+	);
+	return { skills: visibleSkills, excluded, hiddenFiles };
+}
+
 export function loadRuntimeSkillsFromDirectory(rootDir: string): RuntimeSkill[] {
 	if (!existsSync(rootDir) || !statSync(rootDir).isDirectory()) return [];
 
-	return collectSkillFiles(rootDir).map((skillPath) => {
+	const skills = collectSkillFiles(rootDir).flatMap((skillPath) => {
 		const skillDir = dirname(skillPath);
 		const sourceDirectory = toPosixPath(relative(rootDir, skillDir));
 		validateRuntimeSkillFolder(skillDir, skillPath, sourceDirectory);
@@ -144,10 +215,107 @@ export function loadRuntimeSkillsFromDirectory(rootDir: string): RuntimeSkill[] 
 			);
 		}
 
-		return {
-			...parsed.skill,
-			linkedFiles: loadLinkedFiles(skillDir),
-		};
+		const skill: RuntimeSkill = { ...parsed.skill, linkedFiles: loadLinkedFiles(skillDir) };
+		return [skill, ...loadReferenceSkills(skill, skillDir, sourceDirectory)];
+	});
+	assertSharedReferencesExist(skills);
+	return skills;
+}
+
+const REFERENCE_SKILL_PATH = /^references\/[^/]+\.md$/;
+
+function linkedFileKey(skillId: string, path: string): string {
+	return `${skillId}\0${path}`;
+}
+
+/** `references/*.md` files that start with frontmatter become reference skills of their owner. */
+function loadReferenceSkills(
+	owner: RuntimeSkill,
+	skillDir: string,
+	sourceDirectory: string,
+): RuntimeSkill[] {
+	return (owner.linkedFiles?.references ?? []).flatMap((file) => {
+		if (!REFERENCE_SKILL_PATH.test(file.path)) return [];
+		const referencePath = join(skillDir, file.path);
+		const content = readFileSync(referencePath, 'utf-8');
+		if (content.split(/\r?\n/, 1)[0]?.trim() !== '---') return [];
+
+		const location = `${sourceDirectory}/${file.path}`;
+		const expectedName = posix.basename(file.path, '.md');
+		const parsed = parseRuntimeSkillMarkdown(content, {
+			sourceName: expectedName,
+			path: toPosixPath(referencePath),
+			sourcePath: toPosixPath(referencePath),
+			directory: toPosixPath(skillDir),
+			category: categoryFor(sourceDirectory),
+		});
+		if (!parsed.ok) {
+			throw new InvalidRuntimeSkillError(
+				`Invalid reference at ${location}: ${formatSkillValidationErrors(parsed.errors)}`,
+			);
+		}
+		if (parsed.skill.name !== expectedName) {
+			throw new InvalidRuntimeSkillError(
+				`Reference at ${location} must be named "${expectedName}", got "${parsed.skill.name}"`,
+			);
+		}
+		if (parsed.skill.sharedReferences) {
+			throw new InvalidRuntimeSkillError(
+				`Reference at ${location} cannot declare shared_references`,
+			);
+		}
+
+		return [
+			{
+				...parsed.skill,
+				parents: [owner.id],
+				reference: { owner: owner.id, path: file.path },
+			},
+		];
+	});
+}
+
+function assertSharedReferencesExist(skills: RuntimeSkill[]): void {
+	const references = new Set(skills.filter((skill) => skill.reference).map((skill) => skill.id));
+	for (const skill of skills) {
+		for (const id of skill.sharedReferences ?? []) {
+			if (!references.has(id)) {
+				throw new InvalidRuntimeSkillError(`Skill "${skill.id}" shares unknown reference "${id}"`);
+			}
+		}
+	}
+}
+
+/**
+ * Adds skills that share a reference to its parents, drops parents that are
+ * not in the set, and drops references left without a parent.
+ */
+function resolveReferenceParents(skills: RuntimeSkill[]): RuntimeSkill[] {
+	const ids = new Set(skills.map((skill) => skill.id));
+	const sharers = new Map<string, string[]>();
+	for (const skill of skills) {
+		// The catalog hides a skill by `parents`; materialization and file lookups key on `reference`.
+		if (!skill.parents !== !skill.reference) {
+			throw new InvalidRuntimeSkillError(
+				`Reference "${skill.id}" must set both parents and reference`,
+			);
+		}
+		if (skill.parents && skill.sharedReferences?.length) {
+			throw new InvalidRuntimeSkillError(`Reference "${skill.id}" cannot share other references`);
+		}
+		for (const id of skill.sharedReferences ?? []) {
+			sharers.set(id, [...(sharers.get(id) ?? []), skill.id]);
+		}
+	}
+
+	return skills.flatMap((skill) => {
+		const shared = sharers.get(skill.id);
+		if (shared && !skill.parents) {
+			throw new InvalidRuntimeSkillError(`Shared skill "${skill.id}" is not a reference`);
+		}
+		if (!skill.parents) return [skill];
+		const parents = [...new Set([...skill.parents, ...(shared ?? [])])].filter((id) => ids.has(id));
+		return parents.length > 0 ? [{ ...skill, parents }] : [];
 	});
 }
 
@@ -165,7 +333,7 @@ export function formatSkillValidationErrors(
 }
 
 function normalizeRuntimeSkills(skills: RuntimeSkill[]): RuntimeSkill[] {
-	const sortedSkills = [...skills].sort(compareRuntimeSkills);
+	const sortedSkills = resolveReferenceParents(skills).sort(compareRuntimeSkills);
 	const seenIds = new Set<string>();
 	const seenNames = new Set<string>();
 	const seenSourceDirectories = new Set<string>();
@@ -222,6 +390,9 @@ function toRegistryEntry(skill: RuntimeSkill): RuntimeSkillRegistryEntry {
 		...(skill.interface ? { interface: stableRecord(skill.interface) } : {}),
 		...(skill.policy ? { policy: stableRecord(skill.policy) } : {}),
 		...(skill.dependencies ? { dependencies: stableRecord(skill.dependencies) } : {}),
+		...(skill.parents ? { parents: [...skill.parents] } : {}),
+		...(skill.reference ? { reference: { ...skill.reference } } : {}),
+		...(skill.sharedReferences ? { sharedReferences: [...skill.sharedReferences] } : {}),
 		...(skill.version ? { version: skill.version } : {}),
 		...(skill.license ? { license: skill.license } : {}),
 		...(skill.compatibility ? { compatibility: skill.compatibility } : {}),
@@ -242,6 +413,9 @@ function hashSkill(skill: RuntimeSkill): string {
 		interface: skill.interface,
 		policy: skill.policy,
 		dependencies: skill.dependencies,
+		parents: skill.parents,
+		reference: skill.reference,
+		sharedReferences: skill.sharedReferences,
 		version: skill.version,
 		license: skill.license,
 		compatibility: skill.compatibility,

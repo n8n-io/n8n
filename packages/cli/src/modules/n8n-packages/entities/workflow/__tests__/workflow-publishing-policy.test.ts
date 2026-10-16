@@ -85,4 +85,45 @@ describe('decideWorkflowPublishingAction', () => {
 			}),
 		).toBe('unpublish');
 	});
+
+	describe('when the package states no publish opinion', () => {
+		it.each([
+			WorkflowPublishingPolicy.MatchSource,
+			WorkflowPublishingPolicy.PreservePublishedState,
+		])('leaves a published target published under %s', (policy) => {
+			expect(
+				decideWorkflowPublishingAction(policy, {
+					status: 'updated',
+					sourcePublished: undefined,
+					currentlyPublished: true,
+					isArchived: false,
+				}),
+			).toBe('noop');
+		});
+
+		it.each([
+			WorkflowPublishingPolicy.MatchSource,
+			WorkflowPublishingPolicy.PreservePublishedState,
+		])('leaves a created workflow unpublished under %s', (policy) => {
+			expect(
+				decideWorkflowPublishingAction(policy, {
+					status: 'created',
+					sourcePublished: undefined,
+					currentlyPublished: false,
+					isArchived: false,
+				}),
+			).toBe('noop');
+		});
+
+		it('still honours an explicit publish-all, which asks for no source state', () => {
+			expect(
+				decideWorkflowPublishingAction(WorkflowPublishingPolicy.PublishAll, {
+					status: 'created',
+					sourcePublished: undefined,
+					currentlyPublished: false,
+					isArchived: false,
+				}),
+			).toBe('publish');
+		});
+	});
 });

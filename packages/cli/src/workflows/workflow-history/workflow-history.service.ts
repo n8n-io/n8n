@@ -1,6 +1,7 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { EventService } from '@n8n/backend-services';
+import type { OperationContext, PublishHistoryScope, User } from '@n8n/db';
 import {
 	WorkflowHistory,
 	WorkflowHistoryRepository,
@@ -10,17 +11,29 @@ import {
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
-import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
+
+type WorkflowHistoryVersionInput = {
+	user: User | string;
+	workflow: {
+		versionId: string;
+		nodes: IWorkflowBase['nodes'];
+		connections: IWorkflowBase['connections'];
+		nodeGroups?: IWorkflowBase['nodeGroups'];
+	};
+	workflowId: string;
+	autosaved?: boolean;
+	source?: WorkflowActionSource;
+	versionMetadata?: { name?: string; description?: string };
+};
 
 @Service()
 export class WorkflowHistoryService {
@@ -47,7 +60,7 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		return await this.workflowHistoryRepository.find({
+		const versions = await this.workflowHistoryRepository.find({
 			where: {
 				workflowId: workflow.id,
 			},
@@ -63,16 +76,30 @@ export class WorkflowHistoryService {
 				'description',
 				'autosaved',
 			],
-			relations: ['workflowPublishHistory'],
-			order: { createdAt: 'DESC' },
+			order: { createdAt: 'DESC', versionId: 'ASC' },
 		});
+
+		// Callers only show the latest publish of each version.
+		const activations = await this.workflowPublishHistoryRepository.findLatestActivations(
+			workflow.id,
+			versions.map(({ versionId }) => versionId),
+		);
+		const activationsByVersion = new Map(
+			activations.map((activation) => [activation.versionId, activation]),
+		);
+		for (const version of versions) {
+			const activation = activationsByVersion.get(version.versionId);
+			version.workflowPublishHistory = activation ? [activation] : [];
+		}
+
+		return versions;
 	}
 
 	async getVersion(
 		user: User,
 		workflowId: string,
 		versionId: string,
-		settings?: { includePublishHistory?: boolean },
+		settings?: { publishHistory?: PublishHistoryScope },
 	): Promise<WorkflowHistory> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
@@ -82,18 +109,23 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const includePublishHistory = settings?.includePublishHistory ?? true;
-		const relations = includePublishHistory ? ['workflowPublishHistory'] : [];
-
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
 				workflowId: workflow.id,
 				versionId,
 			},
-			relations,
 		});
 		if (!hist) {
 			throw new WorkflowHistoryVersionNotFoundError('');
+		}
+
+		const publishHistory = settings?.publishHistory ?? 'all';
+		if (publishHistory !== 'none') {
+			hist.workflowPublishHistory = await this.workflowPublishHistoryRepository.findByVersion(
+				workflow.id,
+				versionId,
+				publishHistory,
+			);
 		}
 		return hist;
 	}
@@ -168,18 +200,48 @@ export class WorkflowHistoryService {
 
 	async saveVersion(
 		user: User | string,
-		workflow: {
-			versionId: string;
-			nodes: IWorkflowBase['nodes'];
-			connections: IWorkflowBase['connections'];
-			nodeGroups?: IWorkflowBase['nodeGroups'];
-		},
+		workflow: WorkflowHistoryVersionInput['workflow'],
 		workflowId: string,
 		autosaved = false,
 		source?: WorkflowActionSource,
 		transactionManager?: EntityManager,
-		versionMetadata?: { name?: string; description?: string },
+		versionMetadata?: WorkflowHistoryVersionInput['versionMetadata'],
+		{ ctx, propagateErrors = false }: { ctx?: OperationContext; propagateErrors?: boolean } = {},
 	) {
+		const version = this.createVersionRecord({
+			user,
+			workflow,
+			workflowId,
+			autosaved,
+			source,
+			versionMetadata,
+		});
+		try {
+			if (ctx) {
+				await this.workflowHistoryRepository.insertVersion(version, ctx);
+			} else {
+				const repository = transactionManager
+					? transactionManager.getRepository(WorkflowHistory)
+					: this.workflowHistoryRepository;
+				await repository.insert(version);
+			}
+		} catch (e) {
+			if (propagateErrors) throw e;
+			const error = ensureError(e);
+			this.logger.error(`Failed to save workflow history version for workflow ${workflowId}`, {
+				error,
+			});
+		}
+	}
+
+	private createVersionRecord({
+		user,
+		workflow,
+		workflowId,
+		autosaved = false,
+		source,
+		versionMetadata,
+	}: WorkflowHistoryVersionInput) {
 		if (!workflow.nodes || !workflow.connections) {
 			throw new UnexpectedError(
 				`Cannot save workflow history: nodes and connections are required for workflow ${workflowId}`,
@@ -187,30 +249,24 @@ export class WorkflowHistoryService {
 		}
 
 		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
-		const authors = source === 'n8n-mcp' ? `${name} (via MCP)` : name;
+		const authors =
+			source === 'n8n-mcp'
+				? `${name} (via MCP)`
+				: source === 'n8n-ai'
+					? `${name} (with n8n Assistant)`
+					: name;
 
-		const repository = transactionManager
-			? transactionManager.getRepository(WorkflowHistory)
-			: this.workflowHistoryRepository;
-
-		try {
-			await repository.insert({
-				authors,
-				connections: workflow.connections,
-				nodes: workflow.nodes,
-				nodeGroups: workflow.nodeGroups,
-				versionId: workflow.versionId,
-				workflowId,
-				autosaved,
-				...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
-				...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
-			});
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(`Failed to save workflow history version for workflow ${workflowId}`, {
-				error,
-			});
-		}
+		return {
+			authors,
+			connections: workflow.connections,
+			nodes: workflow.nodes,
+			nodeGroups: workflow.nodeGroups,
+			versionId: workflow.versionId,
+			workflowId,
+			autosaved,
+			...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
+			...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
+		};
 	}
 
 	async updateVersionForUser(
@@ -271,10 +327,7 @@ export class WorkflowHistoryService {
 	) {
 		// Cast avoids a TypeORM `QueryDeepPartialEntity` deep-instantiation (TS2589);
 		// same workaround as workflow.service.ts / import.service.ts.
-		await this.workflowHistoryRepository.update(
-			{ versionId, workflowId },
-			updateData as QueryDeepPartialEntity<WorkflowHistory>,
-		);
+		await this.workflowHistoryRepository.update({ versionId, workflowId }, updateData);
 	}
 
 	/**
@@ -309,7 +362,11 @@ export class WorkflowHistoryService {
 		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
 	}
 
-	async getPublishTimeline(user: User, workflowId: string) {
+	async getPublishTimeline(
+		user: User,
+		workflowId: string,
+		page: { offset: number; limit: number },
+	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
@@ -318,14 +375,7 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const events = await this.workflowPublishHistoryRepository
-			.createQueryBuilder('wph')
-			.leftJoinAndSelect('wph.user', 'user')
-			.leftJoin('wph.workflowHistory', 'wh')
-			.addSelect('wh.name')
-			.where('wph.workflowId = :workflowId', { workflowId: workflow.id })
-			.orderBy('wph.createdAt', 'ASC')
-			.getMany();
+		const events = await this.workflowPublishHistoryRepository.findTimelinePage(workflow.id, page);
 
 		return events.map((e) => ({
 			id: e.id,

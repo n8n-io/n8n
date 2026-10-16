@@ -1,5 +1,5 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
 	// Stryker-only config, not part of any tsconfig project (like the shared
@@ -7,12 +7,7 @@ export default defineConfig(
 	// ignored too: an interrupted mutation run leaves a sandbox behind that
 	// would otherwise fail `pnpm lint` with parsing errors.
 	globalIgnores(['stryker.config.mjs', 'vitest.stryker.config.ts', '.stryker-tmp/**']),
-	baseConfig,
-	{
-		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-		},
-	},
+	backendConfig,
 	{
 		// This package must stay free of DB/DI coupling: it declares the contracts,
 		// the host (cli's DurableScheduler) satisfies them.

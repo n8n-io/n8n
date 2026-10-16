@@ -1,4 +1,9 @@
-import { createRemediation } from '../remediation';
+import { successfulVerification } from '../../__tests__/verification-fixtures';
+import {
+	createRemediation,
+	MAX_VERIFY_ATTEMPTS,
+	MAX_POST_SUBMIT_REMEDIATION_SUBMITS,
+} from '../remediation';
 import {
 	deriveWorkflowVerificationObligation,
 	deriveWorkflowVerificationObligationFromOutcome,
@@ -8,6 +13,7 @@ import type {
 	AttemptRecord,
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
+	WorkflowVerificationObligationStatus,
 } from '../workflow-loop-state';
 
 function makeState(overrides: Partial<WorkflowLoopState> = {}): WorkflowLoopState {
@@ -52,7 +58,113 @@ function makeOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBui
 	};
 }
 
+function makePlannedNode(nodeName: string) {
+	return {
+		nodeName,
+		verdict: 'execute' as const,
+		reason: 'Reads data',
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	};
+}
+
+function makeMultiTriggerOutcome(
+	overrides: Partial<WorkflowBuildOutcome> = {},
+): WorkflowBuildOutcome {
+	return makeOutcome({
+		triggerNodes: [
+			{ nodeName: 'Trigger A', nodeType: 'n8n-nodes-base.webhook' },
+			{ nodeName: 'Trigger B', nodeType: 'n8n-nodes-base.scheduleTrigger' },
+		],
+		nodeSimulationPlan: [makePlannedNode('Step A'), makePlannedNode('Step B')],
+		verificationProgress: {},
+		...overrides,
+	});
+}
+
 describe('deriveWorkflowVerificationObligation', () => {
+	it('keeps an exhausted setup verification budget blocked', () => {
+		const remediation = createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			guidance: 'Connect the account.',
+		});
+		const record = {
+			state: makeState({
+				status: 'blocked',
+				lastRemediation: remediation,
+				successfulSubmitSeen: true,
+				postSubmitRemediationSubmitsUsed: MAX_POST_SUBMIT_REMEDIATION_SUBMITS,
+			}),
+			attempts: [],
+			lastBuildOutcome: makeOutcome({
+				needsUserInput: true,
+				nodeSimulationPlan: [],
+				remediation,
+				verificationReadiness: {
+					status: 'needs_setup',
+					reason: 'workflow-needs-setup',
+					guidance: 'Connect the account.',
+				},
+			}),
+		};
+		const original = structuredClone(record);
+		const obligation = deriveWorkflowVerificationObligation('thread-1', record, {
+			setupPanelEnabled: true,
+		});
+		expect(obligation.status).toBe('blocked');
+		expect(obligation.blockingReason).toContain('repair budget is exhausted');
+		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
+		expect(record).toEqual(original);
+	});
+
+	it.each([
+		['first attempt', {}, 'ready_to_verify'],
+		['legacy attempt', { verifyAttempts: 1 }, 'needs_setup'],
+		[
+			'failed attempt',
+			{ verification: { attempted: true, success: false, status: 'error' } },
+			'needs_setup',
+		],
+		['one-off', { executionIntent: 'one-off' }, 'needs_setup'],
+		['trigger-only', { triggerType: 'trigger_only' }, 'needs_setup'],
+		['missing plan', { nodeSimulationPlan: undefined }, 'needs_setup'],
+	] satisfies Array<[string, Partial<WorkflowBuildOutcome>, string]>)(
+		'derives panel verification for %s without changing storage',
+		(_name, overrides, expected) => {
+			const remediation = createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				guidance: 'Connect the account.',
+			});
+			const record = {
+				state: makeState({ status: 'blocked', lastRemediation: remediation }),
+				attempts: [],
+				lastBuildOutcome: makeOutcome({
+					needsUserInput: true,
+					nodeSimulationPlan: [],
+					remediation,
+					verificationReadiness: {
+						status: 'needs_setup',
+						reason: 'workflow-needs-setup',
+						guidance: 'Connect the account.',
+					},
+					...overrides,
+				}),
+			};
+			const original = structuredClone(record);
+			expect(
+				deriveWorkflowVerificationObligation('thread-1', record, { setupPanelEnabled: true })
+					.status,
+			).toBe(expected);
+			expect(
+				deriveWorkflowVerificationObligation('thread-1', record, { setupPanelEnabled: false })
+					.status,
+			).toBe('needs_setup');
+			expect(record).toEqual(original);
+		},
+	);
+
 	it('marks ready build outcomes as ready to verify', () => {
 		const obligation = deriveWorkflowVerificationObligation('thread-1', {
 			state: makeState(),
@@ -114,6 +226,129 @@ describe('deriveWorkflowVerificationObligation', () => {
 
 		expect(obligation.status).toBe('verified');
 		expect(obligation.evidence?.executionId).toBe('exec-1');
+	});
+
+	const passedA = {
+		'Trigger A': [successfulVerification('Trigger A', ['Trigger A', 'Step A'])],
+	};
+	const passedAll = {
+		...passedA,
+		'Trigger B': [successfulVerification('Trigger B', ['Trigger B', 'Step B'])],
+	};
+	const successfulPass: WorkflowBuildOutcome['verification'] = {
+		attempted: true,
+		success: true,
+		executionId: 'exec-1',
+		status: 'success',
+	};
+	const verificationCases: Array<
+		[string, Partial<WorkflowBuildOutcome>, WorkflowVerificationObligationStatus]
+	> = [
+		[
+			'the first trigger passed',
+			{ verificationProgress: passedA, verification: successfulPass },
+			'ready_to_verify',
+		],
+		['all triggers and nodes passed', { verificationProgress: passedAll }, 'verified'],
+		[
+			'an unscoped partial pass was recorded',
+			{ verification: { ...successfulPass, evidence: { nodesNotReached: ['Step B'] } } },
+			'ready_to_verify',
+		],
+		[
+			'the first trigger has a coverage gap',
+			{
+				verificationProgress: passedA,
+				verification: {
+					...successfulPass,
+					evidence: { triggerNodeName: 'Trigger A', nodesNotReached: ['Shared Final Step'] },
+				},
+			},
+			'ready_to_verify',
+		],
+		[
+			'aggregate coverage has a gap',
+			{
+				verificationProgress: passedAll,
+				nodeSimulationPlan: ['Step A', 'Step B', 'Shared Final Step'].map(makePlannedNode),
+			},
+			'not_verifiable',
+		],
+		[
+			'the latest pass failed',
+			{ verification: { ...successfulPass, success: false, status: 'error' } },
+			'ready_to_verify',
+		],
+		[
+			'the latest failure contradicts stored coverage',
+			{
+				verificationProgress: passedAll,
+				verification: { ...successfulPass, success: false, status: 'error' },
+			},
+			'ready_to_verify',
+		],
+		[
+			'the attempt limit was reached before completion',
+			{ verificationProgress: passedA, verifyAttempts: MAX_VERIFY_ATTEMPTS },
+			'blocked',
+		],
+		[
+			'the final allowed attempt completed coverage',
+			{ verificationProgress: passedAll, verifyAttempts: MAX_VERIFY_ATTEMPTS },
+			'verified',
+		],
+		[
+			'a legacy outcome has no progress record',
+			{ verificationProgress: undefined, verification: successfulPass },
+			'verified',
+		],
+	];
+	it.each(verificationCases)(
+		'derives multi-trigger verification status when %s',
+		(_name, overrides, expectedStatus) => {
+			const obligation = deriveWorkflowVerificationObligation('thread-1', {
+				state: makeState(),
+				attempts: [makeAttempt()],
+				lastBuildOutcome: makeMultiTriggerOutcome(overrides),
+			});
+
+			expect(obligation.status).toBe(expectedStatus);
+			if (expectedStatus === 'blocked')
+				expect(obligation.blockingReason).toContain('attempt limit');
+			if (expectedStatus === 'not_verifiable') {
+				expect(obligation.policy).toBe('manual');
+				expect(obligation.blockingReason).toContain('Shared Final Step');
+			}
+			if (expectedStatus === 'verified') expect(obligation.blockingReason).toBeUndefined();
+		},
+	);
+
+	it('does not treat a reserved run as failed setup evidence', () => {
+		const obligation = deriveWorkflowVerificationObligationFromOutcome(
+			'thread-1',
+			makeMultiTriggerOutcome({
+				setupRequirement: {
+					status: 'required',
+					reason: 'mocked-credentials',
+					guidance: 'Connect the account after verification.',
+				},
+				verifyAttempts: 1,
+				verification: undefined,
+			}),
+		);
+		expect(obligation.status).toBe('ready_to_verify');
+	});
+
+	it('keeps incomplete multi-trigger progress blocked when the loop state is blocked', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState({ status: 'blocked' }),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeMultiTriggerOutcome({
+				verificationReadiness: { status: 'already_verified' },
+			}),
+		});
+
+		expect(obligation.status).toBe('blocked');
 	});
 
 	it('treats partial-coverage evidence as a manual warning completion', () => {

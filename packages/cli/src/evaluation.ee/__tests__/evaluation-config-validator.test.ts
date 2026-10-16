@@ -4,7 +4,7 @@ import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { DataTable as DataTableEntity } from '@/modules/data-table/data-table.entity';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 

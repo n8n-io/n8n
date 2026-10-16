@@ -219,6 +219,7 @@ describe('InstanceAiVerificationService', () => {
 				serviceUrl: 'https://draft.sandbox',
 				apiKey: 'saved-key',
 				timeout: 60,
+				ephemeral: true,
 			});
 			expect(timeoutSpy).toHaveBeenCalledWith(60);
 			expect(workspace.sandbox.executeCommand).toHaveBeenCalledWith('printf', ['ok'], {
@@ -311,6 +312,7 @@ describe('InstanceAiVerificationService', () => {
 				serviceUrl: 'https://saved.sandbox',
 				apiKey: 'saved-key',
 				timeout: 60,
+				ephemeral: true,
 			});
 		});
 

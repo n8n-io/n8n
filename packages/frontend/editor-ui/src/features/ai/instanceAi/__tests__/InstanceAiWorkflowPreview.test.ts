@@ -1,4 +1,4 @@
-import { createTestingPinia } from '@pinia/testing';
+import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createRunExecutionData, type IPinData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
@@ -13,11 +13,16 @@ import {
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createTestNode } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { RememberedManualExecution } from '../canvasPreview.utils';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
 
@@ -25,6 +30,8 @@ import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.v
 // disposed execution-state store) so a remembered user run survives the simulated
 // tab-switch dispose, exactly like the real per-thread runtime.
 const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
+
+const { telemetryTrackSpy } = vi.hoisted(() => ({ telemetryTrackSpy: vi.fn() }));
 
 const thread = reactive({
 	messages: [],
@@ -40,10 +47,20 @@ const thread = reactive({
 	) => rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId }),
 	getRememberedManualExecution: (workflowId: string) => rememberedManualExecutions.get(workflowId),
 	forgetManualExecution: (workflowId: string) => rememberedManualExecutions.delete(workflowId),
+	// Same shape as the runtime's logs panel memory; it survives the simulated tab switch.
+	logsPanelMemory: {
+		collapsedByUser: false,
+		autoOpened: false,
+		latestStartedExecutionIds: new Map<string, string>(),
+	},
 });
 
 vi.mock('../instanceAi.store', () => ({
 	useThread: () => thread,
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrackSpy }),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -117,12 +134,22 @@ function makeExecution(id: string, options: MakeExecutionOptions = {}): IExecuti
 interface MountPreviewOptions {
 	executionFactory?: (executionId: string) => IExecutionResponse;
 	executionResult?: { executionId: string; status: 'success' | 'error' };
+	initialNodeId?: string;
+	/** Size of the artifact pane. jsdom has no layout, so the logs auto-open size gate reads this. */
+	paneSize?: { width: number; height: number };
+	/** Reuse the stores of an earlier mount, like a remount after a tab switch. */
+	pinia?: TestingPinia;
 }
 
 async function mountPreview(options: MountPreviewOptions = {}) {
 	const listeners: OnPushMessageHandler[] = [];
-	const pinia = createTestingPinia({ stubActions: false });
+	const pinia = options.pinia ?? createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
+
+	const paneSize = options.paneSize ?? { width: 1200, height: 900 };
+	vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+		...paneSize,
+	} as DOMRect);
 
 	const pushStore = usePushConnectionStore();
 	vi.spyOn(pushStore, 'addEventListener').mockImplementation((handler) => {
@@ -143,6 +170,7 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 		props: {
 			workflowId: 'wf-1',
 			executionResult,
+			initialNodeId: options.initialNodeId,
 		},
 		global: {
 			stubs: {
@@ -152,7 +180,37 @@ async function mountPreview(options: MountPreviewOptions = {}) {
 	});
 	await flushPromises();
 
-	return { wrapper, listeners, workflowsStore };
+	return { wrapper, listeners, workflowsStore, pinia };
+}
+
+function startExecution(
+	listeners: OnPushMessageHandler[],
+	executionId: string,
+	source?: 'instance_ai',
+) {
+	for (const listener of listeners) {
+		listener({
+			type: 'executionStarted',
+			data: {
+				executionId,
+				mode: 'manual',
+				source,
+				startedAt: new Date(),
+				workflowId: 'wf-1',
+				flattedRunData: '[]',
+			},
+		});
+	}
+}
+
+function finishExecution(
+	listeners: OnPushMessageHandler[],
+	executionId: string,
+	status: 'success' | 'error',
+) {
+	for (const listener of listeners) {
+		listener({ type: 'executionFinished', data: { executionId, workflowId: 'wf-1', status } });
+	}
 }
 
 describe('InstanceAiWorkflowPreview', () => {
@@ -164,6 +222,10 @@ describe('InstanceAiWorkflowPreview', () => {
 		thread.consumePendingHandoff.mockReset();
 		thread.sendMessage.mockReset();
 		rememberedManualExecutions.clear();
+		thread.logsPanelMemory.collapsedByUser = false;
+		thread.logsPanelMemory.autoOpened = false;
+		thread.logsPanelMemory.latestStartedExecutionIds.clear();
+		telemetryTrackSpy.mockReset();
 	});
 
 	describe('editing lock', () => {
@@ -207,6 +269,28 @@ describe('InstanceAiWorkflowPreview', () => {
 			id: 'exec-agent-1',
 		});
 		expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+	});
+
+	it('opens the returned node once after the artifact workflow loads', async () => {
+		const { wrapper } = await mountPreview({ initialNodeId: 'node-1' });
+		const documentId = createWorkflowDocumentId('wf-1');
+		useWorkflowDocumentStore(documentId).setNodes([
+			createTestNode({ id: 'node-1', name: 'Returned node' }),
+		]);
+		const ndvStore = useNDVStore(documentId);
+
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+		await nextTick();
+
+		expect(ndvStore.activeNodeName).toBe('Returned node');
+		expect(wrapper.emitted('initial-node-id-consumed')).toHaveLength(1);
+
+		ndvStore.unsetActiveNodeName();
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+		await nextTick();
+
+		expect(ndvStore.activeNodeName).toBeNull();
+		expect(wrapper.emitted('initial-node-id-consumed')).toHaveLength(1);
 	});
 
 	it('restores the cached agent execution after workflow setup reload disposes state', async () => {
@@ -419,62 +503,149 @@ describe('InstanceAiWorkflowPreview', () => {
 		expect(workflowsStore.fetchExecutionDataById).toHaveBeenLastCalledWith('exec-agent-2');
 	});
 
-	it('opens the logs panel when an execution starts for the previewed workflow', async () => {
-		const { listeners } = await mountPreview();
-		const logsStore = useLogsStore();
-		logsStore.toggleOpen(false);
+	describe('logs panel', () => {
+		const toggleEvents = () =>
+			telemetryTrackSpy.mock.calls
+				.filter(([event]) => event === 'User toggled log view')
+				.map(([, properties]) => properties);
 
-		// User run from the embedded canvas.
-		for (const listener of listeners) {
-			listener({
-				type: 'executionStarted',
-				data: {
-					executionId: 'exec-user-1',
-					mode: 'manual',
-					startedAt: new Date(),
-					workflowId: 'wf-1',
-					flattedRunData: '[]',
-				},
-			});
-		}
-		expect(logsStore.isOpen).toBe(true);
+		it('opens the panel when a run starts and collapses it when the run succeeds', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+			expect(logsStore.isOpen).toBe(false);
 
-		// Agent run while the artifact is open.
-		logsStore.toggleOpen(false);
-		for (const listener of listeners) {
-			listener({
-				type: 'executionStarted',
-				data: {
-					executionId: 'exec-agent-2',
-					mode: 'manual',
-					source: 'instance_ai',
-					startedAt: new Date(),
-					workflowId: 'wf-1',
-					flattedRunData: '[]',
-				},
-			});
-		}
-		expect(logsStore.isOpen).toBe(true);
-	});
+			// User run from the artifact canvas.
+			startExecution(listeners, 'exec-user-1');
+			expect(logsStore.isOpen).toBe(true);
+			finishExecution(listeners, 'exec-user-1', 'success');
+			expect(logsStore.isOpen).toBe(false);
 
-	it('does not open the logs panel for executions of other workflows', async () => {
-		const { listeners } = await mountPreview();
-		const logsStore = useLogsStore();
-		logsStore.toggleOpen(false);
+			// Agent run while the artifact is open.
+			startExecution(listeners, 'exec-agent-2', 'instance_ai');
+			expect(logsStore.isOpen).toBe(true);
+			finishExecution(listeners, 'exec-agent-2', 'success');
+			expect(logsStore.isOpen).toBe(false);
 
-		for (const listener of listeners) {
-			listener({
-				type: 'executionStarted',
-				data: {
-					executionId: 'exec-other-1',
-					mode: 'manual',
-					startedAt: new Date(),
-					workflowId: 'wf-2',
-					flattedRunData: '[]',
-				},
-			});
-		}
+			expect(toggleEvents()).toEqual([
+				{ new_state: 'attached', source: 'auto', context: 'artifact' },
+				{ new_state: 'collapsed', source: 'auto', context: 'artifact' },
+				{ new_state: 'attached', source: 'auto', context: 'artifact' },
+				{ new_state: 'collapsed', source: 'auto', context: 'artifact' },
+			]);
+		});
 
-		expect(logsStore.isOpen).toBe(false);
+		it('keeps the panel open when the run fails', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+
+			startExecution(listeners, 'exec-user-1');
+			finishExecution(listeners, 'exec-user-1', 'error');
+
+			expect(logsStore.isOpen).toBe(true);
+		});
+
+		it('stops opening the panel for the thread after the user collapses it', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+
+			startExecution(listeners, 'exec-user-1');
+			logsStore.toggleOpen(false); // the user collapses the panel
+			finishExecution(listeners, 'exec-user-1', 'success');
+			startExecution(listeners, 'exec-agent-2', 'instance_ai');
+
+			expect(thread.logsPanelMemory.collapsedByUser).toBe(true);
+			expect(logsStore.isOpen).toBe(false);
+			expect(toggleEvents()).toHaveLength(1);
+		});
+
+		it('leaves a panel the user opened open after a successful run', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+			logsStore.toggleOpen(true); // the user opens the panel
+
+			startExecution(listeners, 'exec-user-1');
+			finishExecution(listeners, 'exec-user-1', 'success');
+
+			expect(logsStore.isOpen).toBe(true);
+			expect(toggleEvents()).toHaveLength(0);
+		});
+
+		it.each([
+			['narrow', { width: 649, height: 900 }],
+			['short', { width: 1200, height: 599 }],
+		])('does not open the panel when the pane is too %s', async (_label, paneSize) => {
+			const { listeners } = await mountPreview({ paneSize });
+			const logsStore = useLogsStore();
+
+			startExecution(listeners, 'exec-user-1');
+
+			expect(logsStore.isOpen).toBe(false);
+		});
+
+		it('does not open the panel for executions of other workflows', async () => {
+			const { listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+
+			for (const listener of listeners) {
+				listener({
+					type: 'executionStarted',
+					data: {
+						executionId: 'exec-other-1',
+						mode: 'manual',
+						startedAt: new Date(),
+						workflowId: 'wf-2',
+						flattedRunData: '[]',
+					},
+				});
+			}
+
+			expect(logsStore.isOpen).toBe(false);
+		});
+
+		it('collapses the panel after a tab switch when the run that opened it succeeds', async () => {
+			const first = await mountPreview();
+			const logsStore = useLogsStore();
+			startExecution(first.listeners, 'exec-user-1');
+			expect(logsStore.isOpen).toBe(true);
+
+			// A tab switch and back remounts the preview on the same thread runtime.
+			first.wrapper.unmount();
+			const { listeners } = await mountPreview({ pinia: first.pinia });
+			finishExecution(listeners, 'exec-user-1', 'success');
+
+			expect(logsStore.isOpen).toBe(false);
+			expect(toggleEvents()).toHaveLength(2);
+		});
+
+		// Another artifact tab is active: the preview stays mounted but hidden.
+		// jsdom caches computed styles until a stylesheet changes, so append one.
+		const hidePreview = (wrapper: Awaited<ReturnType<typeof mountPreview>>['wrapper']) => {
+			wrapper.element.setAttribute('style', 'visibility: hidden');
+			document.head.appendChild(document.createElement('style'));
+		};
+
+		it('does not open the panel for a run of a hidden tab', async () => {
+			const { wrapper, listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+			hidePreview(wrapper);
+
+			startExecution(listeners, 'exec-user-1');
+
+			expect(logsStore.isOpen).toBe(false);
+			expect(toggleEvents()).toHaveLength(0);
+		});
+
+		it('does not collapse the panel for a run of a hidden tab', async () => {
+			const { wrapper, listeners } = await mountPreview();
+			const logsStore = useLogsStore();
+			startExecution(listeners, 'exec-user-1');
+			expect(logsStore.isOpen).toBe(true);
+
+			hidePreview(wrapper);
+			finishExecution(listeners, 'exec-user-1', 'success');
+
+			expect(logsStore.isOpen).toBe(true);
+			expect(toggleEvents()).toHaveLength(1);
+		});
 	});
 });

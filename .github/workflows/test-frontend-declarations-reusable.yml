@@ -1,0 +1,44 @@
+name: 'Test: Frontend declarations'
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to test'
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  declarations:
+    name: Frontend declarations
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      # Both vite configs read this as a flag. It is also part of the turbo cache key for these
+      # two build tasks, so this misses the declaration-less `dist` that the CI build cached.
+      RELEASE: true
+
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          fetch-depth: 1
+          ref: ${{ inputs.ref }}
+
+      - name: Setup and build in release mode
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/design-system --filter=@n8n/chat
+
+      - name: Verify the published frontend packages carry declarations
+        run: |
+          for pkg in packages/frontend/@n8n/design-system packages/frontend/@n8n/chat; do
+            if [ -z "$(find "$pkg/dist" -name '*.d.ts' -print -quit 2>/dev/null)" ]; then
+              echo "::error::$pkg/dist has no .d.ts — the RELEASE-gated declaration emit did not run"
+              exit 1
+            fi
+          done

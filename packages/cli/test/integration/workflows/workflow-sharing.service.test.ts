@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowSharingService } from '@n8n/backend-services';
 
 import { createUser } from '../shared/db/users';
 
@@ -114,6 +114,33 @@ describe('WorkflowSharingService', () => {
 			//
 			expect(sharedWorkflowIds).toContain(workflow1.id);
 			expect(sharedWorkflowIds).not.toContain(workflow2.id);
+		});
+
+		it('should only show workflows of the given project to users', async () => {
+			const projectA = await projectService.createTeamProject(member, { name: 'Project A' });
+			const projectB = await projectService.createTeamProject(member, { name: 'Project B' });
+
+			await Promise.all([
+				projectService.addUser(projectA.id, {
+					userId: anotherMember.id,
+					role: 'project:admin',
+				}),
+				projectService.addUser(projectB.id, {
+					userId: anotherMember.id,
+					role: 'project:admin',
+				}),
+			]);
+
+			const workflowA = await createWorkflow(undefined, projectA);
+			const workflowB = await createWorkflow(undefined, projectB);
+
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(anotherMember, {
+				scopes: ['workflow:read'],
+				projectId: projectA.id,
+			});
+
+			expect(sharedWorkflowIds).toEqual([workflowA.id]);
+			expect(sharedWorkflowIds).not.toContain(workflowB.id);
 		});
 	});
 

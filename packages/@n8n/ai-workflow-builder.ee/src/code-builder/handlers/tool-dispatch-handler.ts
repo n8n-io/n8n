@@ -14,7 +14,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { TextEditorHandler } from './text-editor-handler';
 import type { TextEditorToolHandler } from './text-editor-tool-handler';
 import type { ValidateToolHandler } from './validate-tool-handler';
-import type { StreamOutput, ToolProgressChunk } from '../../types/streaming';
+import type { StreamOutput } from '../../types/streaming';
 import type { WarningTracker } from '../state/warning-tracker';
 
 /**
@@ -280,7 +280,7 @@ export class ToolDispatchHandler {
 					displayTitle,
 					status: 'running',
 					args: toolCall.args,
-				} as ToolProgressChunk,
+				},
 			],
 		};
 
@@ -304,7 +304,7 @@ export class ToolDispatchHandler {
 						displayTitle,
 						status: 'error',
 						error: errorMessage,
-					} as ToolProgressChunk,
+					},
 				],
 			};
 			return;
@@ -331,7 +331,7 @@ export class ToolDispatchHandler {
 						toolCallId: toolCall.id,
 						displayTitle,
 						status: 'completed',
-					} as ToolProgressChunk,
+					},
 				],
 			};
 		} catch (error) {
@@ -353,7 +353,7 @@ export class ToolDispatchHandler {
 						displayTitle,
 						status: 'error',
 						error: errorMessage,
-					} as ToolProgressChunk,
+					},
 				],
 			};
 		}
@@ -382,7 +382,7 @@ export class ToolDispatchHandler {
 					displayTitle,
 					status: 'running',
 					args: toolCall.args,
-				} as ToolProgressChunk,
+				},
 			],
 		};
 
@@ -418,7 +418,7 @@ export class ToolDispatchHandler {
 						toolCallId: toolCall.id,
 						displayTitle,
 						status: 'completed',
-					} as ToolProgressChunk,
+					},
 				],
 			};
 		} catch (error) {
@@ -440,7 +440,7 @@ export class ToolDispatchHandler {
 						displayTitle,
 						status: 'error',
 						error: errorMessage,
-					} as ToolProgressChunk,
+					},
 				],
 			};
 		}

@@ -7,7 +7,118 @@ import {
 	type AiGatewayModelCredentialResolver,
 } from '../model-config';
 
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
 describe('resolveCredentialAwareModelConfig', () => {
+	it.each([
+		{
+			model: 'google-vertex/gemini-2.5-pro',
+			sdk: '@ai-sdk/google-vertex',
+			project: undefined,
+			projectId: 'custom-project',
+			expectedProject: 'custom-project',
+		},
+		{
+			model: 'google-vertex/claude-opus-5@default',
+			sdk: '@ai-sdk/google-vertex/anthropic',
+			project: '__custom__',
+			projectId: 'custom-project',
+			expectedProject: 'custom-project',
+		},
+		{
+			model: 'google-vertex/mistral-medium-3',
+			sdk: '@ai-sdk/mistral',
+			project: 'listed-project',
+			projectId: 'old-custom-project',
+			expectedProject: 'listed-project',
+		},
+		{
+			model: 'google-vertex/xai/grok-4.20-reasoning',
+			sdk: '@ai-sdk/openai-compatible',
+			project: 'listed-project',
+			projectId: undefined,
+			expectedProject: 'listed-project',
+		},
+		{
+			model: 'google-vertex/gemini-flash-latest',
+			sdk: undefined,
+			project: 'listed-project',
+			projectId: undefined,
+			expectedProject: 'listed-project',
+		},
+	])(
+		'uses the catalog SDK and Vertex credential for $model',
+		async ({ model, sdk, project, projectId, expectedProject }) => {
+			getCachedCatalog.mockResolvedValue(
+				sdk
+					? {
+							'google-vertex': {
+								models: { [model.slice('google-vertex/'.length)]: { sdk } },
+							},
+						}
+					: undefined,
+			);
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'vertex', name: 'Vertex', type: 'googleVertexAiApi' },
+			]);
+			credentialProvider.resolve.mockResolvedValue({
+				email: 'agent@example.iam.gserviceaccount.com',
+				privateKey: 'private-key',
+				region: 'europe-west4',
+				project,
+				projectId,
+			});
+			await expect(
+				resolveCredentialAwareModelConfig(model, 'vertex', credentialProvider),
+			).resolves.toEqual({
+				id: model,
+				project: expectedProject,
+				location: 'europe-west4',
+				clientEmail: 'agent@example.iam.gserviceaccount.com',
+				privateKey: 'private-key',
+				...(sdk !== undefined && { sdk }),
+			});
+		},
+	);
+
+	it.each(['googleApi', 'googlePalmApi'])(
+		'rejects an incompatible Vertex credential: %s',
+		async (type) => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.list.mockResolvedValue([{ id: 'gcp', name: 'GCP', type }]);
+			await expect(
+				resolveCredentialAwareModelConfig(
+					'google-vertex/gemini-2.5-pro',
+					'gcp',
+					credentialProvider,
+				),
+			).rejects.toThrow('Google Vertex AI credential');
+			expect(credentialProvider.resolve).not.toHaveBeenCalled();
+		},
+	);
+
+	// AGENT-1182: the credential URL serves a different API from the native gateway SDK.
+	it.each(['https://ai-gateway.vercel.sh/v1', 'https://ai-gateway.vercel.sh/v1/'])(
+		'uses the native Vercel SDK endpoint for the standard credential URL %s',
+		async (url) => {
+			const credentialProvider = mock<CredentialProvider>();
+			credentialProvider.resolve.mockResolvedValue({ apiKey: 'gateway-key', url });
+
+			const result = await resolveCredentialAwareModelConfig(
+				'vercel/anthropic/claude-sonnet-5.5',
+				'cred-vercel',
+				credentialProvider,
+			);
+
+			expect(result).toEqual({
+				id: 'vercel/anthropic/claude-sonnet-5.5',
+				apiKey: 'gateway-key',
+			});
+		},
+	);
+
 	it('resolves a real credential via the credential provider (unchanged path)', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockResolvedValue({

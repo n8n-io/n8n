@@ -17,6 +17,7 @@ import type {
 } from '../../helpers/interfaces';
 import {
 	quoteSqlIdentifier,
+	escapeSqlStringLiteral,
 	addWhereClauses,
 	getColumnMetaData,
 	getColumnMap,
@@ -111,11 +112,13 @@ export async function execute(
 
 			const quotedTableName = quoteSqlIdentifier(schema) + '.' + quoteSqlIdentifier(table);
 			if (deleteCommand === 'drop') {
+				// Embedded in a single-quoted PL/SQL literal, so ' in the identifier must be doubled.
+				const dropTableName = escapeSqlStringLiteral(quotedTableName);
 				query = `DECLARE
         					e_table_missing EXCEPTION;
         					PRAGMA EXCEPTION_INIT(e_table_missing, -942);
     					BEGIN
-        				EXECUTE IMMEDIATE ('DROP TABLE ${quotedTableName} PURGE');
+        				EXECUTE IMMEDIATE ('DROP TABLE ${dropTableName} PURGE');
     					EXCEPTION
         				WHEN e_table_missing THEN NULL;
     					END;`;
@@ -133,6 +136,8 @@ export async function execute(
 					whereClauses,
 					combineConditions,
 					columnMetaDataObject,
+					this.getNode(),
+					i,
 				);
 			} else {
 				throw new NodeOperationError(
@@ -178,6 +183,8 @@ export async function execute(
 			whereClauses,
 			combineConditions,
 			columnMetaDataObject,
+			this.getNode(),
+			0,
 			true,
 		);
 

@@ -98,6 +98,22 @@ export class TestRunRepository extends Repository<TestRun> {
 		return await this.update(id, { runningInstanceId: null, cancelRequested: false });
 	}
 
+	/**
+	 * Test runs for an evaluation config pinned to any of the given workflow
+	 * versions, newest first. Used to surface the latest run per version.
+	 */
+	async findByConfigAndVersions(
+		evaluationConfigId: string,
+		workflowVersionIds: string[],
+	): Promise<TestRun[]> {
+		if (workflowVersionIds.length === 0) return [];
+
+		return await this.find({
+			where: { evaluationConfigId, workflowVersionId: In(workflowVersionIds) },
+			order: { createdAt: 'DESC' },
+		});
+	}
+
 	async getMany(
 		workflowId: string,
 		{ offset, limit }: { offset?: number; limit?: number } = {},
@@ -125,7 +141,7 @@ export class TestRunRepository extends Repository<TestRun> {
 			const finalResult =
 				testRun.status === 'completed' ? getTestRunFinalResult(testCaseExecutions) : null;
 			// `testCaseExecutions` is already loaded above, so the count is free —
-			// no extra query. Consumed by the public API's `TestRunSummaryDto`.
+			// no extra query. Consumed by the public API's `TestRunSummaryPublicDto`.
 			return { ...testRun, finalResult, testCaseCount: testCaseExecutions.length };
 		});
 	}

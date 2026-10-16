@@ -9,7 +9,7 @@ import { quoteIdentifier, toTableName } from '@/modules/data-table/utils/sql-uti
 import { compressFolder } from '@/utils/compression.util';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 
-const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
 
 @Service()
 export class ExportService {

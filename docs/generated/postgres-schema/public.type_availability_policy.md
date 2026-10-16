@@ -29,6 +29,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_type_availability_policy_kind_createdAt_id | CREATE INDEX "IDX_type_availability_policy_kind_createdAt_id" ON public.type_availability_policy USING btree (kind, "createdAt", id) |
 | PK_7dc9809c6d53a6b8b8a62cd7798 | CREATE UNIQUE INDEX "PK_7dc9809c6d53a6b8b8a62cd7798" ON public.type_availability_policy USING btree (id) |
 
 ## Relations

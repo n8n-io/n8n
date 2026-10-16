@@ -57,6 +57,70 @@ describe('BuilderModelLiveLookupService', () => {
 	});
 
 	describe('lookup', () => {
+		it('returns a deterministic catalog for an eval credential without using its secret', async () => {
+			const { service, credentialsService, credentialsHelper, aiGatewayService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'openAiApi'),
+			);
+
+			const result = await service.lookup(user, projectId, 'cred-1', 'openAiApi', 'openai', {
+				useEvalModelCatalog: true,
+			});
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'curated',
+				models: [{ name: 'gpt-5.6-terra', value: 'gpt-5.6-terra' }],
+			});
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+			expect(getBaseMock).not.toHaveBeenCalled();
+			expect(listModelsForProvider).not.toHaveBeenCalled();
+			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
+		});
+
+		it('returns a deterministic managed catalog in evaluations without calling the gateway', async () => {
+			const { service, credentialsService, credentialsHelper, aiGatewayService } = makeService();
+
+			const result = await service.lookup(
+				user,
+				projectId,
+				AI_GATEWAY_MANAGED_TAG,
+				'openAiApi',
+				'openai',
+				{ useEvalModelCatalog: true },
+			);
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'managed',
+				models: [{ name: 'gpt-5.6-terra', value: 'gpt-5.6-terra' }],
+			});
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+			expect(listModelsForProvider).not.toHaveBeenCalled();
+			expect(aiGatewayService.getCredentialTypeForProvider).not.toHaveBeenCalled();
+			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
+		});
+
+		it('uses a deterministic fallback when the credential default belongs to another provider', async () => {
+			const { service, credentialsService, credentialsHelper } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'anthropicApi'),
+			);
+
+			const result = await service.lookup(user, projectId, 'cred-1', 'anthropicApi', 'openai', {
+				useEvalModelCatalog: true,
+			});
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'curated',
+				models: [{ name: 'eval-openai-model', value: 'eval-openai-model' }],
+			});
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+			expect(listModelsForProvider).not.toHaveBeenCalled();
+		});
+
 		it('returns endpoint-only models and forwards OpenAI credential request options', async () => {
 			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
@@ -198,6 +262,36 @@ describe('BuilderModelLiveLookupService', () => {
 			});
 		});
 
+		it('passes a priority from Gateway credits discovery on to the model choice', async () => {
+			const { service, aiGatewayService } = makeService();
+			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('googlePalmApi');
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({
+				apiKey: 'gateway-jwt',
+				host: 'https://gw.example/v1/gateway/google',
+			});
+			listModelsForProvider.mockResolvedValue([
+				{ id: 'models/gemini-featured', name: 'Gemini Featured', priority: 10 },
+				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+			]);
+
+			const result = await service.lookup(
+				user,
+				projectId,
+				AI_GATEWAY_MANAGED_TAG,
+				'googlePalmApi',
+				'google',
+			);
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'managed',
+				models: [
+					{ name: 'Gemini Featured', value: 'models/gemini-featured', priority: 10 },
+					{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+				],
+			});
+		});
+
 		it('keeps list compatible with successful and unavailable lookups', async () => {
 			const { service } = makeService();
 			const models = [{ name: 'GPT-5', value: 'gpt-5' }];
@@ -235,6 +329,7 @@ describe('BuilderModelLiveLookupService', () => {
 		expect(result).toEqual([{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' }]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
+			excludePersonalRoute: true,
 		});
 		// Credential fields are mapped for the provider (anthropic: apiKey + url→baseURL).
 		expect(listModelsForProvider).toHaveBeenCalledWith(

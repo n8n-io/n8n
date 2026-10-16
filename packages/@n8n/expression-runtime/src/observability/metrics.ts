@@ -48,6 +48,18 @@ export const EXPRESSION_METRICS = {
 		labels: [],
 		help: 'Failed pool bridge replenishments.',
 	},
+	poolColdStartSync: {
+		name: 'expression.pool.cold_start_sync',
+		kind: 'counter',
+		labels: [],
+		help: 'Bridges built synchronously on the request path because the pool was exhausted during a lazy evaluation.',
+	},
+	poolColdStartSyncDuration: {
+		name: 'expression.pool.cold_start_sync.duration_seconds',
+		kind: 'histogram',
+		labels: [],
+		help: 'Duration of synchronous cold starts (event-loop blocking time) in seconds.',
+	},
 	poolScaledUp: {
 		name: 'expression.pool.scaled_up',
 		kind: 'counter',

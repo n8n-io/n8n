@@ -1,4 +1,4 @@
-import { generateKeyPairSync } from 'crypto';
+import { constants, generateKeyPairSync, privateDecrypt, publicEncrypt } from 'crypto';
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -518,6 +518,9 @@ describe('CryptoV2 Node', () => {
 		describe('Asymmetric round-trip', () => {
 			it('encrypts with public key and decrypts with private key', async () => {
 				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				expect(
+					cryptoNode.description.properties.find((property) => property.name === 'oaepHash'),
+				).toMatchObject({ default: 'sha256' });
 
 				mockExecuteFunctions.getCredentials.mockResolvedValueOnce({
 					encryptionPublicKey: rsaPublicKey,
@@ -525,13 +528,23 @@ describe('CryptoV2 Node', () => {
 				const encryptParams = mockEncryptParams({ mode: 'asymmetric' });
 				delete encryptParams.cipher;
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(name: string) => encryptParams[name],
+					(name: string, _itemIndex, fallback) => encryptParams[name] ?? fallback,
 				);
 				const encryptResult = await cryptoNode.execute.call(mockExecuteFunctions);
 				const ciphertext = encryptResult[0][0].json.data as string;
 
 				expect(typeof ciphertext).toBe('string');
 				expect(ciphertext).toMatch(/^[A-Za-z0-9+/]+=*$/);
+				expect(
+					privateDecrypt(
+						{
+							key: rsaPrivateKey,
+							padding: constants.RSA_PKCS1_OAEP_PADDING,
+							oaepHash: 'sha256',
+						},
+						Buffer.from(ciphertext, 'base64'),
+					).toString('utf8'),
+				).toBe(plaintext);
 
 				mockExecuteFunctions.getCredentials.mockResolvedValueOnce({
 					encryptionPrivateKey: rsaPrivateKey,
@@ -539,11 +552,55 @@ describe('CryptoV2 Node', () => {
 				const decryptParams = mockDecryptParams(ciphertext, { mode: 'asymmetric' });
 				delete decryptParams.cipher;
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(name: string) => decryptParams[name],
+					(name: string, _itemIndex, fallback) => decryptParams[name] ?? fallback,
 				);
 				const decryptResult = await cryptoNode.execute.call(mockExecuteFunctions);
 
 				expect(decryptResult[0][0].json.data).toBe(plaintext);
+			});
+
+			it('encrypts and decrypts RSA-OAEP with SHA-1 when selected', async () => {
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				const ciphertext = publicEncrypt(
+					{
+						key: rsaPublicKey,
+						padding: constants.RSA_PKCS1_OAEP_PADDING,
+						oaepHash: 'sha1',
+					},
+					Buffer.from(plaintext, 'utf8'),
+				).toString('base64');
+
+				mockExecuteFunctions.getCredentials.mockResolvedValueOnce({
+					encryptionPrivateKey: rsaPrivateKey,
+				});
+				const decryptParams = mockDecryptParams(ciphertext, {
+					mode: 'asymmetric',
+					oaepHash: 'sha1',
+				});
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(name: string) => decryptParams[name],
+				);
+				const decryptResult = await cryptoNode.execute.call(mockExecuteFunctions);
+				expect(decryptResult[0][0].json.data).toBe(plaintext);
+
+				mockExecuteFunctions.getCredentials.mockResolvedValueOnce({
+					encryptionPublicKey: rsaPublicKey,
+				});
+				const encryptParams = mockEncryptParams({ mode: 'asymmetric', oaepHash: 'sha1' });
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(name: string) => encryptParams[name],
+				);
+				const encryptResult = await cryptoNode.execute.call(mockExecuteFunctions);
+				expect(
+					privateDecrypt(
+						{
+							key: rsaPrivateKey,
+							padding: constants.RSA_PKCS1_OAEP_PADDING,
+							oaepHash: 'sha1',
+						},
+						Buffer.from(encryptResult[0][0].json.data as string, 'base64'),
+					).toString('utf8'),
+				).toBe(plaintext);
 			});
 
 			it('throws a clear error when RSA plaintext exceeds the key size limit', async () => {
@@ -557,7 +614,7 @@ describe('CryptoV2 Node', () => {
 				const encryptParams = mockEncryptParams({ mode: 'asymmetric', value: oversized });
 				delete encryptParams.cipher;
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(name: string) => encryptParams[name],
+					(name: string, _itemIndex, fallback) => encryptParams[name] ?? fallback,
 				);
 
 				await expect(cryptoNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
@@ -582,7 +639,7 @@ describe('CryptoV2 Node', () => {
 				const encryptParams = mockEncryptParams({ mode: 'asymmetric' });
 				delete encryptParams.cipher;
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(name: string) => encryptParams[name],
+					(name: string, _itemIndex, fallback) => encryptParams[name] ?? fallback,
 				);
 				const encryptResult = await cryptoNode.execute.call(mockExecuteFunctions);
 				const ciphertext = encryptResult[0][0].json.data as string;
@@ -593,7 +650,7 @@ describe('CryptoV2 Node', () => {
 				const decryptParams = mockDecryptParams(ciphertext, { mode: 'asymmetric' });
 				delete decryptParams.cipher;
 				mockExecuteFunctions.getNodeParameter.mockImplementation(
-					(name: string) => decryptParams[name],
+					(name: string, _itemIndex, fallback) => decryptParams[name] ?? fallback,
 				);
 
 				await expect(cryptoNode.execute.call(mockExecuteFunctions)).rejects.toThrow(

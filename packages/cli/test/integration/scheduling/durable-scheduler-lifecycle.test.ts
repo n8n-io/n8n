@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
@@ -8,13 +9,15 @@ import type { InstanceSettings } from 'n8n-core';
 import { Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
+import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollTriggerTaskHandler } from '@/scheduling/poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler';
+import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 
 import { retryUntil } from '../shared/retry-until';
-import { createDueJobFactory, seedDueTask } from './shared/job-factory';
+import { createDueJobFactory, seedDueTask, selfOwned } from './shared/job-factory';
 
 /**
  * The process lifecycle wired in `start.ts`: `DurableScheduler.start()` driving
@@ -79,6 +82,9 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			Container.get(PollTriggerTaskHandler),
 			Container.get(PrometheusSchedulerMetricsService),
 			Container.get(WorkflowScheduledJobOwner),
+			Container.get(AgentScheduledJobOwner),
+			Container.get(SystemTaskScheduledJobOwner),
+			Container.get(EventService),
 		);
 	};
 
@@ -128,6 +134,56 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 		expect(task.claimedBy).toBeNull();
 		expect(executed).toHaveLength(0);
 	}, 15_000);
+
+	it('reports an overlap skip for a system task occurrence its limit held back', async () => {
+		const SYSTEM_TASK_NAME = 'lifecycle-overlap';
+		const systemTaskType = `system:${SYSTEM_TASK_NAME}`;
+		const job = await jobRepo.save(
+			jobRepo.create({
+				name: systemTaskType,
+				...selfOwned(SYSTEM_TASK_NAME),
+				taskType: systemTaskType,
+				payload: {},
+				kind: 'interval',
+				intervalSeconds: 60,
+				enabled: true,
+				nextRunAt: new Date(Date.now() + 60_000),
+				maxAttempts: 1,
+				concurrencyLimit: 1,
+			}),
+		);
+		// The only slot is taken, so the reaper retires the next occurrence.
+		const running = await seedDueTask(taskRepo, systemTaskType, job.id, 1);
+		await taskRepo.update(running.id, {
+			status: 'running',
+			claimedBy: 'other-main',
+			leaseExpiresAt: new Date(Date.now() + 60_000),
+			leaseEpoch: 1,
+			startedAt: new Date(Date.now() - 60_000),
+		});
+		const heldBack = await seedDueTask(taskRepo, systemTaskType, job.id);
+		await taskRepo.update(heldBack.id, { missedAfter: new Date(Date.now() - 1000) });
+
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		try {
+			scheduler = buildScheduler({ enabled: true });
+			scheduler.start();
+
+			await retryUntil(
+				async () => {
+					expect((await taskRepo.findOneByOrFail({ id: heldBack.id })).status).toBe('missed');
+					expect(emit).toHaveBeenCalledWith('system-task-run-skipped', {
+						name: SYSTEM_TASK_NAME,
+						reason: 'overlap',
+						count: 1,
+					});
+				},
+				{ intervalMs: 100, timeoutMs: 20_000 },
+			);
+		} finally {
+			emit.mockRestore();
+		}
+	}, 30_000);
 
 	it('stays disabled on a worker even with the flag on', async () => {
 		scheduler = buildScheduler({ enabled: true, instanceType: 'worker' });

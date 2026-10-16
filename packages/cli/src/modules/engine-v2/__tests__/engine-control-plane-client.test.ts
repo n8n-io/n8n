@@ -1,17 +1,10 @@
-import type {
-	HttpRequestClient,
-	HttpRequestClientOptions,
-	OutboundHttp,
-} from '@n8n/backend-network';
-import type { EngineConfig } from '@n8n/config';
-import type { LifecycleEvent } from '@n8n/engine';
-import { InvalidActionTokenError, verifyActionToken } from '@n8n/engine';
+import type { HttpRequestClient } from '@n8n/backend-network';
+import type { ActionScope, LifecycleEvent } from '@n8n/engine';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneClient } from '../engine-control-plane-client';
-
-const authSecret = 'a'.repeat(32);
+import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 
 const events: LifecycleEvent[] = [
 	{
@@ -24,7 +17,7 @@ const events: LifecycleEvent[] = [
 
 describe('EngineControlPlaneClient', () => {
 	let http: HttpRequestClient;
-	let clientOptions: HttpRequestClientOptions | undefined;
+	let requestedScope: ActionScope | undefined;
 	let client: EngineControlPlaneClient;
 	let signal: AbortSignal;
 
@@ -32,29 +25,15 @@ describe('EngineControlPlaneClient', () => {
 		vi.mocked(http.request).mockResolvedValue({ statusCode, body: '', headers: {} });
 	};
 
-	/** Rebuilds the client so each test can vary the config. */
-	const newClient = (engineConfig: Partial<EngineConfig> = {}) => {
+	beforeEach(() => {
 		http = mock<HttpRequestClient>();
-		const outboundHttp = mock<OutboundHttp>({
-			requests: vi.fn((options?: HttpRequestClientOptions) => {
-				clientOptions = options;
+		const transport = mock<EngineControlPlaneTransport>({
+			forScope: vi.fn((scope: ActionScope) => {
+				requestedScope = scope;
 				return http;
 			}),
 		});
-
-		return new EngineControlPlaneClient(
-			mock<EngineConfig>({
-				controlPlaneBaseUrl: '',
-				authSecret,
-				controlPlanePort: 3001,
-				...engineConfig,
-			}),
-			outboundHttp,
-		);
-	};
-
-	beforeEach(() => {
-		client = newClient();
+		client = new EngineControlPlaneClient(transport);
 		signal = new AbortController().signal;
 	});
 
@@ -84,23 +63,8 @@ describe('EngineControlPlaneClient', () => {
 			);
 		});
 
-		it('dials the control plane server on the loopback, not n8n main', () => {
-			expect(clientOptions?.baseURL).toBe('http://127.0.0.1:3001');
-		});
-
-		it('dials the configured base URL when the control plane answers elsewhere', () => {
-			newClient({ controlPlaneBaseUrl: 'https://cp.internal:8443' });
-
-			expect(clientOptions?.baseURL).toBe('https://cp.internal:8443');
-		});
-
-		it('opts out of SSRF protection for the n8n-controlled host', () => {
-			expect(clientOptions?.useDefaultSsrfPolicy).toBe('unsafe');
-		});
-
-		it('leaves the send deadline to the engine, which owns it', () => {
-			// A client timeout would fire first and hide the engine's deadline.
-			expect(clientOptions?.timeout).toBeUndefined();
+		it('asks the transport for a client scoped to lifecycle-event writes', () => {
+			expect(requestedScope).toBe('lifecycle-events:write');
 		});
 
 		it("forwards the engine's abort signal, so an abandoned batch cancels its request", async () => {
@@ -109,25 +73,6 @@ describe('EngineControlPlaneClient', () => {
 			await client.sendLifecycleEvents(events, signal);
 
 			expect(http.request).toHaveBeenCalledWith(expect.objectContaining({ abortSignal: signal }));
-		});
-
-		it('mints a fresh token per request', () => {
-			expect(typeof clientOptions?.headers).toBe('function');
-		});
-
-		it('sends an action token scoped to lifecycle-event writes that the control plane accepts', () => {
-			const headers = clientOptions?.headers;
-			const resolved = typeof headers === 'function' ? headers() : headers;
-			const authorization = resolved?.authorization ?? '';
-
-			expect(authorization).toMatch(/^Bearer .+/);
-
-			const token = authorization.replace('Bearer ', '');
-
-			expect(() => verifyActionToken(authSecret, token, 'lifecycle-events:write')).not.toThrow();
-			expect(() => verifyActionToken('b'.repeat(32), token, 'lifecycle-events:write')).toThrow(
-				InvalidActionTokenError,
-			);
 		});
 
 		it.each([302, 400, 401, 500])(

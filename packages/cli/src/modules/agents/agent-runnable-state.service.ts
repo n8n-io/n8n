@@ -1,3 +1,4 @@
+import type { AgentSkill } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -8,8 +9,11 @@ import {
 	AgentPublishService,
 	type ValidAgentConfigValidationResponse,
 } from './agent-publish.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
+import { composeJsonConfig } from './json-config/agent-config-composition';
+import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 
 @Service()
 export class AgentRunnableStateService {
@@ -17,6 +21,7 @@ export class AgentRunnableStateService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly agentPublishService: AgentPublishService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -33,12 +38,33 @@ export class AgentRunnableStateService {
 		projectId: string,
 		user: User,
 		draftValidation?: ValidAgentConfigValidationResponse,
-	): Promise<Agent & { isRunnable: boolean; hasPublishHistory: boolean }> {
+	): Promise<
+		Agent & {
+			isRunnable: boolean;
+			hasPublishHistory: boolean;
+			configHash: string | null;
+			skills: Record<string, AgentSkill>;
+			skillHashes: Record<string, string>;
+			outdatedSkillIds: string[];
+		}
+	> {
+		// The skill bodies the draft runs, from the skills hub, keyed by skill id.
+		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
+		// Base hashes for the optimistic-concurrency checks on config and skill writes.
+		const configHash = getAgentConfigHash(composeJsonConfig(agent, skillRefs));
+		const skillHashes = Object.fromEntries(
+			Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
+		);
+		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(skillRefs, skills, {});
 		if (draftValidation) {
 			const hasPublishHistory = await this.agentPublishService.hasPublishHistory(agent.id);
 			return Object.assign(agent, {
 				isRunnable: true,
 				hasPublishHistory,
+				configHash,
+				skills,
+				skillHashes,
+				outdatedSkillIds,
 			});
 		}
 
@@ -46,6 +72,7 @@ export class AgentRunnableStateService {
 			this.credentialsService,
 			projectId,
 			user,
+			agent.id,
 		);
 		const [validation, hasPublishHistory] = await Promise.all([
 			this.agentValidationService.validateLoadedAgentConfiguration(
@@ -60,6 +87,10 @@ export class AgentRunnableStateService {
 		return Object.assign(agent, {
 			isRunnable: validation.status === 'valid',
 			hasPublishHistory,
+			configHash,
+			skills,
+			skillHashes,
+			outdatedSkillIds,
 		});
 	}
 }

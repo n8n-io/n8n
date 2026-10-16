@@ -33,7 +33,7 @@ function parametersContainFromAi(parameters: INodeParameters): boolean {
 				}
 
 				if (item && typeof item === 'object' && !Array.isArray(value)) {
-					if (parametersContainFromAi(value as INodeParameters)) {
+					if (parametersContainFromAi(value)) {
 						return true;
 					}
 				}

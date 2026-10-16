@@ -103,7 +103,7 @@ function shouldShowHelp(): boolean {
 
 function printUsage(): void {
 	console.log(`
-n8n-computer-use — Local AI gateway for n8n AI Assistant
+n8n-computer-use — Local AI gateway for n8n Assistant
 
 Usage:
   npx @n8n/computer-use <url> <token>          Connect directly to n8n instance
@@ -195,7 +195,7 @@ async function main(
 
 	const settingsStore = await SettingsStore.create();
 	const defaults = settingsStore.getDefaults(parsed.config);
-	const session = new GatewaySession(defaults, settingsStore);
+	const session = new GatewaySession(defaults, settingsStore, origin);
 
 	const confirmConnect = makeConfirmConnect(parsed.nonInteractive, parsed.autoConfirm);
 	const approved = await confirmConnect(url, session);

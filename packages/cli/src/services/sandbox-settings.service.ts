@@ -13,7 +13,7 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UnprocessableRequestError } from '@n8n/errors';
 
 const N8N_SANDBOX_HEADER_NAME = 'x-api-key';
 

@@ -12,24 +12,19 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 
 import { AgentTaskService } from './agent-task.service';
-import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentTasksController {
 	constructor(
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly collaborationService: CollaborationService,
 	) {}
-
-	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		return agent;
-	}
 
 	@Get('/:agentId/tasks')
 	@ProjectScope('agent:read')
@@ -38,7 +33,7 @@ export class AgentTasksController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<AgentTaskDto[]> {
-		await this.getAgentOrThrow(agentId, req.params.projectId);
+		await getAgentOrThrow(this.agentRepository, agentId, req.params.projectId);
 		return await this.agentTaskService.list(agentId);
 	}
 
@@ -51,10 +46,19 @@ export class AgentTasksController {
 		@Body payload: CreateAgentTaskDto,
 	): Promise<AgentTaskDto> {
 		const projectId = req.params.projectId;
-		await this.getAgentOrThrow(agentId, projectId);
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'create task for',
+		);
 		return await this.agentTaskService.create(agentId, projectId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 	}
 
@@ -68,10 +72,19 @@ export class AgentTasksController {
 		@Body payload: UpdateAgentTaskDto,
 	): Promise<AgentTaskDto> {
 		const projectId = req.params.projectId;
-		await this.getAgentOrThrow(agentId, projectId);
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'update task for',
+		);
 		return await this.agentTaskService.update(agentId, projectId, taskId, payload, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 	}
 
@@ -84,10 +97,19 @@ export class AgentTasksController {
 		@Param('taskId') taskId: string,
 	): Promise<{ success: true }> {
 		const projectId = req.params.projectId;
-		await this.getAgentOrThrow(agentId, projectId);
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'delete task for',
+		);
 		await this.agentTaskService.delete(agentId, projectId, taskId, {
 			user: req.user,
 			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
 		});
 		return { success: true };
 	}
@@ -100,7 +122,7 @@ export class AgentTasksController {
 		@Param('agentId') agentId: string,
 		@Param('taskId') taskId: string,
 	): Promise<{ success: true }> {
-		await this.getAgentOrThrow(agentId, req.params.projectId);
+		await getAgentOrThrow(this.agentRepository, agentId, req.params.projectId);
 		await this.agentTaskService.runNow(agentId, taskId, req.user);
 		return { success: true };
 	}

@@ -7,11 +7,11 @@ interface ReceiveMessageOptions {
 type DeserializedMessage<TMessage = object> = string | TMessage;
 
 declare module 'vitest' {
-	interface Assertion<T = unknown> {
+	interface Assertion<R, T> {
 		toReceiveMessage<TMessage = object>(
 			message: DeserializedMessage<TMessage>,
 			options?: ReceiveMessageOptions,
-		): Promise<T>;
-		toHaveReceivedMessages<TMessage = object>(messages: Array<DeserializedMessage<TMessage>>): T;
+		): Promise<void>;
+		toHaveReceivedMessages<TMessage = object>(messages: Array<DeserializedMessage<TMessage>>): R;
 	}
 }

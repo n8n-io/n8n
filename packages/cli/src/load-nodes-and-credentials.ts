@@ -1,4 +1,10 @@
-import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
+import {
+	inTest,
+	isContainedWithin,
+	isEnvFeatureEnabled,
+	Logger,
+	ModuleRegistry,
+} from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { isWindowsFilePath } from '@n8n/utils/files/is-windows-file-path';
@@ -34,11 +40,17 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	injectDomainRestrictionFields,
+	NodeHelpers,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
@@ -89,7 +101,7 @@ export class LoadNodesAndCredentials {
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
 		}
 
-		if (process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS !== 'true') {
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS')) {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
 		}
@@ -135,6 +147,10 @@ export class LoadNodesAndCredentials {
 	}
 
 	releaseTypes() {
+		void this.enqueueRebuild(() => this.releaseTypesNow());
+	}
+
+	private releaseTypesNow() {
 		this.types = { nodes: [], credentials: [] };
 		for (const loader of Object.values(this.loaders)) {
 			loader.releaseTypes();
@@ -143,26 +159,40 @@ export class LoadNodesAndCredentials {
 
 	/**
 	 * Returns the current node and credential types.
-	 * If types have been released from memory, re-runs postProcessLoaders to
-	 * repopulate them first, then releases after snapshotting.
+	 * If types have been released from memory, rebuilds them first, then
+	 * releases them after snapshotting.
 	 *
 	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
 	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
 	 * service or the frontend service writing static JSON files).
 	 */
 	async collectTypes(): Promise<Types> {
-		const needsReload = this.types.nodes.length === 0 && this.types.credentials.length === 0;
-		if (needsReload) {
-			await this.postProcessLoaders();
-		}
-		const types: Types = {
-			nodes: this.types.nodes,
-			credentials: this.types.credentials,
-		};
-		if (needsReload) {
-			this.releaseTypes();
-		}
-		return types;
+		if (this.hasTypes()) return this.snapshotTypes();
+
+		return await this.enqueueRebuild(async () => {
+			if (this.hasTypes()) return this.snapshotTypes();
+
+			await this.rebuildRegistry();
+			const types = this.snapshotTypes();
+			this.releaseTypesNow();
+			return types;
+		});
+	}
+
+	private hasTypes() {
+		return this.types.nodes.length > 0 || this.types.credentials.length > 0;
+	}
+
+	private snapshotTypes(): Types {
+		return { nodes: this.types.nodes, credentials: this.types.credentials };
+	}
+
+	private rebuildQueue: Promise<unknown> = Promise.resolve();
+
+	private async enqueueRebuild<T>(task: () => Promise<T> | T): Promise<T> {
+		const run = this.rebuildQueue.then(task);
+		this.rebuildQueue = run.catch(() => {});
+		return await run;
 	}
 
 	isKnownNode(type: string) {
@@ -286,9 +316,11 @@ export class LoadNodesAndCredentials {
 	 * community nodes and production installs alike.
 	 */
 	createOutputSchemaLookup(): OutputSchemaLookup {
-		return ({ type, typeVersion, resource, operation, hasOutputParser }) => {
+		return ({ type, typeVersion, resource, operation, hasOutputParser, parameters }) => {
 			const nodePath = this.known.nodes[type]?.sourcePath;
 			if (!nodePath) return undefined;
+
+			const nodeType = this.tryGetVersionedNodeType(type, typeVersion);
 
 			return loadOutputSchema({
 				nodeDir: path.dirname(nodePath),
@@ -297,8 +329,22 @@ export class LoadNodesAndCredentials {
 				operation,
 				versionFallback: true,
 				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
+				parameters,
+				parameterDefaults: getParameterDefaults(nodeType?.description.properties, {
+					resource,
+					operation,
+				}),
 			});
 		};
+	}
+
+	/** Schema previews are best-effort, so a node that cannot load just has no variants. */
+	private tryGetVersionedNodeType(type: string, version: number): INodeType | undefined {
+		try {
+			return NodeHelpers.getVersionedNodeType(this.getNode(type).type, version);
+		} catch {
+			return undefined;
+		}
 	}
 
 	getCustomDirectories(): string[] {
@@ -403,7 +449,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	private shouldInjectContextEstablishmentHooks() {
-		return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
+		return isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS');
 	}
 
 	private injectContextEstablishmentHooks() {
@@ -555,6 +601,10 @@ export class LoadNodesAndCredentials {
 	}
 
 	async postProcessLoaders() {
+		await this.enqueueRebuild(async () => await this.rebuildRegistry());
+	}
+
+	private async rebuildRegistry() {
 		const known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 		const loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
 		const types: Types = { nodes: [], credentials: [] };
@@ -625,6 +675,23 @@ export class LoadNodesAndCredentials {
 		createAiTools(this.types, this.known);
 		createHitlTools(this.types, this.known);
 
+		// Loaders filter base nodes only. Generated tool variants are filtered here.
+		this.types.nodes = this.types.nodes.filter(({ name }) => !this.excludeNodes.includes(name));
+		this.known.nodes = Object.fromEntries(
+			Object.entries(this.known.nodes).filter(([name]) => !this.excludeNodes.includes(name)),
+		);
+		this.known.credentials = Object.fromEntries(
+			Object.entries(this.known.credentials).map(([name, credential]) => [
+				name,
+				{
+					...credential,
+					supportedNodes: credential.supportedNodes?.filter(
+						(node) => !this.excludeNodes.includes(node),
+					),
+				},
+			]),
+		);
+
 		this.injectCustomApiCallOptions();
 
 		this.injectContextEstablishmentHooks();
@@ -658,6 +725,16 @@ export class LoadNodesAndCredentials {
 		return loadedNode;
 	}
 
+	/**
+	 * Absolute path of a node's source file. A loader keeps the path relative to
+	 * its own package directory, so it must be resolved before any file access.
+	 */
+	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
+		const [packageName] = fullNodeType.split('.');
+		const loader = this.loaders[packageName];
+		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
+	}
+
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
 		const { loadedCredentials } = this;
 
@@ -675,13 +752,69 @@ export class LoadNodesAndCredentials {
 		throw new UnrecognizedCredentialTypeError(credentialType);
 	}
 
+	private reloadQueue: Promise<unknown> = Promise.resolve();
+
+	/**
+	 * Re-read the files already on disk for a loader and push the updated
+	 * descriptions to open editors. Touches no native module, so it works
+	 * inside the published image where the file watcher cannot run.
+	 *
+	 * Serialized here rather than at the call sites, because the endpoint and
+	 * the file watcher both reload and can fire on the same save. Concurrent
+	 * reloads would interleave reset()/loadAll(), leaving nodes unresolvable.
+	 */
+	private async reloadLoader(loader: DirectoryLoader) {
+		const run = this.reloadQueue.then(async () => {
+			this.logger.info(`Hot reload triggered for ${loader.packageName}`);
+			try {
+				loader.reset();
+				await loader.loadAll();
+				await this.postProcessLoaders();
+				const { Push } = await import('@/push/index.js');
+				Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+			} catch (error) {
+				this.logger.error(`Hot reload failed for ${loader.packageName}`, {
+					error: ensureError(error),
+				});
+				throw new UserError(`Hot reload failed for ${loader.packageName}`, { cause: error });
+			}
+		});
+		this.reloadQueue = run.catch(() => {});
+		await run;
+	}
+
+	/**
+	 * Reload nodes from the custom directories on demand, for the dev reload
+	 * endpoint. Returns the package names that were reloaded. Throws if any
+	 * loader fails, so the endpoint does not report a broken node as reloaded.
+	 */
+	async reloadCustomNodes() {
+		const loaders = Object.values(this.loaders).filter(
+			(loader) => loader instanceof CustomDirectoryLoader,
+		);
+
+		for (const loader of loaders) {
+			await this.reloadLoader(loader);
+		}
+
+		return loaders.map((loader) => loader.packageName);
+	}
+
 	async setupHotReload() {
 		const { default: debounce } = await import('lodash/debounce.js');
 
-		const { subscribe } = await import('@parcel/watcher');
-
-		const { Push } = await import('@/push/index.js');
-		const push = Container.get(Push);
+		let subscribe: typeof ParcelWatcher.subscribe;
+		try {
+			({ subscribe } = await import('@parcel/watcher'));
+		} catch (error) {
+			// No prebuild for this platform (e.g. musl in the official image). File
+			// watching is unavailable; POST /rest/dev/reload still works.
+			this.logger.warn(
+				'File watching for hot reload is unavailable on this platform. Use POST /rest/dev/reload to reload nodes.',
+				{ error: ensureError(error) },
+			);
+			return;
+		}
 
 		for (const loader of Object.values(this.loaders)) {
 			if (!(loader instanceof DirectoryLoader)) continue;
@@ -693,17 +826,9 @@ export class LoadNodesAndCredentials {
 				continue;
 			}
 
-			const reloader = debounce(async () => {
-				this.logger.info(`Hot reload triggered for ${loader.packageName}`);
-				try {
-					loader.reset();
-					await loader.loadAll();
-					await this.postProcessLoaders();
-					push.broadcast({ type: 'nodeDescriptionUpdated', data: {} });
-				} catch (error) {
-					this.logger.error(`Hot reload failed for ${loader.packageName}`);
-				}
-			}, 100);
+			// Already logged inside reloadLoader; swallow so a broken node does not
+			// reject into the watcher callback as an unhandled rejection.
+			const reloader = debounce(async () => await this.reloadLoader(loader).catch(() => {}), 100);
 
 			// For lazy loaded packages, we need to watch the dist directory
 			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];

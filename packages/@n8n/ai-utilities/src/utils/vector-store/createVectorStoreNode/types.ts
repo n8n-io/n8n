@@ -2,17 +2,13 @@ import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type {
-	ICredentialTestFunction,
 	IExecuteFunctions,
 	INodeCredentialDescription,
 	INodeProperties,
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
+	INodeType,
 	Icon,
 	ISupplyDataFunctions,
 	ThemeIconColor,
-	IDataObject,
-	NodeParameterValueType,
 	IBuilderHint,
 } from 'n8n-workflow';
 
@@ -35,24 +31,7 @@ export interface NodeMeta {
 
 export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorStore> {
 	meta: NodeMeta;
-	methods?: {
-		listSearch?: {
-			[key: string]: (
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			) => Promise<INodeListSearchResult>;
-		};
-		actionHandler?: {
-			[functionName: string]: (
-				this: ILoadOptionsFunctions,
-				payload: IDataObject | string | undefined,
-			) => Promise<NodeParameterValueType>;
-		};
-		credentialTest?: {
-			[functionName: string]: ICredentialTestFunction;
-		};
-	};
+	methods?: INodeType['methods'];
 
 	sharedFields: INodeProperties[];
 	insertFields?: INodeProperties[];
@@ -60,6 +39,13 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
 	hidden?: true;
+	/**
+	 * The text-search operations call `similaritySearchWithScore(prompt, k, filter)` instead of
+	 * embedding the prompt and calling `similaritySearchVectorWithScore`. The store must override
+	 * `similaritySearchWithScore`: the base class version calls `embeddings.embedQuery` first,
+	 * which a backend that embeds server-side cannot do.
+	 */
+	searchByText?: true;
 
 	/**
 	 * Optional function called once before any documents are inserted.

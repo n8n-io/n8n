@@ -4,13 +4,11 @@ tags:
 summary: Update tags of a workflow
 description: Update tags of a workflow.
 x-required-scope: workflowTags:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
     required: true
+    description: The ID of the workflow.
     name: workflowId
     in: path
 requestBody:

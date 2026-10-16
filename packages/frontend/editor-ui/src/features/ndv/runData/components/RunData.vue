@@ -402,7 +402,7 @@ const hasNodeRun = computed(() =>
 
 /**
  * The displayed output of this node was simulated (fabricated fixture data)
- * by the AI Assistant during workflow verification — label it and guard the
+ * by the n8n Assistant during workflow verification — label it and guard the
  * pin affordance so it isn't adopted as if it were real.
  *
  * Only meaningful when the pane displays the active execution: a supplied
@@ -1620,7 +1620,7 @@ defineExpose({ enterEditMode });
 				/>
 
 				<N8nIconButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					v-if="
 						!props.disableEdit &&
@@ -1653,7 +1653,7 @@ defineExpose({ enterEditMode });
 
 				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
@@ -2680,7 +2680,7 @@ defineExpose({ enterEditMode });
 	}
 
 	th {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 
@@ -2711,7 +2711,7 @@ defineExpose({ enterEditMode });
 .redactedSchemaKey {
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .redactedSchemaType {

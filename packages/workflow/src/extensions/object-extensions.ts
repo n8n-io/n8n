@@ -6,17 +6,8 @@
 // splitting @n8n/expression-runtime into a browser-safe extensions subpath (not stubbed)
 // and a node-only VM entry (stubbed).
 import type { ExtensionMap } from './extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
-}
 
 function isEmpty(value: object): boolean {
 	return Object.keys(value).length === 0;
@@ -130,7 +121,8 @@ isEmpty.doc = {
 		{ example: '({}).isEmpty()', evaluated: 'true' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-isEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objectisempty',
 };
 
 isNotEmpty.doc = {
@@ -142,7 +134,7 @@ isNotEmpty.doc = {
 	],
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-isNotEmpty',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objectisnotempty',
 };
 
 compact.doc = {
@@ -151,7 +143,8 @@ compact.doc = {
 		'Removes all fields that have empty values, i.e. are <code>null</code>, <code>undefined</code>, <code>"nil"</code> or <code>""</code>',
 	examples: [{ example: "({ x: null, y: 2, z: '' }).compact()", evaluated: '{ y: 2 }' }],
 	returnType: 'Object',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-compact',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objectcompact',
 };
 
 urlEncode.doc = {
@@ -166,7 +159,7 @@ urlEncode.doc = {
 	],
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-urlEncode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objecturlencode',
 };
 
 hasField.doc = {
@@ -187,7 +180,8 @@ hasField.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-hasField',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objecthasfield',
 };
 
 removeField.doc = {
@@ -210,7 +204,7 @@ removeField.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-removeField',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objectremovefield',
 };
 
 removeFieldsContaining.doc = {
@@ -241,7 +235,7 @@ removeFieldsContaining.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-removeFieldsContaining',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objectremovefieldscontaining',
 };
 
 keepFieldsContaining.doc = {
@@ -272,7 +266,7 @@ keepFieldsContaining.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-keepFieldsContaining',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objectkeepfieldscontaining',
 };
 
 keys.doc = {
@@ -280,7 +274,8 @@ keys.doc = {
 	description:
 		"Returns an array with all the field names (keys) the Object contains. The same as JavaScript's <code>Object.keys(obj)</code>.",
 	examples: [{ example: "({ name: 'Mr Nathan', age: 42 }).keys()", evaluated: "['name', 'age']" }],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-keys',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objectkeys',
 	returnType: 'Array',
 };
 
@@ -291,7 +286,8 @@ values.doc = {
 	examples: [
 		{ example: "({ name: 'Mr Nathan', age: 42 }).values()", evaluated: "['Mr Nathan', 42]" },
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-values',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objectvalues',
 	returnType: 'Array',
 };
 
@@ -306,7 +302,7 @@ toJsonString.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-toJsonString',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/object#objecttojsonstring',
 	returnType: 'string',
 };
 

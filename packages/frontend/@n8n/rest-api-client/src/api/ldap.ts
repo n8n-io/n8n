@@ -68,7 +68,7 @@ export async function updateLdapConfig(
 }
 
 export async function runLdapSync(context: IRestApiContext, data: IDataObject): Promise<{}> {
-	return await makeRestApiRequest(context, 'POST', '/ldap/sync', data as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'POST', '/ldap/sync', data);
 }
 
 export async function getLdapSynchronizations(

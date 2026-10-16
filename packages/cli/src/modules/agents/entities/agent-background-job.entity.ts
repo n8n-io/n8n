@@ -1,8 +1,9 @@
+import type { AgentBackgroundJobDto } from '@n8n/api-types';
 import { DateTimeColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
-export type AgentBackgroundJobKind = 'subagent' | 'workflow';
-export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+export type AgentBackgroundJobKind = AgentBackgroundJobDto['kind'];
+export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
 
 /**
  * Durable registry of background jobs dispatched by top-level agents: detached
@@ -16,13 +17,17 @@ export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'can
 @Index(['parentAgentId'])
 @Index(['settledAt'])
 @Index(['childExecutionId'], { unique: true, where: '"childExecutionId" IS NOT NULL' })
-@Index(['timeoutAt'], { where: '"status" = \'running\'' })
+@Index(['timeoutAt'], { where: "\"status\" IN ('running', 'suspended')" })
+@Index(['parentThreadId'], { where: '"status" <> \'running\' AND "notifiedAt" IS NULL' })
 export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	kind: AgentBackgroundJobKind;
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentBackgroundJobStatus;
+
+	@Column({ type: 'uuid', nullable: true, comment: 'Groups jobs stopped by one user request' })
+	pauseRequestId: string | null;
 
 	@Column({ type: 'varchar', length: 36 })
 	parentAgentId: string;
@@ -32,6 +37,14 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	// agent_execution_threads.id.
 	@Column({ type: 'varchar', length: 128 })
 	parentThreadId: string;
+
+	/** Memory resource of the parent run. */
+	@Column({ type: 'varchar', length: 255 })
+	parentResourceId: string;
+
+	/** Sandbox principal of the parent run. */
+	@Column({ type: 'varchar', length: 64 })
+	parentPrincipalHash: string;
 
 	/** Task name or workflow name, echoed in status-check listings. */
 	@Column({ type: 'varchar', length: 255 })
@@ -66,4 +79,8 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	settledAt: Date | null;
+
+	/** When the parent received the latest result or approval request. */
+	@DateTimeColumn({ precision: 3, nullable: true })
+	notifiedAt: Date | null;
 }

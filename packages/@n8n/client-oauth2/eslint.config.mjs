@@ -1,18 +1,11 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
-	baseConfig,
+	backendConfig,
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 			'@typescript-eslint/consistent-type-imports': 'error',
-			'n8n-local-rules/no-plain-errors': 'off',
-			'n8n-local-rules/no-uncaught-json-parse': 'off',
-
-			// TODO: Remove this
-			'@typescript-eslint/naming-convention': 'warn',
-			'@typescript-eslint/require-await': 'warn',
 		},
 	},
 	{
@@ -24,6 +17,14 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-call': 'warn',
 			'@typescript-eslint/no-unsafe-member-access': 'warn',
 			'@typescript-eslint/no-unsafe-assignment': 'warn',
+		},
+	},
+	{
+		files: ['src/client-oauth2.ts'],
+		// This package is a standalone OAuth2 client and predates the
+		// backend-network factory. Route it through the factory, then delete this.
+		rules: {
+			'n8n-local-rules/no-uncentralized-http': 'off',
 		},
 	},
 );

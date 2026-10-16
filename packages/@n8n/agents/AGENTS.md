@@ -38,7 +38,7 @@ src/
     telemetry.ts        # Telemetry builder (OTel, redaction)
     tool.ts             # Tool builder
     verify.ts           # Verification utilities
-  runtime/              # Internal — never exported
+  runtime/              # Runtime internals; selected MCP and memory helpers are exported
     agent-runtime.ts    # Core agent execution engine (AI SDK)
     tool-adapter.ts     # Tool execution, branded suspend detection
     stream.ts           # Streaming helpers
@@ -63,7 +63,7 @@ src/
   workspace/            # Workspace, sandbox, filesystem, built-in tools (exported)
   integrations/         # Optional integrations (exported where applicable)
     langsmith.ts        # LangSmith telemetry adapter (peer `langsmith`)
-  utils/                # Internal helpers (e.g. Zod utilities); not barrel-exported
+  utils/                # Shared helpers; selected JSON, model, and Zod utilities are exported
 examples/
   basic-agent.ts        # Sample snippet; included in format/lint paths
 docs/
@@ -116,7 +116,8 @@ class EngineAgent extends Agent {
   - A `.env` file at the package root is loaded automatically by the vitest config.
     Always assume it exists when running integration tests. Never commit it.
   - Required keys:
-    - `ANTHROPIC_API_KEY` — all integration tests
+    - `ANTHROPIC_API_KEY` — Anthropic integration tests
+    - `VERCEL_AI_GATEWAY_API_KEY` — Vercel AI Gateway integration tests
   - Tests skip automatically when the required API key is not set
 - Run from the package directory: `cd packages/@n8n/agents && pnpm test`
 

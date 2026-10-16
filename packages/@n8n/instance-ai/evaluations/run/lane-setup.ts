@@ -12,7 +12,11 @@ import { cleanupCredentials } from '../credentials/seeder';
 import type { EvalLogger } from '../harness/logger';
 import { cleanupPrebuiltWorkflows } from '../harness/prebuilt-workflows';
 import { seedMcpRegistry } from '../mcp-registry/seeder';
-import { snapshotDataTableIds, snapshotWorkflowIds } from '../outcome/workflow-discovery';
+import {
+	snapshotDataTableIds,
+	snapshotRootFolderIds,
+	snapshotWorkflowIds,
+} from '../outcome/workflow-discovery';
 
 export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lane[]> {
 	// One lane per base URL. The LangSmith path then uses a work-stealing
@@ -37,17 +41,19 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
 			}
 
-			// --build-via-mcp: enable MCP and set up the lane's build-user pool.
 			// Each lane is a self-contained build+verify target — a workflow built
 			// here is verified here, so N lanes parallelize the whole pipeline.
-			let mcpUserPool: LaneUserPool | undefined;
 			if (args.buildViaMcp) {
 				await client.enableMcpAccess();
-				mcpUserPool = new LaneUserPool(client);
 			}
+			const buildUserPool = new LaneUserPool(client);
 
-			const preRunWorkflowIds = await snapshotWorkflowIds(client);
-			const preRunDataTableIds = await snapshotDataTableIds(client);
+			// Independent reads of one instance, so they run together.
+			const [preRunWorkflowIds, preRunDataTableIds, preRunFolderIds] = await Promise.all([
+				snapshotWorkflowIds(client),
+				snapshotDataTableIds(client),
+				snapshotRootFolderIds(client),
+			]);
 			const claimedWorkflowIds = new Set<string>();
 			const createdCredentialIds = new Set<string>();
 			const workflowIdsToDelete = new Set<string>();
@@ -56,10 +62,11 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				baseUrl,
 				preRunWorkflowIds,
 				preRunDataTableIds,
+				preRunFolderIds,
 				claimedWorkflowIds,
 				createdCredentialIds,
 				workflowIdsToDelete,
-				mcpUserPool,
+				buildUserPool,
 			};
 		}),
 	);
@@ -72,19 +79,19 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
  *  workflows across lanes; a single-lane cleanup would 404 on the rest). */
 export async function cleanupLanes(
 	lanes: Lane[],
-	cleanupBuiltWorkflows: boolean,
+	cleanup: { workflows: boolean; buildUsers: boolean },
 	logger: EvalLogger,
 ): Promise<void> {
 	await Promise.all(
 		lanes.map(async (lane) => {
-			if (cleanupBuiltWorkflows && lane.workflowIdsToDelete.size > 0) {
+			if (cleanup.workflows && lane.workflowIdsToDelete.size > 0) {
 				await cleanupPrebuiltWorkflows(lane.client, lane.workflowIdsToDelete, logger);
 			}
 			await cleanupCredentials(lane.client, [...lane.createdCredentialIds]).catch(() => {});
 			// Deleting a user deletes their remaining data, so keep the build
 			// users when workflows are kept.
-			if (cleanupBuiltWorkflows && lane.mcpUserPool) {
-				await cleanupLaneUsers(lane.client, lane.mcpUserPool, logger);
+			if (cleanup.buildUsers && lane.buildUserPool) {
+				await cleanupLaneUsers(lane.client, lane.buildUserPool, logger);
 			}
 		}),
 	);

@@ -8,7 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, toPathSegment } from 'n8n-workflow';
 
 import { calendarFields, calendarOperations } from './description/CalendarDescription';
 import { contactFields, contactNotes, contactOperations } from './description/ContactDescription';
@@ -125,8 +125,7 @@ export class HighLevelV2 implements INodeType {
 					this,
 					'highLevelOAuth2Api',
 					{
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-						url: `https://services.leadconnectorhq.com/locations/${locationId}/customFields?model=contact`,
+						url: `https://services.leadconnectorhq.com/locations/${toPathSegment(locationId)}/customFields?model=contact`,
 						headers: {
 							Accept: 'application/json',
 							'Content-Type': 'application/json',
@@ -162,8 +161,7 @@ export class HighLevelV2 implements INodeType {
 					this,
 					'highLevelOAuth2Api',
 					{
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-						url: `https://services.leadconnectorhq.com/locations/${locationId}/timezones`,
+						url: `https://services.leadconnectorhq.com/locations/${toPathSegment(locationId)}/timezones`,
 						headers: {
 							Accept: 'application/json',
 							'Content-Type': 'application/json',

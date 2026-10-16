@@ -1,15 +1,6 @@
 import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
-}
+import { defineField } from './utils';
 
 const min = Math.min;
 const max = Math.max;
@@ -52,6 +43,19 @@ const not = (value: unknown): boolean => {
 	return !value;
 };
 
+function toPathSegment(input: unknown): string {
+	if (input === null || input === undefined) {
+		throw new ExpressionExtensionError('Invalid identifier: a value is required');
+	}
+
+	const value = String(input);
+	if (value === '' || value === '.' || value === '..') {
+		throw new ExpressionExtensionError(`Invalid identifier: "${value}" is not allowed`);
+	}
+
+	return encodeURIComponent(value);
+}
+
 function ifEmpty<T, V>(value: V, defaultValue: T) {
 	if (arguments.length !== 2) {
 		// DIVERGENCE from packages/workflow/src/extensions/extended-functions.ts:
@@ -85,7 +89,8 @@ ifEmpty.doc = {
 		{ name: 'value', type: 'any' },
 		{ name: 'defaultValue', type: 'any' },
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/convenience',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/root#dollarifempty',
 };
 
 export const extendedFunctions = {
@@ -95,6 +100,7 @@ export const extendedFunctions = {
 	average,
 	numberList,
 	zip,
+	toPathSegment,
 	$min: min,
 	$max: max,
 	$average: average,

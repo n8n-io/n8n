@@ -56,6 +56,25 @@ export function configuredCapabilityKinds(
 }
 
 /**
+ * The capability shape every agent telemetry event carries. Single place that
+ * maps count fields to their snake_case property names, so a new capability
+ * kind reaches all events at once.
+ */
+export function capabilityCountTelemetryProperties(counts: AgentCapabilityCounts) {
+	return {
+		capability_kinds: configuredCapabilityKinds(counts),
+		capability_count: totalAgentCapabilities(counts),
+		tool_count: counts.tool,
+		skill_count: counts.skill,
+		sub_agent_count: counts.subAgent,
+		mcp_server_count: counts.mcpServer,
+		vector_store_count: counts.vectorStore,
+		task_count: counts.task,
+		trigger_count: counts.channel,
+	} as const;
+}
+
+/**
  * Whether the agent had nothing behind it yet — the state a freshly created row
  * is in. A write leaving this state is the agent's creation for telemetry.
  *

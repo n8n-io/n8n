@@ -7,7 +7,7 @@
 // embedded as an `<n8n-demo>` web component so reviewers can poke at the
 // canvas inline.
 //
-// https://github.com/n8n-io/n8n-demo-webcomponent
+// https://www.npmjs.com/package/@n8n_io/n8n-demo-component
 // ---------------------------------------------------------------------------
 
 import { jsonParse } from 'n8n-workflow';
@@ -148,12 +148,7 @@ export async function loadRuns(rootDir: string): Promise<Run[]> {
 }
 
 function isMissingFileError(error: unknown): boolean {
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'code' in error &&
-		(error as { code: unknown }).code === 'ENOENT'
-	);
+	return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 // ---------------------------------------------------------------------------

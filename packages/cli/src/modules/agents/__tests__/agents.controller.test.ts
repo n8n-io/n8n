@@ -11,10 +11,12 @@ import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsController } from '../agents.controller';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 function makeController({
 	agentsService = mock<
@@ -27,6 +29,8 @@ function makeController({
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
+	collaborationService = mock<CollaborationService>(),
+	skillRefs = createAgentSkillRefsService(),
 }: {
 	agentsService?: Mocked<
 		Pick<
@@ -38,11 +42,14 @@ function makeController({
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
 	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
+	collaborationService?: Mocked<CollaborationService>;
+	skillRefs?: ReturnType<typeof createAgentSkillRefsService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
 		agentValidationService,
 		agentPublishService,
+		skillRefs,
 	);
 
 	return {
@@ -50,6 +57,7 @@ function makeController({
 			agentsService as unknown as AgentsService,
 			agentRunnableStateService,
 			agentDefaultModelResolverService,
+			collaborationService,
 		),
 		agentsService,
 		agentPublishService,
@@ -106,6 +114,7 @@ describe('AgentsController create', () => {
 		} as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: 'aBcDeFgHiJkLmNoP',
 		});
 	});
@@ -116,6 +125,7 @@ describe('AgentsController create', () => {
 		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: undefined,
 		});
 	});
@@ -131,9 +141,77 @@ describe('AgentsController create', () => {
 		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: undefined,
 			defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
 		});
+	});
+
+	it('seeds the schema, skills, and tools for a duplicate and skips default-model resolution', async () => {
+		const { controller, agentsService, agentDefaultModelResolverService } =
+			makeCreateController('agent-copy');
+		const skills = { skill1: { name: 'Triage', instructions: 'Sort tickets.' } };
+		const tools = { tool1: { code: 'return []', descriptor: { name: 'Lookup' } } };
+		const schema = {
+			name: 'Source Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Triage tickets.',
+			integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
+		};
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Source Agent Copy',
+			schema,
+			skills,
+			tools,
+		} as never);
+
+		// A duplicate carries its own model, so the resolver is never called.
+		expect(agentDefaultModelResolverService.resolve).not.toHaveBeenCalled();
+		// The duplicate is a user-driven write, so the controller threads the
+		// user through — the service blanks inaccessible credentials and copies
+		// channels as drafts off that flag.
+		expect(agentsService.create).toHaveBeenCalledWith(
+			'project-1',
+			'Source Agent Copy',
+			expect.objectContaining({
+				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				skills,
+				tools,
+				user: { id: 'user-1' },
+			}),
+		);
+		// No default model is resolved for a duplicate.
+		const [, , options] = agentsService.create.mock.calls[0] as [
+			string,
+			string,
+			Record<string, unknown>,
+		];
+		expect(options).not.toHaveProperty('defaultModel');
+	});
+
+	it('overrides the schema name with the entity name on a duplicate', async () => {
+		const { controller, agentsService } = makeCreateController('agent-copy');
+		const schema = {
+			name: 'Source Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Triage tickets.',
+		};
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Source Agent Copy',
+			schema,
+		} as never);
+
+		// The config name is kept in sync with the entity name so the list and
+		// the builder never disagree on a directly-seeded create.
+		expect(agentsService.create).toHaveBeenCalledWith(
+			'project-1',
+			'Source Agent Copy',
+			expect.objectContaining({
+				schema: { ...schema, name: 'Source Agent Copy' },
+			}),
+		);
 	});
 });
 
@@ -188,9 +266,20 @@ describe('AgentsController agent resource', () => {
 			mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
+		const triage = {
+			name: 'Triage',
+			description: 'Triage requests',
+			instructions: 'Route each request.',
+		};
 		agentsService.findById.mockResolvedValue({
 			id: 'agent-1',
 			projectId: 'project-1',
+			schema: {
+				name: 'Agent',
+				model: '',
+				instructions: '',
+				skills: [{ type: 'skill', id: 'triage' }],
+			},
 		} as never);
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
@@ -202,6 +291,7 @@ describe('AgentsController agent resource', () => {
 			agentsService: agentsService as never,
 			agentPublishService,
 			agentValidationService,
+			skillRefs: createAgentSkillRefsService({ triage }),
 		});
 
 		const result = await controller.get(
@@ -219,6 +309,9 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
+		// The skill bodies come from the skills hub, not from the agent row.
+		expect(result.skills).toEqual({ triage });
+		expect(result.skillHashes.triage).toMatch(/^[a-f0-9]{64}$/);
 		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'agent-1' }),
 			'project-1',
@@ -263,5 +356,27 @@ describe('AgentsController agent resource', () => {
 				isRunnable: false,
 			}),
 		);
+	});
+});
+
+describe('AgentsController.getWriteLock', () => {
+	it('passes the agent id from the route param, not the response object', async () => {
+		const collaborationService = mock<CollaborationService>();
+		const lock = { clientId: 'tab-1', userId: 'user-1' };
+		collaborationService.getAgentWriteLock.mockResolvedValue(lock);
+		const { controller } = makeController({ collaborationService });
+
+		// The registry calls handlers as (req, res, ...decoratedArgs).
+		const result = await controller.getWriteLock(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+				user: { id: 'user-1' },
+			} as never,
+			mock<Response>(),
+			'agent-1',
+		);
+
+		expect(collaborationService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(result).toEqual(lock);
 	});
 });

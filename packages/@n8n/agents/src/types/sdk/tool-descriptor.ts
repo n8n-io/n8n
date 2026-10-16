@@ -17,5 +17,6 @@ export interface ToolDescriptor {
 	hasResume: boolean;
 	hasToMessage: boolean;
 	requireApproval: boolean;
+	outputTrust?: 'untrusted' | null;
 	providerOptions: Record<string, unknown> | null;
 }

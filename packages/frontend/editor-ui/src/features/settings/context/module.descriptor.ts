@@ -1,0 +1,61 @@
+import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+
+import { VIEWS } from '@/app/constants';
+
+import {
+	isContextEnabledOnceEvaluated,
+	isContextPreferencesEnabledOnceEvaluated,
+	isContextSkillsEnabled,
+} from './context.utils';
+
+/**
+ * No `custom` middleware: the initializer would gate the routes on a backend module,
+ * which preferences do not have. The flag checks run in `beforeEnter`. The sidebar
+ * entry stays with the shell, which hides module pages without a backend module.
+ */
+export const ContextModule: FrontendModuleDescription = {
+	id: 'context',
+	name: 'Context',
+	description:
+		'Reusable preferences and skills for the n8n assistant, agents and connected AI tools',
+	icon: 'brain',
+	routes: [
+		{
+			path: 'context',
+			name: VIEWS.SETTINGS_CONTEXT,
+			component: async () => await import('./views/SettingsContextView.vue'),
+			meta: {
+				middleware: ['authenticated'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+			beforeEnter: async () => (await isContextEnabledOnceEvaluated()) || { name: VIEWS.HOMEPAGE },
+		},
+		{
+			path: 'context/preferences',
+			name: VIEWS.SETTINGS_CONTEXT_PREFERENCES,
+			component: async () => await import('./views/SettingsPreferencesView.vue'),
+			meta: {
+				middleware: ['authenticated'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+			beforeEnter: async () =>
+				(await isContextPreferencesEnabledOnceEvaluated()) || { name: VIEWS.HOMEPAGE },
+		},
+		{
+			path: 'context/skills',
+			name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+			component: async () => await import('./views/SettingsSkillsView.vue'),
+			meta: {
+				middleware: ['authenticated'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+			beforeEnter: () => isContextSkillsEnabled() || { name: VIEWS.HOMEPAGE },
+		},
+	],
+};

@@ -28,9 +28,9 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_INDEX_BATCH_SIZE')
 	indexingBatchSize: number = 10;
 
-	/** Whether to use the workflow publication service. Still under development. */
+	/** Whether to use the workflow publication service. */
 	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
-	useWorkflowPublicationService: boolean = false;
+	useWorkflowPublicationService: boolean = true;
 
 	/** Interval in milliseconds between polls of the workflow publication outbox on the leader. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
@@ -70,4 +70,12 @@ export class WorkflowsConfig {
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;
+
+	/** Force-enables groups that hold a trigger. `false` falls back to PostHog. */
+	@Env('N8N_WORKFLOWS_GROUPS_WITH_TRIGGERS_ENABLED')
+	groupsWithTriggersEnabled: boolean = false;
+
+	/** Force-enables groups with several entry and exit nodes. `false` falls back to PostHog. */
+	@Env('N8N_WORKFLOWS_GROUPS_WITH_MANY_BOUNDARIES_ENABLED')
+	groupsWithManyBoundariesEnabled: boolean = false;
 }

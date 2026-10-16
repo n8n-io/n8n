@@ -18,7 +18,7 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
@@ -43,17 +43,17 @@ jobs:
       matrix: ${{ steps.gen.outputs.matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
 
-      - name: Generate matrix (16 shards, duration-weighted)
+      - name: Generate matrix (up to 20 shards, duration-weighted)
         id: gen
         run: |
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)
+          MATRIX=$(node packages/quality/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --project=coverage)
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   e2e:
@@ -107,7 +107,7 @@ jobs:
       NODE_OPTIONS: --max-old-space-size=7168
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup
         uses: ./.github/actions/setup-nodejs
@@ -135,7 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv
         uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
@@ -188,7 +188,7 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
@@ -215,7 +215,7 @@ jobs:
       # Merges all lcovs into one lcov.info (SF: paths normalised to repo-root-
       # relative) and builds the per-spec E2E impact map for PR selection.
       - name: Aggregate coverage + build impact map
-        working-directory: packages/testing/playwright
+        working-directory: packages/quality/testing/playwright
         run: |
           node scripts/aggregate-coverage.mjs \
             --shards=/tmp/shards \
@@ -227,7 +227,7 @@ jobs:
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: coverage-report
-          path: packages/testing/playwright/coverage/
+          path: packages/quality/testing/playwright/coverage/
           retention-days: 14
 
       - name: Upload Combined Coverage to Codecov
@@ -235,7 +235,7 @@ jobs:
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: packages/testing/playwright/coverage/lcov.info
+          files: packages/quality/testing/playwright/coverage/lcov.info
           flags: nightly-full
           name: nightly-full-coverage
           fail_ci_if_error: false
@@ -256,7 +256,7 @@ jobs:
         env:
           CODECOV_API_TOKEN: ${{ secrets.CODECOV_API_TOKEN }}
         run: |
-          node packages/testing/playwright/scripts/coverage-analysis.mjs \
+          node packages/quality/testing/playwright/scripts/coverage-analysis.mjs \
             --md --top=15 --out-json=coverage-gaps.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Coverage Gap Report
@@ -306,7 +306,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.generate-token.outputs.token }}
           # Don't persist the token in .git/config (avoids leaking it via artifacts);
@@ -323,16 +323,15 @@ jobs:
         run: |
           MAP=/tmp/coverage-report/impact-map.json
           # Completeness guard. This, not the job's e2e result, is what keeps a
-          # degraded map out: a lost shard shows up as a drop in spec count against
-          # the map we already trust. 5% absorbs legitimately deleted specs while
-          # still catching a missing shard (16 shards, so ~6% of specs each).
+          # degraded map out. A 4% margin allows valid spec deletions. It also
+          # detects a missing shard if that shard contains more than 4% of the specs.
           node -e '
             const fs = require("fs");
             const m = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
             const n = Array.isArray(m.specs) ? m.specs.length : 0;
             if (!n) { console.error("impact map has no specs — refusing to commit"); process.exit(1); }
             const current = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-            const floor = Math.floor((Array.isArray(current.specs) ? current.specs.length : 0) * 0.95);
+            const floor = Math.floor((Array.isArray(current.specs) ? current.specs.length : 0) * 0.96);
             if (n < floor) {
               console.error("impact map has " + n + " specs, expected at least " + floor + " — refusing to commit a degraded map");
               process.exit(1);
@@ -404,7 +403,7 @@ jobs:
       ]
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false

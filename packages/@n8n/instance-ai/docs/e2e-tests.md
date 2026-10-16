@@ -114,8 +114,8 @@ would fail when replay produces different IDs or other runtime data.
 
 ### Shared State Across Runs
 
-A single test may trigger multiple n8n "runs" — the orchestrator run, a planned
-task follow-up, or an eval-setup background task. The `TraceIndex` and
+A single test may trigger multiple n8n "runs" — the orchestrator run or a planned
+task follow-up. The `TraceIndex` and
 `IdRemapper` are shared across all runs within one test (keyed by the test slug),
 so cursor positions and ID mappings persist correctly.
 
@@ -212,8 +212,8 @@ The `TraceIndex` groups events by `agentRole` with independent cursors per role.
 ```
 orchestrator: [nodes, build-workflow, executions-suspend, executions-resume]
                 ^cursor=0
-eval-setup: [workflows(action="get-json"), workflows(action="update")]
-             ^cursor=0
+agent-builder: [read_config, write_config]
+               ^cursor=0
 ```
 
 When a tool is called, `traceIndex.next(role, toolName)` advances that role's cursor and validates the tool name matches. A mismatch means the agent diverged from the recorded path — the test fails with a clear error.
@@ -255,13 +255,13 @@ volatile request body.
 
 | File | Purpose |
 |------|---------|
-| `packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts` | Test fixtures — proxy setup, recording/replay orchestration |
+| `packages/quality/testing/playwright/tests/e2e/instance-ai/fixtures.ts` | Test fixtures — proxy setup, recording/replay orchestration |
 | `packages/@n8n/instance-ai/src/tracing/trace-replay.ts` | `TraceIndex`, `IdRemapper`, `TraceWriter`, JSONL parsing |
 | `packages/@n8n/instance-ai/src/tracing/langsmith-tracing.ts` | Tool wrapping — `replayWrapTools`, `recordWrapTools` |
 | `packages/@n8n/instance-ai/src/types.ts` | `InstanceAiTraceContext`, `TraceReplayMode` |
 | `packages/cli/src/modules/instance-ai/instance-ai.service.ts` | Trace mode initialization, shared state management |
 | `packages/cli/src/modules/instance-ai/instance-ai.controller.ts` | Test-only REST endpoints for trace delivery |
-| `packages/testing/containers/services/proxy.ts` | `ProxyServer` class (MockServer client) |
+| `packages/quality/environments/containers/services/proxy.ts` | `ProxyServer` class (MockServer client) |
 
 ### Test-Only Endpoints
 
@@ -323,7 +323,7 @@ stack entirely. Tests hit the real Anthropic API directly. This mode does
 **not** record proxy expectations.
 
 ```bash
-cd packages/testing/playwright
+cd packages/quality/testing/playwright
 export ANTHROPIC_API_KEY=sk-ant-...
 pnpm test:local:instance-ai                  # full suite
 pnpm test:local:instance-ai --grep "preview" # single test
@@ -351,7 +351,7 @@ pnpm test:local:instance-ai --grep "preview" --headed
 vars over the generic `test:local:isolated` runner, which provides random free
 ports, a throwaway `N8N_USER_FOLDER` (so `~/.n8n` is never touched), and
 process-group cleanup. See the
-[Playwright README](../../../testing/playwright/README.md) for full details on
+[Playwright README](../../../quality/testing/playwright/README.md) for full details on
 `test:local:isolated`.
 
 > **Cost note:** Each run makes real Anthropic calls. Scope with `--grep` or
@@ -412,7 +412,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 
 3. **Per-role trace cursors** — The `TraceIndex` groups events by `agentRole` with independent cursors. This handles interleaved orchestrator and sub-agent calls naturally, without requiring a single global sequence that breaks when parallelism changes.
 
-4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run, planned follow-up, eval-setup background task). This means a workflowId learned in run 1 is available for remapping in run 2.
+4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run and planned follow-ups). This means a workflowId learned in run 1 is available for remapping in run 2.
 
 5. **Reduced request-body matching** — During recording, full LLM request bodies are replaced with regex anchors for the agent type and stable turn context. Volatile IDs and dynamic prompt context are normalized so replay does not depend on the complete conversation or raw tool output.
 

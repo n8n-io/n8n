@@ -20,20 +20,26 @@ import {
 	serializedWorkflow,
 	serializedWorkflowWithSubWorkflow,
 	subWorkflowRefOf,
+	WIRE_VERSION_ID,
 	workflowRequirementsFromWorkflows,
+	type PackageWorkflow,
 } from './fixtures/package-fixtures';
 import { executeWorkflowNode } from './utils/test-builders';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
-	Partial<Pick<ImportPackageRequest, 'workflowIdPolicy' | 'workflowPublishingPolicy'>>;
+	Partial<
+		Pick<
+			ImportPackageRequest,
+			'workflowIdPolicy' | 'workflowPublishingPolicy' | 'workflowConflictPolicy'
+		>
+	>;
 
 async function importPackage(params: ImportPackageParams) {
 	return await Container.get(N8nPackagesService).importPackage(importPackageRequest(params));
 }
 
 /** Builds a package where `workflows` carry Execute Sub-workflow refs + the derived requirements. */
-async function buildSubWorkflowPackage(workflows: SerializedWorkflow[]) {
+async function buildSubWorkflowPackage(workflows: PackageWorkflow[]) {
 	return await buildImportPackageBuffer(workflows, {
 		manifestExtras: {
 			requirements: { workflows: workflowRequirementsFromWorkflows(workflows) },
@@ -190,6 +196,40 @@ describe('Package import of workflows with sub-workflows', () => {
 		expect(importedMain.settings?.errorWorkflow).toBe(importedError.id);
 	});
 
+	// A later package version can add an error handler for a workflow that is
+	// already imported. The parent is then an update that points at a handler this
+	// same import creates, so the handler is neither present nor published while
+	// the parent is written — publishing is a package-wide sweep that runs after.
+	it('remaps `settings.errorWorkflow` when the parent is an update and the handler is new', async () => {
+		const owner = await createOwner();
+
+		const v1 = serializedWorkflow({ id: 'CHEDDAR', name: 'Main' });
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildSubWorkflowPackage([v1]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const v2 = serializedWorkflow({
+			id: 'CHEDDAR',
+			name: 'Main',
+			settings: { errorWorkflow: 'BRIE' },
+		});
+		const errorHandler = serializedWorkflow({ id: 'BRIE', name: 'Error handler' });
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildSubWorkflowPackage([v2, errorHandler]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+			workflowConflictPolicy: 'new-version',
+		});
+
+		const importedMain = await findImported(result, 'CHEDDAR');
+		const importedError = await findImported(result, 'BRIE');
+
+		expect(importedMain.settings?.errorWorkflow).toBe(importedError.id);
+	});
+
 	it('does not crash when a package carries a non-string settings.callerIds', async () => {
 		const owner = await createOwner();
 
@@ -218,14 +258,14 @@ describe('Package import of workflows with sub-workflows', () => {
 		const parent = serializedWorkflow({
 			id: 'CHEDDAR',
 			name: 'Parent',
-			isPublished: true,
+			publishedVersionId: WIRE_VERSION_ID,
 			nodes: [scheduleTriggerNode(), executeWorkflowNode('BRIE')],
 		});
 		const subWorkflow = serializedWorkflow({
 			id: 'BRIE',
 			name: 'Sub-workflow',
 			isArchived: true,
-			isPublished: true,
+			publishedVersionId: WIRE_VERSION_ID,
 			nodes: [scheduleTriggerNode()],
 		});
 

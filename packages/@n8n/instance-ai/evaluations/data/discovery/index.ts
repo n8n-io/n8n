@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'fs';
 import { basename, join } from 'path';
 import { z } from 'zod';
 
-import type { LocalGatewayStatus } from '../../../src/types';
+import type { ComputerUseChannelState, ComputerUseState } from '../../../src/types';
 import type { DiscoveryMcpState } from '../../discovery/stub-mcp-registry';
 import type { DiscoveryConfirmations, DiscoveryTestCase } from '../../discovery/types';
 
@@ -18,14 +18,24 @@ const forbiddenToolCallSchema = z
 	})
 	.strict();
 
-/** Mirrors `LocalGatewayStatus` (src/types.ts) — the annotation makes tsc flag
- *  this schema when the source union drifts. */
-const localGatewayStatusSchema: z.ZodType<LocalGatewayStatus> = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('connected'), capabilities: z.array(z.string()) }).strict(),
-	z.object({ status: z.literal('disabledGlobally') }).strict(),
-	z.object({ status: z.literal('disconnected') }).strict(),
-	z.object({ status: z.literal('disabled') }).strict(),
-]);
+/** Mirrors `ComputerUseState` (src/types.ts) — the annotation makes tsc flag
+ *  these schemas when the source union drifts. */
+const computerUseChannelStateSchema: z.ZodType<ComputerUseChannelState> = z.discriminatedUnion(
+	'status',
+	[
+		z.object({ status: z.literal('unavailable') }).strict(),
+		z.object({ status: z.literal('disconnected') }).strict(),
+		z.object({ status: z.literal('disabledByUser') }).strict(),
+		z.object({ status: z.literal('connected'), toolCategories: z.array(z.string()) }).strict(),
+	],
+);
+
+const computerUseStateSchema: z.ZodType<ComputerUseState> = z
+	.object({
+		localComputer: computerUseChannelStateSchema,
+		browser: computerUseChannelStateSchema,
+	})
+	.strict();
 
 const mcpStateSchema: z.ZodType<DiscoveryMcpState> = z
 	.object({
@@ -78,9 +88,9 @@ export const discoveryTestCaseSchema = z
 		userMessage: z.string().min(1),
 		instanceState: z
 			.object({
-				localGateway: localGatewayStatusSchema.optional(),
-				browserAvailable: z.boolean().optional(),
+				computerUse: computerUseStateSchema.optional(),
 				mcp: mcpStateSchema.optional(),
+				folderExploration: z.boolean().optional(),
 			})
 			.strict()
 			.optional(),

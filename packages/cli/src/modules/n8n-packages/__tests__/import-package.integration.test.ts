@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	createActiveWorkflow,
 	createTeamProject,
@@ -8,6 +9,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import type { Folder, Project } from '@n8n/db';
 import {
 	ProjectRepository,
@@ -15,14 +17,14 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 	CredentialsRepository,
+	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
 	affixRoleToSaveCredential,
@@ -51,9 +53,11 @@ import {
 	PACKAGE_GITHUB_CREDENTIAL_TYPE,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	WIRE_VERSION_ID,
+	type PackageWorkflow,
 } from './fixtures/package-fixtures';
+import { buildWorkflowReferencingCredential } from './utils/test-builders';
 import { streamToBuffer } from './utils/tar-support';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
 	Partial<ImportPackageRequest>;
@@ -69,7 +73,7 @@ async function importPackage(params: ImportPackageParams) {
  * by `connections` does not exist in `nodes`. `validateWorkflowStructure`
  * rejects this during the pipeline's pre-pass.
  */
-const brokenWorkflow = (id: string, name: string): SerializedWorkflow =>
+const brokenWorkflow = (id: string, name: string): PackageWorkflow =>
 	serializedWorkflow({
 		id,
 		name,
@@ -105,9 +109,13 @@ const saveOwnedCredential = affixRoleToSaveCredential('credential:owner');
 
 // Reactivating an active workflow on new-version import calls into the active
 // workflow manager; mock it so trigger registration succeeds without real infra.
+// The assertions below target that legacy path, so the publication service is off.
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const workflowsConfig = Container.get(WorkflowsConfig);
+const originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
 
 beforeAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = false;
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
 	// Register node types so the reactivation path's webhook-conflict check can
@@ -122,6 +130,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 	await testDb.terminate();
 });
 
@@ -134,6 +143,7 @@ beforeEach(async () => {
 		'Project',
 		'CredentialsEntity',
 		'SharedCredentials',
+		'SecretsProviderConnection',
 	]);
 });
 
@@ -901,7 +911,7 @@ describe('Package import workflow conflict policy', () => {
 					id: 'wf-active',
 					name: 'Active updated',
 					// Published in the package and in the target project so preserve-published-state should publish the new version.
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: [
 						{
 							id: 'schedule-trigger',
@@ -1098,6 +1108,34 @@ describe('Package import rejection cases', () => {
 		).rejects.toThrow(BadRequestError);
 	});
 
+	it('rejects a workflow without its metadata file', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer(
+					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
+					{ workflowMetadata: 'omit' },
+				),
+			}),
+		).rejects.toThrow(/metadata file is missing at workflows\/wf-0\/workflow-metadata\.json/);
+	});
+
+	it('rejects a workflow whose metadata file does not match the schema', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer(
+					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
+					{ workflowMetadata: { publishedVersionId: '' } },
+				),
+			}),
+		).rejects.toThrow(/metadata file at workflows\/wf-0\/workflow-metadata\.json failed schema/);
+	});
+
 	it('rejects when the requested projectId does not exist', async () => {
 		const owner = await createOwner();
 
@@ -1255,6 +1293,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1354,6 +1393,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1423,6 +1463,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1494,6 +1535,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1821,6 +1863,12 @@ describe('ImportPipeline credential matching modes', () => {
 			});
 
 			expect(result.bindings.credentials).toEqual({ [SOURCE_CRED_ID]: target.id });
+			expect(result.credentials).toEqual({
+				matched: [SOURCE_CRED_ID],
+				stubbed: [],
+				seeded: [],
+				incomplete: [],
+			});
 		});
 
 		it('does not match when only the name is equal but the type differs', async () => {
@@ -2177,7 +2225,12 @@ describe('credential-missing-mode: create-stub', () => {
 			),
 		});
 
-		expect(result.credentials).toEqual({ matched: [], stubbed: ['missing-cred'] });
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: ['missing-cred'],
+			seeded: [],
+			incomplete: [],
+		});
 		expect(result.bindings.credentials['missing-cred']).toBe('missing-cred');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
@@ -2241,13 +2294,13 @@ describe('credential-missing-mode: create-stub', () => {
 					serializedWorkflow({
 						id: 'wf-no-stub',
 						name: 'No stub',
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 						nodes: scheduleTriggerNodes(),
 					}),
 					serializedWorkflow({
 						id: 'wf-with-stub',
 						name: 'With stub',
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 						nodes: [
 							...scheduleTriggerNodes(),
 							{
@@ -2313,7 +2366,7 @@ describe('credential-missing-mode: create-stub', () => {
 							credentialId: 'missing-cred',
 							credentialName: 'Missing GitHub',
 						}),
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 					},
 				],
 				{ sourceId: 'stub-update-published' },
@@ -2333,6 +2386,475 @@ describe('credential-missing-mode: create-stub', () => {
 
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
+	});
+
+	it('does not require the credential:create scope for create-stub', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-stub',
+			apiKeyScopes: ['workflow:import'],
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-missing-cred',
+						name: 'Missing cred workflow',
+						credentialId: 'missing-cred',
+						credentialName: 'Missing GitHub',
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.credentials.stubbed).toEqual(['missing-cred']);
+	});
+});
+
+describe('credential-missing-mode: create-with-values', () => {
+	const sourceId = 'create-with-values-test';
+	beforeEach(async () => {
+		await Container.get(SecretsProviderConnectionRepository).save({
+			providerKey: 'github',
+			type: 'dummy',
+			encryptedSettings: '{}',
+		});
+	});
+	afterEach(() => licenseMocker.reset());
+
+	const scheduleTriggerNodes = () => [
+		{
+			id: 'schedule-trigger',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		},
+	];
+	const credentialNode = (credentialId: string, credentialName: string) => ({
+		id: 'http-node',
+		name: 'HTTP Request',
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 1,
+		position: [300, 0] as [number, number],
+		parameters: {},
+		credentials: {
+			[PACKAGE_GITHUB_CREDENTIAL_TYPE]: { id: credentialId, name: credentialName },
+		},
+	});
+
+	it('lists a credential as incomplete when its package data has no completeness flag', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-seeded',
+						name: 'Seeded cred workflow',
+						credentialId: 'missing-cred',
+						credentialName: 'Missing GitHub',
+					}),
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'missing-cred',
+							name: 'Missing GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: '={{ $secrets.github.token }}' },
+						},
+					],
+				},
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: [],
+			seeded: [],
+			incomplete: ['missing-cred'],
+		});
+
+		const targetId = result.bindings.credentials['missing-cred'];
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: targetId });
+		const decrypted = await new Credentials(
+			{ id: stored.id, name: stored.name },
+			stored.type,
+			stored.data,
+		).getData();
+		expect(decrypted).toEqual({ accessToken: '={{ $secrets.github.token }}' });
+	});
+
+	it('rejects seeded external-secret data when the user lacks externalSecret:list', async () => {
+		const member = await createMember();
+
+		await expect(
+			importPackage({
+				user: member,
+				credentialMissingMode: 'create-with-values',
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-seeded',
+							name: 'Seeded cred workflow',
+							credentialId: 'missing-cred',
+							credentialName: 'Missing GitHub',
+						}),
+					],
+					{
+						sourceId,
+						credentials: [
+							{
+								id: 'missing-cred',
+								name: 'Missing GitHub',
+								type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+								data: { accessToken: '={{ $secrets.github.token }}' },
+							},
+						],
+					},
+				),
+			}),
+		).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+
+	it('publishes workflows with seeded credentials but blocks those with fallback stubs', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-seeded',
+						name: 'Seeded',
+						publishedVersionId: WIRE_VERSION_ID,
+						nodes: [...scheduleTriggerNodes(), credentialNode('seeded-cred', 'Seeded GitHub')],
+					}),
+					serializedWorkflow({
+						id: 'wf-stubbed',
+						name: 'Stubbed',
+						publishedVersionId: WIRE_VERSION_ID,
+						nodes: [
+							...scheduleTriggerNodes(),
+							{ ...credentialNode('bare-cred', 'Bare GitHub'), id: 'http-node-2' },
+						],
+					}),
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'seeded-cred',
+							name: 'Seeded GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: '={{ $secrets.github.token }}' },
+							dataIsComplete: true,
+						},
+					],
+				},
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: ['bare-cred'],
+			seeded: ['seeded-cred'],
+			incomplete: [],
+		});
+
+		const seeded = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-seeded',
+		);
+		const stubbed = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-stubbed',
+		);
+		expect(seeded?.publishing).toEqual({ state: 'published' });
+		expect(stubbed?.publishing).toEqual({ state: 'blocked', blockedReason: 'stub-credential' });
+	});
+
+	it('blocks publishing a workflow whose credential the import created from partial package data', async () => {
+		licenseMocker.enable('feat:projectRole:admin');
+		licenseMocker.setQuota('quota:maxTeamProjects', 100);
+		const owner = await createOwner();
+		const project = await createTeamProject('Partial data', owner);
+		const credential = await saveOwnedCredential(
+			{
+				name: 'Header Auth',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Auth', value: '={{ $secrets.github.token }}' },
+			},
+			{ project },
+		);
+		await buildWorkflowReferencingCredential({ name: 'Uses header auth', project, credential });
+		const { stream } = await Container.get(N8nPackagesService).exportPackage({
+			user: owner,
+			projectIds: [project.id],
+		});
+		const packageBuffer = await streamToBuffer(stream);
+
+		await testDb.truncate([
+			'Folder',
+			'Project',
+			'ProjectRelation',
+			'SharedWorkflow',
+			'WorkflowEntity',
+			'SharedCredentials',
+			'CredentialsEntity',
+		]);
+		const importer = await createOwner();
+
+		const result = await importPackage({
+			user: importer,
+			packageBuffer,
+			credentialMissingMode: 'create-with-values',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			variableParentPolicy: undefined,
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: [],
+			seeded: [],
+			incomplete: [credential.id],
+		});
+		expect(result.workflows[0]?.publishing).toEqual({
+			state: 'blocked',
+			blockedReason: 'incomplete-credential',
+		});
+	});
+
+	it('reports an empty stub or a missing node type before an incomplete credential', async () => {
+		const owner = await createOwner();
+		const incompleteNode = credentialNode('incomplete-cred', 'Incomplete GitHub');
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			missingNodeTypeMode: 'import-anyway',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-stub',
+						name: 'Stub',
+						nodes: [
+							...scheduleTriggerNodes(),
+							incompleteNode,
+							{ ...credentialNode('bare-cred', 'Bare GitHub'), id: 'http-node-2', name: 'HTTP 2' },
+						],
+					}),
+					serializedWorkflow({
+						id: 'wf-unknown',
+						name: 'Unknown node type',
+						nodes: [
+							...scheduleTriggerNodes(),
+							incompleteNode,
+							{
+								id: 'unknown-node',
+								name: 'Unknown Node',
+								type: 'n8n-nodes-community.chatBot',
+								typeVersion: 1,
+								position: [600, 0] as [number, number],
+								parameters: {},
+							},
+						],
+					}),
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'incomplete-cred',
+							name: 'Incomplete GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: '={{ $secrets.github.token }}' },
+							dataIsComplete: false,
+						},
+					],
+				},
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [],
+			stubbed: ['bare-cred'],
+			seeded: [],
+			incomplete: ['incomplete-cred'],
+		});
+		const publishingOf = (id: string) =>
+			result.workflows.find(({ sourceWorkflowId }) => sourceWorkflowId === id)?.publishing;
+		expect(publishingOf('wf-stub')).toEqual({ state: 'blocked', blockedReason: 'stub-credential' });
+		expect(publishingOf('wf-unknown')).toEqual({
+			state: 'blocked',
+			blockedReason: 'missing-node-type',
+		});
+	});
+
+	it('keeps the prior published version active when an incomplete credential blocks republishing an update', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Published workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, {
+			sourceWorkflowId: 'wf-incomplete-update',
+		});
+		const originalActiveVersionId = active.activeVersionId;
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					{
+						...serializedWorkflowWithCredential({
+							id: 'wf-incomplete-update',
+							name: 'Published workflow updated',
+							credentialId: 'incomplete-cred',
+							credentialName: 'Incomplete GitHub',
+						}),
+						publishedVersionId: WIRE_VERSION_ID,
+					},
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'incomplete-cred',
+							name: 'Incomplete GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: '={{ $secrets.github.token }}' },
+							dataIsComplete: false,
+						},
+					],
+				},
+			),
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-incomplete-update',
+		);
+
+		expect(summary?.status).toBe('updated');
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+		expect(summary?.publishing).toEqual({
+			state: 'unchanged',
+			skippedPublishReason: 'incomplete-credential',
+		});
+	});
+
+	it('rejects a package whose bundled credential data carries literal values', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				credentialMissingMode: 'create-with-values',
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-leak',
+							name: 'Leaky workflow',
+							credentialId: 'leaky-cred',
+							credentialName: 'Leaky GitHub',
+						}),
+					],
+					{
+						sourceId,
+						credentials: [
+							{
+								id: 'leaky-cred',
+								name: 'Leaky GitHub',
+								type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+								data: { accessToken: 'ghp_literal_secret' },
+							},
+						],
+					},
+				),
+			}),
+		).rejects.toThrow('failed schema validation');
+
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+	});
+
+	it('requires the credential:create scope when create-with-values creates a credential, and writes nothing without it', async () => {
+		const owner = await createOwner();
+		const packageBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-missing-cred',
+					name: 'Missing cred workflow',
+					credentialId: 'missing-cred',
+					credentialName: 'Missing GitHub',
+				}),
+			],
+			{ sourceId },
+		);
+
+		await expect(
+			importPackage({
+				user: owner,
+				credentialMissingMode: 'create-with-values',
+				apiKeyScopes: ['workflow:import'],
+				packageBuffer,
+			}),
+		).rejects.toThrow(ForbiddenError);
+		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			apiKeyScopes: ['workflow:import', 'credential:create'],
+			packageBuffer,
+		});
+		expect(result.credentials.stubbed).toEqual(['missing-cred']);
+	});
+
+	it('does not require the credential:create scope when every credential resolves', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const credential = await saveOwnedCredential(githubCredentialPayload({ name: 'GitHub' }), {
+			project: personalProject,
+		});
+
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			apiKeyScopes: ['workflow:import'],
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-resolved-cred',
+						name: 'Resolved cred workflow',
+						credentialId: credential.id,
+						credentialName: credential.name,
+					}),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.credentials).toEqual({
+			matched: [credential.id],
+			stubbed: [],
+			seeded: [],
+			incomplete: [],
+		});
 	});
 });
 
@@ -2368,7 +2890,7 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-fresh',
 					name: 'Fresh workflow',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
@@ -2396,7 +2918,7 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-fresh',
 					name: 'Fresh workflow',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
@@ -2424,7 +2946,7 @@ describe('Package import workflow publishing policy', () => {
 					id: 'STILTON',
 					name: 'Stilton',
 					isArchived: true,
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
@@ -2454,13 +2976,13 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-published',
 					name: 'Published in package',
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: scheduleTriggerNodes(),
 				}),
 				serializedWorkflow({
 					id: 'wf-unpublished',
 					name: 'Unpublished in package',
-					isPublished: false,
+					publishedVersionId: null,
 				}),
 			]),
 			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
@@ -2478,6 +3000,41 @@ describe('Package import workflow publishing policy', () => {
 		expect(unpublishedSummary?.activeVersionId).toBeNull();
 	});
 
+	it('"match-source" leaves a published target alone when the package carries a draft', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+		const originalActiveVersionId = active.activeVersionId;
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-active',
+					name: 'Active updated',
+					nodes: scheduleTriggerNodes(),
+					// The source publishes a version this package does not carry.
+					publishedVersionId: 'live-elsewhere',
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+
+		// The package content lands as a draft, but the version that was live stays live.
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.activeVersionId).toBe(originalActiveVersionId);
+		expect(stored.versionId).not.toBe(originalActiveVersionId);
+	});
+
 	it('"unpublish-all" unpublishes a previously published matched workflow', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -2492,7 +3049,7 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-active',
 					name: 'Active updated',
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: [
 						{
 							id: 'schedule-trigger',
@@ -2533,7 +3090,7 @@ describe('Package import workflow publishing policy', () => {
 		const baseWorkflow = serializedWorkflow({
 			id: 'wf-active',
 			name: 'Active workflow',
-			isPublished: true,
+			publishedVersionId: WIRE_VERSION_ID,
 			settings: { executionOrder: 'v1' },
 		});
 
@@ -2569,13 +3126,13 @@ describe('Package import workflow publishing policy', () => {
 
 		const result = await importPackage({
 			user: owner,
-			// New content marked as a draft in the package (isPublished: false) → saves a
+			// New content marked as a draft in the package (publishedVersionId: null) → saves a
 			// new version that preserve-published-state should not bring live.
 			packageBuffer: await buildImportPackageBuffer([
 				serializedWorkflow({
 					id: 'wf-active',
 					name: 'Active updated',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
@@ -2619,13 +3176,13 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-webhook-a',
 					name: 'Webhook A',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: webhookNodes('wh-a', '/test'),
 				}),
 				serializedWorkflow({
 					id: 'wf-webhook-b',
 					name: 'Webhook B',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: webhookNodes('wh-b', '/test'),
 				}),
 			]),
@@ -2665,13 +3222,13 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-webhook-get',
 					name: 'Webhook GET',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: webhookNodes('wh-get', '/test'),
 				}),
 				serializedWorkflow({
 					id: 'wf-webhook-post',
 					name: 'Webhook POST',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: webhookNodes('wh-post', '/test', 'POST'),
 				}),
 			]),
@@ -2756,13 +3313,16 @@ describe('Package import missing node type mode', () => {
 						type: 'missing-node-type',
 						nodeType: 'n8n-nodes-community.chatBot',
 						typeVersion: 1,
-						usedByWorkflows: ['wf-alpha', 'wf-beta'],
+						usedBy: [
+							{ kind: 'workflow', id: 'wf-alpha' },
+							{ kind: 'workflow', id: 'wf-beta' },
+						],
 					},
 					{
 						type: 'missing-node-type',
 						nodeType: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 9,
-						usedByWorkflows: ['wf-gamma'],
+						usedBy: [{ kind: 'workflow', id: 'wf-gamma' }],
 					},
 				]),
 			},
@@ -2792,13 +3352,13 @@ describe('Package import missing node type mode', () => {
 						serializedWorkflow({
 							id: 'wf-ok',
 							name: 'Publishable',
-							isPublished: true,
+							publishedVersionId: WIRE_VERSION_ID,
 							nodes: [scheduleTriggerNode()],
 						}),
 						serializedWorkflow({
 							id: 'wf-broken',
 							name: 'Missing node type',
-							isPublished: true,
+							publishedVersionId: WIRE_VERSION_ID,
 							nodes: [scheduleTriggerNode(), unknownNode(), unresolvableCredentialNode()],
 						}),
 					],
@@ -2863,7 +3423,7 @@ describe('Package import missing node type mode', () => {
 					serializedWorkflow({
 						id: 'wf-broken-update',
 						name: 'Published workflow updated',
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 						nodes: [scheduleTriggerNode(), unknownNode()],
 					}),
 				],

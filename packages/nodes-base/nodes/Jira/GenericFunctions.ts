@@ -1,4 +1,5 @@
 import type {
+	IAdditionalCredentialOptions,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -93,8 +94,23 @@ export async function jiraSoftwareCloudApiRequest(
 	if (Object.keys(query || {}).length === 0) {
 		delete options.qs;
 	}
+
+	// The gateway answers 403/404 for an expired token, not the 401 n8n's OAuth2 refresh looks
+	// for (ENT-408). 401 stays, since a revoked token still gets one, and
+	// `skipRefreshWhileTokenIsFresh` keeps a genuinely missing issue from paying for a refresh.
+	// atlassianServiceAccountApi refreshes on its own, so it opts out.
+	const additionalCredentialOptions: IAdditionalCredentialOptions | undefined =
+		credentialType === 'jiraSoftwareCloudOAuth2Api'
+			? { oauth2: { tokenExpiredStatusCode: [401, 403, 404], skipRefreshWhileTokenIsFresh: true } }
+			: undefined;
+
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+			additionalCredentialOptions,
+		);
 	} catch (error) {
 		if (error.description?.includes?.("Field 'priority' cannot be set")) {
 			throw new NodeApiError(this.getNode(), error as JsonObject, {

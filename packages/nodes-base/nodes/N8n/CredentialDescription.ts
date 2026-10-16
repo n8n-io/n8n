@@ -33,7 +33,7 @@ export const credentialOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/credentials/{{ $parameter.credentialId }}',
+						url: '=/credentials/{{ toPathSegment($parameter.credentialId) }}',
 					},
 				},
 			},
@@ -44,7 +44,7 @@ export const credentialOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/credentials/schema/{{ $parameter.credentialTypeName }}',
+						url: '=/credentials/schema/{{ toPathSegment($parameter.credentialTypeName) }}',
 					},
 				},
 			},

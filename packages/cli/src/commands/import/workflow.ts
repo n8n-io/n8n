@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	generateNanoId,
 	ProjectRepository,
@@ -16,7 +17,6 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 
@@ -38,6 +38,7 @@ function assertHasWorkflowsToImport(
 
 /**
  * Creates workflow entities from plain objects while preserving versionMetadata metadata.
+ * Generates an ID for each workflow that has none.
  */
 function createWorkflowsWithVersionMetadata(
 	workflowRepository: WorkflowRepository,
@@ -46,6 +47,9 @@ function createWorkflowsWithVersionMetadata(
 	const createdWorkflows = workflowRepository.create(workflows);
 	return createdWorkflows.map((created, index) => ({
 		...created,
+		// A plain object does not run the entity insert hook that generates missing IDs.
+		// The ownership check also needs the ID before the insert.
+		id: created.id || generateNanoId(),
 		versionMetadata: workflows[index].versionMetadata,
 	}));
 }
@@ -104,6 +108,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
 	override needsExpressionEngine = true;
 
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+	}
+
 	async run(): Promise<void> {
 		const { flags } = this;
 
@@ -143,7 +153,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
-		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
+		const result = await this.checkRelations(workflows, project.id, flags);
 
 		if (!result.success) {
 			throw new UserError(result.message);
@@ -171,8 +181,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		});
 	}
 
-	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {
-		// The credential is not supposed to be re-owned.
+	private async checkRelations(
+		workflows: IWorkflowBase[],
+		targetProjectId: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
+	) {
+		// The workflow is not supposed to be re-owned.
 		if (!userId && !projectId) {
 			return {
 				success: true as const,
@@ -191,7 +205,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				continue;
 			}
 
-			if (ownerProject.id !== projectId) {
+			if (ownerProject.id !== targetProjectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
 						? `the user with the ID "${user.id}"`
@@ -204,7 +218,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 				return {
 					success: false as const,
-					message: `The credential with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
+					message: `The workflow with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
 				};
 			}
 		}
@@ -286,9 +300,6 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		for (const file of files) {
 			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
-			if (!workflow.id) {
-				workflow.id = generateNanoId();
-			}
 
 			try {
 				assertHasWorkflowsToImport([workflow]);

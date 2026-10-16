@@ -180,6 +180,34 @@ describe('handleRetrieveAsToolOperation', () => {
 		expect(mockArgs.releaseVectorStoreClient).toHaveBeenCalledWith(mockVectorStore);
 	});
 
+	it('should search by text when searchByText is set', async () => {
+		mockVectorStore.similaritySearchWithScore.mockResolvedValue([
+			[{ pageContent: 'test content 1', metadata: { test: 'metadata 1' } } as Document, 0.95],
+			[{ pageContent: 'test content 2', metadata: { test: 'metadata 2' } } as Document, 0.85],
+			[{ pageContent: 'test content 3', metadata: { test: 'metadata 3' } } as Document, 0.75],
+		]);
+		const result = await handleRetrieveAsToolOperation(
+			mockContext,
+			{ ...mockArgs, searchByText: true },
+			mockEmbeddings,
+			0,
+		);
+		const tool = result.response as DynamicTool;
+
+		const toolResult = await tool.invoke({ input: 'test query' });
+
+		expect(mockVectorStore.similaritySearchWithScore).toHaveBeenCalledWith('test query', 3, {
+			testFilter: 'value',
+		});
+		expect(mockEmbeddings.embedQuery).not.toHaveBeenCalled();
+		expect(mockVectorStore.similaritySearchVectorWithScore).not.toHaveBeenCalled();
+		expect(toolResult).toHaveLength(3);
+		expect(JSON.parse(toolResult[0].text)).toEqual({
+			pageContent: 'test content 1',
+			metadata: { test: 'metadata 1' },
+		});
+	});
+
 	it('should include metadata in results when includeDocumentMetadata is true', async () => {
 		const result = await handleRetrieveAsToolOperation(mockContext, mockArgs, mockEmbeddings, 0);
 		const tool = result.response as DynamicTool;

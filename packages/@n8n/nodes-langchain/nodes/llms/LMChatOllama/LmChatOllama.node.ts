@@ -77,9 +77,9 @@ export class LmChatOllama implements INodeType {
 				}
 			: undefined;
 
-		const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
+		const egressFilter = this.helpers.getSecureEgressFilter();
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
-			await proxyFetch({ input, init, lookup });
+			await proxyFetch({ input, init, egressFilter });
 
 		const model = new ChatOllama({
 			...options,

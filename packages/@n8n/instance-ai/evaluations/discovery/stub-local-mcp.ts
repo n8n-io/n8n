@@ -1,11 +1,10 @@
 // ---------------------------------------------------------------------------
 // Stub LocalMcpServer for discovery evals.
 //
-// The orchestrator computes `browserAvailable` from the size of
-// `context.localMcpServer?.getToolsByCategory('browser')`. To exercise the
-// `browserAvailable: true` branch of the system prompt without spinning up the
-// real computer-use daemon, we plug in a stub server that advertises browser
-// tools by name. The stub never receives actual `callTool` invocations during
+// A case declares its connected channels through `instanceState.computerUse`, and
+// the runner plugs in this stub so the agent holds the matching tools without
+// spinning up the real computer-use daemon or the Chrome extension. The stub
+// advertises tools by name and category. It never receives actual `callTool` invocations during
 // discovery scenarios — the orchestrator's first dispatch decision is what we
 // measure, not downstream tool execution.
 // ---------------------------------------------------------------------------

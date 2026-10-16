@@ -77,6 +77,29 @@ describe('eval-mock-fixtures', () => {
 			});
 		});
 
+		describe('text option', () => {
+			it('should write the text into a PDF', () => {
+				const buf = synthesizeBinaryFixture('application/pdf', 'invoice.pdf', {
+					text: 'Invoice Number: INV-7\nTotal Due: 12.50 EUR',
+				});
+				const pdf = buf.toString('latin1');
+				expect(pdf.startsWith('%PDF')).toBe(true);
+				expect(pdf).toContain('(Invoice Number: INV-7) Tj');
+				expect(pdf).toContain('(Total Due: 12.50 EUR) Tj');
+			});
+
+			it('should use the text as the body of a text MIME', () => {
+				const buf = synthesizeBinaryFixture('text/csv', 'prices.csv', {
+					text: 'sku,price\nA-1,9.99\n',
+				});
+				expect(buf.toString('utf8')).toBe('sku,price\nA-1,9.99\n');
+			});
+
+			it('should keep an explicitly empty text body for a text MIME', () => {
+				expect(synthesizeBinaryFixture('text/plain', 'empty.txt', { text: '' }).length).toBe(0);
+			});
+		});
+
 		describe('octet-stream fallback', () => {
 			it('should produce deterministic bytes for application/octet-stream', () => {
 				const a = synthesizeBinaryFixture('application/octet-stream', 'blob.dat');
@@ -251,9 +274,11 @@ describe('eval-mock-fixtures', () => {
 			expect(pdf.slice(startxref, startxref + 4)).toBe('xref');
 		});
 
-		it('replaces non-ASCII characters and skips blank lines', () => {
-			const pdf = buildPdfWithText('café £100\n\n  \nnext').toString('latin1');
-			expect(pdf).toContain('(caf? ?100) Tj');
+		it('keeps WinAnsi characters, replaces others and skips blank lines', () => {
+			const pdf = buildPdfWithText('café £100 10 €\n✓ ok\n\n  \nnext').toString('latin1');
+			expect(pdf).toContain('/Encoding/WinAnsiEncoding');
+			expect(pdf).toContain('(café £100 10 \x80) Tj');
+			expect(pdf).toContain('(? ok) Tj');
 			expect(pdf).toContain('(next) Tj');
 		});
 

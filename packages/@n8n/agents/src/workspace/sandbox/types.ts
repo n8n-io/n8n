@@ -62,8 +62,17 @@ export interface DisabledSandboxConfig extends SandboxConfigBase {
 	enabled: false;
 }
 
-export interface DaytonaSandboxConfig extends SandboxConfigBase {
+export interface EnabledSandboxConfigBase extends SandboxConfigBase {
 	enabled: true;
+	/**
+	 * When true, the provider deletes the sandbox once it goes idle instead of leaving it
+	 * stopped. Used for throwaway sandboxes (e.g. eval runs) so they don't accumulate.
+	 * On Daytona this overrides `autoDeleteInterval` (Daytona forces it to 0 when ephemeral).
+	 */
+	ephemeral?: boolean;
+}
+
+export interface DaytonaSandboxConfig extends EnabledSandboxConfigBase {
 	provider: 'daytona';
 	id?: string;
 	name?: string;
@@ -72,12 +81,6 @@ export interface DaytonaSandboxConfig extends SandboxConfigBase {
 	daytonaApiKey?: string;
 	image?: CreateSandboxFromImageParams['image'];
 	snapshot?: string;
-	/**
-	 * When true, Daytona auto-deletes the sandbox when it stops (instead of leaving it
-	 * stopped). Used for throwaway sandboxes (e.g. eval runs) so they don't accumulate.
-	 * Overrides {@link autoDeleteInterval} (Daytona forces it to 0 when ephemeral).
-	 */
-	ephemeral?: boolean;
 	autoStopInterval?: number;
 	autoArchiveInterval?: number;
 	autoDeleteInterval?: number;
@@ -87,8 +90,7 @@ export interface DaytonaSandboxConfig extends SandboxConfigBase {
 	logger?: Logger;
 }
 
-export interface N8nSandboxConfig extends SandboxConfigBase {
-	enabled: true;
+export interface N8nSandboxConfig extends EnabledSandboxConfigBase {
 	provider: 'n8n-sandbox';
 	serviceUrl: string;
 	apiKey?: string;

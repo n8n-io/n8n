@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(255) |  | false | [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) |  |  |
+| id | varchar(255) |  | false | [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) |  |  |
 | metadata | text |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -30,6 +30,7 @@
 erDiagram
 
 "public.agents_memory_entries" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
+"public.agents_memory_entry_candidates" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
 "public.agents_memory_entry_locks" }o--|| "public.agents_resources" : "FOREIGN KEY (#quot;resourceId#quot;) REFERENCES agents_resources(id) ON DELETE CASCADE"
 
 "public.agents_resources" {
@@ -51,6 +52,22 @@ erDiagram
   varchar_255_ resourceId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents_memory_entry_candidates" {
+  varchar_36_ agentId FK
+  smallint attemptCount
+  text content
+  timestamp_3__with_time_zone createdAt
+  text evidenceText
+  varchar_36_ id
+  varchar_32_ kind
+  varchar_255_ resourceId FK
+  varchar_255_ runId
+  varchar_36_ sourceMessageId FK
+  varchar_16_ status
+  varchar_255_ threadId FK
+  varchar_255_ toolCallId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_locks" {

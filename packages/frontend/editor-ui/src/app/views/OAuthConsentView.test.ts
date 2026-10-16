@@ -5,8 +5,17 @@ import OAuthConsentView from '@/app/views/OAuthConsentView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 vi.mock('@n8n/rest-api-client/api/consent');
+
+/** The /authorize redirect puts the pending request's flow id in the page URL. */
+const FLOW_ID = 'ktest00-0123456789abcdef01234567';
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => ({ query: { flow: FLOW_ID } }),
+}));
 
 const renderComponent = createComponentRenderer(OAuthConsentView);
 
@@ -48,6 +57,15 @@ describe('OAuthConsentView', () => {
 		locationHrefSpy?.mockRestore();
 	});
 
+	// The URL is the only place the flow id comes from, so the screen has to read
+	// and show the request the /authorize redirect named.
+	it('should load the flow named in the URL', async () => {
+		renderComponent();
+		await waitAllPromises();
+
+		expect(consentStore.fetchConsentDetails).toHaveBeenCalledWith(FLOW_ID);
+	});
+
 	it('should show the workflow name and hide the permission list when a resource is named', async () => {
 		consentStore.consentDetails = {
 			clientName: 'Test MCP Client',
@@ -62,6 +80,24 @@ describe('OAuthConsentView', () => {
 
 		expect(getByText('Test MCP Client requests access to workflow My Workflow')).toBeVisible();
 		expect(queryByText('Get a list of your workflows')).toBeNull();
+	});
+
+	it('should show a neutral heading and the scope picker when a named resource advertises scopes', async () => {
+		consentStore.consentDetails = {
+			clientName: 'Test MCP Client',
+			clientId: 'test-client-id',
+			resourceName: 'n8n public API',
+			scopes: ['workflow:list', 'workflow:create'],
+		};
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
+
+		const { getByText, getByTestId, queryByText } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByText('Test MCP Client requests access to n8n public API')).toBeVisible();
+		expect(getByText(/Choose what Test MCP Client is allowed to do/)).toBeVisible();
+		expect(getByTestId('consent-scopes')).toBeVisible();
+		expect(queryByText(/access this workflow on your behalf/)).toBeNull();
 	});
 
 	it('should show the generic heading and permission list when no resource is named', async () => {
@@ -119,6 +155,64 @@ describe('OAuthConsentView', () => {
 		expect(queryByText('Get a list of your workflows')).toBeNull();
 	});
 
+	it('should redirect immediately without showing the picker or a success message when the server auto-approves', async () => {
+		// The visitor never clicked anything here — a "success" message would be
+		// confusing for something they didn't consciously trigger, so this must render
+		// the same blank state as the initial fetch, not the manual-approve success screen.
+		const redirectUrl = 'https://legitimate-client.com/callback?code=reused';
+		consentStore.fetchConsentDetails.mockResolvedValue({
+			autoApproved: true,
+			redirectUrl,
+		} as never);
+
+		const { queryByTestId, getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(consentStore.approveConsent).not.toHaveBeenCalled();
+		expect(queryByTestId('consent-allow-button')).toBeNull();
+		expect(queryByTestId('consent-deny-button')).toBeNull();
+		expect(queryByTestId('consent-success-screen')).toBeNull();
+		expect(getByTestId('consent-loading')).toBeVisible();
+		expect(window.location.href).toBe(redirectUrl);
+	});
+
+	it('should not flash the generic instance-wide picker while the details fetch is pending', async () => {
+		// Before the fetch resolves, `consentDetails` is still null (its initial state,
+		// and its value on a fetch error too), so the template must not fall through to
+		// the generic/default-resource copy — that's not known to be correct yet.
+		consentStore.consentDetails = null;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let resolveFetch!: (value: any) => void;
+		consentStore.fetchConsentDetails.mockImplementation(
+			async () =>
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				await new Promise<any>((resolve) => {
+					resolveFetch = resolve;
+				}),
+		);
+
+		const { queryByTestId, getByTestId, queryByText } = renderComponent();
+		await nextTick();
+
+		expect(queryByTestId('consent-content')).toBeNull();
+		expect(queryByText('Test MCP Client wants access to your n8n instance')).toBeNull();
+		expect(getByTestId('consent-loading')).toBeVisible();
+
+		// The real store assigns `consentDetails` as part of resolving the fetch;
+		// mirror that so the template's store-bound `clientDetails` picks it up too.
+		const resolvedDetails = {
+			clientName: 'Test MCP Client',
+			clientId: 'test-client-id',
+			scopes: [],
+		};
+		consentStore.consentDetails = resolvedDetails;
+		resolveFetch(resolvedDetails);
+		await waitAllPromises();
+
+		expect(queryByTestId('consent-loading')).toBeNull();
+		expect(getByTestId('consent-content')).toBeVisible();
+	});
+
 	it('should redirect to home page when deny is clicked', async () => {
 		consentStore.approveConsent.mockResolvedValue({
 			status: 'denied',
@@ -132,7 +226,7 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(denyButton);
 		await waitAllPromises();
 
-		expect(consentStore.approveConsent).toHaveBeenCalledWith(false);
+		expect(consentStore.approveConsent).toHaveBeenCalledWith(FLOW_ID, false);
 		expect(window.location.href).toBe(window.BASE_PATH ?? '/');
 	});
 
@@ -152,7 +246,7 @@ describe('OAuthConsentView', () => {
 		await userEvent.click(allowButton);
 		await waitAllPromises();
 
-		expect(consentStore.approveConsent).toHaveBeenCalledWith(true, undefined);
+		expect(consentStore.approveConsent).toHaveBeenCalledWith(FLOW_ID, true, undefined);
 		expect(window.location.href).toBe(redirectUrl);
 	});
 
@@ -185,6 +279,60 @@ describe('OAuthConsentView', () => {
 		expect(getByTestId('consent-redirect-warning')).not.toContainElement(
 			getByTestId('consent-redirect-confirm'),
 		);
+	});
+
+	describe('client icon', () => {
+		it('should render the generic MCP icon for a client whose name matches a known brand', async () => {
+			const details = { clientName: 'Claude Code', clientId: 'c1', scopes: [] };
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'mcp');
+		});
+
+		it('should render the icon supplied by the resource for a third-party client', async () => {
+			const details = {
+				clientName: 'Test MCP Client',
+				clientId: 'c1',
+				scopes: [],
+				uiHints: { icon: 'square-pen' },
+			};
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'square-pen');
+		});
+
+		it('should fall back to the generic MCP icon when the resource hint is blank', async () => {
+			const details = {
+				clientName: 'Test MCP Client',
+				clientId: 'c1',
+				scopes: [],
+				uiHints: { icon: '' },
+			};
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'mcp');
+		});
 	});
 
 	describe('first-party consent', () => {
@@ -293,7 +441,7 @@ describe('OAuthConsentView', () => {
 			await userEvent.click(getByTestId('consent-allow-button'));
 			await waitAllPromises();
 
-			expect(consentStore.approveConsent).toHaveBeenCalledWith(true, [
+			expect(consentStore.approveConsent).toHaveBeenCalledWith(FLOW_ID, true, [
 				'workflow:read',
 				'workflow:write',
 				'execution:read',

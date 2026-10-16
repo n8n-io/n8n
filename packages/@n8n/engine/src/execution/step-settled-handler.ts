@@ -1,10 +1,24 @@
 import { UnexpectedError } from '../common';
-import { deriveLoops, findTriggerNode, getDescendantNodeIds, getSuccessorNodeIds } from '../graph';
+import {
+	deriveLoops,
+	findTriggerNode,
+	getDescendantNodeIds,
+	getSuccessorNodeIds,
+	type GraphNode,
+} from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { stepKeyId, type StepKey, type StepKeyId } from './execution.types';
+import {
+	isLiveExecutionStatus,
+	isSettledStatus,
+	stepKeyId,
+	type StepKey,
+	type StepKeyId,
+	type StepSlots,
+} from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
@@ -29,6 +43,7 @@ export class StepSettledHandler {
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly responseSender: ExecutionResponseSender,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -36,23 +51,25 @@ export class StepSettledHandler {
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),
 		]);
-		validateStepContext(step, execution);
+		const node = validateStepContext(step, execution);
 
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
-			await this.failExecution(execution);
+			await this.failExecution(execution, step, node);
 			return;
 		}
 
-		if (execution.status !== 'running') return;
+		// A `waiting` execution is live, and this settlement may be what lets it
+		// move on, so only an ended one stops here.
+		if (!isLiveExecutionStatus(execution.status)) return;
 
 		let queued = 0;
 		if (step.status === 'completed' || step.status === 'skipped') {
 			// a failure elsewhere may still have its settled event queued behind
 			// this one, so it must end the execution here, before planning
 			if (await this.stepStore.hasFailedSteps(execution.id)) {
-				await this.failExecution(execution);
+				await this.failExecution(execution, step, node);
 				return;
 			}
 
@@ -61,12 +78,18 @@ export class StepSettledHandler {
 
 		// If we've queued steps, we know the execution isn't done yet, so we
 		// definitely don't need to mark it finished.
-		if (queued > 0) return;
+		if (queued === 0) await this.finishExecutionIfDone(execution, step, node);
 
-		await this.finishExecutionIfDone(execution);
+		// If this call just finished the execution, it is no longer live, and the
+		// refresh leaves it alone.
+		await this.executionStore.refreshLiveStatus(execution.id);
 	}
 
-	private async failExecution(execution: ExecutionRecord): Promise<void> {
+	private async failExecution(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+	): Promise<void> {
 		// Only the worker whose write won announces the outcome.
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
 		if (finished) {
@@ -74,12 +97,12 @@ export class StepSettledHandler {
 				type: 'execution:failed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
+			this.announceEnd(execution, step, node, 'failed');
 		}
 
-		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
-		await this.stepStore.cancelQueuedSteps(execution.id);
+		await this.stepStore.cancelPendingSteps(execution.id);
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -97,14 +120,19 @@ export class StepSettledHandler {
 			execution.id,
 			decisionKeys(execution.graph, loops, step, terminalIterations),
 		);
-		const { toQueue, toSkip } = decideSuccessors(
+		const { toQueue, toSeed, toSkip } = decideSuccessors(
 			execution.graph,
 			loops,
 			step,
 			steps,
 			terminalIterations,
 		);
-		if (toQueue.length === 0 && toSkip.length === 0) return 0;
+		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
+
+		// Seeded steps had their outputs passed in at execution start, so we just
+		// write them to the step store and announce completion rather than
+		// enqueueing them to run.
+		const seededOutputs = await this.executionStore.loadSeededOutputs(execution.id, toSeed);
 
 		// One batch, so a settlement's consequence lands atomically and a fan-out
 		// costs one round trip. A row another planner got to first isn't
@@ -114,6 +142,11 @@ export class StepSettledHandler {
 		// settled steps whose decidable successors have no rows.
 		const created = await this.stepStore.createSteps(execution.id, [
 			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
+			...toSeed.map((key) => ({
+				...key,
+				status: 'completed' as const,
+				outputs: seededOutputsFor(execution.id, key, seededOutputs),
+			})),
 			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
 		]);
 
@@ -122,8 +155,9 @@ export class StepSettledHandler {
 
 	/**
 	 * Announces the created rows — `step:ready` for queued ones, `step:settled`
-	 * for skips, which settle at birth — and returns how many were queued.
-	 * Published only after the rows exist, so a consumer can always load them.
+	 * for skips and seeded steps, which settle at birth — and returns how many
+	 * were queued. Published only after the rows exist, so a consumer can always
+	 * load them.
 	 */
 	private async announceCreatedSteps(
 		executionId: string,
@@ -149,7 +183,11 @@ export class StepSettledHandler {
 	 * the count comparison cannot pass early — in-flight events and unplanned
 	 * successors both leave steps outstanding.
 	 */
-	private async finishExecutionIfDone(execution: ExecutionRecord): Promise<void> {
+	private async finishExecutionIfDone(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+	): Promise<void> {
 		const reachable = this.reachableNodeIds(execution);
 		const loops = deriveLoops(execution.graph);
 		const terminalIterations = await loadTerminalIterations(
@@ -179,9 +217,55 @@ export class StepSettledHandler {
 				type: failed ? 'execution:failed' : 'execution:completed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
+			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
 		}
+	}
+
+	/**
+	 * Tells whoever started the execution that it is over.
+	 *
+	 * Only ever called where `finishExecution` won its CAS, so a run announces
+	 * its end exactly once however many workers raced for it.
+	 *
+	 * `lastStep` is the step whose settling ended the run, reported as it is. A
+	 * skip settles at birth and carries no outputs, so a caller that wants the
+	 * step which produced data has to look further; the engine has no opinion on
+	 * which step an answer should come from.
+	 */
+	private announceEnd(
+		execution: ExecutionRecord,
+		step: StepRecord,
+		node: GraphNode,
+		status: 'completed' | 'failed',
+	): void {
+		if (!isSettledStatus(step.status)) {
+			// Steps never unsettle, and this runs only once a step has settled, so
+			// this is a bug in the caller, not a state this step can reach.
+			throw new UnexpectedError(
+				`Step ${step.nodeId} announced its end from status '${step.status}'`,
+			);
+		}
+
+		const { kind } = execution.responseExpectation;
+		if (kind === 'none') return;
+
+		this.responseSender.send({
+			type: 'ended',
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			status,
+			lastStep: {
+				nodeId: step.nodeId,
+				nodeName: node.name,
+				status: step.status,
+				outputs: kind === 'runEnd' ? step.outputs : null,
+				// Name and message only: the caller reports them, and the rest of the
+				// error stays on the step row.
+				error: step.error ? { name: step.error.name, message: step.error.message } : undefined,
+			},
+		});
 	}
 
 	private reachableNodeIds(execution: ExecutionRecord): Set<string> {
@@ -193,4 +277,23 @@ export class StepSettledHandler {
 		}
 		return new Set([trigger.id, ...getDescendantNodeIds(execution.graph, trigger.id)]);
 	}
+}
+
+/**
+ * The start boundary stores outputs for every pass of every node it marks, so
+ * a marked node without outputs for a pass the run reaches is a bug, not a
+ * node to run instead.
+ */
+function seededOutputsFor(
+	executionId: string,
+	key: StepKey,
+	seededOutputs: Map<StepKeyId, StepSlots>,
+): StepSlots {
+	const outputs = seededOutputs.get(stepKeyId(key));
+	if (outputs === undefined) {
+		throw new UnexpectedError(
+			`Execution ${executionId} marks node ${key.nodeId} as seeded but holds no outputs for iteration ${key.iteration}`,
+		);
+	}
+	return outputs;
 }

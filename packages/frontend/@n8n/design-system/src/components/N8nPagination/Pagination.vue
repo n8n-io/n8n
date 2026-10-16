@@ -5,6 +5,7 @@ import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nTooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
+import type { SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
 import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
 
 import type { PaginationEmits, PaginationProps, PaginationSlots } from './Pagination.types';
@@ -134,10 +135,11 @@ function handlePageUpdate(newPage: number) {
 	emit('update:page', newPage);
 }
 
-function handleItemsPerPageUpdate(newSize: number | string) {
-	if (props.disabled) return;
+function handleItemsPerPageUpdate(newSize: SelectValue | undefined) {
+	if (props.disabled || newSize === undefined) return;
 
 	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
+	if (!Number.isFinite(size)) return;
 	if (!isItemsPerPageControlled.value) {
 		uncontrolledItemsPerPage.value = size;
 	}
@@ -355,6 +357,10 @@ function handlePagerKeydown(event: KeyboardEvent) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+
+	.pageSizes {
+		width: max-content;
+	}
 }
 
 .medium {
@@ -373,12 +379,6 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		--jumper-inset: var(--spacing--xs);
 		--jumper-font-size: var(--font-size--sm);
 		--jumper-radius: var(--radius--3xs);
-	}
-
-	// Temporary: Select medium is 36px; match jumper / --height--md (32px)
-	.pageSizes {
-		height: var(--height--md);
-		min-height: var(--height--md);
 	}
 }
 
@@ -401,12 +401,6 @@ function handlePagerKeydown(event: KeyboardEvent) {
 		--jumper-inset: var(--spacing--2xs);
 		--jumper-font-size: var(--font-size--xs);
 		--jumper-radius: var(--radius--3xs);
-	}
-
-	// Temporary: match jumper / --height--sm until Select size tokens align
-	.pageSizes {
-		height: var(--height--sm);
-		min-height: var(--height--sm);
 	}
 }
 

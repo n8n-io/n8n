@@ -4,13 +4,12 @@ tags:
 summary: Update tags of an execution
 description: Update annotation tags of an execution.
 x-required-scope: executionTags:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
-      type: string
+      type: integer
+      minimum: 1
     required: true
+    description: The ID of the execution.
     name: executionId
     in: path
 requestBody:

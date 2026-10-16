@@ -369,6 +369,17 @@ describe('Data Transformation Functions', () => {
 					evaluate('={{ DateTime.fromISO("2024-03-30T18:49:00Z").plus(1, "day").toJSDate() }}'),
 				).toEqual(new Date('2024-03-31T18:49:00.000Z'));
 			});
+
+			it('should give back a DateTime when a negative amount moves $now backwards', () => {
+				const before = DateTime.now().minus({ hours: 24 }).toMillis();
+
+				const result = evaluate('={{ $now.plus(-24, "hour") }}');
+
+				// A DateTime, not the ISO string it prints as: a node that puts this
+				// value into JSON text must be able to quote it.
+				expect(DateTime.isDateTime(result)).toBe(true);
+				expect(Math.abs(asDateTime(result).toMillis() - before)).toBeLessThan(60_000);
+			});
 		});
 
 		describe('.isDst', () => {

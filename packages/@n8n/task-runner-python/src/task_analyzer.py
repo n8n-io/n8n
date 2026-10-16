@@ -52,6 +52,10 @@ class SecurityValidator(ast.NodeVisitor):
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.asname)
                 )
+            elif alias.asname and alias.asname in BLOCKED_ATTRIBUTES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=alias.asname)
+                )
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -67,9 +71,17 @@ class SecurityValidator(ast.NodeVisitor):
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.asname)
                 )
+            elif alias.asname and alias.asname in BLOCKED_ATTRIBUTES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=alias.asname)
+                )
             elif alias.name in BLOCKED_NAMES:
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_NAME.format(name=alias.name)
+                )
+            elif alias.name in BLOCKED_ATTRIBUTES:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=alias.name)
                 )
 
         self.generic_visit(node)

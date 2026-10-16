@@ -1,5 +1,6 @@
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -18,7 +19,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 			description:
 				'The default maximum decompressed size is reduced from 2 GiB to 256 MiB and the default maximum number of ZIP entries from 5000 to 1000. Compression nodes handling archives beyond the new limits will fail.',
 			category: BreakingChangeCategory.environment,
-			severity: 'low',
+			impact: 'executionsFail',
 		};
 	}
 
@@ -44,7 +45,7 @@ export class CompressionNodeLimitsRule implements IBreakingChangeInstanceRule {
 		}
 
 		if (instanceIssues.length === 0) {
-			return { isAffected: false, instanceIssues: [], recommendations: [] };
+			return NOT_AFFECTED_INSTANCE;
 		}
 
 		return {

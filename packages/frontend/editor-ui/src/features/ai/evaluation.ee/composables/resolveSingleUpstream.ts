@@ -14,7 +14,7 @@
  */
 export function resolveSingleUpstream(
 	parents: string[],
-	evaluationTriggerNames: Set<string>,
+	evaluationTriggerNames: { has(name: string): boolean },
 ): string | undefined {
 	const nonEvalParents = parents.filter((p) => !evaluationTriggerNames.has(p));
 	if (nonEvalParents.length === 1) return nonEvalParents[0];

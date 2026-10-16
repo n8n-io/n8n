@@ -269,7 +269,7 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 			...(url ? { url } : {}),
 			...(fileId ? { fileId } : {}),
 			...(Object.keys(rest).length > 0 ? { metadata: rest } : {}),
-		} as LangchainMessages.ContentBlock.Multimodal.Standard;
+		};
 	}
 	if (isN8nToolCallBlock(block)) {
 		return {
@@ -277,7 +277,7 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 			id: block.toolCallId,
 			name: block.toolName,
 			args: jsonParse<Record<string, unknown>>(block.input, { fallbackValue: {} }),
-		} as LangchainMessages.ContentBlock.Tools.ToolCall;
+		};
 	}
 	if (isN8nInvalidToolCallBlock(block)) {
 		return {
@@ -286,7 +286,7 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 			error: block.error,
 			args: block.args,
 			name: block.name,
-		} as LangchainMessages.ContentBlock.Tools.InvalidToolCall;
+		};
 	}
 	if (isN8nToolResultBlock(block)) {
 		return {
@@ -295,7 +295,7 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			output: block.result,
 			status: block.isError ? 'error' : 'success',
-		} as unknown as LangchainMessages.ContentBlock.Tools.ServerToolCallResult;
+		};
 	}
 	if (isN8nCitationBlock(block)) {
 		return {
@@ -306,13 +306,13 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 			startIndex: block.startIndex,
 			endIndex: block.endIndex,
 			citedText: block.text,
-		} as unknown as LangchainMessages.ContentBlock;
+		};
 	}
 	if (isN8nProviderBlock(block)) {
 		return {
 			type: 'non_standard',
 			value: block.value,
-		} as LangchainMessages.ContentBlock.NonStandard;
+		};
 	}
 	throw new Error(`Failed to convert to Langchain content block: ${JSON.stringify(block)}`);
 }

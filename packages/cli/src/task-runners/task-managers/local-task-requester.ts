@@ -1,11 +1,10 @@
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type { RequesterMessage } from '@n8n/task-runner';
 import { ErrorReporter } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
-import type { RequesterMessageCallback } from '@/task-runners/task-broker/task-broker.service';
 import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 
 import { TaskRequester } from './task-requester';
@@ -30,10 +29,7 @@ export class LocalTaskRequester extends TaskRequester {
 	registerRequester() {
 		this.taskBroker = Container.get(TaskBroker);
 
-		this.taskBroker.registerRequester(
-			this.id,
-			this.onMessage.bind(this) as RequesterMessageCallback,
-		);
+		this.taskBroker.registerRequester(this.id, this.onMessage.bind(this));
 	}
 
 	sendMessage(message: RequesterMessage.ToBroker.All) {

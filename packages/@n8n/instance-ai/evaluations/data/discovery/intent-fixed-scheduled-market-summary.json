@@ -1,0 +1,26 @@
+{
+	"id": "intent-fixed-scheduled-market-summary",
+	"userMessage": "Every weekday at 8am, fetch the latest closing prices for the S&P 500 and Nasdaq, format them into a two-line summary, and email it to me.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["workflow-builder"]
+			},
+			{
+				"toolName": "build-workflow"
+			}
+		],
+		"noneOfToolCalls": [
+			{
+				"toolName": "build-agent"
+			},
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["agent-builder"]
+			}
+		]
+	},
+	"rationale": "This scheduled report has fixed inputs, formatting, and delivery. It guards against routing every recurring role-like task to an Agent.",
+	"timeoutMs": 120000
+}
