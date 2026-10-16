@@ -94,7 +94,11 @@ export async function execute(
 
 							if (Array.isArray(rawEvaluated)) {
 								for (const item of rawEvaluated) {
-									if (item === undefined) continue;
+									if (item === undefined) {
+										// From v2.8 a missing element becomes SQL NULL, so later values keep their position
+										if (nodeVersion >= 2.8) values.push(null);
+										continue;
+									}
 									values.push(
 										typeof item === 'object' && item !== null ? JSON.stringify(item) : item,
 									);

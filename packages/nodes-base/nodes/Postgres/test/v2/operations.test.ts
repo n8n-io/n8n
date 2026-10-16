@@ -651,6 +651,20 @@ describe('Test PostgresV2, executeQuery operation', () => {
 				expectedValues: ['x', 'y', 'abc'],
 			},
 			{
+				description: 'pass a missing array element as SQL NULL',
+				nodeVersion: 2.8,
+				queryReplacement: '={{ [$json.a, $json.b] }}, {{ $json.c }}',
+				evaluated: { '{{ [$json.a, $json.b] }}': [undefined, 'x'], '{{ $json.c }}': 'abc' },
+				expectedValues: [null, 'x', 'abc'],
+			},
+			{
+				description: 'skip a missing array element before v2.8',
+				nodeVersion: 2.7,
+				queryReplacement: '={{ [$json.a, $json.b] }}, {{ $json.c }}',
+				evaluated: { '{{ [$json.a, $json.b] }}': [undefined, 'x'], '{{ $json.c }}': 'abc' },
+				expectedValues: ['x', 'abc'],
+			},
+			{
 				description: 'split a literal comma-separated list without expressions',
 				nodeVersion: 2.8,
 				queryReplacement: 'a, b, c',
