@@ -990,44 +990,6 @@ describe('AgentPublishService', () => {
 		expect(telemetry.track).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports a skills change when a revert with the hub off keeps the ids and restores other bodies', async () => {
-		const {
-			service,
-			agentRepository,
-			taskSnapshotRepository,
-			agentTaskRepository,
-			telemetry,
-			skillRefs,
-		} = makeService();
-		Object.assign(skillRefs, { usesSkillsHub: false });
-		const refs: AgentJsonConfig['skills'] = [{ type: 'skill', id: 'skill-1' }];
-		const activeVersion = makeHistory({
-			versionId: 'published-v1',
-			schema: { ...schema, skills: refs },
-			skills: { 'skill-1': { name: 'Notes', description: 'Notes', instructions: 'Published.' } },
-		});
-		const agent = makeAgent({
-			activeVersionId: 'published-v1',
-			activeVersion,
-			schema: { ...schema, skills: refs },
-			skills: { 'skill-1': { name: 'Notes', description: 'Notes', instructions: 'Draft.' } },
-		});
-		// As the legacy writer: the refs stay, and the bodies of the version come back.
-		skillRefs.restoreDraftRefs.mockImplementation(async (draft, version) => {
-			draft.skills = structuredClone(version.skills ?? {});
-		});
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
-		agentTaskRepository.replaceForAgent.mockResolvedValue(false);
-
-		await service.revertToPublishedAgent(agentId, projectId, user, 'user');
-
-		expect(telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
-			expect.objectContaining({ changed_parts: expect.arrayContaining(['skills']) }),
-		);
-	});
-
 	it('reads the selected version without using draft or active-version bodies', async () => {
 		const {
 			service,

@@ -86,8 +86,8 @@ const scopeTypes = computed(() => {
 	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
 		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');
 	}
-	// Project skills exist only while the skills hub is on.
-	if (!settingsStore.moduleSettings.agents?.skillsHubEnabled) {
+	// Project skills exist only while the agents module is active.
+	if (!settingsStore.moduleSettings.agents) {
 		types = types.filter((type) => type !== 'projectSkill');
 	}
 	return types;

@@ -11,15 +11,11 @@ import { AgentRepository } from '../repositories/agent.repository';
 import { SkillRepository } from '../repositories/skill.repository';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
 import { toSkillContent } from './skill.service';
-import { SkillsHubRollout } from './skills-hub-rollout';
 
 /** `skill.id` is varchar(36). A longer inline ref id gets a new id. */
 const SKILL_ID_MAX_LENGTH = 36;
 
 const BATCH_SIZE = 100;
-
-/** How many agent ids the flag-off warning names. It counts all of them. */
-const WARN_AGENT_IDS = 20;
 
 type CopyCounts = {
 	/** Agents checked, whether or not they needed a copy. */
@@ -60,9 +56,10 @@ type AgentCopyState = {
 
 /**
  * Copies the inline skills of agents (`agents.skills`, `agent_history.skills`) into the
- * skills hub when the rollout flag is on, so agents read and write only the hub. Each
- * inline skill becomes an agent skill of its agent. The legacy columns stay as they are,
- * so turning the flag off gives agents their inline skills back.
+ * skills hub. Each inline skill becomes an agent skill of its agent. The migration
+ * `MigrateAgentSkillsToHub` copies them once with the same rules. This copy catches what
+ * an older main writes inline during a rolling upgrade: new agents and new published
+ * versions.
  *
  * Every main runs it at startup, before it serves agents. It does not wait for the
  * leader: a main promoted during startup could miss both the startup check and the
@@ -80,19 +77,16 @@ type AgentCopyState = {
 export class SkillsHubStartupCopy {
 	constructor(
 		private readonly logger: Logger,
-		private readonly rollout: SkillsHubRollout,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentRepository: AgentRepository,
 		private readonly skillRepository: SkillRepository,
 		private readonly txRunner: TransactionRunner,
 	) {}
 
-	/** Called when the agents module starts, after the rollout flag is read. */
+	/** Called when the agents module starts. */
 	async runOnStartup(): Promise<void> {
 		if (this.instanceSettings.instanceType !== 'main') return;
-		if (this.rollout.isEnabled) await this.copyAll();
-		// One warning per instance is enough: only the leader logs it.
-		else if (this.instanceSettings.isLeader) await this.warnAboutHubOnlySkills();
+		await this.copyAll();
 	}
 
 	async copyAll(): Promise<CopyCounts> {
@@ -152,34 +146,6 @@ export class SkillsHubStartupCopy {
 			durationMs: Date.now() - startedAt,
 		});
 		return counts;
-	}
-
-	/**
-	 * With the flag off, agents read their inline skills again. Skills that were added or
-	 * changed in the hub while it was on are not there, so name the agents whose hub draft
-	 * runs other content than their inline skills.
-	 */
-	private async warnAboutHubOnlySkills(): Promise<void> {
-		const changed: string[] = [];
-		const withRefs = await this.skillRepository.findAgentIdsWithDraftRefs();
-		for (let start = 0; start < withRefs.length; start += BATCH_SIZE) {
-			const page = withRefs.slice(start, start + BATCH_SIZE);
-			const hubHashes = await this.skillRepository.findDraftContentHashes(page);
-			for (const agentId of page) {
-				const agent = await this.agentRepository.findForSkillCopy(agentId);
-				const inline = agent
-					? inlineSkills(agent).map(({ body }) => skillContentHash(toSkillContent(body)))
-					: [];
-				if (!sameHashes(inline, hubHashes.get(agentId) ?? [])) changed.push(agentId);
-			}
-		}
-		const count = changed.length;
-		if (count === 0) return;
-		const agentIds = changed.slice(0, WARN_AGENT_IDS);
-		this.logger.warn(
-			'The skills hub is off, so agents run their inline skills. Skills that were added or changed in the hub while it was on are not available to these agents until it is on again.',
-			{ agents: count, agentIds },
-		);
 	}
 
 	/**
@@ -351,13 +317,6 @@ export class SkillsHubStartupCopy {
 		}
 		return `skill_${generateNanoId()}`;
 	}
-}
-
-/** Whether two lists hold the same hashes, in any order. */
-function sameHashes(left: string[], right: string[]): boolean {
-	if (left.length !== right.length) return false;
-	const sortedRight = [...right].sort();
-	return [...left].sort().every((hash, index) => hash === sortedRight[index]);
 }
 
 /** Keeps one version of each skill for each content: the first one seen, which is the oldest. */

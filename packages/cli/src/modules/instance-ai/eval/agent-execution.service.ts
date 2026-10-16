@@ -360,7 +360,7 @@ export class EvalAgentExecutionService {
 				{
 					agent: agentEntity,
 					skillRefs: pruned.skillRefs,
-					skills: await agentSkillRefs.skillsForRefs(agentEntity, pruned.skillRefs, {}),
+					skills: await agentSkillRefs.skillsForRefs(pruned.skillRefs, {}),
 				},
 				credentialProvider,
 				'test',
