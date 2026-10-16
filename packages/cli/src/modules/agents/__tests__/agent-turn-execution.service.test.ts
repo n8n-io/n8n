@@ -7,6 +7,7 @@ import { AgentMessageQueueService } from '../agent-message-queue.service';
 import { AgentMessageSteeringService } from '../agent-message-steering.service';
 import { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentTurnExecutionService, type AgentTurnRequest } from '../agent-turn-execution.service';
+import { AgentTaskCancellationRepository } from '../repositories/agent-task-cancellation.repository';
 
 it('ends a preview turn stopped during preparation without recording an error', async () => {
 	const executions = mock<AgentExecutionService>();
@@ -15,6 +16,7 @@ it('ends a preview turn stopped during preparation without recording an error', 
 		async (_threadId, action) => await action(new AbortController().signal),
 	);
 	const service = new AgentTurnExecutionService(
+		mock<AgentTaskCancellationRepository>(),
 		mock<Logger>(),
 		executions,
 		chatExecutions,
