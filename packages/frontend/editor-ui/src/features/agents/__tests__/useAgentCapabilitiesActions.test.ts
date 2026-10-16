@@ -69,6 +69,7 @@ function setup(
 		agent?: Ref<AgentResource | null>;
 		agentId?: Ref<string>;
 		projectId?: Ref<string>;
+		openSkillEditor?: (data: unknown) => void;
 	} = {},
 ) {
 	setActivePinia(createTestingPinia({ stubActions: false }));
@@ -1044,5 +1045,31 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 
 		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
 		expect(modalData.hubSkillsEnabled).toBe(false);
+	});
+});
+
+describe('useAgentCapabilitiesActions — skill editor host', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('hands the add-skill data to the host instead of opening the modal', async () => {
+		const openSkillEditor = vi.fn();
+		const { uiStore, actions } = setup({ openSkillEditor });
+
+		await actions.onOpenAddSkillModal();
+
+		expect(openSkillEditor).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: 'project-1', agentId: 'inline:node-1' }),
+		);
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open).not.toBe(true);
+	});
+
+	it('opens the skill modal when the host gives no editor', async () => {
+		const { uiStore, actions } = setup();
+
+		await actions.onOpenAddSkillModal();
+
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY].open).toBe(true);
 	});
 });

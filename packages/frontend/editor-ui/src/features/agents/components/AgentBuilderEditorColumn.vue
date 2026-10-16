@@ -37,6 +37,7 @@ import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
+import AgentSkillEditor, { type AgentSkillEditorData } from './AgentSkillEditor.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -70,6 +71,7 @@ const props = defineProps<{
 	savedDescription?: string;
 	/** Persists n8n Chat's description, forwarded to the channel modal. */
 	saveDescription?: (description: string) => Promise<void>;
+	skillEditor?: { key: number; data: AgentSkillEditorData } | null;
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
@@ -107,6 +109,7 @@ const emit = defineEmits<{
 	'open-skill': [id: string];
 	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
+	'close-skill-editor': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
 	'upload-files': [files: File[]];
@@ -168,252 +171,263 @@ defineExpose({ onSetupTaskAction });
 		data-testid="agent-builder-editor-column"
 	>
 		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
-			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
-				<AgentIdentityHeader
-					:config="localConfig"
-					:disabled="childrenDisabled"
-					:class="$style.identityHeader"
-					@update:config="emit('update:config', $event)"
+			<div v-if="props.skillEditor" :class="$style.panelAreaContainer">
+				<AgentSkillEditor
+					:key="props.skillEditor.key"
+					layout="page"
+					:data="props.skillEditor.data"
+					:exit-label="i18n.baseText('agents.builder.skills.backToAgent')"
+					@close="emit('close-skill-editor')"
 				/>
 			</div>
-			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
-				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
-					<N8nTabs
-						:model-value="activeMainTab"
-						:options="mainTabOptions"
-						:class="$style.mainTabs"
-						data-testid="agent-header-tabs"
-						@update:model-value="emit('update:activeMainTab', $event)"
-					/>
-				</div>
-			</div>
-			<div :class="$style.panelAreaContainer">
-				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentInfoPanel
-						ref="agentInfoPanel"
+			<template v-else>
+				<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
+					<AgentIdentityHeader
 						:config="localConfig"
 						:disabled="childrenDisabled"
-						:project-id="projectId"
-						@update:config="(changes, meta) => emit('update:config', changes, meta)"
-						@draft:config="emit('draft:config')"
-					/>
-
-					<AgentPanel
-						:header="i18n.baseText('agents.builder.skills.title')"
-						:description="i18n.baseText('agents.builder.skills.description')"
-						data-testid="agent-skills-panel"
-					>
-						<AgentSkillsSection
-							:skills="appliedSkills"
-							:disabled="childrenDisabled"
-							:show-label="false"
-							:validation-issues="configValidationIssues ?? []"
-							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
-							@open-skill="emit('open-skill', $event)"
-							@add-skill="emit('add-skill')"
-							@remove-skill="emit('remove-skill', $event)"
-						/>
-					</AgentPanel>
-
-					<AgentPanel
-						:header="i18n.baseText('agents.builder.triggers.title')"
-						:description="i18n.baseText('agents.builder.triggers.description')"
-					>
-						<template #header-actions>
-							<AgentPreviewButton
-								:icon-only="true"
-								:is-runnable="props.agent?.isRunnable === true"
-								:validation-issues="props.configValidationIssues ?? []"
-								test-id="agent-triggers-preview-chat-button"
-								@open-preview="emit('open-preview')"
-							/>
-						</template>
-						<AgentTriggersSection
-							ref="agentTriggersSection"
-							:key="`${projectId}:${agentId}`"
-							:connected-triggers="connectedTriggers"
-							:disabled="childrenDisabled"
-							:agent-id="agentId"
-							:project-id="projectId"
-							:is-published="Boolean(agent?.activeVersionId)"
-							:is-runnable="props.agent?.isRunnable === true"
-							:validation-issues="configValidationIssues ?? []"
-							:simple-channel-setup="artifactMode"
-							:agent-unsaved="agentUnsaved"
-							:ensure-agent-persisted="ensureAgentPersisted"
-							:saved-description="savedDescription"
-							:save-description="saveDescription"
-							:task-refs="localConfig?.tasks ?? []"
-							:reload-key="tasksReloadKey"
-							@update:connected-triggers="emit('update:connected-triggers', $event)"
-							@trigger-added="emit('trigger-added', $event)"
-							@agent-changed="emit('agent-changed')"
-							@toggle-task="emit('toggle-task', $event)"
-							@tasks-changed="emit('tasks-changed')"
-							@preview-task="emit('preview-task', $event)"
-						/>
-					</AgentPanel>
-
-					<AgentPanel
-						:header="i18n.baseText('agents.builder.capabilities.title')"
-						:description="i18n.baseText('agents.builder.capabilities.description')"
-					>
-						<AgentCapabilitiesSection
-							supports-activation
-							:config="localConfig"
-							:tools="localConfig?.tools ?? []"
-							:custom-tools="agent?.tools ?? {}"
-							:skills="appliedSkills"
-							:disabled="childrenDisabled"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:is-published="Boolean(agent?.activeVersionId)"
-							:validation-issues="configValidationIssues ?? []"
-							:agent-unsaved="agentUnsaved"
-							:sections="['tools', 'subAgents', 'tasks']"
-							@open-tool="emit('open-tool', $event)"
-							@add-tool="emit('add-tool', $event)"
-							@update:config="emit('update:config', $event)"
-							@remove-tool="emit('remove-tool', $event)"
-						/>
-					</AgentPanel>
-
-					<AgentMemoryPanel
-						v-if="canEditAgent"
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						data-testid="agent-memory-panel"
+						:class="$style.identityHeader"
 						@update:config="emit('update:config', $event)"
 					/>
-				</AgentBuilderTabPanel>
-
-				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'knowledge'"
-					data-testid="agent-knowledge-tab-content"
-				>
-					<AgentPanel
-						v-if="knowledgeBaseEnabled"
-						:header="i18n.baseText('agents.builder.files.title')"
-						:description="i18n.baseText('agents.builder.files.titleTooltip')"
-					>
-						<AgentFilesPanel
-							:files="agentFiles"
-							:disabled="childrenDisabled"
-							:loading="agentFilesLoading"
-							:uploading="agentFilesUploading"
-							:deleting-file-id="deletingAgentFileId"
-							data-testid="agent-files-card"
-							@upload-files="emit('upload-files', $event)"
-							@delete-file="emit('delete-file', $event)"
-						/>
-					</AgentPanel>
-					<AgentPanel :header="i18n.baseText('agents.builder.knowledge.advanced.title')">
-						<template #header="{ headerId }">
-							<button
-								:id="headerId"
-								type="button"
-								:class="$style.advancedTrigger"
-								:aria-expanded="isKnowledgeAdvancedExpanded"
-								data-testid="agent-knowledge-advanced-trigger"
-								@click="isKnowledgeAdvancedExpanded = !isKnowledgeAdvancedExpanded"
-							>
-								<N8nText tag="span" bold data-testid="agent-knowledge-tab-content-advanced">
-									{{ i18n.baseText('agents.builder.knowledge.advanced.title') }}
-								</N8nText>
-								<N8nIcon
-									:icon="isKnowledgeAdvancedExpanded ? 'chevron-up' : 'chevron-down'"
-									size="medium"
-									color="text-light"
-									aria-hidden="true"
-									data-testid="agent-knowledge-advanced-chevron"
-								/>
-							</button>
-						</template>
-						<div
-							v-if="isKnowledgeAdvancedExpanded"
-							:class="$style.advancedContent"
-							data-testid="agent-knowledge-advanced-content"
-						>
-							<AgentVectorStoresPanel
-								:vector-stores="localConfig?.vectorStores ?? []"
-								:disabled="childrenDisabled"
-								data-testid="agent-vector-stores-card"
-								@connect="emit('add-vector-store')"
-								@edit="emit('edit-vector-store', $event)"
-								@remove="emit('remove-vector-store', $event)"
-							/>
-						</div>
-					</AgentPanel>
-				</AgentBuilderTabPanel>
-
-				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'sessions'"
-					data-testid="agent-sessions-tab-content"
-				>
-					<AgentSessionsListView
-						:embedded="true"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:manage-store-lifecycle="false"
-						data-testid="agent-executions-panel"
-					/>
-				</AgentBuilderTabPanel>
-
-				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'settings'"
-					data-testid="agent-settings-tab-content"
-				>
-					<div :class="$style.settingsCards">
-						<AgentBudgetPanel
-							:config="localConfig"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:disabled="childrenDisabled"
-							@update:config="emit('update:budget-config', $event)"
-						/>
-						<AgentSubAgentsPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							:project-id="projectId"
-							:agent-id="agentId"
-							@update:config="emit('update:config', $event)"
-						/>
-						<N8nCard
-							v-if="isMcpAvailable"
-							:class="$style.settingsCard"
-							data-testid="agent-settings-card"
-						>
-							<AgentMcpPanel
-								:available-in-mcp="agentAvailableInMcp ?? false"
-								:disabled="childrenDisabled"
-								data-testid="agent-mcp-panel"
-								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
-							/>
-						</N8nCard>
-						<AgentAdvancedPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							:project-id="projectId"
-							@update:config="emit('update:config', $event)"
+				</div>
+				<div :class="$style.tabsRow" data-testid="agent-tabs-row">
+					<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
+						<N8nTabs
+							:model-value="activeMainTab"
+							:options="mainTabOptions"
+							:class="$style.mainTabs"
+							data-testid="agent-header-tabs"
+							@update:model-value="emit('update:activeMainTab', $event)"
 						/>
 					</div>
-				</AgentBuilderTabPanel>
+				</div>
+				<div :class="$style.panelAreaContainer">
+					<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
+						<AgentInfoPanel
+							ref="agentInfoPanel"
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							@update:config="(changes, meta) => emit('update:config', changes, meta)"
+							@draft:config="emit('draft:config')"
+						/>
 
-				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'evals'"
-					data-testid="agent-evals-tab-content"
-				>
-					<AgentEvalsSection
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent-unsaved="agentUnsaved"
-						:disabled="childrenDisabled"
-						:can-run="canExecuteAgent"
-						:generating="generatingEvalCases"
-						@generate="emit('generate-eval-cases')"
-					/>
-				</AgentBuilderTabPanel>
-			</div>
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.skills.title')"
+							:description="i18n.baseText('agents.builder.skills.description')"
+							data-testid="agent-skills-panel"
+						>
+							<AgentSkillsSection
+								:skills="appliedSkills"
+								:disabled="childrenDisabled"
+								:show-label="false"
+								:validation-issues="configValidationIssues ?? []"
+								:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+								@open-skill="emit('open-skill', $event)"
+								@add-skill="emit('add-skill')"
+								@remove-skill="emit('remove-skill', $event)"
+							/>
+						</AgentPanel>
+
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.triggers.title')"
+							:description="i18n.baseText('agents.builder.triggers.description')"
+						>
+							<template #header-actions>
+								<AgentPreviewButton
+									:icon-only="true"
+									:is-runnable="props.agent?.isRunnable === true"
+									:validation-issues="props.configValidationIssues ?? []"
+									test-id="agent-triggers-preview-chat-button"
+									@open-preview="emit('open-preview')"
+								/>
+							</template>
+							<AgentTriggersSection
+								ref="agentTriggersSection"
+								:key="`${projectId}:${agentId}`"
+								:connected-triggers="connectedTriggers"
+								:disabled="childrenDisabled"
+								:agent-id="agentId"
+								:project-id="projectId"
+								:is-published="Boolean(agent?.activeVersionId)"
+								:is-runnable="props.agent?.isRunnable === true"
+								:validation-issues="configValidationIssues ?? []"
+								:simple-channel-setup="artifactMode"
+								:agent-unsaved="agentUnsaved"
+								:ensure-agent-persisted="ensureAgentPersisted"
+								:saved-description="savedDescription"
+								:save-description="saveDescription"
+								:task-refs="localConfig?.tasks ?? []"
+								:reload-key="tasksReloadKey"
+								@update:connected-triggers="emit('update:connected-triggers', $event)"
+								@trigger-added="emit('trigger-added', $event)"
+								@agent-changed="emit('agent-changed')"
+								@toggle-task="emit('toggle-task', $event)"
+								@tasks-changed="emit('tasks-changed')"
+								@preview-task="emit('preview-task', $event)"
+							/>
+						</AgentPanel>
+
+						<AgentPanel
+							:header="i18n.baseText('agents.builder.capabilities.title')"
+							:description="i18n.baseText('agents.builder.capabilities.description')"
+						>
+							<AgentCapabilitiesSection
+								supports-activation
+								:config="localConfig"
+								:tools="localConfig?.tools ?? []"
+								:custom-tools="agent?.tools ?? {}"
+								:skills="appliedSkills"
+								:disabled="childrenDisabled"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:is-published="Boolean(agent?.activeVersionId)"
+								:validation-issues="configValidationIssues ?? []"
+								:agent-unsaved="agentUnsaved"
+								:sections="['tools', 'subAgents', 'tasks']"
+								@open-tool="emit('open-tool', $event)"
+								@add-tool="emit('add-tool', $event)"
+								@update:config="emit('update:config', $event)"
+								@remove-tool="emit('remove-tool', $event)"
+							/>
+						</AgentPanel>
+
+						<AgentMemoryPanel
+							v-if="canEditAgent"
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							data-testid="agent-memory-panel"
+							@update:config="emit('update:config', $event)"
+						/>
+					</AgentBuilderTabPanel>
+
+					<AgentBuilderTabPanel
+						v-else-if="activeMainTab === 'knowledge'"
+						data-testid="agent-knowledge-tab-content"
+					>
+						<AgentPanel
+							v-if="knowledgeBaseEnabled"
+							:header="i18n.baseText('agents.builder.files.title')"
+							:description="i18n.baseText('agents.builder.files.titleTooltip')"
+						>
+							<AgentFilesPanel
+								:files="agentFiles"
+								:disabled="childrenDisabled"
+								:loading="agentFilesLoading"
+								:uploading="agentFilesUploading"
+								:deleting-file-id="deletingAgentFileId"
+								data-testid="agent-files-card"
+								@upload-files="emit('upload-files', $event)"
+								@delete-file="emit('delete-file', $event)"
+							/>
+						</AgentPanel>
+						<AgentPanel :header="i18n.baseText('agents.builder.knowledge.advanced.title')">
+							<template #header="{ headerId }">
+								<button
+									:id="headerId"
+									type="button"
+									:class="$style.advancedTrigger"
+									:aria-expanded="isKnowledgeAdvancedExpanded"
+									data-testid="agent-knowledge-advanced-trigger"
+									@click="isKnowledgeAdvancedExpanded = !isKnowledgeAdvancedExpanded"
+								>
+									<N8nText tag="span" bold data-testid="agent-knowledge-tab-content-advanced">
+										{{ i18n.baseText('agents.builder.knowledge.advanced.title') }}
+									</N8nText>
+									<N8nIcon
+										:icon="isKnowledgeAdvancedExpanded ? 'chevron-up' : 'chevron-down'"
+										size="medium"
+										color="text-light"
+										aria-hidden="true"
+										data-testid="agent-knowledge-advanced-chevron"
+									/>
+								</button>
+							</template>
+							<div
+								v-if="isKnowledgeAdvancedExpanded"
+								:class="$style.advancedContent"
+								data-testid="agent-knowledge-advanced-content"
+							>
+								<AgentVectorStoresPanel
+									:vector-stores="localConfig?.vectorStores ?? []"
+									:disabled="childrenDisabled"
+									data-testid="agent-vector-stores-card"
+									@connect="emit('add-vector-store')"
+									@edit="emit('edit-vector-store', $event)"
+									@remove="emit('remove-vector-store', $event)"
+								/>
+							</div>
+						</AgentPanel>
+					</AgentBuilderTabPanel>
+
+					<AgentBuilderTabPanel
+						v-else-if="activeMainTab === 'sessions'"
+						data-testid="agent-sessions-tab-content"
+					>
+						<AgentSessionsListView
+							:embedded="true"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:manage-store-lifecycle="false"
+							data-testid="agent-executions-panel"
+						/>
+					</AgentBuilderTabPanel>
+
+					<AgentBuilderTabPanel
+						v-else-if="activeMainTab === 'settings'"
+						data-testid="agent-settings-tab-content"
+					>
+						<div :class="$style.settingsCards">
+							<AgentBudgetPanel
+								:config="localConfig"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:disabled="childrenDisabled"
+								@update:config="emit('update:budget-config', $event)"
+							/>
+							<AgentSubAgentsPanel
+								:config="localConfig"
+								:disabled="childrenDisabled"
+								:project-id="projectId"
+								:agent-id="agentId"
+								@update:config="emit('update:config', $event)"
+							/>
+							<N8nCard
+								v-if="isMcpAvailable"
+								:class="$style.settingsCard"
+								data-testid="agent-settings-card"
+							>
+								<AgentMcpPanel
+									:available-in-mcp="agentAvailableInMcp ?? false"
+									:disabled="childrenDisabled"
+									data-testid="agent-mcp-panel"
+									@toggle-mcp-access="emit('toggle-mcp-access', $event)"
+								/>
+							</N8nCard>
+							<AgentAdvancedPanel
+								:config="localConfig"
+								:disabled="childrenDisabled"
+								:project-id="projectId"
+								@update:config="emit('update:config', $event)"
+							/>
+						</div>
+					</AgentBuilderTabPanel>
+
+					<AgentBuilderTabPanel
+						v-else-if="activeMainTab === 'evals'"
+						data-testid="agent-evals-tab-content"
+					>
+						<AgentEvalsSection
+							:project-id="projectId"
+							:agent-id="agentId"
+							:agent-unsaved="agentUnsaved"
+							:disabled="childrenDisabled"
+							:can-run="canExecuteAgent"
+							:generating="generatingEvalCases"
+							@generate="emit('generate-eval-cases')"
+						/>
+					</AgentBuilderTabPanel>
+				</div>
+			</template>
 		</div>
 	</section>
 </template>

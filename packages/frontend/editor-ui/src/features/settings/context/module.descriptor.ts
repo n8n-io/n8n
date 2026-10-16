@@ -57,5 +57,29 @@ export const ContextModule: FrontendModuleDescription = {
 			},
 			beforeEnter: () => isContextSkillsEnabled() || { name: VIEWS.HOMEPAGE },
 		},
+		{
+			path: 'context/skills/new',
+			name: VIEWS.SETTINGS_CONTEXT_SKILL_NEW,
+			component: async () => await import('./views/SettingsSkillView.vue'),
+			meta: {
+				middleware: ['authenticated'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+			beforeEnter: () => isContextSkillsEnabled() || { name: VIEWS.HOMEPAGE },
+		},
+		{
+			path: 'context/skills/:skillId',
+			name: VIEWS.SETTINGS_CONTEXT_SKILL,
+			component: async () => await import('./views/SettingsSkillView.vue'),
+			meta: {
+				middleware: ['authenticated'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+			beforeEnter: () => isContextSkillsEnabled() || { name: VIEWS.HOMEPAGE },
+		},
 	],
 };

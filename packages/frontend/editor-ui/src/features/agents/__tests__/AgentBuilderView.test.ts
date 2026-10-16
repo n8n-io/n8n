@@ -726,6 +726,12 @@ const commonStubs = {
 		props: ['skills', 'disabled', 'showLabel', 'validationIssues'],
 		emits: ['open-skill', 'add-skill', 'remove-skill'],
 	},
+	AgentSkillEditor: {
+		name: 'AgentSkillEditor',
+		template: '<div data-testid="stub-agent-skill-editor" />',
+		props: ['data', 'layout', 'exitLabel'],
+		emits: ['close'],
+	},
 	AgentSubAgentsPanel: {
 		name: 'AgentSubAgentsPanel',
 		template: '<div data-testid="stub-agent-sub-agents-panel" />',
@@ -5452,7 +5458,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(vm.localConfig.tools).toEqual(tools);
 	});
 
-	it('shows applied skills and opens a skill modal from the Skills section', async () => {
+	it('shows applied skills and opens a skill page from the Skills section', async () => {
 		const skill = {
 			name: 'summarize_notes',
 			description: 'Summarize notes before replying',
@@ -5481,15 +5487,57 @@ describe('AgentBuilderView — three-column shell', () => {
 		skillsSection.vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
 
-		expect(openModalWithDataMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: 'agentSkillModal',
-				data: expect.objectContaining({
-					skill,
-					skillId: 'summarize_notes',
-				}),
-			}),
+		const skillEditor = wrapper.findComponent({ name: 'AgentSkillEditor' });
+		expect(skillEditor.props('layout')).toBe('page');
+		expect(skillEditor.props('data')).toEqual(
+			expect.objectContaining({ skill, skillId: 'summarize_notes' }),
 		);
+		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).exists()).toBe(false);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: expect.objectContaining({ skill: 'summarize_notes' }),
+		});
+
+		skillEditor.vm.$emit('close');
+		await nextTick();
+
+		expect(wrapper.findComponent({ name: 'AgentSkillEditor' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).exists()).toBe(true);
+	});
+
+	it('opens the skill page named by the skill query parameter', async () => {
+		const skill = {
+			name: 'summarize_notes',
+			description: 'Summarize notes before replying',
+			instructions: 'Read the notes and produce a concise summary.',
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: { summarize_notes: skill } }));
+		routeQuery.skill = 'summarize_notes';
+
+		const wrapper = await renderView();
+		await nextTick();
+
+		expect(wrapper.findComponent({ name: 'AgentSkillEditor' }).props('data')).toEqual(
+			expect.objectContaining({ skillId: 'summarize_notes' }),
+		);
+	});
+
+	it('drops a skill query parameter that names no attached skill', async () => {
+		routeQuery.skill = 'missing_skill';
+
+		const wrapper = await renderView();
+		await nextTick();
+
+		expect(wrapper.findComponent({ name: 'AgentSkillEditor' }).exists()).toBe(false);
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: expect.objectContaining({ skill: undefined }),
+		});
 	});
 
 	it('removes an applied skill from the config skills list', async () => {
@@ -5556,23 +5604,22 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		fetchConfigMock.mockClear();
 		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('add-skill');
-		await nextTick();
+		await flushPromises();
 
-		expect(openModalWithDataMock).toHaveBeenCalledWith(
+		const skillEditor = wrapper.findComponent({ name: 'AgentSkillEditor' });
+		expect(skillEditor.props('data')).toEqual(
 			expect.objectContaining({
-				name: 'agentSkillModal',
-				data: expect.objectContaining({
-					projectId: 'p1',
-					agentId: 'a1',
-				}),
+				projectId: 'p1',
+				agentId: 'a1',
 			}),
 		);
 
-		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
+		const modalData = skillEditor.props('data') as {
 			onConfirm: (payload: { skill: typeof skill }) => void;
 		};
 		modalData.onConfirm({ skill });
 		await flushPromises();
+		skillEditor.vm.$emit('close');
 		await nextTick();
 
 		const vm = wrapper.vm as unknown as {
@@ -5633,10 +5680,12 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
 
-		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
+		const skillEditor = wrapper.findComponent({ name: 'AgentSkillEditor' });
+		const modalData = skillEditor.props('data') as {
 			onConfirm: (payload: { id: string; skill: typeof editedSkill }) => void;
 		};
 		modalData.onConfirm({ id: 'summarize_notes', skill: editedSkill });
+		skillEditor.vm.$emit('close');
 		await nextTick();
 
 		expect(
@@ -5697,7 +5746,10 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
-		openModalWithDataMock.mock.calls[0][0].data.onConfirm({ id: 'summarize_notes', skill });
+		wrapper
+			.findComponent({ name: 'AgentSkillEditor' })
+			.props('data')
+			.onConfirm({ id: 'summarize_notes', skill });
 		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
 
 		expect(updateAgentSkillMock).toHaveBeenCalledWith(

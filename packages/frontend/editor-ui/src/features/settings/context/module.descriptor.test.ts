@@ -75,11 +75,27 @@ describe('ContextModule routes', () => {
 			expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT);
 		});
 
-		it('redirects to the homepage while the skills hub is off', async () => {
+		it.each([
+			['/settings/context/skills/new', VIEWS.SETTINGS_CONTEXT_SKILL_NEW],
+			['/settings/context/skills/s1', VIEWS.SETTINGS_CONTEXT_SKILL],
+		])('opens %s when the backend reports the skills hub on', async (path, name) => {
+			setup(undefined, true);
+			const router = createTestRouter();
+
+			await router.push(path);
+
+			expect(router.currentRoute.value.name).toBe(name);
+		});
+
+		it.each([
+			'/settings/context/skills',
+			'/settings/context/skills/new',
+			'/settings/context/skills/s1',
+		])('redirects %s to the homepage while the skills hub is off', async (path) => {
 			setup(CONTEXT_PREFERENCES_ENABLED_VARIANT, false);
 			const router = createTestRouter();
 
-			await router.push('/settings/context/skills');
+			await router.push(path);
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
 		});

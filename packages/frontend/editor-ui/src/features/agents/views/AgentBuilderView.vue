@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount, provide, useTemplateRef } from 'vue';
+import {
+	ref,
+	computed,
+	watch,
+	nextTick,
+	onBeforeUnmount,
+	provide,
+	shallowRef,
+	useTemplateRef,
+} from 'vue';
 import {
 	StorageSerializers,
 	useElementSize,
@@ -90,6 +99,7 @@ import {
 } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
+import type { AgentSkillEditorData } from '../components/AgentSkillEditor.vue';
 import { useAgentSetupTasks } from '../components/AgentSetupTasks/useAgentSetupTasks';
 import {
 	removeProjectAgentFromListCache,
@@ -2011,10 +2021,50 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
 	},
+	openSkillEditor,
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
 // access is not unwrapped by the template compiler).
 const appliedSkills = caps.appliedSkills;
+
+const SKILL_QUERY_PARAM = 'skill';
+const NEW_SKILL_QUERY_VALUE = 'new';
+const skillEditor = shallowRef<{ key: number; data: AgentSkillEditorData } | null>(null);
+let skillEditorOpenCount = 0;
+
+function setSkillQuery(value: string | undefined) {
+	if (isArtifactMode.value || route.query[SKILL_QUERY_PARAM] === value) return;
+	void router.replace({ query: { ...route.query, [SKILL_QUERY_PARAM]: value } });
+}
+
+function openSkillEditor(data: AgentSkillEditorData) {
+	skillEditorOpenCount += 1;
+	skillEditor.value = { key: skillEditorOpenCount, data };
+	setSkillQuery(data.skillId ?? NEW_SKILL_QUERY_VALUE);
+}
+
+function closeSkillEditor() {
+	skillEditor.value = null;
+	setSkillQuery(undefined);
+}
+
+watch(initialized, (ready) => {
+	const requested = route.query[SKILL_QUERY_PARAM];
+	if (!ready || skillEditor.value || typeof requested !== 'string') return;
+	if (!effectiveCanEditAgent.value) {
+		setSkillQuery(undefined);
+	} else if (requested === NEW_SKILL_QUERY_VALUE) {
+		void caps.onOpenAddSkillModal();
+	} else if (appliedSkills.value.some(({ id }) => id === requested)) {
+		caps.onOpenSkillFromList(requested);
+	} else {
+		setSkillQuery(undefined);
+	}
+});
+
+watch([projectId, agentId], () => {
+	skillEditor.value = null;
+});
 
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	markConfigDraftEdited();
@@ -3318,6 +3368,8 @@ useKeybindings({
 					:artifact-mode="isArtifactMode"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
+					:skill-editor="skillEditor"
+					@close-skill-editor="closeSkillEditor"
 					@update:config="onConfigFieldUpdate"
 					@update:budget-config="onBudgetSettingsSave"
 					@draft:config="markConfigDraftEdited"

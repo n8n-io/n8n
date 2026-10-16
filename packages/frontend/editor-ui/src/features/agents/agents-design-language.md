@@ -117,7 +117,7 @@ design work.
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
 global dialog primitive.
 
-Use `fit` for Skills. Use a 52rem content width. Keep it narrower than `full`.
+Use `fit` for the Skills modal. Use a 52rem content width. Keep it narrower than `full`.
 Use `full` only when the user explicitly asks for the extra workspace.
 
 Keep the header and footer fixed. Let the body scroll. Keep scrollbars visible
@@ -184,7 +184,8 @@ text and `3xs` spacing. Keep warning and failure indicators distinct.
 ### Multi-step contract
 
 Use the multi-step component for Channels, Sub-agents, Tools, MCP servers,
-Workflows, Vector stores, and Skills.
+Workflows, and Vector stores. Skills use the inline skill page, except in the
+agent node's NDV. See [Inline skill page](#inline-skill-page).
 
 For tools, keep selection and configuration separate. The picker owns search,
 categories, rows, and connection entry points. After selection, route every
@@ -216,7 +217,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 
 | Case                      | Exception                                                                                                                                                                                                      |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
+| Skills (NDV modal)        | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
 | Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal.                           |
 | Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                                                      |
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
@@ -282,6 +283,35 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 - Confirm success closes silently.
 - Confirm UI text uses i18n.
 - Confirm the layout works at 375 by 667 pixels in light and dark themes.
+
+## Inline skill page
+
+The Agent Builder and Settings > Context > Skills open a skill on an inline
+page, not in a modal. The agent node's NDV keeps the modal.
+
+Use `AgentSkillEditor` with `layout="page"`. It renders `AgentSkillPageShell`.
+`AgentSkillModal` uses the same editor in `AgentModalMultiStep`. Keep one
+editor, so both layouts have the same steps, fields, and actions.
+
+In the Agent Builder, the page replaces the editor column content. Hide the
+identity header and the tabs. Keep the Preview dock open. The `skill` query
+parameter holds the skill id, or `new` for an add flow. In artifact mode, keep
+this state local.
+
+Settings uses the routes `context/skills/new` and `context/skills/:skillId`.
+The list keeps its search and scope filter in the URL. A save returns to the
+list with the same filters.
+
+Put the exit link at the top left. Use `Back to agent` in the Agent Builder and
+`Back to Skills` in Settings. After the user leaves the first step, the same
+link goes back one step, as Back does in the modal.
+
+Keep the modal contract for steps, fields, the title, and actions. Let the page
+scroll. Keep the footer at the bottom of the visible area.
+
+Save, Add skill, Detach, Use latest version, Cancel, and the exit link close
+the page. Cancel and the exit link discard changes without a prompt. A route
+change with unsaved edits asks the user to confirm before it discards them.
 
 ## Recoverable plan errors
 

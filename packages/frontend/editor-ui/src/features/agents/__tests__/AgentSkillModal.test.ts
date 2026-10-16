@@ -14,7 +14,8 @@ import {
 	type SkillListItem,
 } from '@n8n/api-types';
 
-import AgentSkillModal, { type AgentSkillModalData } from '../components/AgentSkillModal.vue';
+import AgentSkillModal from '../components/AgentSkillModal.vue';
+import type { AgentSkillEditorData } from '../components/AgentSkillEditor.vue';
 import type { AgentSkill } from '../types';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
@@ -98,17 +99,17 @@ function renderModal({
 	settings,
 	...hubOptions
 }: {
-	onConfirm?: AgentSkillModalData['onConfirm'];
+	onConfirm?: AgentSkillEditorData['onConfirm'];
 	skill?: AgentSkill;
 	skillId?: string;
 	existingSkillNames?: string[];
 	/** Opens the modal as Settings > Context > Skills does: no agent, plus these fields. */
 	settings?: Pick<
-		AgentSkillModalData,
+		AgentSkillEditorData,
 		'readOnly' | 'scopeOptions' | 'initialScope' | 'scopeLockedReason' | 'getDefaultName'
 	>;
 } & Pick<
-	AgentSkillModalData,
+	AgentSkillEditorData,
 	| 'hubSkillsEnabled'
 	| 'getAttachedSkills'
 	| 'projectLabel'

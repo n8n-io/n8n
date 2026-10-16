@@ -99,5 +99,7 @@ export enum VIEWS {
 	SETTINGS_CONTEXT = 'SettingsContext',
 	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
 	SETTINGS_CONTEXT_SKILLS = 'SettingsContextSkills',
+	SETTINGS_CONTEXT_SKILL = 'SettingsContextSkill',
+	SETTINGS_CONTEXT_SKILL_NEW = 'SettingsContextSkillNew',
 	RESOURCE_CENTER = 'ResourceCenter',
 }
