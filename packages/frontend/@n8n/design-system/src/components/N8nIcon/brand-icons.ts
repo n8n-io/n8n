@@ -83,6 +83,7 @@ export { default as GitBranch } from './custom/brand/git-branch--outline-16.svg'
 export { default as Globe } from './custom/brand/globe--outline-16.svg';
 export { default as GraduationCap } from './custom/brand/graduation-cap--outline-16.svg';
 export { default as Graph } from './custom/brand/graph--outline-16.svg';
+export { default as Graph12 } from './custom/brand/graph--outline-12.svg';
 export { default as Grid2x2 } from './custom/brand/grid--outline-16.svg';
 export { default as GripVertical } from './custom/brand/dots-grip--outline-16.svg';
 export { default as Group } from './custom/brand/group--outline-16.svg';
