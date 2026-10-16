@@ -53,7 +53,15 @@ describe('Agent package export scope', () => {
 		expect(CHAT_USER_API_KEY_SCOPES).not.toContain('agent:export');
 		expect(GLOBAL_MEMBER_SCOPES).not.toContain('agent:export');
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:export')).toBe(true);
-		expect(API_KEY_RESOURCES.agent).toContain('export');
+		expect(API_KEY_RESOURCES.agent).toEqual([
+			'export',
+			'import',
+			'read',
+			'create',
+			'update',
+			'publish',
+			'unpublish',
+		]);
 	});
 	it.each(
 		Object.entries({

@@ -22,6 +22,7 @@ import type { Readable } from 'node:stream';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -88,14 +89,14 @@ beforeEach(async () => {
 			...definition,
 			projectId: sourceProject.id,
 			versionId: 'source-draft',
-			schema: {
+			schema: storedAgentConfig({
 				...config!,
 				model: 'openai/gpt-4.1-mini',
 				credential: AI_GATEWAY_MANAGED_TAG,
 				instructions: 'Help with requests.',
 				mcpServers: [],
 				subAgents: { agents: [{ agentId: fixture.manifest.agents[1 - index].id }] },
-			},
+			}),
 		});
 		await tasks.save(
 			Object.entries(taskDefinitions).map(([id, task]) => ({ id, agentId: agent.id, ...task })),

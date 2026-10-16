@@ -2717,7 +2717,7 @@ describe('credential-missing-mode: create-with-values', () => {
 		const result = await importPackage({
 			user: owner,
 			credentialMissingMode: 'create-with-values',
-			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			conflictPolicy: ImportConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 			packageBuffer: await buildImportPackageBuffer(
 				[

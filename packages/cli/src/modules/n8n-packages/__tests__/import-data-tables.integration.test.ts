@@ -1039,7 +1039,7 @@ describe('workflow package import — with data tables', () => {
 			const again = await importWithOverwrite({
 				user: owner,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(again.dataTables).toEqual({ matched: 1, created: 0, updated: 0 });
