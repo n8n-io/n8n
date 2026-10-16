@@ -25,9 +25,13 @@ import {
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
 
+/** Agents shared by every call on one client; they replace the per-request agents. */
+export type ClientAgents = Pick<AxiosRequestConfig, 'httpAgent' | 'httpsAgent'>;
+
 export function convertN8nRequestToAxios(
 	n8nRequest: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
+	agents?: ClientAgents,
 ): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -40,6 +44,7 @@ export function convertN8nRequestToAxios(
 		url,
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
+		...agents,
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
@@ -172,18 +177,22 @@ export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOp
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions & { returnFullResponse: true },
 	ssrfBridge?: SsrfBridge,
+	agents?: ClientAgents,
 ): Promise<IN8nHttpFullResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
 	ssrfBridge?: SsrfBridge,
+	agents?: ClientAgents,
 ): Promise<IN8nHttpResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
+	agents?: ClientAgents,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
+	agents?: ClientAgents,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
@@ -191,7 +200,7 @@ export async function httpRequest(
 	await validateUrlSsrf(url, ssrfBridge);
 	await validateProxySsrf(requestOptions.proxy, ssrfBridge);
 
-	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
+	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge, agents);
 	if (axiosRequest.data === undefined || axiosRequest.method?.toUpperCase() === 'GET') {
 		delete axiosRequest.data;
 	}

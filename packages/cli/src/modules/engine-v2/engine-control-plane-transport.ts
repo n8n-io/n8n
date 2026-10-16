@@ -24,6 +24,7 @@ export class EngineControlPlaneTransport {
 		return this.outboundHttp.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
+			keepAlive: true,
 			// A bind address is not dialable, so default to loopback.
 			baseURL:
 				this.engineConfig.controlPlaneBaseUrl ||

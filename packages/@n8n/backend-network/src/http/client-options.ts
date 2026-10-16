@@ -27,4 +27,10 @@ export interface HttpRequestClientOptions {
 	 * Set it once here instead of repeating it on each request.
 	 */
 	timeout?: number;
+
+	/**
+	 * Reuse open connections across the calls on this client.
+	 * Per-request `proxy` and `agentOptions` do not apply when this is set.
+	 */
+	keepAlive?: boolean;
 }

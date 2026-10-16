@@ -185,6 +185,9 @@ export class OutboundHttp {
 	requests(options?: HttpRequestClientOptions): HttpRequestClient {
 		const ssrf = this.resolveSsrf(options?.useDefaultSsrfPolicy);
 		const ssrfBridge = ssrf === 'disabled' ? undefined : ssrf;
+		const agents = options?.keepAlive
+			? buildNodeAgents('env', ssrf, { keepAlive: true })
+			: undefined;
 
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
 			withClientDefaults(requestOptions, options?.baseURL, options?.headers, options?.timeout);
@@ -200,7 +203,7 @@ export class OutboundHttp {
 		): Promise<T | TypedHttpFullResponse<T>>;
 		async function request(requestOptions: IHttpRequestOptions): Promise<unknown> {
 			try {
-				return await httpRequest(applyDefaults(requestOptions), ssrfBridge);
+				return await httpRequest(applyDefaults(requestOptions), ssrfBridge, agents);
 			} catch (error) {
 				// Tag so callers can recognize a client-rejected error transport-agnostically.
 				throw markHttpRequestError(error);
