@@ -1,0 +1,37 @@
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-llm-tracing.test.ts
+  s_ec600d2173900f::t_aca26829c19dc3 705-710,718,723-731
+  s_ec600d2173900f::t_809b97649bbf57 711-717,719-722
+packages/@n8n/ai-utilities/src/index.ts
+  s_ec600d2173900f::t_d609ad6d3d4d09 18
+packages/@n8n/nodes-langchain/nodes/llms/N8nNonEstimatingTracing.ts
+  s_ec600d2173900f::t_8ebad7b0ff88dd 68
+  s_ec600d2173900f::t_880ecf3d617f6d 14
+packages/@n8n/ai-utilities/src/__tests__/utils/extract-responding-model.test.ts
+  s_ec600d2173900f::t_cdaac154f2ec35 4
+  s_ec600d2173900f::t_c9ba8f3c5c009a 90-135
+packages/@n8n/ai-utilities/src/utils/extract-responding-model.ts
+  s_ec600d2173900f::t_d10869a48a43db 25-40
+  s_ec600d2173900f::t_ca0f9cb7f3b494 3-4
+packages/@n8n/ai-utilities/src/utils/n8n-llm-tracing.ts
+  s_ec600d2173900f::t_4d15d9b88a0bde 14
+  s_ec600d2173900f::t_a0d3e875dc171b 161
+packages/@n8n/nodes-langchain/nodes/llms/test/N8nNonEstimatingTracing.test.ts
+  s_ec600d2173900f::t_4857921ffaae48 149-154,162,167
+  s_ec600d2173900f::t_809b97649bbf57 155-161,163-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8a5af36b751b15d68597a049a95f9649ae1eadf",
+  "prompts": {},
+  "sessions": {
+    "s_ec600d2173900f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09d1ff41-9e69-42c8-b7d0-443a98e154f1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

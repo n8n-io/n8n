@@ -1,0 +1,31 @@
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,83-84,394-414
+docs/generated/sqlite-schema/README.md
+  ai_agent 124-125,352-356,1552-1572
+docs/generated/postgres-schema/README.md
+  ai_agent 124-125,370-374,1566-1586
+docs/generated/postgres-schema/public.promotion_connection.md
+  ai_agent 8,45,72-82
+docs/generated/sqlite-schema/promotion_run.md
+  ai_agent 1-107
+docs/generated/postgres-schema/public.promotion_review.md
+  ai_agent 1-101
+docs/generated/sqlite-schema/promotion_config.md
+  ai_agent 21,48,68-76
+docs/generated/postgres-schema/public.promotion_run.md
+  ai_agent 1-99
+docs/generated/postgres-schema/public.promotion_config.md
+  ai_agent 10,43,63-71
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,77-78,388-408
+docs/generated/sqlite-schema/promotion_connection.md
+  ai_agent 19,50,77-87
+docs/generated/sqlite-schema/promotion_review.md
+  ai_agent 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "81203286613a2732301006cdd376f9a6ff3a8b1e",
+  "prompts": {}
+}
