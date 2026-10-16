@@ -1,3 +1,4 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
 	IExecuteFunctions,
 	INodeType,
@@ -6,26 +7,29 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 	IDataObject,
-	ILoadOptionsFunctions,
-	JsonObject,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
+import type {
+	LifecycleNotification,
+	SubscriptionResponse,
+	WebhookNotification,
+} from './v2/helpers/types';
 import {
 	createSubscription,
 	generateClientState,
-	getResourcePath,
+	getActiveSubscriptions,
+	getNotificationUrl,
+	getRequiredResources,
+	handleLifecycleNotifications,
+	isLifecycleNotification,
+	isNotFoundError,
+	renewSubscription,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
-import {
-	microsoftApiRequest,
-	microsoftApiRequestAllItems,
-	SERVICE_PRINCIPAL_AUTH,
-	SP_HIDE,
-} from './v2/transport';
+import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH, SP_HIDE } from './v2/transport';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -353,89 +357,52 @@ export class MicrosoftTeamsTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 
+				let activeSubscriptions: SubscriptionResponse[];
 				try {
-					const subscriptions = (await microsoftApiRequestAllItems.call(
-						this as unknown as ILoadOptionsFunctions,
-						'value',
-						'GET',
-						'/v1.0/subscriptions',
-					)) as SubscriptionResponse[];
+					activeSubscriptions = await getActiveSubscriptions.call(this, webhookUrl);
+					const requiredResources = await getRequiredResources.call(this);
+					const subscribedResources = activeSubscriptions.map((sub) => sub.resource);
 
-					const matchingSubscriptions = subscriptions.filter(
-						(subscription) => subscription.notificationUrl === webhookUrl,
-					);
-
-					const now = new Date();
-					const thresholdMs = 5 * 60 * 1000;
-					const validSubscriptions = matchingSubscriptions.filter((subscription) => {
-						const expiration = new Date(subscription.expirationDateTime);
-						return expiration.getTime() - now.getTime() > thresholdMs;
-					});
-
-					const resourcePaths = await getResourcePath.call(this, event);
-					const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
-
-					const subscribedResources = validSubscriptions.map((sub) => sub.resource);
-					const allResourcesSubscribed = requiredResources.every((resource) =>
-						subscribedResources.includes(resource),
-					);
-
-					if (allResourcesSubscribed) {
-						webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
-						return true;
+					if (!requiredResources.every((resource) => subscribedResources.includes(resource))) {
+						return false;
 					}
-
-					return false;
 				} catch (error) {
 					return false;
 				}
+
+				webhookData.subscriptionIds = activeSubscriptions.map((sub) => sub.id);
+
+				const renewals = await Promise.allSettled(
+					activeSubscriptions.map(async (sub) => await renewSubscription.call(this, sub.id)),
+				);
+				for (const renewal of renewals) {
+					if (renewal.status === 'rejected') {
+						this.logger.warn('Could not renew the Microsoft Teams subscription', {
+							error: ensureError(renewal.reason),
+						});
+					}
+				}
+
+				return true;
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				const event = this.getNodeParameter('event', 0) as string;
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = getNotificationUrl.call(this);
 				const webhookData = this.getWorkflowStaticData('node');
-
-				if (!webhookUrl?.startsWith('https://')) {
-					throw new NodeApiError(this.getNode(), {
-						message: 'Invalid Notification URL',
-						description: `The webhook URL "${webhookUrl}" is invalid. Microsoft Graph requires an HTTPS URL.`,
-					});
-				}
-
 				const clientState = generateClientState();
-				const resourcePaths = await getResourcePath.call(this, event);
-				const subscriptionIds: string[] = [];
+				const resources = await getRequiredResources.call(this);
 
-				if (Array.isArray(resourcePaths)) {
-					await Promise.all(
-						resourcePaths.map(async (resource) => {
-							const subscription = await createSubscription.call(
-								this,
-								webhookUrl,
-								resource,
-								clientState,
-							);
-							subscriptionIds.push(subscription.id);
-							return subscription;
-						}),
-					);
+				const subscriptions = await Promise.all(
+					resources.map(
+						async (resource) =>
+							await createSubscription.call(this, webhookUrl, resource, clientState),
+					),
+				);
 
-					webhookData.subscriptionIds = subscriptionIds;
-				} else {
-					const subscription = await createSubscription.call(
-						this,
-						webhookUrl,
-						resourcePaths,
-						clientState,
-					);
-					webhookData.subscriptionIds = [subscription.id];
-				}
-
+				webhookData.subscriptionIds = subscriptions.map((subscription) => subscription.id);
 				webhookData.webhookSecret = clientState;
 				return true;
 			},
@@ -458,7 +425,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 									`/v1.0/subscriptions/${subscriptionId}`,
 								);
 							} catch (error) {
-								if ((error as JsonObject).httpStatusCode !== 404) {
+								if (!isNotFoundError(error)) {
 									throw error;
 								}
 							}
@@ -490,7 +457,33 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		const eventNotifications = req.body.value as WebhookNotification[];
+		const notifications = req.body.value as Array<WebhookNotification | LifecycleNotification>;
+		const lifecycleNotifications = notifications.filter(isLifecycleNotification);
+		const eventNotifications = notifications.filter(
+			(notification): notification is WebhookNotification => !isLifecycleNotification(notification),
+		);
+
+		if (lifecycleNotifications.length > 0) {
+			try {
+				await handleLifecycleNotifications.call(this, lifecycleNotifications);
+			} catch (error) {
+				const renewalError = new NodeOperationError(this.getNode(), ensureError(error), {
+					message: 'Could not renew the Microsoft Teams subscription',
+					description:
+						'The trigger stops receiving events when the subscription expires. Check the credential, then publish the workflow again.',
+				});
+				if (eventNotifications.length === 0) {
+					throw renewalError;
+				}
+				this.logger.error(renewalError.message, { error: renewalError });
+			}
+		}
+
+		if (eventNotifications.length === 0) {
+			res.status(202).end();
+			return { noWebhookResponse: true };
+		}
+
 		const response: IWebhookResponseData = {
 			workflowData: eventNotifications.map((event) => [
 				{

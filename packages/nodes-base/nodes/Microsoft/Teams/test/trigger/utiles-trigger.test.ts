@@ -7,10 +7,20 @@ import {
 	fetchAllChannels,
 	createSubscription,
 	generateClientState,
+	getActiveSubscriptions,
+	getNotificationUrl,
 	getResourcePath,
+	getStoredSubscriptionIds,
+	isLifecycleNotification,
+	isNotFoundError,
+	renewSubscription,
 	verifyWebhook,
 } from '../../v2/helpers/utils-trigger';
-import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../../v2/transport';
+import {
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+	SERVICE_PRINCIPAL_AUTH,
+} from '../../v2/transport';
 import type { Mock } from 'vitest';
 import type * as _transport from '../../v2/transport';
 
@@ -22,6 +32,9 @@ vi.mock('../../v2/transport', async () => {
 	return {
 		...actual,
 		microsoftApiRequest: {
+			call: vi.fn(),
+		},
+		microsoftApiRequestAllItems: {
 			call: vi.fn(),
 		},
 	};
@@ -183,6 +196,122 @@ describe('Microsoft Teams Helpers Functions', () => {
 			await expect(
 				createSubscription.call(mockHookFunctions, 'https://webhook.url', '/resource/path'),
 			).rejects.toThrow(NodeApiError);
+		});
+	});
+
+	describe('subscription renewal helpers', () => {
+		const node = {
+			id: 'node1',
+			name: 'Microsoft Teams Trigger',
+			type: 'n8n-nodes-base.microsoftTeamsTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers({ now: new Date('2026-10-16T00:00:00.000Z'), toFake: ['Date'] });
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('renewSubscription extends the expiration to the Graph maximum', async () => {
+			(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'sub1' });
+
+			await renewSubscription.call(mockHookFunctions, 'sub1');
+
+			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+				mockHookFunctions,
+				'PATCH',
+				'/v1.0/subscriptions/sub1',
+				{ expirationDateTime: '2026-10-18T23:58:00.000Z' },
+			);
+		});
+
+		it('renewSubscription rethrows Graph errors', async () => {
+			(microsoftApiRequest.call as Mock).mockRejectedValue(
+				new NodeApiError(node, { message: 'gone', statusCode: 404 }),
+			);
+
+			await expect(renewSubscription.call(mockHookFunctions, 'sub1')).rejects.toThrow(NodeApiError);
+		});
+
+		it('getActiveSubscriptions keeps only this webhook subscriptions that are not about to expire', async () => {
+			const url = 'https://n8n.example.com/webhook/abc/webhook';
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+				{ id: 'ok', notificationUrl: url, expirationDateTime: '2026-10-16T00:06:00.000Z' },
+				{ id: 'soon', notificationUrl: url, expirationDateTime: '2026-10-16T00:05:00.000Z' },
+				{ id: 'expired', notificationUrl: url, expirationDateTime: '2026-10-15T23:00:00.000Z' },
+				{
+					id: 'other',
+					notificationUrl: 'https://other.example.com/webhook',
+					expirationDateTime: '2026-10-17T00:00:00.000Z',
+				},
+			]);
+
+			const result = await getActiveSubscriptions.call(mockHookFunctions, url);
+
+			expect(result.map((subscription) => subscription.id)).toEqual(['ok']);
+			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledWith(
+				mockHookFunctions,
+				'value',
+				'GET',
+				'/v1.0/subscriptions',
+			);
+		});
+
+		it('isNotFoundError matches only a Graph 404', () => {
+			expect(isNotFoundError(new NodeApiError(node, { message: 'x', statusCode: 404 }))).toBe(true);
+			expect(isNotFoundError(new NodeApiError(node, { message: 'x' }, { httpCode: '404' }))).toBe(
+				true,
+			);
+			expect(isNotFoundError(new NodeApiError(node, { message: 'x', statusCode: 403 }))).toBe(
+				false,
+			);
+			expect(isNotFoundError(Object.assign(new Error('x'), { httpCode: '404' }))).toBe(false);
+		});
+
+		it('isLifecycleNotification tells lifecycle and change notifications apart', () => {
+			expect(
+				isLifecycleNotification({
+					subscriptionId: 'sub1',
+					subscriptionExpirationDateTime: '2026-10-16T00:00:00.000Z',
+					tenantId: 't',
+					lifecycleEvent: 'reauthorizationRequired',
+				}),
+			).toBe(true);
+			expect(
+				isLifecycleNotification({
+					subscriptionId: 'sub1',
+					subscriptionExpirationDateTime: '2026-10-16T00:00:00.000Z',
+					tenantId: 't',
+					resource: 'teams/1/channels/2/messages',
+					resourceData: { id: 'm1' },
+				}),
+			).toBe(false);
+		});
+
+		it('getStoredSubscriptionIds returns only string ids', () => {
+			expect(getStoredSubscriptionIds({ subscriptionIds: ['a', 1, null, 'b'] })).toEqual([
+				'a',
+				'b',
+			]);
+			expect(getStoredSubscriptionIds({})).toEqual([]);
+			expect(getStoredSubscriptionIds({ subscriptionIds: 'a' })).toEqual([]);
+		});
+
+		it('getNotificationUrl rejects a non-HTTPS webhook URL', () => {
+			mockHookFunctions.getNodeWebhookUrl.mockReturnValue('http://localhost:5678/webhook/x');
+
+			expect(() => getNotificationUrl.call(mockHookFunctions)).toThrow('Invalid Notification URL');
+		});
+
+		it('getNotificationUrl returns an HTTPS webhook URL', () => {
+			mockHookFunctions.getNodeWebhookUrl.mockReturnValue('https://n8n.example.com/webhook/x');
+
+			expect(getNotificationUrl.call(mockHookFunctions)).toBe('https://n8n.example.com/webhook/x');
 		});
 	});
 
