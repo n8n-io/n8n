@@ -1,3 +1,5 @@
+import { UserError } from 'n8n-workflow';
+
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const sourceTypesBefore = [
@@ -17,7 +19,7 @@ export class AllowAppArtifactBinaryData1792096072269 implements ReversibleMigrat
 			`SELECT COUNT(*) AS count FROM ${ctx.escape.tableName('binary_data')} WHERE ${ctx.escape.columnName('sourceType')} = 'app_artifact'`,
 		);
 		if (Number(row.count) > 0) {
-			throw new Error('Remove database-backed app artifacts before reverting this migration.');
+			throw new UserError('Remove database-backed app artifacts before reverting this migration.');
 		}
 		await this.replaceSourceTypeCheck(ctx, sourceTypesBefore);
 	}
