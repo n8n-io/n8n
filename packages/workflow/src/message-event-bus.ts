@@ -98,6 +98,12 @@ const HOST_MESSAGE = 'Enter a host name or IP address, without brackets or a sch
 
 const syslogHostSchema = z.string().min(1, HOST_MESSAGE).refine(isValidHost, HOST_MESSAGE);
 
+/** The earlier, looser host checks, for destinations that may already be stored or deployed. */
+export const storedDestinationHostSchemas = {
+	url: z.string().url(),
+	host: z.string().min(1),
+};
+
 // Circuit Breaker Options Schema
 export const circuitBreakerSchema = z
 	.object({
