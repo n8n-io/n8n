@@ -939,6 +939,15 @@ export type RelayEventMap = {
 		userId: string;
 	};
 
+	'sso-settings-updated': {
+		user: UserLike;
+		protocol: 'saml' | 'oidc';
+		loginEnabled: boolean;
+		/** Settings keys whose stored value changed. Names only, never values. */
+		fieldsChanged: string[];
+		publicApi: boolean;
+	};
+
 	// #endregion
 
 	// #region Role Mapping

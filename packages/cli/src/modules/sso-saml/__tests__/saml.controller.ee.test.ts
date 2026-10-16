@@ -1,8 +1,10 @@
+import type { SamlPreferences, SamlToggleDto } from '@n8n/api-types';
 import type { EventService, UrlService } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { type Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -460,6 +462,107 @@ describe('SAML env-managed write protection', () => {
 				scope: 'saml:manage',
 				globalOnly: true,
 			});
+		});
+	});
+});
+
+describe('SSO settings events', () => {
+	const previous = {
+		loginEnabled: false,
+		loginLabel: 'SSO',
+		metadata: '<old/>',
+		mapping: { email: 'mail', firstName: 'fn', lastName: 'ln', userPrincipalName: 'upn' },
+	} as SamlPreferences;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		instanceSettingsLoaderConfig.ssoManagedByEnv = false;
+		Object.defineProperty(samlService, 'samlPreferences', {
+			get: () => previous,
+			configurable: true,
+		});
+	});
+
+	describe('configPost', () => {
+		test('emits sso-settings-updated with the names of the changed fields', async () => {
+			const saved = { ...previous, metadata: '<new/>', loginEnabled: true } as SamlPreferences;
+			samlService.setSamlPreferences.mockResolvedValueOnce(saved);
+			const req = mock<AuthenticatedRequest>({ user });
+
+			const result = await controller.configPost(req, mock<Response>(), saved);
+
+			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(saved);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-settings-updated', {
+				user,
+				protocol: 'saml',
+				loginEnabled: true,
+				fieldsChanged: ['loginEnabled', 'metadata'],
+				publicApi: false,
+			});
+			expect(result).toEqual({ ...saved, signingPrivateKey: undefined });
+		});
+
+		test('names the signing key without its value when a new key is stored', async () => {
+			const saved = { ...previous, signingPrivateKey: 'encrypted:abc' } as SamlPreferences;
+			samlService.setSamlPreferences.mockResolvedValueOnce(saved);
+
+			await controller.configPost(mock<AuthenticatedRequest>({ user }), mock<Response>(), saved);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'sso-settings-updated',
+				expect.objectContaining({ fieldsChanged: ['signingPrivateKey'] }),
+			);
+			const [, payload] = eventService.emit.mock.calls[0];
+			expect(JSON.stringify(payload)).not.toContain('encrypted:abc');
+		});
+
+		test('does not emit when nothing was saved', async () => {
+			samlService.setSamlPreferences.mockResolvedValueOnce(undefined);
+
+			await controller.configPost(mock<AuthenticatedRequest>({ user }), mock<Response>(), previous);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		test('does not emit when the settings are managed by the environment', async () => {
+			instanceSettingsLoaderConfig.ssoManagedByEnv = true;
+
+			await expect(
+				controller.configPost(mock<AuthenticatedRequest>({ user }), mock<Response>(), previous),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(samlService.setSamlPreferences).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('toggleEnabledPost', () => {
+		test('reports loginEnabled as changed when the toggle flips it', async () => {
+			const req = mock<AuthenticatedRequest>({ user });
+			const res = mock<Response>();
+
+			await controller.toggleEnabledPost(req, res, { loginEnabled: true } as SamlToggleDto);
+
+			expect(samlService.setSamlPreferences).toHaveBeenCalledWith({ loginEnabled: true });
+			expect(eventService.emit).toHaveBeenCalledWith('sso-settings-updated', {
+				user,
+				protocol: 'saml',
+				loginEnabled: true,
+				fieldsChanged: ['loginEnabled'],
+				publicApi: false,
+			});
+			expect(res.sendStatus).toHaveBeenCalledWith(200);
+		});
+
+		test('reports no changed field when the toggle repeats the stored state', async () => {
+			await controller.toggleEnabledPost(mock<AuthenticatedRequest>({ user }), mock<Response>(), {
+				loginEnabled: false,
+			} as SamlToggleDto);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'sso-settings-updated',
+				expect.objectContaining({ loginEnabled: false, fieldsChanged: [] }),
+			);
 		});
 	});
 });
