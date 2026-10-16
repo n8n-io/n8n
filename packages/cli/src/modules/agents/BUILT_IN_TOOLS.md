@@ -75,6 +75,36 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 
 See the [dedicated section](#mark_session_failed-session-outcomes).
 
+## Plan tools
+
+Source: [`plans/agent-plan-tools.ts`](./plans/agent-plan-tools.ts).
+
+`create_plan` takes a complete document. `read_plan` returns the saved document and revision.
+`update_plan` takes a partial `document`, `planId`, and `expectedRevision`.
+Send only fields that must change. Do not resend unchanged tasks, descriptions, or dependencies.
+The tool merges `items` and group `tasks` by ID. Omitted fields and items stay unchanged.
+Existing items keep their order. New items append and require all creation fields with a `new:` ID.
+For a child task, send its group ID and put the child update in `tasks`.
+For example, a task completion needs only:
+
+```json
+{
+  "planId": "<saved plan UUID>",
+  "expectedRevision": 4,
+  "document": {
+    "items": [{ "id": "<saved task UUID>", "status": "done", "resultSummary": "Reviewed the findings." }]
+  }
+}
+```
+
+Use `removeItemIds` to remove pending items. An empty `items` or `tasks` list removes nothing.
+A supplied `dependsOn` list replaces that item's dependencies. Use `[]` to clear it.
+Set `presentation`, `presentation.detail`, `resultSummary`, or `fallbackFor` to `null` to clear it.
+The service validates the complete result and saves it with its history in one transaction.
+Final items, task prerequisites, and service timestamps retain their existing rules.
+If an update fails, correct it and retry before reporting progress. Read the plan again after a revision conflict.
+`close_plan` closes the active plan without changing its document or cancelling work.
+
 ## Background job tools
 
 Attach condition: Top-level agent and background tasks on. Background tasks are on when `AgentsConfig.backgroundTasksEnabled` is set and the caller does not pass `allowBackgroundTasks: false`. Scheduled and manually started task runs pass `false`. Human-in-the-loop resume support does not change this condition. It only controls whether workflow tools move waiting workflows to the background.
