@@ -1,0 +1,30 @@
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_2c66c3d749f421::t_d24968217609c4 149-153,689,722
+  s_2c66c3d749f421::t_6387b33e7d7151 695
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/getCredentialTypePolicyAttachments.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/controllers/credential-type-policies.public.controller.ts
+  s_2c66c3d749f421::t_d24968217609c4 46,66-77,353
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/getNodeTypePolicyAttachments.generated.yml
+  ai_agent 8
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy.service.test.ts
+  s_2c66c3d749f421::t_d24968217609c4 208-210
+packages/cli/src/public-api/v1/controllers/node-type-policies.public.controller.ts
+  s_2c66c3d749f421::t_d24968217609c4 50,78-89,362
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "de4a28d56638edb8bbd5c315412c5b182866d42d",
+  "prompts": {},
+  "sessions": {
+    "s_2c66c3d749f421": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b19819d-bb0e-48fb-860e-9d327eb735c5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
