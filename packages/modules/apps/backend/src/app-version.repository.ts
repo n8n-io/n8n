@@ -40,14 +40,6 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 		return await this.managerFor(ctx).findOneBy(AppVersion, { id: versionId });
 	}
 
-	async findVersion(
-		appId: string,
-		versionId: string,
-		ctx: OperationContext = {},
-	): Promise<AppVersion | null> {
-		return await this.managerFor(ctx).findOneBy(AppVersion, { id: versionId, appId });
-	}
-
 	async listForApp(appId: string, ctx: OperationContext = {}): Promise<AppVersion[]> {
 		return await this.managerFor(ctx).find(AppVersion, {
 			where: { appId },
@@ -86,13 +78,12 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	}
 
 	async setLabel(
-		appId: string,
 		versionId: string,
 		label: string | null,
 		ctx: OperationContext,
 	): Promise<AppVersion | null> {
 		const manager = this.managerFor(ctx);
-		const where = { id: versionId, appId };
+		const where = { id: versionId };
 		const result = await manager.update(AppVersion, where, { label });
 		if (!result.affected) return null;
 		return await manager.findOneBy(AppVersion, where);

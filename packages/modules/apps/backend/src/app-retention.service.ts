@@ -20,7 +20,7 @@ export class AppRetentionService {
 	async prune(appId: string, signal?: AbortSignal): Promise<void> {
 		signal?.throwIfAborted();
 		await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
-			const app = await this.apps.findForRetention(appId, ctx);
+			const app = await this.apps.findById(appId, ctx);
 			if (!app) return;
 			const versions = await this.versions.listForRetention(appId, ctx);
 			const protectedIds = new Set([app.draftVersionId, app.publishedVersionId]);

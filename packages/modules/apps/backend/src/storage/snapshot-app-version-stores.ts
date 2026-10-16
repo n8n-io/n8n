@@ -29,7 +29,7 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 		const artifact = await this.artifacts.upload(await this.archives.pack(files));
 		try {
 			await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
-				if (!(await this.apps.findInProject(version.projectId, version.appId, ctx))) {
+				if (!(await this.apps.findById(version.appId, ctx))) {
 					throw new NotFoundError('App not found.');
 				}
 				await this.artifacts.completeUpload(artifact, ctx);

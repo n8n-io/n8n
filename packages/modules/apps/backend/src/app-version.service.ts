@@ -39,10 +39,10 @@ export class AppVersionService {
 		this.checkLabel(label);
 		const versionId = randomUUID();
 		await this.sourceVersions.createVersion(
-			{ id: versionId, appId, projectId, expectedDraftVersionId, label },
+			{ id: versionId, appId, expectedDraftVersionId, label },
 			files,
 		);
-		const version = await this.requireVersion(appId, versionId);
+		const version = await this.requireVersion(versionId);
 		await this.prune(appId);
 		return version;
 	}
@@ -58,7 +58,7 @@ export class AppVersionService {
 			throw new ConflictError('This app version cannot accept a bundle. Check its build status.');
 		}
 		await this.buildResults.recordSuccess(versionId, files);
-		const version = await this.requireVersion(appId, versionId);
+		const version = await this.requireVersion(versionId);
 		await this.prune(appId);
 		return version;
 	}
@@ -68,9 +68,16 @@ export class AppVersionService {
 		return await this.versions.listForApp(appId);
 	}
 
-	async getVersion(projectId: string, appId: string, versionId: string): Promise<AppVersion> {
-		await this.requireApp(projectId, appId);
-		return await this.requireVersion(appId, versionId);
+	async getVersion(
+		projectId: string,
+		appId: string,
+		versionId: string,
+		ctx: OperationContext = {},
+	): Promise<AppVersion> {
+		await this.requireApp(projectId, appId, ctx);
+		const version = await this.requireVersion(versionId, ctx);
+		if (version.appId !== appId) throw new NotFoundError('App version not found.');
+		return version;
 	}
 
 	async readSource(projectId: string, appId: string, versionId: string): Promise<AppFiles> {
@@ -102,9 +109,8 @@ export class AppVersionService {
 	): Promise<AppVersion> {
 		this.checkLabel(label);
 		return await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
-			await this.requireApp(projectId, appId, ctx);
-			this.checkVersionId(versionId);
-			const version = await this.versions.setLabel(appId, versionId, label, ctx);
+			await this.getVersion(projectId, appId, versionId, ctx);
+			const version = await this.versions.setLabel(versionId, label, ctx);
 			if (!version) throw new NotFoundError('App version not found.');
 			return version;
 		});
@@ -117,13 +123,9 @@ export class AppVersionService {
 		return app;
 	}
 
-	private async requireVersion(
-		appId: string,
-		versionId: string,
-		ctx: OperationContext = {},
-	): Promise<AppVersion> {
+	private async requireVersion(versionId: string, ctx: OperationContext = {}): Promise<AppVersion> {
 		this.checkVersionId(versionId);
-		const version = await this.versions.findVersion(appId, versionId, ctx);
+		const version = await this.versions.findVersionById(versionId, ctx);
 		if (!version) throw new NotFoundError('App version not found.');
 		return version;
 	}
