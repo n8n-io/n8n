@@ -8,6 +8,7 @@ import {
 	skillNameKey,
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
+	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
 	type SkillNewNameQueryDto,
@@ -522,10 +523,12 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				onConfirm: async ({
 					skill,
 					availableTo,
+					method,
 				}: {
 					id?: string;
 					skill: AgentSkill;
 					availableTo?: AgentSkillAvailability;
+					method?: SkillCreateMethod;
 				}): Promise<AgentSkillConfirmResult> => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return undefined;
@@ -559,6 +562,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							targetAgentId,
 							sanitizedSkill,
 							hubSkillsEnabled.value ? availableTo : undefined,
+							method,
 						);
 					} catch (error) {
 						if (isSkillNameTakenError(error)) {

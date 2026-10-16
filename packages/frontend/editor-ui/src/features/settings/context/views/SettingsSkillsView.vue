@@ -2,10 +2,12 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import type { AgentSkill, SkillListItem, SkillScope } from '@n8n/api-types';
+import type { AgentSkill, SkillCreateMethod, SkillListItem, SkillScope } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nButton,
 	N8nDropdownMenu,
@@ -53,6 +55,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
+const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 
@@ -191,7 +194,8 @@ function openCreateModal() {
 				...parseScope(scopeValue),
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
-		onConfirm: async ({ skill, scope }) => await onCreate(skill, scope ?? options[0].value),
+		onConfirm: async ({ skill, scope, method }) =>
+			await onCreate(skill, scope ?? options[0].value, method),
 	});
 }
 
@@ -226,10 +230,17 @@ function saveFailed(error: unknown): AgentSkillConfirmFailure {
 async function onCreate(
 	skill: AgentSkill,
 	scopeValue: string,
+	method?: SkillCreateMethod,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
-		createdId = (await skillsStore.createSkill({ ...parseScope(scopeValue), skill })).id;
+		createdId = (
+			await skillsStore.createSkill({
+				...parseScope(scopeValue),
+				skill,
+				...(method ? { method } : {}),
+			})
+		).id;
 	} catch (error) {
 		return saveFailed(error);
 	}
@@ -270,6 +281,12 @@ function scopeLock(
 async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
+			skill_id: detail.id,
+			scope: detail.scope,
+			...(detail.projectId ? { project_id: detail.projectId } : {}),
+			read_only: !detail.canEdit,
+		});
 		const currentValue = scopeValueOf(detail);
 		// The current scope is listed even when the user could not create a skill there,
 		// such as an agent skill, which is only made from inside its agent.
@@ -361,6 +378,11 @@ async function goBack() {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
+	// here is an empty list and never a broken one.
+	if (!loadFailed.value) {
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
+	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
 	const { skillId, create } = route.query;

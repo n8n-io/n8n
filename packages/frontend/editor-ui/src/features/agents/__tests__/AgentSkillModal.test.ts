@@ -414,6 +414,7 @@ describe('AgentSkillModal', () => {
 				description: 'Use for research',
 				instructions: 'Main instructions',
 			},
+			method: 'upload',
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -450,6 +451,7 @@ describe('AgentSkillModal', () => {
 				instructions: 'Read the guide',
 				references: [{ path: 'references/guide.md', content: '# Guide' }],
 			},
+			method: 'manual',
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -1223,6 +1225,7 @@ describe('AgentSkillModal from Settings', () => {
 			id: undefined,
 			skill: { name: 'Research', description: 'Use it', instructions: 'Body' },
 			scope: 'project:personal-1',
+			method: 'upload',
 		});
 		// Settings has no agent, so the builder's import event is not sent.
 		expect(trackImportedSkill).not.toHaveBeenCalled();

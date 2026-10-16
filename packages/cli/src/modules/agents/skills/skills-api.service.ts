@@ -23,6 +23,7 @@ import type { Skill } from '../entities/skill.entity';
 import { SkillRepository, type SkillTarget } from '../repositories/skill.repository';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { SkillService, toAgentSkill } from './skill.service';
+import { SkillsTelemetry } from './skills-telemetry';
 
 function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
 	if (skill.agentId) return 'agent';
@@ -43,6 +44,7 @@ export class SkillsApiService {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly txRunner: TransactionRunner,
 		private readonly userRepository: UserRepository,
+		private readonly skillsTelemetry: SkillsTelemetry,
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
@@ -84,6 +86,12 @@ export class SkillsApiService {
 			source: 'ui',
 			createdById: user.id,
 		});
+		await this.skillsTelemetry.created(
+			user.id,
+			[{ id, ...target }],
+			'ui',
+			payload.method ?? 'manual',
+		);
 		// No second access check: a custom role can create skills it cannot read later.
 		const [skill] = await this.skillRepository.findByIds([id]);
 		if (!skill) throw new NotFoundError('Skill not found');
@@ -107,6 +115,10 @@ export class SkillsApiService {
 				update,
 				user.id,
 			);
+			if (saved.created) {
+				// No move, so the skill stays where `requireAccess` read it.
+				await this.skillsTelemetry.updated(user.id, skill, 'ui', saved.version, false);
+			}
 			return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 		}
 
@@ -122,14 +134,24 @@ export class SkillsApiService {
 		});
 		// `save` leaves the refresh to the caller when it joins a transaction.
 		await this.skillService.refreshFollowingAgents(followingAgentIds);
+		if (saved.created) {
+			await this.skillsTelemetry.updated(
+				user.id,
+				{ id: skillId, ...target },
+				'ui',
+				saved.version,
+				true,
+			);
+		}
 		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 	}
 
 	async delete(user: User, skillId: string): Promise<void> {
-		await this.requireAccess(user, skillId, 'delete');
+		const skill = await this.requireAccess(user, skillId, 'delete');
 		// The conflict message names only the agents the user may read, as the detail does.
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		await this.skillService.deleteSkill(skillId, agentProjectIds ?? 'all');
+		await this.skillsTelemetry.deleted(user.id, skill);
 	}
 
 	private async toDetail(user: User, skill: Skill): Promise<SkillDetail> {

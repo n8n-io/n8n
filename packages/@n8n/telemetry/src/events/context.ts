@@ -36,6 +36,34 @@ const optionalUserId = z
 		'The acting user. Absent on the events the editor fires, which identify the user already',
 	);
 
+/** Where a skill lives. An agent skill takes its project from its agent. */
+const skillScope = z
+	.enum(['project', 'agent', 'instance'])
+	.describe('Where the skill lives: one project, one agent, or the whole instance');
+
+const skillId = z.string().describe('The skill. Its name and text are never reported');
+
+const skillProjectId = z
+	.string()
+	.optional()
+	.describe(
+		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
+	);
+
+/** The surface that wrote the skill. Kept apart from `skill.source`, which stores no MCP value. */
+const skillSource = z
+	.enum(['ui', 'agent', 'mcp'])
+	.describe(
+		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client',
+	);
+
+/** Whether a person or an assistant wrote the text. */
+const skillMethod = z
+	.enum(['manual', 'upload', 'ai'])
+	.describe(
+		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. Filter out `ai` to count the skills people write by hand',
+	);
+
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_PREFERENCES: {
 		name: 'User viewed preferences',
@@ -269,6 +297,67 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				),
 			scope_type: scopeType.optional().describe('Absent when the write named no usable scope'),
 			text_length: textLength.optional(),
+		}),
+	},
+	// ─── Skills hub ───
+
+	USER_VIEWED_SKILLS: {
+		name: 'User viewed skills',
+		description:
+			'A user opened the Skills page in the Context settings area. Fires on every visit, so it counts how often the page is used, also when the user changes nothing.',
+		properties: z.object({
+			count: z
+				.number()
+				.describe('Skills the user can see in total, not the number the first page showed'),
+		}),
+	},
+	USER_OPENED_SKILL: {
+		name: 'User opened skill',
+		description:
+			'A user opened one skill from the Skills settings page, in the editor or, without the edit permission, in the viewer. Fires once the skill loads. Kept apart from `User opened agent skill`, which is the agent builder.',
+		properties: z.object({
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
+			read_only: z.boolean().describe('Whether the user may only read the skill'),
+		}),
+	},
+	USER_CREATED_SKILL: {
+		name: 'User created skill',
+		description:
+			'A skill was created in the skills hub, from the settings page, the agent builder or an MCP client. Fires once the create commits. A copy that the server makes on its own, such as the startup copy or an agent duplicate, reports nothing.',
+		properties: z.object({
+			user_id: userId,
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
+			source: skillSource,
+			method: skillMethod,
+		}),
+	},
+	USER_UPDATED_SKILL: {
+		name: 'User updated skill',
+		description:
+			'A save stored a new version of a skill in the skills hub. A save with unchanged content stores no version and reports nothing, also when it moves the skill. Reports the scope after the save.',
+		properties: z.object({
+			user_id: userId,
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
+			source: skillSource,
+			version: z.number().describe('The number of the version this save stored'),
+			scope_changed: z.boolean().describe('Whether the same save moved the skill to another scope'),
+		}),
+	},
+	USER_DELETED_SKILL: {
+		name: 'User deleted skill',
+		description:
+			'A user deleted a skill from the skills hub on the settings page. Fires once the delete commits. Removing a skill from one agent keeps the hub skill and reports nothing here.',
+		properties: z.object({
+			user_id: userId,
+			skill_id: skillId,
+			scope: skillScope,
+			project_id: skillProjectId,
 		}),
 	},
 });

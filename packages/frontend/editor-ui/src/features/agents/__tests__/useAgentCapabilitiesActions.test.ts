@@ -184,6 +184,7 @@ type SkillModalData = {
 		id?: string;
 		skill: AgentSkill;
 		availableTo?: 'project' | 'agent' | 'instance';
+		method?: 'manual' | 'upload';
 	}) => unknown;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;
@@ -803,6 +804,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			'agent-1',
 			sqlHelper,
 			undefined,
+			undefined,
 		);
 		expect(getHubSkill).not.toHaveBeenCalled();
 
@@ -901,7 +903,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			});
 			const { modalData } = setupHub();
 
-			modalData.onConfirm({ skill: sqlHelper, availableTo });
+			modalData.onConfirm({ skill: sqlHelper, availableTo, method: 'upload' });
 			await flushPromises();
 
 			expect(createAgentSkill).toHaveBeenCalledWith(
@@ -910,6 +912,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 				'agent-1',
 				sqlHelper,
 				availableTo,
+				'upload',
 			);
 		},
 	);
