@@ -1,6 +1,11 @@
 import 'reflect-metadata';
 
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
+import type { Driver } from '@n8n/typeorm/driver/Driver';
+import type { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver';
+import type { Pool } from 'pg';
+
+import { UnexpectedError } from '../common';
 
 import { entities } from './entities';
 import { migrations } from './migrations';
@@ -25,4 +30,17 @@ export function createDataSource(url: string): DataSource {
 	};
 
 	return new DataSource(options);
+}
+
+/** The `pg` pool of an initialized `DataSource`, which the stores query directly. */
+export function poolOf(dataSource: DataSource): Pool {
+	const { driver } = dataSource;
+	if (!isPostgresDriver(driver) || !driver.master) {
+		throw new UnexpectedError('The engine stores need an initialized Postgres data source');
+	}
+	return driver.master;
+}
+
+function isPostgresDriver(driver: Driver): driver is PostgresDriver {
+	return driver.options.type === 'postgres';
 }

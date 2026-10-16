@@ -1,9 +1,10 @@
 import type { DataSource } from '@n8n/typeorm';
 
 import { WorkflowExecution, WorkflowStepExecution } from './entities';
-import { TypeOrmExecutionStore } from './typeorm-execution-store';
+import { poolOf } from './data-source';
+import { PgExecutionStore } from './pg-execution-store';
+import { PgStepStore } from './pg-step-store';
 import { TypeOrmExecutionViewStore } from './typeorm-execution-view-store';
-import { TypeOrmStepStore } from './typeorm-step-store';
 import type { ExecutionStore } from '../execution/execution-store';
 import type { ExecutionViewStore } from '../execution/execution-view-store';
 import type { StepStore } from '../execution/step-store';
@@ -17,11 +18,13 @@ export interface EngineStores {
 }
 
 export function createStores(dataSource: DataSource): EngineStores {
-	const executions = dataSource.getRepository(WorkflowExecution);
-	const steps = dataSource.getRepository(WorkflowStepExecution);
+	const pool = poolOf(dataSource);
 	return {
-		executionStore: new TypeOrmExecutionStore(executions),
-		stepStore: new TypeOrmStepStore(steps),
-		executionViewStore: new TypeOrmExecutionViewStore(executions, steps),
+		executionStore: new PgExecutionStore(pool),
+		stepStore: new PgStepStore(pool),
+		executionViewStore: new TypeOrmExecutionViewStore(
+			dataSource.getRepository(WorkflowExecution),
+			dataSource.getRepository(WorkflowStepExecution),
+		),
 	};
 }

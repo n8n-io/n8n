@@ -6,8 +6,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AllowAllAdmittance } from '../../admittance';
 import {
 	createDataSource,
-	TypeOrmExecutionStore,
-	TypeOrmStepStore,
+	PgExecutionStore,
+	PgStepStore,
+	poolOf,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
@@ -52,8 +53,8 @@ describe('execution start (integration)', () => {
 
 	function stores() {
 		return {
-			executionStore: new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution)),
-			stepStore: new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution)),
+			executionStore: new PgExecutionStore(poolOf(dataSource)),
+			stepStore: new PgStepStore(poolOf(dataSource)),
 		};
 	}
 
