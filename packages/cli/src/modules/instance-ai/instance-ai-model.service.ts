@@ -21,6 +21,7 @@ import { createProxyLanguageModel } from '@/utils/ai-proxy-language-model';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { modelNameForProvider, withModelName } from './model-config-name';
 
 /**
  * Resolves the language model the Instance AI agent runs against and reports
@@ -65,11 +66,7 @@ export class InstanceAiModelService {
 	 * `proxyContext` is forwarded as `x-n8n-run-id` / `x-n8n-thread-id` on every
 	 * proxied model call when set (run-less callers like verification omit it).
 	 */
-	async resolveAgentModelConfig(
-		user: User,
-		proxyContext?: ProxyContext,
-		modelName?: string,
-	): Promise<ModelConfig> {
+	async resolveAgentModelConfig(user: User, proxyContext?: ProxyContext): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
@@ -79,49 +76,42 @@ export class InstanceAiModelService {
 					{ userMessageId: nanoid() },
 				);
 			});
-			return await this.resolveProxyModel(
-				user,
-				proxyBaseUrl,
-				tokenManager,
-				proxyContext,
-				modelName,
-			);
+			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext);
 		}
-		const httpProxyModel = await this.resolveHttpProxyModel(user, modelName);
+		const httpProxyModel = await this.resolveHttpProxyModel(user);
 		if (httpProxyModel) return httpProxyModel;
-		const config = await this.settingsService.resolveModelConfig(user);
-		if (!modelName) return config;
-		const renamed = withModelName(config, modelName);
-		if (!renamed) {
-			this.logger.warn('Instance AI model cannot switch model names, using the main model', {
-				modelName,
-			});
-		}
-		return renamed ?? config;
+		return await this.settingsService.resolveModelConfig(user);
 	}
 
 	/**
 	 * Model for the Observer and Reflector memory tasks. It runs the configured
-	 * memory model name on the main model's provider and credentials, through
-	 * the same resolver chain. Returns `undefined` when no memory model is set,
-	 * so the caller uses the main model.
+	 * memory model name on the main model's provider and credentials. Returns
+	 * `undefined` when no memory model is set, so the caller uses the main model.
 	 */
 	async resolveMemoryModelConfig(
 		user: User,
+		mainModel: ModelConfig,
 		run: { proxyBaseUrl?: string; tokenManager?: ProxyTokenManager; proxyContext?: ProxyContext },
 	): Promise<ModelConfig | undefined> {
 		const modelName = this.settingsService.getConfiguredMemoryModelName();
 		if (!modelName) return undefined;
 		try {
-			return run.proxyBaseUrl && run.tokenManager
-				? await this.resolveProxyModel(
-						user,
-						run.proxyBaseUrl,
-						run.tokenManager,
-						run.proxyContext,
-						modelName,
-					)
-				: await this.resolveAgentModelConfig(user, run.proxyContext, modelName);
+			if (run.proxyBaseUrl && run.tokenManager) {
+				return await this.resolveProxyModel(
+					user,
+					run.proxyBaseUrl,
+					run.tokenManager,
+					run.proxyContext,
+					modelName,
+				);
+			}
+			// withModelName renames configs that carry a `provider/model` id. Outside the
+			// AI service proxy, the only main model without one is the pre-built Anthropic
+			// client used when HTTP(S)_PROXY is set, so build that client again with the memory model.
+			return (
+				withModelName(mainModel, modelName, { dropMainProviderPrefix: true }) ??
+				(await this.resolveHttpProxyModel(user, modelName))
+			);
 		} catch (error) {
 			// A memory model must never fail the user's run; the main model still works.
 			this.logger.warn('Failed to resolve the Instance AI memory model, using the main model', {
@@ -210,35 +200,4 @@ export class InstanceAiModelService {
 			async () => await client.getInstanceAiCredits({ id: user.id }),
 		);
 	}
-}
-
-/**
- * Replaces the model name in a `provider/model` config and keeps the provider
- * and credentials. Returns `undefined` for a config without such an id, for
- * example a pre-built language model.
- */
-function withModelName(config: ModelConfig, modelName: string): ModelConfig | undefined {
-	if (typeof config === 'string') {
-		const { provider } = splitModelId(config);
-		return provider ? `${provider}/${modelNameForProvider(modelName, provider)}` : undefined;
-	}
-	if ('project' in config) {
-		const name = modelNameForProvider(modelName, 'google-vertex-anthropic');
-		return { ...config, id: `google-vertex-anthropic/${name}` };
-	}
-	if ('url' in config) {
-		const provider = splitModelId(config.id).provider || 'custom';
-		return { ...config, id: `${provider}/${modelNameForProvider(modelName, provider)}` };
-	}
-	return undefined;
-}
-
-/**
- * Reads a memory model value like `N8N_INSTANCE_AI_MODEL`: a `provider/` prefix that
- * matches the main model's provider is dropped. Any other value is the provider's own
- * model name, for example `anthropic/claude-haiku-4.5` on OpenRouter.
- */
-function modelNameForProvider(value: string, mainProvider: string): string {
-	const { provider, model } = splitModelId(value);
-	return provider && provider === mainProvider ? model : value;
 }
