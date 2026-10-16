@@ -84,7 +84,14 @@ export class TypeOrmStepStore implements StepStore {
 
 		// Ids are assigned here because the entity's insert hook only runs on class
 		// instances, and these are plain values.
-		const rows = records.map((record) => ({ ...record, executionId, id: generateId() }));
+		const parameters: unknown[] = [executionId];
+		const tuples = records.map((record) => {
+			// jsonb is passed as text: the driver would send a JS array as a Postgres array.
+			const outputs = record.outputs === undefined ? null : JSON.stringify(record.outputs);
+			parameters.push(generateId(), record.nodeId, record.iteration, record.status, outputs);
+			const p = parameters.length;
+			return `($${p - 4}::uuid, $${p - 3}, $${p - 2}::int, $${p - 1}, $${p}::jsonb)`;
+		});
 
 		// The execution-row lock serializes this insert with `failStep`, so rows
 		// land before the failure (its sweep cancels them) or not at all.
@@ -93,31 +100,28 @@ export class TypeOrmStepStore implements StepStore {
 			await manager.query('SELECT id FROM workflow_execution WHERE id = $1 FOR SHARE', [
 				executionId,
 			]);
-			const [failed] = await manager.query<Array<{ id: string }>>(
-				`SELECT id FROM workflow_step_execution
-				 WHERE execution_id = $1 AND status = 'failed'
-				 LIMIT 1`,
-				[executionId],
+
+			// The failed-step test must be a statement after the lock: a statement
+			// that waits for the lock keeps the snapshot it started with, and would
+			// miss a failure committed during the wait.
+			//
+			// ON CONFLICT DO NOTHING is the unique key doing its job: a node another
+			// planner already queued is skipped, leaving the rest of the batch to land.
+			// RETURNING emits exactly the rows that were inserted.
+			const inserted = await manager.query<InsertedStepRow[]>(
+				`INSERT INTO workflow_step_execution (id, execution_id, node_id, iteration, status, outputs)
+				 SELECT candidate.id, $1::uuid, candidate.node_id, candidate.iteration, candidate.status, candidate.outputs
+				 FROM (VALUES ${tuples.join(', ')}) AS candidate (id, node_id, iteration, status, outputs)
+				 WHERE NOT EXISTS (
+					SELECT 1 FROM workflow_step_execution
+					WHERE execution_id = $1::uuid AND status = 'failed'
+				 )
+				 ON CONFLICT DO NOTHING
+				 RETURNING id, node_id, iteration`,
+				parameters,
 			);
-			if (failed) return [];
 
-			// `orIgnore` is the unique key doing its job: a node another planner already
-			// queued is skipped, leaving the rest of the batch to land. RETURNING emits
-			// exactly the rows that were inserted, keyed by database column name.
-			const result = await manager
-				.createQueryBuilder()
-				.insert()
-				.into(WorkflowStepExecution)
-				.values(rows)
-				.orIgnore()
-				.returning(['id', 'nodeId', 'iteration'])
-				.execute();
-
-			return (result.raw as InsertedStepRow[]).map(({ id, node_id: nodeId, iteration }) => ({
-				id,
-				nodeId,
-				iteration,
-			}));
+			return inserted.map(({ id, node_id: nodeId, iteration }) => ({ id, nodeId, iteration }));
 		});
 	}
 

@@ -17,8 +17,10 @@ export function createEngineStepDataLoader(
 	stepStore: StepStore,
 ): StepDataLoader {
 	return async (context): Promise<StepData> => {
-		const execution = await executionStore.loadExecution(context.executionId);
-		const steps = await stepStore.loadAllSteps(context.executionId);
+		const [execution, steps] = await Promise.all([
+			executionStore.loadExecution(context.executionId),
+			stepStore.loadAllSteps(context.executionId),
+		]);
 
 		const byNode = new Map<string, Record<number, StepSlots>>();
 		for (const step of steps) {
