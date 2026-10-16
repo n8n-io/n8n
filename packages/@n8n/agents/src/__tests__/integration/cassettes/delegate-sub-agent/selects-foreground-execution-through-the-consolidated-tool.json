@@ -58,6 +58,22 @@
 								"enum": ["low", "medium", "high"],
 								"description": "Optional difficulty estimate for this delegated task. Use low for simple bounded work, medium for moderate analysis or implementation, and high for complex research, architecture, or multi-step reasoning."
 							},
+							"planTask": {
+								"type": "object",
+								"properties": {
+									"planId": {
+										"type": "string",
+										"format": "uuid"
+									},
+									"planTaskId": {
+										"type": "string",
+										"format": "uuid"
+									}
+								},
+								"required": ["planId", "planTaskId"],
+								"additionalProperties": false,
+								"description": "For background work in a plan, use the plan ID and leaf task ID from the latest plan snapshot. Children inherit their task."
+							},
 							"mode": {
 								"type": "string",
 								"enum": ["foreground", "background"],
@@ -198,6 +214,22 @@
 								"type": "string",
 								"enum": ["low", "medium", "high"],
 								"description": "Optional difficulty estimate for this delegated task. Use low for simple bounded work, medium for moderate analysis or implementation, and high for complex research, architecture, or multi-step reasoning."
+							},
+							"planTask": {
+								"type": "object",
+								"properties": {
+									"planId": {
+										"type": "string",
+										"format": "uuid"
+									},
+									"planTaskId": {
+										"type": "string",
+										"format": "uuid"
+									}
+								},
+								"required": ["planId", "planTaskId"],
+								"additionalProperties": false,
+								"description": "For background work in a plan, use the plan ID and leaf task ID from the latest plan snapshot. Children inherit their task."
 							},
 							"mode": {
 								"type": "string",

@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import { AgentsConfig, GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -1021,7 +1021,6 @@ describe('workflow tool → background job handoff', () => {
 	});
 
 	it('registers a draft workflow only when it becomes a background task', async () => {
-		Container.set(AgentsConfig, mock<AgentsConfig>({ backgroundTasksEnabled: true }));
 		setPersistence({ status: 'waiting' });
 		const jobService = setJobService();
 		const tool = await buildBackgroundTool();
@@ -1032,6 +1031,7 @@ describe('workflow tool → background job handoff', () => {
 			expect.objectContaining({
 				executionId: 'exec-1',
 				parentThreadId: 'thread-1',
+				parentResourceId: 'draft-chat:user-1',
 			}),
 		);
 		expect(jobService.registerWorkflowJob).toHaveBeenCalledTimes(1);

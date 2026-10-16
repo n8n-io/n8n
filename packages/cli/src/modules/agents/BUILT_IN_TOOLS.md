@@ -115,9 +115,29 @@ Source: [`background/background-job-tools.ts`](./background/background-job-tools
 | --- | --- |
 | `check_background_jobs` | Lists the background jobs of the conversation with their status and results. |
 | `cancel_background_job` | Cancels a running background job by its job id. |
-| `resume_background_jobs` | Resumes jobs from the latest user stop. |
+| `resume_background_jobs` | Resumes selected stopped plan tasks, or the latest stop group outside a plan. |
 
 Use `delegate_subagent` with `mode: "background"` to start a background sub-agent.
+In Agent Preview, pass `planTask: { planId, planTaskId }` for work in an active plan.
+The host checks the leaf task and its prerequisites before dispatch.
+Children inherit this link from host metadata. They cannot change it through tool input.
+Waiting workflow jobs retain the same link. Foreground workflows do not get background job rows.
+
+To continue a plan, pass `planId` to `resume_background_jobs`.
+Pass `taskIds` to continue only those tasks. A group selects its unfinished children.
+An empty `taskIds` list is invalid. Omit it to select the whole plan.
+The tool does not resume prerequisites or approve pending tools.
+It reports blocked tasks, failed resumes, and workflows that need a new execution.
+Selected tasks without jobs leave the stopped state, even when their prerequisites are unfinished.
+They stay pending until those prerequisites are Done. Continue does not dispatch them.
+Paused jobs with unfinished prerequisites stay stopped.
+Jobs without saved task links support only whole-group continuation.
+
+Plan snapshots include `workState`. This state changes the display without changing saved task statuses.
+A new user turn admits chat work. It does not release stopped tasks.
+New plan tasks can run while older tasks remain stopped.
+The main agent must review results before it marks a task Done.
+It must also mark comparisons and recommendations Done before giving the final answer.
 
 ## `mark_session_failed`: session outcomes
 

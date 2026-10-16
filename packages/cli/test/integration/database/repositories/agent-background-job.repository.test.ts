@@ -1,3 +1,4 @@
+import { AgentPlanWorkRepository } from '@/modules/agents/repositories/agent-plan-work.repository';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService, type Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -92,6 +93,21 @@ describe('AgentBackgroundJobRepository', () => {
 		});
 	}
 
+	it.each([
+		['cancelled', null, 'Late result'],
+		['cancelled', 'Saved result', 'Saved result'],
+		['completed', null, null],
+		['failed', null, null],
+		['running', null, null],
+	] as const)(
+		'preserves late output only for a canceled job without output (%s, %s)',
+		async (status, result, expected) => {
+			const id = uuid();
+			await insertJob({ id, parentThreadId: uuid(), status, result });
+			await repository.preserveLateCompletedResult(id, 'Late result');
+			expect(await repository.findById(id)).toMatchObject({ status, result: expected });
+		},
+	);
 	it('admits five active tasks beside a paused group and fences concurrent spawns', async () => {
 		const parentThreadId = uuid();
 		const agent = await agentRepository.findOneByOrFail({ id: agentId });
@@ -269,6 +285,7 @@ describe('AgentBackgroundJobRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 			Container.get(N8NCheckpointStorage),
 			mock<AgentMessageRepository>(),
+			mock<AgentPlanWorkRepository>(),
 		);
 		if (recover) {
 			await repository.settleIfActive(finishingId, { status: 'completed', result: 'Done' });
@@ -829,6 +846,7 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentExecutionUpdateBroadcaster>(),
 				checkpointStorage,
 				mock<AgentMessageRepository>(),
+				mock<AgentPlanWorkRepository>(),
 			);
 			const wakeService = new AgentWakeService(
 				mock<AgentTaskCancellationRepository>(),
