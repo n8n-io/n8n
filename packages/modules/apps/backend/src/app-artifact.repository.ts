@@ -77,7 +77,7 @@ export class AppArtifactRepository extends BaseRepository<AppArtifact> {
 		});
 	}
 
-	async findUnused(pendingBefore: Date, afterId: number, limit = 100): Promise<AppArtifact[]> {
+	async findUnused(pendingBefore: Date, afterId: number): Promise<AppArtifact[]> {
 		const query = this.createQueryBuilder('artifact');
 		const references = query
 			.subQuery()
@@ -92,7 +92,7 @@ export class AppArtifactRepository extends BaseRepository<AppArtifact> {
 				pendingBefore,
 			})
 			.orderBy('artifact.id', 'ASC')
-			.take(limit)
+			.take(100)
 			.getMany();
 	}
 

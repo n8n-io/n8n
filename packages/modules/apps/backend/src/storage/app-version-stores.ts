@@ -5,7 +5,6 @@ export type AppFiles = ReadonlyMap<string, Buffer>;
 export type NewSourceVersion = {
 	id: string;
 	appId: string;
-	projectId: string;
 	expectedDraftVersionId: string | null;
 	label: string | null;
 };

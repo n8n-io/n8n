@@ -26,7 +26,7 @@ export class AppRepository extends BaseRepository<App> {
 		return await this.managerFor(ctx).findOneBy(App, { id: appId, projectId });
 	}
 
-	async findForRetention(appId: string, ctx: OperationContext) {
+	async findById(appId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOneBy(App, { id: appId });
 	}
 
@@ -47,16 +47,12 @@ export class AppRepository extends BaseRepository<App> {
 		return result.affected === 1;
 	}
 
-	async listIdsAfter(
-		after: string | undefined,
-		limit = 100,
-		ctx: OperationContext = {},
-	): Promise<string[]> {
+	async listIdsAfter(after: string | undefined, ctx: OperationContext = {}): Promise<string[]> {
 		const query = this.managerFor(ctx)
 			.createQueryBuilder(App, 'app')
 			.select(['app.id'])
 			.orderBy('app.id', 'ASC')
-			.take(limit);
+			.take(100);
 		if (after) query.where('app.id > :after', { after });
 		return (await query.getMany()).map((app) => app.id);
 	}

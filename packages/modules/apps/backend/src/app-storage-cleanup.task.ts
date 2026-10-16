@@ -1,4 +1,5 @@
 import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { AppArtifactService } from './app-artifact.service';
 import { AppRetentionService } from './app-retention.service';
@@ -7,7 +8,7 @@ import { AppRepository } from './app.repository';
 @SystemTask()
 export class AppStorageCleanupTask implements SystemTask {
 	readonly name = 'app-storage-cleanup';
-	readonly schedule = intervalFromSeconds(15 * 60);
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(15 * 60);
 	readonly target = clusterTarget({
 		scheduler: { retryOnFailure: true },
 		leaderTimer: { retryDelaySeconds: 60 },

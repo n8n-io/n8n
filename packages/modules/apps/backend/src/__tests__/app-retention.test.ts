@@ -19,9 +19,7 @@ function createRetention() {
 	const config = mock<AppsConfig>({ maxVersionsPerApp: 2, maxBundlesPerApp: 3 });
 	const locks = mock<DbLockService>();
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn(ctx));
-	apps.findForRetention.mockResolvedValue(
-		mock<App>({ draftVersionId: null, publishedVersionId: null }),
-	);
+	apps.findById.mockResolvedValue(mock<App>({ draftVersionId: null, publishedVersionId: null }));
 	const retention = new AppRetentionService(
 		apps,
 		versions,
@@ -37,7 +35,7 @@ describe('AppRetentionService', () => {
 	it('keeps protected history and prunes through the stores in the same transaction', async () => {
 		const { retention, ctx, apps, versions, sourceVersions, buildResults, locks } =
 			createRetention();
-		apps.findForRetention.mockResolvedValue(
+		apps.findById.mockResolvedValue(
 			mock<App>({ draftVersionId: 'draft', publishedVersionId: 'published-bundle' }),
 		);
 		versions.listForRetention.mockResolvedValue([
@@ -70,7 +68,7 @@ describe('AppRetentionService', () => {
 		const { retention, ctx, apps, versions, sourceVersions, buildResults, config } =
 			createRetention();
 		config.maxBundlesPerApp = 1;
-		apps.findForRetention.mockResolvedValue(
+		apps.findById.mockResolvedValue(
 			mock<App>({ draftVersionId: 'draft-bundle', publishedVersionId: 'published-bundle' }),
 		);
 		versions.listForRetention.mockResolvedValue([
@@ -100,7 +98,7 @@ describe('AppRetentionService', () => {
 
 	it('skips an app deleted before retention starts', async () => {
 		const { retention, apps, sourceVersions, buildResults } = createRetention();
-		apps.findForRetention.mockResolvedValue(null);
+		apps.findById.mockResolvedValue(null);
 
 		await retention.prune('app');
 
