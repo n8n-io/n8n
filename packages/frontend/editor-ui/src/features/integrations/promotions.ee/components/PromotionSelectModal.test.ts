@@ -258,6 +258,39 @@ describe('PromotionSelectModal', () => {
 		expect(toast.queryByText(/Pushed to/)).not.toBeInTheDocument();
 	});
 
+	it('should use a warning toast when the promote has a warning', async () => {
+		api.promoteProjectSelection.mockResolvedValueOnce({
+			...promoteResult('n8n-promotion/2026-01-01T00-00-00-000Z'),
+			warnings: [{ message: 'No merge request was opened.' }],
+		});
+		const { findAllByTestId, findByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: PROMOTION_SELECT_MODAL_KEY,
+				data: { projectId: 'project-1', direction: 'promote' },
+			},
+		});
+
+		await userEvent.click((await findAllByTestId('promotion-change-row'))[0]);
+		await userEvent.click(await findByTestId('promotion-submit'));
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Changes promoted',
+					type: 'warning',
+					duration: 0,
+				}),
+			),
+		);
+		const message = showMessage.mock.calls[0]?.[0].message;
+		const toast = render(defineComponent({ render: () => message }));
+		expect(
+			toast.getByText('Pushed to n8n-promotion/2026-01-01T00-00-00-000Z.'),
+		).toBeInTheDocument();
+		expect(toast.getByText('No merge request was opened.')).toBeInTheDocument();
+	});
+
 	it('should show an error and keep the selection when promote fails', async () => {
 		const failure = new Error('git is unreachable');
 		api.promoteProjectSelection.mockRejectedValueOnce(failure);

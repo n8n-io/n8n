@@ -174,7 +174,7 @@ async function onPromote() {
 		promotionEventBus.emit('promoted', { projectId: props.data.projectId });
 		toast.showMessage({
 			title: i18n.baseText('promotions.modal.toast.success.title'),
-			type: 'success',
+			type: result.warnings?.length ? 'warning' : 'success',
 			...promoteSuccessToast(result, {
 				pushed: i18n.baseText('promotions.result.pushed', {
 					interpolate: { branch: result.git.branchName },
