@@ -884,7 +884,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 		it("shows the agent's own icon on the install card", async () => {
 			const personalisation = computed(() => ({
-				icon: 'heart',
+				icon: 'zap',
 				gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
 			}));
 			const { getByTestId } = render(botUp(), { [AGENT_PERSONALISATION_KEY]: personalisation });
@@ -894,6 +894,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				'[data-test-id="agent-personalisation-icon-tile"]',
 			);
 			expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
+			expect(tile?.querySelector('[data-icon="zap"]')).toBeInTheDocument();
 		});
 
 		// The secret's expiry belongs to the connected channel's settings, not here:

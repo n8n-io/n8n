@@ -238,7 +238,11 @@ vi.mock('@/features/agents/channels/teams/AgentChannelTeamsSetupView.vue', async
 				const personalisation = inject(AGENT_PERSONALISATION_KEY, null);
 				return { provision, download, finish: () => emit('done'), personalisation };
 			},
-			template: `<div data-testid="mock-teams-setup" :data-icon="personalisation?.icon">
+			template: `<div
+				data-testid="mock-teams-setup"
+				:data-icon="personalisation?.icon"
+				:data-gradient-from="personalisation?.gradient.from"
+			>
 			<button data-testid="mock-teams-provision" @click="provision">Provision</button>
 			<button data-testid="mock-teams-download" @click="download">Download</button>
 			<button data-testid="mock-teams-done" @click="finish">Done</button>
@@ -712,7 +716,7 @@ describe('ChannelSetupCard', () => {
 				id: 'agent-1',
 				schema: {
 					personalisation: {
-						icon: 'heart',
+						icon: 'zap',
 						gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
 					},
 				},
@@ -720,9 +724,9 @@ describe('ChannelSetupCard', () => {
 			const wrapper = mountCard({ integrationType: 'teams' });
 			await flushPromises();
 
-			expect(wrapper.find('[data-testid="mock-teams-setup"]').attributes('data-icon')).toBe(
-				'heart',
-			);
+			const setup = wrapper.find('[data-testid="mock-teams-setup"]');
+			expect(setup.attributes('data-icon')).toBe('zap');
+			expect(setup.attributes('data-gradient-from')).toBe('#2563EB');
 		});
 
 		it('offers the setup choice in the header', async () => {

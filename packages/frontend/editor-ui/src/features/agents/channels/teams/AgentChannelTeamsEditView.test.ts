@@ -591,7 +591,7 @@ describe('AgentChannelTeamsEditView', () => {
 
 	it("shows the agent's own icon on the identity card", async () => {
 		const personalisation = computed(() => ({
-			icon: 'heart',
+			icon: 'zap',
 			gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
 		}));
 		const { container, getByTestId } = renderHost({
@@ -603,5 +603,6 @@ describe('AgentChannelTeamsEditView', () => {
 			'[data-test-id="agent-personalisation-icon-tile"]',
 		);
 		expect(tile?.style.getPropertyValue('--agent-personalisation-gradient-from')).toBe('#2563EB');
+		expect(tile?.querySelector('[data-icon="zap"]')).toBeInTheDocument();
 	});
 });
