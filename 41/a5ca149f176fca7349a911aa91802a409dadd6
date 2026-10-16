@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Aws/AwsLambda.node.ts
+  s_2e1fa95fc44f8f::t_96d48f9a343f02 11,22-23,174,178,180
+packages/nodes-base/nodes/Aws/__tests__/AwsLambda.node.test.ts
+  s_2e1fa95fc44f8f::t_c3fbe4dc68bc5f 481-504
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41a5ca149f176fca7349a911aa91802a409dadd6",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
