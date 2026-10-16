@@ -396,6 +396,27 @@ describe('Agent skills in the skills hub', () => {
 		expect(Object.values(skills)).toEqual([body('Private')]);
 	});
 
+	it('trims the name of a skill the agent page creates, and refuses a blank one', async () => {
+		const agent = await createAgent([]);
+		const context = { user: editor, modifiedBy: 'user' as const };
+
+		await expect(
+			agentSkillsService.createAndAttachSkill(agent.id, project.id, body('   '), context),
+		).rejects.toThrow('Skill name is required.');
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('  Summarize  '),
+			context,
+		);
+
+		// The answer and its hash match the stored skill, so the next edit passes the base check.
+		expect(created.skill.name).toBe('Summarize');
+		const { skills } = await skillRefs.readDraft(await reload(agent), {});
+		expect(skills[created.id]?.name).toBe('Summarize');
+		expect(created.skillHash).toBe(getAgentSkillHash(skills[created.id]!));
+	});
+
 	it('changes where a skill can be added only while no other agent uses it', async () => {
 		const agent = await createAgent([]);
 		const context = { user: editor, modifiedBy: 'user' as const };

@@ -37,6 +37,8 @@ import type {
 	SkillDetail,
 	SkillListItem,
 	SkillListResponse,
+	SkillNewNameQueryDto,
+	SkillNewNameResponse,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
@@ -753,6 +755,20 @@ export const getHubSkill = async (
 	skillId: string,
 ): Promise<SkillDetail> => {
 	return await makeRestApiRequest<SkillDetail>(context, 'GET', `/skills/${skillId}`);
+};
+
+/** A name like `name` that no skill in the scope has yet, such as "New skill 2". */
+export const getNewSkillName = async (
+	context: IRestApiContext,
+	query: SkillNewNameQueryDto,
+): Promise<string> => {
+	const { name } = await makeRestApiRequest<SkillNewNameResponse>(
+		context,
+		'GET',
+		'/skills/new-name',
+		query,
+	);
+	return name;
 };
 
 export const getAgentBackgroundJobs = async (
