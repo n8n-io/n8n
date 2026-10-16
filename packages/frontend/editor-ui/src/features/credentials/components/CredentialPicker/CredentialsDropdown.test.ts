@@ -50,4 +50,17 @@ describe('CredentialsDropdown', () => {
 		await nextTick();
 		expect(wrapper.find(`[data-test-id="${managedTestId}"]`).exists()).toBe(true);
 	});
+
+	it('reserves room for the key icon only while a credential is selected', async () => {
+		const wrapper = renderComponent();
+		const select = wrapper.findComponent(N8nSelect);
+		const hasIconClass = () => select.classes().some((c) => c.includes('selectWithIcon'));
+		expect(hasIconClass()).toBe(false);
+
+		await wrapper.setProps({ selectedCredentialId: CREDENTIAL_OPTION.id });
+		expect(hasIconClass()).toBe(true);
+
+		await wrapper.setProps({ selectedCredentialId: null });
+		expect(hasIconClass()).toBe(false);
+	});
 });
