@@ -1451,7 +1451,7 @@ export type RelayEventMap = {
 		rulesBefore: readonly PolicyRule[] | null;
 		rulesAfter: readonly PolicyRule[];
 		shadowWarningCount: number;
-		notInstalledWarningCount: number;
+		notLoadedWarningCount: number;
 	};
 
 	'node-type-policy-attachments-updated': {

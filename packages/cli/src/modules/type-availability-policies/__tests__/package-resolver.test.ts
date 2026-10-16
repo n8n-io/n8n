@@ -3,7 +3,7 @@ import type { NodeTypes } from '@/node-types';
 
 import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from '../constants';
 import {
-	installedCheckFor,
+	loadedCheckFor,
 	isCredentialTypeKnown,
 	isPackageInstalled,
 	packageResolverFor,
@@ -170,7 +170,7 @@ describe('isCredentialTypeKnown', () => {
 	});
 });
 
-describe('installedCheckFor', () => {
+describe('loadedCheckFor', () => {
 	/** Stands in for `NodeTypes.resolveBaseName`: `slackTool` is a synthetic variant of `slack`. */
 	const nodeTypes = {
 		resolveBaseName: (name: string) => ({
@@ -197,21 +197,21 @@ describe('installedCheckFor', () => {
 			const registry = makeFullRegistry({
 				loaders: { 'n8n-nodes-base': {} as LoadNodesAndCredentials['loaders'][string] },
 			});
-			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
+			const isLoaded = loadedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
 
-			expect(isInstalled({ kind: 'package', value: 'n8n-nodes-base' })).toBe(true);
+			expect(isLoaded({ kind: 'package', value: 'n8n-nodes-base' })).toBe(true);
 		});
 
 		it('is false for a package with no registered loader', () => {
-			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
+			const isLoaded = loadedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
 
-			expect(isInstalled({ kind: 'package', value: 'n8n-nodes-not-installed' })).toBe(false);
+			expect(isLoaded({ kind: 'package', value: 'n8n-nodes-not-installed' })).toBe(false);
 		});
 
 		it('is false for a package named after an inherited Object.prototype property', () => {
-			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
+			const isLoaded = loadedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
 
-			expect(isInstalled({ kind: 'package', value: 'constructor' })).toBe(false);
+			expect(isLoaded({ kind: 'package', value: 'constructor' })).toBe(false);
 		});
 	});
 
@@ -222,30 +222,20 @@ describe('installedCheckFor', () => {
 			});
 			const selector = { kind: 'extends', value: 'oAuth2Api' } as const;
 
-			expect(installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry)(selector)).toBe(true);
-			expect(installedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, registry)(selector)).toBe(
-				true,
-			);
+			expect(loadedCheckFor(NODE_TYPES_KIND, nodeTypes, registry)(selector)).toBe(true);
+			expect(loadedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, registry)(selector)).toBe(true);
 		});
 
 		it('is false for an unknown credential type', () => {
-			const isInstalled = installedCheckFor(
-				CREDENTIAL_TYPES_KIND,
-				{} as NodeTypes,
-				makeFullRegistry({}),
-			);
+			const isLoaded = loadedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, makeFullRegistry({}));
 
-			expect(isInstalled({ kind: 'extends', value: 'unknownApi' })).toBe(false);
+			expect(isLoaded({ kind: 'extends', value: 'unknownApi' })).toBe(false);
 		});
 
 		it('is false for a value named after an inherited Object.prototype property', () => {
-			const isInstalled = installedCheckFor(
-				CREDENTIAL_TYPES_KIND,
-				{} as NodeTypes,
-				makeFullRegistry({}),
-			);
+			const isLoaded = loadedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, makeFullRegistry({}));
 
-			expect(isInstalled({ kind: 'extends', value: 'constructor' })).toBe(false);
+			expect(isLoaded({ kind: 'extends', value: 'constructor' })).toBe(false);
 		});
 	});
 
@@ -254,30 +244,30 @@ describe('installedCheckFor', () => {
 			const registry = makeFullRegistry({
 				knownNodes: { 'n8n-nodes-base.slack': { className: '', sourcePath: '' } },
 			});
-			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
+			const isLoaded = loadedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
 
-			expect(isInstalled({ kind: 'name', value: 'n8n-nodes-base.slack' })).toBe(true);
+			expect(isLoaded({ kind: 'name', value: 'n8n-nodes-base.slack' })).toBe(true);
 		});
 
 		it('is false when the resolved base name is not a known node', () => {
-			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
+			const isLoaded = loadedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
 
-			expect(isInstalled({ kind: 'name', value: 'n8n-nodes-base.slack' })).toBe(false);
+			expect(isLoaded({ kind: 'name', value: 'n8n-nodes-base.slack' })).toBe(false);
 		});
 
 		it('treats a synthetic tool variant as installed when its base node is known', () => {
 			const registry = makeFullRegistry({
 				knownNodes: { 'n8n-nodes-base.slack': { className: '', sourcePath: '' } },
 			});
-			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
+			const isLoaded = loadedCheckFor(NODE_TYPES_KIND, nodeTypes, registry);
 
-			expect(isInstalled({ kind: 'name', value: 'n8n-nodes-base.slackTool' })).toBe(true);
+			expect(isLoaded({ kind: 'name', value: 'n8n-nodes-base.slackTool' })).toBe(true);
 		});
 
 		it('is false for a name resolving to an inherited Object.prototype property', () => {
-			const isInstalled = installedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
+			const isLoaded = loadedCheckFor(NODE_TYPES_KIND, nodeTypes, makeFullRegistry({}));
 
-			expect(isInstalled({ kind: 'name', value: 'constructor' })).toBe(false);
+			expect(isLoaded({ kind: 'name', value: 'constructor' })).toBe(false);
 		});
 	});
 
@@ -286,19 +276,15 @@ describe('installedCheckFor', () => {
 			const registry = makeFullRegistry({
 				knownCredentials: { slackApi: { className: '', sourcePath: '' } },
 			});
-			const isInstalled = installedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, registry);
+			const isLoaded = loadedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, registry);
 
-			expect(isInstalled({ kind: 'name', value: 'slackApi' })).toBe(true);
+			expect(isLoaded({ kind: 'name', value: 'slackApi' })).toBe(true);
 		});
 
 		it('is false when the value is not a known credential type', () => {
-			const isInstalled = installedCheckFor(
-				CREDENTIAL_TYPES_KIND,
-				{} as NodeTypes,
-				makeFullRegistry({}),
-			);
+			const isLoaded = loadedCheckFor(CREDENTIAL_TYPES_KIND, {} as NodeTypes, makeFullRegistry({}));
 
-			expect(isInstalled({ kind: 'name', value: 'unknownApi' })).toBe(false);
+			expect(isLoaded({ kind: 'name', value: 'unknownApi' })).toBe(false);
 		});
 	});
 });

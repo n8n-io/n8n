@@ -16,11 +16,12 @@ import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 /**
  * A saved rule that cannot match yet: `shadowed` when an earlier rule in the same list already
- * covers it, `notInstalled` when it names a package or type this instance has not loaded.
+ * covers it, `notLoaded` when it names a package or type this instance has not loaded. A type
+ * is also not loaded when `NODES_EXCLUDE` or `NODES_INCLUDE` filters it out.
  */
 const ruleWarningSchema = z.discriminatedUnion('kind', [
 	z.object({ kind: z.literal('shadowed'), ruleId: z.string(), shadowedByRuleId: z.string() }),
-	z.object({ kind: z.literal('notInstalled'), ruleId: z.string() }),
+	z.object({ kind: z.literal('notLoaded'), ruleId: z.string() }),
 ]);
 
 /** Plain rule arrays on purpose: a response never re-runs the duplicate-id refinement. */

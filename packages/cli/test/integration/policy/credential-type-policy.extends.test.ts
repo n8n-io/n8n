@@ -185,9 +185,7 @@ describe('a rule on a base credential type', () => {
 describe('writing an extends rule', () => {
 	test('saves a base credential type that is not installed, with a warning', async () => {
 		const response = await ownerAgent.put('/credential-type-policies/instance').send({
-			rules: [
-				{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notInstalledApi' } },
-			],
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notLoadedApi' } }],
 			defaultAction: 'allow',
 			version: 0,
 		});
@@ -195,9 +193,9 @@ describe('writing an extends rule', () => {
 		expect(response.statusCode).toBe(200);
 		const persisted = await ownerAgent.get('/credential-type-policies/instance');
 		expect(persisted.body.data.rules).toEqual([
-			{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notInstalledApi' } },
+			{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'notLoadedApi' } },
 		]);
-		expect(response.body.data.warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r1' }]);
+		expect(response.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
 	});
 
 	test('rejects the rule in a node type policy request', async () => {

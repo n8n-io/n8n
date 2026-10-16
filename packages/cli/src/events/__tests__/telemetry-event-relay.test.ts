@@ -759,7 +759,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [denyRule],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -782,7 +782,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [denyRule, allowPackageRule, delegateRule],
 				shadowWarningCount: 2,
-				notInstalledWarningCount: 1,
+				notLoadedWarningCount: 1,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -812,7 +812,7 @@ describe('TelemetryEventRelay', () => {
 					allowed_types: ['n8n-nodes-base.code'],
 					previous_rule_count: null,
 					shadow_warning_count: 2,
-					not_installed_warning_count: 1,
+					not_loaded_warning_count: 1,
 					version: 1,
 				},
 			);
@@ -835,7 +835,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [credentialDenyRule],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -876,7 +876,7 @@ describe('TelemetryEventRelay', () => {
 					{ id: 'rule-1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } },
 				],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -906,7 +906,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [credentialPackageDenyRule],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -934,7 +934,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -953,7 +953,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: [denyRule],
 				rulesAfter: [allowPackageRule],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -984,7 +984,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			};
 
 			eventService.emit('node-type-policy-saved', event);
@@ -1107,7 +1107,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [denyRule],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -1132,7 +1132,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [{ ...allowPackageRule, action: 'deny' }],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -1163,7 +1163,7 @@ describe('TelemetryEventRelay', () => {
 					selector: { kind: 'name' as const, value: name },
 				})),
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			const properties = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1];
@@ -1187,7 +1187,7 @@ describe('TelemetryEventRelay', () => {
 				rulesBefore: null,
 				rulesAfter: [],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 
 			expect(telemetry.track).toHaveBeenCalledWith(

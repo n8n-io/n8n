@@ -23,7 +23,7 @@ import { TypeAvailabilityPolicyRepository } from './database/repositories/type-a
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
 import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
-import { installedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
+import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
 import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type {
 	PolicyAction,
@@ -456,7 +456,7 @@ export class TypeAvailabilityPolicyService {
 
 	/**
 	 * Rejects a rule that is malformed for this kind. A rule that only names something not
-	 * loaded saves, and comes back as a `notInstalled` warning.
+	 * loaded saves, and comes back as a `notLoaded` warning.
 	 */
 	private validateAndLintRules(kind: string, rules: readonly PolicyRule[]): PolicyRuleWarning[] {
 		assertNoCredentialOnlyPackageRules(rules);
@@ -466,7 +466,7 @@ export class TypeAvailabilityPolicyService {
 		return lintPolicyRules(rules, {
 			resolvePackage: packageResolverFor(kind, this.loadNodesAndCredentials),
 			policedType: policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
-			isInstalled: installedCheckFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
+			isLoaded: loadedCheckFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
 		});
 	}
 
@@ -950,8 +950,7 @@ export class TypeAvailabilityPolicyService {
 			rulesBefore: result.documentBefore?.rules ?? null,
 			rulesAfter: result.documentAfter.rules,
 			shadowWarningCount: warnings.filter((warning) => warning.kind === 'shadowed').length,
-			notInstalledWarningCount: warnings.filter((warning) => warning.kind === 'notInstalled')
-				.length,
+			notLoadedWarningCount: warnings.filter((warning) => warning.kind === 'notLoaded').length,
 		});
 
 		return {

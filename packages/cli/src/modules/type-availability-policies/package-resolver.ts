@@ -118,9 +118,9 @@ export function isPackageInstalled(
 
 /**
  * Whether a selector names something this instance has loaded, for the write-time
- * `notInstalled` warning. A `name` rule on a synthetic tool variant checks its base node.
+ * `notLoaded` warning. A `name` rule on a synthetic tool variant checks its base node.
  */
-export function installedCheckFor(
+export function loadedCheckFor(
 	kind: string,
 	nodeTypes: NodeTypes,
 	loadNodesAndCredentials: LoadNodesAndCredentials,

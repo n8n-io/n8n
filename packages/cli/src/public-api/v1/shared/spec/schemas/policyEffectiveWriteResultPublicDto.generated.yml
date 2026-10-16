@@ -80,7 +80,7 @@ properties:
             kind:
               type: string
               enum:
-                - notInstalled
+                - notLoaded
             ruleId:
               type: string
           required:

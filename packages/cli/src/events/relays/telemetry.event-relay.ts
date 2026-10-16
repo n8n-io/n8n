@@ -596,7 +596,7 @@ export class TelemetryEventRelay extends EventRelay {
 		rulesBefore,
 		rulesAfter,
 		shadowWarningCount,
-		notInstalledWarningCount,
+		notLoadedWarningCount,
 	}: RelayEventMap['node-type-policy-saved']) {
 		if (!isPolicyKind(kind)) return;
 
@@ -621,7 +621,7 @@ export class TelemetryEventRelay extends EventRelay {
 				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types, resolvePackage),
 				previous_rule_count: rulesBefore?.length ?? null,
 				shadow_warning_count: shadowWarningCount,
-				not_installed_warning_count: notInstalledWarningCount,
+				not_loaded_warning_count: notLoadedWarningCount,
 				version: after.version,
 			},
 		);

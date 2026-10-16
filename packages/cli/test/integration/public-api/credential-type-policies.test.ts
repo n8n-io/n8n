@@ -61,7 +61,7 @@ afterEach(async () => {
 	]);
 });
 
-// Fixture rules name `slackApi`; without it loaded, every write would also warn `notInstalled`.
+// Fixture rules name `slackApi`; without it loaded, every write would also warn `notLoaded`.
 beforeEach(() => {
 	vi.spyOn(Container.get(LoadNodesAndCredentials), 'knownCredentials', 'get').mockReturnValue({
 		slackApi: { className: '', sourcePath: '' },

@@ -24,11 +24,11 @@ describe('lintRulesForMissingTypes', () => {
 			rule({ id: 'missing-one', selector: { kind: 'name', value: 'typeB' } }),
 			rule({ id: 'missing-two', selector: { kind: 'package', value: 'n8n-nodes-missing' } }),
 		];
-		const isInstalled = (selector: PolicySelector) => selector.value === 'typeA';
+		const isLoaded = (selector: PolicySelector) => selector.value === 'typeA';
 
-		expect(lintRulesForMissingTypes(rules, isInstalled)).toEqual([
-			{ kind: 'notInstalled', ruleId: 'missing-one' },
-			{ kind: 'notInstalled', ruleId: 'missing-two' },
+		expect(lintRulesForMissingTypes(rules, isLoaded)).toEqual([
+			{ kind: 'notLoaded', ruleId: 'missing-one' },
+			{ kind: 'notLoaded', ruleId: 'missing-two' },
 		]);
 	});
 
@@ -47,9 +47,9 @@ describe('lintPolicyRules', () => {
 			rule({ id: 'b', selector: { kind: 'name', value: 'typeB' } }),
 		];
 
-		expect(
-			lintPolicyRules(rules, { resolvePackage, policedType, isInstalled: () => true }),
-		).toEqual([]);
+		expect(lintPolicyRules(rules, { resolvePackage, policedType, isLoaded: () => true })).toEqual(
+			[],
+		);
 	});
 
 	it('flags not-installed rules that are not shadowed, in rule order', () => {
@@ -57,10 +57,10 @@ describe('lintPolicyRules', () => {
 			rule({ id: 'a', selector: { kind: 'name', value: 'typeA' } }),
 			rule({ id: 'b', selector: { kind: 'name', value: 'typeB' } }),
 		];
-		const isInstalled = (selector: PolicySelector) => selector.value !== 'typeB';
+		const isLoaded = (selector: PolicySelector) => selector.value !== 'typeB';
 
-		expect(lintPolicyRules(rules, { resolvePackage, policedType, isInstalled })).toEqual([
-			{ kind: 'notInstalled', ruleId: 'b' },
+		expect(lintPolicyRules(rules, { resolvePackage, policedType, isLoaded })).toEqual([
+			{ kind: 'notLoaded', ruleId: 'b' },
 		]);
 	});
 
@@ -71,30 +71,28 @@ describe('lintPolicyRules', () => {
 			// identical selector to `a`, so shadowed by it
 			rule({ id: 'c', selector: { kind: 'name', value: 'typeA' } }),
 		];
-		const isInstalled = (selector: PolicySelector) => selector.value !== 'typeB';
+		const isLoaded = (selector: PolicySelector) => selector.value !== 'typeB';
 
-		expect(lintPolicyRules(rules, { resolvePackage, policedType, isInstalled })).toEqual([
-			{ kind: 'notInstalled', ruleId: 'b' },
+		expect(lintPolicyRules(rules, { resolvePackage, policedType, isLoaded })).toEqual([
+			{ kind: 'notLoaded', ruleId: 'b' },
 			{ kind: 'shadowed', ruleId: 'c', shadowedByRuleId: 'a' },
 		]);
 	});
 
-	it('lists the shadowed warning before the notInstalled warning for the same rule', () => {
+	it('lists the shadowed warning before the notLoaded warning for the same rule', () => {
 		const ruleX = rule({ id: 'x', selector: { kind: 'name', value: 'typeX' } });
 		// identical selector to `ruleX`, so shadowed by it, and separately stubbed as not installed
 		const ruleY = rule({ id: 'y', selector: { kind: 'name', value: 'typeX' } });
-		const notInstalledSelectors = new Set<PolicySelector>([ruleY.selector]);
-		const isInstalled = (selector: PolicySelector) => !notInstalledSelectors.has(selector);
+		const notLoadedSelectors = new Set<PolicySelector>([ruleY.selector]);
+		const isLoaded = (selector: PolicySelector) => !notLoadedSelectors.has(selector);
 
-		expect(lintPolicyRules([ruleX, ruleY], { resolvePackage, policedType, isInstalled })).toEqual([
+		expect(lintPolicyRules([ruleX, ruleY], { resolvePackage, policedType, isLoaded })).toEqual([
 			{ kind: 'shadowed', ruleId: 'y', shadowedByRuleId: 'x' },
-			{ kind: 'notInstalled', ruleId: 'y' },
+			{ kind: 'notLoaded', ruleId: 'y' },
 		]);
 	});
 
 	it('returns no warnings for an empty rule list', () => {
-		expect(lintPolicyRules([], { resolvePackage, policedType, isInstalled: () => true })).toEqual(
-			[],
-		);
+		expect(lintPolicyRules([], { resolvePackage, policedType, isLoaded: () => true })).toEqual([]);
 	});
 });

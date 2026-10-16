@@ -57,7 +57,7 @@ afterEach(async () => {
 	]);
 });
 
-// Fixture rules name `a.b`; without it loaded, every write would also warn `notInstalled`.
+// Fixture rules name `a.b`; without it loaded, every write would also warn `notLoaded`.
 beforeEach(() => {
 	vi.spyOn(Container.get(LoadNodesAndCredentials), 'knownNodes', 'get').mockReturnValue({
 		'a.b': { className: '', sourcePath: '' },

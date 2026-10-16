@@ -2,13 +2,16 @@ import type { PackageResolver, PolicedType } from './policy-evaluator';
 import type { PolicyRule, PolicySelector } from './policy-rule.types';
 import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint';
 
-/** `ruleId` names a package or type this instance has not loaded, so it matches nothing yet. */
-export type NotInstalledWarning = {
-	readonly kind: 'notInstalled';
+/**
+ * `ruleId` names a package or type this instance has not loaded, so it matches nothing yet.
+ * An installed node that `NODES_EXCLUDE` or `NODES_INCLUDE` filters out counts as not loaded.
+ */
+export type NotLoadedWarning = {
+	readonly kind: 'notLoaded';
 	readonly ruleId: string;
 };
 
-export type PolicyRuleWarning = ShadowWarning | NotInstalledWarning;
+export type PolicyRuleWarning = ShadowWarning | NotLoadedWarning;
 
 /**
  * Warns instead of rejecting: a package can be uninstalled after its rule is saved, and the
@@ -16,11 +19,11 @@ export type PolicyRuleWarning = ShadowWarning | NotInstalledWarning;
  */
 export function lintRulesForMissingTypes(
 	rules: readonly PolicyRule[],
-	isInstalled: (selector: PolicySelector) => boolean,
-): NotInstalledWarning[] {
+	isLoaded: (selector: PolicySelector) => boolean,
+): NotLoadedWarning[] {
 	return rules
-		.filter((rule) => !isInstalled(rule.selector))
-		.map((rule) => ({ kind: 'notInstalled', ruleId: rule.id }));
+		.filter((rule) => !isLoaded(rule.selector))
+		.map((rule) => ({ kind: 'notLoaded', ruleId: rule.id }));
 }
 
 /**
@@ -32,13 +35,13 @@ export function lintPolicyRules(
 	resolvers: {
 		resolvePackage: PackageResolver;
 		policedType: (name: string) => PolicedType;
-		isInstalled: (selector: PolicySelector) => boolean;
+		isLoaded: (selector: PolicySelector) => boolean;
 	},
 ): PolicyRuleWarning[] {
 	const position = new Map(rules.map((rule, index) => [rule.id, index]));
 	const warnings: PolicyRuleWarning[] = [
 		...lintRulesForShadowing(rules, resolvers.resolvePackage, resolvers.policedType),
-		...lintRulesForMissingTypes(rules, resolvers.isInstalled),
+		...lintRulesForMissingTypes(rules, resolvers.isLoaded),
 	];
 
 	return warnings.sort((a, b) => (position.get(a.ruleId) ?? 0) - (position.get(b.ruleId) ?? 0));

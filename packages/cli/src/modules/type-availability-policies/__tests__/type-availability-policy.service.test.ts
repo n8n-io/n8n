@@ -336,7 +336,7 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			const { warnings } = await service.createPolicyDocument(KIND, [rule], 'user-1');
 
-			expect(warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r1' }]);
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
 			expect(policyRepository.createPolicy).toHaveBeenCalled();
 		});
 
@@ -350,7 +350,7 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			const { warnings } = await service.createPolicyDocument(KIND, [rule], 'user-1');
 
-			expect(warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r1' }]);
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
 		});
 
 		it('checks a synthetic tool variant rule against its base node', async () => {
@@ -366,10 +366,10 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			const { warnings } = await service.createPolicyDocument(KIND, rules, 'user-1');
 
-			expect(warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r2' }]);
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r2' }]);
 		});
 
-		it('lists a shadowed warning before a notInstalled warning for the same rule, in rule order', async () => {
+		it('lists a shadowed warning before a notLoaded warning for the same rule, in rule order', async () => {
 			policyRepository.createPolicy.mockResolvedValue(makePolicy());
 			const missing = (id: string): PolicyRule => ({
 				id,
@@ -384,9 +384,9 @@ describe('TypeAvailabilityPolicyService', () => {
 			);
 
 			expect(warnings).toEqual([
-				{ kind: 'notInstalled', ruleId: 'r1' },
+				{ kind: 'notLoaded', ruleId: 'r1' },
 				{ kind: 'shadowed', ruleId: 'r3', shadowedByRuleId: 'r1' },
-				{ kind: 'notInstalled', ruleId: 'r3' },
+				{ kind: 'notLoaded', ruleId: 'r3' },
 			]);
 		});
 
@@ -425,11 +425,11 @@ describe('TypeAvailabilityPolicyService', () => {
 
 				const { warnings } = await service.createPolicyDocument(
 					CREDENTIAL_TYPES_KIND,
-					[familyRule('r1', 'notInstalledApi')],
+					[familyRule('r1', 'notLoadedApi')],
 					'user-1',
 				);
 
-				expect(warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r1' }]);
+				expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
 			});
 
 			it('saves a credential name rule naming a type that is not installed, with a warning', async () => {
@@ -439,7 +439,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				const rule: PolicyRule = {
 					id: 'r1',
 					action: 'deny',
-					selector: { kind: 'name', value: 'notInstalledApi' },
+					selector: { kind: 'name', value: 'notLoadedApi' },
 				};
 
 				const { warnings } = await service.createPolicyDocument(
@@ -448,7 +448,7 @@ describe('TypeAvailabilityPolicyService', () => {
 					'user-1',
 				);
 
-				expect(warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r1' }]);
+				expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
 			});
 
 			it('warns about a derived-type rule placed after the family rule that covers it', async () => {
@@ -550,7 +550,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-1',
 			);
 
-			expect(warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r-missing' }]);
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-missing' }]);
 			expect(policyRepository.updateRules).toHaveBeenCalled();
 		});
 
@@ -1224,7 +1224,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				rulesBefore: null,
 				rulesAfter: [RULE],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 		});
 
@@ -1276,7 +1276,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				rulesBefore: [],
 				rulesAfter: [RULE],
 				shadowWarningCount: 0,
-				notInstalledWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 		});
 
@@ -1307,12 +1307,12 @@ describe('TypeAvailabilityPolicyService', () => {
 			);
 
 			expect(result.warnings).toEqual([
-				{ kind: 'notInstalled', ruleId: 'r-missing' },
+				{ kind: 'notLoaded', ruleId: 'r-missing' },
 				{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' },
 			]);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-saved',
-				expect.objectContaining({ shadowWarningCount: 1, notInstalledWarningCount: 1 }),
+				expect.objectContaining({ shadowWarningCount: 1, notLoadedWarningCount: 1 }),
 			);
 		});
 

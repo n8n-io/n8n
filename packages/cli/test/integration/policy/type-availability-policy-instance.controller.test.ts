@@ -247,7 +247,7 @@ describe('node type availability policy instance controller admin happy path', (
 			.put('/node-type-policies/instance')
 			.send({ rules: [missingPackage], defaultAction: 'allow', version: 0 });
 		expect(first.statusCode).toBe(200);
-		expect(first.body.data.warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r-mcp' }]);
+		expect(first.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-mcp' }]);
 
 		const unrelatedChange = await agent.put('/node-type-policies/instance').send({
 			rules: [missingPackage],
@@ -255,7 +255,7 @@ describe('node type availability policy instance controller admin happy path', (
 			version: first.body.data.version,
 		});
 		expect(unrelatedChange.statusCode).toBe(200);
-		expect(unrelatedChange.body.data.warnings).toEqual([{ kind: 'notInstalled', ruleId: 'r-mcp' }]);
+		expect(unrelatedChange.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-mcp' }]);
 	});
 
 	test('a PUT /instance that changes the rules and the default action together moves the version by one', async () => {
