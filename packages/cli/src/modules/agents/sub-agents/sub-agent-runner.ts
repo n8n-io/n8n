@@ -1,3 +1,4 @@
+import { PLAN_TASK_METADATA_KEY } from '../plans/agent-plan-task-context';
 import {
 	assertSubAgentTaskPath,
 	deriveSubAgentTelemetry,
@@ -22,6 +23,7 @@ import {
 } from '@n8n/agents';
 import type {
 	AgentBudgetNotice,
+	AgentPlanTaskRef,
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSource,
@@ -116,6 +118,7 @@ export interface SubAgentRunContext {
 	selfDelegationDifficulty?: SubAgentTaskDifficulty;
 	/** Persist reconstruction data before a background child can suspend. */
 	backgroundJobId?: string;
+	planTask?: AgentPlanTaskRef;
 	parentMessageContext?: IntegrationMessageContext | null;
 	onResumeClaimed?: () => Promise<void>;
 	beforeResume?: () => Promise<void>;
@@ -418,7 +421,10 @@ export class SubAgentRunner {
 			} else if (operation.type === 'resumePaused') {
 				resultStream = await agent.resumePaused({
 					...executionOptions,
-					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+					hostMetadata: {
+						[EXECUTION_METADATA_KEY]: executionId,
+						...(context.planTask ? { [PLAN_TASK_METADATA_KEY]: { ...context.planTask } } : {}),
+					},
 					runId: operation.request.childRunId,
 					onResumeClaimed: async () => {
 						await context.onResumeClaimed?.();
@@ -428,7 +434,10 @@ export class SubAgentRunner {
 			} else {
 				resultStream = await agent.resume('stream', operation.request.resumeData, {
 					...executionOptions,
-					hostMetadata: { [EXECUTION_METADATA_KEY]: executionId },
+					hostMetadata: {
+						[EXECUTION_METADATA_KEY]: executionId,
+						...(context.planTask ? { [PLAN_TASK_METADATA_KEY]: { ...context.planTask } } : {}),
+					},
 					runId: operation.request.childRunId,
 					toolCallId: operation.request.childToolCallId,
 					onResumeClaimed: async () => {
@@ -608,6 +617,8 @@ function createHostMetadata(
 	let metadata = principalHash
 		? encodeAgentSandboxHostMetadata({ projectId: context.projectId, principalHash })
 		: undefined;
+	if (context.planTask)
+		metadata = { ...metadata, [PLAN_TASK_METADATA_KEY]: { ...context.planTask } };
 	if (context.backgroundJobId) {
 		metadata = {
 			...metadata,
