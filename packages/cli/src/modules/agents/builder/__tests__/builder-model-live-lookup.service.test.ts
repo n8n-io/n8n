@@ -218,6 +218,33 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({ status: 'unavailable', policy: 'endpoint-only', error });
 		});
 
+		it('returns endpoint-only models for ollama and maps baseUrl', async () => {
+			const { service, credentialsService, credentialsHelper } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'ollamaApi'),
+			);
+			credentialsHelper.getDecrypted.mockResolvedValue({
+				baseUrl: 'http://localhost:11434',
+				apiKey: '',
+			});
+			listModelsForProvider.mockResolvedValue([{ id: 'llama3.1', name: 'llama3.1' }]);
+
+			const result = await service.lookup(user, projectId, 'cred-1', 'ollamaApi', 'ollama');
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'endpoint-only',
+				models: [{ name: 'llama3.1', value: 'llama3.1' }],
+			});
+			expect(listModelsForProvider).toHaveBeenCalledWith(
+				'ollama',
+				expect.objectContaining({
+					apiKey: '',
+					baseURL: 'http://localhost:11434',
+				}),
+			);
+		});
+
 		it('preserves endpoint-only policy when custom OpenAI discovery is empty', async () => {
 			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
