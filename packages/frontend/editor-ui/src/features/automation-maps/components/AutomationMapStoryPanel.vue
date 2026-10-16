@@ -206,6 +206,7 @@ const legend = computed(() => [
 }
 
 .summary {
+	--n8n-markdown--base-font-size: var(--font-size--xs);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--lg);
 }
