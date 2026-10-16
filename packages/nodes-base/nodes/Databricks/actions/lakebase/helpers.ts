@@ -17,26 +17,29 @@ export function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
 		database: read('lakebaseDatabase'),
 		schema: read('lakebaseSchema'),
 		table: read('lakebaseTable'),
+		function: read('lakebaseFunction'),
 	};
 }
 
 /**
- * Resolves the REST URL of the schema the editor currently has selected, or null
- * when the user has not finished choosing a table. Shared by the column dropdown
- * and the column mapper, which differ only in how they render and how they report
- * a missing schema document.
+ * Resolves the REST URL of the schema the editor currently has selected and the
+ * selected table or function, or null when the user has not finished choosing one.
+ * Shared by the column dropdown and the two mappers, which differ only in how they
+ * render and how they report a missing schema document.
  */
 export async function resolveSelectedLakebaseSchema(
 	context: ILoadOptionsFunctions,
-): Promise<{ schemaUrl: string; table: string } | null> {
-	const { project, branch, database, schema, table } = getSelectedLakebaseTarget(context);
-	// An unset locator means the user has not finished choosing a table yet
-	if (!project || !branch || !database || !schema || !table) return null;
+	member: 'table' | 'function' = 'table',
+): Promise<{ schemaUrl: string; name: string } | null> {
+	const target = getSelectedLakebaseTarget(context);
+	const { project, branch, database, schema } = target;
+	const name = target[member];
+	if (!project || !branch || !database || !schema || !name) return null;
 
 	const base = await resolveLakebaseRestBase(context, project, branch);
 	return {
 		schemaUrl: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
-		table,
+		name,
 	};
 }
 
@@ -72,4 +75,12 @@ export async function resolveLakebaseTableUrl(
 ): Promise<string> {
 	const table = readLocator(context, itemIndex, 'lakebaseTable', 'table');
 	return `${await resolveLakebaseSchemaUrl(context, itemIndex)}/${encodeURIComponent(table)}`;
+}
+
+export async function resolveLakebaseFunctionUrl(
+	context: IExecuteFunctions,
+	itemIndex: number,
+): Promise<string> {
+	const functionName = readLocator(context, itemIndex, 'lakebaseFunction', 'function');
+	return `${await resolveLakebaseSchemaUrl(context, itemIndex)}/rpc/${encodeURIComponent(functionName)}`;
 }
