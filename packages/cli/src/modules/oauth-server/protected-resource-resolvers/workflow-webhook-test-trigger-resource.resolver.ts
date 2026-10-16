@@ -12,12 +12,11 @@ import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrati
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
-	acceptedTrustedSourceIds,
+	WEBHOOK_TRIGGER_SCOPES,
 	methodQueryString,
 	parseMethodParam,
 	trimSlashes,
 	trimTrailingSlash,
-	WEBHOOK_TRIGGER_SCOPES,
 	webhookAllowsBrowserFlow,
 	webhookPathFromResourceUrl,
 	webhookResourcePath,
@@ -147,7 +146,6 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 				surface: 'trigger' as const,
 				getResourceUrl: () => urlFor(requestedMethod),
 				getAudiences: () => audiences,
-				getAcceptedSourceIds: () => acceptedTrustedSourceIds(node),
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
 				...(webhookAllowsBrowserFlow(node, requestedMethod) && { isFirstParty: true }),
