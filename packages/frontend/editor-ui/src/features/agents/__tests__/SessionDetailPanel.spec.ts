@@ -228,6 +228,28 @@ describe('SessionDetailPanel — workflow branches', () => {
 		expect(w.find('[data-test-id="workflow-output"]').text()).not.toContain('ingested');
 	});
 
+	it('hides the output data when the child execution has no run data', async () => {
+		fetchExecution.mockResolvedValue({ id: 'exec-1' });
+		const w = mountIt(ingestedItem);
+		await flushPromises();
+		expect(w.find('[data-test-id="workflow-output-unavailable"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output-redacted"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="workflow-output"]').text()).not.toContain('ingested');
+	});
+
+	it('hides the output data when the child execution is too large to display', async () => {
+		fetchExecution.mockResolvedValue({
+			id: 'exec-1',
+			dataTooLargeToDisplay: true,
+			data: { resultData: { runData: {} } },
+		});
+		const w = mountIt(ingestedItem);
+		await flushPromises();
+		expect(w.find('[data-test-id="workflow-output-unavailable"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="workflow-output-redacted"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="workflow-output"]').text()).not.toContain('ingested');
+	});
+
 	it('shows a soft-failure callout alongside the ingested workflow output', async () => {
 		const w = mountIt({
 			kind: 'workflow',

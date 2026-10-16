@@ -24,8 +24,10 @@ export function useWorkflowOutputAccess(item: Ref<TimelineItem | null>) {
 	async function resolveAccess(id: string): Promise<'visible' | 'redacted' | 'unavailable'> {
 		try {
 			const execution = await executionsStore.fetchExecution(id);
-			if (!execution) return 'unavailable';
-			const result = execution.data?.redactionInfo?.isRedacted ? 'redacted' : 'visible';
+			// A data-less or oversized execution has no redaction result. The empty
+			// stub omits the signals that decide redaction, so show nothing.
+			if (!execution?.data || execution.dataTooLargeToDisplay) return 'unavailable';
+			const result = execution.data.redactionInfo?.isRedacted ? 'redacted' : 'visible';
 			resolved.set(id, result);
 			return result;
 		} catch {
