@@ -1,5 +1,4 @@
 import type { RuntimeSkill } from '@n8n/agents';
-import { ASK_QUESTIONS_TOOL_NAME } from '@n8n/api-types';
 
 import { INITIAL_BUILD_NOTE } from '../prompts/initial-build.prompt';
 
@@ -22,7 +21,7 @@ export function nodeToolsSkill(): RuntimeSkill {
 			'get_node_types',
 			'agent_ask_credential',
 			'get_resource_locator_options',
-			'ask_questions',
+			'ask_user',
 			'agent_patch_config',
 			'agent_write_config',
 			'load_skill',
@@ -51,7 +50,7 @@ Use only an exact URL explicitly supplied by the user for
 ask which URL the tool should fetch. During an initial build, add this to the
 pending setup and include the URL question in the single trailing \`agent_finish_setup\`
 call; add the tool with the returned URL after the user answers. On later
-turns, call \`${ASK_QUESTIONS_TOOL_NAME}\` and wait for the answer before
+turns, call \`ask_user\` and wait for the answer before
 mutating the config. Do not search for, derive, infer, guess, or invent a URL
 from a service name, requested action, documentation, or common API
 conventions. Never add an incomplete tool or use a placeholder URL.

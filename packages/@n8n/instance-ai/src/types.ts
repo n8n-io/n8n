@@ -1424,7 +1424,20 @@ export interface InstanceAiBuilderDelegate {
 		skills: Record<string, AgentSkill>;
 		configHash: string | null;
 	} | null>;
+	/** Records builder telemetry for an `ask_user` card while an Agent is selected.
+	 *  Optional: an unwired host records nothing. */
+	trackAskUser?(agentId: string, session: Partial<BuilderToolsSession>, event: AskUserEvent): void;
 }
+
+/** What happened to an `ask_user` card. */
+export type AskUserEvent =
+	| { type: 'asked'; questionCount: number; questionTypes: string[] }
+	| {
+			type: 'answered';
+			outcome: 'answered' | 'skipped' | 'dismissed';
+			answeredCount: number;
+			skippedCount: number;
+	  };
 
 // ── Computer Use state ──────────────────────────────────────────────────────
 

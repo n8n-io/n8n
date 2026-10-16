@@ -1,4 +1,8 @@
-import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	RETIRED_AGENT_BUILDER_TOOL_NAMES,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+} from '@n8n/api-types';
 
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS,
@@ -58,7 +62,7 @@ export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRAT
 /** Agent builder tools the orchestrator runs itself. The agents module supplies all but the selector. */
 export const AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES: readonly string[] = Object.values(
 	AGENT_BUILDER_TOOL_NAMES,
-).filter((name) => name !== AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT);
+).filter((name) => !RETIRED_AGENT_BUILDER_TOOL_NAMES.has(name));
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,

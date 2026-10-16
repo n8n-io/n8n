@@ -9,7 +9,7 @@ export function customToolsSkill(): RuntimeSkill {
 		recommendedTools: ['agent_build_custom_tool', 'agent-context', 'agent_patch_config'],
 		allowedTools: [
 			'agent_build_custom_tool',
-			'ask_questions',
+			'ask_user',
 			'agent-context',
 			'agent_patch_config',
 			'agent_write_config',

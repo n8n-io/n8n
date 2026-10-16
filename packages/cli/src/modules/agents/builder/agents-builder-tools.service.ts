@@ -39,7 +39,12 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createAgentContextTool, type InstanceAiCredentialService } from '@n8n/instance-ai';
+import {
+	createAgentContextTool,
+	type AskUserEvent,
+	type InstanceAiCredentialService,
+} from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -81,7 +86,6 @@ import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-optio
 import {
 	buildAskCredentialTool,
 	buildAskEmbeddingCredentialTool,
-	buildAskQuestionsTool,
 	buildConfigureChannelTool,
 	buildFinishSetupTool,
 	buildResolveLlmTool,
@@ -567,6 +571,39 @@ export class AgentsBuilderToolsService {
 		}));
 	}
 
+	private builderTrack(agentId: string, user: User, options?: BuilderToolsOptions): BuilderTrackFn {
+		return (entry, properties) =>
+			this.telemetry.track(entry, {
+				agent_id: agentId,
+				user_id: user.id,
+				...(options?.threadId ? { thread_id: options.threadId } : {}),
+				...(options?.runId ? { run_id: options.runId } : {}),
+				...properties,
+			});
+	}
+
+	/** Builder telemetry for an Instance AI `ask_user` card shown while an agent is selected. */
+	trackAskUser(
+		agentId: string,
+		user: User,
+		session: BuilderToolsOptions,
+		event: AskUserEvent,
+	): void {
+		const track = this.builderTrack(agentId, user, session);
+		if (event.type === 'asked') {
+			track(TELEMETRY_EVENT.AGENTS.BUILDER_ASKED_QUESTIONS, {
+				question_count: event.questionCount,
+				question_types: event.questionTypes,
+			});
+			return;
+		}
+		track(TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS, {
+			outcome: event.outcome,
+			answered_count: event.answeredCount,
+			skipped_count: event.skippedCount,
+		});
+	}
+
 	private getJsonTools(
 		agentId: string,
 		projectId: string,
@@ -575,14 +612,7 @@ export class AgentsBuilderToolsService {
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuiltTool[] {
-		const track: BuilderTrackFn = (entry, properties) =>
-			this.telemetry.track(entry, {
-				agent_id: agentId,
-				user_id: user.id,
-				...(options?.threadId ? { thread_id: options.threadId } : {}),
-				...(options?.runId ? { run_id: options.runId } : {}),
-				...properties,
-			});
+		const track = this.builderTrack(agentId, user, options);
 		const writeConfigTool = this.buildWriteConfigTool(agentId, projectId, user);
 		const patchConfigTool = this.buildPatchConfigTool(agentId, projectId, user);
 		const publishAgentTool = this.buildPublishAgentTool(user, projectId, agentId);
@@ -598,7 +628,6 @@ export class AgentsBuilderToolsService {
 			this.createLlmTool(credentialProvider, modelLookup, user, projectId),
 			this.createCredentialTool(credentialService, projectId, agentId, track),
 			this.createEmbeddingCredentialTool(credentialService, projectId, track),
-			buildAskQuestionsTool({ track }),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
 					this.createConfigureChannelTool(agentId, projectId, track),
@@ -1094,7 +1123,7 @@ export class AgentsBuilderToolsService {
 					'section filled in with concrete, run-specific content. Agent Instructions still apply and ' +
 					'configured Skills remain available during scheduled runs, so never repeat universal rules or ' +
 					"copy reusable procedures into an objective. If anything is ambiguous, derive it from the user's goal as " +
-					'stated assumptions listed in your summary; ask the user clarifying questions with ask_questions ' +
+					'stated assumptions listed in your summary; ask the user clarifying questions with ask_user ' +
 					'only when even a reasonable assumption is impossible, before calling ' +
 					'agent_create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
 					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +

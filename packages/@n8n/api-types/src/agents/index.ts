@@ -36,7 +36,7 @@ export type {
 } from '../agent-sse';
 export { isAgentBudgetNoticeCode } from '../agent-sse';
 export { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '../agent-builder-tool-node-types';
-// ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
+// CONFIGURE_CHANNEL_TOOL_NAME comes from
 // ./agent-interaction.schema (re-exported below via `export *`).
 export {
 	ASK_CREDENTIAL_TOOL_NAME,

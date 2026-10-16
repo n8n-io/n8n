@@ -19,7 +19,7 @@ export function memorySkill(): RuntimeSkill {
 			'agent_ask_embedding_credential',
 			'agent_resolve_llm',
 			'agent_ask_credential',
-			'ask_questions',
+			'ask_user',
 			'agent-context',
 			'agent_patch_config',
 			'agent_write_config',

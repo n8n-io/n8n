@@ -1461,10 +1461,14 @@ and shows the Agent artifact.
 | `agent_verify_mcp_server` | Test the connection to an MCP server and list its tools |
 | `agent_call` | Test the draft Agent through Preview chat |
 | `agent_publish`, `agent_unpublish` | Publish or unpublish the Agent |
-| `search_nodes`, `get_node_types`, `get_resource_locator_options`, `list_credentials`, `ask_questions` | Shared node, credential, and question helpers |
+| `search_nodes`, `get_node_types`, `get_resource_locator_options`, `list_credentials` | Shared node and credential helpers |
 
 The interactive tools suspend the orchestrator run directly, so their cards
 render in the assistant conversation and survive a process restart.
+
+The builder asks the user questions with `ask_user`. While the thread has a
+selected Agent, `ask_user` reports the builder question telemetry through
+`InstanceAiBuilderDelegate.trackAskUser`.
 
 Threads that were stored before this change can contain `build-agent` calls
 and the former sub-agent tool names (`write_config`, `call_agent`, and so on).

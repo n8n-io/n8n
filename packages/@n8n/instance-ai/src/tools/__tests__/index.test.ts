@@ -6,7 +6,11 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
-import type { InstanceAiContext, OrchestrationContext } from '../../types';
+import type {
+	InstanceAiBuilderDelegate,
+	InstanceAiContext,
+	OrchestrationContext,
+} from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
 
 vi.mock('../../parsers/structured-file-parser', () => ({
@@ -162,6 +166,38 @@ describe('domain tool construction', () => {
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createSearchModelsTool).toHaveBeenCalledOnce();
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
+	});
+
+	it('does not wire ask_user telemetry without a builder delegate', async () => {
+		createOrchestratorDomainTools(makeContext());
+
+		const { createAskUserTool } = await import('../shared/ask-user.tool.js');
+		expect(createAskUserTool).toHaveBeenCalledWith({ onEvent: undefined });
+	});
+
+	it('reports ask_user events as builder telemetry for the selected Agent', async () => {
+		const trackAskUser = vi.fn();
+		const event = { type: 'asked' as const, questionCount: 1, questionTypes: ['single'] };
+		createOrchestratorDomainTools(
+			makeContext({
+				threadId: 'thread-1',
+				runId: 'run-1',
+				builderDelegate: mock<InstanceAiBuilderDelegate>({ trackAskUser }),
+				agentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
+			}),
+		);
+
+		const { createAskUserTool } = await import('../shared/ask-user.tool.js');
+		const [options] = vi.mocked(createAskUserTool).mock.calls[0];
+		options?.onEvent?.(event);
+
+		await vi.waitFor(() =>
+			expect(trackAskUser).toHaveBeenCalledWith(
+				'agent-1',
+				{ threadId: 'thread-1', runId: 'run-1' },
+				event,
+			),
+		);
 	});
 
 	it('makes model catalog search discoverable without loading it for every turn', () => {

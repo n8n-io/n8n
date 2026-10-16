@@ -181,6 +181,22 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 	});
 
+	describe('trackAskUser', () => {
+		it('forwards the event with the delegate user to the tools service', () => {
+			const ctx = setup();
+			const event = { type: 'asked' as const, questionCount: 1, questionTypes: ['single'] };
+
+			ctx.delegate.trackAskUser?.('agent-1', session, event);
+
+			expect(ctx.agentsBuilderToolsService.trackAskUser).toHaveBeenCalledWith(
+				'agent-1',
+				ctx.user,
+				session,
+				event,
+			);
+		});
+	});
+
 	describe('when Agents are turned off after the delegate was created', () => {
 		it('rejects Agent reads', async () => {
 			const { delegate, agentConfig, settingsRepository } = setup();

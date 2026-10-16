@@ -16,14 +16,14 @@ export function targetSkillsSkill(): RuntimeSkill {
 			'agent-context',
 			'agent_update_skill',
 			'agent_create_skills',
-			'ask_questions',
+			'ask_user',
 			'agent_patch_config',
 		],
 		allowedTools: [
 			'agent-context',
 			'agent_update_skill',
 			'agent_create_skills',
-			'ask_questions',
+			'ask_user',
 			'agent_patch_config',
 			'agent_write_config',
 		],
@@ -73,7 +73,7 @@ write a genuinely useful skill: a specific routing description and a body whose
 applicable sections are filled with real content (the actual steps, rules,
 examples, and edge cases). Derive missing domain detail from the user's
 stated goal as stated assumptions, and list them in your summary. Use
-\`ask_questions\` only when even a reasonable assumption is impossible — never
+\`ask_user\` only when even a reasonable assumption is impossible — never
 during an initial build: add the open decision to the pending setup
 instead, per the Initial Build rules in the \`agent-builder\` skill. Never create a
 placeholder or vague skill.

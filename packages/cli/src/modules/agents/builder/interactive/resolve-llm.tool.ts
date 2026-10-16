@@ -320,7 +320,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'(carrying availableModels) can come back even when you passed no model: retry with a ' +
 				'value from availableModels, never the id that just failed. availableModels is capped: when ' +
 				'availableModelsTruncated is true, it is a sample of totalAvailableModels — ask the user with ' +
-				'ask_questions instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
+				'ask_user instead of treating it as the full list. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
 				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
 				'ask; keep building with model "" and include the model choice in the trailing ' +

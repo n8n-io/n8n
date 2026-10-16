@@ -9,8 +9,8 @@ import { AGENT_BUILDER_TOOL_NAMES } from '@n8n/api-types';
  * persisted checkpoints still resolve.
  *
  * The interactive tools (`ASK_CREDENTIAL_TOOL_NAME`,
- * `ASK_EMBEDDING_CREDENTIAL_TOOL_NAME`, `ASK_QUESTIONS_TOOL_NAME`,
- * `CONFIGURE_CHANNEL_TOOL_NAME`) are NOT listed here — they live in
+ * `ASK_EMBEDDING_CREDENTIAL_TOOL_NAME`, `CONFIGURE_CHANNEL_TOOL_NAME`) are NOT
+ * listed here — they live in
  * `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
  * alongside the suspend/resume schemas they share with instance AI's FE cards.
  */

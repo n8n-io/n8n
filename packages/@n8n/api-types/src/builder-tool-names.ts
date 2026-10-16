@@ -48,9 +48,16 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	LIST_CREDENTIALS: 'list_credentials',
 	ASK_CREDENTIAL: 'agent_ask_credential',
 	ASK_EMBEDDING_CREDENTIAL: 'agent_ask_embedding_credential',
+	/** No longer registered: `ask_user` replaces it. Stored threads still contain its calls. */
 	ASK_QUESTIONS: 'ask_questions',
 	CONFIGURE_CHANNEL: 'agent_configure_channel',
 } as const;
+
+/** Agent Builder tool names that the orchestrator no longer registers. */
+export const RETIRED_AGENT_BUILDER_TOOL_NAMES: ReadonlySet<string> = new Set([
+	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
+	AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS,
+]);
 
 export type WorkflowBuilderToolName =
 	(typeof WORKFLOW_BUILDER_TOOL_NAMES)[keyof typeof WORKFLOW_BUILDER_TOOL_NAMES];

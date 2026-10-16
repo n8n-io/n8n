@@ -3,6 +3,7 @@ import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import type { AskUserEvent } from '../../types';
 import { ASK_USER_TOOL_ID } from '../tool-ids';
 
 export { ASK_USER_TOOL_ID };
@@ -47,7 +48,19 @@ export const askUserResumeSchema = z.object({
 	answers: z.array(answerSchema).optional(),
 });
 
-export function createAskUserTool() {
+function answeredEvent(resumeData: z.infer<typeof askUserResumeSchema>): AskUserEvent {
+	const answers = resumeData.answers ?? [];
+	const skippedCount = answers.filter((answer) => answer.skipped === true).length;
+	const usable = answers.length > 0 && skippedCount < answers.length;
+	return {
+		type: 'answered',
+		outcome: !resumeData.approved ? 'dismissed' : usable ? 'answered' : 'skipped',
+		answeredCount: answers.length - skippedCount,
+		skippedCount,
+	};
+}
+
+export function createAskUserTool(options: { onEvent?: (event: AskUserEvent) => void } = {}) {
 	return new Tool(ASK_USER_TOOL_ID)
 		.legacyNames(...getLegacyBuilderToolNames(ASK_USER_TOOL_ID))
 		.description(
@@ -99,6 +112,11 @@ export function createAskUserTool() {
 
 			// First call — always suspend to show questions
 			if (resumeData === undefined || resumeData === null) {
+				options.onEvent?.({
+					type: 'asked',
+					questionCount: input.questions.length,
+					questionTypes: [...new Set(input.questions.map((q) => q.type))].sort(),
+				});
 				return await ctx.suspend({
 					requestId: nanoid(),
 					message: input.introMessage ?? input.questions[0].question,
@@ -108,6 +126,8 @@ export function createAskUserTool() {
 					introMessage: input.introMessage,
 				});
 			}
+
+			options.onEvent?.(answeredEvent(resumeData));
 
 			// User skipped or dismissed
 			if (!resumeData.approved || !resumeData.answers) {

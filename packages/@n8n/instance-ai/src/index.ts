@@ -764,6 +764,7 @@ export type {
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
 	BuilderToolsSession,
+	AskUserEvent,
 	InstanceAiConversationHistoryReader,
 	ConversationHistoryMatchSource,
 	ConversationHistoryExcerpt,

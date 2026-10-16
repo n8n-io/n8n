@@ -2172,6 +2172,53 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
+	describe('trackAskUser', () => {
+		const session = { threadId: 'thread-1', runId: 'run-1' };
+
+		it('tracks an asked event as builder questions', () => {
+			const { service, telemetry } = makeService();
+
+			service.trackAskUser(agentId, user, session, {
+				type: 'asked',
+				questionCount: 2,
+				questionTypes: ['single', 'text'],
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_ASKED_QUESTIONS, {
+				agent_id: agentId,
+				user_id: user.id,
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				question_count: 2,
+				question_types: ['single', 'text'],
+			});
+		});
+
+		it('tracks an answered event as answered builder questions', () => {
+			const { service, telemetry } = makeService();
+
+			service.trackAskUser(agentId, user, session, {
+				type: 'answered',
+				outcome: 'skipped',
+				answeredCount: 0,
+				skippedCount: 2,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS,
+				{
+					agent_id: agentId,
+					user_id: user.id,
+					thread_id: 'thread-1',
+					run_id: 'run-1',
+					outcome: 'skipped',
+					answered_count: 0,
+					skipped_count: 2,
+				},
+			);
+		});
+	});
+
 	describe('agent_create_tasks tool', () => {
 		function getCreateTasksTool(service: AgentsBuilderToolsService) {
 			return service

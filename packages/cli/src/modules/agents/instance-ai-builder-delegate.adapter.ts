@@ -112,6 +112,9 @@ export class InstanceAiBuilderDelegateAdapterService {
 
 			getRuntimeSkills: () => getBuilderRuntimeSkills(),
 
+			trackAskUser: (agentId, session, event) =>
+				this.agentsBuilderToolsService.trackAskUser(agentId, user, session, event),
+
 			getBuilderSessionContext: async (agentId) =>
 				await buildBuilderSessionContext(projectId, agentId),
 
