@@ -625,6 +625,11 @@ onBeforeUnmount(store.stopPollingRun);
 	border-bottom: none;
 }
 
+/* A single row is both first and last, so it keeps all four corners. */
+.list > *:only-of-type {
+	border-radius: var(--radius--xl);
+}
+
 .list > *:hover {
 	background-color: var(--color--background);
 }
