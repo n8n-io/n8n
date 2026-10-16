@@ -97,7 +97,13 @@ function testIdForPath(path: string) {
 					type="button"
 					:class="[$style.item, $style.reference]"
 					:aria-current="isSelected(reference.path) ? 'page' : undefined"
-					:aria-label="reference.path"
+					:aria-label="
+						isInvalid(reference.path)
+							? i18n.baseText('agents.builder.skills.references.invalidLabel', {
+									interpolate: { path: reference.path },
+								})
+							: reference.path
+					"
 					:data-testid="testIdForPath(reference.path)"
 					@click="emit('select', reference.path)"
 				>

@@ -158,12 +158,18 @@ const referencesError = computed(() => {
 	if (referencesValid.value) return '';
 	// Name the file, so the user knows which reference blocks the save.
 	const [first] = invalidReferences.value;
-	if (first && !first.content.trim()) {
+	if (!first) return i18n.baseText('agents.builder.skills.references.invalidSummary');
+	if (!first.content.trim()) {
 		return i18n.baseText('agents.builder.skills.references.emptyFile', {
 			interpolate: { path: first.path },
 		});
 	}
-	return i18n.baseText('agents.builder.skills.references.invalidSummary');
+	return i18n.baseText('agents.builder.skills.references.tooLongFile', {
+		interpolate: {
+			path: first.path,
+			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString(),
+		},
+	});
 });
 
 function onDescriptionInput(value: string | number | boolean | null | undefined) {

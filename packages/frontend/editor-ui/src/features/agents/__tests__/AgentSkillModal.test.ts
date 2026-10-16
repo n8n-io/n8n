@@ -1,3 +1,4 @@
+import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -22,7 +23,12 @@ configure({ testIdAttribute: 'data-testid' });
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
-		baseText: (key: string) => (key === 'agents.builder.skills.defaultName' ? 'New skill' : key),
+		// Interpolated values follow the key, so a test can check that a file name is shown.
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
+			if (key === 'agents.builder.skills.defaultName') return 'New skill';
+			const values = Object.values(options?.interpolate ?? {});
+			return values.length > 0 ? `${key} ${values.join(' ')}` : key;
+		},
 	};
 	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
 });
@@ -482,7 +488,43 @@ describe('AgentSkillModal', () => {
 		await fireEvent.click(getByTestId('agent-skill-file-nav-item'));
 		// The notice names the empty file instead of the general summary.
 		expect(getByTestId('agent-skill-references-error')).toHaveTextContent(
-			'agents.builder.skills.references.emptyFile',
+			'agents.builder.skills.references.emptyFile references/reference.md',
+		);
+		// Screen readers hear that the file blocks the save, not only its path.
+		expect(
+			getByTestId('agent-skill-reference-nav-item-references-reference-md'),
+		).toHaveAccessibleName('agents.builder.skills.references.invalidLabel references/reference.md');
+	});
+
+	it('opens a reference that is too long on a blocked save, marks it, and names it', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, getByText } = renderModal({ onConfirm });
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		await fireEvent.update(getByTestId('agent-modal-title-input'), 'Research');
+		await fireEvent.update(
+			getByTestId('agent-skill-description-input').querySelector('input')!,
+			'Use for research',
+		);
+		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
+		await fireEvent.click(getByTestId('agent-skill-add-reference'));
+		await fireEvent.update(
+			getByTestId('agent-skill-reference-editor'),
+			'x'.repeat(AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH + 1),
+		);
+		await fireEvent.click(getByTestId('agent-skill-file-nav-item'));
+
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(getByTestId('agent-skill-reference-editor')).toBeInTheDocument();
+		expect(getByText(/agents\.builder\.skills\.references\.contentMaxLength/)).toBeInTheDocument();
+		expect(
+			getByTestId('agent-skill-reference-nav-item-references-reference-md-invalid'),
+		).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('agent-skill-file-nav-item'));
+		expect(getByTestId('agent-skill-references-error')).toHaveTextContent(
+			'agents.builder.skills.references.tooLongFile references/reference.md',
 		);
 	});
 
