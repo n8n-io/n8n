@@ -77,6 +77,42 @@ describe('AgentEvalTryRow', () => {
 		expect(await findByText('It is a P1.')).toBeInTheDocument();
 	});
 
+	it('drops the rule from the header once opened, so it shows only under "Check that"', async () => {
+		const user = userEvent.setup();
+		const rule = 'Asks what the noise sounds like before suggesting a fix.';
+		const { getByTestId, getAllByText, getByText } = renderComponent({
+			props: {
+				status: 'pass',
+				input: 'My bike makes a noise. Can you fix it?',
+				whatToCheck: rule,
+				output: 'What kind of noise is it?',
+				testId: 'row-1',
+			},
+		});
+
+		const headerTitle = getByText(rule).parentElement;
+		expect(headerTitle).not.toHaveAttribute('aria-hidden');
+
+		await user.click(getByTestId('row-1-toggle'));
+
+		expect(headerTitle).toHaveAttribute('aria-hidden', 'true');
+		expect(getAllByText(rule)).toHaveLength(2);
+	});
+
+	it('keeps the header title when opened if the check has no rule', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, getAllByText } = renderComponent({
+			props: { status: 'pass', input: 'Summarize the thread', output: 'y', testId: 'row-1' },
+		});
+
+		await user.click(getByTestId('row-1-toggle'));
+
+		// The header title comes first; the conversation repeats the input below it.
+		expect(getAllByText('Summarize the thread')[0].parentElement).not.toHaveAttribute(
+			'aria-hidden',
+		);
+	});
+
 	it('hides the toggle and never renders a sample when output is null and nothing needs correcting', () => {
 		const { queryByTestId } = renderComponent({
 			props: { status: 'waiting', input: 'x', output: null, testId: 'row-1' },

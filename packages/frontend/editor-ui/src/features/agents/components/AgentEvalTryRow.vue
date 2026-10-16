@@ -119,6 +119,11 @@ const STATUS_TEXT: Record<AgentAvatarKind, StatusText> = {
 // A check is its rule: the complete view titles the row by `whatToCheck`, and
 // only a row without one falls back to the input.
 const title = computed(() => props.whatToCheck?.trim() || props.input);
+// Opened, the rule shows in full under "Check that", so the header drops it
+// instead of repeating it, and the status grows to fill the line.
+const ruleShownInBody = computed(
+	() => expanded.value && canExpand.value && Boolean(props.whatToCheck?.trim()),
+);
 
 const statusText = computed(() => i18n.baseText(STATUS_TEXT[props.status].labelKey));
 const statusColor = computed(() => STATUS_TEXT[props.status].color);
@@ -210,13 +215,18 @@ watch(
 		<div v-if="view === 'complete'" :class="$style.header" @click="toggleExpanded">
 			<AgentAvatar :kind="status" size="md" />
 			<div :class="$style.headerTitle">
-				<N8nText color="text-dark" size="medium" bold :class="$style.headerTitleText">{{
-					title
-				}}</N8nText>
+				<div
+					:class="[$style.titleWrap, { [$style.titleHidden]: ruleShownInBody }]"
+					:aria-hidden="ruleShownInBody || undefined"
+				>
+					<N8nText color="text-dark" size="medium" bold :class="$style.headerTitleText">{{
+						title
+					}}</N8nText>
+				</div>
 				<N8nText
 					:color="statusColor"
-					:class="{ [$style.statusWarning]: statusIsWarning }"
-					size="small"
+					:class="[$style.statusText, { [$style.statusWarning]: statusIsWarning }]"
+					:size="ruleShownInBody ? 'medium' : 'small'"
 					>{{ statusText }}</N8nText
 				>
 			</div>
@@ -460,8 +470,36 @@ watch(
 	color: var(--callout--color--text--secondary);
 }
 
+// The title folds away and the status eases to its new size, so opening a row
+// doesn't make the header jump.
+.titleWrap {
+	display: grid;
+	grid-template-rows: 1fr;
+	min-width: 0;
+	transition:
+		grid-template-rows var(--duration--snappy) var(--easing--ease-out),
+		opacity var(--duration--snappy) var(--easing--ease-out);
+}
+
+.titleHidden {
+	grid-template-rows: 0fr;
+	opacity: 0;
+}
+
+.statusText {
+	transition: font-size var(--duration--snappy) var(--easing--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.titleWrap,
+	.statusText {
+		transition: none;
+	}
+}
+
 .headerTitleText {
 	display: block;
+	min-height: 0;
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
