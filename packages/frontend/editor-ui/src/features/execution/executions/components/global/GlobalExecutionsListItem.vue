@@ -214,8 +214,8 @@ async function handleActionItemClick(commandData: Command) {
 				:is-cloud-deployment="props.isCloudDeployment"
 				@go-to-upgrade="emit('goToUpgrade')"
 			>
-				<div>
-					<N8nIcon :icon="statusRender.icon" :color="statusRender.color" class="mr-2xs" />
+				<div :class="$style.status">
+					<N8nIcon size="medium" :icon="statusRender.icon" :color="statusRender.color" />
 					{{ statusRender.label }}
 				</div>
 			</GlobalExecutionsListItemQueuedTooltip>
@@ -228,13 +228,12 @@ async function handleActionItemClick(commandData: Command) {
 					})
 				"
 			>
-				<div>
+				<div :class="$style.status">
 					<N8nIcon
 						size="medium"
 						:icon="statusRender.icon"
 						:color="statusRender.color"
 						:spin="isRunning"
-						class="mr-2xs"
 					/>
 					{{ statusRender.label }}
 				</div>
@@ -342,6 +341,12 @@ async function handleActionItemClick(commandData: Command) {
 		display: inline-flex;
 		align-items: center;
 	}
+}
+
+.status {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 tr.dangerBg {
