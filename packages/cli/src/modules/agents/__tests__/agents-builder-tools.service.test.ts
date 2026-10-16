@@ -608,6 +608,75 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
 		});
 
+		it('finish_setup writes the resolved credential into the empty node-tool slots of its type', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const gmailTool = (
+				name: string,
+				credentials?: Record<string, { id: string; name: string }>,
+			) => ({
+				type: 'node' as const,
+				name,
+				description: name,
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 2.2,
+					nodeParameters: {},
+					credentials,
+				},
+			});
+			const ownCredential = { gmailOAuth2: { id: 'own', name: 'Own account' } };
+			let stored: AgentJsonConfig = {
+				...baseConfig,
+				tools: [gmailTool('search'), gmailTool('reply'), gmailTool('archive', ownCredential)],
+			};
+			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.findById.mockImplementation(async () => makeAgent(stored));
+			agentsService.updateConfig.mockImplementation(async (_agentId, _projectId, config) => {
+				stored = config as AgentJsonConfig;
+				return {
+					config: stored,
+					configHash: getAgentConfigHash(stored),
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				};
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					displayName: 'Gmail Tool',
+					name: 'n8n-nodes-base.gmailTool',
+					group: [],
+					version: 2.2,
+					description: '',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [],
+					credentials: [{ name: 'gmailOAuth2' }],
+				},
+			} as unknown as ReturnType<NodeTypes['getByNameAndVersion']>);
+			credentialService.list.mockResolvedValue([
+				{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+			]);
+
+			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
+			const result = await tool.handler!(
+				{ credentialRequests: [{ credentialType: 'gmailOAuth2', purpose: 'Order emails' }] },
+				ctx as never,
+			);
+
+			const resolved = { gmailOAuth2: { id: 'g1', name: 'Gmail account' } };
+			expect(
+				stored.tools?.map((t) => (t.type === 'node' ? t.node.credentials : undefined)),
+			).toEqual([resolved, resolved, ownCredential]);
+			expect(result).toEqual(
+				expect.objectContaining({
+					completed: true,
+					credentialsWrittenToTools: ['gmailOAuth2'],
+					configHash: getAgentConfigHash(stored),
+				}),
+			);
+		});
+
 		it('patch_config saves a removed top-level field as removed', async () => {
 			const { service, agentsService } = makeService();
 			const telegram: AgentIntegrationConfig = {
