@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Mailchimp/__tests__/request-urls.test.ts
+  s_2e1fa95fc44f8f::t_063f7845db7dc7 1-6,73-111,153
+  s_2e1fa95fc44f8f::t_213bf76ca78348 155
+  s_2e1fa95fc44f8f::t_99adc7343478ba 152
+  s_2e1fa95fc44f8f::t_84178b577f81ba 112-151
+  s_2e1fa95fc44f8f::t_124a9db1a2055a 154
+packages/nodes-base/nodes/Mailchimp/Mailchimp.node.ts
+  s_2e1fa95fc44f8f::t_618f7a79730f1f 17,1829,1841,2022,2053
+  s_2e1fa95fc44f8f::t_ef0a3011ab00f6 2012
+  s_2e1fa95fc44f8f::t_6d455629fd9422 1686
+  s_2e1fa95fc44f8f::t_7d53281e3100e5 59-60
+packages/nodes-base/nodes/Mailchimp/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_62108c193c3132 12-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f412a2c7b5c242364112e74e8a5db1dde22af7b1",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
