@@ -139,9 +139,7 @@ describe('PromotionReviewsService', () => {
 		hostResolver.resolve.mockRejectedValueOnce(new Error('decrypt failed'));
 
 		await expect(service.openMergeRequest(input, actor, push, 'run-1')).resolves.toEqual({
-			warnings: [
-				{ message: `The branch ${push.branchName} was pushed, but no merge request was opened.` },
-			],
+			warnings: [{ message: 'No merge request was opened.' }],
 		});
 		expect(mergeRequests.createMergeRequest).not.toHaveBeenCalled();
 
@@ -152,7 +150,7 @@ describe('PromotionReviewsService', () => {
 		await expect(service.openMergeRequest(input, actor, push, 'run-1')).resolves.toEqual({
 			warnings: [
 				{
-					message: `The branch ${push.branchName} was pushed, but no merge request was opened: GitLab is not available. Try again later.`,
+					message: 'No merge request was opened: GitLab is not available. Try again later.',
 				},
 			],
 		});

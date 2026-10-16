@@ -299,7 +299,7 @@ export class PromotionsService {
 			return {
 				warnings: [
 					{
-						message: `The branch ${push.promotionBranchName} was pushed, but no merge request was opened.`,
+						message: 'No merge request was opened.',
 					},
 				],
 			};

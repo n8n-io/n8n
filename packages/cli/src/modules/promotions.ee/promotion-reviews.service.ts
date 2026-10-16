@@ -61,7 +61,7 @@ export class PromotionReviewsService {
 		const host = await settle(async () => await this.hostResolver.resolve(input));
 		if (!host.ok) {
 			this.logger.warn('Could not prepare the GitLab merge request call', { error: host.error });
-			return { warnings: [mergeRequestWarning(branchName, host.error)] };
+			return { warnings: [mergeRequestWarning(host.error)] };
 		}
 		if (!host.result) return { warnings: [] };
 		const { access, projectPath } = host.result;
@@ -78,7 +78,7 @@ export class PromotionReviewsService {
 		);
 		if (!mergeRequest.ok) {
 			this.logger.warn('Could not open the GitLab merge request', { error: mergeRequest.error });
-			return { warnings: [mergeRequestWarning(branchName, mergeRequest.error)] };
+			return { warnings: [mergeRequestWarning(mergeRequest.error)] };
 		}
 		const { iid, project_id: projectId, web_url: webUrl } = mergeRequest.result;
 
@@ -146,8 +146,8 @@ const escapeGitLabQuickActions = (text: string) =>
 		.map((line) => line.replace(/^(\s*)\//, '$1\\/'))
 		.join('\n');
 
-const mergeRequestWarning = (branchName: string, error: unknown): PromotionPromoteWarning => {
-	const prefix = `The branch ${branchName} was pushed, but no merge request was opened`;
+const mergeRequestWarning = (error: unknown): PromotionPromoteWarning => {
+	const prefix = 'No merge request was opened';
 	// A raw Error can carry request details. Only an n8n error has a message safe to show.
 	const message = error instanceof BaseError ? `${prefix}: ${error.message}` : `${prefix}.`;
 	return { message };
