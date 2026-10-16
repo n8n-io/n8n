@@ -11,7 +11,11 @@ import type { ImportContext } from '../../../n8n-packages.types';
 import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
 import type { SerializedCredential } from '../../../spec/serialized/credential.schema';
-import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
+import type {
+	CredentialBindingRequest,
+	CredentialImportPlan,
+	CredentialResolutionFailure,
+} from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
 import { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
 import { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
@@ -53,6 +57,15 @@ describe('CredentialImporter', () => {
 		conflictPolicy: options.conflictPolicy ?? 'keep-existing',
 		packageCredentials: options.packageCredentials,
 		updateScope: options.updateScope ?? { projectIds: new Set([targetProject.id]) },
+	});
+
+	const emptyPlan = (): CredentialImportPlan => ({
+		successes: new Map(),
+		stubIds: new Map(),
+		failures: [],
+		candidates: [],
+		updates: [],
+		forbidden: [],
 	});
 
 	const packageCredential = (
@@ -276,7 +289,7 @@ describe('CredentialImporter', () => {
 			});
 
 			const result = await importer.apply(context, request, {
-				successes: new Map(),
+				...emptyPlan(),
 				stubIds: new Map(),
 				failures: [notFoundFailure(sourceCredential, { targetId: 'target-missing' })],
 			});
@@ -298,7 +311,7 @@ describe('CredentialImporter', () => {
 				context,
 				bindingRequest([], { missingMode: 'create-stub' }),
 				{
-					successes: new Map(),
+					...emptyPlan(),
 					stubIds: new Map([['orphan-not-in-requirements', 'orphan-not-in-requirements']]),
 					failures: [
 						notFoundFailure(
@@ -355,7 +368,7 @@ describe('CredentialImporter', () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'cred-source' } as never);
 			const firstRequest = bindingRequest([missingCredential], { missingMode: 'create-stub' });
 			const firstResult = await importer.apply(context, firstRequest, {
-				successes: new Map(),
+				...emptyPlan(),
 				stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 				failures: [notFoundFailure(missingCredential)],
 			});
@@ -401,7 +414,7 @@ describe('CredentialImporter', () => {
 					context,
 					bindingRequest([missingCredential], { missingMode: 'create-stub' }),
 					{
-						successes: new Map(),
+						...emptyPlan(),
 						stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 						failures: [notFoundFailure(missingCredential)],
 					},
@@ -654,7 +667,8 @@ describe('CredentialImporter', () => {
 				context,
 				bindingRequest([missingCredential], { missingMode: 'create-with-values' }),
 				{
-					successes: new Map(),
+					...emptyPlan(),
+					stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 					failures: [notFoundFailure(missingCredential)],
 				},
 			);
@@ -688,7 +702,11 @@ describe('CredentialImporter', () => {
 				context,
 				bindingRequest([withoutData, withEmptyData], { missingMode: 'create-with-values' }),
 				{
-					successes: new Map(),
+					...emptyPlan(),
+					stubIds: new Map([
+						[withoutData.id, withoutData.id],
+						[withEmptyData.id, withEmptyData.id],
+					]),
 					failures: [notFoundFailure(withoutData), notFoundFailure(withEmptyData)],
 				},
 			);
@@ -718,7 +736,8 @@ describe('CredentialImporter', () => {
 				context,
 				bindingRequest([missingCredential], { missingMode: 'create-stub' }),
 				{
-					successes: new Map(),
+					...emptyPlan(),
+					stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 					failures: [notFoundFailure(missingCredential)],
 				},
 			);
