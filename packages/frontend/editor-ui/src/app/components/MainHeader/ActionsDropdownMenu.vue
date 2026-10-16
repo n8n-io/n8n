@@ -203,6 +203,8 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 			label: locale.baseText('generic.rename'),
 			icon: { type: 'icon', value: 'pencil' },
 			disabled: props.workflowPermissions.update !== true,
+			// Focus moves to the name input; returning it to the trigger blurs and ends the edit.
+			suppressCloseAutoFocus: true,
 		});
 	}
 

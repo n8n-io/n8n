@@ -96,6 +96,7 @@ import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
@@ -1069,6 +1070,7 @@ const saveFiltersOnQueryString = () => {
 };
 
 const setFiltersFromQueryString = async () => {
+	const { fullPath } = route;
 	const newQuery: LocationQueryRaw = { ...route.query };
 	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
 
@@ -1139,7 +1141,13 @@ const setFiltersFromQueryString = async () => {
 		filters.value.showArchived = false;
 	}
 
-	void router.replace({ query: newQuery });
+	// The route changed while the stores loaded. Do not write this query onto the new route.
+	if (route.fullPath !== fullPath) return;
+
+	// A replace cancels any pending navigation, e.g. a tab click made while this view loads.
+	if (!isEqual(newQuery, route.query)) {
+		void router.replace({ query: newQuery });
+	}
 };
 
 // Misc methods
