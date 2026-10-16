@@ -824,7 +824,8 @@ describe('AgentSkillModal', () => {
 		});
 
 		it.each([
-			['project', 'agents.builder.skills.availableTo.project'],
+			// The project option names the project, which the modal hides behind it.
+			['project', 'Marketing'],
 			['instance', 'agents.builder.skills.availableTo.instance'],
 		] as const)(
 			'saves a new skill for the %s from the availability select',
@@ -858,6 +859,22 @@ describe('AgentSkillModal', () => {
 				);
 			},
 		);
+
+		it('falls back to "This project" when the project name is unknown', async () => {
+			listAttachableSkills.mockResolvedValue([]);
+			const { getByTestId, findByText } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+			});
+
+			await fireEvent.click(getByTestId('agent-skill-picker-create'));
+			await fireEvent.click(getByTestId('agent-skill-add-manually'));
+			await fireEvent.click(
+				getByTestId('agent-skill-availability-select').querySelector('.select-trigger')!,
+			);
+
+			expect(await findByText('agents.builder.skills.availableTo.project')).toBeInTheDocument();
+		});
 
 		it.each([
 			['all', true, 'agent'],
