@@ -2,8 +2,9 @@ import { AddInstanceScopeToAgents1792051765225 as BaseMigration } from '../commo
 
 /**
  * `agents` has incoming cascading foreign keys. Recreating it must not delete
- * their rows, so foreign keys are off for this migration. On revert, the rows
- * that depend on the deleted instance agents stay as orphans.
+ * their rows, so foreign keys are off for this migration. On revert,
+ * `DeleteInstanceAgentsOnRevert` deletes instance agents and their dependent
+ * rows first, with foreign keys on.
  */
 export class AddInstanceScopeToAgents1792051765225 extends BaseMigration {
 	withFKsDisabled = true as const;

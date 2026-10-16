@@ -37,8 +37,9 @@ export class AddInstanceScopeToAgents1792051765225 implements ReversibleMigratio
 		const {
 			schemaBuilder: { addNotNull, dropColumns, dropEnumCheck },
 		} = context;
-		// The old schema cannot store an agent without a project. On SQLite, foreign
-		// keys are off, so the rows that depend on these agents stay as orphans.
+		// The old schema cannot store an agent without a project.
+		// `DeleteInstanceAgentsOnRevert` already deleted these agents and their
+		// dependent rows with foreign keys on. This delete is a fallback.
 		await this.deleteInstanceAgents(context);
 		await this.dropScopeCheck(context);
 		await addNotNull(table, 'projectId', { recreatesOnSqlite: true });
