@@ -13,6 +13,9 @@ export class InsightsModule implements ModuleInterface {
 
 		const { InsightsService } = await import('./insights.service.js');
 		await Container.get(InsightsService).init();
+
+		// Registers with the ledger fold. It stays idle unless the ledger is the Insights source.
+		await import('./insights-ledger.participant.js');
 	}
 
 	async systemTasks() {

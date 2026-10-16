@@ -91,6 +91,8 @@ describe('ActiveExecutions', () => {
 			mock(),
 			executionsConfig,
 			mock(),
+			mock(),
+			mock(),
 		);
 
 		executionRepository.cancelManyRunning.mockResolvedValue();
@@ -305,6 +307,8 @@ describe('ActiveExecutions', () => {
 				mock(),
 				executionsConfig,
 				mock(),
+				mock(),
+				mock(),
 			);
 
 			let resolvedId: string | undefined;
@@ -333,6 +337,8 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
+				mock(),
 				mock(),
 			);
 
@@ -477,6 +483,8 @@ describe('ActiveExecutions', () => {
 				concurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
+				mock(),
 				mock(),
 			);
 
@@ -869,6 +877,8 @@ describe('ActiveExecutions', () => {
 				mock(),
 				queueExecutionsConfig,
 				instanceSettings,
+				mock(),
+				mock(),
 			);
 		};
 

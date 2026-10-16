@@ -3,7 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -27,6 +27,10 @@ import type PCancelable from 'p-cancelable';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import {
+	ExecutionQuotaService,
+	type ExecutionQuotaCharge,
+} from '@/execution-quota/execution-quota.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IExecutingWorkflowData,
@@ -61,6 +65,8 @@ export class ActiveExecutions {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly executionQuotaService: ExecutionQuotaService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	has(executionId: string) {
@@ -91,6 +97,8 @@ export class ActiveExecutions {
 		const shouldReserveCapacity = mode !== 'evaluation';
 
 		let executionId: string;
+		let quotaCharge: ExecutionQuotaCharge | undefined;
+		let isPersisted = false;
 
 		try {
 			if (existingExecution === undefined) {
@@ -109,9 +117,22 @@ export class ActiveExecutions {
 				const workflowId = executionData.workflowData.id;
 				if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
 					fullExecutionData.workflowId = workflowId;
+					// A refused run throws here, before any execution row exists.
+					quotaCharge = await this.executionQuotaService.admit({
+						workflowId,
+						projectId: executionData.projectId,
+						mode,
+					});
 				}
 
-				executionId = await this.executionPersistence.create(fullExecutionData);
+				const charge = quotaCharge;
+				executionId = charge
+					? await this.transactionRunner.run({}, async (ctx) => {
+							await charge.recordStarted(ctx);
+							return await this.executionPersistence.create(fullExecutionData, ctx);
+						})
+					: await this.executionPersistence.create(fullExecutionData);
+				isPersisted = true;
 				assert(executionId);
 
 				if (shouldReserveCapacity) {
@@ -155,6 +176,10 @@ export class ActiveExecutions {
 			}
 		} catch (error) {
 			capacityReservation.release();
+			if (quotaCharge && !isPersisted) {
+				// A failed refund only leaves the quota one run stricter, never looser.
+				await quotaCharge.refund().catch(() => {});
+			}
 			throw error;
 		}
 

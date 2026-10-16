@@ -51,6 +51,13 @@ export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
+export { toSqliteTimestamp, fromDbTimestamp } from './utils/dialect-sql';
+export {
+	LedgerParticipant,
+	getLedgerParticipantClasses,
+	type AfterFoldCommit,
+	type ExecutionLedgerParticipant,
+} from './execution-ledger/ledger-participant';
 
 export { TransactionRunner } from './services/transaction';
 export type {

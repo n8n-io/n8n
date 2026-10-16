@@ -7,9 +7,16 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { DatabaseConfig, GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { IWorkflowDb, Project, WorkflowEntity, WorkflowRepository, User } from '@n8n/db';
-import { SettingsRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	DbLock,
+	DbLockService,
+	ExecutionLedgerRepository,
+	SettingsRepository,
+	StatisticsNames,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	QueryFailedError,
@@ -31,6 +38,7 @@ import {
 
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
+import { WorkflowStatisticsLedgerParticipant } from '@/services/workflow-statistics-ledger.participant';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { createUser } from '@test-integration/db/users';
 
@@ -58,25 +66,23 @@ describe('WorkflowStatisticsService', () => {
 		});
 
 		/**
-		 * On Postgres, `workflowExecutionCompleted` appends to the delta table and the rollup folds it
-		 * out of band. These tests assert the materialized counter + milestone, so we drive the fold
-		 * here (the rollup's work, minus the leader/lock/timer) to mimic the synchronous behavior the
-		 * SQLite path still has. On SQLite this is a no-op (the upsert path already materialized).
+		 * `workflowExecutionCompleted` appends to the execution ledger and the fold runs out of
+		 * band. Drive the statistics participant here, minus the leader and timer.
 		 */
 		const flushStats = async (service: WorkflowStatisticsService) => {
-			if (!isPostgres) return;
-			const { firstOccurrences } = await workflowStatisticsRepository.rollupIncrements(
-				dataSource.manager,
-				10_000,
+			const participant = new WorkflowStatisticsLedgerParticipant(
+				workflowStatisticsRepository,
+				service,
+				mock(),
 			);
-			for (const occ of firstOccurrences) {
-				await service.emitFirstOccurrenceEvent(
-					occ.name,
-					occ.workflowId,
-					occ.workflowName,
-					occ.firstEventMs,
-				);
-			}
+			const afterCommit = await Container.get(DbLockService).tryWithLockContext(
+				DbLock.EXECUTION_LEDGER_FOLD,
+				async (ctx) => {
+					const rows = await Container.get(ExecutionLedgerRepository).claimBatch(ctx, 10_000);
+					return await participant.fold(rows, ctx);
+				},
+			);
+			await afterCommit?.();
 		};
 
 		const completeAndFlush = async (
@@ -369,7 +375,7 @@ describe('WorkflowStatisticsService', () => {
 				userActivated: true,
 				// On Postgres the milestone fires from the fold using the delta's `firstEvent`
 				// (~completion time), not `runData.startedAt` — an accepted best-effort drift.
-				userActivatedAt: isPostgres ? expect.any(Number) : runData.startedAt.getTime(),
+				userActivatedAt: expect.any(Number),
 			});
 			expect(emitSpy).toHaveBeenCalledTimes(1);
 			expect(emitSpy).toHaveBeenCalledWith('first-production-workflow-succeeded', {
@@ -452,7 +458,7 @@ describe('WorkflowStatisticsService', () => {
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedgerRepository),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -495,7 +501,7 @@ describe('WorkflowStatisticsService', () => {
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedgerRepository),
 			);
 
 			// First failure - this will set the instance.firstProductionFailure setting
@@ -536,7 +542,7 @@ describe('WorkflowStatisticsService', () => {
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryWithErrorWorkflows,
-				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedgerRepository),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -654,7 +660,7 @@ describe('WorkflowStatisticsService', () => {
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedgerRepository),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -690,7 +696,7 @@ describe('WorkflowStatisticsService', () => {
 					Container.get(EventService),
 					Container.get(SettingsRepository),
 					workflowRepositoryNoErrorWorkflows,
-					Container.get(DatabaseConfig),
+					Container.get(ExecutionLedgerRepository),
 				);
 			};
 
@@ -985,7 +991,6 @@ describe('WorkflowStatisticsService', () => {
 			ownershipService = mockInstance(OwnershipService);
 			userService = mockInstance(UserService);
 			const globalConfig = Container.get(GlobalConfig);
-			const databaseConfig = Container.get(DatabaseConfig);
 
 			entityManager = mock<EntityManager>();
 			const dataSource = mock<DataSource>({
@@ -1012,7 +1017,7 @@ describe('WorkflowStatisticsService', () => {
 				eventService,
 				settingsRepository,
 				workflowRepository,
-				databaseConfig,
+				mock<ExecutionLedgerRepository>(),
 			);
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.deployment.type = 'n8n-testing';

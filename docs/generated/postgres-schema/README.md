@@ -74,7 +74,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_annotations](public.execution_annotations.md) | 6 |  | BASE TABLE |
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
 | [public.execution_entity](public.execution_entity.md) | 19 |  | BASE TABLE |
+| [public.execution_ledger](public.execution_ledger.md) | 12 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
+| [public.execution_quota](public.execution_quota.md) | 7 |  | BASE TABLE |
+| [public.execution_quota_usage](public.execution_quota_usage.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 6 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
 | [public.idempotency_key](public.idempotency_key.md) | 9 |  | BASE TABLE |
@@ -308,6 +311,8 @@ erDiagram
 "public.execution_data" |o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
 "public.execution_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.execution_metadata" }o--|| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE CASCADE"
+"public.execution_quota" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.execution_quota" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.folder" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.folder" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
 "public.folder_tag" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
@@ -1136,11 +1141,40 @@ erDiagram
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
 }
+"public.execution_ledger" {
+  timestamp_3__with_time_zone createdAt
+  smallint delta
+  varchar_16_ event
+  bigint id
+  varchar_32_ mode
+  varchar_36_ projectId
+  integer runtimeMs
+  varchar_32_ source
+  varchar_16_ status
+  integer timeSavedMin
+  varchar_36_ workflowId
+  varchar_128_ workflowName
+}
 "public.execution_metadata" {
   integer executionId FK
   integer id
   varchar_255_ key
   text value
+}
+"public.execution_quota" {
+  timestamp_3__with_time_zone createdAt
+  integer id
+  integer limit
+  varchar_8_ period
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.execution_quota_usage" {
+  date day
+  varchar_36_ scopeId
+  varchar_16_ scopeType
+  bigint used
 }
 "public.folder" {
   timestamp_3__with_time_zone createdAt

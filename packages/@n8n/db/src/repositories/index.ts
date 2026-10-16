@@ -97,7 +97,23 @@ export { TestCaseExecutionRepository } from './test-case-execution.repository.ee
 export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
 export { VariablesRepository, type VariableKeyScope } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
-export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
+export {
+	WorkflowStatisticsRepository,
+	type WorkflowStatisticsIncrement,
+} from './workflow-statistics.repository';
+export {
+	ExecutionLedgerRepository,
+	managerFor,
+	type ExecutionLedgerEvent,
+	type ExecutionLedgerRow,
+} from './execution-ledger.repository';
+export {
+	ExecutionQuotaRepository,
+	type ExecutionQuotaPeriod,
+	type ExecutionQuotaRow,
+	type ExecutionQuotaScopeType,
+	type ExecutionQuotaUsageIncrement,
+} from './execution-quota.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';

@@ -69,5 +69,13 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		tasks.push(WorkflowStatisticsRollupTask);
 	}
 
+	// Importing a participant registers it with the fold.
+	await import('@/services/workflow-statistics-ledger.participant.js');
+	await import('@/execution-quota/execution-quota.participant.js');
+	const { ExecutionLedgerFoldTask } = await import(
+		'@/execution-ledger/execution-ledger-fold.task.js'
+	);
+	tasks.push(ExecutionLedgerFoldTask);
+
 	return tasks;
 }
