@@ -10,37 +10,49 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 		// Experiment cleanup: remove with quickjsExpressionShadow (126_quickjs_expression_shadow).
 		description:
 			'The editor evaluated a sample of expressions with the QuickJS engine next to the legacy engine, and reported the aggregated comparison. Sent every few minutes while the shadow run has new data, and when the tab is hidden. It never carries expression text or values.',
+		// The `quickjs_fe_` prefix keeps these generic names apart in the PostHog property list.
 		properties: z.object({
-			init_status: z
+			quickjs_fe_init_status: z
 				.enum(['ready', 'failed'])
 				.describe('Whether the QuickJS shadow engine started'),
-			init_duration_ms: z.number().describe('Time to load and start the QuickJS shadow engine'),
-			sample_rate: z.number().describe('One in this many legacy evaluations also runs in QuickJS'),
-			timeout_ms: z.number().describe('QuickJS timeout for one shadow evaluation'),
-			evaluations: z
+			quickjs_fe_init_duration_ms: z
 				.number()
-				.describe('Distinct expressions compared in this report, up to 5000; repeats count once'),
-			same: z.number(),
-			different: z.number(),
-			unchecked: z
+				.describe('Time to load and start the QuickJS shadow engine'),
+			quickjs_fe_sample_rate: z
+				.number()
+				.describe('One in this many legacy evaluations also runs in QuickJS'),
+			quickjs_fe_timeout_ms: z.number().describe('QuickJS timeout for one shadow evaluation'),
+			quickjs_fe_evaluations: z
+				.number()
+				.describe(
+					'Distinct expressions compared in this report, up to 5000; repeats count once. Runs with missing input are not in it',
+				),
+			quickjs_fe_same: z.number(),
+			quickjs_fe_different: z.number(),
+			quickjs_fe_unchecked: z
 				.number()
 				.describe(
 					'Both engines succeeded, but the values were not compared: the expression is non-deterministic or the value is too large',
 				),
-			legacy_ok_quickjs_error: z.number(),
-			legacy_error_quickjs_ok: z.number(),
-			both_error: z.number(),
-			quickjs_timeouts: z
+			quickjs_fe_legacy_ok_quickjs_error: z.number(),
+			quickjs_fe_legacy_error_quickjs_ok: z.number(),
+			quickjs_fe_both_error: z.number(),
+			quickjs_fe_legacy_missing_input: z
+				.number()
+				.describe(
+					'The legacy engine had no input data, because previous or intermediate nodes did not run, and QuickJS returned no value either. Not compared, and not in the mismatch shapes',
+				),
+			quickjs_fe_quickjs_timeouts: z
 				.number()
 				.describe(
 					'Sampled runs where QuickJS hit its timeout. Every run counts, not once per expression',
 				),
-			latency_bucket_bounds_ms: z
+			quickjs_fe_latency_bucket_bounds_ms: z
 				.array(z.number())
 				.describe('Upper bounds of the latency buckets; the last bucket has no upper bound'),
-			legacy_latency_buckets: z.array(z.number()),
-			quickjs_latency_buckets: z.array(z.number()),
-			mismatches: z
+			quickjs_fe_legacy_latency_buckets: z.array(z.number()),
+			quickjs_fe_quickjs_latency_buckets: z.array(z.number()),
+			quickjs_fe_mismatches: z
 				.array(
 					z.object({
 						outcome: mismatchOutcome,
