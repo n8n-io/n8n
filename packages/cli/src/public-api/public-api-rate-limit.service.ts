@@ -3,12 +3,16 @@ import { Time } from '@n8n/constants';
 import type { Method, RateLimitAccessName } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RequestHandler } from 'express';
+import type { AugmentedRequest, RateLimitInfo } from 'express-rate-limit';
 
 import { RateLimitService } from '@/services/rate-limit.service';
 
 type RequestLimit = { maxRequests: number; windowSeconds: number };
 
 type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLimit };
+
+const ENDPOINT_LIMIT = 'endpointRateLimit';
+const ALL_ENDPOINTS_LIMIT = 'allEndpointsRateLimit';
 
 const READ_METHODS: ReadonlySet<Method> = new Set(['get', 'head']);
 
@@ -39,20 +43,49 @@ export class PublicApiRateLimitService {
 
 		const access = resolveAccess(method, accessFromDecorator);
 
-		return [this.createPerEndpointLimiter(access), this.getAllEndpointsLimiter(access)].filter(
-			(limiter) => limiter !== undefined,
-		);
+		const limiters = [
+			this.createPerEndpointLimiter(access),
+			this.getAllEndpointsLimiter(access),
+		].filter((limiter) => limiter !== undefined);
+		if (limiters.length === 0) return [];
+
+		return [...limiters, this.showLowestRemainingLimit];
 	}
 
+	/**
+	 * Runs only when every limiter let the request pass. Each limiter writes its own headers, so the
+	 * last one would win. This shows the limit with the fewest requests left instead.
+	 */
+	private readonly showLowestRemainingLimit: RequestHandler = (
+		req: AugmentedRequest,
+		res,
+		next,
+	) => {
+		const limits = [req[ENDPOINT_LIMIT], req[ALL_ENDPOINTS_LIMIT]].filter(
+			(limit?: RateLimitInfo) => limit !== undefined,
+		);
+		const lowest = limits.sort((a, b) => a.remaining - b.remaining)[0];
+
+		if (lowest) {
+			res.setHeader('X-RateLimit-Limit', lowest.limit.toString());
+			res.setHeader('X-RateLimit-Remaining', lowest.remaining.toString());
+			if (lowest.resetTime) {
+				const resetSeconds = Math.ceil(lowest.resetTime.getTime() / Time.seconds.toMilliseconds);
+				res.setHeader('X-RateLimit-Reset', resetSeconds.toString());
+			}
+		}
+		next();
+	};
+
 	private createPerEndpointLimiter(access: RateLimitAccessName) {
-		return this.createRateLimiter(this.getLimitsFromConfig(access).perEndpoint);
+		return this.createRateLimiter(this.getLimitsFromConfig(access).perEndpoint, ENDPOINT_LIMIT);
 	}
 
 	private getAllEndpointsLimiter(access: RateLimitAccessName) {
 		if (!this.allEndpointsLimiterCache.has(access)) {
 			this.allEndpointsLimiterCache.set(
 				access,
-				this.createRateLimiter(this.getLimitsFromConfig(access).allEndpoints),
+				this.createRateLimiter(this.getLimitsFromConfig(access).allEndpoints, ALL_ENDPOINTS_LIMIT),
 			);
 		}
 		return this.allEndpointsLimiterCache.get(access);
@@ -85,12 +118,15 @@ export class PublicApiRateLimitService {
 		return limits[access];
 	}
 
-	private createRateLimiter({ maxRequests, windowSeconds }: RequestLimit) {
+	private createRateLimiter(
+		{ maxRequests, windowSeconds }: RequestLimit,
+		requestPropertyName: string,
+	) {
 		if (maxRequests === 0) return undefined;
 
-		return this.rateLimitService.createApiKeyRateLimitMiddleware({
-			limit: maxRequests,
-			windowMs: windowSeconds * Time.seconds.toMilliseconds,
-		});
+		return this.rateLimitService.createApiKeyRateLimitMiddleware(
+			{ limit: maxRequests, windowMs: windowSeconds * Time.seconds.toMilliseconds },
+			requestPropertyName,
+		);
 	}
 }

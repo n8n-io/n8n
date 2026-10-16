@@ -168,6 +168,8 @@ describe('Public API rate limiting', () => {
 
 		expect(blocked.status).toBe(429);
 		expect(blocked.headers['x-ratelimit-limit']).toBe('2');
+		expect(blocked.headers['x-ratelimit-remaining']).toBe('0');
+		expect(blocked.headers['retry-after']).toBeDefined();
 		expect((await send(app, 'get', '/widgets/other')).status).toBe(200);
 	});
 
@@ -202,7 +204,9 @@ describe('Public API rate limiting', () => {
 		const app = activate({ globalReadLimit: 1, endpointReadLimit: 1 });
 
 		for (let i = 0; i < 3; i++) {
-			expect((await send(app, 'get', '/widgets', null)).status).toBe(200);
+			const response = await send(app, 'get', '/widgets', null);
+			expect(response.status).toBe(200);
+			expect(response.headers['x-ratelimit-limit']).toBeUndefined();
 		}
 	});
 
@@ -213,6 +217,22 @@ describe('Public API rate limiting', () => {
 		expect((await send(app, 'get', '/widgets')).status).toBe(429);
 		await sendTimes(app, 2, 'get', '/widgets/other');
 	});
+
+	it.each([
+		{ layer: 'per-endpoint', globalReadLimit: 0, endpointReadLimit: 3 },
+		{ layer: 'all-endpoints', globalReadLimit: 3, endpointReadLimit: 0 },
+	])(
+		'reports the $layer limit in the headers when it is the only active limit',
+		async ({ globalReadLimit, endpointReadLimit }) => {
+			const app = activate({ globalReadLimit, endpointReadLimit });
+
+			const response = await send(app, 'get', '/widgets');
+
+			expect(response.status).toBe(200);
+			expect(response.headers['x-ratelimit-limit']).toBe('3');
+			expect(response.headers['x-ratelimit-remaining']).toBe('2');
+		},
+	);
 
 	it('does not count a request that the per-endpoint limit blocks toward the all-endpoints limit', async () => {
 		const app = activate({ globalReadLimit: 3, endpointReadLimit: 1 });
