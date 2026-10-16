@@ -481,13 +481,25 @@ it('rechecks the background user after execution validation', async () => {
 	expect(await suggestions.count()).toBe(0);
 });
 
-it.each([0, null])('preserves report text and measured usage with credits=%s', async (credits) => {
-	const report = 'Configure the credential for the HTTP Request node before retrying.';
-	const usage = {
-		credits,
+it.each<SelfHealingResultUsage>([
+	{ credits: 0, turns: 1, durationSeconds: null },
+	{ credits: null, turns: 1, durationSeconds: null },
+	{
+		promptTokens: 10,
+		completionTokens: 5,
+		totalTokens: 15,
+		turns: 1,
+		durationSeconds: 2,
+	},
+	{
+		promptTokens: null,
+		completionTokens: null,
+		totalTokens: null,
 		turns: 1,
 		durationSeconds: null,
-	};
+	},
+])('preserves report text and usage: %j', async (usage) => {
+	const report = 'Configure the credential for the HTTP Request node before retrying.';
 	const { investigation, user, project, original, completion } = await prepareInvestigation(
 		'needs_you',
 		false,

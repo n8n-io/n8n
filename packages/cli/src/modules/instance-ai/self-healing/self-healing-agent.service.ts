@@ -167,11 +167,19 @@ export class SelfHealingAgentService {
 			threadId,
 			runId,
 			status: 'errored',
-			usage: {
-				credits: null,
-				turns: null,
-				durationSeconds: null,
-			},
+			usage: this.models.isProxyEnabled()
+				? {
+						credits: null,
+						turns: null,
+						durationSeconds: null,
+					}
+				: {
+						promptTokens: null,
+						completionTokens: null,
+						totalTokens: null,
+						turns: null,
+						durationSeconds: null,
+					},
 		};
 
 		try {
@@ -257,15 +265,22 @@ export class SelfHealingAgentService {
 		} finally {
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
 
+			if ('promptTokens' in result.usage) {
+				result.usage.promptTokens = stream?.usage?.promptTokens ?? null;
+				result.usage.completionTokens = stream?.usage?.completionTokens ?? null;
+				result.usage.totalTokens = stream?.usage?.totalTokens ?? null;
+			}
 			try {
-				result.usage.credits =
-					(await this.credits.claimRunUsage(
-						user,
-						threadId,
-						stream?.agentRunId || runId,
-						stream?.usage?.usage ?? [],
-						result.status,
-					)) ?? null;
+				const credits = await this.credits.claimRunUsage(
+					user,
+					threadId,
+					stream?.agentRunId || runId,
+					stream?.usage?.usage ?? [],
+					result.status,
+				);
+				if ('credits' in result.usage) {
+					result.usage.credits = credits ?? null;
+				}
 			} catch (error) {
 				this.logger.warn('Could not claim self-healing usage.', {
 					runId,

@@ -165,6 +165,7 @@ describe('SelfHealingAgentService', () => {
 		adapter.createContext.mockReturnValue(mock<InstanceAiContext>());
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(true);
 		credits.claimRunUsage.mockResolvedValue(0.25);
+		models.isProxyEnabled.mockReturnValue(true);
 		stream = {
 			status: 'completed',
 			agentRunId: 'sdk-run',
@@ -315,7 +316,7 @@ describe('SelfHealingAgentService', () => {
 		};
 		vi.mocked(compileCandidateWorkflow).mockResolvedValue(candidate);
 		options.onComplete = vi.fn(async (result) => {
-			expect(result.usage.credits).toBe(0.25);
+			expect(result.usage).toMatchObject({ credits: 0.25 });
 			expect(await result.candidate?.compile()).toEqual(candidate);
 			entered.resolve();
 			await persisted.promise;
@@ -443,7 +444,7 @@ describe('SelfHealingAgentService', () => {
 		credits.claimRunUsage.mockRejectedValueOnce(failure);
 		const result = await service.execute(input, options);
 		expect(result.output).toEqual(validOutput);
-		expect(result.usage.credits).toBeNull();
+		expect(result.usage).toMatchObject({ credits: null });
 		expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 
@@ -456,6 +457,81 @@ describe('SelfHealingAgentService', () => {
 			turns: null,
 		});
 	});
+
+	it.each(['completed', 'cancelled', 'errored'] as const)(
+		'returns token usage and delegates accounting for a %s direct-provider run',
+		async (status) => {
+			models.isProxyEnabled.mockReturnValue(false);
+			credits.claimRunUsage.mockResolvedValueOnce(undefined);
+			stream.status = status;
+			stream.stepCount = 4;
+
+			const result = await service.execute(input, options);
+
+			expect(result.usage).toEqual({
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+				turns: 4,
+				durationSeconds: expect.any(Number),
+			});
+			expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
+				user,
+				options.threadId,
+				'sdk-run',
+				stream.usage?.usage,
+				status,
+			);
+		},
+	);
+
+	it.each([null, 0])('preserves token measurements of %s', async (tokens) => {
+		models.isProxyEnabled.mockReturnValue(false);
+		stream.usage =
+			tokens === null
+				? undefined
+				: {
+						promptTokens: tokens,
+						completionTokens: tokens,
+						totalTokens: tokens,
+						costUsd: 0,
+					};
+
+		const result = await service.execute(input, options);
+
+		expect(result.usage).toMatchObject({
+			promptTokens: tokens,
+			completionTokens: tokens,
+			totalTokens: tokens,
+		});
+	});
+
+	it.each([true, false])(
+		'retains the initial usage shape when setup fails (proxy=%s)',
+		async (proxyEnabled) => {
+			models.isProxyEnabled.mockReturnValue(proxyEnabled);
+			suggestions.requireCurrentBaseline.mockImplementationOnce(async () => {
+				models.isProxyEnabled.mockReturnValue(!proxyEnabled);
+				throw new Error('Setup failed');
+			});
+			credits.claimRunUsage.mockResolvedValueOnce(undefined);
+
+			const result = await service.execute(input, options);
+
+			expect(result.status).toBe('errored');
+			expect(result.usage).toEqual({
+				...(proxyEnabled
+					? { credits: null }
+					: {
+							promptTokens: null,
+							completionTokens: null,
+							totalTokens: null,
+						}),
+				turns: null,
+				durationSeconds: expect.any(Number),
+			});
+		},
+	);
 
 	it('uses the observed runtime turn count', async () => {
 		stream.stepCount = 4;
@@ -504,7 +580,7 @@ describe('SelfHealingAgentService', () => {
 		const result = await service.execute(input, options);
 		expect(result.finishReason).toBe('max-iterations');
 		expect(result.output).toEqual(validOutput);
-		expect(result.usage.credits).toBe(0.25);
+		expect(result.usage).toMatchObject({ credits: 0.25 });
 	});
 
 	it('reports unexpected suspension without creating a confirmation', async () => {

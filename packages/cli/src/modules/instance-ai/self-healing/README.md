@@ -144,10 +144,17 @@ It does not remove arbitrary private information.
 | `needs_you`     | Optional   | Continue in chat, Dismiss                    |
 | `could_not_fix` | None       | Continue in chat, Dismiss                    |
 
-The report is one string. Usage contains `credits`, `turns`, and `durationSeconds`.
-The usage object and all three fields are required. Individual measurements can be null when unknown.
+The report is one string. Usage contains `turns` and `durationSeconds`.
+The runtime selects the usage shape before setup from the AI service proxy setting.
+Credit usage contains `credits` and no token counts.
+Token usage contains `promptTokens`, `completionTokens`, and `totalTokens`, with no `credits` field.
+Each variant requires all its fields. Individual measurements can be null when unknown.
+A failed credit claim keeps `credits: null`. The presence of the field identifies credit usage.
+The runtime passes token measurements to the existing credit service in both cases.
+The credit service decides whether to bill the run.
 The producer uses one runtime invocation. Persistence stores its usage without charging it again.
-Token counts stay in the existing runtime billing path.
+Credit billing still uses token counts from the existing runtime billing path.
+Recovery closes interrupted investigations without a result. It does not infer a new usage shape.
 
 Workflow, original-project, background-user, and suggestion deletion cascade to the result.
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.
