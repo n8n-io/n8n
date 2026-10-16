@@ -185,7 +185,7 @@ export default class PackageExport extends BaseCommand {
 			// Older servers omit counts; fall back to the requested id counts.
 			let summary = `${workflowIds.length} workflow(s) and ${folderIds.length} folder(s)`;
 			if (agentIds.length > 0) summary = `${agentIds.length} agent(s), ${summary}`;
-			if (counts) summary = describeExport(counts);
+			if (counts) summary = describeExport({ ...counts, agents: counts.agents ?? agentIds.length });
 			this.succeed(`Exported ${summary} to ${flags.output}`, flags, {
 				output: flags.output,
 				...(agentIds.length > 0 ? { agentIds } : {}),

@@ -97,14 +97,18 @@ describe('package export command', () => {
 		expect(mockedWriteFileSync).toHaveBeenCalledWith('/tmp/agents.n8np', Buffer.from('package'));
 	});
 
-	it('includes selected Agents when the server omits export counts', async () => {
+	it.each([
+		{ counts: undefined, summary: '1 agent(s), 0 workflow(s) and 0 folder(s)' },
+		{ counts: DEFAULT_COUNTS, summary: '1 agent(s)' },
+		{ counts: { ...DEFAULT_COUNTS, agents: 0 }, summary: 'nothing' },
+	])('reports Agent exports with counts=$counts', async ({ counts, summary }) => {
 		const { command, internals } = stubCommand(
 			{ agentId: ['agent'], output: '/tmp/agent.n8np' },
-			vi.fn().mockResolvedValue({ archive: Buffer.from('package') }),
+			vi.fn().mockResolvedValue({ archive: Buffer.from('package'), counts }),
 		);
 		await command.run();
 		expect(internals.succeed).toHaveBeenCalledWith(
-			'Exported 1 agent(s), 0 workflow(s) and 0 folder(s) to /tmp/agent.n8np',
+			`Exported ${summary} to /tmp/agent.n8np`,
 			expect.anything(),
 			expect.objectContaining({ agentIds: ['agent'] }),
 		);
