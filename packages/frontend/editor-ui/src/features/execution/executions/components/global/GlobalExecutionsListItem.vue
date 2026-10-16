@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
@@ -15,14 +14,7 @@ import { computed, ref, useCssModule } from 'vue';
 import { type IconName } from '@n8n/design-system';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import {
-	N8nButton,
-	N8nCheckbox,
-	N8nIcon,
-	N8nIconButton,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
@@ -84,35 +76,35 @@ const EXECUTION_STATUS = {
 const executionIconStatusDictionary: Record<ExecutionStatus, { icon: IconName; color: IconColor }> =
 	{
 		[EXECUTION_STATUS.CRASHED]: {
-			icon: 'status-error',
+			icon: 'x-circle-filled',
 			color: 'danger',
 		},
 		[EXECUTION_STATUS.ERROR]: {
-			icon: 'status-error',
+			icon: 'x-circle-filled',
 			color: 'danger',
 		},
 		[EXECUTION_STATUS.WAITING]: {
-			icon: 'status-waiting',
+			icon: 'hourglass-filled',
 			color: 'secondary',
 		},
 		[EXECUTION_STATUS.SUCCESS]: {
-			icon: 'status-completed',
+			icon: 'check-circle-filled',
 			color: 'success',
 		},
 		[EXECUTION_STATUS.NEW]: {
-			icon: 'status-new',
+			icon: 'circle-dashed-filled',
 			color: 'foreground-xdark',
 		},
 		[EXECUTION_STATUS.RUNNING]: {
-			icon: 'spinner',
+			icon: 'spinner-filled',
 			color: 'secondary',
 		},
 		[EXECUTION_STATUS.UNKNOWN]: {
-			icon: 'status-unknown',
+			icon: 'question-circle-filled',
 			color: 'foreground-xdark',
 		},
 		[EXECUTION_STATUS.CANCELED]: {
-			icon: 'status-canceled',
+			icon: 'slash-circle-filled',
 			color: 'foreground-xdark',
 		},
 	};
@@ -237,18 +229,11 @@ async function handleActionItemClick(commandData: Command) {
 				"
 			>
 				<div>
-					<N8nText
-						v-if="execution.status === EXECUTION_STATUS.RUNNING"
-						color="secondary"
-						class="mr-2xs"
-					>
-						<AnimatedSpinner />
-					</N8nText>
 					<N8nIcon
-						v-else
 						size="medium"
 						:icon="statusRender.icon"
 						:color="statusRender.color"
+						:spin="isRunning"
 						class="mr-2xs"
 					/>
 					{{ statusRender.label }}

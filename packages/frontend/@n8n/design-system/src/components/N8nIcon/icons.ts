@@ -7,6 +7,8 @@ import BotIdle from './custom/bot-idle.svg';
 import BotPass from './custom/bot-pass.svg';
 import BotWaiting from './custom/bot-waiting.svg';
 import BotWarning from './custom/bot-warning.svg';
+import CheckCircleFilled from './custom/brand/check-circle--solid-16.svg';
+import CircleDashedFilled from './custom/brand/circle-dashed--solid-16.svg';
 import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
@@ -14,6 +16,7 @@ import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import HourglassFilled from './custom/brand/hourglass--solid-16.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
@@ -32,12 +35,15 @@ import NodeUngroup from './custom/brand/blocks--solid-16.svg';
 import NodeTrash from './custom/brand/trash--solid-16.svg';
 import NodeValidationError from './custom/brand/exclamation-triangle--solid-16.svg';
 import PopOut from './custom/brand/arrow-square-out--outline-16.svg';
+import QuestionCircleFilled from './custom/brand/question-circle--solid-16.svg';
 import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/brand/list-tree--outline-16.svg';
 import Slack from './custom/slack.svg';
+import SlashCircleFilled from './custom/brand/slash-circle--solid-16.svg';
 import Spinner from './custom/spinner.svg';
+import SpinnerFilled from './custom/brand/spinner--solid-16.svg';
 import StarFilled from './custom/brand/star--solid-16.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
@@ -54,6 +60,7 @@ import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
 import WhatsApp from './custom/whatsapp.svg';
+import XCircleFilled from './custom/brand/x-circle--solid-16.svg';
 import { nodeIconNames, type NodeIconName } from './node-icon-names';
 import {
 	Archive as BrandArchive,
@@ -219,8 +226,10 @@ import {
 	Tags as BrandTags,
 	Telescope as BrandTelescope,
 	Terminal as BrandTerminal,
+	TextAa as BrandTextAa,
 	ThumbsDown as BrandThumbsDown,
 	ThumbsUp as BrandThumbsUp,
+	Toggles as BrandToggles,
 	Trash2 as BrandTrash2,
 	TriangleAlert as BrandTriangleAlert,
 	Underline as BrandUnderline,
@@ -557,6 +566,13 @@ export const updatedIconSet = {
 	'status-new': StatusNew,
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
+	'check-circle-filled': CheckCircleFilled,
+	'circle-dashed-filled': CircleDashedFilled,
+	'hourglass-filled': HourglassFilled,
+	'question-circle-filled': QuestionCircleFilled,
+	'slash-circle-filled': SlashCircleFilled,
+	'spinner-filled': SpinnerFilled,
+	'x-circle-filled': XCircleFilled,
 	'star-filled': StarFilled,
 	'vector-square': VectorSquare,
 	'continue-on-error': Continue,
@@ -817,6 +833,7 @@ export const updatedIconSet = {
 	tags: BrandTags,
 	telescope: BrandTelescope,
 	terminal: BrandTerminal,
+	'text-aa': BrandTextAa,
 	'thumbs-down': BrandThumbsDown,
 	'thumbs-up': BrandThumbsUp,
 	timer: IconLucideTimer,
@@ -827,6 +844,7 @@ export const updatedIconSet = {
 	'triangle-alert': BrandTriangleAlert,
 	type: IconLucideType,
 	'toggle-right': IconLucideToggleRight,
+	toggles: BrandToggles,
 	'undo-2': BrandUndo2,
 	ungroup: IconLucideUngroup,
 	unlink: BrandUnlink,
