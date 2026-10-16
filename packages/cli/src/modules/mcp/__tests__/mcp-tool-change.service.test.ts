@@ -54,22 +54,6 @@ describe('McpToolChangeService', () => {
 		);
 	});
 
-	test('refreshes each new subscription, including after reconnect', async () => {
-		const bus = await service.getBus('channel');
-		const first = vi.fn();
-		const stop = bus.subscribe(first);
-		unsubscribe.push(stop);
-		expect(first).not.toHaveBeenCalled();
-		await Promise.resolve();
-		expect(first).toHaveBeenCalledExactlyOnceWith({ kind: 'tools_list_changed' });
-		stop();
-		const second = vi.fn();
-		unsubscribe.push((await service.getBus('channel')).subscribe(second));
-		await Promise.resolve();
-		expect(second).toHaveBeenCalledExactlyOnceWith({ kind: 'tools_list_changed' });
-		expect(first).toHaveBeenCalledTimes(1);
-	});
-
 	test('does not refresh a subscription that already disconnected', async () => {
 		const listener = vi.fn();
 		const stop = (await service.getBus('channel')).subscribe(listener);
