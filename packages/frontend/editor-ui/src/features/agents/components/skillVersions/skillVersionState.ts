@@ -2,7 +2,8 @@ import type { AgentSkillVersionInfo } from '@n8n/api-types';
 
 /**
  * How the agent uses an attached hub skill:
- * - `latest`: the draft follows the latest version and the live agent runs it too.
+ * - `latest`: the draft follows the latest version and the live agent runs it too, or
+ *   runs another version number with the same content (for example after a restore).
  * - `notLive`: only the draft uses the skill. No published version uses it.
  * - `liveBehind`: the draft follows the latest version. The published agent runs an older one.
  * - `pinned`: the draft ref is pinned to a version, by a user or a restore.
@@ -34,6 +35,7 @@ export function skillVersionState(info: AgentSkillVersionInfo): SkillVersionStat
 		};
 	}
 	if (live === null) return { ...base, kind: 'notLive' };
+	if (info.liveHasSameContent) return { ...base, kind: 'latest' };
 	if (live !== draft) return { ...base, kind: 'liveBehind', changes: { from: live, to: draft } };
 	return { ...base, kind: 'latest' };
 }

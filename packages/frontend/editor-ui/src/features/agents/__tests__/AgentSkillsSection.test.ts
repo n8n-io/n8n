@@ -1,5 +1,5 @@
 import { enableAutoUnmount, mount } from '@vue/test-utils';
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentSkillVersionInfo } from '@n8n/api-types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import AgentSkillsSection from '../components/AgentSkillsSection.vue';
@@ -159,7 +159,14 @@ describe('AgentSkillsSection', () => {
 	});
 
 	it('shows a version badge instead of the outdated warning when the server sends version state', () => {
-		const info = { draft: 2, live: 2, latest: 3, pinned: true, scope: 'project' };
+		const info = {
+			draft: 2,
+			live: 2,
+			latest: 3,
+			pinned: true,
+			liveHasSameContent: false,
+			scope: 'project',
+		} satisfies AgentSkillVersionInfo;
 		const wrapper = mount(AgentSkillsSection, {
 			props: {
 				skills: [{ id: 'tone', skill }],
@@ -177,7 +184,16 @@ describe('AgentSkillsSection', () => {
 		const wrapper = mount(AgentSkillsSection, {
 			props: {
 				skills: [{ id: 'tone', skill }],
-				skillVersions: { tone: { draft: 3, live: 3, latest: 3, pinned: false, scope: 'project' } },
+				skillVersions: {
+					tone: {
+						draft: 3,
+						live: 3,
+						latest: 3,
+						pinned: false,
+						liveHasSameContent: false,
+						scope: 'project',
+					},
+				},
 			},
 			global: { stubs: versionStubs },
 		});
@@ -196,7 +212,16 @@ describe('AgentSkillsSection', () => {
 		const wrapper = mount(AgentSkillsSection, {
 			props: {
 				skills: [{ id: 'tone', skill }],
-				skillVersions: { tone: { draft: 2, live: 2, latest: 4, pinned: true, scope: 'project' } },
+				skillVersions: {
+					tone: {
+						draft: 2,
+						live: 2,
+						latest: 4,
+						pinned: true,
+						liveHasSameContent: false,
+						scope: 'project',
+					},
+				},
 			},
 			global: { stubs: versionStubs },
 		});
@@ -218,8 +243,22 @@ describe('AgentSkillsSection', () => {
 					{ id: 'sql', skill: { ...skill, name: 'SQL' } },
 				],
 				skillVersions: {
-					tone: { draft: 3, live: 3, latest: 3, pinned: false, scope: 'project' },
-					sql: { draft: 2, live: 2, latest: 4, pinned: true, scope: 'project' },
+					tone: {
+						draft: 3,
+						live: 3,
+						latest: 3,
+						pinned: false,
+						liveHasSameContent: false,
+						scope: 'project',
+					},
+					sql: {
+						draft: 2,
+						live: 2,
+						latest: 4,
+						pinned: true,
+						liveHasSameContent: false,
+						scope: 'project',
+					},
 				},
 			},
 			global: { stubs: versionStubs },
@@ -236,7 +275,16 @@ describe('AgentSkillsSection', () => {
 		const wrapper = mount(AgentSkillsSection, {
 			props: {
 				skills: [{ id: 'tone', skill }],
-				skillVersions: { tone: { draft: 5, live: 4, latest: 5, pinned: false, scope: 'project' } },
+				skillVersions: {
+					tone: {
+						draft: 5,
+						live: 4,
+						latest: 5,
+						pinned: false,
+						liveHasSameContent: false,
+						scope: 'project',
+					},
+				},
 			},
 			global: { stubs: versionStubs },
 		});
@@ -247,7 +295,14 @@ describe('AgentSkillsSection', () => {
 	});
 
 	it('opens the diff on the live version and the draft from "See what changed"', async () => {
-		const info = { draft: 5, live: 4, latest: 5, pinned: false, scope: 'project' };
+		const info = {
+			draft: 5,
+			live: 4,
+			latest: 5,
+			pinned: false,
+			liveHasSameContent: false,
+			scope: 'project',
+		} satisfies AgentSkillVersionInfo;
 		const wrapper = mount(AgentSkillsSection, {
 			props: { skills: [{ id: 'tone', skill }], skillVersions: { tone: info } },
 			global: { stubs: versionStubs },
@@ -269,7 +324,16 @@ describe('AgentSkillsSection', () => {
 		const wrapper = mount(AgentSkillsSection, {
 			props: {
 				skills: [{ id: 'tone', skill }],
-				skillVersions: { tone: { draft: 3, live: 3, latest: 3, pinned: false, scope: 'project' } },
+				skillVersions: {
+					tone: {
+						draft: 3,
+						live: 3,
+						latest: 3,
+						pinned: false,
+						liveHasSameContent: false,
+						scope: 'project',
+					},
+				},
 			},
 			global: { stubs: versionStubs },
 		});
@@ -290,7 +354,16 @@ describe('AgentSkillsSection', () => {
 		const wrapper = mount(AgentSkillsSection, {
 			props: {
 				skills: [{ id: 'tone', skill }],
-				skillVersions: { tone: { draft: 2, live: 2, latest: 4, pinned: true, scope: 'project' } },
+				skillVersions: {
+					tone: {
+						draft: 2,
+						live: 2,
+						latest: 4,
+						pinned: true,
+						liveHasSameContent: false,
+						scope: 'project',
+					},
+				},
 			},
 			global: { stubs: versionStubs },
 		});

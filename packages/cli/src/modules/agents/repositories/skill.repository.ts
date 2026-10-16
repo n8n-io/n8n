@@ -330,6 +330,31 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return new Map(rows.map((row) => [row.id, { skillId: row.skillId, version: row.version }]));
 	}
 
+	/**
+	 * The content hash of these skill versions, keyed by skill id, then by version number.
+	 * A pair with no saved version is left out. Reads no content.
+	 */
+	async findContentHashes(
+		pairs: Array<{ skillId: string; version: number }>,
+		ctx: OperationContext = {},
+	): Promise<Map<string, Map<number, string>>> {
+		const result = new Map<string, Map<number, string>>();
+		if (pairs.length === 0) return result;
+		const manager = this.managerFor(ctx);
+		for (const chunk of chunkIds(pairs)) {
+			const rows = await manager.find(SkillVersion, {
+				select: ['skillId', 'version', 'contentHash'],
+				where: chunk.map(({ skillId, version }) => ({ skillId, version })),
+			});
+			for (const row of rows) {
+				const bySkill = result.get(row.skillId) ?? new Map<number, string>();
+				bySkill.set(row.version, row.contentHash);
+				result.set(row.skillId, bySkill);
+			}
+		}
+		return result;
+	}
+
 	/** The version number each skill of one published agent version pins, keyed by skill id. */
 	async findPinnedVersionNumbers(
 		agentVersionId: string,
@@ -595,18 +620,48 @@ export class SkillRepository extends BaseRepository<Skill> {
 			ctx,
 		);
 		const latest = (await this.findLatestSummaries([skillId], ctx)).get(skillId);
+		const liveByAgent = new Map(
+			visiblePublished.flatMap((agent) => {
+				const live = activeVersions.get(agent.activeVersionId ?? '');
+				return live === undefined ? [] : [[agent.id, live] as const];
+			}),
+		);
+		const drafts = visibleDrafts.map((agent) => {
+			// The runtime ignores a pin to a version of another skill and runs the latest.
+			const pin = agent.skillVersionId ? pinnedNumbers.get(agent.skillVersionId) : undefined;
+			const pinned = pin?.skillId === skillId;
+			return {
+				agentId: agent.id,
+				agentName: agent.name,
+				projectId: agent.projectId,
+				version: pinned ? pin.version : (latest?.version ?? 0),
+				pinned,
+			};
+		});
+		// A restore saves old content as a new version, so compare content, not numbers.
+		const compared = new Set(
+			drafts.flatMap((draft) => {
+				const live = liveByAgent.get(draft.agentId);
+				return live !== undefined && live !== draft.version ? [live, draft.version] : [];
+			}),
+		);
+		const hashes =
+			(
+				await this.findContentHashes(
+					[...compared].map((version) => ({ skillId, version })),
+					ctx,
+				)
+			).get(skillId) ?? new Map<number, string>();
 		return {
-			drafts: visibleDrafts.map((agent) => {
-				// The runtime ignores a pin to a version of another skill and runs the latest.
-				const pin = agent.skillVersionId ? pinnedNumbers.get(agent.skillVersionId) : undefined;
-				const pinned = pin?.skillId === skillId;
-				return {
-					agentId: agent.id,
-					agentName: agent.name,
-					projectId: agent.projectId,
-					version: pinned ? pin.version : (latest?.version ?? 0),
-					pinned,
-				};
+			drafts: drafts.map((draft) => {
+				const live = liveByAgent.get(draft.agentId);
+				const draftHash = hashes.get(draft.version);
+				const liveHasSameContent =
+					live !== undefined &&
+					live !== draft.version &&
+					draftHash !== undefined &&
+					draftHash === hashes.get(live);
+				return { ...draft, liveHasSameContent };
 			}),
 			pins: visiblePublished.map((agent) => ({
 				agentId: agent.id,

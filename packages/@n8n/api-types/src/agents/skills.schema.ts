@@ -85,6 +85,11 @@ export type SkillUsage = {
 		version: number;
 		/** True when the draft ref is pinned to a version, by a user or a restore. */
 		pinned: boolean;
+		/**
+		 * True when the agent's published version runs another version number of the
+		 * skill with the same content as `version`.
+		 */
+		liveHasSameContent?: boolean;
 	}>;
 	/** Agents with a published version that pins the skill, one row each. */
 	pins: Array<{

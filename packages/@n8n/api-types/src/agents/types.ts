@@ -229,6 +229,11 @@ export interface AgentSkillVersionInfo {
 	latest: number;
 	/** True when the draft ref is pinned to a version. */
 	pinned: boolean;
+	/**
+	 * True when `live` is set, differs from `draft`, and both versions have the same
+	 * content. A restore saves old content as a new version, so the numbers can differ.
+	 */
+	liveHasSameContent: boolean;
 	/** Where the skill lives: the agent's project, this agent only, or the instance. */
 	scope: SkillScope;
 }

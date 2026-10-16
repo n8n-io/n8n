@@ -12,6 +12,7 @@ import { computed, ref, watch } from 'vue';
 import AgentModal from '../modals/AgentModal.vue';
 import SkillVersionDiff from './SkillVersionDiff.vue';
 import { formatSkillVersion } from './skillVersionLabels';
+import { getSkillDiffSections } from './skillVersionDiff.utils';
 import { isPinnedBehindLatest, type SkillVersionRange } from './skillVersionState';
 import type { SkillVersionLoader } from './useSkillVersionLoader';
 
@@ -80,21 +81,6 @@ const title = computed(() =>
 	}),
 );
 
-const note = computed(() => {
-	const { draft, live } = props.info;
-	if (canFollowLatest.value) {
-		return i18n.baseText('agents.builder.skills.version.diff.note.pinned', {
-			interpolate: { version: String(draft) },
-		});
-	}
-	if (live !== null && live !== draft) {
-		return i18n.baseText('agents.builder.skills.version.diff.note.liveBehind', {
-			interpolate: { version: String(draft), live: String(live) },
-		});
-	}
-	return '';
-});
-
 async function loadVersions() {
 	try {
 		versions.value = await props.loader.loadVersions(props.skillId, props.info.latest);
@@ -139,6 +125,35 @@ watch(
 const ready = computed(
 	() => fromDetail.value?.version === from.value && toDetail.value?.version === to.value,
 );
+
+/** True when both loaded sides have the same content, as a restore saves. */
+const sameContent = computed(
+	() =>
+		ready.value &&
+		!!fromDetail.value &&
+		!!toDetail.value &&
+		getSkillDiffSections(fromDetail.value.skill, toDetail.value.skill).every(
+			(section) => !section.changed,
+		),
+);
+
+const note = computed(() => {
+	const { draft, live } = props.info;
+	if (canFollowLatest.value) {
+		return i18n.baseText('agents.builder.skills.version.diff.note.pinned', {
+			interpolate: { version: String(draft) },
+		});
+	}
+	if (live !== null && live !== draft) {
+		if (props.info.liveHasSameContent || sameContent.value) {
+			return i18n.baseText('agents.builder.skills.version.diff.note.sameContent');
+		}
+		return i18n.baseText('agents.builder.skills.version.diff.note.liveBehind', {
+			interpolate: { version: String(draft), live: String(live) },
+		});
+	}
+	return '';
+});
 </script>
 
 <template>

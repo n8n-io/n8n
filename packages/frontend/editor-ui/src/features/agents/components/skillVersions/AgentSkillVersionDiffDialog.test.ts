@@ -66,10 +66,14 @@ function detail(version: number): SkillVersionDetail {
 	};
 }
 
-function mountDialog(info: AgentSkillVersionInfo, range: { from: number; to: number }) {
+function mountDialog(
+	info: AgentSkillVersionInfo,
+	range: { from: number; to: number },
+	load: (version: number) => SkillVersionDetail = detail,
+) {
 	const loader: SkillVersionLoader = {
 		loadVersions: vi.fn(async () => summaries),
-		loadVersion: vi.fn(async (_skillId: string, version: number) => detail(version)),
+		loadVersion: vi.fn(async (_skillId: string, version: number) => load(version)),
 	};
 	const wrapper = mount(AgentSkillVersionDiffDialog, {
 		props: { open: true, skillId: 'refund', skillName: 'Refund policy', info, range, loader },
@@ -81,7 +85,7 @@ function mountDialog(info: AgentSkillVersionInfo, range: { from: number; to: num
 describe('AgentSkillVersionDiffDialog', () => {
 	it('tags the versions the agent uses and renders the diff of the pair', async () => {
 		const { wrapper, loader } = mountDialog(
-			{ draft: 4, live: 3, latest: 4, pinned: false, scope: 'project' },
+			{ draft: 4, live: 3, latest: 4, pinned: false, liveHasSameContent: false, scope: 'project' },
 			{ from: 3, to: 4 },
 		);
 		await flushPromises();
@@ -102,9 +106,23 @@ describe('AgentSkillVersionDiffDialog', () => {
 		);
 	});
 
+	it('says the published agent already runs the content when both sides match', async () => {
+		// As after a restore: v4 saved the content of v3 again.
+		const { wrapper } = mountDialog(
+			{ draft: 4, live: 3, latest: 4, pinned: false, liveHasSameContent: false, scope: 'project' },
+			{ from: 3, to: 4 },
+			(version) => ({ ...detail(version), skill: detail(3).skill }),
+		);
+		await flushPromises();
+
+		expect(wrapper.get('[data-testid="agent-skill-version-diff-note"]').text()).toBe(
+			'agents.builder.skills.version.diff.note.sameContent',
+		);
+	});
+
 	it('offers follow latest for a skill pinned behind the latest version', async () => {
 		const { wrapper } = mountDialog(
-			{ draft: 2, live: 2, latest: 4, pinned: true, scope: 'project' },
+			{ draft: 2, live: 2, latest: 4, pinned: true, liveHasSameContent: false, scope: 'project' },
 			{ from: 2, to: 4 },
 		);
 		await flushPromises();

@@ -196,11 +196,43 @@ describe('SkillsTable', () => {
 			(badge) => badge.textContent?.trim(),
 		);
 		expect(badges).toEqual([
-			'Latest · v4',
+			'v4 · latest',
 			'v4 · published agent runs v3',
 			'v3 · pinned',
-			'Published agent · v2',
+			'v2 · published agent',
 		]);
+	});
+
+	it('shows a draft as latest when the published agent runs the same content', async () => {
+		const skillsStore = mockedStore(useSkillsStore);
+		skillsStore.fetchSkill.mockResolvedValue({
+			usedBy: {
+				drafts: [
+					{
+						agentId: 'a1',
+						agentName: 'Support bot',
+						projectId: 'p1',
+						version: 10,
+						pinned: false,
+						liveHasSameContent: true,
+					},
+				],
+				pins: [{ agentId: 'a1', agentName: 'Support bot', projectId: 'p1', version: 7 }],
+				hiddenAgents: 0,
+			},
+		} as SkillDetail);
+		const { getByTestId, findByText } = render([skill({ usedByAgents: 1, latestVersion: 10 })]);
+
+		await userEvent.click(getByTestId('skill-agents-trigger'));
+
+		const badge = await waitFor(() => {
+			const found = document.querySelector('[data-test-id="skill-agents-version"]');
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		expect(badge).toHaveTextContent('v10 · latest');
+		await userEvent.hover(badge);
+		expect(await findByText('Same content as the published v7')).toBeInTheDocument();
 	});
 
 	it('shows the latest version and its name', () => {

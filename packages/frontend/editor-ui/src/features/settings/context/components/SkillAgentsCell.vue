@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { SkillListItem, SkillUsage } from '@n8n/api-types';
-import { N8nBadge, N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -15,7 +15,11 @@ const HIDDEN_AGENTS_ITEM = 'hidden-agents';
 const TITLE_ITEM = 'title';
 
 /** The version an agent uses, as a badge next to its name. */
-type VersionBadge = { label: string; variant: 'success' | 'warning' | 'info' | 'subtle' };
+type VersionBadge = {
+	label: string;
+	variant: 'success' | 'warning' | 'info' | 'subtle';
+	tooltip?: string;
+};
 
 type AgentUsage = {
 	agentName: string;
@@ -69,6 +73,16 @@ function versionBadge({ draft, pin }: AgentUsage): VersionBadge {
 		pin.version !== null &&
 		pin.version !== draft.version
 	) {
+		// A restore saves old content as a new version, so the published agent is up to date.
+		if (draft.liveHasSameContent) {
+			return {
+				label: versionText('latest', draft.version),
+				variant: 'success',
+				tooltip: i18n.baseText('settings.context.skills.versions.agents.sameContent', {
+					interpolate: { live: String(pin.version) },
+				}),
+			};
+		}
 		return {
 			label: i18n.baseText('settings.context.skills.versions.agents.liveRuns', {
 				interpolate: { version: String(draft.version), live: String(pin.version) },
@@ -163,15 +177,21 @@ async function onSelect(agentId: string) {
 			@select="onSelect"
 		>
 			<template #item-trailing="{ item }">
-				<N8nBadge
+				<N8nTooltip
 					v-if="item.data"
-					:variant="item.data.variant"
-					size="xsmall"
-					:class="$style.badge"
-					data-test-id="skill-agents-version"
+					:content="item.data.tooltip"
+					:disabled="!item.data.tooltip"
+					placement="top"
 				>
-					{{ item.data.label }}
-				</N8nBadge>
+					<N8nBadge
+						:variant="item.data.variant"
+						size="xsmall"
+						:class="$style.badge"
+						data-test-id="skill-agents-version"
+					>
+						{{ item.data.label }}
+					</N8nBadge>
+				</N8nTooltip>
 			</template>
 			<template #trigger>
 				<button

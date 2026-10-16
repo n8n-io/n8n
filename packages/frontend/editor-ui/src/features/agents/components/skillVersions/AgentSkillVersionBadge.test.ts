@@ -70,19 +70,34 @@ async function openMenu(wrapper: ReturnType<typeof mountBadge>['wrapper']) {
 }
 
 describe('AgentSkillVersionBadge', () => {
-	it.each([
-		[{ draft: 3, live: 3, latest: 3, pinned: false, scope: 'project' }, 'latest', 'badge.latest'],
+	it.each<[AgentSkillVersionInfo, string, string]>([
 		[
-			{ draft: 3, live: null, latest: 3, pinned: false, scope: 'project' },
+			{ draft: 3, live: 3, latest: 3, pinned: false, liveHasSameContent: false, scope: 'project' },
+			'latest',
+			'badge.latest',
+		],
+		[
+			{
+				draft: 3,
+				live: null,
+				latest: 3,
+				pinned: false,
+				liveHasSameContent: false,
+				scope: 'project',
+			},
 			'notLive',
 			'badge.notLive',
 		],
 		[
-			{ draft: 3, live: 2, latest: 3, pinned: false, scope: 'project' },
+			{ draft: 3, live: 2, latest: 3, pinned: false, liveHasSameContent: false, scope: 'project' },
 			'liveBehind',
 			'badge.liveBehind',
 		],
-		[{ draft: 2, live: 2, latest: 3, pinned: true, scope: 'project' }, 'pinned', 'badge.pinned'],
+		[
+			{ draft: 2, live: 2, latest: 3, pinned: true, liveHasSameContent: false, scope: 'project' },
+			'pinned',
+			'badge.pinned',
+		],
 	])('shows the %o state', (info, kind, textKey) => {
 		const { wrapper } = mountBadge(info);
 
@@ -91,12 +106,31 @@ describe('AgentSkillVersionBadge', () => {
 		expect(badge.text()).toContain(`agents.builder.skills.version.${textKey}`);
 	});
 
+	it('shows latest with a same-content tooltip when the published agent runs the same content', () => {
+		const { wrapper } = mountBadge({
+			draft: 10,
+			live: 7,
+			latest: 10,
+			pinned: false,
+			liveHasSameContent: true,
+			scope: 'project',
+		});
+
+		const badge = wrapper.get('[data-testid="agent-skill-version-badge"]');
+		expect(badge.attributes('data-state')).toBe('latest');
+		expect(badge.text()).toContain('agents.builder.skills.version.badge.latest');
+		expect(wrapper.get('[data-tooltip]').attributes('data-tooltip')).toBe(
+			'agents.builder.skills.version.tooltip.sameContent {"version":"10","live":"7"}',
+		);
+	});
+
 	it('lists every version on open and checks follow latest when the ref is not pinned', async () => {
 		const { wrapper, loader } = mountBadge({
 			draft: 3,
 			live: 3,
 			latest: 3,
 			pinned: false,
+			liveHasSameContent: false,
 			scope: 'project',
 		});
 
@@ -115,6 +149,7 @@ describe('AgentSkillVersionBadge', () => {
 			live: 3,
 			latest: 3,
 			pinned: false,
+			liveHasSameContent: false,
 			scope: 'project',
 		});
 		await openMenu(wrapper);
@@ -133,6 +168,7 @@ describe('AgentSkillVersionBadge', () => {
 			live: 2,
 			latest: 3,
 			pinned: true,
+			liveHasSameContent: false,
 			scope: 'project',
 		});
 		await openMenu(wrapper);
@@ -154,6 +190,7 @@ describe('AgentSkillVersionBadge', () => {
 			live: 3,
 			latest: 3,
 			pinned: false,
+			liveHasSameContent: false,
 			scope: 'project',
 		});
 		await openMenu(wrapper);
@@ -169,6 +206,7 @@ describe('AgentSkillVersionBadge', () => {
 			live: 3,
 			latest: 3,
 			pinned: false,
+			liveHasSameContent: false,
 			scope: 'project',
 		});
 		await openMenu(wrapper);
@@ -188,6 +226,7 @@ describe('AgentSkillVersionBadge', () => {
 			live: 3,
 			latest: 3,
 			pinned: false,
+			liveHasSameContent: false,
 			scope: 'project',
 		});
 		vi.mocked(loader.loadVersions).mockRejectedValueOnce(new Error('offline'));

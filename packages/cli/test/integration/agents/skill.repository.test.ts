@@ -715,6 +715,7 @@ describe('SkillRepository', () => {
 					projectId: project.id,
 					version: 2,
 					pinned: false,
+					liveHasSameContent: false,
 				},
 			]);
 			expect(usage.pins).toHaveLength(2);
@@ -749,6 +750,7 @@ describe('SkillRepository', () => {
 						projectId: project.id,
 						version: 1,
 						pinned: false,
+						liveHasSameContent: false,
 					},
 				],
 				pins: [],
@@ -772,8 +774,39 @@ describe('SkillRepository', () => {
 					projectId: project.id,
 					version: 1,
 					pinned: true,
+					liveHasSameContent: false,
 				},
 			]);
+		});
+
+		it('marks a draft whose version has the same content as the published version', async () => {
+			const id = await createSkill();
+			const v1 = await latestVersionId(id);
+			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+			// A restore of v1 saves its content again as v3.
+			await skills.insertSavedVersion(id, 3, content(), null);
+			const restored = await createAgent('Restored');
+			await skills.replaceDependencies(restored.id, [{ skillId: id }]);
+			const changed = await createAgent('Changed');
+			await skills.replaceDependencies(changed.id, [{ skillId: id }]);
+			const v2 = (await skills.findVersionByNumber(id, 2))!.version.id;
+			for (const [agentId, skillVersionId] of [
+				[restored.id, v1],
+				[changed.id, v2],
+			]) {
+				const agentVersionId = await publish(agentId);
+				await agents.update({ id: agentId }, { activeVersionId: agentVersionId });
+				await skills.insertPins([{ agentVersionId, skillId: id, skillVersionId }]);
+			}
+
+			const usage = await skills.findUsage(id);
+
+			expect(usage.drafts).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ agentId: restored.id, version: 3, liveHasSameContent: true }),
+					expect.objectContaining({ agentId: changed.id, version: 3, liveHasSameContent: false }),
+				]),
+			);
 		});
 
 		it('is empty for a skill nobody uses', async () => {

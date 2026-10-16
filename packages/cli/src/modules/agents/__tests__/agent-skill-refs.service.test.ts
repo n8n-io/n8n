@@ -345,6 +345,17 @@ describe('AgentSkillRefsService', () => {
 				mock<Skill>({ id: 'pinned', projectId: null, agentId: null }),
 				mock<Skill>({ id: 'foreign_pin', projectId: null, agentId: 'agent-1' }),
 			]);
+			skillRepository.findContentHashes.mockResolvedValue(
+				new Map([
+					[
+						'pinned',
+						new Map([
+							[3, 'hash-a'],
+							[2, 'hash-b'],
+						]),
+					],
+				]),
+			);
 		});
 
 		it('gives the draft, live and latest version of each ref', async () => {
@@ -359,12 +370,64 @@ describe('AgentSkillRefsService', () => {
 			);
 
 			expect(skillRepository.findPinnedVersionNumbers).toHaveBeenCalledWith('agent-v7', ctx);
+			// Only the ref whose live and draft numbers differ needs its content compared.
+			expect(skillRepository.findContentHashes).toHaveBeenCalledTimes(1);
+			expect(skillRepository.findContentHashes).toHaveBeenCalledWith(
+				[
+					{ skillId: 'pinned', version: 3 },
+					{ skillId: 'pinned', version: 2 },
+				],
+				ctx,
+			);
 			expect(versions).toEqual({
-				followed: { draft: 4, live: 4, latest: 4, pinned: false, scope: 'project' },
-				pinned: { draft: 3, live: 2, latest: 5, pinned: true, scope: 'instance' },
+				followed: {
+					draft: 4,
+					live: 4,
+					latest: 4,
+					pinned: false,
+					liveHasSameContent: false,
+					scope: 'project',
+				},
+				pinned: {
+					draft: 3,
+					live: 2,
+					latest: 5,
+					pinned: true,
+					liveHasSameContent: false,
+					scope: 'instance',
+				},
 				// The runtime runs the latest for a pin to another skill's version.
-				foreign_pin: { draft: 2, live: null, latest: 2, pinned: false, scope: 'agent' },
+				foreign_pin: {
+					draft: 2,
+					live: null,
+					latest: 2,
+					pinned: false,
+					liveHasSameContent: false,
+					scope: 'agent',
+				},
 			});
+		});
+
+		it('marks a live version with the same content as the draft version', async () => {
+			skillRepository.findContentHashes.mockResolvedValue(
+				new Map([
+					[
+						'pinned',
+						new Map([
+							[3, 'hash-a'],
+							[2, 'hash-a'],
+						]),
+					],
+				]),
+			);
+
+			const versions = await service.findSkillVersions(
+				{ activeVersionId: 'agent-v7' },
+				[{ type: 'skill', id: 'pinned', versionId: 'pinned-v3' }],
+				ctx,
+			);
+
+			expect(versions.pinned).toMatchObject({ draft: 3, live: 2, liveHasSameContent: true });
 		});
 
 		it('has no live version for an unpublished agent', async () => {
@@ -375,8 +438,16 @@ describe('AgentSkillRefsService', () => {
 			);
 
 			expect(skillRepository.findPinnedVersionNumbers).not.toHaveBeenCalled();
+			expect(skillRepository.findContentHashes).not.toHaveBeenCalled();
 			expect(versions).toEqual({
-				followed: { draft: 4, live: null, latest: 4, pinned: false, scope: 'project' },
+				followed: {
+					draft: 4,
+					live: null,
+					latest: 4,
+					pinned: false,
+					liveHasSameContent: false,
+					scope: 'project',
+				},
 			});
 		});
 

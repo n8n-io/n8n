@@ -257,7 +257,14 @@ describe('Agent skills in the skills hub', () => {
 		const draft = await skillRefs.readDraft(agent, {});
 		expect(await instructionsOf(draft.skills)).toEqual({ [skill]: 'Version one.' });
 		expect(await skillRefs.findSkillVersions(await reload(agent), refs, {})).toEqual({
-			[skill]: { draft: 1, live: 1, latest: 3, pinned: true, scope: expect.any(String) },
+			[skill]: {
+				draft: 1,
+				live: 1,
+				latest: 3,
+				pinned: true,
+				liveHasSameContent: false,
+				scope: expect.any(String),
+			},
 		});
 
 		await expect(writeRefs([{ id: skill, versionId: otherV1 }])).rejects.toThrow(
@@ -271,7 +278,34 @@ describe('Agent skills in the skills hub', () => {
 		await writeRefs([{ id: skill }]);
 		const unpinned = await skillRefs.refsForDraft(agent, {});
 		expect(await skillRefs.findSkillVersions(await reload(agent), unpinned, {})).toEqual({
-			[skill]: { draft: 3, live: 1, latest: 3, pinned: false, scope: expect.any(String) },
+			[skill]: {
+				draft: 3,
+				live: 1,
+				latest: 3,
+				pinned: false,
+				liveHasSameContent: false,
+				scope: expect.any(String),
+			},
+		});
+	});
+
+	it('reports a draft version with the same content as the published version', async () => {
+		const skill = await createSkill(body('Skill', 'Version one.'));
+		const agent = (await publish(await createAgent([skill])))!;
+		await saveInstructions(skill, 'Version two.');
+		// As a restore of v1 does: save the v1 content again as a new version.
+		await saveInstructions(skill, 'Version one.');
+		const refs = await skillRefs.refsForDraft(agent, {});
+
+		expect(await skillRefs.findSkillVersions(await reload(agent), refs, {})).toEqual({
+			[skill]: {
+				draft: 3,
+				live: 1,
+				latest: 3,
+				pinned: false,
+				liveHasSameContent: true,
+				scope: expect.any(String),
+			},
 		});
 	});
 

@@ -69,6 +69,9 @@ const badgeText = computed(() => {
 const tooltip = computed(() => {
 	const { kind, draft, live } = state.value;
 	const interpolate = { version: String(draft), live: String(live ?? '') };
+	if (kind === 'latest' && live !== null && live !== draft) {
+		return i18n.baseText('agents.builder.skills.version.tooltip.sameContent', { interpolate });
+	}
 	if (kind === 'latest') return i18n.baseText('agents.builder.skills.version.tooltip.latest');
 	if (kind === 'notLive') return i18n.baseText('agents.builder.skills.version.tooltip.notLive');
 	if (kind === 'liveBehind') {

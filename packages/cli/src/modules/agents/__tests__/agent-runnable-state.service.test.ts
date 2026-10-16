@@ -21,7 +21,14 @@ describe('AgentRunnableStateService', () => {
 		skillRefs.readDraft.mockResolvedValue(draft);
 		skillRefs.findOutdatedSkillIds.mockResolvedValue(['pinned_older']);
 		const skillVersions = {
-			pinned_older: { draft: 1, live: 1, latest: 2, pinned: true, scope: 'project' as const },
+			pinned_older: {
+				draft: 1,
+				live: 1,
+				latest: 2,
+				pinned: true,
+				liveHasSameContent: false,
+				scope: 'project' as const,
+			},
 		};
 		skillRefs.findSkillVersions.mockResolvedValue(skillVersions);
 		const publishService = mock<AgentPublishService>();

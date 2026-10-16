@@ -195,8 +195,28 @@ export class AgentSkillRefsService {
 				live: live.get(ref.id) ?? null,
 				latest: newest.version,
 				pinned,
+				liveHasSameContent: false,
 				scope: skill.agentId ? 'agent' : skill.projectId ? 'project' : 'instance',
 			};
+		}
+		// A restore saves a new version with old content, so compare content, not numbers.
+		const differing = Object.entries(result).flatMap(([skillId, info]) =>
+			info.live !== null && info.live !== info.draft
+				? [{ skillId, info, liveVersion: info.live }]
+				: [],
+		);
+		if (differing.length === 0) return result;
+		const hashes = await this.skillRepository.findContentHashes(
+			differing.flatMap(({ skillId, info, liveVersion }) => [
+				{ skillId, version: info.draft },
+				{ skillId, version: liveVersion },
+			]),
+			ctx,
+		);
+		for (const { skillId, info, liveVersion } of differing) {
+			const draftHash = hashes.get(skillId)?.get(info.draft);
+			info.liveHasSameContent =
+				draftHash !== undefined && draftHash === hashes.get(skillId)?.get(liveVersion);
 		}
 		return result;
 	}
