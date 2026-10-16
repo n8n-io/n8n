@@ -23,9 +23,9 @@ import {
 	type SurfaceId,
 	type TrustedSource,
 } from '@n8n/inbound-auth';
+import { getJwtExpiry } from '@n8n/utils/get-jwt-expiry';
 import { isRecord } from '@n8n/utils/is-record';
 import {
-	jsonParse,
 	UnexpectedError,
 	UserError,
 	type N8nOAuth2FlowResult,
@@ -35,7 +35,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import pkceChallenge from 'pkce-challenge';
 import { z } from 'zod';
 
-import { SYSTEM_TRUSTED_SOURCE_ID } from '@/modules/inbound-auth-core/system-trusted-source.seeder';
+import { SYSTEM_TRUSTED_SOURCE_ID } from '@/modules/inbound-auth-core/constants';
 
 import { OAuthServerService } from './oauth-server.service';
 
@@ -104,13 +104,8 @@ function tokenErrorCode(body: unknown): string | undefined {
  * verified the token already, so the payload is read without a signature check.
  */
 function secondsUntilExpiry(token: string): number | undefined {
-	const [, encodedPayload] = token.split('.');
-	if (!encodedPayload) return undefined;
-	const payload = jsonParse<unknown>(Buffer.from(encodedPayload, 'base64url').toString(), {
-		fallbackValue: undefined,
-	});
-	if (!isRecord(payload) || typeof payload.exp !== 'number') return undefined;
-	return Math.max(0, payload.exp - Math.floor(Date.now() / 1000));
+	const exp = getJwtExpiry(token);
+	return exp === undefined ? undefined : Math.max(0, exp - Math.floor(Date.now() / 1000));
 }
 
 @Service()

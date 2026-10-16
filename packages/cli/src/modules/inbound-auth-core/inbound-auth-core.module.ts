@@ -49,7 +49,7 @@ export class InboundAuthCoreModule implements ModuleInterface {
 			// gate refuses such a source. Discover it as soon as the server is bound, or a fresh
 			// main rejects its own tokens until the first run of the discovery task.
 			// Failure-tolerant: the task retries, and boot must go on.
-			const { SYSTEM_TRUSTED_SOURCE_ID } = await import('./system-trusted-source.seeder.js');
+			const { SYSTEM_TRUSTED_SOURCE_ID } = await import('./constants.js');
 			await localServer.onProviderRegistered(async () => {
 				try {
 					const { TrustedSourceDiscoveryService } = await import(
