@@ -84,7 +84,11 @@ import type {
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
 import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
-import { assertDataTableWritesAllowed, assertVariableWritesAllowed } from './import-gates';
+import {
+	assertCredentialWritesAllowed,
+	assertDataTableWritesAllowed,
+	assertVariableWritesAllowed,
+} from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -178,6 +182,13 @@ export class ImportOrchestrator {
 		assertDataTableWritesAllowed(
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
+		);
+		assertCredentialWritesAllowed(
+			options.apiKeyScopes,
+			plans.map(({ input, credentialPlan }) => ({
+				missingMode: input.credentialRequest.missingMode,
+				resolution: credentialPlan,
+			})),
 		);
 
 		for (const { input, variablePlan, credentialPlan } of plans) {
