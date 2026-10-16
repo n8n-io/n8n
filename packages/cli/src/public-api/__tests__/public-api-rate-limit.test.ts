@@ -132,10 +132,12 @@ describe('Public API rate limiting', () => {
 		times: number,
 		method: 'get' | 'post',
 		path: string,
-	) {
+	): Promise<number[]> {
+		const statuses: number[] = [];
 		for (let i = 0; i < times; i++) {
-			expect((await send(app, method, path)).status).toBe(200);
+			statuses.push((await send(app, method, path)).status);
 		}
+		return statuses;
 	}
 
 	beforeEach(() => {
@@ -160,7 +162,7 @@ describe('Public API rate limiting', () => {
 	it('does not limit requests when rate limiting is off', async () => {
 		const app = activate({ enabled: false, globalReadLimit: 1, endpointReadLimit: 1 });
 
-		await sendTimes(app, 3, 'get', '/widgets');
+		expect(await sendTimes(app, 3, 'get', '/widgets')).toEqual([200, 200, 200]);
 	});
 
 	it('returns 429 with rate-limit headers when the all-endpoints read limit is reached', async () => {
@@ -181,7 +183,7 @@ describe('Public API rate limiting', () => {
 	it('limits one endpoint without blocking the other endpoints', async () => {
 		const app = activate({ endpointReadLimit: 2 });
 
-		await sendTimes(app, 2, 'get', '/widgets');
+		expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 200]);
 		const blocked = await send(app, 'get', '/widgets');
 
 		expect(blocked.status).toBe(429);
@@ -203,8 +205,8 @@ describe('Public API rate limiting', () => {
 	it('counts reads and writes apart', async () => {
 		const app = activate({ globalReadLimit: 1, globalWriteLimit: 1 });
 
-		await sendTimes(app, 1, 'get', '/widgets');
-		await sendTimes(app, 1, 'post', '/widgets');
+		expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
+		expect(await sendTimes(app, 1, 'post', '/widgets')).toEqual([200]);
 
 		expect((await send(app, 'get', '/widgets')).status).toBe(429);
 		expect((await send(app, 'post', '/widgets')).status).toBe(429);
@@ -231,9 +233,9 @@ describe('Public API rate limiting', () => {
 	it('turns off a layer when its limit is 0', async () => {
 		const app = activate({ globalReadLimit: 0, endpointReadLimit: 2 });
 
-		await sendTimes(app, 2, 'get', '/widgets');
+		expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 200]);
 		expect((await send(app, 'get', '/widgets')).status).toBe(429);
-		await sendTimes(app, 2, 'get', '/widgets/other');
+		expect(await sendTimes(app, 2, 'get', '/widgets/other')).toEqual([200, 200]);
 	});
 
 	it.each([
@@ -259,8 +261,8 @@ describe('Public API rate limiting', () => {
 		expect((await send(app, 'get', '/widgets')).status).toBe(429);
 		expect((await send(app, 'get', '/widgets')).status).toBe(429);
 
-		await sendTimes(app, 1, 'get', '/widgets/other');
-		await sendTimes(app, 1, 'get', '/widgets/1');
+		expect(await sendTimes(app, 1, 'get', '/widgets/other')).toEqual([200]);
+		expect(await sendTimes(app, 1, 'get', '/widgets/1')).toEqual([200]);
 	});
 
 	it('does not count a request that the all-endpoints limit blocks toward the per-endpoint limit', async () => {
@@ -273,13 +275,13 @@ describe('Public API rate limiting', () => {
 				endpointReadWindowSeconds: 60,
 			});
 
-			await sendTimes(app, 3, 'get', '/widgets');
+			expect(await sendTimes(app, 3, 'get', '/widgets')).toEqual([200, 200, 200]);
 			expect((await send(app, 'get', '/widgets')).status).toBe(429);
 			expect((await send(app, 'get', '/widgets')).status).toBe(429);
 
 			vi.advanceTimersByTime(6 * Time.seconds.toMilliseconds);
 
-			await sendTimes(app, 2, 'get', '/widgets');
+			expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 200]);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -299,7 +301,7 @@ describe('Public API rate limiting', () => {
 	it('reports the all-endpoints limit when it has fewer requests left', async () => {
 		const app = activate({ globalReadLimit: 5, endpointReadLimit: 10 });
 
-		await sendTimes(app, 3, 'get', '/widgets/other');
+		expect(await sendTimes(app, 3, 'get', '/widgets/other')).toEqual([200, 200, 200]);
 		const response = await send(app, 'get', '/widgets');
 
 		expect(response.status).toBe(200);
@@ -412,7 +414,7 @@ describe('Public API rate limiting', () => {
 				endpointReadWindowSeconds: 10,
 			});
 
-			await sendTimes(app, 1, 'get', '/widgets');
+			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
 			const blocked = await send(app, 'get', '/widgets');
 
 			expect(blocked.status).toBe(429);
@@ -429,7 +431,7 @@ describe('Public API rate limiting', () => {
 				endpointReadWindowSeconds: 10,
 			});
 
-			await sendTimes(app, 1, 'get', '/widgets');
+			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
 			const blocked = await send(app, 'get', '/widgets');
 
 			expect(blocked.status).toBe(429);
@@ -438,7 +440,7 @@ describe('Public API rate limiting', () => {
 
 			vi.advanceTimersByTime(11 * Time.seconds.toMilliseconds);
 
-			await sendTimes(app, 1, 'get', '/widgets');
+			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
 		});
 	});
 
@@ -454,7 +456,7 @@ describe('Public API rate limiting', () => {
 	it('uses the access from @RateLimitAccess over the HTTP method', async () => {
 		const app = activate({ globalReadLimit: 1, globalWriteLimit: 100 });
 
-		await sendTimes(app, 1, 'post', '/widgets/search');
+		expect(await sendTimes(app, 1, 'post', '/widgets/search')).toEqual([200]);
 
 		expect((await send(app, 'get', '/widgets')).status).toBe(429);
 		expect((await send(app, 'post', '/widgets')).status).toBe(200);
