@@ -342,6 +342,52 @@ describe('useTypeAvailabilityPoliciesStore', () => {
 			expect(store.activeProjectId).toBeNull();
 			expect(store.isNodeTypeAvailable(RESTRICTED)).toBe(true);
 		});
+
+		describe('pendingLoad', () => {
+			it('returns the in-flight promise for the active project while its load is pending, then undefined once it settles', async () => {
+				const deferred = createDeferredPromise<AvailableTypesResponse>();
+				mocks.fetchAvailableTypes.mockReturnValueOnce(deferred.promise);
+				const store = useTypeAvailabilityPoliciesStore();
+
+				const pending = store.fetchForProject('project-a');
+
+				expect(store.pendingLoad()).toBeInstanceOf(Promise);
+
+				deferred.resolve(PROJECT_A_RESPONSE);
+				await pending;
+
+				expect(store.pendingLoad()).toBeUndefined();
+			});
+
+			it('returns undefined for a project that was never requested', async () => {
+				const store = useTypeAvailabilityPoliciesStore();
+
+				expect(store.pendingLoad('project-a')).toBeUndefined();
+			});
+
+			it('returns the answer for an explicit project id, independent of which project is active', async () => {
+				const deferredA = createDeferredPromise<AvailableTypesResponse>();
+				const deferredB = createDeferredPromise<AvailableTypesResponse>();
+				mocks.fetchAvailableTypes
+					.mockReturnValueOnce(deferredA.promise)
+					.mockReturnValueOnce(deferredB.promise);
+				const store = useTypeAvailabilityPoliciesStore();
+
+				const pendingA = store.fetchForProject('project-a');
+				const pendingB = store.fetchForProject('project-b');
+
+				expect(store.activeProjectId).toBe('project-b');
+				expect(store.pendingLoad('project-a')).toBeInstanceOf(Promise);
+				expect(store.pendingLoad('project-b')).toBeInstanceOf(Promise);
+
+				deferredA.resolve(PROJECT_A_RESPONSE);
+				deferredB.resolve(PROJECT_B_RESPONSE);
+				await Promise.all([pendingA, pendingB]);
+
+				expect(store.pendingLoad('project-a')).toBeUndefined();
+				expect(store.pendingLoad('project-b')).toBeUndefined();
+			});
+		});
 	});
 
 	describe('credential types', () => {

@@ -2,7 +2,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useToast } from '@n8n/composables/useToast';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -112,6 +114,69 @@ describe('useRestrictedNodeWarning', () => {
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({ title: 'This node is restricted' }),
 			);
+		});
+
+		describe('when a policy load is pending', () => {
+			it('shows no toast while the load is still in flight', () => {
+				const deferred = createDeferredPromise<void>();
+				vi.spyOn(useTypeAvailabilityPoliciesStore(), 'pendingLoad').mockReturnValue(
+					deferred.promise,
+				);
+				mockRestrictedNodeTypes({ [SLACK_NODE]: 'instance' });
+				const toast = useToast();
+
+				const { warnAboutRestrictedNodes } = useRestrictedNodeWarning();
+				warnAboutRestrictedNodes([SLACK_NODE]);
+
+				expect(toast.showMessage).not.toHaveBeenCalled();
+			});
+
+			it('shows the warning once the pending load resolves', async () => {
+				const deferred = createDeferredPromise<void>();
+				vi.spyOn(useTypeAvailabilityPoliciesStore(), 'pendingLoad').mockReturnValue(
+					deferred.promise,
+				);
+				mockRestrictedNodeTypes({ [SLACK_NODE]: 'instance' });
+				const toast = useToast();
+
+				const { warnAboutRestrictedNodes } = useRestrictedNodeWarning();
+				warnAboutRestrictedNodes([SLACK_NODE]);
+
+				deferred.resolve();
+				await deferred.promise;
+				await Promise.resolve();
+
+				expect(toast.showMessage).toHaveBeenCalledWith({
+					type: 'warning',
+					title: 'This node is restricted',
+					message:
+						"An administrator blocked 'Slack' on this instance. Contact an instance admin or replace the node to continue.",
+				});
+			});
+
+			it('reads the restriction after the load resolves, not when the call was made', async () => {
+				const deferred = createDeferredPromise<void>();
+				vi.spyOn(useTypeAvailabilityPoliciesStore(), 'pendingLoad').mockReturnValue(
+					deferred.promise,
+				);
+				mockRestrictedNodeTypes();
+				const toast = useToast();
+
+				const { warnAboutRestrictedNodes } = useRestrictedNodeWarning();
+				warnAboutRestrictedNodes([SLACK_NODE]);
+
+				mockRestrictedNodeTypes({ [SLACK_NODE]: 'instance' });
+				deferred.resolve();
+				await deferred.promise;
+				await Promise.resolve();
+
+				expect(toast.showMessage).toHaveBeenCalledWith({
+					type: 'warning',
+					title: 'This node is restricted',
+					message:
+						"An administrator blocked 'Slack' on this instance. Contact an instance admin or replace the node to continue.",
+				});
+			});
 		});
 	});
 });

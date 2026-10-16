@@ -122,6 +122,12 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			restrictionsByProject.value = next;
 		}
 
+		/** The load in flight for the project, so a caller can check once the answer arrives. */
+		function pendingLoad(projectId?: string): Promise<void> | undefined {
+			const id = projectId ?? activeProjectId.value;
+			return id === null ? undefined : inFlightByProject.get(id);
+		}
+
 		function restrictionsFor(projectId?: string): ProjectRestrictions | undefined {
 			const id = projectId ?? activeProjectId.value;
 			return id === null ? undefined : restrictionsByProject.value.get(id);
@@ -154,6 +160,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			activeProjectId,
 			fetchForProject,
 			reload,
+			pendingLoad,
 			getNodeTypeAvailability,
 			isNodeTypeAvailable,
 			getCredentialTypeAvailability,
