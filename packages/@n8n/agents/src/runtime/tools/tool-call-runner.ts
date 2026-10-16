@@ -137,6 +137,12 @@ export class ToolCallRunner {
 		if (guardrails && guardCtx && !params.previouslySuspended) {
 			const stop = await guardrails.beforeTool(guardCtx);
 			if (stop) {
+				if (stop.canceled)
+					return this.buildCancelledOutcome(
+						params,
+						'Tool call canceled',
+						`[Tool call stopped by guardrail: ${stop.code}]`,
+					);
 				return await this.toolError(
 					params,
 					new Error(`Tool call stopped by guardrail: ${stop.code}`),
