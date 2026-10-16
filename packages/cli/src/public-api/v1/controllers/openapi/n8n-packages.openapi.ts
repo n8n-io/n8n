@@ -57,8 +57,9 @@ export const IMPORT_DESCRIPTION =
 	'do not require write grants. Destination-project permissions and dependency scopes still apply.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +
-	'A publication failure retains the imported definition and returns HTTP 200 with ' +
-	'`publishing.state=failed`.\n\n' +
+	'Check `agents[].publishing.state` and `workflows[].publishing.state` for publication ' +
+	'results, including `failed`. A publication failure retains the imported definition and ' +
+	'returns HTTP 200.\n\n' +
 	'Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, ' +
 	'directory imports, and Promotions before writes.\n\n' +
 	'Example multipart fields: `conflictPolicy=new-version`, `agentIdPolicy=new`, ' +

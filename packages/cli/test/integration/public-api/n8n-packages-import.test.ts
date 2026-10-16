@@ -361,7 +361,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('projectId', ownerPersonalProject.id)
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.field('credentialMissingMode', 'create-with-values')
 			.attach('package', tarBuffer, 'import.n8np');
 

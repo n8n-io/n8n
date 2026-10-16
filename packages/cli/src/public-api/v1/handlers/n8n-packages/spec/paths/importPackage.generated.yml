@@ -13,7 +13,7 @@ description: |-
 
   Agent packages require `agent:import` and `agent:read`. Workflow packages require `workflow:import`. Mixed packages require both import grants. Planned Agent actions also require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents do not require write grants. Destination-project permissions and dependency scopes still apply.
 
-  The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and totals in `counts.agents`. Definition import and publication have separate outcomes. A publication failure retains the imported definition and returns HTTP 200 with `publishing.state=failed`.
+  The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and totals in `counts.agents`. Definition import and publication have separate outcomes. Check `agents[].publishing.state` and `workflows[].publishing.state` for publication results, including `failed`. A publication failure retains the imported definition and returns HTTP 200.
 
   Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, directory imports, and Promotions before writes.
 
@@ -96,7 +96,7 @@ requestBody:
               - publish-all
               - unpublish-all
             default: preserve-published-state
-            description: Controls publication after Agent definitions are saved. `preserve-published-state` (default) keeps new Agents unpublished. It republishes an updated Agent only if it was published and the package contains the version published at the source. `match-source` publishes the imported definition when the source publishes it. It unpublishes the target when the source has no published version. Both policies leave publication unchanged when the source publishes a version absent from the package. `publish-all` publishes imported Agents. `unpublish-all` unpublishes them. Skipped Agents remain unchanged. This setting is independent of `workflowPublishingPolicy`. Publication failures do not undo saved definitions. Only the revision saved by the import can be published or unpublished.
+            description: Controls publication after Agent definitions are saved. `preserve-published-state` (default) keeps new Agents unpublished. It republishes an updated Agent only if it was published and the package contains the version published at the source. `match-source` publishes the imported definition when the source publishes it. It unpublishes the target when the source has no published version. Both policies leave publication unchanged when the source publishes a version absent from the package. `publish-all` publishes imported Agents. `unpublish-all` keeps new Agents unpublished. It unpublishes only updated Agents that were published. Skipped Agents remain unchanged. This setting is independent of `workflowPublishingPolicy`. Publication failures do not undo saved definitions. Only the revision saved by the import can be published or unpublished.
           missingNodeTypeMode:
             type: string
             enum:

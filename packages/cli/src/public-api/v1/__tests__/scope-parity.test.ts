@@ -30,14 +30,13 @@ describe('Public API scope parity', () => {
 	});
 
 	test('every API key scope in API_KEY_RESOURCES is consumed by at least one endpoint', () => {
+		const routes = resolvePublicApiRoutes();
 		const consumed = new Set<string>(
-			resolvePublicApiRoutes().flatMap((route) =>
-				route.apiKeyScope ? scopesInRequirement(route.apiKeyScope) : [],
-			),
+			routes.flatMap((route) => (route.apiKeyScope ? scopesInRequirement(route.apiKeyScope) : [])),
 		);
 		// Package imports check these grants after the planner selects the actions.
-		expect(ops).toContainEqual(
-			expect.objectContaining({ method: 'post', pathStr: '/n8n-packages/import' }),
+		expect(routes).toContainEqual(
+			expect.objectContaining({ method: 'post', path: '/n8n-packages/import' }),
 		);
 		const plannedScopes = requiredAgentScopes(
 			mock<AgentImportPlan>({
