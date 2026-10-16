@@ -1,0 +1,437 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  ai_agent 3-4,6-8,10,12-13,20-30,80-140
+packages/@n8n/api-types/src/agents/agent-personalisation.ts
+  ai_agent 20-30,32-48
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  ai_agent 58-59
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.test.ts
+  ai_agent 178,180-182,184,195,197
+packages/frontend/editor-ui/src/app/composables/useAiGatewayTopUp.test.ts
+  ai_agent 54,70,83
+packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts
+  ai_agent 1-14,16-17,20-22,24-32,34-37,39-89
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  ai_agent 2,40,52,712
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  ai_agent 1094,1101
+docs/generated/sqlite-schema/promotion_connection.md
+  ai_agent 19,50,77-87
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  ai_agent 129
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  ai_agent 175,195,217,244,302,465
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension.ts
+  ai_agent 5
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.vue
+  ai_agent 1-3,5-23,25-32,35-38,41,43,45,47-49,52,54,56-92,94-113,115-118,120-124,126-138,140,142,144-148,152-154,159-163,168,170,174-181,185,187-189,194,198-312,314-315,322,332,345,367-410,419-523
+packages/frontend/editor-ui/src/features/agents/channels/types.ts
+  ai_agent 3,10,76
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  ai_agent 45
+docs/generated/postgres-schema/public.promotion_connection.md
+  ai_agent 8,45,72-82
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-inbox.dto.ts
+  ai_agent 1-2,4-8,10-13,22-63
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.vue
+  ai_agent 268-273,347
+docs/generated/postgres-schema/public.promotion_config.md
+  ai_agent 10,43,63-71
+packages/@n8n/api-types/src/dto/promotions/promotion-run.dto.ts
+  ai_agent 1-37
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  ai_agent 1,3-7,10-11,14-43,47-53,58-67,69-72,74-75,77-79,84-87,89-93,95-98,100-103,105-107,111-116,119-120,123-152,155-157,159,162,164,167-171,173-174,176-179,181,184,188-198,200-208,210-212,214-216,219-234,236-237,239-245,249-260,263-268,271-301,304-336,338,341-348,352-353,356-362,368-376,379-380,382-385
+packages/frontend/editor-ui/src/app/components/WorkflowCard.test.ts
+  ai_agent 1
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  ai_agent 5,47,62,369
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  ai_agent 323,376
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-detail.controller.integration.test.ts
+  ai_agent 37,488-489
+docs/generated/sqlite-schema/user.md
+  ai_agent 22,83-85,395-415
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  ai_agent 49,223,732,1017
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  ai_agent 3-4
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review.repository.integration.test.ts
+  ai_agent 1-3,5-34,36-38,40-55,57-62,64-72,74,76-83,85-95,97-115,117-124,126-128,131-137,139-149,152,154-157,159-165,167-180,182-183,185,187-192,194-209,211-213,215-217,219-221,223-225,228-235,237-238,240-241,244-245,247-248,250-257,259-268,270-276,278-287
+packages/@n8n/api-types/src/schemas/source-controlled-file.schema.ts
+  ai_agent 64
+packages/@n8n/api-types/package.json
+  ai_agent 46
+packages/cli/src/modules/promotions.ee/git-hosts/__tests__/gitlab-merge-request.client.test.ts
+  s_46e2ae4a33e366::t_dc95b8942267a5 12-18
+  s_46e2ae4a33e366::t_cb01dfa52334e5 186-202
+  s_46e2ae4a33e366::t_bb9c27e4255c2e 251-270
+  s_46e2ae4a33e366::t_c0a7ec7a19c450 4
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.list.service.test.ts
+  ai_agent 68,70,72,74-75,77-83,85-87,89,92,95,101,103-113,116,122,124,126-139,142-182
+packages/@n8n/workflow-sdk/src/workflow-builder/layout-utils.ts
+  ai_agent 41,920,965-967
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  ai_agent 213,216
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedApp.vue
+  ai_agent 216,273
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  ai_agent 2,5,234
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  ai_agent 3,110,118
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  ai_agent 28-31
+packages/@n8n/api-types/src/dto/workflow-reviews/__tests__/list-workflow-review-inbox-query.dto.test.ts
+  ai_agent 1,3-31,33-43
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  ai_agent 46,174,236,274,297,376,495,507-509,511-518,666,708,717,840
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  ai_agent 17,147
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-review.repository.ts
+  ai_agent 1-4,6,8-12,14-16,18-23,25-31,33-36,39-43,46-47,50-58,60-67,69
+.github/test-metrics/e2e-impact-map.json
+  ai_agent 1
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  ai_agent 190,192
+packages/cli/src/modules/agents/skills/skills-api.service.ts
+  ai_agent 12,83-88,149,165,198,201,216
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  ai_agent 53,68,208,230,235
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-run.dto.test.ts
+  ai_agent 1-2,4-13,16-17,19,21-23,26-27
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  ai_agent 60,67
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  ai_agent 2221,2412,2441,2525-2526
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  ai_agent 54-56
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  ai_agent 60,63,68
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  ai_agent 29-31,77-78,147-148,151-152,418-526,542,812-850
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  ai_agent 389,420,450-454
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  ai_agent 1-14,66-67,132-133,209,254-257,259-302,304-328,330-344,400,457,495-506
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsOptionLabel.vue
+  ai_agent 4,9-10
+packages/frontend/editor-ui/src/features/settings/context/module.descriptor.test.ts
+  ai_agent 31
+packages/cli/src/modules/agents/json-config/reconcile-node-tool-gateway-credentials.ts
+  ai_agent 158-159,229-232
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  ai_agent 2,4-13,15-46,48-64,66,74-77,79-81,87-89,92-99,102-103,106-107,109-153,156-166,168,170,172-175,179-183,185,187,189-190,192-193,196-201,204-205,208-235,237-305,311-312,314-315,321-322,328,330,332-334,338,342-344,347,349-403,405-429,431-432,439,446-449,456,460,470,479,481-482,486-493,499-514
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsEditView.test.ts
+  ai_agent 6
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsAvailability.test.ts
+  ai_agent 76,78
+packages/quality/testing/playwright/pages/WorkflowReviewsPage.ts
+  ai_agent 5,8-9,13
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedApp.test.ts
+  ai_agent 372
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  ai_agent 27-28,215,217-218,220-221,293-294,296-297
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.test.ts
+  ai_agent 15,47
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.test.ts
+  ai_agent 17-18
+docs/generated/sqlite-schema/promotion_review.md
+  ai_agent 1-112
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetupView.vue
+  ai_agent 154
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  ai_agent 4,46-47,63,176,202,282-283,292,481,493-497,530,532,600,608,616,624,707
+packages/cli/test/integration/agents/skills.controller.test.ts
+  ai_agent 11
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.utils.ts
+  ai_agent 269,276-280
+packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.test.ts
+  ai_agent 636
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  ai_agent 57,94
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  ai_agent 234,263,266,272,299,330,336,374,403
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsIdentityCard.vue
+  ai_agent 106
+packages/@n8n/workflow-sdk/src/workflow-builder/sticky-placement.test.ts
+  ai_agent 8
+packages/cli/src/modules/agents/__tests__/skills.controller.test.ts
+  ai_agent 7,10
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.utils.test.ts
+  ai_agent 14
+packages/@n8n/db/src/migrations/common/1792072949221-CreatePromotionRunAndReviewTables.ts
+  s_e7e2978f0065df::t_b63bce908d4197 51-55
+  s_e7e2978f0065df::t_933efe0cbe12c3 98
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 82,931,1062,1307
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  ai_agent 9,221-222
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.test.ts
+  ai_agent 2-4,7,11,15-17,19-28,30-31,35-68,71-77,83-104,106-107,109-110,112-119,121-129,131-133,135-137,139-140,143-151,153-154,156-161,163-166,168-170,172-173,175,177-181,183-212,215-224,226-248,250-263,265-267,269-272,274-279,281-282,284-314,317-333,335-365,367-384,386-391,393-394,396-400,402-405,407-408,410-412,414-427,430-432,434-436,438-441,443-444,446-447,449-450,453-455,457-458,460-504,507-604,607-619,622-626,628,630-633,635-639,641,643-646,648-652,654,656-657,659-739,741-744,746-750,752-757,760-767,769,771-778,781-800
+packages/cli/src/modules/promotions.ee/database/entities/promotion-run.entity.ts
+  ai_agent 1-13,15-16,18-26,28-31,33-35,37-39,41-43,45-63,65-74
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/utils.ts
+  ai_agent 6,15-35
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  ai_agent 3,7-11,13-20,22-35,37,40-57,59,61-82,85-97,103-139,141-143,145-147,149-151,154-155,157-160,164-172,175-177,179-183,187-197,200-202,204-208,212-223,226-228,231-236,239-245,248,251-254,256,259-262,265-266,268,271,274-275,277,280,282-284,288,291,293-297,300,303-307,309-312,315,318-329,332-335,338-341,344,347-349,352-355,357,360-361,364-369,372-374,377-380,382,384-391,393-396,399-401,404-406,408-410,413,415-420,423-426,428-430,433,436,438,440-441,444-483,487-490,492-543,547-548,550,552-599,601-608,610,612-624,626-637,639-649,651-652,655-660,662-672,674-675,677-690,693-706,709-720,722-927,929-936,940
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.ts
+  ai_agent 15,88,106
+packages/@n8n/api-types/src/dto/promotions/promotion-review.dto.ts
+  ai_agent 3,6-85,87-148
+packages/cli/src/modules/agents/skills/skill.service.ts
+  ai_agent 1,165,168,172,216,419-420,425,435
+docs/generated/sqlite-schema/promotion_config.md
+  ai_agent 21,48,68-76
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.vue
+  ai_agent 158,177
+packages/frontend/editor-ui/src/features/collaboration/projects/composables/useProjectPages.ts
+  ai_agent 4,26
+packages/frontend/editor-ui/src/app/components/MainSidebar.vue
+  ai_agent 97
+packages/cli/src/modules/agents/agent-skills.service.ts
+  ai_agent 30,137,140,280
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-manifest.service.ts
+  ai_agent 19,125,158-161
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  ai_agent 129-130,688
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.test.ts
+  ai_agent 1,3-18,21,23,25-30,32-36,38-44,46,54,60,64-67,69-73,78,80-86,90-102,104-105,107-114,117-137,141-144,147-150,153-155,158-160,163-164,166-167,170-172,175-176,179-181,184-187,189-190,193-195,198-206,209-214,217-220,222-224,227-229,231-233,235-238,241-242,244-245,249-250,254-257,260-265,267,269-276,279-286,289,291,293-294,298-304,307-311,313,316-318,320,322-323,326-328,330,332,334,336-342,345-350,353-354,356-357,361-367,370-375,378-383
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.ts
+  ai_agent 3,5-6,8-9,11-15,19-30
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-setup.service.ts
+  ai_agent 137
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  ai_agent 731
+packages/frontend/editor-ui/src/features/agents/__tests__/utils/ActionDropdownTestStub.ts
+  ai_agent 5
+packages/@n8n/db/src/repositories/index.ts
+  ai_agent 130
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  ai_agent 186
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-cleanup.service.test.ts
+  ai_agent 27
+packages/modules/otel/frontend/src/OtelStatusControl.vue
+  ai_agent 17,21,55,64,80
+packages/frontend/editor-ui/src/features/agents/channels/registry.ts
+  ai_agent 152-160,162-164
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  ai_agent 50-51,715,728,822,848,1633
+packages/modules/otel/frontend/src/SettingsOpenTelemetryView.vue
+  ai_agent 104,195-196,199-201,204-205,207-209,212,420-422
+packages/@n8n/cli/docs/commands/package.md
+  ai_agent 80
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  ai_agent 450
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 2414,2431,4096,6065-6070,6074-6075,6145-6151,9375,9743,9811-9813,9817-9818
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_46e2ae4a33e366::t_02df4275319422 9
+  s_46e2ae4a33e366::t_cc0a178b5d20b3 64
+  s_46e2ae4a33e366::t_4c67ce7ac1fd72 105-106
+  s_46e2ae4a33e366::t_7d4cd07c79577d 144-145
+packages/cli/src/modules/promotions.ee/promotion-review-host.resolver.ts
+  ai_agent 1-2,4,6-9,11-15,18-19,21-42,45-48,50-52
+packages/cli/src/modules/agents/skills.controller.ts
+  ai_agent 1
+packages/frontend/editor-ui/src/app/composables/useIntersectionObserver.ts
+  ai_agent 1-91
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  ai_agent 9,11-12,99-116
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  ai_agent 360-361
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.test.ts
+  ai_agent 724-744,763-764
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  ai_agent 95,194,552,1182-1185,1244-1247
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  ai_agent 11,50-53
+packages/@n8n/api-types/src/schemas/content-import-policy-result.schema.ts
+  ai_agent 7-9
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  ai_agent 78,87,145,205-206
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.utils.ts
+  ai_agent 1-18
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-cleanup.service.ts
+  ai_agent 9-10,51
+packages/@n8n/db/src/repositories/__tests__/workflow-review.repositories.test.ts
+  ai_agent 617,707
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-version-update.controller.integration.test.ts
+  ai_agent 35,156
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  ai_agent 18,28,36,42,149-150,156,242-243
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.test.ts
+  ai_agent 20,28,86,189
+packages/cli/src/modules/agents/__tests__/agent-skill-refs.service.test.ts
+  ai_agent 466
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  ai_agent 11-12,184
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  ai_agent 33
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-inbox.service.ts
+  ai_agent 2-4,13,22,49-52,54,56,59,62-63,65-69,72,74,77-83,85-87,90,92,196-218
+packages/@n8n/workflow-sdk/src/workflow-builder/constants.ts
+  ai_agent 41-43
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-host.resolver.test.ts
+  ai_agent 1-23,25-30,33-41,44-47,50-62,65-66,68,71-75,77,80,82-87
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  ai_agent 13
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  ai_agent 251
+packages/frontend/editor-ui/src/app/composables/usePolicyViolationToast.ts
+  ai_agent 7-8,23-25,36-37,39-49,83
+docs/generated/postgres-schema/public.promotion_review.md
+  ai_agent 1,3,5-16,18,20-31,33,35-40,42,44-45,47-50,52-100,102,104
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  ai_agent 5
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsAvailability.vue
+  ai_agent 120,133
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsSetup.vue
+  ai_agent 2,4-11,55,62,77,82,352-360,628,782-783,843,847,854-861,878,921,959
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  ai_agent 2
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.test.ts
+  ai_agent 55
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.test.ts
+  ai_agent 53,132
+packages/nodes-base/nodes/Splunk/v2/actions/router.ts
+  ai_agent 45
+docs/generated/postgres-schema/public.user.md
+  ai_agent 11,77-79,389-409
+packages/quality/testing/playwright/composables/CanvasComposer.ts
+  ai_agent 67,69
+packages/cli/src/modules/agents/repositories/skill.repository.ts
+  ai_agent 651,654,659,661,789-800
+packages/frontend/editor-ui/src/features/agents/components/AgentIntegrationCredentialConnection.vue
+  ai_agent 69,170
+packages/frontend/editor-ui/src/features/agents/utils/errors.ts
+  ai_agent 2,12
+packages/quality/testing/playwright/tests/e2e/workflows/editor/editor-after-route-changes.spec.ts
+  ai_agent 9,13-18,30,33-34,38
+docs/generated/sqlite-schema/README.md
+  ai_agent 124-125,352-357,1553-1573
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  ai_agent 29-38
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-merge-request.client.ts
+  s_46e2ae4a33e366::t_d4967d5dbe4a39 308
+  s_46e2ae4a33e366::t_b4225cc84a6c97 2-15
+  s_46e2ae4a33e366::t_0983ad4ee1eab8 259
+  s_46e2ae4a33e366::t_21387937e17e06 229-258,260-301,322-337
+  s_46e2ae4a33e366::t_548f1fee178452 181-195,197-202,204,207-208,210-211,215-222
+  s_46e2ae4a33e366::t_e1b9c83a889f82 150-156
+packages/frontend/editor-ui/src/features/agents/components/modals/AgentModalMultiStep.vue
+  ai_agent 3
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  ai_agent 527-537,539-549,551-554,556-560,562,564,566-578,580,1114,1132-1152
+packages/cli/test/integration/agents/skill.repository.test.ts
+  ai_agent 1,669-671,673,675-676
+packages/frontend/editor-ui/src/features/agents/channels/AgentChannelStandardEditView.vue
+  ai_agent 26
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  ai_agent 203-204,206,217,350,380
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  ai_agent 720
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowUpdateReviewDialog.vue
+  ai_agent 260
+packages/cli/src/modules/agents/__tests__/skills-api.service.test.ts
+  ai_agent 4,28,74,105-106,196,222,396,401
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedSetup.vue
+  ai_agent 13,165-166,168-190,657,669-677,679-681,710-727,778-795,858,877,880-881
+docs/generated/sqlite-schema/promotion_run.md
+  ai_agent 1-108
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  ai_agent 173
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  ai_agent 7,39
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  ai_agent 86
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-setup.service.test.ts
+  ai_agent 40-42,44,52
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  ai_agent 277
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  ai_agent 739
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-inbox.controller.integration.test.ts
+  ai_agent 42,148,152,154,160,162,168,170,181,183,191-192,194-195,198,201,205,209-212,229,241,249,261,271,274,290-293,300,330,333,356,366-369,389-392,400,418-421,473-476,524,704-705,708
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelApprovalSetting.vue
+  ai_agent 98
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/iconPickerBlocklist.ts
+  ai_agent 22
+packages/cli/src/public-api/v1/shared/spec/schemas/promotePackageResultDto.generated.yml
+  ai_agent 49-67
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/parse-validate-handler.ts
+  ai_agent 311
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  ai_agent 21,30,884-888,1140-1144
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  ai_agent 1142
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  ai_agent 18,20,25,27,46
+docs/generated/postgres-schema/public.promotion_run.md
+  ai_agent 1,3,5-14,16,18-29,31,33-37,39,41-42,44-46,48-96,98,100
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  ai_agent 409,413-420,424
+packages/cli/src/modules/promotions.ee/git-hosts/README.md
+  ai_agent 22-24
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  ai_agent 16,255,358
+packages/frontend/editor-ui/src/features/settings/context/module.descriptor.ts
+  ai_agent 5,9,15,28-29
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-run.repository.ts
+  ai_agent 1,3,5,7-11,14-16,19-20,23-25
+packages/cli/src/modules/agents/builder/prompts/initial-build.prompt.ts
+  ai_agent 58-59
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 46
+packages/@n8n/db/src/repositories/workflow-review-inbox.repository.ts
+  ai_agent 15-19,21-24,46,186,196,199
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  ai_agent 5
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsManagedSetup.test.ts
+  ai_agent 145,148
+docs/generated/postgres-schema/README.md
+  ai_agent 124-125,370-375,1567-1587
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  ai_agent 17,25,495,502,504,508,513,517-547
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue
+  ai_agent 112,206,253-256,258-263,522,567,670-675
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  ai_agent 6
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-manifest.service.test.ts
+  ai_agent 5,9-64
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  ai_agent 61
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  ai_agent 77,85,222,234,253,263,267,291
+packages/frontend/editor-ui/src/features/agents/components/AgentPersonalisationIcon.vue
+  ai_agent 3,16-22
+packages/@n8n/api-types/src/dto/index.ts
+  ai_agent 654,811-846
+packages/frontend/editor-ui/src/features/workflow-reviews/constants.ts
+  ai_agent 1-42
+packages/@n8n/api-types/src/agents/agent-skill.schema.ts
+  ai_agent 67
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsContextView.vue
+  ai_agent 4,37-38,40,42-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0636020ccf52615bf026fdf37307e14b8ec79c8a",
+  "prompts": {},
+  "sessions": {
+    "s_46e2ae4a33e366": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "460e9fc2-aa5c-4c48-a42a-cbf101e9692a",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_e7e2978f0065df": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "561af7d3-bd22-4782-ac61-a1d832514036",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
