@@ -1,8 +1,4 @@
-/**
- * The Graph app permissions behind the channel: files attached in shared
- * conversations, and finding people and channels for proactive sends. One admin
- * consent covers every permission the app declares.
- */
+/** One admin consent grants every permission the app declares, so they are approved together. */
 export const GRAPH_APP_ROLES: ReadonlyArray<{ permission: string; id: string }> = [
 	{ permission: 'Files.Read.All', id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6' },
 	{ permission: 'User.ReadBasic.All', id: '97235f07-e226-4f63-ace3-39588e11d3a1' },

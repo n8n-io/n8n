@@ -441,7 +441,7 @@ const fileAccessApprovedNow = computed(() => fileAccessApprovedFor.value === cre
 async function loadFileAccess() {
 	fileAccessStatus.value = null;
 	const id = credentialId.value;
-	// Consumed only by a check that runs: the saved settings can arrive after the first call.
+	// Consumed only by a check that runs: the credential can arrive after the first call.
 	if (props.mode !== 'edit' || !id) return;
 	if (fileAccessJustApproved.value) {
 		fileAccessJustApproved.value = false;
