@@ -100,14 +100,6 @@ describe('AddInstanceScopeToAgents migration', () => {
 		return rows.map((row) => row.id).sort();
 	}
 
-	async function readExecutionIds(context: TestMigrationContext, threadId: string) {
-		const rows = await context.runQuery<Array<{ id: string }>>(
-			`SELECT ${context.escape.columnName('id')} AS id FROM ${context.escape.tableName('agent_execution')} WHERE ${context.escape.columnName('threadId')} = :threadId`,
-			{ threadId },
-		);
-		return rows.map((row) => row.id);
-	}
-
 	async function readAgent(context: TestMigrationContext, id: string) {
 		const [row] = await context.runQuery<Array<{ scope: string; projectId: string | null }>>(
 			`SELECT ${columns(context, ['scope', 'projectId'])} FROM ${context.escape.tableName('agents')} WHERE ${context.escape.columnName('id')} = :id`,
@@ -171,11 +163,8 @@ describe('AddInstanceScopeToAgents migration', () => {
 			const projectId = await insertProject(context);
 			const projectAgentId = await insertAgent(context, projectId);
 			const projectThreadId = await insertThreadWithExecution(context, projectAgentId, projectId);
-			const instanceAgentId = await insertAgent(context, null, 'instance');
-			// An instance agent's thread carries the working project. The revert must
-			// work with these rows present. In a full revert,
-			// DeleteInstanceAgentsOnRevert deletes them first.
-			await insertThreadWithExecution(context, instanceAgentId, projectId);
+			// DeleteInstanceAgentsOnRevert deletes the rows that depend on instance agents first.
+			await insertAgent(context, null, 'instance');
 			return { projectAgentId, projectThreadId };
 		});
 
@@ -183,10 +172,11 @@ describe('AddInstanceScopeToAgents migration', () => {
 
 		await withContext(async (context) => {
 			expect(await readIds(context, 'agents')).toEqual([kept.projectAgentId]);
-			expect(await readIds(context, 'agent_execution_threads')).toContain(kept.projectThreadId);
-			// Filtered by thread: this test skips DeleteInstanceAgentsOnRevert, so on
-			// SQLite the instance agent's execution is not deleted here.
-			expect(await readExecutionIds(context, kept.projectThreadId)).toHaveLength(1);
+			expect(await readIds(context, 'agent_execution_threads')).toEqual([kept.projectThreadId]);
+			expect(await readIds(context, 'agent_execution')).toHaveLength(1);
+			if (context.isSqlite) {
+				expect(await context.runQuery('PRAGMA foreign_key_check')).toEqual([]);
+			}
 			await expect(insertAgent(context, null)).rejects.toThrow();
 			// The foreign keys still hold after the table was recreated.
 			await expect(
