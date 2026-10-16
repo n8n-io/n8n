@@ -38,14 +38,20 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-services": "workspace:*",
+    "@n8n/blob-storage": "workspace:*",
+    "@n8n/config": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/typeorm": "workspace:*",
-    "uuid": "catalog:"
+    "n8n-core": "workspace:*",
+    "tar": "catalog:",
+    "uuid": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "catalog:",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
