@@ -256,31 +256,48 @@ defineExpose({
 }
 
 /* Edge fades sit over the viewport and under the scrollbar; they never take pointer events. */
+$fade-color: var(--scroll-area--fade-color, var(--background--surface));
+
+@function fade-stop($opacity) {
+	@return color-mix(in srgb, #{$fade-color} #{$opacity}, transparent);
+}
+
 .fade {
 	position: absolute;
 	inset-inline: 0;
-	height: var(--scroll-area--fade-size, var(--spacing--lg));
+	height: var(--scroll-area--fade-size, var(--spacing--3xl));
 	pointer-events: none;
 	opacity: 0;
-	transition: opacity 160ms ease-out;
+	transition: opacity var(--animation--duration--snappy) var(--animation--easing);
+	/*
+	 * An eased ramp instead of a straight one: a two-stop gradient looks thin because it is
+	 * already half transparent at the midpoint. These stops hold the colour over the row at
+	 * the edge and taper off in a long tail, so the fade is clearly visible and there is no
+	 * line where it ends.
+	 */
+	background: linear-gradient(
+		var(--scroll-area--fade--direction),
+		#{$fade-color} 0%,
+		fade-stop(92%) 15%,
+		fade-stop(78%) 30%,
+		fade-stop(58%) 45%,
+		fade-stop(38%) 60%,
+		fade-stop(20%) 75%,
+		fade-stop(8%) 88%,
+		transparent 100%
+	);
 }
 
 .fadeTop {
+	--scroll-area--fade--direction: to bottom;
+
 	top: 0;
-	background: linear-gradient(
-		to bottom,
-		var(--scroll-area--fade-color, var(--background--surface)),
-		transparent
-	);
 }
 
 .fadeBottom {
+	--scroll-area--fade--direction: to top;
+
 	bottom: 0;
-	background: linear-gradient(
-		to top,
-		var(--scroll-area--fade-color, var(--background--surface)),
-		transparent
-	);
 }
 
 .fadeVisible {
