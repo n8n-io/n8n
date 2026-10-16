@@ -6,7 +6,6 @@ import { createHash } from 'crypto';
 
 import { isGoogleVertexAnthropicModel } from './google-vertex';
 import type { PromptCachingConfig } from '../../types/sdk/agent';
-import type { JSONObject } from '../../types/utils/json';
 
 /** Anthropic hard-errors past this many `cacheControl` breakpoints in one request. */
 const MAX_ANTHROPIC_CACHE_BREAKPOINTS = 4;
@@ -18,7 +17,7 @@ export function mergeProviderOptions(
 	const defined = options.filter((o): o is ProviderOptions => o !== undefined);
 	if (defined.length === 0) return undefined;
 
-	const merged: Record<string, JSONObject> = {};
+	const merged: ProviderOptions = {};
 	for (const opts of defined) {
 		for (const [provider, providerOpts] of Object.entries(opts)) {
 			merged[provider] = { ...merged[provider], ...providerOpts };
