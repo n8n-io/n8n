@@ -122,6 +122,26 @@ describe('AgentMessageQueueConsumer', () => {
 
 	afterEach(() => consumer.stop());
 
+	it('keeps ownership loss separate from a user Stop', async () => {
+		const item = claim('session');
+		const lease = new AbortController();
+		const failure = new DOMException('Execution ownership lost', 'AbortError');
+		executions.getAbortSignal.mockReturnValue(lease.signal);
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		testRuns.executePreparedDraftRun.mockImplementation(async () => {
+			lease.abort(failure);
+			throw failure;
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		const userSignal = chatExecutions.register.mock.calls[0][1].signal;
+		expect(userSignal.aborted).toBe(false);
+		expect(queue.recordFailure).toHaveBeenCalledWith(item, failure, userSignal);
+		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
 	it('runs independent sessions without waiting and reuses each claimed execution', async () => {
 		const first = claim('first');
 		first.payload.message = 'edited first message';
@@ -333,6 +353,32 @@ describe('AgentMessageQueueConsumer', () => {
 		}
 		if (failure === 'missing owner') expect(users.findByIdWithRole).not.toHaveBeenCalled();
 		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
+
+	it('ends delivery without an error when Stop follows queue acceptance', async () => {
+		const item = claim('session');
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		chatExecutions.register.mockImplementation((_context, controller) => {
+			controller.abort(new DOMException('Response stopped', 'AbortError'));
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(queue.recordFailure).toHaveBeenCalledWith(
+			item,
+			expect.objectContaining({ name: 'AbortError' }),
+			expect.objectContaining({ aborted: true }),
+		);
+		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
+		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		expect(sender.send).toHaveBeenCalledWith({
+			type: 'done',
+			sessionId: 'session',
+			executionId: item.admission.executionId,
+		});
+		expect(sender.close).toHaveBeenCalledOnce();
 	});
 
 	it('leaves integration work pending until its bridge is available and stops admission during shutdown', async () => {

@@ -63,6 +63,7 @@ export namespace PubSub {
 		export type RelayAgentExecutionUpdate = ToCommand<'relay-agent-execution-update'>;
 		export type RelayAgentQueuedChat = ToCommand<'relay-agent-queued-chat'>;
 		export type CancelAgentChatExecution = ToCommand<'cancel-agent-chat-execution'>;
+		export type CancelAgentChatForeground = ToCommand<'cancel-agent-chat-foreground'>;
 		export type RelayAgentMessageQueueUpdate = ToCommand<'relay-agent-message-queue-update'>;
 		export type RelayAgentBackgroundJobsUpdate = ToCommand<'relay-agent-background-tasks-update'>;
 		export type RelayAgentUpdate = ToCommand<'relay-agent-update'>;
@@ -115,6 +116,7 @@ export namespace PubSub {
 		| Commands.RelayAgentExecutionUpdate
 		| Commands.RelayAgentQueuedChat
 		| Commands.CancelAgentChatExecution
+		| Commands.CancelAgentChatForeground
 		| Commands.RelayAgentMessageQueueUpdate
 		| Commands.RelayAgentBackgroundJobsUpdate
 		| Commands.RelayAgentUpdate
