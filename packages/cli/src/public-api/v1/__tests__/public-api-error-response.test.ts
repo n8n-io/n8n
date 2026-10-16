@@ -159,6 +159,19 @@ describe('sendPublicApiErrorResponse', () => {
 			expect(loggedStack).not.toContain('token=abc');
 		});
 
+		it('truncates a long message in the log line and in the stack', () => {
+			const longMessage = 'x'.repeat(5000);
+			sendPublicApiErrorResponse(createMockRes(), new Error(longMessage));
+
+			const [loggedMessage, loggedMeta] = logger.error.mock.calls[0];
+			const loggedStack = String(loggedMeta?.stack);
+
+			expect(loggedMessage).not.toContain('x'.repeat(1001));
+
+			expect(loggedStack.length).toEqual(4000);
+			expect(loggedStack).not.toContain('x'.repeat(4001));
+		});
+
 		it('logs method, route and userId, and no request URL, headers or body', () => {
 			const res = createMockRes({
 				method: 'POST',

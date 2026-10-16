@@ -7,6 +7,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 
 const MAX_LOGGED_MESSAGE_LENGTH = 1000;
+const MAX_LOGGED_STACK_LENGTH = 4000;
 
 /**
  * Maps errors from the public API stack to HTTP responses. Used by the
@@ -35,7 +36,7 @@ export function sendPublicApiErrorResponse(res: Response, error: Error): void {
 				route,
 				userId,
 				errorName: error.name,
-				stack: error.stack ? sanitizeErrorDetail(error.stack, Infinity) : undefined,
+				stack: error.stack ? sanitizeErrorDetail(error.stack, MAX_LOGGED_STACK_LENGTH) : undefined,
 			});
 		} catch (failure) {
 			// Logging must never change the response. Record that logging failed,
