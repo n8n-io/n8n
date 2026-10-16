@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/ServiceNow/ServiceNow.node.ts
+  s_2e1fa95fc44f8f::t_2046ff040fa729 9,273-279
+packages/nodes-base/nodes/ServiceNow/test/ServiceNow.node.test.ts
+  s_2e1fa95fc44f8f::t_2dbbb2a642c7ba 160-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5449af6ef02c5340e161bbbc3d15db10ad5ef5b",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
