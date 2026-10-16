@@ -149,9 +149,9 @@ configured connections stay operational. Unpublication still runs. Skipped
 imports and publication no-ops stay unchanged.
 
 If several publication blockers apply, the reported reason follows this order:
-missing node types, credential stubs, then channel setup. `channelSetupRequired`
-still lists every pending channel. Credential access and missing-credential
-policies still apply. No policy flag bypasses channel setup.
+missing node types, credential stubs, incomplete credentials, then channel setup.
+`channelSetupRequired` still lists every pending channel. Credential access and
+missing-credential policies still apply. No policy flag bypasses channel setup.
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues. Examples:

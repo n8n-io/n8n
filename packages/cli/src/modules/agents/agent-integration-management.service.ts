@@ -208,7 +208,7 @@ export class AgentIntegrationManagementService {
 		const previous = await this.loadRuntimeBeforeChange(options);
 		let connected = await this.startAddedRuntime(options, previous);
 		const result = await this.persistChange(options, remove, connected, previous);
-		const setupFailure = await this.completeChannelSetup(agent, add);
+		const setupFailure = await this.completeChannelSetup(agent, options.setupId ? undefined : add);
 		if (result.changed) {
 			this.agentUpdateBroadcaster.notify(
 				{ projectId: agent.projectId, agentId: agent.id, source: options.modifiedBy },
@@ -306,6 +306,14 @@ export class AgentIntegrationManagementService {
 	): Promise<IntegrationDeltaResult> {
 		const { agent, add } = options;
 		try {
+			if (add && options.setupId) {
+				await this.chatService.completeChannelSetup(
+					agent.id,
+					add,
+					agent.projectId,
+					options.setupId,
+				);
+			}
 			return await this.persistenceService.applyIntegrationDelta(
 				agent,
 				{

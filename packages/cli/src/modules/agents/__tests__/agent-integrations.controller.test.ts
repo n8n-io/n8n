@@ -226,7 +226,10 @@ describe('AgentIntegrationsController integration management', () => {
 		expect(result).toEqual({ status: 'configured' });
 	});
 
-	it('delegates disconnect without platform-specific cleanup', async () => {
+	it.each([
+		{ operation: 'disconnect', setupId: undefined },
+		{ operation: 'cancelSetup', setupId: 'pending-setup' },
+	])('delegates $operation without platform-specific cleanup', async ({ setupId }) => {
 		const { controller, managementService, agentRepository } = makeController();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		managementService.disconnect.mockResolvedValue({ savedAgent: agent });
@@ -239,18 +242,30 @@ describe('AgentIntegrationsController integration management', () => {
 			} as never,
 			undefined as never,
 			agent.id,
-			{ type: 'slack', credentialId: 'credential-1' },
+			{ type: 'slack', credentialId: 'credential-1', setupId },
 		);
 
-		expect(managementService.disconnect).toHaveBeenCalledWith(
-			expect.objectContaining({
+		if (setupId) {
+			expect(managementService.cancelSetup).toHaveBeenCalledWith({
 				agent,
 				user,
+				setupId: 'pending-setup',
 				type: 'slack',
-				credentialId: 'credential-1',
 				pushRef: 'sender-1',
-			}),
-		);
+			});
+			expect(managementService.disconnect).not.toHaveBeenCalled();
+		} else {
+			expect(managementService.disconnect).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agent,
+					user,
+					type: 'slack',
+					credentialId: 'credential-1',
+					pushRef: 'sender-1',
+				}),
+			);
+			expect(managementService.cancelSetup).not.toHaveBeenCalled();
+		}
 		expect(result).toEqual({ status: 'disconnected' });
 	});
 

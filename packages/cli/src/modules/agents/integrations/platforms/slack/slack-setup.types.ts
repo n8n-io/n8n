@@ -71,6 +71,17 @@ export function slackSetupCacheKey(state: string): string {
 	return `${SLACK_APP_SETUP_CACHE_PREFIX}${state}`;
 }
 
+export function slackCredentialMatchesDestination(
+	credential: unknown,
+	destination: { agentId: string; projectId: string; webhookUrl: string },
+): boolean {
+	return (
+		stringProperty(credential, 'agentId') === destination.agentId &&
+		stringProperty(credential, 'agentProjectId') === destination.projectId &&
+		stringProperty(credential, 'agentWebhookUrl') === destination.webhookUrl
+	);
+}
+
 /** Both Slack setup services read and write this entry, so the key must stay identical. */
 export function managedSlackAppCacheKey(options: {
 	setupId?: string;

@@ -42,6 +42,7 @@ import {
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
+import { slackCredentialMatchesDestination } from './slack-setup.types';
 
 /**
  * Slack platform integration.
@@ -130,11 +131,11 @@ export class SlackIntegration extends AgentChatIntegration {
 		const { credential, agentId, projectId } = ctx;
 		const requestUrl = stringProperty(credential, 'agentWebhookUrl');
 		if (requestUrl) {
-			return (
-				credential.agentId === agentId &&
-				credential.agentProjectId === projectId &&
-				requestUrl === ctx.webhookUrlFor(this.type)
-			);
+			return slackCredentialMatchesDestination(credential, {
+				agentId,
+				projectId,
+				webhookUrl: ctx.webhookUrlFor(this.type),
+			});
 		}
 		if (!options.allowLegacy) return false;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);

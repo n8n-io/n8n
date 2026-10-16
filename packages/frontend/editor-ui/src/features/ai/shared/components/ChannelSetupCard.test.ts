@@ -495,6 +495,7 @@ describe('ChannelSetupCard', () => {
 		);
 		await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
 		await flushPromises();
+		expect(mocks.cancelSetup).toHaveBeenCalledTimes(1);
 		expect(mocks.cancelSetup).toHaveBeenCalledWith('second');
 		expect(mocks.disconnect).not.toHaveBeenCalled();
 		expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);

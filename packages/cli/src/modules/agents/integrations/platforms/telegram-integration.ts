@@ -26,6 +26,7 @@ import {
 	type BridgeResumeExecutionContext,
 } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
+import { rememberAgentChannelSetup } from '../agent-channel-setup-evidence';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadTelegramAdapter } from '../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
@@ -346,7 +347,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 	}
 
 	private destinationSetupProof(ctx: AgentChatIntegrationContext): string {
-		return createHmac('sha256', this.instanceSettings.encryptionKey)
+		return createHmac('sha256', this.instanceSettings.hmacSignatureSecret)
 			.update(
 				JSON.stringify([
 					'telegram-setup',
@@ -362,43 +363,15 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	private async rememberDestinationSetup(ctx: AgentChatIntegrationContext): Promise<void> {
 		const proof = this.destinationSetupProof(ctx);
-		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
-			ctx.projectId,
-		);
-		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds(true);
-		const credential = [...projectCredentials, ...globalCredentials].find(
-			(entry) => entry.id === ctx.credentialId && entry.type === 'telegramApi',
-		);
-		if (!credential) {
-			throw new UserError(
-				'Telegram credential is not available to this project. Select another credential and try again.',
-			);
-		}
-		const stored = await this.credentialsService.decrypt(credential, true);
-		if (proof !== this.destinationSetupProof({ ...ctx, credential: stored })) {
-			throw new UserError(
-				'The Telegram credential changed during channel setup. Start setup again.',
-			);
-		}
-		const updated = { ...stored, agentSetupDestination: proof };
-		const encrypted = await this.credentialsService.createEncryptedData({
-			id: credential.id,
-			name: credential.name,
-			type: credential.type,
-			data: updated,
+		await rememberAgentChannelSetup(ctx, {
+			credentialTypes: this.credentialTypes,
+			displayLabel: this.displayLabel,
+			proof,
+			matchesSetupCredential: (credential) =>
+				proof === this.destinationSetupProof({ ...ctx, credential }),
+			credentialsService: this.credentialsService,
+			credentialsRepository: this.credentialsRepository,
 		});
-		const saved = await this.credentialsRepository.updateDataIfUnchanged(
-			credential.id,
-			credential.type,
-			credential.data,
-			encrypted.data,
-		);
-		if (!saved) {
-			throw new UserError(
-				'The Telegram credential changed during channel setup. Start setup again.',
-			);
-		}
-		ctx.credential = updated;
 	}
 
 	private extractBotToken(credential: Record<string, unknown>): string {

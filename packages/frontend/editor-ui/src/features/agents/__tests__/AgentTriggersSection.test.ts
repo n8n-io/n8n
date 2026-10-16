@@ -81,12 +81,6 @@ const connectedCredentials = ref<Record<string, string>>({});
 const configured = ref<Record<string, boolean>>({});
 const managedCredential = ref(false);
 const channelSetupRequired = ref<AgentIntegrationStatusResponse['channelSetupRequired']>([]);
-const route = { query: {} as Record<string, string> };
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal<typeof import('vue-router')>()),
-	useRoute: () => route,
-	useRouter: () => ({ replace: vi.fn() }),
-}));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
@@ -121,7 +115,14 @@ vi.mock('../composables/useAgentIntegrationStatus', function mockIntegrationStat
 });
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string, options?: { interpolate: Record<string, string | number> }) => {
+			if (key === 'agents.channels.setupRequired.connection' && options) {
+				return `${options.interpolate.channel} ${options.interpolate.number}`;
+			}
+			return key;
+		},
+	}),
 }));
 
 const n8nChatFlag = vi.hoisted(() => ({ value: false }));
@@ -171,7 +172,6 @@ describe('AgentTriggersSection', () => {
 	beforeEach(function resetMocks() {
 		vi.clearAllMocks();
 		channelSetupRequired.value = [];
-		route.query = {};
 		setActivePinia(createPinia());
 		vi.mocked(credentialsApi.getUsableCredentials).mockResolvedValue([]);
 		connectedCredentials.value = {};
@@ -246,18 +246,22 @@ describe('AgentTriggersSection', () => {
 	it('opens the pending channel named by the setup link and keeps the configured channel visible', async () => {
 		connectedCredentials.value = { slack: 'working' };
 		configured.value = { slack: true };
-		channelSetupRequired.value = ['first', 'second'].map((setupId) => ({
+		channelSetupRequired.value = [
+			{ setupId: 'notion', type: 'notion' },
+			{ setupId: 'first', type: 'slack' },
+			{ setupId: 'second', type: 'slack' },
+		].map(({ setupId, type }) => ({
 			setupId,
-			type: 'slack',
+			type,
 			agentId: 'agent-1',
 			projectId: 'project-1',
 			credentialId: setupId,
 			path: ['integrations', 0],
 			reason: 'destination-setup-required',
 			setupUrl: '/setup',
-			integration: { type: 'slack', credentialId: setupId },
+			integration: { type, credentialId: setupId },
 		}));
-		route.query.channelSetup = 'second';
+		routeQuery.value = { channelSetup: 'second' };
 		const wrapper = mountSection();
 		await flushPromises();
 		expect(wrapper.findComponent({ name: 'AgentChannelModal' }).props()).toMatchObject({
@@ -265,7 +269,13 @@ describe('AgentTriggersSection', () => {
 			view: 'slack_setup',
 		});
 		expect(screen.getByRole('button', { name: 'slack' })).toBeVisible();
-		expect(wrapper.findAll('[data-testid="agent-channel-setup-required"]')).toHaveLength(2);
+		expect(
+			wrapper.findAll('[data-testid="agent-channel-setup-required"]').map((chip) => chip.text()),
+		).toEqual([
+			'notion · agents.channels.setupRequired.label',
+			'slack 1 · agents.channels.setupRequired.label',
+			'slack 2 · agents.channels.setupRequired.label',
+		]);
 	});
 
 	it.each(['credential-1', ''])(

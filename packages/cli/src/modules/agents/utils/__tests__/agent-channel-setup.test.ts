@@ -48,6 +48,12 @@ describe('pending destination channels', () => {
 		);
 		const [first, second] = pending.pendingChannelSetup!.requested;
 		expect(pending.integrations).toEqual([old, other]);
+		expect(cancelChannelSetup(pending, first.setupId!, 'slack')).toEqual({
+			integrations: [old, other],
+			pendingChannelSetup: otherSetupPending
+				? { requested: [second, { integration: old }, { integration: other }] }
+				: null,
+		});
 
 		const completed = completeChannelSetup(
 			pending,

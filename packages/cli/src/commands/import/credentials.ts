@@ -296,10 +296,26 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			};
 		}
 
-		if (credential.data !== undefined) {
-			credential.data = await stripAgentChannelSetupEvidence(type, credential.data);
-		}
 		return { credential: { ...credential, type }, existing, cleared };
+	}
+
+	private async sanitizeCredentialDataForImport(
+		credential: AdmittedCredential['credential'],
+		ctx: OperationContext,
+	): Promise<void> {
+		if (credential.data === undefined) return;
+		const storedData = credential.id
+			? await Container.get(CredentialsRepository).findStoredDataForImport(
+					credential.id,
+					credential.type,
+					ctx,
+				)
+			: undefined;
+		credential.data = await stripAgentChannelSetupEvidence(
+			credential.type,
+			credential.data,
+			storedData,
+		);
 	}
 
 	private async storeCredential(
@@ -308,6 +324,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		project: Project,
 		ctx: OperationContext,
 	): Promise<void> {
+		await this.sanitizeCredentialDataForImport(credential, ctx);
+
 		// Validated after the policy gate, so a blocked provider connection is skipped even when
 		// its stored data can't be read.
 		if (credential.usageScope === 'instance') {

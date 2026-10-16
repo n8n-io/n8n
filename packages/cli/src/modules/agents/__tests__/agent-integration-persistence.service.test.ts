@@ -381,26 +381,37 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	describe('removing a channel', () => {
-		it('removes only the matching entry and reports it for runtime teardown', async () => {
-			const { service, agent, row, runtimeCacheService } = setup({
-				integrations: [
-					{ type: 'slack', credentialId: 'slack-1' },
-					{ type: 'linear', credentialId: 'linear-1' },
-				],
-			});
+		it.each([false, true])(
+			'removes only the matching channel (pending only: %s)',
+			async (pendingOnly) => {
+				const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'slack-1' };
+				const retained: AgentIntegrationConfig = { type: 'linear', credentialId: 'linear-1' };
+				const { service, agent, row, runtimeCacheService } = setup({
+					integrations: pendingOnly ? [retained] : [integration, retained],
+					pendingChannelSetup: pendingOnly
+						? {
+								requested: [{ integration, setupId: 'setup-1' }, { integration: retained }],
+							}
+						: null,
+				});
+				const chatIntegrationService = mock<ChatIntegrationService>();
+				Container.set(ChatIntegrationService, chatIntegrationService);
+				agent.pendingChannelSetup = null;
 
-			const result = await service.applyIntegrationDelta(
-				agent,
-				{ remove: { type: 'slack', credentialId: 'slack-1' } },
-				byUser,
-			);
+				const result = await service.applyIntegrationDelta(agent, { remove: integration }, byUser);
 
-			expect(result.changed).toBe(true);
-			expect(result.removed).toEqual({ type: 'slack', credentialId: 'slack-1' });
-			expect(row.integrations).toEqual([{ type: 'linear', credentialId: 'linear-1' }]);
-			expect(row.versionId).not.toBe(row.activeVersionId);
-			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		});
+				expect(result.changed).toBe(true);
+				expect(result.removed).toEqual(pendingOnly ? undefined : integration);
+				expect(result.removedIntegrations).toEqual(pendingOnly ? [] : [integration]);
+				expect(row.integrations).toEqual([retained]);
+				expect(row.pendingChannelSetup).toBeNull();
+				expect(row.versionId).not.toBe(row.activeVersionId);
+				expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+				expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+				expect(chatIntegrationService.disconnect).not.toHaveBeenCalled();
+				expect(chatIntegrationService.validateBeforeConnect).not.toHaveBeenCalled();
+			},
+		);
 
 		it('writes nothing when the list is empty', async () => {
 			const { service, agent, agentRepository, telemetry } = setup();

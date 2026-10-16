@@ -85,6 +85,7 @@ vi.mock('../channels/registry', async () => {
 			'runtime',
 			'ensureAgentPersisted',
 			'savedSettings',
+			'connected',
 		],
 		emits: ['update:modelValue', 'connect', 'persist', 'connected', 'done'],
 		setup: () => {
@@ -110,6 +111,7 @@ vi.mock('../channels/registry', async () => {
 				data-testid="platform-view"
 				:data-mode="mode"
 				:data-credential="modelValue"
+				:data-connected="connected"
 				:data-settings="JSON.stringify(savedSettings)"
 				:data-published="isPublished"
 				:data-setup-kind="runtime.setupKind?.value"
@@ -516,20 +518,58 @@ describe('AgentChannelModal', () => {
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
 	});
 
-	it('stays open after connecting a view that asks to, until the view is done', async () => {
+	it('stays open after a pending setup completes, until the view is done', async () => {
 		mocks.keepOpenAfterConnect = true;
 		selectedCredentials.value.example = 'credential-new';
-		const wrapper = mountModal('example_setup');
+		channelSetupRequired.value = [
+			{
+				setupId: 'pending',
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				type: 'example',
+				credentialId: 'credential-new',
+				path: ['integrations', 0],
+				reason: 'destination-setup-required',
+				setupUrl: '/setup',
+				integration: { type: 'example', credentialId: 'credential-new' },
+			},
+		];
+		const wrapper = mountModal('example_setup', false, { setupId: 'pending' });
+		await flushPromises();
+		expect(wrapper.get('[data-testid="platform-view"]').attributes('data-connected')).toBe('false');
+		expect(wrapper.text()).toContain('agents.channels.setupRequired.help');
 
 		await wrapper.get('[data-testid="connect-channel"]').trigger('click');
 		await flushPromises();
 
-		expect(mocks.connect).toHaveBeenCalledOnce();
+		expect(mocks.connect).toHaveBeenCalledWith(
+			'example',
+			'credential-new',
+			{ accessMode: 'all' },
+			{ setupId: 'pending' },
+		);
 		expect(wrapper.emitted('channel-connected')).toEqual([['example']]);
 		expect(wrapper.emitted('update:open')).toBeUndefined();
 
-		await wrapper.get('[data-testid="platform-done"]').trigger('click');
+		channelSetupRequired.value = [];
+		await wrapper.vm.$nextTick();
 
+		expect(wrapper.get('[data-testid="platform-view"]').attributes('data-connected')).toBe('true');
+		expect(wrapper.text()).not.toContain('agents.channels.setupRequired.help');
+		expect(wrapper.find('[data-testid="agent-modal-footer-actions"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-channel-remove-channel"]').exists()).toBe(false);
+
+		platformCanFinish.value = true;
+		await wrapper.get('[data-testid="platform-done"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.connect).toHaveBeenNthCalledWith(
+			2,
+			'example',
+			'credential-new',
+			{ accessMode: 'all' },
+			{},
+		);
 		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
 

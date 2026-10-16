@@ -308,29 +308,42 @@ describe('CredentialExporter', () => {
 	});
 
 	describe('credential data policy', () => {
-		it('bundles only expression values under expression-values-only', async () => {
-			const { exporter, finder } = makeExporter();
-			finder.findCredentialForUser.mockResolvedValue(
-				makeCredential({
-					data: await encryptedData({
-						name: 'X-Api-Key',
-						value: '={{ $secrets.api.key }}',
+		it.each(['httpHeaderAuth', 'slackApi'])(
+			'bundles expression values without local setup evidence for %s',
+			async (type) => {
+				const { exporter, finder } = makeExporter();
+				const slackSetup = {
+					agentId: '={{ $vars.agent }}',
+					agentProjectId: '={{ $vars.project }}',
+					agentWebhookUrl: '={{ $vars.webhook }}',
+				};
+				finder.findCredentialForUser.mockResolvedValue(
+					makeCredential({
+						type,
+						data: await encryptedData({
+							name: 'X-Api-Key',
+							value: '={{ $secrets.api.key }}',
+							...slackSetup,
+						}),
 					}),
-				}),
-			);
-			const writer = new CapturingWriter();
+				);
+				const writer = new CapturingWriter();
 
-			await exporter.export({
-				user,
-				requirements: [makeRequirement()],
-				writer,
-				credentialExportPolicy: 'expression-values-only',
-			});
+				await exporter.export({
+					user,
+					requirements: [makeRequirement()],
+					writer,
+					credentialExportPolicy: 'expression-values-only',
+				});
 
-			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
-			expect(parsed.data).toEqual({ value: '={{ $secrets.api.key }}' });
-			expect(writer.files[0].content).not.toContain('X-Api-Key');
-		});
+				const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
+				expect(parsed.data).toEqual({
+					value: '={{ $secrets.api.key }}',
+					...(type === 'slackApi' ? {} : slackSetup),
+				});
+				expect(writer.files[0].content).not.toContain('X-Api-Key');
+			},
+		);
 
 		it('writes no data and never decrypts under no-values', async () => {
 			const { exporter, finder } = makeExporter();

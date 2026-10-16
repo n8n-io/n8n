@@ -49,6 +49,7 @@ interface AgentIntegrationStatusState {
 	 * nobody has asked about yet.
 	 */
 	serverConfirmed: Ref<Set<string>>;
+	fetchVersion: number;
 	fetchInFlight: Promise<void> | null;
 }
 
@@ -75,11 +76,17 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 			errorIsConflict: ref({}),
 			runtimeErrors: ref({}),
 			serverConfirmed: ref(new Set()),
+			fetchVersion: 0,
 			fetchInFlight: null,
 		};
 		cache.set(key, state);
 	}
 	return state;
+}
+
+function invalidateStatusFetch(state: AgentIntegrationStatusState): void {
+	state.fetchVersion += 1;
+	state.fetchInFlight = null;
 }
 
 /** Wipe the cache for an agent — use when an agent is deleted or the builder unmounts. */
@@ -193,9 +200,11 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			await state.fetchInFlight;
 			return;
 		}
+		const fetchVersion = state.fetchVersion;
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
+				if (fetchVersion !== state.fetchVersion) return;
 				state.channelSetupRequired.value = result.channelSetupRequired ?? [];
 				// The report keeps n8n Chat while only the published version has it.
 				// The builder edits the draft, so a draft without it is unavailable.
@@ -206,6 +215,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				);
 				applyStatus(state, integrationTypes, integrations, 'server');
 			} catch {
+				if (fetchVersion !== state.fetchVersion) return;
 				// Mark only types the server hasn't answered for as `unknown` — a
 				// transient network failure shouldn't claim that a channel the server
 				// already told us about is now disconnected, and shouldn't dress up a
@@ -216,7 +226,9 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 					}
 				}
 			} finally {
-				state.fetchInFlight = null;
+				if (fetchVersion === state.fetchVersion) {
+					state.fetchInFlight = null;
+				}
 			}
 		})();
 		await state.fetchInFlight;
@@ -241,6 +253,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				settings,
 				options,
 			);
+			invalidateStatusFetch(state);
 			// Reflect the change in the shared reactive state immediately so the
 			// other consumer re-renders without waiting for a round-trip refetch.
 			state.statuses.value[type] = result.status;
@@ -286,6 +299,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				credId,
 				options.deleteExternalResource,
 			);
+			invalidateStatusFetch(state);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
@@ -313,6 +327,10 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			pending.credentialId,
 			false,
 			setupId,
+		);
+		invalidateStatusFetch(state);
+		state.channelSetupRequired.value = state.channelSetupRequired.value.filter(
+			(entry) => entry.setupId !== setupId,
 		);
 		await fetchStatus(Object.keys(state.statuses.value));
 	}

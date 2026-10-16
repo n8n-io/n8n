@@ -28,6 +28,7 @@ import {
 	childRecord,
 	parseSlackAppSetupResponse,
 	managedSlackAppCacheKey,
+	slackCredentialMatchesDestination,
 	SLACK_APP_SETUP_TTL_MS,
 	SLACK_BOT_SCOPES,
 	SLACK_CREDENTIAL_TYPE,
@@ -408,11 +409,11 @@ export class SlackManagedSetupService {
 		const data = await this.credentialsService.decrypt(credential, true);
 		const destinationUrl = stringProperty(data, 'agentWebhookUrl');
 		if (destinationUrl) {
-			return (
-				stringProperty(data, 'agentId') === agent.id &&
-				stringProperty(data, 'agentProjectId') === agent.projectId &&
-				destinationUrl === this.methods.webhookUrl(agent.projectId, agent.id)
-			);
+			return slackCredentialMatchesDestination(data, {
+				agentId: agent.id,
+				projectId: agent.projectId,
+				webhookUrl: this.methods.webhookUrl(agent.projectId, agent.id),
+			});
 		}
 		return await this.managedAppSendsEventsTo(data, agent, user);
 	}
@@ -478,21 +479,38 @@ export class SlackManagedSetupService {
 		}
 
 		if (managerCredentialId && typeof data.teamId === 'string') {
-			await this.cacheService.delete(
-				managedSlackAppCacheKey({
-					projectId: options.projectId,
-					agentId: options.agentId,
-					managerCredentialId,
-					workspaceId: data.teamId,
-					userId: options.user.id,
-				}),
-			);
+			await this.clearManagedAppSessions(options, managerCredentialId, data.teamId, managedAppId);
 		}
 
 		if (credential.isManaged || managedAppId) {
 			await this.credentialsService.delete(options.user, credential.id);
 		}
 		return warning;
+	}
+
+	private async clearManagedAppSessions(
+		options: AgentIntegrationRemovalContext,
+		managerCredentialId: string,
+		workspaceId: string,
+		managedAppId: string | undefined,
+	): Promise<void> {
+		const key = managedSlackAppCacheKey({
+			projectId: options.projectId,
+			agentId: options.agentId,
+			managerCredentialId,
+			workspaceId,
+			userId: options.user.id,
+		});
+		const keys = [key];
+		if (managedAppId) {
+			const appKey = `${key}:app:${managedAppId}`;
+			const sessionKey = await this.cacheService.get<unknown>(appKey);
+			keys.push(appKey);
+			if (typeof sessionKey === 'string' && sessionKey.startsWith(`${key}:`)) {
+				keys.push(sessionKey);
+			}
+		}
+		await this.cacheService.deleteMany(keys);
 	}
 
 	private assertSetupAvailable(): void {
@@ -894,6 +912,23 @@ export class SlackManagedSetupService {
 		return undefined;
 	}
 
+	private async storeManagedAppSession(
+		key: string,
+		session: ManagedSlackAppSession,
+	): Promise<void> {
+		await this.cacheService.set(
+			key,
+			await this.cipher.encryptV2(JSON.stringify(session)),
+			SLACK_APP_SETUP_TTL_MS,
+		);
+		const appKey = managedSlackAppCacheKey({
+			...session,
+			setupId: undefined,
+			workspaceId: session.teamId,
+		});
+		await this.cacheService.set(`${appKey}:app:${session.appId}`, key, SLACK_APP_SETUP_TTL_MS);
+	}
+
 	private async createManagedAppSession(
 		options: InstallManagedSlackAppOptions,
 		agent: Agent,
@@ -929,11 +964,7 @@ export class SlackManagedSetupService {
 				teamId: options.workspaceId,
 				teamName: workspaceName,
 			} satisfies ManagedSlackAppSession;
-			await this.cacheService.set(
-				key,
-				await this.cipher.encryptV2(JSON.stringify(session)),
-				SLACK_APP_SETUP_TTL_MS,
-			);
+			await this.storeManagedAppSession(key, session);
 			return { session, created: true };
 		} catch (error) {
 			if (appId) {

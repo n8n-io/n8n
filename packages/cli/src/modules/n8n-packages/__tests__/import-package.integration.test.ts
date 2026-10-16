@@ -2474,7 +2474,10 @@ describe('credential-missing-mode: create-with-values', () => {
 							id: 'missing-cred',
 							name: 'Missing GitHub',
 							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
-							data: { accessToken: '={{ $secrets.github.token }}' },
+							data: {
+								accessToken: '={{ $secrets.github.token }}',
+								agentSetupDestination: '={{ $vars.importedSetup }}',
+							},
 						},
 					],
 				},

@@ -89,7 +89,7 @@ const importedWorkflowSummarySchema = z.object({
 });
 
 const importedAgentSummarySchema = z.object({
-	channelSetupRequired: z.array(agentChannelSetupRequiredSchema).default([]).openapi({
+	channelSetupRequired: z.array(agentChannelSetupRequiredSchema).openapi({
 		description: 'Channels that require setup in the destination UI before the Agent can publish.',
 	}),
 	sourceAgentId: z.string().openapi({ description: 'Agent ID in the package.' }),

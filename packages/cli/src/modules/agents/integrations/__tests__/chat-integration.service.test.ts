@@ -2,12 +2,13 @@ import type { Mock, MockInstance } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsEntity, CredentialsRepository, User } from '@n8n/db';
 import { ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { StateAdapter } from 'chat';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -15,6 +16,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../../agent-change-publisher.service';
+import { AgentChannelSetupService } from '../../agent-channel-setup.service';
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { AgentIntegrationManagementService } from '../../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../../agent-integration-persistence.service';
@@ -139,6 +141,7 @@ function buildServiceWith(
 		registry?: ChatIntegrationRegistry;
 		agentRepository?: ReturnType<typeof mock<AgentRepository>>;
 		credentialsService?: ReturnType<typeof mock<CredentialsService>>;
+		credentialsRepository?: ReturnType<typeof mock<CredentialsRepository>>;
 		publisher?: ReturnType<typeof mock<Publisher>>;
 		urlService?: ReturnType<typeof mock<UrlService>>;
 		chatSubscriptionStateService?: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
@@ -152,6 +155,7 @@ function buildServiceWith(
 		makeAgent({ integrations: [slackIntegration, linearIntegration, telegramIntegration] }),
 	);
 	const credentialsService = opts.credentialsService ?? mock<CredentialsService>();
+	const credentialsRepository = opts.credentialsRepository ?? mock<CredentialsRepository>();
 	const publisher = opts.publisher ?? mock<Publisher>();
 	const urlService = opts.urlService ?? mock<UrlService>();
 	const chatSubscriptionStateService =
@@ -162,6 +166,7 @@ function buildServiceWith(
 	const instanceSettings = mock<InstanceSettings>({
 		isLeader: opts.isLeader ?? true,
 		encryptionKey: 'test-encryption-key',
+		hmacSignatureSecret: 'test-signing-secret',
 	});
 	const globalConfig = mock<GlobalConfig>({
 		multiMainSetup: { enabled: opts.multiMainEnabled ?? false },
@@ -179,6 +184,7 @@ function buildServiceWith(
 		chatSubscriptionStateService,
 		statusReporter,
 		leaderChannelRelay,
+		credentialsRepository,
 	);
 
 	return {
@@ -186,6 +192,7 @@ function buildServiceWith(
 		registry,
 		agentRepository,
 		credentialsService,
+		credentialsRepository,
 		publisher,
 		urlService,
 		chatSubscriptionStateService,
@@ -302,7 +309,203 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 describe('ChatIntegrationService', () => {
 	const logger = mock<Logger>();
 
-	it('records setup only for a durably configured destination', async () => {
+	it.each([
+		{
+			type: 'discord',
+			data: { applicationId: 'app-1', publicKey: 'public-key', botToken: 'bot-token' },
+			routingField: 'applicationId',
+		},
+		{
+			type: 'linear',
+			data: {
+				clientId: 'app-1',
+				signingSecret: 'signing-secret',
+				actor: 'app',
+				oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
+			},
+			routingField: 'signingSecret',
+		},
+		{
+			type: 'teams',
+			data: { clientId: 'app-1', tenantId: 'tenant-1', clientSecret: 'client-secret' },
+			routingField: 'tenantId',
+		},
+		{
+			type: 'whatsapp',
+			data: {
+				phoneNumberId: 'phone-1',
+				businessAccountId: 'business-1',
+				appSecret: 'app-secret',
+				accessToken: 'access-token',
+			},
+			routingField: 'phoneNumberId',
+		},
+	] as const)(
+		'reuses completed $type setup on later saves and imports',
+		async ({ type, data, routingField }) => {
+			Container.reset();
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration(type, false));
+			const {
+				service,
+				agentRepository,
+				credentialsService,
+				credentialsRepository,
+				urlService,
+				instanceSettings,
+			} = buildServiceWith({ registry });
+			Container.set(ChatIntegrationService, service);
+			urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.test/');
+			const setupService = new AgentChannelSetupService(urlService);
+			const channel: AgentIntegrationConfig = { type, credentialId: 'setup-credential' };
+			const agent = makeAgent({ integrations: [channel] });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const credential = mock<CredentialsEntity>({
+				id: channel.credentialId,
+				type: `${type}Api`,
+				data: 'stored-ciphertext',
+			});
+			mockProjectCredential(credentialsService, credential);
+			let stored: ICredentialDataDecryptedObject = { ...data };
+			let encrypted = stored;
+			credentialsService.decrypt.mockImplementation(async () => ({ ...stored }));
+			credentialsService.createEncryptedData.mockImplementation(async ({ data: next }) => {
+				encrypted = next;
+				return { data: 'setup-ciphertext' } as never;
+			});
+			credentialsRepository.updateDataIfUnchanged.mockImplementation(async () => {
+				stored = encrypted;
+				return true;
+			});
+
+			expect((await setupService.prepare(agent, [channel])).pendingChannelSetup).not.toBeNull();
+			await service.validateBeforeConnect(agent.id, channel, agent.projectId, {});
+			const setupError = new Error('setup evidence write failed');
+			credentialsRepository.updateDataIfUnchanged.mockRejectedValueOnce(setupError);
+			await expect(service.completeChannelSetup(agent.id, channel, agent.projectId)).rejects.toBe(
+				setupError,
+			);
+			await service.completeChannelSetup(agent.id, channel, agent.projectId);
+
+			expect((await setupService.prepare(agent, [channel])).pendingChannelSetup).toBeNull();
+			expect(
+				(await setupService.prepare(agent, [structuredClone(channel)])).pendingChannelSetup,
+			).toBeNull();
+			stored = {
+				...stored,
+				accessToken: 'refreshed-access-token',
+				oauthTokenData: {
+					access_token: 'refreshed-access-token',
+					refresh_token: 'refreshed-token',
+				},
+			};
+			expect(await service.canReuseConnection(agent.id, channel, agent.projectId)).toBe(true);
+			expect(await service.canReuseConnection('other-agent', channel, agent.projectId)).toBe(false);
+			expect(await service.canReuseConnection(agent.id, channel, 'other-project')).toBe(false);
+			Object.defineProperty(instanceSettings, 'encryptionKey', { value: 'another-instance-key' });
+			expect(await service.canReuseConnection(agent.id, channel, agent.projectId)).toBe(true);
+			Object.defineProperty(instanceSettings, 'hmacSignatureSecret', {
+				value: 'another-signing-secret',
+			});
+			expect(await service.canReuseConnection(agent.id, channel, agent.projectId)).toBe(false);
+			Object.defineProperty(instanceSettings, 'hmacSignatureSecret', {
+				value: 'test-signing-secret',
+			});
+			urlService.getWebhookBaseUrl.mockReturnValue('https://other-destination.example.test/');
+			expect(await service.canReuseConnection(agent.id, channel, agent.projectId)).toBe(false);
+			urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.test/');
+			stored = { ...stored, [routingField]: 'another-account' };
+			expect((await setupService.prepare(agent, [channel])).pendingChannelSetup).not.toBeNull();
+		},
+	);
+
+	it('keeps completed Linear setup reusable for both Agents sharing a credential', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('linear', false));
+		const { service, agentRepository, credentialsService, credentialsRepository } =
+			buildServiceWith({ registry });
+		const channel = { ...linearIntegration };
+		agentRepository.findByIdAndProjectId.mockImplementation(async (agentId) =>
+			makeAgent({ id: agentId, integrations: [channel] }),
+		);
+		mockProjectCredential(
+			credentialsService,
+			mock<CredentialsEntity>({
+				id: channel.credentialId,
+				type: 'linearApi',
+				data: 'stored-ciphertext',
+			}),
+		);
+		let stored: ICredentialDataDecryptedObject = {
+			clientId: 'app-1',
+			signingSecret: 'signing-secret',
+			actor: 'app',
+		};
+		let encrypted = stored;
+		credentialsService.decrypt.mockImplementation(async () => ({ ...stored }));
+		credentialsService.createEncryptedData.mockImplementation(async ({ data }) => {
+			encrypted = data;
+			return { data: 'setup-ciphertext' } as never;
+		});
+		credentialsRepository.updateDataIfUnchanged.mockImplementation(async () => {
+			stored = encrypted;
+			return true;
+		});
+
+		for (const agentId of ['agent-1', 'agent-2']) {
+			await service.validateBeforeConnect(agentId, channel, 'project-1', {});
+			await service.completeChannelSetup(agentId, channel, 'project-1');
+		}
+
+		for (const agentId of ['agent-1', 'agent-2']) {
+			expect(await service.canReuseConnection(agentId, channel, 'project-1')).toBe(true);
+			expect(
+				await service.canReuseConnection(agentId, channel, 'project-1', { allowLegacy: true }),
+			).toBe(true);
+		}
+		expect(
+			await service.canReuseConnection('agent-3', channel, 'project-1', { allowLegacy: true }),
+		).toBe(false);
+	});
+
+	it.each(['credential', 'binding', 'conditional-write'] as const)(
+		'leaves destination setup unverified after a changed %s',
+		async (change) => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('linear', false));
+			const { service, agentRepository, credentialsService, credentialsRepository } =
+				buildServiceWith({ registry });
+			const channel = { ...linearIntegration };
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ integrations: [channel] }),
+			);
+			const stored = { clientId: 'app-1', signingSecret: 'secret', accessToken: 'setup-token' };
+			mockProjectCredential(
+				credentialsService,
+				mock<CredentialsEntity>({ id: channel.credentialId, type: 'linearApi' }),
+			);
+			credentialsService.decrypt.mockResolvedValue(stored);
+			credentialsRepository.updateDataIfUnchanged.mockResolvedValue(false);
+			credentialsService.createEncryptedData.mockResolvedValue({
+				data: 'setup-ciphertext',
+			} as never);
+			await service.validateBeforeConnect('agent-1', channel, 'project-1', {});
+			if (change === 'credential') {
+				credentialsService.decrypt.mockResolvedValue({ ...stored, accessToken: 'changed-token' });
+			} else if (change === 'binding') {
+				channel.credentialId = 'another-credential';
+			}
+
+			await expect(service.completeChannelSetup('agent-1', channel, 'project-1')).rejects.toThrow();
+
+			expect(stored).not.toHaveProperty('agentSetupDestination');
+			if (change !== 'conditional-write') {
+				expect(credentialsService.createEncryptedData).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('retries destination evidence for the current pending setup', async () => {
 		const registry = new ChatIntegrationRegistry();
 		const integration = new FakeIntegration('telegram', false);
 		integration.onBeforeConnect = vi.fn().mockResolvedValue(undefined);
@@ -318,10 +521,24 @@ describe('ChatIntegrationService', () => {
 		).rejects.toThrow('Complete channel setup');
 		expect(integration.onSetupComplete).not.toHaveBeenCalled();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ integrations: [telegramIntegration] }),
+			makeAgent({
+				pendingChannelSetup: {
+					requested: [{ integration: telegramIntegration, setupId: 'setup-1' }],
+				},
+			}),
 		);
-		await service.validateBeforeConnect('agent-1', telegramIntegration, 'project-1', {});
-		await service.completeChannelSetup('agent-1', telegramIntegration, 'project-1');
+		await service.validateBeforeConnect('agent-1', telegramIntegration, 'project-1', {
+			setupId: 'setup-1',
+		});
+		await expect(
+			service.completeChannelSetup('agent-1', telegramIntegration, 'project-1', 'stale-setup'),
+		).rejects.toThrow('Channel setup changed');
+		const setupError = new Error('setup evidence write failed');
+		vi.mocked(integration.onSetupComplete).mockRejectedValueOnce(setupError);
+		await expect(
+			service.completeChannelSetup('agent-1', telegramIntegration, 'project-1', 'setup-1'),
+		).rejects.toBe(setupError);
+		await service.completeChannelSetup('agent-1', telegramIntegration, 'project-1', 'setup-1');
 		expect(integration.onSetupComplete).toHaveBeenCalledWith(
 			expect.objectContaining({
 				agentId: 'agent-1',
@@ -415,7 +632,11 @@ describe('ChatIntegrationService', () => {
 	it('restores legacy channels without verifying incoming requests for the same credential', async () => {
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new FakeIntegration('linear', false));
-		const { service, agentRepository } = buildServiceWith({ registry });
+		const { service, agentRepository, credentialsService } = buildServiceWith({ registry });
+		mockProjectCredential(
+			credentialsService,
+			mock<CredentialsEntity>({ id: linearIntegration.credentialId, type: 'linearApi' }),
+		);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		expect(await service.canReuseConnection('agent-1', linearIntegration, 'project-1')).toBe(false);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -489,6 +710,7 @@ describe('ChatIntegrationService', () => {
 			mock<AgentChatSubscriptionStateService>(),
 			mock<AgentChannelStatusReporter>(),
 			mock<LeaderChannelRelayService>(),
+			mock<CredentialsRepository>(),
 		);
 
 	it('disconnects subscription state when setup fails before chat initialization starts', async () => {
@@ -1540,6 +1762,10 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			registry.register(new FakeIntegration('linear', false));
 
 			const built = buildServiceWith({ isLeader: false, multiMainEnabled: true, registry });
+			mockProjectCredential(
+				built.credentialsService,
+				mock<CredentialsEntity>({ id: telegram.credentialId, type: 'telegramApi' }),
+			);
 			built.agentRepository.findByIdAndProjectId.mockResolvedValue(
 				makeAgent({ integrations: [telegram] }),
 			);

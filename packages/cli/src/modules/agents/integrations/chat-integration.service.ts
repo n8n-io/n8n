@@ -6,6 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { CredentialsRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -29,6 +30,11 @@ import {
 	type AgentChatIntegrationContext,
 } from './agent-chat-integration';
 import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service';
+import {
+	agentChannelDestinationProof,
+	rememberAgentChannelSetup,
+	sanitizeAgentChannelSetupData,
+} from './agent-channel-setup-evidence';
 import type { CallbackMetadata } from './callback-store';
 import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
@@ -203,6 +209,7 @@ export class ChatIntegrationService {
 		private readonly chatSubscriptionStateService: AgentChatSubscriptionStateService,
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly leaderChannelRelay: LeaderChannelRelayService,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {}
 
 	/**
@@ -267,11 +274,11 @@ export class ChatIntegrationService {
 		if (!isCredentialAgentIntegration(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
 		implementation.validateConfig?.(integration);
-		if (!implementation.onBeforeConnect) return;
+		if (!implementation.onBeforeConnect && !setup) return;
 
 		const ctx = await this.createConnectionContext(agentId, projectId, integration, true);
 		ctx.setupAuthorized = !!setup;
-		await implementation.onBeforeConnect(ctx);
+		await implementation.onBeforeConnect?.(ctx);
 		if (setup) this.setupContexts.set(integration, ctx);
 	}
 
@@ -285,41 +292,70 @@ export class ChatIntegrationService {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent || !isConfiguredIntegration(agent, integration)) return false;
 		const implementation = this.integrationRegistry.require(integration.type);
-		if (!implementation.isDestinationConfigured) return options.allowLegacy ?? false;
-		const credential = await this.decryptCredentialForProject(integration.credentialId, projectId);
-		return await implementation.isDestinationConfigured(
-			{
-				agentId,
-				projectId,
-				integration,
-				credentialId: integration.credentialId,
-				credential,
-				ingressEnabled: true,
-				webhookUrlFor: (platform) => this.buildWebhookUrl(agentId, projectId, platform),
-			},
-			options,
+		const ctx = await this.createConnectionContext(agentId, projectId, integration, true);
+		if (implementation.isDestinationConfigured) {
+			return await implementation.isDestinationConfigured(ctx, options);
+		}
+		const proof = ctx.credential.agentSetupDestination;
+		if (proof === undefined || proof === '') return options.allowLegacy ?? false;
+		const expectedProof = agentChannelDestinationProof(
+			ctx,
+			this.instanceSettings.hmacSignatureSecret,
 		);
+		if (ctx.integration.type === 'linear' && Array.isArray(proof)) {
+			return typeof expectedProof === 'string' && proof.includes(expectedProof);
+		}
+		return typeof proof === 'string' && proof === expectedProof;
 	}
 
 	async completeChannelSetup(
 		agentId: string,
 		integration: AgentIntegrationConfig,
 		projectId: string,
+		setupId?: string,
 	): Promise<void> {
 		if (!isCredentialAgentIntegration(integration)) return;
 		const implementation = this.integrationRegistry.require(integration.type);
-		if (!implementation.onSetupComplete) return;
+		if (!implementation.onSetupComplete && implementation.isDestinationConfigured) return;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent || !isConfiguredIntegration(agent, integration)) {
+		if (!agent || (!setupId && !isConfiguredIntegration(agent, integration))) {
 			throw new UserError('Complete channel setup for this destination in the Agent editor.');
 		}
+		if (setupId) requirePendingChannel(agent, setupId, integration.type);
 		const key = agentChannelKey(agentChannelRef(agentId, integration));
 		const ctx = this.setupContexts.get(integration) ?? this.connections.get(key)?.context;
-		if (!ctx?.setupAuthorized || ctx.agentId !== agentId || ctx.projectId !== projectId) {
+		if (
+			!ctx?.setupAuthorized ||
+			ctx.agentId !== agentId ||
+			ctx.projectId !== projectId ||
+			ctx.credentialId !== integration.credentialId ||
+			!isEqual(ctx.integration, integration)
+		) {
 			throw new UserError('Channel setup is no longer available. Start setup again.');
 		}
+		if (implementation.onSetupComplete) {
+			await implementation.onSetupComplete(ctx);
+			this.setupContexts.delete(integration);
+			return;
+		}
+		const proof = agentChannelDestinationProof(ctx, this.instanceSettings.hmacSignatureSecret);
+		if (!proof) {
+			this.setupContexts.delete(integration);
+			return;
+		}
+		await rememberAgentChannelSetup(ctx, {
+			credentialTypes: implementation.credentialTypes,
+			displayLabel: implementation.displayLabel,
+			proof,
+			matchesSetupCredential: (credential, credentialType) =>
+				isEqual(
+					sanitizeAgentChannelSetupData(credential, credentialType),
+					sanitizeAgentChannelSetupData(ctx.credential, credentialType),
+				),
+			credentialsService: this.credentialsService,
+			credentialsRepository: this.credentialsRepository,
+		});
 		this.setupContexts.delete(integration);
-		await implementation.onSetupComplete(ctx);
 	}
 
 	/**
@@ -396,8 +432,8 @@ export class ChatIntegrationService {
 	}
 
 	private setupCredentialFingerprint(credential: Record<string, unknown>): string {
-		return createHmac('sha256', this.instanceSettings.encryptionKey)
-			.update(JSON.stringify(credential))
+		return createHmac('sha256', this.instanceSettings.hmacSignatureSecret)
+			.update(JSON.stringify(['agent-channel-setup-credential-fingerprint', credential]))
 			.digest('hex');
 	}
 
@@ -1384,7 +1420,7 @@ export class ChatIntegrationService {
 		return {
 			agentId,
 			projectId,
-			integration,
+			integration: structuredClone(integration),
 			credentialId: integration.credentialId,
 			credential: decryptedData,
 			ingressEnabled,

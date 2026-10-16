@@ -234,7 +234,7 @@ const runtimes: Record<string, AgentChannelRuntime> = Object.fromEntries(
 		createAgentChannelRuntime(platform, {
 			projectId: projectIdRef,
 			agentId: agentIdRef,
-			setupId: computed(() => props.setupId),
+			setupId: computed(() => pendingSetup.value?.setupId),
 			selectedCredentialId: computed(() => getChannelCredentialId(platform.type)),
 			credentialModalOpen,
 			fetchStatus,
@@ -501,7 +501,7 @@ async function writeChannelConfig(): Promise<boolean> {
 			return false;
 		}
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
-			...(props.setupId ? { setupId: props.setupId } : {}),
+			...(pendingSetup.value ? { setupId: pendingSetup.value.setupId } : {}),
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
 			// Only the edit view shows the approval control, so only it may carry one.
 			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
@@ -601,8 +601,8 @@ function handlePlatformConnected() {
 }
 
 function removeCurrentChannel() {
-	if (props.setupId) {
-		void discardPendingSetup(props.setupId);
+	if (pendingSetup.value) {
+		void discardPendingSetup(pendingSetup.value.setupId);
 		return;
 	}
 	const channelType = selectedChannelType.value;
@@ -672,7 +672,7 @@ watch(
 		:step="currentStep"
 		:title="headerText"
 		:show-back="currentView !== 'list' && openedFromList"
-		:show-footer="showFooterActions || !!setupId"
+		:show-footer="showFooterActions || !!pendingSetup"
 		:show-cancel="!isN8nChatSelected"
 		:busy="actionInFlight"
 		:trap-focus="!credentialModalOpen"
@@ -691,7 +691,7 @@ watch(
 		</template>
 
 		<div data-testid="agent-channel-modal" :class="$style.container">
-			<N8nText v-if="setupId" size="small" color="text-base">
+			<N8nText v-if="pendingSetup" size="small" color="text-base">
 				{{ i18n.baseText('agents.channels.setupRequired.help') }}
 			</N8nText>
 			<div v-show="currentView === 'list'" key="list" :class="$style.listView">
@@ -735,7 +735,7 @@ watch(
 					:credential-permissions="credentialPermissions"
 					:credentials-loading="credentialsLoading"
 					:loading="isLoading(currentIntegration.type)"
-					:connected="!setupId && isConfigured(currentIntegration.type)"
+					:connected="!pendingSetup && isConfigured(currentIntegration.type)"
 					:connected-description="integrationConnectedText(currentIntegration.type)"
 					:error-message="
 						hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
@@ -781,7 +781,7 @@ watch(
 			</div>
 		</div>
 
-		<template v-if="(showFooterActions && isEditMode) || setupId" #footerLeft>
+		<template v-if="(showFooterActions && isEditMode) || pendingSetup" #footerLeft>
 			<N8nButton
 				variant="ghost"
 				size="medium"
@@ -791,7 +791,9 @@ watch(
 				@click="removeCurrentChannel"
 			>
 				<template v-if="!isN8nChatSelected" #icon><N8nIcon icon="trash-2" :size="16" /></template>
-				{{ setupId ? i18n.baseText('agents.channels.setupRequired.discard') : removeChannelLabel }}
+				{{
+					pendingSetup ? i18n.baseText('agents.channels.setupRequired.discard') : removeChannelLabel
+				}}
 			</N8nButton>
 		</template>
 		<template v-if="showFooterActions" #footerActions>

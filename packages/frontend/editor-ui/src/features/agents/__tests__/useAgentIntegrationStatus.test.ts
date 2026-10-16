@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import {
 	clearAgentIntegrationStatusCache,
@@ -91,36 +92,74 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.runtimeErrors.value.telegram).toBe('Credential cred-telegram not found');
 	});
 
-	it('keeps a configured channel while the draft requests another, including cancellation', async () => {
-		const status = useAgentIntegrationStatus(projectId, agentId);
-		const response = {
-			integrations: [{ type: 'slack', credentialId: 'working', status: 'connected' }],
-			channelSetupRequired: [{ setupId: 'pending', type: 'slack', credentialId: 'requested' }],
-		};
-		apiMocks.getIntegrationStatus.mockResolvedValue(response);
-		await status.fetchStatus(['slack']);
-		syncAgentIntegrationStatusCache(
-			projectId,
-			agentId,
-			['slack'],
-			[{ type: 'slack', credentialId: 'requested', status: 'starting' }],
-		);
-		expect(status.isConnected('slack')).toBe(true);
-		expect(status.connectedCredentials.value.slack).toBe('working');
-		apiMocks.getIntegrationStatus.mockResolvedValue({ ...response, channelSetupRequired: [] });
-		await status.cancelSetup('pending');
-		expect(apiMocks.disconnectIntegration).toHaveBeenCalledWith(
-			{},
-			projectId,
-			agentId,
-			'slack',
-			'requested',
-			false,
-			'pending',
-		);
-		expect(status.channelSetupRequired.value).toEqual([]);
-		expect(status.isConnected('slack')).toBe(true);
-	});
+	it.each(['connect', 'cancel'] as const)(
+		'keeps channel setup changes after %s when an earlier status request completes',
+		async (action) => {
+			const status = useAgentIntegrationStatus(projectId, agentId);
+			const sibling = { setupId: 'sibling', type: 'slack', credentialId: 'sibling-credential' };
+			const response = {
+				integrations: [{ type: 'slack', credentialId: 'working', status: 'connected' }],
+				channelSetupRequired: [
+					{ setupId: 'pending', type: 'slack', credentialId: 'requested' },
+					sibling,
+				],
+			};
+			apiMocks.getIntegrationStatus.mockResolvedValue(response);
+			await status.fetchStatus(['slack']);
+			syncAgentIntegrationStatusCache(
+				projectId,
+				agentId,
+				['slack'],
+				[{ type: 'slack', credentialId: 'requested', status: 'starting' }],
+			);
+			expect(status.isConnected('slack')).toBe(true);
+			expect(status.connectedCredentials.value.slack).toBe('working');
+			const staleStatus = createDeferredPromise<typeof response>();
+			const freshStatus = createDeferredPromise<typeof response>();
+			apiMocks.getIntegrationStatus
+				.mockReturnValueOnce(staleStatus.promise)
+				.mockReturnValue(freshStatus.promise);
+			const staleRefresh = status.fetchStatus(['slack']);
+			const joinedStaleRefresh = status.fetchStatus(['slack']);
+			expect(apiMocks.getIntegrationStatus).toHaveBeenCalledTimes(2);
+
+			let mutationRefresh: Promise<void>;
+			if (action === 'connect') {
+				apiMocks.connectIntegration.mockResolvedValue({ status: 'connected' });
+				await status.connect('slack', 'requested', undefined, { setupId: 'pending' });
+				mutationRefresh = status.fetchStatus(['slack']);
+			} else {
+				apiMocks.disconnectIntegration.mockResolvedValue({ status: 'disconnected' });
+				mutationRefresh = status.cancelSetup('pending');
+				await Promise.resolve();
+				expect(apiMocks.disconnectIntegration).toHaveBeenCalledWith(
+					{},
+					projectId,
+					agentId,
+					'slack',
+					'requested',
+					false,
+					'pending',
+				);
+			}
+			expect(apiMocks.getIntegrationStatus).toHaveBeenCalledTimes(3);
+			staleStatus.resolve(response);
+			await Promise.all([staleRefresh, joinedStaleRefresh]);
+			const joinedFreshRefresh = status.fetchStatus(['slack']);
+			expect(apiMocks.getIntegrationStatus).toHaveBeenCalledTimes(3);
+			const expectedCredential = action === 'connect' ? 'requested' : 'working';
+			expect(status.channelSetupRequired.value).toEqual([sibling]);
+			expect(status.connectedCredentials.value.slack).toBe(expectedCredential);
+
+			freshStatus.resolve({
+				integrations: [{ type: 'slack', credentialId: expectedCredential, status: 'connected' }],
+				channelSetupRequired: [sibling],
+			});
+			await Promise.all([mutationRefresh, joinedFreshRefresh]);
+			expect(status.channelSetupRequired.value).toEqual([sibling]);
+			expect(status.isConnected('slack')).toBe(true);
+		},
+	);
 
 	it('drops a stale runtime error once the channel starts', async () => {
 		const status = useAgentIntegrationStatus(projectId, agentId);

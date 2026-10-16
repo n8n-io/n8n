@@ -442,7 +442,7 @@ export abstract class AgentChatIntegration {
 		options?: { allowLegacy?: boolean },
 	): Promise<boolean>;
 
-	/** Record local setup only after the UI completion is durable. */
+	/** Record local destination evidence for a validated setup. */
 	onSetupComplete?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */

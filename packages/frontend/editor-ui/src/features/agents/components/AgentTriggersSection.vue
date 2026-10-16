@@ -210,14 +210,17 @@ const channelRows = computed(() =>
 );
 
 const pendingChannelRows = computed(() =>
-	channelSetupRequired.value.map((pending, index) => {
+	channelSetupRequired.value.map((pending) => {
 		const channel = channelList.value.find(({ type }) => type === pending.type);
+		const pendingForPlatform = channelSetupRequired.value.filter(
+			({ type }) => type === pending.type,
+		);
 		let label = channel?.label ?? pending.type;
 		const credentialName = credentialNamesById.value[pending.credentialId];
 		if (credentialName) label = `${label} (${credentialName})`;
-		else if (channelSetupRequired.value.filter(({ type }) => type === pending.type).length > 1) {
+		else if (pendingForPlatform.length > 1) {
 			label = i18n.baseText('agents.channels.setupRequired.connection', {
-				interpolate: { channel: label, number: index + 1 },
+				interpolate: { channel: label, number: pendingForPlatform.indexOf(pending) + 1 },
 			});
 		}
 		return { ...pending, label, icon: channelIcon(channel?.icon) };
@@ -320,8 +323,6 @@ function handleChannelConnected(channelType: string) {
 }
 
 const FILE_ACCESS_CONSENT_STATE: TeamsFileAccessConsentState = 'teams-file-access';
-const route = useRoute();
-const router = useRouter();
 const toast = useToast();
 
 /**

@@ -9,7 +9,7 @@ import type {
 } from '../../spec/serialized/credential.schema';
 
 // oauthTokenData never travels, at any depth — tokens are secrets and the target must reconnect.
-const NEVER_EXPORTED_KEYS = new Set(['oauthTokenData']);
+const NEVER_EXPORTED_KEYS = new Set(['oauthTokenData', 'agentSetupDestination']);
 
 // Whether every leaf inside the value is an expression, so filtering strips nothing.
 function isExpressionOnly(value: unknown): boolean {

@@ -74,6 +74,7 @@ const makeIntegration = (
 	credentialsRepository.updateDataIfUnchanged.mockResolvedValue(true);
 	const instanceSettings = mock<InstanceSettings>({
 		encryptionKey: opts.encryptionKey ?? 'test-encryption-key',
+		hmacSignatureSecret: 'test-signing-secret',
 	});
 	const httpClient = mock<HttpRequestClient>();
 	const requestMock = httpClient.request as Mock;
@@ -259,12 +260,22 @@ describe('TelegramIntegration destination setup', () => {
 	});
 
 	it('records UI setup so a draft can register its webhook on publication', async () => {
-		const { integration, setupContext, credentialsService, requestMock } = makeIntegration();
+		const { integration, setupContext, credentialsService, requestMock, instanceSettings } =
+			makeIntegration();
 		const ctx = await setupContext();
 		expect(requestMock).not.toHaveBeenCalled();
 		const savedData = credentialsService.createEncryptedData.mock.calls[0][0].data;
 		const published = makeContext({ credential: savedData });
 		expect(await integration.isDestinationConfigured(published)).toBe(true);
+		Object.defineProperty(instanceSettings, 'encryptionKey', { value: 'rotated-encryption-key' });
+		expect(await integration.isDestinationConfigured(published)).toBe(true);
+		Object.defineProperty(instanceSettings, 'hmacSignatureSecret', {
+			value: 'rotated-signing-secret',
+		});
+		expect(await integration.isDestinationConfigured(published)).toBe(false);
+		Object.defineProperty(instanceSettings, 'hmacSignatureSecret', {
+			value: 'test-signing-secret',
+		});
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 		await integration.onAfterConnect(published);
 		expect(requestMock.mock.calls[0][0].body.url).toBe(ctx.webhookUrlFor('telegram'));

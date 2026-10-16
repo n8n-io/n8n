@@ -55,7 +55,6 @@ properties:
               - path
               - reason
               - setupUrl
-          default: []
           description: Channels that require setup in the destination UI before the Agent can publish.
         sourceAgentId:
           type: string
@@ -112,6 +111,7 @@ properties:
             - state
           description: Publication outcome. A failed publication does not undo the definition import.
       required:
+        - channelSetupRequired
         - sourceAgentId
         - localId
         - name

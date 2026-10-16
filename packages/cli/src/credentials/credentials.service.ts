@@ -832,6 +832,7 @@ export class CredentialsService {
 		}
 		return sanitizeAgentChannelSetupData(
 			mergedData,
+			nextCredentialType,
 			nextCredentialType === credentialType ? decryptedData : undefined,
 		);
 	}
@@ -1639,7 +1640,7 @@ export class CredentialsService {
 	// Take data and replace all sensitive values with a sentinel value.
 	// This will replace password fields and oauth data.
 	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
-		const copiedData = deepCopy(sanitizeAgentChannelSetupData(data));
+		const copiedData = deepCopy(sanitizeAgentChannelSetupData(data, credential.type));
 
 		let credType: ICredentialType;
 		try {
@@ -2072,7 +2073,7 @@ export class CredentialsService {
 		},
 		user: User,
 	): Promise<CredentialsEntity> {
-		const data = sanitizeAgentChannelSetupData(opts.data ?? {});
+		const data = sanitizeAgentChannelSetupData(opts.data ?? {}, opts.type);
 		await this.validateStubCredentialData(data, user, opts.projectId);
 		const encryptedCredential = await this.createEncryptedData({
 			id: opts.id ?? null,
@@ -2244,7 +2245,7 @@ export class CredentialsService {
 		user: User,
 		options: { id?: string } = {},
 	) {
-		opts = { ...opts, data: sanitizeAgentChannelSetupData(opts.data) };
+		opts = { ...opts, data: sanitizeAgentChannelSetupData(opts.data, opts.type) };
 		// The pending state ends when a token lands on the credential row. End-user
 		// credentials store tokens per user and instance credentials take another
 		// write path, so neither would ever leave it.
@@ -2354,7 +2355,10 @@ export class CredentialsService {
 		if (opts.isResolvable === true || opts.isManaged) {
 			throw new BadRequestError('Provider connections cannot be end-user or managed credentials');
 		}
-		const data = sanitizeAgentChannelSetupData(opts.data as ICredentialDataDecryptedObject);
+		const data = sanitizeAgentChannelSetupData(
+			opts.data as ICredentialDataDecryptedObject,
+			opts.type,
+		);
 		this.validateInstanceCredentialData(data);
 
 		this.validateCredentialData(opts.type, data);

@@ -4040,19 +4040,33 @@ describe('CredentialsService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 		});
 
-		it('keeps supplied channel setup evidence out of a new credential', async () => {
-			mockTransactionManager();
-			const credential = await service.createUnmanagedCredential(
-				{
-					...credentialData,
-					type: 'telegramApi',
-					data: { accessToken: 'bot-token', agentSetupDestination: 'incoming-setup-proof' },
+		it.each([
+			{ type: 'telegramApi', setupData: { agentSetupDestination: 'incoming-setup-proof' } },
+			{
+				type: 'slackApi',
+				setupData: {
+					agentSetupDestination: 'incoming-setup-proof',
+					agentId: 'agent-1',
+					agentProjectId: 'project-1',
+					agentWebhookUrl: 'https://hooks.example/slack',
 				},
-				ownerUser,
-			);
-			const data = jsonParse(await Container.get(Cipher).decryptV2(credential.data));
-			expect(data).toEqual({ accessToken: 'bot-token' });
-		});
+			},
+		])(
+			'keeps supplied $type setup evidence out of a new credential',
+			async ({ type, setupData }) => {
+				mockTransactionManager();
+				const credential = await service.createUnmanagedCredential(
+					{
+						...credentialData,
+						type,
+						data: { accessToken: 'bot-token', ...setupData },
+					},
+					ownerUser,
+				);
+				const data = jsonParse(await Container.get(Cipher).decryptV2(credential.data));
+				expect(data).toEqual({ accessToken: 'bot-token' });
+			},
+		);
 
 		it('should allow owner to create global credential', async () => {
 			// ARRANGE
@@ -4710,6 +4724,48 @@ describe('CredentialsService', () => {
 					expect(prepared.data).toEqual({
 						accessToken: 'bot-token',
 						...(proof ? { agentSetupDestination: proof } : {}),
+					});
+				},
+			);
+
+			it.each([
+				{ accessToken: 'xoxb-stored', signatureSecret: 'stored-secret', keepsSetup: true },
+				{ accessToken: 'xoxb-other', signatureSecret: 'stored-secret', keepsSetup: false },
+				{ accessToken: 'xoxb-stored', signatureSecret: 'other-secret', keepsSetup: false },
+				{ accessToken: 'xoxp-user', signatureSecret: 'stored-secret', keepsSetup: false },
+			])(
+				'keeps Slack setup only for the same bot identity ($accessToken, $keepsSetup)',
+				async ({ accessToken, signatureSecret, keepsSetup }) => {
+					const localSetup = {
+						agentId: 'agent-1',
+						agentProjectId: 'project-1',
+						agentWebhookUrl: 'https://hooks.example/slack',
+					};
+					vi.spyOn(service, 'decrypt').mockResolvedValue({
+						accessToken: 'xoxb-stored',
+						signatureSecret: 'stored-secret',
+						...localSetup,
+					});
+					const prepared = await service.prepareUpdateData(
+						ownerUser,
+						{
+							name: 'Slack bot',
+							type: 'slackApi',
+							data: {
+								accessToken,
+								signatureSecret,
+								agentId: 'other-agent',
+								agentProjectId: 'other-project',
+								agentWebhookUrl: 'https://other.example/slack',
+							},
+						},
+						mockExistingCredential({ name: 'Slack bot', type: 'slackApi' }),
+						{ dataMerge: 'replace' },
+					);
+					expect(prepared.data).toEqual({
+						accessToken,
+						signatureSecret,
+						...(keepsSetup ? localSetup : {}),
 					});
 				},
 			);

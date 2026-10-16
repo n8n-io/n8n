@@ -213,12 +213,17 @@ export class AgentIntegrationPersistenceService {
 		const removed = remove
 			? current.find((entry) => matchesIntegrationRef(entry, remove))
 			: undefined;
+		const removesPending =
+			remove &&
+			state.pendingChannelSetup?.requested.some(({ integration }) =>
+				matchesIntegrationRef(integration, remove),
+			);
 
 		const published = state.activeVersionId !== null;
 
 		// A removal of something already gone is not a failure — and with
 		// nothing to add there is no write left to make.
-		if (!add && !removed && !delta.request && !delta.cancelSetup) {
+		if (!add && !removed && !removesPending && !delta.request && !delta.cancelSetup) {
 			return { agent, changed: false, published };
 		}
 

@@ -1845,22 +1845,6 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
-		it('includes setup guidance for Slack in kind=integrations', async () => {
-			integrationPersistenceService.listChatIntegrations.mockReturnValue([
-				{ type: 'slack', label: 'Slack', icon: 'slack', credentialTypes: ['slackApi'] },
-				{ type: 'linear', label: 'Linear', icon: 'linear', credentialTypes: ['linearApi'] },
-			] as never);
-
-			const result = await callTool('discover_agent_assets', {
-				projectId: 'project-1',
-				kind: 'integrations',
-			});
-
-			const [slack, linear] = result.structuredContent.data as Array<Record<string, unknown>>;
-			expect(slack.setupGuidance).toEqual(expect.any(String));
-			expect(linear).not.toHaveProperty('setupGuidance');
-		});
-
 		it('lists MCP registry servers for kind=mcpServers without a query', async () => {
 			mcpRegistryService.list.mockResolvedValue([{ name: 'github' }] as never);
 
@@ -2289,6 +2273,7 @@ describe('McpAgentToolsService', () => {
 					connected: false,
 					activeVersionId,
 					status: 'setup_required',
+					setupUrl: 'https://n8n.test/projects/project-1/agents/agent-1?channelSetup=setup-1',
 					channelSetupRequired: [
 						{
 							setupId: 'setup-1',

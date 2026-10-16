@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import type { User } from '@n8n/db';
+import { CredentialsRepository, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
@@ -67,6 +67,7 @@ export class SlackMethodsService {
 		private readonly cacheService: CacheService,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {}
 
 	async callSlackApi<T extends { [key: string]: unknown }>(
@@ -214,9 +215,6 @@ export class SlackMethodsService {
 			data: {
 				accessToken,
 				signatureSecret: session.signingSecret,
-				agentId: session.agentId,
-				agentProjectId: session.projectId,
-				agentWebhookUrl: session.requestUrl ?? this.webhookUrl(session.projectId, session.agentId),
 				...(session.managerCredentialId
 					? {
 							managedAppId: session.appId,
@@ -231,6 +229,7 @@ export class SlackMethodsService {
 			? await this.credentialsService.createManagedCredential(credentialData, user)
 			: await this.credentialsService.createUnmanagedCredential(credentialData, user);
 		try {
+			await this.storeSetupDestination(credential, accessToken, session);
 			await this.completeChannelSetup(agent, user, credential.id, session.setupId, modifiedBy);
 		} catch (error) {
 			await this.deleteUnreferencedCredential(agent.id, credential.id, user);
@@ -238,6 +237,42 @@ export class SlackMethodsService {
 		}
 		await this.clearManagedAppSession(session);
 		return credential.id;
+	}
+
+	private async storeSetupDestination(
+		credential: Pick<CredentialsEntity, 'id' | 'data'>,
+		accessToken: string,
+		session: SlackAppSetupSession,
+	): Promise<void> {
+		const stored = jsonParse<unknown>(await this.cipher.decryptV2(credential.data), {
+			fallbackValue: null,
+		});
+		if (
+			!isRecord(stored) ||
+			stored.accessToken !== accessToken ||
+			stored.signatureSecret !== session.signingSecret
+		) {
+			throw new BadRequestError(
+				'The Slack credential changed during channel setup. Start setup again.',
+			);
+		}
+		const encrypted = await this.cipher.encryptV2({
+			...stored,
+			agentId: session.agentId,
+			agentProjectId: session.projectId,
+			agentWebhookUrl: session.requestUrl ?? this.webhookUrl(session.projectId, session.agentId),
+		});
+		const saved = await this.credentialsRepository.updateDataIfUnchanged(
+			credential.id,
+			SLACK_CREDENTIAL_TYPE,
+			credential.data,
+			encrypted,
+		);
+		if (!saved) {
+			throw new BadRequestError(
+				'The Slack credential changed during channel setup. Start setup again.',
+			);
+		}
 	}
 
 	assertSetupDestination(agent: Agent, session: SlackAppSetupSession): void {

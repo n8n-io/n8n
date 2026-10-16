@@ -1880,7 +1880,7 @@ export class McpAgentToolsService {
 			...(pending
 				? {
 						status: 'setup_required',
-						agentUrl: pending.setupUrl,
+						setupUrl: pending.setupUrl,
 						nextStep:
 							'Open setupUrl and complete channel setup in n8n. The saved Agent cannot publish until setup is complete.',
 						...(target ? { workspace: target } : {}),
