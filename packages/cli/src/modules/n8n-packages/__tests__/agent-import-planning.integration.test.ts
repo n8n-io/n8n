@@ -102,7 +102,13 @@ function input(sources: PreparedAgent[], projectId = project.id): ImportOrchestr
 		folders: [],
 		workflows: [],
 		options: { ...request, folderConflictPolicy: 'merge' },
-		credentialRequest: { requirements: [], matchingMode: 'id-only', missingMode: 'must-preexist' },
+		credentialRequest: {
+			requirements: [],
+			matchingMode: 'id-only',
+			missingMode: 'must-preexist',
+			conflictPolicy: 'keep-existing',
+			updateScope: { projectIds: new Set([projectId]) },
+		},
 		dataTableRequest: {
 			requirements: [],
 			packageDataTables: [],
@@ -194,6 +200,7 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 		},
 	];
 	request.credentialRequest = {
+		...request.credentialRequest,
 		matchingMode: 'name-and-type',
 		missingMode: 'create-stub',
 		requirements: [
@@ -290,7 +297,7 @@ it.each<WorkflowConflictPolicy>(['new-version', 'skip', 'fail'])(
 	},
 );
 
-it('resolves existing dependencies by source identity and rejects missing references without writes', async () => {
+it('resolves dependency source and exact IDs and rejects missing references without writes', async () => {
 	await agents.save({
 		id: 'child-local',
 		name: 'Child',
@@ -304,7 +311,10 @@ it('resolves existing dependencies by source identity and rejects missing refere
 	const request = input([
 		agent('parent', {
 			subAgents: { agents: [{ agentId: 'child-source' }] },
-			tools: [{ type: 'workflow', workflow: 'Lookup', workflowId: 'workflow-source' }],
+			tools: [
+				{ type: 'workflow', workflow: 'Lookup', workflowId: 'workflow-source' },
+				{ type: 'workflow', workflow: 'Lookup', workflowId: workflow.id },
+			],
 		}),
 	]);
 	const before = await records();
@@ -312,7 +322,7 @@ it('resolves existing dependencies by source identity and rejects missing refere
 	expect(plan.blockingIssues).toEqual([]);
 	expect(plan.agentPlan!.items[0].config).toMatchObject({
 		subAgents: { agents: [{ agentId: 'child-local' }] },
-		tools: [{ workflowId: workflow.id }],
+		tools: [{ workflowId: workflow.id }, { workflowId: workflow.id }],
 	});
 	request.agentRequirements = [{ id: 'missing', usedBy: [{ kind: 'agent', id: 'parent' }] }];
 	const blocked = await planner.plan(request);
@@ -343,6 +353,7 @@ it('keeps credential matches scoped to each project and reports an inaccessible 
 		});
 		const request = input([source], destination.id);
 		request.credentialRequest = {
+			...request.credentialRequest,
 			requirements: [
 				{
 					id: 'source-credential',
@@ -485,7 +496,9 @@ it.each(['skills', 'self-reference'] as const)(
 		expect(plan.blockingIssues).toContainEqual(
 			expect.objectContaining({
 				type: 'agent-invalid',
-				message: expect.stringMatching(invalid === 'skills' ? /skill name/i : /itself/),
+				message: expect.stringMatching(
+					invalid === 'skills' ? /hard to tell apart|skill name/i : /itself/,
+				),
 			}),
 		);
 		expect(await records()).toEqual(before);
