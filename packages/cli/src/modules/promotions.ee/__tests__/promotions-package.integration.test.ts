@@ -889,7 +889,7 @@ describe('Promote and Apply', () => {
 		await service.clone(connection.id, 'apply');
 		const listed = await createTeamProject('Orders', owner);
 		const unlisted = await createTeamProject('Unlisted', owner);
-		const exportDir = path.join(remote.workingDir, 'n8n-export');
+		const exportDir = path.join(remote.workingDir, 'n8n');
 		await packagesService.exportPackageToDirectory(
 			{
 				user: owner,
@@ -2020,7 +2020,7 @@ describe('Promote a project selection — branch effects', () => {
 		);
 	});
 
-	it.each(['n8n-export', 'n8n-export/manifest.json'])(
+	it.each(['n8n', 'n8n/manifest.json'])(
 		'refuses a selection when the local copy lost committed %s, until it connects again',
 		async (lostPath) => {
 			const remote = await createRemote();
@@ -2073,7 +2073,7 @@ describe('Promote a project selection — branch effects', () => {
 		await expect(service.promoteProjectSelection(project.id, owner, request)).rejects.toThrow();
 
 		// The checkout is back to a branch with no commits and no package.
-		await expect(stat(path.join(repositoryFolder, 'n8n-export'))).rejects.toMatchObject({
+		await expect(stat(path.join(repositoryFolder, 'n8n'))).rejects.toMatchObject({
 			code: 'ENOENT',
 		});
 		expect(
