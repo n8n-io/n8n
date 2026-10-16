@@ -32,4 +32,9 @@ export class EnvProxyHttpsAgent extends https.Agent {
 		// No proxy for this target: serve it directly from this agent's own pool.
 		super.addRequest(req, options);
 	}
+
+	destroy(): void {
+		this.router.destroy();
+		super.destroy();
+	}
 }
