@@ -24,7 +24,7 @@ import {
 } from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
 import { getAwsCredentials } from '../../GenericFunctions';
-import type { AwsIamCredentialsType } from '@credentials/common/aws/types';
+import type { AwsCredentialsTypeBase, AwsIamCredentialsType } from '@credentials/common/aws/types';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -788,6 +788,15 @@ export class AwsS3V2 implements INodeType {
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
 					if (operation === 'getPresignedUrl') {
+						const s3Endpoint = (credentials as AwsCredentialsTypeBase).s3Endpoint;
+						
+						if (s3Endpoint?.trim()) {
+							throw new NodeOperationError(
+								this.getNode(),
+								"Presigned URLs are not supported with a custom S3 endpoint. Clear the S3 Endpoint setting to use the default AWS S3 Endpoint."
+							);
+						}
+						
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 
 						if (!bucketName) {
@@ -851,7 +860,7 @@ export class AwsS3V2 implements INodeType {
 						);
 
 						const region = normalizeS3Region(responseData.LocationConstraint._);
-						const validTo = new Date(Date.now() + expiresIn * 1000).toISOString();
+						const expectedExpirationTime = new Date(Date.now() + expiresIn * 1000).toISOString();
 
 						const url = await getPresignedS3Url.call(
 							this,
@@ -864,7 +873,7 @@ export class AwsS3V2 implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ url, validTo }),
+							this.helpers.returnJsonArray({ url, expectedExpirationTime }),
 							{ itemData: { item: i } },
 						);
 
