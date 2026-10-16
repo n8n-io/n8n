@@ -1,4 +1,5 @@
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { QueuedUserChatMessage } from '../types/agent-queued-message';
 import {
 	draftChatMemoryResourceId,
 	productionChatMemoryResourceId,
@@ -17,6 +18,18 @@ export const SYSTEM_CHAT_SOURCE = 'system_chat' as const;
  * `system` is the chat with a code-defined system agent.
  */
 export type AgentChatSurface = 'preview' | 'n8n-chat' | 'system';
+
+/** The chat surface that a queued user chat message runs on. */
+export function chatSurfaceForKind(kind: QueuedUserChatMessage['kind']): AgentChatSurface {
+	switch (kind) {
+		case 'n8n_chat':
+			return 'n8n-chat';
+		case 'system':
+			return 'system';
+		case 'preview':
+			return 'preview';
+	}
+}
 
 /** The memory resource ID that scopes a thread to its owning user on the given chat surface. */
 export function chatSurfaceMemoryResourceId(surface: AgentChatSurface, userId: string): string {
@@ -80,6 +93,23 @@ export function canContinueSystemThread(
 		thread.taskId === null &&
 		source === SYSTEM_CHAT_SOURCE
 	);
+}
+
+/** Whether the user can continue the thread with a message on the chat surface. */
+export function canContinueThreadOnSurface(
+	surface: AgentChatSurface,
+	thread: AgentExecutionThread,
+	userId: string,
+	source?: string | null,
+): boolean {
+	switch (surface) {
+		case 'n8n-chat':
+			return canContinueThreadInN8nChat(thread, userId, source);
+		case 'system':
+			return canContinueSystemThread(thread, userId, source);
+		case 'preview':
+			return canContinueThreadInPreview(thread, userId, source);
+	}
 }
 
 export function canUseTopLevelDraftThread(thread: AgentExecutionThread, userId: string): boolean {

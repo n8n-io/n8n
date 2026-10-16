@@ -23,8 +23,7 @@ import { AgentMessageQueueRepository } from './repositories/agent-message-queue.
 import { canUseSystemAgent } from './system-agents/system-agent-access';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
-import type { AgentQueuedMessage } from './types/agent-queued-message';
-import type { AgentChatSurface } from './utils/agent-thread-access';
+import { chatSurfaceForKind, type AgentChatSurface } from './utils/agent-thread-access';
 
 @Service()
 export class AgentMessageQueueConsumer {
@@ -140,11 +139,11 @@ export class AgentMessageQueueConsumer {
 			controller.signal,
 			this.executionService.getAbortSignal(admission.executionId),
 		]);
-		const sender =
-			payload.kind === 'integration' ? undefined : this.previewStreams.createSender(item.id);
+		const surface = payload.kind === 'integration' ? undefined : chatSurfaceForKind(payload.kind);
+		const sender = surface && this.previewStreams.createSender(item.id);
 		try {
-			if (sender) {
-				const user = await this.getThreadOwner(thread, payload.kind === 'system');
+			if (surface && sender) {
+				const user = await this.getThreadOwner(thread, surface);
 				this.chatExecutionService.register(
 					{
 						projectId: thread.projectId,
@@ -152,7 +151,7 @@ export class AgentMessageQueueConsumer {
 						threadId: thread.id,
 						userId: user.id,
 						executionId: admission.executionId,
-						surface: chatSurfaceFor(payload.kind),
+						surface,
 					},
 					controller,
 				);
@@ -194,10 +193,13 @@ export class AgentMessageQueueConsumer {
 	 * system agent uses the runtime floor and its provider checks instead of
 	 * the project `agent:execute` scope.
 	 */
-	private async getThreadOwner(thread: AgentExecutionThread, systemKind: boolean): Promise<User> {
+	private async getThreadOwner(
+		thread: AgentExecutionThread,
+		surface: AgentChatSurface,
+	): Promise<User> {
 		if (!thread.ownerId) throw new UserError('You can no longer execute this agent');
 		const user = await this.userRepository.findByIdWithRole(thread.ownerId);
-		if (!user || user.disabled || !(await this.canExecute(user, thread, systemKind))) {
+		if (!user || user.disabled || !(await this.canExecute(user, thread, surface))) {
 			throw new UserError('You can no longer execute this agent');
 		}
 		return user;
@@ -206,9 +208,9 @@ export class AgentMessageQueueConsumer {
 	private async canExecute(
 		user: User,
 		thread: AgentExecutionThread,
-		systemKind: boolean,
+		surface: AgentChatSurface,
 	): Promise<boolean> {
-		if (!systemKind) {
+		if (surface !== 'system') {
 			return await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId });
 		}
 		const provider = this.systemAgents.get(thread.agentId);
@@ -316,9 +318,4 @@ export class AgentMessageQueueConsumer {
 		if (!bridge) throw new OperationalError('The message integration is unavailable');
 		await bridge.consumeQueuedMessage(payload, thread.id, claim.admission, signal, connection);
 	}
-}
-
-function chatSurfaceFor(kind: AgentQueuedMessage['kind']): AgentChatSurface {
-	if (kind === 'n8n_chat') return 'n8n-chat';
-	return kind === 'system' ? 'system' : 'preview';
 }
