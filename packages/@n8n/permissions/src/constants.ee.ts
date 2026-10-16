@@ -12,6 +12,7 @@ export const RESOURCES = {
 	skill: [...DEFAULT_OPERATIONS] as const,
 	projectSkill: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
+	app: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,

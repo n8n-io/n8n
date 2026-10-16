@@ -7,6 +7,7 @@ import type { Scope } from '../types.ee';
  * every operation exists in that resource's definition in @n8n/permissions.
  */
 export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
+	app: ['read', 'list', 'create', 'update', 'delete'],
 	project: ['read', 'update', 'delete', 'export', 'manageMembers'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
@@ -84,6 +85,10 @@ type InstanceScopeGroups = {
 };
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
+	app: {
+		View: ['app:list', 'app:read'],
+		Manage: ['app:list', 'app:read', 'app:create', 'app:update', 'app:delete'],
+	},
 	settings: {
 		// Grants access to every instance Settings page, including MCP and n8n
 		// Assistant management. MCP and n8n Assistant also have their own narrower
