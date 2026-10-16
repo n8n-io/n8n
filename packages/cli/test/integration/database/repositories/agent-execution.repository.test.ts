@@ -2693,6 +2693,16 @@ describe('AgentExecutionRepository', () => {
 				);
 			});
 
+			it('refuses a system message without a provider while custom agents are turned off', async () => {
+				const services = recordingServices();
+				await services.settingsService.setEnabled(false);
+				await agentRepo.ensureInstanceAgent(systemAgentId, 'Test System Agent');
+
+				await expect(services.queue.enqueue(systemInput(uuid(), 'Hello', 'new'))).rejects.toThrow(
+					'Agent not found',
+				);
+			});
+
 			it('refuses a Preview message for a system agent', async () => {
 				const services = await systemServices();
 

@@ -94,20 +94,18 @@ export class AgentMessageQueueService {
 	): Promise<{ status: 'accepted'; item: AgentMessageQueue } | { status: 'duplicate' }> {
 		const { payload } = input;
 		// Only the system kind reaches a system agent. Project lookups never return instance agents.
-		const systemAgent =
-			payload.kind === 'system' ? this.systemAgents.get(input.agentId) : undefined;
 		// System agents run even when the admin turns off custom agents.
-		if (!systemAgent) await this.settingsService.assertEnabled();
-		const agent =
-			payload.kind === 'system'
-				? systemAgent
-				: await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
+		const isSystem = payload.kind === 'system';
+		if (!isSystem) await this.settingsService.assertEnabled();
+		const agent = isSystem
+			? this.systemAgents.get(input.agentId)
+			: await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
 		if (!agent) throw new UserError('Agent not found');
 		const messageId = queuedMessageId(input.agentId, input.threadId, payload);
 		let item: AgentMessageQueue;
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
-				if (!systemAgent) await this.settingsService.assertEnabled(ctx);
+				if (!isSystem) await this.settingsService.assertEnabled(ctx);
 				await this.executionService.prepareThread(
 					{
 						...input,
