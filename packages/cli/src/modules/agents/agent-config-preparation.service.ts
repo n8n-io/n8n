@@ -230,7 +230,6 @@ export class AgentConfigPreparationService {
 		if (localIds.some((id) => !id))
 			throw new UserError('A workflow tool references a missing workflow.');
 		const ids = new Set(localIds.filter((id): id is string => id !== undefined));
-		const projectLocal = new Set(ids);
 		for (const tool of config.tools ?? []) {
 			if (tool.type !== 'node') continue;
 			const id = getStaticSubworkflowId({
@@ -240,6 +239,7 @@ export class AgentConfigPreparationService {
 			if (id) ids.add(id);
 		}
 		if (ids.size === 0) return;
+		const projectLocal = new Set(ids);
 		const finder = Container.get(WorkflowFinderService);
 		const readable = await finder.findWorkflowIdsWithScopeForUser([...ids], user, [
 			'workflow:read',

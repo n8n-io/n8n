@@ -340,6 +340,25 @@ export class AgentsService {
 		}
 	}
 
+	async recordSavedSetupComplete(agent: Agent, user: User): Promise<void> {
+		if (agent.setupCompletedAt) return;
+		try {
+			const { AgentSetupCompletionService } = await import('./agent-setup-completion.service.js');
+			const emitSetupCompleted = await Container.get(
+				AgentSetupCompletionService,
+			).recordIfSetupComplete(
+				agent,
+				await this.agentSkillRefs.refsForDraft(agent, {}),
+				agent.projectId,
+				createAgentCredentialProvider(this.credentialsService, agent.projectId, user),
+				user,
+			);
+			await emitSetupCompleted?.();
+		} catch (error) {
+			this.logger.warn('Failed to check Agent setup completion', { agentId: agent.id, error });
+		}
+	}
+
 	private async createCompleteDefinition(
 		projectId: string,
 		options: Extract<CreateAgentOptions, { definition: CompleteAgentDefinition }>,

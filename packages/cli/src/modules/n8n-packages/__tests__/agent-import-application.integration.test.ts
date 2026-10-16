@@ -2,6 +2,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
+	createWorkflow,
 	linkUserToProject,
 	mockInstance,
 	testDb,
@@ -23,6 +24,7 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
@@ -38,6 +40,8 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-decision.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { AiGatewayService } from '@/services/ai-gateway.service';
+import { Telemetry } from '@/telemetry';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
@@ -81,6 +85,7 @@ mockInstance(ActiveWorkflowManager);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 const runtimes = mockInstance(AgentRuntimeCacheService);
 const broadcaster = mockInstance(AgentUpdateBroadcaster);
+const telemetry = mockInstance(Telemetry);
 let owner: User;
 let project: Project;
 let agents: AgentRepository;
@@ -195,14 +200,26 @@ async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedIm
 }
 
 it('applies selected Agents with complete bodies, cycles, workflow bindings and credentials', async () => {
+	vi.spyOn(Container.get(AiGatewayService), 'getCredentialTypeForProviderCached').mockReturnValue(
+		'openAiApi',
+	);
 	const input = fixture();
 	const first = source(input);
 	const second = source(input, 1);
+	for (const agent of [first, second]) {
+		agent.config!.instructions = 'Help with requests.';
+		agent.config!.mcpServers![0].url = 'https://example.com/mcp';
+	}
 	first.config!.model = 'openai/gpt-4.1-mini';
 	first.config!.credential = 'source-model';
 	first.config!.subAgents = { agents: [{ agentId: second.id }] };
 	first.config!.integrations = [{ type: 'slack', credentialId: 'source-chat' }];
-	first.config!.tools!.push({ type: 'workflow', workflowId: first.id, workflow: 'Lookup' });
+	first.config!.tools!.push({
+		type: 'workflow',
+		workflowId: first.id,
+		workflow: 'Lookup',
+		enabled: false,
+	});
 	second.config!.model = 'openai/gpt-4.1-mini';
 	second.config!.credential = AI_GATEWAY_MANAGED_TAG;
 	second.config!.subAgents = { agents: [{ agentId: first.id }] };
@@ -288,6 +305,17 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(broadcaster.notify).toHaveBeenCalled();
 	expect(connect).not.toHaveBeenCalled();
 	expect(schedule).not.toHaveBeenCalled();
+	const setupCompleted = telemetry.track.mock.calls.filter(
+		([event]) => event === TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+	);
+	expect(setupCompleted).toHaveLength(2);
+	for (const agent of [saved, child]) {
+		expect(await agents.findById(agent.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
+		expect(setupCompleted).toContainEqual([
+			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+			expect.objectContaining({ agent_id: agent.id, project_id: project.id, user_id: owner.id }),
+		]);
+	}
 	expect(input).toEqual(original);
 });
 
@@ -368,11 +396,14 @@ it('completes a committed update when the setup check fails', async () => {
 	const initial = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
 	source(input).config!.instructions = 'Updated instructions';
 	vi.clearAllMocks();
-	vi.spyOn(
-		Container.get(AgentSetupCompletionService),
-		'recordIfSetupComplete',
-	).mockRejectedValueOnce(new Error('Setup check is unavailable'));
+	const setupCheck = vi
+		.spyOn(Container.get(AgentSetupCompletionService), 'recordIfSetupComplete')
+		.mockRejectedValueOnce(new Error('Setup check is unavailable'));
 	await importSelected(input);
+	expect(setupCheck.mock.calls[0]?.[0]).toMatchObject({
+		id: initial.id,
+		schema: { instructions: 'Updated instructions' },
+	});
 	expect(await agents.findById(initial.id)).toMatchObject({
 		schema: { instructions: 'Updated instructions' },
 	});
@@ -514,6 +545,33 @@ it.each(['create', 'update'] as const)(
 	},
 );
 
+it('rejects a static child workflow outside the destination project at save time', async () => {
+	const input = fixture();
+	input.manifest.agents.splice(1);
+	const otherProject = await createTeamProject('Other destination', owner);
+	const workflow = await createWorkflow(
+		{ name: 'Lookup', nodes: [], connections: {} },
+		otherProject,
+	);
+	const plan = await planFor(input);
+	expect(plan.blockingIssues).toEqual([]);
+	plan.agentPlan!.items[0].config!.tools!.push({
+		type: 'node',
+		name: 'Execute',
+		enabled: false,
+		node: {
+			nodeType: 'n8n-nodes-base.executeWorkflow',
+			nodeTypeVersion: 1,
+			nodeParameters: { workflowId: { __rl: true, value: workflow.id, mode: 'id' } },
+		},
+	});
+	await expect(orchestrator.apply(plan)).rejects.toThrow(
+		`Workflow "${workflow.id}" is missing or inaccessible.`,
+	);
+	expect(await agents.findByProjectId(project.id)).toEqual([]);
+	expect(await tasks.count()).toBe(0);
+});
+
 it.each(['skill', 'body', 'task', 'credential', 'policy'] as const)(
 	'runs the save-time %s check before any definition write',
 	async (failure) => {
@@ -538,7 +596,7 @@ it.each(['skill', 'body', 'task', 'credential', 'policy'] as const)(
 		if (failure === 'policy') await expect(apply).rejects.toBeInstanceOf(PolicyViolationError);
 		else
 			await expect(apply).rejects.toThrow(
-				/skill name|without a body|cron|missing or inaccessible/i,
+				/hard to tell apart|without a body|cron|missing or inaccessible/i,
 			);
 		expect(await agents.findByProjectId(project.id)).toEqual([]);
 		expect(await tasks.count()).toBe(0);
