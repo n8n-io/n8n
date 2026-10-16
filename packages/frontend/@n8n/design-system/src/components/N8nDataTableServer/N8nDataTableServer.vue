@@ -614,6 +614,8 @@ const table = useVueTable({
 	overflow: auto;
 	scrollbar-gutter: stable;
 	position: relative;
+	// The gutter stays reserved when nothing scrolls. The row colour keeps it from showing as a strip.
+	background-color: var(--color--background--light-3);
 }
 
 th.loading-row {
