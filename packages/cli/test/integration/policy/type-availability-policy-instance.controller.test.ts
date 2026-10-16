@@ -32,8 +32,7 @@ beforeAll(async () => {
 	owner = await createOwner();
 	member = await createMember();
 
-	// A `package` rule is rejected at write time unless the package is actually loaded — see
-	// `n8n-nodes-base` used as a stand-in for "an installed package" below.
+	// `n8n-nodes-base` stands in for an installed package, so its rules save without a warning.
 	Container.get(LoadNodesAndCredentials).loaders = {
 		'n8n-nodes-base': mock<NodeLoader>({ known: { nodes: {}, credentials: {} } }),
 	};
@@ -234,6 +233,29 @@ describe('node type availability policy instance controller admin happy path', (
 		expect(persisted.body.data.version).toBe(3);
 		expect(persisted.body.data.defaultAction).toBe('deny');
 		expect(persisted.body.data.rules).toEqual([rule('r2', 'c.d')]);
+	});
+
+	test('a package rule for an uninstalled package saves with a warning, and does not block later writes', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const missingPackage = {
+			id: 'r-mcp',
+			action: 'deny' as const,
+			selector: { kind: 'package' as const, value: 'n8n-nodes-mcp' },
+		};
+
+		const first = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [missingPackage], defaultAction: 'allow', version: 0 });
+		expect(first.statusCode).toBe(200);
+		expect(first.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-mcp' }]);
+
+		const unrelatedChange = await agent.put('/node-type-policies/instance').send({
+			rules: [missingPackage],
+			defaultAction: 'deny',
+			version: first.body.data.version,
+		});
+		expect(unrelatedChange.statusCode).toBe(200);
+		expect(unrelatedChange.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-mcp' }]);
 	});
 
 	test('a PUT /instance that changes the rules and the default action together moves the version by one', async () => {

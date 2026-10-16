@@ -162,7 +162,7 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 		defaultAction: 'deny' as const,
 		version: 4,
 		rules,
-		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
+		warnings: [{ kind: 'shadowed' as const, ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
 
 	it('getCredentialTypeInstancePolicy reads the null-project scope and maps the response', async () => {

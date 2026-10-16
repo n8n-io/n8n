@@ -4,6 +4,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
@@ -54,6 +55,13 @@ afterEach(async () => {
 		'TypeAvailabilityPolicyScope',
 		'TypeAvailabilityPolicy',
 	]);
+});
+
+// Fixture rules name `a.b`; without it loaded, every write would also warn `notLoaded`.
+beforeEach(() => {
+	vi.spyOn(Container.get(LoadNodesAndCredentials), 'knownNodes', 'get').mockReturnValue({
+		'a.b': { className: '', sourcePath: '' },
+	});
 });
 
 /**
@@ -416,7 +424,9 @@ describe('node type policies public API policy documents', () => {
 			.send({ rules: [DENY_RULE, { ...DENY_RULE, id: 'r2', action: 'allow' }] });
 
 		expect(response.statusCode).toBe(201);
-		expect(response.body.warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+		expect(response.body.warnings).toEqual([
+			{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' },
+		]);
 	});
 
 	test('POST rejects duplicate rule ids with 400', async () => {
