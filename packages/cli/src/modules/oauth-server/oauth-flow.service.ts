@@ -265,23 +265,32 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 	}
 
 	/**
-	 * Trade a refresh token from a completed flow for a fresh pair on the same grant.
-	 * The client comes from `resourceUrl` alone, so this serves virtual clients only — the
-	 * first-party trigger resources where client_id = redirect_uri = resource. A registered
-	 * (DCR) client cannot refresh here; it uses the public `/oauth/token` endpoint.
-	 * The AS rotates: the returned refresh token replaces the one passed in, and the
-	 * old access token stays valid until its own expiry, so requests already in flight
-	 * survive the rotation.
+	 * Rotate a trigger's grant at the source the resource accepts, as `begin` and `complete`
+	 * do: in process on the virtual client at the internal server, or over HTTP at a
+	 * registered source (RFC 6749 §6) with the RFC 8707 resource.
 	 */
-	async refreshVirtualClientToken(
-		refreshToken: string,
-		resourceUrl: string,
-	): Promise<N8nOAuth2RefreshResult> {
+	async refresh(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult> {
 		const resource = await this.resourceRegistry.getByResourceUrl(resourceUrl);
 		if (!resource?.isFirstParty) {
 			throw new UserError(`Not a first-party protected resource: ${resourceUrl}`);
 		}
 
+		const login = await this.redirectLoginOf(acceptedSourceOf(resource), resource.surface);
+		if (!login.ok) {
+			this.logger.warn('Redirect login cannot refresh', { reason: login.reason });
+			return { valid: false, reason: 'source_unusable' };
+		}
+
+		return login.value.client.kind === 'virtual'
+			? await this.refreshWithVirtualClient(refreshToken, resourceUrl)
+			: await this.refreshWithRegisteredClient(login.value, refreshToken, resourceUrl);
+	}
+
+	/** The internal server's rotation, in process, on the trigger's virtual client. */
+	private async refreshWithVirtualClient(
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
 		const client = await this.oauthServerService.clientsStore.getClient(resourceUrl);
 		if (!client) return { valid: false, reason: 'invalid_client' };
 
@@ -311,6 +320,35 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 			}
 			throw error;
 		}
+	}
+
+	/**
+	 * An external issuer's rotation, over HTTP. An issuer that rotates no refresh token keeps
+	 * the presented one valid (§6), so that one is handed back for the next refresh.
+	 */
+	private async refreshWithRegisteredClient(
+		login: RedirectLogin,
+		refreshToken: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2RefreshResult> {
+		const body = new URLSearchParams({
+			grant_type: 'refresh_token',
+			refresh_token: refreshToken,
+			resource: resourceUrl,
+		});
+		const issued = await this.requestTokens(login, body, 'refresh token');
+		if (!issued.ok) return { valid: false, reason: issued.reason };
+
+		const { accessToken } = issued.value;
+		const expiresIn = issued.value.expiresIn ?? secondsUntilExpiry(accessToken);
+		if (expiresIn === undefined) return { valid: false, reason: 'invalid_grant' };
+
+		return {
+			valid: true,
+			token: accessToken,
+			refreshToken: issued.value.refreshToken ?? refreshToken,
+			expiresIn,
+		};
 	}
 
 	/**
@@ -409,19 +447,14 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 
 	/**
 	 * An external issuer's exchange, over HTTP: RFC 6749 §4.1.3 with the PKCE verifier
-	 * and the RFC 8707 resource. A confidential client authenticates with HTTP Basic
-	 * (§2.3.1), a public one names itself in the body.
+	 * and the RFC 8707 resource.
 	 */
 	private async exchangeWithRegisteredClient(
-		{ source, tokenEndpoint, client }: RedirectLogin,
+		login: RedirectLogin,
 		resourceUrl: string,
 		code: string,
 		codeVerifier: string,
 	): Promise<{ ok: true; value: IssuedTokens } | Refused> {
-		if (client.kind !== 'registered') {
-			throw new UnexpectedError('A virtual client cannot exchange a code over HTTP');
-		}
-
 		const body = new URLSearchParams({
 			grant_type: 'authorization_code',
 			code,
@@ -429,6 +462,23 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 			code_verifier: codeVerifier,
 			resource: resourceUrl,
 		});
+		return await this.requestTokens(login, body, 'authorization code');
+	}
+
+	/**
+	 * One token request at the source's endpoint. A confidential client authenticates with
+	 * HTTP Basic (§2.3.1), a public one names itself in the body. `grant` names what was
+	 * presented, for the log line.
+	 */
+	private async requestTokens(
+		{ source, tokenEndpoint, client }: RedirectLogin,
+		body: URLSearchParams,
+		grant: string,
+	): Promise<{ ok: true; value: IssuedTokens } | Refused> {
+		if (client.kind !== 'registered') {
+			throw new UnexpectedError('A virtual client cannot request tokens over HTTP');
+		}
+
 		const headers: Record<string, string> = {
 			'content-type': 'application/x-www-form-urlencoded',
 			accept: 'application/json',
@@ -451,7 +501,7 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		});
 
 		if (response.statusCode < 200 || response.statusCode >= 300) {
-			this.logger.warn('Token endpoint refused the authorization code', {
+			this.logger.warn(`Token endpoint refused the ${grant}`, {
 				sourceId: source.id,
 				status: response.statusCode,
 				error: tokenErrorCode(response.body),
