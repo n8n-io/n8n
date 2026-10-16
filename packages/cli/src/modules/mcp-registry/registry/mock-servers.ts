@@ -1,4 +1,8 @@
-import { AI_GATEWAY_MANAGED_AUTH_TYPE, type McpRegistryServer } from './mcp-registry.types';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	AI_GATEWAY_MCP_CAPABILITY,
+	type McpRegistryServer,
+} from './mcp-registry.types';
 
 export const notionMockServer = {
 	name: 'com.notion/mcp',
@@ -205,5 +209,5 @@ export const firecrawlAiGatewayMockServer = {
 	isOfficial: true,
 	origin: 'registry',
 	status: 'active',
-	requiredCapabilities: ['n8n-connect'],
+	requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],
 } satisfies McpRegistryServer;

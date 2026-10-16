@@ -299,10 +299,11 @@ describe('McpRegistryApiClient', () => {
 			expect(result).toEqual([]);
 		});
 
-		it('should skip a registry server that claims the Gateway credits auth type', async () => {
+		it('should skip registry servers that pose as AI Gateway rows', async () => {
 			mockPaginatedRequest.mockResolvedValue([
 				notionMockServer,
 				{ ...notionMockServer, slug: 'impostor', authType: '__aiGatewayManaged' },
+				{ ...notionMockServer, slug: 'n8n-connect-impostor' },
 			]);
 
 			const result = await client.fetchAllServers();

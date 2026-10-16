@@ -16,6 +16,7 @@ import {
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
 	gmailDirectExtendMockServer,
 	githubUsesCredentialsMockServer,
 	notionMockServer,
@@ -381,6 +382,25 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('deprecatedServer');
 		});
+
+		it.each([
+			{ status: 'active' as const, registersCredential: true },
+			{ status: 'deprecated' as const, registersCredential: false },
+		])(
+			'registers the Gateway credits credential type of an $status AI Gateway row: $registersCredential',
+			async ({ status, registersCredential }) => {
+				const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+				const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+				loader.setServers([{ ...firecrawlAiGatewayMockServer, status }]);
+
+				await loader.loadAll();
+
+				expect(loader.types.nodes.map(({ name }) => name)).toEqual(['n8nConnectFirecrawl']);
+				expect('n8nConnectFirecrawlMcpAiGatewayApi' in loader.known.credentials).toBe(
+					registersCredential,
+				);
+			},
+		);
 	});
 
 	describe('registryRuntime.prepareConnection', () => {

@@ -11,6 +11,7 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import type { License } from '@/license';
+import { parseMcpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -828,6 +829,45 @@ describe('AiGatewayService', () => {
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('fetchAiGatewayMcpServers()', () => {
+		it('maps each AI Gateway MCP server to a valid registry row', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({
+					servers: [
+						{
+							slug: 'firecrawl',
+							name: 'com.n8n/n8n-connect-firecrawl-mcp',
+							title: 'Firecrawl',
+							description: 'Read the web',
+							tagline: 'Read the web with Gateway credits',
+							version: '1.0.0',
+							updatedAt: '2026-09-17T10:00:00.000Z',
+							icons: [{ src: 'https://firecrawl.dev/icon.svg', mimeType: 'image/x-unknown' }],
+							tools: [{ name: 'firecrawl_scrape', readOnlyHint: true }],
+						},
+					],
+				}),
+			);
+
+			const [row] = await makeService().fetchAiGatewayMcpServers();
+
+			expect(parseMcpRegistryServer(row)).toEqual(row);
+			expect(row).toMatchObject({
+				slug: 'n8n-connect-firecrawl',
+				authType: '__aiGatewayManaged',
+				remotes: [{ type: 'streamable-http', url: `${BASE_URL}/v1/gateway/mcp/firecrawl` }],
+				requiredCapabilities: ['n8n-connect'],
+				icons: [{ src: 'https://firecrawl.dev/icon.svg' }],
+			});
+		});
+
+		it('rejects a response that does not match the contract', async () => {
+			requestMock.mockResolvedValueOnce(ok({ servers: [{ slug: 'firecrawl' }] }));
+
+			await expect(makeService().fetchAiGatewayMcpServers()).rejects.toThrow(UserError);
 		});
 	});
 

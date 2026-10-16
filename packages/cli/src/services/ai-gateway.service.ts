@@ -1,6 +1,8 @@
 import {
 	AiGatewayConfigDto,
+	AiGatewayMcpServersResponse,
 	getAgentModelProviderCredentialTypes,
+	type AiGatewayMcpServer,
 	type AiGatewayUsageResponse,
 	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
@@ -18,6 +20,13 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	AI_GATEWAY_MCP_CAPABILITY,
+	AI_GATEWAY_MCP_SLUG_PREFIX,
+	mcpRegistryIconMimeTypeSchema,
+	type McpRegistryServer,
+} from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@n8n/backend-services';
@@ -25,6 +34,46 @@ import { UrlService } from '@n8n/backend-services';
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
+}
+
+/**
+ * Maps an AI Gateway MCP server to a registry row. The row slug has a reserved
+ * prefix, so it cannot replace a registry row; the URL keeps the gateway's own
+ * slug. Optional keys are only set when present, because the refresh compares
+ * rows in their stored form.
+ */
+function toAiGatewayRegistryServer(server: AiGatewayMcpServer, baseUrl: string): McpRegistryServer {
+	return {
+		name: server.name,
+		slug: `${AI_GATEWAY_MCP_SLUG_PREFIX}${server.slug}`,
+		title: server.title,
+		description: server.description,
+		tagline: server.tagline,
+		version: server.version,
+		updatedAt: server.updatedAt,
+		icons: server.icons.map(({ src, mimeType, theme }) => {
+			// The registry picks the preferred icon by MIME type. Drop a value it does not accept.
+			const parsedMimeType = mcpRegistryIconMimeTypeSchema.safeParse(mimeType);
+			return {
+				src,
+				...(parsedMimeType.success ? { mimeType: parsedMimeType.data } : {}),
+				...(theme ? { theme } : {}),
+			};
+		}),
+		...(server.websiteUrl ? { websiteUrl: server.websiteUrl } : {}),
+		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/${server.slug}` }],
+		tools: server.tools.map(({ name, title, readOnlyHint }) => ({
+			name,
+			...(title ? { title } : {}),
+			...(readOnlyHint !== undefined ? { annotations: { readOnlyHint } } : {}),
+		})),
+		isOfficial: true,
+		origin: 'registry',
+		status: 'active',
+		requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],
+		...(server.tags ? { tags: server.tags } : {}),
+	};
 }
 
 export type AiGatewayAvailability =
@@ -91,6 +140,7 @@ export class AiGatewayService {
 			url: string;
 			headers?: Record<string, string>;
 			body?: unknown;
+			signal?: AbortSignal;
 		},
 		errorMessage: string,
 	): Promise<T> {
@@ -103,6 +153,7 @@ export class AiGatewayService {
 				url: options.url,
 				...(options.headers ? { headers: options.headers } : {}),
 				...(options.body !== undefined ? { body: options.body, json: true } : {}),
+				...(options.signal ? { abortSignal: options.signal } : {}),
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as a `UserError` carrying the status code
 			});
@@ -437,6 +488,24 @@ export class AiGatewayService {
 			this.configFetchFailedAt = Date.now();
 			throw error;
 		}
+	}
+
+	/**
+	 * Fetches the AI Gateway MCP servers as registry rows. The registry refresh
+	 * stores them, so every n8n process reads them from the database.
+	 * @throws when the request fails or the response is not valid.
+	 */
+	async fetchAiGatewayMcpServers(signal?: AbortSignal): Promise<McpRegistryServer[]> {
+		const baseUrl = this.requireBaseUrl();
+		const data = await this.gatewayRequest<unknown>(
+			{ method: 'GET', url: `${baseUrl}/v1/gateway/mcp-servers`, signal },
+			'Failed to fetch Gateway credits MCP servers',
+		);
+		const parsed = AiGatewayMcpServersResponse.safeParse(data);
+		if (!parsed.success) {
+			throw new UserError('Gateway credits returned an invalid MCP servers response.');
+		}
+		return parsed.data.servers.map((server) => toAiGatewayRegistryServer(server, baseUrl));
 	}
 
 	/**

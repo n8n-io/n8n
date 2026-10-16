@@ -6,7 +6,8 @@ import { paginatedRequest } from '@/utils/strapi-utils';
 
 import { isSupportedMcpRegistryCredentialType } from '../mcp-registry-connection';
 import {
-	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	AI_GATEWAY_MCP_SLUG_PREFIX,
+	isAiGatewayMcpServer,
 	parseMcpRegistryServer,
 	type McpRegistryServer,
 } from './mcp-registry.types';
@@ -114,7 +115,8 @@ export class McpRegistryApiClient {
 
 	private withSupportedCredentials(server: McpRegistryServer): McpRegistryServer | null {
 		// Only the AI Gateway source creates these rows. A registry row must not pose as one.
-		if (server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE) return null;
+		if (isAiGatewayMcpServer(server)) return null;
+		if (server.slug.startsWith(AI_GATEWAY_MCP_SLUG_PREFIX)) return null;
 		if (server.authType === 'extendsCredential') {
 			return server.extendsCredential &&
 				isSupportedMcpRegistryCredentialType(this.credentialTypes, server.extendsCredential.extends)

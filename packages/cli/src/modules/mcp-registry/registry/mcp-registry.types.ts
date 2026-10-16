@@ -12,6 +12,20 @@ const serverStatuses = ['active', 'deprecated'] as const;
 /** `authType` of a row made from an AI Gateway MCP server. Stored in the database. */
 export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
 
+/** Slug prefix of AI Gateway rows. Reserved: the refresh ignores registry rows that use it. */
+export const AI_GATEWAY_MCP_SLUG_PREFIX = 'n8n-connect-';
+
+/** Registry capability of AI Gateway rows. The instance supports it while Gateway credits are on. */
+export const AI_GATEWAY_MCP_CAPABILITY = 'n8n-connect';
+
+export const mcpRegistryIconMimeTypeSchema = z.enum([
+	'image/png',
+	'image/jpeg',
+	'image/jpg',
+	'image/svg+xml',
+	'image/webp',
+]);
+
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
 
@@ -87,9 +101,7 @@ const mcpRegistryServerBaseSchema = z.object({
 	icons: z.array(
 		z.object({
 			src: z.string(),
-			mimeType: optionalField(
-				z.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']),
-			),
+			mimeType: optionalField(mcpRegistryIconMimeTypeSchema),
 			theme: optionalField(z.enum(['light', 'dark'])),
 		}),
 	),
@@ -151,6 +163,11 @@ export type McpRegistryRemote = McpRegistryServer['remotes'][number];
 export type McpRegistryRemoteType = McpRegistryRemote['type'];
 export type McpRegistryTool = McpRegistryServer['tools'][number];
 export type McpRegistryToolAnnotations = NonNullable<McpRegistryTool['annotations']>;
+
+/** Whether a row comes from the AI Gateway, not from the MCP registry. */
+export function isAiGatewayMcpServer(server: Pick<McpRegistryServer, 'authType'>): boolean {
+	return server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE;
+}
 
 export function parseMcpRegistryServer(value: unknown): McpRegistryServer | null {
 	const result = mcpRegistryServerSchema.safeParse(value);
