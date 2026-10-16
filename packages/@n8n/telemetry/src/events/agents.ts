@@ -225,6 +225,19 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	AGENT_WHATSAPP_WEBHOOK_VERIFIED: {
+		name: 'Agent WhatsApp webhook verified',
+		description:
+			'Meta completed the webhook handshake with an agent: its callback URL is reachable and the verify token matched. Shows how many WhatsApp setups get past the Meta webhook step. Meta repeats the handshake each time someone clicks Verify and save, so one agent can emit this more than once.',
+		properties: z.object({
+			agent_id: z.string(),
+			phase: z
+				.enum(['setup', 'connected'])
+				.describe(
+					'setup: the channel was not connected yet, so n8n answered without a credential; connected: the running channel answered, which is a re-verification',
+				),
+		}),
+	},
 	USER_RESPONDED_TO_AGENT_TOOL_APPROVAL: {
 		name: 'User responded to agent tool approval',
 		description:
@@ -730,6 +743,58 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Only when status is failed. request_failed: the request to n8n failed, so Microsoft was never asked',
 				),
+			session_id: sessionId,
+		}),
+	},
+	USER_CHECKED_WHATSAPP_CHANNEL_CREDENTIAL: {
+		name: 'User checked WhatsApp channel credential',
+		description:
+			'The WhatsApp channel setup checked the selected credential against Meta. Runs on its own whenever the selected credential changes, and when the user clicks Check again. Shows why credentials fail on the way to a connected channel.',
+		properties: z.object({
+			agent_id: z.string(),
+			trigger: z
+				.enum(['auto', 'recheck'])
+				.describe('auto: the selected credential changed; recheck: the user clicked Check again'),
+			status: z.enum(['ok', 'failed']),
+			reason: z
+				.enum([
+					'incomplete',
+					'temporary_token',
+					'mismatch',
+					'unreachable',
+					'not_found',
+					'request_failed',
+				])
+				.optional()
+				.describe(
+					'Only when status is failed. not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked',
+				),
+			session_id: sessionId,
+		}),
+	},
+	USER_CLICKED_WHATSAPP_CHANNEL_LINK: {
+		name: 'User clicked WhatsApp channel link',
+		description:
+			'The user clicked a link in the WhatsApp channel setup or settings that leaves n8n for Meta. Shows where people go to Meta, and whether they need to go back for something the setup could have told them.',
+		properties: z.object({
+			agent_id: z.string(),
+			target: z
+				.enum(['meta_dashboard', 'whatsapp_manager', 'meta_app'])
+				.describe(
+					'meta_dashboard: Open Meta App Dashboard in the setup; whatsapp_manager: Edit in WhatsApp Manager in the settings; meta_app: Find your Meta app in the settings',
+				),
+			session_id: sessionId,
+		}),
+	},
+	USER_SAW_WHATSAPP_REVIEW_STATE: {
+		name: 'User saw WhatsApp review state',
+		description:
+			"The WhatsApp channel settings showed a callout about Meta's review of the phone number. Fires when the settings open with a review open or declined, and again when the state changes, never on every poll. Shows how often Meta declines or restricts a number.",
+		properties: z.object({
+			agent_id: z.string(),
+			state: z
+				.enum(['pending_verification', 'pending_name_review', 'name_declined', 'restricted'])
+				.describe('Which review state the callout described'),
 			session_id: sessionId,
 		}),
 	},
