@@ -20,6 +20,7 @@ interface SystemAgentTurnBase {
 	user: User;
 	thread: AgentExecutionThread;
 	resourceId: string;
+	/** Aborts when the turn stops: a user cancel, the queue, or `runOptions.abortSignal`. */
 	abortSignal: AbortSignal;
 }
 
@@ -60,7 +61,7 @@ export interface SystemAgentTurnHandle {
 	input?: string | Message[];
 	/** Stored on the checkpoint. A resume receives it back. */
 	hostMetadata?: JSONObject;
-	/** Extra SDK run options, such as telemetry. */
+	/** Extra SDK run options, such as telemetry. `abortSignal` stops the turn at any time. */
 	runOptions?: Partial<RunOptions & ExecutionOptions> & Partial<ResumeOptions>;
 	/** Hide the user message from the transcript (machine turns). */
 	hideUserMessage?: boolean;

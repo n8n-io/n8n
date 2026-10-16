@@ -340,6 +340,49 @@ describe('SystemAgentExecutionService', () => {
 			);
 		});
 
+		it('runs the turn under the controller of the provider turn signal', async () => {
+			const { service, provider, turnExecutionService, prepared } = setup([textChunk]);
+			const claimSignal = new AbortController().signal;
+
+			await service.consume(claimFor(), user, claimSignal, vi.fn());
+
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			const [turn] = provider.prepareTurn.mock.calls[0];
+			expect(config.chatController?.signal).toBe(turn.abortSignal);
+			// The claim signal is the request signal: it stops the turn only before admission.
+			expect(prepared[0].options.abortSignal).toBe(claimSignal);
+		});
+
+		it('stops following the provider run signal after the turn settles', async () => {
+			const { service, handle, turnExecutionService, prepared } = setup([textChunk]);
+			const providerAbort = new AbortController();
+			handle.runOptions = { abortSignal: providerAbort.signal };
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+			providerAbort.abort();
+
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			expect(config.chatController?.signal.aborted).toBe(false);
+			expect(prepared[0].options.abortSignal).not.toBe(providerAbort.signal);
+		});
+
+		it('aborts the turn controller while the turn runs when the provider aborts', async () => {
+			const { service, handle, turnExecutionService } = setup();
+			const providerAbort = new AbortController();
+			handle.runOptions = { abortSignal: providerAbort.signal };
+			let abortedInTurn: boolean | undefined;
+			turnExecutionService.execute.mockImplementation(async function* (config) {
+				await config.prepare();
+				providerAbort.abort();
+				abortedInTurn = config.chatController?.signal.aborted;
+				yield textChunk;
+			});
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(abortedInTurn).toBe(true);
+		});
+
 		it('does not prepare a turn when the claim is already aborted', async () => {
 			const { service, provider } = setup();
 			const controller = new AbortController();
@@ -381,6 +424,26 @@ describe('SystemAgentExecutionService', () => {
 				resumeData: { approved: true },
 				options: { runId: 'run-1', toolCallId: 'tc-1' },
 			});
+		});
+
+		it('runs the resumed turn under the controller of the provider turn signal', async () => {
+			const { service, provider, checkpointStorage, turnExecutionService, prepared } = setup([
+				textChunk,
+			]);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(suspendedCheckpoint() as never);
+
+			const result = await service.resume({
+				agentId: AGENT_ID,
+				user,
+				threadId: 'thread-1',
+				resumeData: { approved: true },
+			});
+			await result.done;
+
+			const [config] = turnExecutionService.execute.mock.calls[0];
+			const [turn] = provider.prepareTurn.mock.calls[0];
+			expect(config.chatController?.signal).toBe(turn.abortSignal);
+			expect(prepared[0].options.abortSignal).toBeUndefined();
 		});
 
 		it('refuses when no tool call waits for input', async () => {
@@ -687,6 +750,17 @@ describe('SystemAgentExecutionService', () => {
 			});
 		});
 
+		it('cancels a turn of a user who can no longer use the working project', async () => {
+			const { service, provider, executionRepository, chatExecutionService } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			provider.authorize.mockResolvedValue(false);
+			executionRepository.findLatestByThreadId.mockResolvedValue({ id: 'exec-2' } as never);
+			chatExecutionService.requestCancel.mockResolvedValue(true);
+
+			expect(await service.cancel(AGENT_ID, user, 'thread-1')).toBe(true);
+			expect(chatExecutionService.requestCancel).toHaveBeenCalled();
+		});
+
 		it('returns false for a thread without executions', async () => {
 			const { service, executionRepository, chatExecutionService } = setup();
 			executionRepository.findLatestByThreadId.mockResolvedValue(null);
@@ -731,12 +805,32 @@ describe('SystemAgentExecutionService', () => {
 			expect(threadRepository.moveOwned).not.toHaveBeenCalled();
 		});
 
-		it('renames and moves a thread in one transaction', async () => {
-			const { service, threadRepository, txRunner, executionRepository, checkpointStorage } =
+		it('refuses to move a thread while a message waits in its queue', async () => {
+			const { service, threadRepository, executionRepository, checkpointStorage, messageQueue } =
 				setup();
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+			messageQueue.hasQueuedMessages.mockResolvedValue(true);
+
+			await expect(
+				service.updateThread(AGENT_ID, user, 'thread-1', { projectId: 'project-2' }),
+			).rejects.toThrow('Wait for the current turn to finish before you change the project');
+			expect(threadRepository.moveOwned).not.toHaveBeenCalled();
+		});
+
+		it('renames and moves a thread in one transaction', async () => {
+			const {
+				service,
+				threadRepository,
+				txRunner,
+				executionRepository,
+				checkpointStorage,
+				messageQueue,
+			} = setup();
 			const ctx = {};
 			executionRepository.existsRunningByThread.mockResolvedValue(false);
 			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+			messageQueue.hasQueuedMessages.mockResolvedValue(false);
 			txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
 			threadRepository.renameOwned.mockResolvedValue(true);
 			threadRepository.moveOwned.mockResolvedValue(true);

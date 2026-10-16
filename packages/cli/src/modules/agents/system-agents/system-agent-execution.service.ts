@@ -40,8 +40,10 @@ type SuspendedToolCall = Extract<
 
 export type SystemAgentThreadStatus = 'running' | 'suspended' | 'idle';
 
-function combineSignals(signal: AbortSignal, extra: AbortSignal | undefined): AbortSignal {
-	return extra ? AbortSignal.any([signal, extra]) : signal;
+/** The SDK run options of a handle, without its abort signal. `runTurn` links that signal. */
+function runOptionsOf(handle: SystemAgentTurnHandle) {
+	const { abortSignal: _abortSignal, ...runOptions } = handle.runOptions ?? {};
+	return runOptions;
 }
 
 /**
@@ -212,35 +214,40 @@ export class SystemAgentExecutionService {
 		if (!deleted) throw new NotFoundError('Session not found');
 	}
 
+	/** Whether the thread is not idle. It uses the same rule as `getStatus`. */
 	async isBusy(thread: AgentExecutionThread): Promise<boolean> {
-		if (await this.executionRepository.existsRunningByThread(thread.id)) return true;
-		return (
-			(await this.checkpointStorage.findSuspendedForThread(thread.agentId, thread.id)) !== null
-		);
+		return (await this.resolveStatus(thread)).status !== 'idle';
 	}
 
-	/**
-	 * Status of the thread. A queued message (for example a hidden follow-up
-	 * turn) counts as running, so a client does not see the thread as idle
-	 * between a turn and its follow-up. An open suspension still wins: the
-	 * queue waits for the user to answer it.
-	 */
 	async getStatus(thread: AgentExecutionThread): Promise<{
 		status: SystemAgentThreadStatus;
 		latestExecutionId: string | null;
 		checkpoint: SerializableAgentState | null;
 	}> {
-		const running = await this.executionRepository.existsRunningByThread(thread.id);
-		const checkpoint = running
-			? null
-			: await this.checkpointStorage.findSuspendedForThread(thread.agentId, thread.id);
+		const { status, checkpoint } = await this.resolveStatus(thread);
 		const latest = await this.executionRepository.findLatestByThreadId(thread.id);
-		const queued =
-			!running && !checkpoint && (await this.messageQueue.hasQueuedMessages(thread.id));
-		let status: SystemAgentThreadStatus = 'idle';
-		if (running || queued) status = 'running';
-		else if (checkpoint) status = 'suspended';
 		return { status, latestExecutionId: latest?.id ?? null, checkpoint };
+	}
+
+	/**
+	 * A queued message (for example a hidden follow-up turn) counts as running,
+	 * so the thread is not idle between a turn and its follow-up. An open
+	 * suspension still wins: the queue waits for the user to answer it.
+	 */
+	private async resolveStatus(thread: AgentExecutionThread): Promise<{
+		status: SystemAgentThreadStatus;
+		checkpoint: SerializableAgentState | null;
+	}> {
+		if (await this.executionRepository.existsRunningByThread(thread.id)) {
+			return { status: 'running', checkpoint: null };
+		}
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
+			thread.agentId,
+			thread.id,
+		);
+		if (checkpoint) return { status: 'suspended', checkpoint };
+		const queued = await this.messageQueue.hasQueuedMessages(thread.id);
+		return { status: queued ? 'running' : 'idle', checkpoint: null };
 	}
 
 	// ── Messages ─────────────────────────────────────────────────────────────
@@ -324,12 +331,13 @@ export class SystemAgentExecutionService {
 		signal.throwIfAborted();
 		const { resourceId } = payload;
 		const attachments = payload.attachments ?? [];
+		const controller = new AbortController();
 		const handle = await provider.prepareTurn({
 			type: 'start',
 			user,
 			thread,
 			resourceId,
-			abortSignal: signal,
+			abortSignal: controller.signal,
 			executionId: admission.executionId,
 			message: payload.message,
 			attachments,
@@ -349,14 +357,14 @@ export class SystemAgentExecutionService {
 			attachments.length > 0 && typeof text === 'string'
 				? buildInboundUserMessage(text, attachments)
 				: text;
-		const abortSignal = combineSignals(signal, handle.runOptions?.abortSignal);
-		await this.runTurn(provider, thread, handle, send, abortSignal, admission, async () => ({
+		await this.runTurn(provider, thread, handle, send, controller, admission, async () => ({
 			type: 'start',
 			input,
 			options: {
 				persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
-				...handle.runOptions,
-				abortSignal,
+				...runOptionsOf(handle),
+				// The claim signal stops the turn only until the runtime admits it.
+				abortSignal: signal,
 			},
 			recording: {
 				...claim.recording,
@@ -415,23 +423,21 @@ export class SystemAgentExecutionService {
 			sessionMode: 'existing',
 			source: SYSTEM_CHAT_SOURCE,
 		};
-		const abortSignal = combineSignals(controller.signal, handle.runOptions?.abortSignal);
 		const done = this.runTurn(
 			provider,
 			thread,
 			handle,
 			params.send ?? (() => {}),
-			abortSignal,
+			controller,
 			undefined,
 			async () => ({
 				type: 'resume',
 				resumeData: params.resumeData,
 				options: {
-					...handle.runOptions,
+					...runOptionsOf(handle),
 					runId,
 					toolCallId: pending.toolCallId,
 					hostMetadata: handle.hostMetadata,
-					abortSignal,
 				},
 				recording,
 			}),
@@ -525,7 +531,10 @@ export class SystemAgentExecutionService {
 		await done;
 	}
 
-	/** Stop the running turn, or cancel the suspended one. */
+	/**
+	 * Stop the running turn, or cancel the suspended one. It checks thread
+	 * ownership only, not the floor: a user who lost access can still stop a turn.
+	 */
 	async cancel(agentId: string, user: User, threadId: string): Promise<boolean> {
 		const thread = await this.getThread(agentId, user, threadId);
 		const latest = await this.executionRepository.findLatestByThreadId(thread.id);
@@ -540,18 +549,27 @@ export class SystemAgentExecutionService {
 		});
 	}
 
+	/**
+	 * Run a prepared turn under `controller`, the controller the provider got
+	 * the signal of. A cancel aborts it, and the abort signal in the run
+	 * options of the handle stops the turn at any time.
+	 */
 	private async runTurn(
 		provider: SystemAgentProvider,
 		thread: AgentExecutionThread,
 		handle: SystemAgentTurnHandle,
 		send: (event: AgentSseEvent) => void,
-		abortSignal: AbortSignal,
+		controller: AbortController,
 		admission: AgentExecutionAdmission | undefined,
 		prepare: () => Promise<AgentTurnRequest>,
 	): Promise<void> {
 		let status: SystemAgentTurnStatus = 'completed';
 		let executionId = admission?.executionId;
 		let error: unknown;
+		const providerSignal = handle.runOptions?.abortSignal;
+		const stopTurn = () => controller.abort(providerSignal?.reason);
+		if (providerSignal?.aborted) stopTurn();
+		else providerSignal?.addEventListener('abort', stopTurn, { once: true });
 		try {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
@@ -560,6 +578,7 @@ export class SystemAgentExecutionService {
 				mcpServerAttributions: new Map(),
 				context: { projectId: thread.projectId, agentId: provider.agentId, threadId: thread.id },
 				chatSurface: 'system',
+				chatController: controller,
 				onExecutionStarted: (id) => {
 					executionId = id;
 				},
@@ -576,9 +595,10 @@ export class SystemAgentExecutionService {
 			}
 		} catch (caught) {
 			error = caught;
-			status = abortSignal.aborted ? 'cancelled' : 'errored';
+			status = controller.signal.aborted ? 'cancelled' : 'errored';
 			throw caught;
 		} finally {
+			providerSignal?.removeEventListener('abort', stopTurn);
 			const execution = executionId
 				? await this.executionRepository.findExecution(executionId)
 				: null;
