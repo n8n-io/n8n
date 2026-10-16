@@ -37,9 +37,16 @@ function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string)
 }
 
 function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleMethod[] {
-	return WEBHOOK_LIFECYCLE_METHODS.filter(
-		(method) => !group.properties.some((property) => isMethodProperty(property, method)),
-	);
+	return WEBHOOK_LIFECYCLE_METHODS.filter((method) => {
+		const property = [...group.properties]
+			.reverse()
+			.find(
+				(candidate) =>
+					candidate.type === AST_NODE_TYPES.Property && getPropertyKeyName(candidate) === method,
+			);
+
+		return !property || !isMethodProperty(property, method);
+	});
 }
 
 export const WebhookLifecycleCompleteRule = createRule({

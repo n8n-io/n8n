@@ -98,6 +98,19 @@ async function deleteFn(this: IHookFunctions): Promise<boolean> { return true; }
 			}),
 		},
 		{
+			name: 'last lifecycle property provides the method',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						async create() { return true; },
+						delete: undefined,
+						delete: async () => true,
+					},
+				}`,
+			}),
+		},
+		{
 			name: 'non-trigger node without webhookMethods',
 			code: createTriggerNode({
 				group: 'transform',
@@ -226,6 +239,25 @@ export class RegularClass {
 					default: {
 						async checkExists() { return true; },
 						async create() { return true; },
+						delete: undefined,
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'trigger node with undefined as the last delete method',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						async checkExists() { return true; },
+						async create() { return true; },
+						delete: async () => true,
 						delete: undefined,
 					},
 				}`,
