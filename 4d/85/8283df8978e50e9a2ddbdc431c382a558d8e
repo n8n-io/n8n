@@ -1,0 +1,22 @@
+packages/cli/src/modules/promotions.ee/promotion-reviews.service.ts
+  s_47d1e0264915a8::t_25b390475130e6 101
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.service.test.ts
+  s_47d1e0264915a8::t_bac496e2bf93ae 137-140
+  s_47d1e0264915a8::t_1bf6559b2fb8a2 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d858283df8978e50e9a2ddbdc431c382a558d8e",
+  "prompts": {},
+  "sessions": {
+    "s_47d1e0264915a8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "60e62fb0-397a-40d4-9c2f-b454af702013",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

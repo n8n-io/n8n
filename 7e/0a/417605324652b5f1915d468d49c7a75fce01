@@ -1,0 +1,9 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 8257-8260,8262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7e0a417605324652b5f1915d468d49c7a75fce01",
+  "prompts": {}
+}
