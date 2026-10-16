@@ -79,6 +79,34 @@ type RedirectLogin = {
 
 type Refused = { ok: false; reason: string };
 
+/**
+ * What a trigger page holds between refreshes: the issuer's refresh token, bound to the
+ * source that issued it. Opaque to the node. A binding, not a secret: the page can present
+ * it only here, and from here the token goes only to the source it names.
+ */
+export function encodeRefreshGrant(sourceId: string, refreshToken: string): string {
+	return Buffer.from(JSON.stringify({ sourceId, refreshToken })).toString('base64url');
+}
+
+export function decodeRefreshGrant(
+	grant: string,
+): { sourceId: string; refreshToken: string } | undefined {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(Buffer.from(grant, 'base64url').toString());
+	} catch {
+		return undefined;
+	}
+	if (
+		!isRecord(parsed) ||
+		typeof parsed.sourceId !== 'string' ||
+		typeof parsed.refreshToken !== 'string'
+	) {
+		return undefined;
+	}
+	return { sourceId: parsed.sourceId, refreshToken: parsed.refreshToken };
+}
+
 type IssuedTokens = {
 	accessToken: string;
 	refreshToken?: string;
@@ -252,7 +280,10 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		return {
 			valid: true,
 			token: tokens.accessToken,
-			refreshToken: tokens.refreshToken,
+			refreshToken:
+				tokens.refreshToken === undefined
+					? undefined
+					: encodeRefreshGrant(sourceId, tokens.refreshToken),
 			expiresIn,
 			user: {
 				id: subject.id,
@@ -265,25 +296,42 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 	}
 
 	/**
-	 * Rotate a trigger's grant at the source the resource accepts, as `begin` and `complete`
-	 * do: in process on the virtual client at the internal server, or over HTTP at a
-	 * registered source (RFC 6749 §6) with the RFC 8707 resource.
+	 * Rotate a trigger's grant at the source that issued it: in process on the virtual client
+	 * at the internal server, or over HTTP at a registered source (RFC 6749 §6) with the
+	 * RFC 8707 resource. The resource must still accept that source, as `complete` requires
+	 * of the source a flow began against: a trigger whose selection changed restarts the login
+	 * instead of presenting one source's token to another.
 	 */
-	async refresh(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult> {
+	async refresh(grant: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult> {
 		const resource = await this.resourceRegistry.getByResourceUrl(resourceUrl);
 		if (!resource?.isFirstParty) {
 			throw new UserError(`Not a first-party protected resource: ${resourceUrl}`);
 		}
 
-		const login = await this.redirectLoginOf(acceptedSourceOf(resource), resource.surface);
+		const issued = decodeRefreshGrant(grant);
+		if (!issued) return { valid: false, reason: 'invalid_grant' };
+
+		const accepted = acceptedSourceOf(resource);
+		if (issued.sourceId !== accepted) {
+			this.logger.warn('Refresh grant presented against another trusted source than issued it', {
+				issued: issued.sourceId,
+				accepted,
+			});
+			return { valid: false, reason: 'invalid_grant' };
+		}
+
+		const login = await this.redirectLoginOf(accepted, resource.surface);
 		if (!login.ok) {
 			this.logger.warn('Redirect login cannot refresh', { reason: login.reason });
 			return { valid: false, reason: 'source_unusable' };
 		}
 
-		return login.value.client.kind === 'virtual'
-			? await this.refreshWithVirtualClient(refreshToken, resourceUrl)
-			: await this.refreshWithRegisteredClient(login.value, refreshToken, resourceUrl);
+		const refreshed =
+			login.value.client.kind === 'virtual'
+				? await this.refreshWithVirtualClient(issued.refreshToken, resourceUrl)
+				: await this.refreshWithRegisteredClient(login.value, issued.refreshToken, resourceUrl);
+		if (!refreshed.valid) return refreshed;
+		return { ...refreshed, refreshToken: encodeRefreshGrant(accepted, refreshed.refreshToken) };
 	}
 
 	/** The internal server's rotation, in process, on the trigger's virtual client. */

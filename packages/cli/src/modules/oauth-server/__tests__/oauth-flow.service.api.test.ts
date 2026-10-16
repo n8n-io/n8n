@@ -38,7 +38,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
-import { OAuth2FlowService } from '../oauth-flow.service';
+import { encodeRefreshGrant, OAuth2FlowService } from '../oauth-flow.service';
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthTokenService } from '../oauth-token.service';
 
@@ -588,7 +588,7 @@ describe('complete against a registered source', () => {
 	])(
 		'exchanges the code at the token endpoint as a $kind client and verifies the token through the pipeline',
 		async ({ client, expectClientAuth }) => {
-			const { resourceUrl } = await triggerAtIdp({
+			const { source, resourceUrl } = await triggerAtIdp({
 				source: client && { authentication: { client } },
 			});
 			const accessToken = await signIdpToken(resourceUrl);
@@ -611,7 +611,7 @@ describe('complete against a registered source', () => {
 			expect(result).toEqual({
 				valid: true,
 				token: accessToken,
-				refreshToken: 'idp-refresh',
+				refreshToken: encodeRefreshGrant(source.id, 'idp-refresh'),
 				expiresIn: 1800,
 				user: {
 					id: owner.id,
@@ -720,7 +720,7 @@ describe('complete against a registered source', () => {
 
 	describe('refresh', () => {
 		test('rotates the grant at the token endpoint as a confidential client', async () => {
-			const { resourceUrl } = await triggerAtIdp();
+			const { source, resourceUrl } = await triggerAtIdp();
 			const accessToken = await signIdpToken(resourceUrl);
 			const { service, httpRequest } = flowWithTokenEndpoint([
 				tokenRoute({
@@ -731,12 +731,15 @@ describe('complete against a registered source', () => {
 				}),
 			]);
 
-			const result = await service.refresh('idp-refresh', resourceUrl);
+			const result = await service.refresh(
+				encodeRefreshGrant(source.id, 'idp-refresh'),
+				resourceUrl,
+			);
 
 			expect(result).toEqual({
 				valid: true,
 				token: accessToken,
-				refreshToken: 'idp-refresh-2',
+				refreshToken: encodeRefreshGrant(source.id, 'idp-refresh-2'),
 				expiresIn: 900,
 			});
 			// RFC 6749 §6 with the RFC 8707 resource, authenticated as the registered client.
@@ -755,14 +758,15 @@ describe('complete against a registered source', () => {
 
 		// RFC 6749 §6: an issuer that returns no refresh token keeps the presented one valid.
 		test('keeps the presented refresh token and reads the lifetime off the token when the issuer omits both', async () => {
-			const { resourceUrl } = await triggerAtIdp();
+			const { source, resourceUrl } = await triggerAtIdp();
 			const { service } = flowWithTokenEndpoint([
 				tokenRoute({ access_token: await signIdpToken(resourceUrl) }),
 			]);
+			const grant = encodeRefreshGrant(source.id, 'idp-refresh');
 
-			const result = await service.refresh('idp-refresh', resourceUrl);
+			const result = await service.refresh(grant, resourceUrl);
 
-			expect(result).toMatchObject({ valid: true, refreshToken: 'idp-refresh' });
+			expect(result).toMatchObject({ valid: true, refreshToken: grant });
 			if (result.valid) {
 				expect(result.expiresIn).toBeGreaterThan(3500);
 				expect(result.expiresIn).toBeLessThanOrEqual(3600);
@@ -770,13 +774,23 @@ describe('complete against a registered source', () => {
 		});
 
 		test('refuses a refresh token the issuer rejects', async () => {
-			const { resourceUrl } = await triggerAtIdp();
+			const { source, resourceUrl } = await triggerAtIdp();
 			const { service } = flowWithTokenEndpoint([tokenRoute({ error: 'invalid_grant' }, 400)]);
 
-			expect(await service.refresh('idp-refresh', resourceUrl)).toEqual({
-				valid: false,
-				reason: 'invalid_grant',
-			});
+			expect(
+				await service.refresh(encodeRefreshGrant(source.id, 'idp-refresh'), resourceUrl),
+			).toEqual({ valid: false, reason: 'invalid_grant' });
+		});
+
+		// A trigger moved to another source must not hand the first source's token to the second.
+		test('refuses a grant another source issued, without presenting it anywhere', async () => {
+			const { resourceUrl } = await triggerAtIdp();
+			const { service, httpRequest } = flowWithTokenEndpoint([]);
+
+			expect(
+				await service.refresh(encodeRefreshGrant('previous-idp', 'idp-refresh'), resourceUrl),
+			).toEqual({ valid: false, reason: 'invalid_grant' });
+			expect(httpRequest).not.toHaveBeenCalled();
 		});
 
 		test('refuses a source that lost its redirect-login capability', async () => {
@@ -789,7 +803,9 @@ describe('complete against a registered source', () => {
 				},
 			});
 
-			expect(await service.refresh('idp-refresh', resourceUrl)).toEqual({
+			expect(
+				await service.refresh(encodeRefreshGrant(source.id, 'idp-refresh'), resourceUrl),
+			).toEqual({
 				valid: false,
 				reason: 'source_unusable',
 			});
