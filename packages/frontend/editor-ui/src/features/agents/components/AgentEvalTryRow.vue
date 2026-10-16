@@ -461,9 +461,15 @@ watch(
 .headerTitle {
 	display: flex;
 	flex-direction: column;
+	justify-content: center;
 	gap: var(--spacing--5xs);
 	flex: 1;
 	min-width: 0;
+	// The height of the closed title and status, kept when opening drops the title,
+	// so the avatar and the rows below don't move.
+	min-height: calc(
+		(var(--font-size--sm) + var(--font-size--2xs)) * var(--line-height--lg) + var(--spacing--5xs)
+	);
 }
 
 .statusWarning {
