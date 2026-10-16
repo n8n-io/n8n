@@ -3,7 +3,12 @@ import type { BuiltTool } from '@n8n/agents';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
-import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
+import type {
+	AskUserEvent,
+	InstanceAiContext,
+	InstanceAiToolRegistry,
+	OrchestrationContext,
+} from '../types';
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 
@@ -49,9 +54,12 @@ const loadN8nDocsTool = lazyMod(
 const loadAgentContextTool = lazyMod(
 	() => require('./agent-context.tool') as typeof import('./agent-context.tool'),
 );
-const loadBuildAgentTool = lazyMod(
+const loadSelectAgentTool = lazyMod(
 	() =>
-		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+		require('./orchestration/select-agent.tool') as typeof import('./orchestration/select-agent.tool'),
+);
+const loadAgentBuilderTools = lazyMod(
+	() => require('./orchestration/builder-tools') as typeof import('./orchestration/builder-tools'),
 );
 const loadGetSessionTool = lazyMod(
 	() =>
@@ -102,6 +110,30 @@ const loadWorkspaceTool = lazyMod(
 
 type DomainToolFactory = () => BuiltTool;
 
+/** Records builder telemetry for `ask_user` cards while the thread has a selected Agent. */
+function builderAskUserTelemetry(
+	context: InstanceAiContext,
+): ((event: AskUserEvent) => void) | undefined {
+	const delegate = context.builderDelegate;
+	if (!delegate?.trackAskUser) return undefined;
+	return (event) => {
+		void resolveAgentBuilderTarget(context)
+			.then((target) => {
+				if (!target) return;
+				delegate.trackAskUser?.(
+					target.agentId,
+					{ threadId: context.threadId, runId: context.runId },
+					event,
+				);
+			})
+			.catch((error: unknown) => {
+				context.logger.debug('Failed to record builder ask_user telemetry', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
+	};
+}
+
 function getOrchestratorDomainToolFactories(
 	context: InstanceAiContext,
 ): Array<[string, DomainToolFactory]> {
@@ -115,7 +147,10 @@ function getOrchestratorDomainToolFactories(
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
-		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool(context)],
+		[
+			DOMAIN_TOOL_IDS.ASK_USER,
+			() => loadAskUserTool().createAskUserTool({ onEvent: builderAskUserTelemetry(context) }),
+		],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
@@ -131,7 +166,7 @@ function getOrchestratorDomainToolFactories(
 		]);
 	}
 
-	// eval-config is flag-gated: the adapter only wires evaluationConfigService
+	// eval_config is flag-gated: the adapter only wires evaluationConfigService
 	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([
@@ -245,11 +280,15 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		]);
 	}
 
-	if (context.domainContext?.builderDelegate) {
+	const builderDelegate = context.domainContext?.builderDelegate;
+	if (builderDelegate) {
 		tools.push([
-			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
-			loadBuildAgentTool().createBuildAgentTool(context),
+			ORCHESTRATION_TOOL_IDS.SELECT_AGENT,
+			loadSelectAgentTool().createSelectAgentTool(context),
 		]);
+		for (const tool of loadAgentBuilderTools().createAgentBuilderTools(context, builderDelegate)) {
+			tools.push([tool.name, tool]);
+		}
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

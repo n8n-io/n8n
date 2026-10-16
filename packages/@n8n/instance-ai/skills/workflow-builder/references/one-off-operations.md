@@ -5,17 +5,17 @@ description: >-
   once — export or copy data somewhere, a migration, a backfill, a cleanup —
   with no trigger, schedule, or reuse intent. The workflow is the vehicle, not
   the deliverable. Users rarely say "one-off"; infer it from the task's shape.
-  Load before building for such a request, or when a build-workflow result
+  Load before building for such a request, or when a workflow_build result
   contains postBuildFlow.reason "direct-one-off-build-succeeded". Do not load
   for automations the user will run again — that is the normal build +
   post-build-flow path.
 recommended_tools:
   - nodes
-  - build-workflow
+  - workflow_build
   - workflows
-  - executions
-  - ask-user
-  - verify-built-workflow
+  - workflow_executions
+  - ask_user
+  - workflow_verify_built
 ---
 
 # One-Off Operations
@@ -81,7 +81,7 @@ accessible there, fall back to the one-off workflow flow below.
 Call it with the same shape as a workflow-sdk node — `{ type, version,
 config: { parameters, credentials } }` plus `input` items. Read
 `nodes(action="type-definition")` first, as you would before configuring any
-node. Approval works exactly like `executions(action="run")` — the same
+node. Approval works exactly like `workflow_executions(action="run")` — the same
 run-approval card, admin policy, and session grants — and for a one-off that
 prompt is the consent gate. The returned output items are
 real, so the read-back rule below is satisfied by reading what came back —
@@ -102,18 +102,18 @@ cannot write to external services directly) — the intent changes the
    fire and only misleads. If the task genuinely needs an event source or a
    future run time, it is not a one-off — reclassify it as a reusable
    automation or a scheduled task and use the normal flow. Pass
-   `executionIntent: "one-off"` to `build-workflow`. This marks verification
+   `executionIntent: "one-off"` to `workflow_build`. This marks verification
    as optional in the build outcome — no verification follow-up is scheduled,
    and the completion criterion becomes a live run whose output you read back.
 2. **Setup** is unchanged: if the build outcome requires credential or value
    setup, route it through `workflows(action="setup")` as usual. A one-off
    still needs real credentials before it can run live.
-3. **Run live** with `executions(action="run")`. The run-approval card is the
+3. **Run live** with `workflow_executions(action="run")`. The run-approval card is the
    user's consent gate — for a one-off, the live run IS what the user asked
    for, so the usual "reserve live runs for explicit user requests" rule is
    satisfied by the request itself. Do not run before setup is complete.
 4. **Read back before reporting.** After the run, inspect the actual output of
-   the effect nodes with `executions(action="get-node-output")` — the run
+   the effect nodes with `workflow_executions(action="get-node-output")` — the run
    result data is truncated and not enough for quantitative claims. Check that
    each write/effect node's input was the intended data (the rows you meant to
    write), not an upstream node's API response. Report only numbers, columns,
@@ -130,7 +130,7 @@ cannot write to external services directly) — the intent changes the
 
 ## Optional pre-flight verification
 
-`verify-built-workflow` is available but **not required and never the
+`workflow_verify_built` is available but **not required and never the
 completion criterion** for a one-off. Offer it before the live run only when
 the wiring is complex (branching, merges, non-trivial transformations) or the
 user is cautious about touching real data.

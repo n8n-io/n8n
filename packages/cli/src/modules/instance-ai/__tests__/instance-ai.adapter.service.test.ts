@@ -7856,6 +7856,7 @@ describe('createContext — builder delegate wiring', () => {
 		);
 		const service = createAdapterWithGatewayMock(vi.fn());
 		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.getBuilderTools.mockReturnValue([]);
 		mockBuilderModuleActive(delegate);
 		const moduleRegistry = Container.get(ModuleRegistry);
 		vi.mocked(moduleRegistry.isActive).mockReturnValue(moduleActive);
@@ -7874,7 +7875,7 @@ describe('createContext — builder delegate wiring', () => {
 		expect(context.agentBuilderTarget).toEqual(
 			expected ? { agentId: 'agent-42', projectId: 'proj-1' } : undefined,
 		);
-		expect(tools.has('build-agent')).toBe(expected);
+		expect(tools.has('agent_select')).toBe(expected);
 	});
 
 	it('enables deterministic Agent Builder model catalogs for eval threads', () => {

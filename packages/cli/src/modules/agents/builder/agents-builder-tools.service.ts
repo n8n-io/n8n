@@ -39,13 +39,18 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createAgentContextTool, type InstanceAiCredentialService } from '@n8n/instance-ai';
+import {
+	createAgentContextTool,
+	type AskUserEvent,
+	type InstanceAiCredentialService,
+} from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError, LockedError } from '@n8n/errors';
+import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -81,7 +86,6 @@ import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-optio
 import {
 	buildAskCredentialTool,
 	buildAskEmbeddingCredentialTool,
-	buildAskQuestionsTool,
 	buildConfigureChannelTool,
 	buildFinishSetupTool,
 	buildResolveLlmTool,
@@ -106,8 +110,8 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 
 const BASE_CONFIG_HASH_RULE =
 	'Requires baseConfigHash: the configHash from the latest agent-context with type "config" result, ' +
-	'or from the latest builder result that returned one (write_config, patch_config, create_skills, ' +
-	'create_tasks, finish_setup, configure_channel, verify_mcp_server with credentialApplied: true, ' +
+	'or from the latest builder result that returned one (agent_write_config, agent_patch_config, agent_create_skills, ' +
+	'agent_create_tasks, agent_finish_setup, agent_configure_channel, agent_verify_mcp_server with credentialApplied: true, ' +
 	'or a stale failure), whichever came last. ';
 
 const BASE_CONFIG_HASH_FIELD_DESCRIPTION =
@@ -133,7 +137,7 @@ function parseJsonStringInput(value: unknown): unknown {
 }
 
 /**
- * `write_config` arguments are objects so the model does not have to escape
+ * `agent_write_config` arguments are objects so the model does not have to escape
  * every quote. A JSON string is still accepted, as older tool calls sent one.
  */
 function readStructuredToolInput(
@@ -143,7 +147,7 @@ function readStructuredToolInput(
 }
 
 /**
- * `write_config` keeps every top-level field the model omits. Merge the stored
+ * `agent_write_config` keeps every top-level field the model omits. Merge the stored
  * value before validation, so builder defaults (web search, prompt caching)
  * see the real stored state instead of an empty field.
  */
@@ -153,7 +157,7 @@ function mergeOmittedTopLevelFields(submitted: unknown, stored: AgentJsonConfig 
 }
 
 /**
- * Before `config`, `write_config` took the config as a `json` string. Map that
+ * Before `config`, `agent_write_config` took the config as a `json` string. Map that
  * key so a checkpoint resumed after a deploy can still run a pending call.
  * The model only sees the `config` key in the tool schema.
  */
@@ -296,7 +300,7 @@ const updateTaskInputSchema = z
 
 type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 
-/** A call_agent continuation that carries a sessionNote across an approval. */
+/** An agent_call continuation that carries a sessionNote across an approval. */
 const notedContinuationSchema = z.object({ run: z.unknown(), sessionNote: z.string() }).strict();
 
 type BuilderConfigFailure = {
@@ -325,6 +329,9 @@ interface BuilderToolsOptions {
 	runId?: string;
 	useEvalModelCatalog?: boolean;
 }
+
+/** Placeholder agent id for the tool set that only supplies tool definitions. */
+const UNRESOLVED_TARGET_AGENT_ID = '';
 
 function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot {
 	return {
@@ -512,8 +519,89 @@ export class AgentsBuilderToolsService {
 				user,
 				options,
 			),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
+			shared: this.getSharedTools(agentId, projectId, user),
 		};
+	}
+
+	/**
+	 * Builder tools for a host that selects the target agent per call. Each
+	 * handler resolves the target when it runs, then delegates to the tool built
+	 * for that agent. Tool names, schemas, and descriptions do not depend on the
+	 * agent, so a tool set built for a placeholder id supplies them.
+	 */
+	getToolsForResolvedTarget(
+		resolveTargetAgentId: () => Promise<string>,
+		projectId: string,
+		credentialProviderFor: (agentId: string) => CredentialProvider,
+		credentialService: InstanceAiCredentialService,
+		user: User,
+		options: BuilderToolsOptions & { excludeToolNames?: string[] } = {},
+	): BuiltTool[] {
+		const excluded = new Set(options.excludeToolNames ?? []);
+		const buildToolSet = (agentId: string) => {
+			const { json, shared } = this.getTools(
+				agentId,
+				projectId,
+				credentialProviderFor(agentId),
+				credentialService,
+				user,
+				options,
+			);
+			return [...json, ...shared].filter((tool) => !excluded.has(tool.name));
+		};
+
+		const toolSetsByAgentId = new Map<string, Map<string, BuiltTool>>();
+		const toolFor = (agentId: string, toolName: string): BuiltTool | undefined => {
+			let toolSet = toolSetsByAgentId.get(agentId);
+			if (!toolSet) {
+				toolSet = new Map(buildToolSet(agentId).map((tool) => [tool.name, tool]));
+				toolSetsByAgentId.set(agentId, toolSet);
+			}
+			return toolSet.get(toolName);
+		};
+
+		return buildToolSet(UNRESOLVED_TARGET_AGENT_ID).map((template) => ({
+			...template,
+			handler: async (input, ctx) => {
+				const agentId = await resolveTargetAgentId();
+				const handler = toolFor(agentId, template.name)?.handler;
+				if (!handler) throw new UnexpectedError(`Builder tool "${template.name}" has no handler`);
+				return await handler(input, ctx);
+			},
+		}));
+	}
+
+	private builderTrack(agentId: string, user: User, options?: BuilderToolsOptions): BuilderTrackFn {
+		return (entry, properties) =>
+			this.telemetry.track(entry, {
+				agent_id: agentId,
+				user_id: user.id,
+				...(options?.threadId ? { thread_id: options.threadId } : {}),
+				...(options?.runId ? { run_id: options.runId } : {}),
+				...properties,
+			});
+	}
+
+	/** Builder telemetry for an Instance AI `ask_user` card shown while an agent is selected. */
+	trackAskUser(
+		agentId: string,
+		user: User,
+		session: BuilderToolsOptions,
+		event: AskUserEvent,
+	): void {
+		const track = this.builderTrack(agentId, user, session);
+		if (event.type === 'asked') {
+			track(TELEMETRY_EVENT.AGENTS.BUILDER_ASKED_QUESTIONS, {
+				question_count: event.questionCount,
+				question_types: event.questionTypes,
+			});
+			return;
+		}
+		track(TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS, {
+			outcome: event.outcome,
+			answered_count: event.answeredCount,
+			skipped_count: event.skippedCount,
+		});
 	}
 
 	private getJsonTools(
@@ -524,14 +612,7 @@ export class AgentsBuilderToolsService {
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuiltTool[] {
-		const track: BuilderTrackFn = (entry, properties) =>
-			this.telemetry.track(entry, {
-				agent_id: agentId,
-				user_id: user.id,
-				...(options?.threadId ? { thread_id: options.threadId } : {}),
-				...(options?.runId ? { run_id: options.runId } : {}),
-				...properties,
-			});
+		const track = this.builderTrack(agentId, user, options);
 		const writeConfigTool = this.buildWriteConfigTool(agentId, projectId, user);
 		const patchConfigTool = this.buildPatchConfigTool(agentId, projectId, user);
 		const publishAgentTool = this.buildPublishAgentTool(user, projectId, agentId);
@@ -547,7 +628,6 @@ export class AgentsBuilderToolsService {
 			this.createLlmTool(credentialProvider, modelLookup, user, projectId),
 			this.createCredentialTool(credentialService, projectId, agentId, track),
 			this.createEmbeddingCredentialTool(credentialService, projectId, track),
-			buildAskQuestionsTool({ track }),
 			this.withConfigMutationMarker(
 				this.withConfigSnapshotOnResume(
 					this.createConfigureChannelTool(agentId, projectId, track),
@@ -715,7 +795,7 @@ export class AgentsBuilderToolsService {
 		return new Tool(BUILDER_TOOLS.CALL_AGENT)
 			.description(
 				'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
-					'Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier call_agent result; never make one up. ' +
+					'Omit sessionId to start a new conversation. To continue one, pass the exact sessionId from an earlier agent_call result; never make one up. ' +
 					'If the sessionId is not found, the test starts a new conversation and the result has a sessionNote. ' +
 					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
 					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
@@ -729,7 +809,7 @@ export class AgentsBuilderToolsService {
 						.trim()
 						.optional()
 						.describe(
-							'Exact sessionId from an earlier call_agent result. Omit it to start a new conversation.',
+							'Exact sessionId from an earlier agent_call result. Omit it to start a new conversation.',
 						),
 				}),
 			)
@@ -984,12 +1064,7 @@ export class AgentsBuilderToolsService {
 			.build();
 	}
 
-	private getSharedTools(
-		agentId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		user: User,
-	): BuiltTool[] {
+	private getSharedTools(agentId: string, projectId: string, user: User): BuiltTool[] {
 		const buildCustomToolTool = this.buildCustomToolTool(agentId, projectId, user);
 		const createSkillsTool = this.buildCreateSkillsTool(agentId, projectId, user);
 		const updateSkillTool = this.buildUpdateSkillTool(agentId, projectId, user);
@@ -1013,12 +1088,7 @@ export class AgentsBuilderToolsService {
 				user,
 				projectId,
 			}),
-			...this.agentsToolsService.getSharedTools(
-				credentialProvider,
-				'Read-only inspection of available credentials. Use ask_credential to let the user ' +
-					'pick the credential to wire into a node tool — never copy ids from this list directly ' +
-					'into the config.',
-			),
+			...this.agentsToolsService.getSharedTools(),
 		];
 	}
 
@@ -1031,7 +1101,7 @@ export class AgentsBuilderToolsService {
 					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
 					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
 					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, ' +
+					'the agent is (re)published via `agent_publish`. Returns { ok: true, configMutated: true, agentId, ' +
 					'configHash, tasks: [{ id, name, enabled }, ...] } (same order as input, objectives and crons are ' +
 					'not echoed back) or { ok: false, errors }. Use the returned configHash as baseConfigHash for your ' +
 					'next config write.',
@@ -1043,11 +1113,11 @@ export class AgentsBuilderToolsService {
 					'section filled in with concrete, run-specific content. Agent Instructions still apply and ' +
 					'configured Skills remain available during scheduled runs, so never repeat universal rules or ' +
 					"copy reusable procedures into an objective. If anything is ambiguous, derive it from the user's goal as " +
-					'stated assumptions listed in your summary; ask the user clarifying questions with ask_questions ' +
+					'stated assumptions listed in your summary; ask the user clarifying questions with ask_user ' +
 					'only when even a reasonable assumption is impossible, before calling ' +
-					'create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
+					'agent_create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
 					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +
-					'config (patch_config/write_config) BEFORE calling create_tasks — otherwise the task will fail at ' +
+					'config (agent_patch_config/agent_write_config) BEFORE calling agent_create_tasks — otherwise the task will fail at ' +
 					'runtime. Batch every task you currently know how to write into one call.',
 			)
 			.input(
@@ -1089,7 +1159,7 @@ export class AgentsBuilderToolsService {
 					try {
 						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
 						// and creates every body in one transaction. Enabled by default; each
-						// task starts running once the agent is (re)published via publish_agent.
+						// task starts running once the agent is (re)published via agent_publish.
 						created = await this.agentTaskService.createTasks(
 							agentId,
 							projectId,
@@ -1268,7 +1338,7 @@ export class AgentsBuilderToolsService {
 					'sandbox and saved against the agent. The returned `id` equals the tool name ' +
 					'declared in the code (e.g. `new Tool("my_tool")` → id `"my_tool"`). ' +
 					'This does NOT register the tool in the agent config — follow up with ' +
-					'patch_config (or write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
+					'agent_patch_config (or agent_write_config) to add `{ type: "custom", id: "<tool name>" }` ' +
 					'to `tools`.' +
 					'Returns { ok: true, id, name } or { ok: false, errors }.',
 			)
@@ -1326,7 +1396,7 @@ export class AgentsBuilderToolsService {
 		credentialId: string,
 		user: User,
 	): Promise<McpCredentialApplyResult> {
-		// verify_mcp_server still reports a successful verification; the
+		// agent_verify_mcp_server still reports a successful verification; the
 		// credential just is not written while a user is editing the agent.
 		if (await this.getEditorLockFailure(agentId)) {
 			return { applied: false };
@@ -1544,7 +1614,7 @@ export class AgentsBuilderToolsService {
 				status: 'error',
 				code: 'session_not_found',
 				message:
-					'This test session is no longer available. Call call_agent again without sessionId to start a new test.',
+					'This test session is no longer available. Call agent_call again without sessionId to start a new test.',
 			};
 		}
 		const note = sessionNote ? { sessionNote } : {};

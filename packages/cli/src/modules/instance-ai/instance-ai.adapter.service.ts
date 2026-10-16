@@ -495,10 +495,10 @@ export class InstanceAiAdapterService {
 			 *  A getter for the same reason as the bypass predicate. */
 			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
-			 *  assistant can create one via the build-agent tool. */
+			 *  assistant can create one with the Agent Builder tools. */
 			agentId?: string;
 			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
-			 *  eval-config service/tool not wired. */
+			 *  eval_config service/tool not wired. */
 			configEvalsEnabled?: boolean;
 			setupPanelVariant?: 'control' | 'variant';
 			/** Resolved MCP registry availability. Falsy → mcp service/tool not wired. */
@@ -509,13 +509,13 @@ export class InstanceAiAdapterService {
 			/** Instance activity gate. False disables the activity tool. */
 			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
-			 *  thread by the caller. Absent → conversation-history tool not wired. */
+			 *  thread by the caller. Absent → conversation_history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
 			/** Per-user folder-exploration gate (via `resolveExperimentGates`).
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
-			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
+			/** True while the thread runs the onboarding flow. Gates the `leave_onboarding` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
@@ -670,7 +670,7 @@ export class InstanceAiAdapterService {
 	 * active. The adapter class is statically imported (so its `@Service` is
 	 * always registered), so the module-enabled check is what gates
 	 * agent-building. Returns null when the module is off, so `builderDelegate`
-	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * (and the agent builder tools it supplies) is simply absent from the
 	 * context.
 	 */
 	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
@@ -2446,7 +2446,7 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
-								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'workflow_executions(action="get-node-output") on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2461,7 +2461,7 @@ export class InstanceAiAdapterService {
 							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
 								`so a step run would run ${upper} and the nodes after it again. ` +
 								`Run ${upper} instead, then read this node with ` +
-								'executions(action="get-node-output") on that execution: it holds what every ' +
+								'workflow_executions(action="get-node-output") on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}

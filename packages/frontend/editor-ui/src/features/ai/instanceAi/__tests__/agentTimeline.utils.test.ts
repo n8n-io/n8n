@@ -125,7 +125,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					args: { name: '' },
 					result: { workflowId: 'wf-1', workflowName: '' },
 				}),
@@ -138,7 +138,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'data-tables',
+					toolName: 'data_tables',
 					result: { tableId: 'dt-1', name: '  ' },
 				}),
 			],
@@ -157,7 +157,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-2', workflowName: 'Built WF' },
 					completedAt: '2026-01-01T00:00:00Z',
 				}),
@@ -190,7 +190,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					args: { name: 'Name From Args' },
 					result: { workflowId: 'wf-4' },
 				}),
@@ -203,7 +203,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-5' },
 				}),
 			],
@@ -263,7 +263,7 @@ describe('extractArtifacts', () => {
 			targetResource: { id: 'wf-1', type: 'workflow', name: 'WF From Target' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-1', workflowName: 'WF From ToolCall' },
 				}),
 			],
@@ -278,7 +278,7 @@ describe('extractArtifacts', () => {
 			agentId: 'child-1',
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-child', workflowName: 'Child WF' },
 				}),
 			],
@@ -287,7 +287,7 @@ describe('extractArtifacts', () => {
 			children: [child],
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: { workflowId: 'wf-parent', workflowName: 'Parent WF' },
 				}),
 			],
@@ -302,7 +302,7 @@ describe('extractArtifacts', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
-					toolName: 'build-workflow',
+					toolName: 'workflow_build',
 					result: undefined,
 				}),
 			],
@@ -316,21 +316,25 @@ describe('extractBuiltWorkflowArtifacts', () => {
 		const toolCalls = [
 			makeToolCall({
 				toolCallId: 'tc-1',
-				toolName: 'build-workflow',
+				toolName: 'workflow_build',
 				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
 				completedAt: '2026-10-01T10:00:00.000Z',
 			}),
 			makeToolCall({
 				toolCallId: 'tc-2',
-				toolName: 'build-workflow',
+				toolName: 'workflow_build',
 				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
 			}),
 			makeToolCall({
 				toolCallId: 'tc-3',
-				toolName: 'build-workflow',
+				toolName: 'workflow_build',
 				result: { success: false, workflowId: 'wf-2', errors: ['invalid'] },
 			}),
-			makeToolCall({ toolCallId: 'tc-4', toolName: 'workflows', result: { workflowId: 'wf-3' } }),
+			makeToolCall({
+				toolCallId: 'tc-4',
+				toolName: 'workflows',
+				result: { workflowId: 'wf-3' },
+			}),
 		];
 
 		expect(extractBuiltWorkflowArtifacts(toolCalls)).toEqual([
@@ -346,7 +350,7 @@ describe('extractBuiltWorkflowArtifacts', () => {
 	test('ignores build-workflow calls that have no result yet', () => {
 		expect(
 			extractBuiltWorkflowArtifacts([
-				makeToolCall({ toolName: 'build-workflow', isLoading: true }),
+				makeToolCall({ toolName: 'workflow_build', isLoading: true }),
 			]),
 		).toEqual([]);
 	});
@@ -397,7 +401,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'mcp-servers',
+					toolName: 'mcp_servers',
 					confirmation: {
 						requestId: 'req-1',
 						severity: 'info',
@@ -431,7 +435,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'mcp-servers',
+					toolName: 'mcp_servers',
 					args: { action: 'connect' },
 					isLoading: true,
 				}),
@@ -447,7 +451,7 @@ describe('buildTimelineBlocks', () => {
 			[
 				makeToolCall({
 					toolCallId: 'tc-1',
-					toolName: 'mcp-servers',
+					toolName: 'mcp_servers',
 					args: { action: 'connect' },
 					isLoading: false,
 				}),
@@ -467,14 +471,14 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
 	});
 
-	test('the reply before a leave-onboarding call stays user-facing and the call is hidden', () => {
+	test('the reply before a leave_onboarding call stays user-facing and the call is hidden', () => {
 		const blocks = blocksOf(
 			[
 				reasoning('r1'),
 				text('Explore the app and come back with a task.', 'r1'),
 				toolEntry('tc-leave', 'r1'),
 			],
-			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave-onboarding' })],
+			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave_onboarding' })],
 		);
 
 		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
@@ -510,7 +514,7 @@ describe('buildTimelineBlocks', () => {
 	test('text before an approval-gated tool call stays user-facing', () => {
 		const approval = makeToolCall({
 			toolCallId: 'tc-run',
-			toolName: 'executions',
+			toolName: 'workflow_executions',
 			args: { action: 'run', workflowId: 'wf-1' },
 			confirmation: {
 				requestId: 'req-1',
@@ -664,7 +668,11 @@ describe('buildTimelineBlocks', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build', 'r1'), toolEntry('tc-delegated', 'r1')],
 			[
-				makeToolCall({ toolCallId: 'tc-build', toolName: 'build-workflow', renderHint: 'builder' }),
+				makeToolCall({
+					toolCallId: 'tc-build',
+					toolName: 'workflow_build',
+					renderHint: 'builder',
+				}),
 				makeToolCall({
 					toolCallId: 'tc-delegated',
 					toolName: 'build-workflow-with-agent',

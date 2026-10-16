@@ -389,7 +389,7 @@ function makePlanReviewMessage(): InstanceAiMessage {
 		toolCalls: [
 			{
 				toolCallId: 'tc-plan',
-				toolName: 'create-tasks',
+				toolName: 'workflow_create_tasks',
 				args: {},
 				isLoading: true,
 				confirmationStatus: 'pending',
@@ -1741,7 +1741,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-q',
-					toolName: 'ask-user',
+					toolName: 'ask_user',
 					args: {},
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -2106,7 +2106,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId,
-							toolName: 'build-workflow',
+							toolName: 'workflow_build',
 							args: {},
 							isLoading: false,
 							result: { success: true, workflowId },
@@ -2386,7 +2386,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-build',
-							toolName: 'build-workflow',
+							toolName: 'workflow_build',
 							args: {},
 							isLoading: false,
 							result: { success: true, workflowId },
@@ -2534,7 +2534,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',
-							toolName: 'call_agent',
+							toolName: 'agent_call',
 							args: { message: 'Summarize the thread about the outage' },
 							isLoading: false,
 							result: {
@@ -2871,7 +2871,7 @@ describe('InstanceAiThreadView', () => {
 					toolCalls: [
 						{
 							toolCallId: 'tc-call-1',
-							toolName: 'call_agent',
+							toolName: 'agent_call',
 							args: { message: 'Summarize the thread about the outage' },
 							isLoading: false,
 							result: {

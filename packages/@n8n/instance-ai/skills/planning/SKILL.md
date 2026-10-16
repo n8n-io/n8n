@@ -2,37 +2,37 @@
 name: planning
 dependencies:
   tools:
-    - create-tasks
+    - workflow_create_tasks
 description: >-
   ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
   shared data-table schema/migration across tasks, or the user explicitly asked
-  to review a plan first. If create-tasks is not visible, load it via load_tool
+  to review a plan first. If workflow_create_tasks is not visible, load it via load_tool
   (search "create tasks"). Do NOT use for new one-off workflows,
   single-workflow edits, verification-only requests, or standalone data-table
   ops — use workflow-builder or data-table-manager instead.
 recommended_tools:
-  - create-tasks
+  - workflow_create_tasks
   - workflows
   - nodes
   - credentials
-  - data-tables
+  - data_tables
   - parse-file
   - research
-  - ask-user
+  - ask_user
 ---
 
 # Planning
 
 Use this skill to design a dependency-aware task graph in the orchestrator and
-submit it with `create-tasks`. Do not spawn another agent and do not use
+submit it with `workflow_create_tasks`. Do not spawn another agent and do not use
 incremental plan item tools.
 
-If `create-tasks` is not visible, load it via `load_tool` (search "create tasks")
+If `workflow_create_tasks` is not visible, load it via `load_tool` (search "create tasks")
 before you call it.
 
 ## When NOT to use this skill
 
-Stop and use `workflow-builder` + `build-workflow` instead when the request is:
+Stop and use `workflow-builder` + `workflow_build` instead when the request is:
 
 - A new or one-off single workflow, even if it sounds large or unfamiliar
 - An edit to one existing workflow (nodes, expressions, credentials, schedule, Code)
@@ -40,9 +40,9 @@ Stop and use `workflow-builder` + `build-workflow` instead when the request is:
 - A workflow-local data table whose schema ships with that same workflow
 - Standalone data-table list/schema/query/create/mutation work
 
-Do not call `create-tasks` just to get approval, verification, or a checklist for
+Do not call `workflow_create_tasks` just to get approval, verification, or a checklist for
 a single workflow. Workflow verification is automatic from structured build
-outcomes after `build-workflow`.
+outcomes after `workflow_build`.
 
 ## When to use this skill
 
@@ -50,14 +50,14 @@ Planning is only for work that needs coordination: multiple workflows,
 dependencies between workflows, shared data-table schema or migration work across
 tasks, multiple durable artifacts, broad best-practice research across many
 sources, genuinely ambiguous business-process architecture that cannot be
-resolved with one `build-workflow` call, or an explicit user request to review a
+resolved with one `workflow_build` call, or an explicit user request to review a
 plan first.
 
 If shared data tables are involved, load `data-table-manager` before this skill
 and carry the relevant table guidance into workflow task specs. Clear
 single-workflow builds and existing-workflow edits use `workflow-builder` with
-`build-workflow` directly. Standalone data-table work uses `data-table-manager`
-with direct `data-tables` and `parse-file` calls.
+`workflow_build` directly. Standalone data-table work uses `data-table-manager`
+with direct `data_tables` and `parse-file` calls.
 
 ## Knowledge Base
 
@@ -76,7 +76,7 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
    whether a workflow is new.
 2. Discover what materially affects the plan with normal tools:
    `nodes(action="suggested")`, `credentials(action="list")`,
-   `data-tables(action="list")`, `parse-file`, `workflows`, and `research`
+   `data_tables(action="list")`, `parse-file`, `workflows`, and `research`
    when relevant.
 
 3. Prefer reasonable assumptions over questions. Ask the user only when the
@@ -88,12 +88,12 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
    artifact shared across tasks.
 6. Add checkpoint tasks only for exceptional semantic checks that normal
    workflow verification cannot cover.
-7. Load `create-tasks` via `load_tool` if needed, then call `create-tasks` with
+7. Load `workflow_create_tasks` via `load_tool` if needed, then call `workflow_create_tasks` with
    `planningContext.source: "planning-skill"`,
    a concise `summary`, optional `assumptions`, `postBuildRunRequested: true`
    only when the user explicitly asked to run, execute, or test a workflow
    after building it, and the final task graph.
-8. After calling `create-tasks`, do not write visible text. The approval card is
+8. After calling `workflow_create_tasks`, do not write visible text. The approval card is
    the user-visible surface.
 
 ## Task Graph Rules
@@ -167,7 +167,7 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
 - If no matching credential exists, plan normally. The builder will mock or
   leave it unresolved and route setup after verification.
 - If multiple matching credentials exist and the user did not name one, ask once
-  with `ask-user` because the choice cannot be discovered.
+  with `ask_user` because the choice cannot be discovered.
 - Use credential-backed resource investigation only when it changes the plan,
   for example validating a named Slack channel that affects the architecture. Do
   not turn resource lookup into a credential-choice question unless the
@@ -188,9 +188,9 @@ Do not add checkpoints for routine verification-only work.
 ## Revisions
 
 If the user rejects the plan with requested changes, revise surgically, load
-`create-tasks` via `load_tool` if needed, and call `create-tasks` again in the
+`workflow_create_tasks` via `load_tool` if needed, and call `workflow_create_tasks` again in the
 same orchestrator run with
 `planningContext.source: "planning-skill"`.
 
-If the user denies the plan outright, stop. Do not call `create-tasks` again in
+If the user denies the plan outright, stop. Do not call `workflow_create_tasks` again in
 the same message group.

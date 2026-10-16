@@ -740,20 +740,20 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_ONBOARDING_ENDED: {
 		name: 'AI Assistant onboarding ended',
 		description:
-			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave-onboarding`, or when a run fails.',
+			'The onboarding flow of a thread ended and the normal chat came back. Fires once per thread, from the browser, on the first build, when the agent calls `leave_onboarding`, or when a run fails.',
 		properties: z.object({
 			thread_id: z.string(),
 			instance_id: z.string(),
 			outcome: z
 				.enum(['build', 'left', 'run_failed'])
 				.describe(
-					'build: the agent started the first workflow. left: the agent called `leave-onboarding`. run_failed: the run ended with an error or was interrupted',
+					'build: the agent started the first workflow. left: the agent called `leave_onboarding`. run_failed: the run ended with an error or was interrupted',
 				),
 			leave_reason: z
 				.string()
 				.nullable()
 				.describe(
-					"The reason the agent gave on `leave-onboarding`: 'stop', 'explore' or 'unrelated_request'. Null for the other outcomes, or when the agent gave none",
+					"The reason the agent gave on `leave_onboarding`: 'stop', 'explore' or 'unrelated_request'. Null for the other outcomes, or when the agent gave none",
 				),
 		}),
 	},

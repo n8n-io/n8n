@@ -1,4 +1,4 @@
-import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import type {
 	CodeBuilderSearchResult,
@@ -15,6 +15,7 @@ import {
 	unsupportedEphemeralNodeOperationMessage,
 } from '@/node-execution';
 
+import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
 type NodeRequest =
@@ -86,34 +87,13 @@ const getNodeTypesInputSchema = z.object({
 		),
 });
 
-const listCredentialsInputSchema = z.object({
-	types: z
-		.array(z.string())
-		.optional()
-		.describe(
-			'Optional credential types to filter by (e.g., ["gmailOAuth2", "httpHeaderAuth"]). ' +
-				'When omitted, returns all credentials. Use the credential types declared in the ' +
-				'node schema from get_node_types to narrow the results.',
-		),
-});
-
 @Service()
 export class AgentsToolsService {
 	constructor(private readonly nodeCatalogService: NodeCatalogService) {}
 
-	/**
-	 * Tools usable by the builder while configuring node-backed tools.
-	 * `listCredentialsUsageHint` lets callers tailor the credential guidance.
-	 */
-	getSharedTools(
-		credentialProvider: CredentialProvider,
-		listCredentialsUsageHint: string,
-	): BuiltTool[] {
-		return [
-			this.buildSearchNodesTool(),
-			this.buildGetNodeTypesTool(),
-			this.buildListCredentialsTool(credentialProvider, listCredentialsUsageHint),
-		];
+	/** Tools usable by the builder while configuring node-backed tools. */
+	getSharedTools(): BuiltTool[] {
+		return [this.buildSearchNodesTool(), this.buildGetNodeTypesTool()];
 	}
 
 	async searchAgentToolNodes(queries: string[]): Promise<CodeBuilderSearchResult> {
@@ -124,7 +104,7 @@ export class AgentsToolsService {
 	}
 
 	private buildSearchNodesTool(): BuiltTool {
-		return new Tool('search_nodes')
+		return new Tool(BUILDER_TOOLS.SEARCH_NODES)
 			.description(
 				'Search for n8n nodes by name or service. Use this to find nodes that can be executed. ' +
 					'Returns tool node IDs, display names, versions, and descriptions. ' +
@@ -141,7 +121,7 @@ export class AgentsToolsService {
 	}
 
 	private buildGetNodeTypesTool(): BuiltTool {
-		return new Tool('get_node_types')
+		return new Tool(BUILDER_TOOLS.GET_NODE_TYPES)
 			.description(
 				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
 					'discovery results (search_nodes or agent-context integrations with kind "node"). Returns ' +
@@ -173,26 +153,6 @@ export class AgentsToolsService {
 					nodeIds.map(normalizeNodeRequestForCatalog),
 				);
 				return { results };
-			})
-			.build();
-	}
-
-	private buildListCredentialsTool(
-		credentialProvider: CredentialProvider,
-		usageHint: string,
-	): BuiltTool {
-		return new Tool('list_credentials')
-			.description(
-				'List the credentials available to the user. Returns an array of credential names and types. ' +
-					'Accepts an optional `types` filter to return only credentials matching the given types. ' +
-					usageHint,
-			)
-			.input(listCredentialsInputSchema)
-			.handler(async ({ types }: { types?: string[] }) => {
-				const creds = await credentialProvider.list();
-				if (!types || types.length === 0) return { credentials: creds };
-				const allowed = new Set(types);
-				return { credentials: creds.filter((c) => allowed.has(c.type)) };
 			})
 			.build();
 	}

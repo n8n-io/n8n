@@ -7,6 +7,7 @@ import {
 	instanceAiEvalSeedAgentSchema,
 	instanceAiEvalSeedArtifactIdSchema,
 	instanceAiEvalSeedFolderSchema,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
@@ -14,6 +15,7 @@ import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import { isAgentTargetingToolName } from '../../src/tools/orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import {
 	extractAskUserAnswers,
@@ -650,7 +652,9 @@ const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
  *  else a generic tool-call). */
 function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 	const call: SeedToolCall = {
-		toolName: typeof block.toolName === 'string' ? block.toolName : 'unknown-tool',
+		// Seeded histories can carry a former builder tool name.
+		toolName:
+			typeof block.toolName === 'string' ? resolveBuilderToolName(block.toolName) : 'unknown-tool',
 		input: isRecord(block.input) ? block.input : undefined,
 		output: isRecord(block.output) ? block.output : undefined,
 	};
@@ -671,7 +675,7 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
  * and so the one a case grades and executes.
  *
  * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
- * resolved `build-agent` call, ordered by `(createdAt, id)` because that is how the
+ * resolved agent-targeting call, ordered by `(createdAt, id)` because that is how the
  * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
  * parent/helper seed would otherwise have the harness grade one agent while the
  * thread continues the other.
@@ -691,7 +695,7 @@ export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;
-			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
+			if (!isAgentTargetingToolName(block.toolName)) continue;
 			const output = isRecord(block.output) ? block.output : undefined;
 			if (typeof output?.agentId === 'string') active = output.agentId;
 		}

@@ -52,7 +52,11 @@ describe('llm-step-display', () => {
 				role: 'assistant',
 				content: [
 					{ type: 'text', text: 'Here is the plan.' },
-					{ type: 'tool-call', toolName: 'search_nodes', input: { query: 'webhook' } },
+					{
+						type: 'tool-call',
+						toolName: 'search_nodes',
+						input: { query: 'webhook' },
+					},
 				],
 			},
 		]);
@@ -98,12 +102,12 @@ describe('llm-step-display', () => {
 		const blocks = parseToolCallBlocks([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'build-workflow',
+				toolName: 'workflow_build',
 				input: { code: 'workflow code' },
 			},
 		]);
 
-		expect(blocks[0]?.name).toBe('build-workflow');
+		expect(blocks[0]?.name).toBe('workflow_build');
 		expect(blocks[0]?.kind).toBe('input');
 		expect(blocks[0]?.payload).toEqual({ code: 'workflow code' });
 		expect(blocks[0]?.content).toBe('{ code: workflow code }');
@@ -114,12 +118,12 @@ describe('llm-step-display', () => {
 		const blocks = parseToolResultBlocks([
 			{
 				toolCallId: 'tc-1',
-				toolName: 'build-workflow',
+				toolName: 'workflow_build',
 				output: { success: true, workflowId: 'wf-1' },
 			},
 		]);
 
-		expect(blocks[0]?.name).toBe('build-workflow');
+		expect(blocks[0]?.name).toBe('workflow_build');
 		expect(blocks[0]?.kind).toBe('output');
 		expect(blocks[0]?.payload).toEqual({ success: true, workflowId: 'wf-1' });
 		expect(blocks[0]?.content).toBe('{ success, workflowId }');
@@ -195,7 +199,13 @@ describe('llm-step-display', () => {
 				messages: [
 					{
 						role: 'assistant',
-						content: [{ type: 'tool-call', toolName: 'nodes', input: { action: 'search' } }],
+						content: [
+							{
+								type: 'tool-call',
+								toolName: 'nodes',
+								input: { action: 'search' },
+							},
+						],
 					},
 				],
 			},
@@ -223,13 +233,13 @@ describe('llm-step-display', () => {
 				},
 				{
 					finishReason: 'tool-calls',
-					toolCalls: [{ toolName: 'search_nodes' }, { toolName: 'build-workflow' }],
+					toolCalls: [{ toolName: 'search_nodes' }, { toolName: 'workflow_build' }],
 					usage: { inputTokens: 100, outputTokens: 20, totalTokens: 120 },
 				},
 			),
 		).toEqual({
 			finishReason: 'tool-calls',
-			toolNames: ['search_nodes', 'build-workflow'],
+			toolNames: ['search_nodes', 'workflow_build'],
 			usageLabel: 'in: 100 · out: 20 · total: 120',
 			messagePreview: 'Build a weather workflow please',
 			systemCharCount: 100,

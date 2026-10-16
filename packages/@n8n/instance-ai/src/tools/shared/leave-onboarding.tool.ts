@@ -1,4 +1,5 @@
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { DOMAIN_TOOL_IDS } from '../tool-ids';
@@ -12,6 +13,7 @@ import { DOMAIN_TOOL_IDS } from '../tool-ids';
 export function createLeaveOnboardingTool() {
 	return (
 		new Tool(DOMAIN_TOOL_IDS.LEAVE_ONBOARDING)
+			.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.LEAVE_ONBOARDING))
 			.description(
 				'End the onboarding flow. Call it when the user wants to stop the onboarding, explore n8n ' +
 					'on their own, or asks for something unrelated to picking a first automation. After the call, ' +

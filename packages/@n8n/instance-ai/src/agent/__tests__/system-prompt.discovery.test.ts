@@ -172,12 +172,12 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 	});
 
 	describe('MCP server guidance belongs to the tool, not the prompt', () => {
-		// Guidance lives on `mcp-servers`, which is never deferred, so its description
+		// Guidance lives on `mcp_servers`, which is never deferred, so its description
 		// reaches every request the way a prompt section would — without a second copy.
 		it('says nothing about MCP servers', () => {
 			const prompt = getSystemPrompt({ toolSearchEnabled: true, mcpToolSearchEnabled: true });
 
-			expect(prompt).not.toContain('mcp-servers');
+			expect(prompt).not.toContain('mcp_servers');
 			expect(prompt).not.toContain('## MCP Servers');
 		});
 	});

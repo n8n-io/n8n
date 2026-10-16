@@ -22,7 +22,7 @@ const OTHER_USER_ID = 'user-2';
 describe('InstanceAiConversationHistoryRepository', () => {
 	let repository: InstanceAiConversationHistoryRepository;
 	// Entity repositories are fixture setup only — the reads under test all
-	// belong to the conversation-history repository.
+	// belong to the conversation_history repository.
 	let messageRepository: InstanceAiMessageRepository;
 	let threadRepository: InstanceAiThreadRepository;
 	let project: Project;

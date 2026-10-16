@@ -1025,7 +1025,7 @@ export class InstanceAiController {
 	/**
 	 * Persist the pending new-agent artifact this thread has open, and bind it to
 	 * the thread in the same request. Idempotent under a concurrent writer on the
-	 * same client-minted id (the chat's build-agent tool), unlike the strict
+	 * same client-minted id (the chat's `agent_select` tool), unlike the strict
 	 * project-scoped agent create.
 	 */
 	@Post('/threads/:threadId/agent')

@@ -7,6 +7,8 @@
 //   - Did it use (or avoid) a specific tool when it should have?
 // ---------------------------------------------------------------------------
 
+import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+
 import type {
 	GraderResult,
 	ScenarioTrace,
@@ -24,7 +26,10 @@ import { isComputerUseTool } from './tool-set';
 
 const DEFAULT_MAX_REPEATED_CALL = 3;
 const DEFAULT_TOOLS_MUST_NOT_ERROR_PREFIX = 'browser';
-const DEFAULT_TOOLS_MUST_NOT_ERROR_IGNORE: readonly string[] = ['ask-user', 'pause-for-user'];
+const DEFAULT_TOOLS_MUST_NOT_ERROR_IGNORE: readonly string[] = [
+	WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
+	'pause-for-user',
+];
 const DEFAULT_MUST_REACH_URL_PREFIX = 'browser';
 const URL_LIKE_ARG_FIELDS: readonly string[] = ['url', 'to', 'href', 'target', 'link'];
 // `finalText` is the concatenation of every text-delta event in the run, so

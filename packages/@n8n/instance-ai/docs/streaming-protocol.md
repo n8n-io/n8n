@@ -129,7 +129,7 @@ are sent. The frontend should handle the absence gracefully.
 ### `tool-input-start`
 
 A tool call's arguments have started streaming from the model. Sent before
-`tool-call` — for tools with large arguments (e.g. `build-workflow` streaming
+`tool-call` — for tools with large arguments (e.g. `workflow_build` streaming
 generated workflow code) this can precede the full `tool-call` event by a
 long time, so the frontend can surface the pending call immediately.
 
@@ -140,7 +140,7 @@ long time, so the frontend can surface the pending call immediately.
   "agentId": "agent-001",
   "payload": {
     "toolCallId": "tc_abc123",
-    "toolName": "build-workflow"
+    "toolName": "workflow_build"
   }
 }
 ```
@@ -225,6 +225,8 @@ The orchestrator has started a child or embedded specialist agent.
 The frontend adds a new node to the agent activity tree under the parent.
 For this event type, `agentId` is the child agent ID; `payload.parentId` links it
 to the orchestrator. Historical detached-agent events use the same shape.
+New runs do not spawn an `agent-builder` child, because the orchestrator runs
+the Agent Builder tools itself. Stored threads can still contain these events.
 
 ### `agent-completed`
 
@@ -333,7 +335,7 @@ latest snapshot per `workflowId` onto the ROOT agent node regardless of the
 emitting agent, so it survives refresh via `GET /messages`.
 
 Emitted only while the setup panel flag is on, through the host-wired
-`setupItemsEmitter` on the domain context. `build-workflow` replaces the
+`setupItemsEmitter` on the domain context. `workflow_build` replaces the
 snapshot on every successful save (open credential slots fanned out to their
 nodes, slots already bound to a stored credential, and nodes with unresolved
 parameters); `workflows(action="setup")` publishes the same whole-workflow
@@ -517,18 +519,14 @@ The four statuses are `completed`, `cancelled`, `error` and `interrupted`.
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
 ```
 
-### Agent Builder Child Agent
+### Agent Build
 
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", toolName: "build-agent", args: {name: "Support agent", message: "Add a support task"}}}
-← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "agent-builder", tools: [], kind: "agent-builder"}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", toolName: "read_config", args: {}}}
-← tool-result     {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", result: {...}}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc3", toolName: "write_config", args: {...}}}
-← tool-result     {runId: "r1", agentId: "a2", payload: {toolCallId: "tc3", result: {...}}}
-← agent-completed {runId: "r1", agentId: "a2", payload: {role: "agent-builder", result: "Updated the support agent"}}
-← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", result: {ok: true, agentId: "agent-123", configUpdated: true}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", toolName: "agent_select", args: {name: "Support agent"}}}
+← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", result: {ok: true, agentId: "agent-123", agentRef: "support-agent", agentChange: "created", ...}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc2", toolName: "agent_write_config", args: {...}}}
+← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc2", result: {ok: true, configMutated: true, agentId: "agent-123", ...}}}
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "The support agent is ready."}}
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
 ```
@@ -639,13 +637,9 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 credentials → [slack-bot, weather-api]
-├── 📋 create-tasks: build → verify
-├── 🔧 build-agent → agent-123
-│
-├── 🤖 Agent Builder
-│   ├── 🔧 read_config → agent-123
-│   ├── 🔧 write_config → agent-123
-│   └── ✅ "Updated the support agent"
+├── 📋 workflow_create_tasks: build → verify
+├── 🔧 agent_select → agent-123
+├── 🔧 agent_write_config → agent-123
 │
 └── 💬 "The support agent is ready."
 ```

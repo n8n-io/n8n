@@ -23,10 +23,11 @@
 // (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
-import type { GuardrailsOptions } from '@n8n/agents';
-import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
+import { Tool, type BuiltTool, type GuardrailsOptions } from '@n8n/agents';
+import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 import {
 	buildConfirmationPolicy,
@@ -63,8 +64,8 @@ import {
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
+import { AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES } from '../../src/tools/tool-ids';
 import type {
-	BuilderTurnStream,
 	InstanceAiContext,
 	InstanceAiBuilderDelegate,
 	ComputerUseState,
@@ -237,7 +238,7 @@ export async function runOrchestratorTurn(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// `workflow_create_tasks` and runtime skills. Discovery scenarios measure first-step
 		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
@@ -385,20 +386,17 @@ function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 }
 
-function completedBuilderTurn(): BuilderTurnStream {
-	return {
-		fullStream: (async function* () {
-			await Promise.resolve();
-			yield {
-				type: 'tool-call',
-				toolCallId: 'discovery-write',
-				toolName: 'write_config',
-				input: {},
-			};
-			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
-		})(),
-		text: Promise.resolve('Agent configured for discovery evaluation.'),
-	};
+/** Builder tools that accept any input and report success, so routing is all that is graded. */
+function createStubBuilderTools(): BuiltTool[] {
+	return AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES.filter(
+		(name) => name !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+	).map((name) =>
+		new Tool(name)
+			.description(`Discovery stub for ${name}.`)
+			.input(z.object({}).passthrough())
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build(),
+	);
 }
 
 function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
@@ -409,10 +407,9 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 				projectId: 'discovery-project',
 				name,
 			}),
-		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		findOpenSuspensions: async () => await Promise.resolve([]),
-		cancelOpenSuspension: async () => await Promise.resolve(),
+		getBuilderTools: () => createStubBuilderTools(),
+		getRuntimeSkills: () => [],
+		getBuilderSessionContext: async () => await Promise.resolve('## Session context'),
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }
@@ -450,7 +447,7 @@ function createStubOrchestrationContext(
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Registers the `workspace_*` file tools for build-workflow
+		// Registers the `workspace_*` file tools for workflow_build
 		...(opts.context.workspace ? { workspace: opts.context.workspace } : {}),
 		...(opts.context.workspaceRoot ? { workspaceRoot: opts.context.workspaceRoot } : {}),
 		// Used for the orchestrator's untrusted-content doctrine and other domain references.

@@ -58,10 +58,17 @@ vi.mock('../../tools', () => ({
 			conversationHistoryService?: unknown;
 			currentUserAttachments?: unknown[];
 		}) => {
-			const names = ['workflows', 'research', 'n8n-docs', 'nodes', 'executions', 'build-workflow'];
-			if (context.evaluationConfigService) names.push('eval-config');
-			if (context.mcpService) names.push('mcp-servers');
-			if (context.conversationHistoryService) names.push('conversation-history');
+			const names = [
+				'workflows',
+				'research',
+				'n8n-docs',
+				'nodes',
+				'workflow_executions',
+				'workflow_build',
+			];
+			if (context.evaluationConfigService) names.push('eval_config');
+			if (context.mcpService) names.push('mcp_servers');
+			if (context.conversationHistoryService) names.push('conversation_history');
 			if (context.currentUserAttachments?.length) names.push('parse-file');
 			return new Set(names);
 		},
@@ -73,16 +80,22 @@ vi.mock('../../tools', () => ({
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['n8n-docs', mockBuiltTool(`n8n-docs-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
-				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
-				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
+				[
+					'workflow_executions',
+					mockBuiltTool(`workflow_executions-${context.runLabel ?? 'unknown'}`),
+				],
+				['workflow_build', mockBuiltTool(`workflow_build-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestrationTools: vi.fn(
 		(context: { runId: string }) =>
 			new Map([
-				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
-				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
-				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
+				['workflow_create_tasks', mockBuiltTool(`workflow_create_tasks-${context.runId}`)],
+				[
+					'workflow_complete_checkpoint',
+					mockBuiltTool(`workflow_complete_checkpoint-${context.runId}`),
+				],
+				['workflow_verify_built', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
 			]),
 	),
 }));
@@ -197,19 +210,27 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['create-tasks-run-1']).toBeUndefined();
-		expect(deferredTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(attachedTools['workflow_create_tasks-run-1']).toBeUndefined();
+		expect(deferredTools['workflow_create_tasks-run-1']).toMatchObject({
+			name: 'workflow_create_tasks-run-1',
+		});
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['build-workflow-run-1']).toMatchObject({
-			name: 'build-workflow-run-1',
+		expect(attachedTools['workflow_build-run-1']).toMatchObject({
+			name: 'workflow_build-run-1',
 		});
-		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
+		expect(attachedTools['workflows-run-1']).toMatchObject({
+			name: 'workflows-run-1',
+		});
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
 		});
-		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
-		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
+		expect(attachedTools['nodes-run-1']).toMatchObject({
+			name: 'nodes-run-1',
+		});
+		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({
+			name: 'nodes-run-2',
+		});
 	});
 
 	it('shares one domain context between domain and orchestration tools', async () => {
@@ -235,14 +256,14 @@ describe('createInstanceAgent', () => {
 			context: { runLabel: 'profile' },
 			orchestrationContext: {
 				runId: 'profile',
-				disabledToolNames: new Set(['create-tasks', 'nodes']),
+				disabledToolNames: new Set(['workflow_create_tasks', 'nodes']),
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
-		expect(getDeferredTools()).not.toHaveProperty('create-tasks-profile');
+		expect(getDeferredTools()).not.toHaveProperty('workflow_create_tasks-profile');
 		expect(getAttachedTools()).not.toHaveProperty('nodes-profile');
-		expect(getAttachedTools()).toHaveProperty('build-workflow-profile');
+		expect(getAttachedTools()).toHaveProperty('workflow_build-profile');
 	});
 
 	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
@@ -265,10 +286,10 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		expect(attachedTools['complete-checkpoint-checkpoint-run']).toMatchObject({
-			name: 'complete-checkpoint-checkpoint-run',
+		expect(attachedTools['workflow_complete_checkpoint-checkpoint-run']).toMatchObject({
+			name: 'workflow_complete_checkpoint-checkpoint-run',
 		});
-		expect(deferredTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
+		expect(deferredTools['workflow_complete_checkpoint-checkpoint-run']).toBeUndefined();
 	});
 
 	it('keeps workflow-builder skill tool names always loaded', async () => {
@@ -290,7 +311,7 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		for (const toolName of ['build-workflow', 'nodes', 'executions']) {
+		for (const toolName of ['workflow_build', 'nodes', 'workflow_executions']) {
 			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
 			expect(deferredTools[scopedName]).toBeUndefined();
@@ -660,7 +681,7 @@ describe('createInstanceAgent', () => {
 		};
 
 		// The tools capture their context by value, so the inventory has to be in place
-		// before `mcp-servers` is built — not handed to the prompt.
+		// before `mcp_servers` is built — not handed to the prompt.
 		it('hands the domain tools the inventory, keyed by service', async () => {
 			await buildWith();
 
@@ -791,10 +812,10 @@ describe('createInstanceAgent', () => {
 			getToolsByCategory: vi.fn().mockReturnValue([]),
 		};
 		createToolsFromLocalMcpServer.mockReturnValue(
-			new Map([['conversation-history', mockBuiltTool('conversation-history', 'mcp-history')]]),
+			new Map([['conversation_history', mockBuiltTool('conversation_history', 'mcp-history')]]),
 		);
 		createOrchestratorDomainTools.mockReturnValueOnce(
-			new Map([['conversation-history', mockBuiltTool('conversation-history', 'native-history')]]),
+			new Map([['conversation_history', mockBuiltTool('conversation_history', 'native-history')]]),
 		);
 
 		await createInstanceAgent({
@@ -813,7 +834,7 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		const attachedTools = getAttachedTools();
-		expect(attachedTools['conversation-history']).toMatchObject({ marker: 'native-history' });
+		expect(attachedTools['conversation_history']).toMatchObject({ marker: 'native-history' });
 	});
 
 	it('keeps MCP tools whose conditional native counterparts are inactive', async () => {
@@ -831,23 +852,23 @@ describe('createInstanceAgent', () => {
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(
 				new Map([
-					['eval-config', mockBuiltTool('eval-config')],
+					['eval_config', mockBuiltTool('eval_config')],
 					['parse_file', mockBuiltTool('parse_file')],
-					['mcp-servers', mockBuiltTool('mcp-servers')],
+					['mcp_servers', mockBuiltTool('mcp_servers')],
 				]),
 			),
 		} as never);
 
 		expect(getDeferredTools()).toMatchObject({
-			'eval-config': { name: 'eval-config' },
+			eval_config: { name: 'eval_config' },
 			parse_file: { name: 'parse_file' },
 		});
-		expect(getAttachedTools()['mcp-servers']).toMatchObject({ name: 'mcp-servers' });
+		expect(getAttachedTools()['mcp_servers']).toMatchObject({ name: 'mcp_servers' });
 		expect(orchestrationContext.mcpTools).toEqual(
 			new Map([
-				['eval-config', expect.objectContaining({ name: 'eval-config' })],
+				['eval_config', expect.objectContaining({ name: 'eval_config' })],
 				['parse_file', expect.objectContaining({ name: 'parse_file' })],
-				['mcp-servers', expect.objectContaining({ name: 'mcp-servers' })],
+				['mcp_servers', expect.objectContaining({ name: 'mcp_servers' })],
 			]),
 		);
 	});
@@ -870,17 +891,17 @@ describe('createInstanceAgent', () => {
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(
 				new Map([
-					['eval-config', mockBuiltTool('eval-config')],
+					['eval_config', mockBuiltTool('eval_config')],
 					['parse_file', mockBuiltTool('parse_file')],
-					['mcp-servers', mockBuiltTool('mcp-servers')],
+					['mcp_servers', mockBuiltTool('mcp_servers')],
 				]),
 			),
 		} as never);
 
 		const deferredTools = getDeferredTools();
-		expect(deferredTools['eval-config']).toBeUndefined();
+		expect(deferredTools['eval_config']).toBeUndefined();
 		expect(deferredTools.parse_file).toBeUndefined();
-		expect(deferredTools['mcp-servers']).toBeUndefined();
+		expect(deferredTools['mcp_servers']).toBeUndefined();
 		expect(orchestrationContext.mcpTools).toBeUndefined();
 	});
 

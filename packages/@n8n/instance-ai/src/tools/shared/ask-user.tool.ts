@@ -1,9 +1,9 @@
 import { Tool } from '@n8n/agents';
+import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import type { InstanceAiContext, ResolvedUserDecision } from '../../types';
-import { recordUserDecisions } from '../orchestration/parent-handoff-state';
+import type { AskUserEvent } from '../../types';
 import { ASK_USER_TOOL_ID } from '../tool-ids';
 
 export { ASK_USER_TOOL_ID };
@@ -48,31 +48,25 @@ export const askUserResumeSchema = z.object({
 	answers: z.array(answerSchema).optional(),
 });
 
-function toDecision(
-	question: string,
-	answer?: { selectedOptions: string[]; customText?: string; skipped?: boolean },
-): ResolvedUserDecision {
-	if (!answer || answer.skipped) {
-		return {
-			question,
-			answer: '(skipped)',
-			skipped: true,
-		};
-	}
-	const text = [...answer.selectedOptions, answer.customText]
-		.filter((part): part is string => Boolean(part))
-		.join(', ');
-	return text
-		? { question, answer: text, skipped: false }
-		: { question, answer: '(skipped)', skipped: true };
+function answeredEvent(resumeData: z.infer<typeof askUserResumeSchema>): AskUserEvent {
+	const answers = resumeData.answers ?? [];
+	const skippedCount = answers.filter((answer) => answer.skipped === true).length;
+	const usable = answers.length > 0 && skippedCount < answers.length;
+	return {
+		type: 'answered',
+		outcome: !resumeData.approved ? 'dismissed' : usable ? 'answered' : 'skipped',
+		answeredCount: answers.length - skippedCount,
+		skippedCount,
+	};
 }
 
-export function createAskUserTool(context?: InstanceAiContext) {
+export function createAskUserTool(options: { onEvent?: (event: AskUserEvent) => void } = {}) {
 	return new Tool(ASK_USER_TOOL_ID)
+		.legacyNames(...getLegacyBuilderToolNames(ASK_USER_TOOL_ID))
 		.description(
 			'Ask the user when only a human can decide; the run suspends until they respond. ' +
 				'Questions are single-select, multi-select, or free-text. ' +
-				'Before the first build-workflow call, use only for choices that change workflow intent or topology ' +
+				'Before the first workflow_build call, use only for choices that change workflow intent or topology ' +
 				'(e.g. destination service) — setup values (recipients, accounts, resources, channels, credentials, ' +
 				'timezone) use placeholders or unresolved newCredential() calls instead. ' +
 				'The UI adds a built-in "Something else" free-text input to every select question: NEVER include ' +
@@ -118,6 +112,11 @@ export function createAskUserTool(context?: InstanceAiContext) {
 
 			// First call — always suspend to show questions
 			if (resumeData === undefined || resumeData === null) {
+				options.onEvent?.({
+					type: 'asked',
+					questionCount: input.questions.length,
+					questionTypes: [...new Set(input.questions.map((q) => q.type))].sort(),
+				});
 				return await ctx.suspend({
 					requestId: nanoid(),
 					message: input.introMessage ?? input.questions[0].question,
@@ -128,14 +127,10 @@ export function createAskUserTool(context?: InstanceAiContext) {
 				});
 			}
 
+			options.onEvent?.(answeredEvent(resumeData));
+
 			// User skipped or dismissed
 			if (!resumeData.approved || !resumeData.answers) {
-				if (context) {
-					await recordUserDecisions(
-						context,
-						input.questions.map((q) => toDecision(q.question)),
-					);
-				}
 				return { answered: false };
 			}
 
@@ -149,12 +144,6 @@ export function createAskUserTool(context?: InstanceAiContext) {
 					question: q?.question ?? a.questionId,
 				};
 			});
-			if (context) {
-				await recordUserDecisions(
-					context,
-					enrichedAnswers.map((a) => toDecision(a.question, a)),
-				);
-			}
 			return { answered: true, answers: enrichedAnswers };
 		})
 		.build();

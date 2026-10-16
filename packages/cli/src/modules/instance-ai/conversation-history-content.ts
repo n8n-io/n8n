@@ -1,4 +1,4 @@
-import type { ASK_USER_TOOL_ID } from '@n8n/instance-ai';
+import { getLegacyBuilderToolNames, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 
 // Stored-content markers shared by the SQL prefilter and the JSON parsing.
 
@@ -11,6 +11,13 @@ export const TOOL_CALL_PART_TYPES: readonly string[] = [
 	INVALID_TOOL_CALL_PART_TYPE,
 ];
 
-// Type-tied to the package's id, so a rename fails `pnpm typecheck` while this
-// module stays free of runtime imports from the package.
-export const ASK_USER_TOOL_NAME: typeof ASK_USER_TOOL_ID = 'ask-user';
+export const ASK_USER_TOOL_NAME = WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER;
+
+// Rows stored before the rename carry the former tool name.
+export const LEGACY_ASK_USER_TOOL_NAMES: readonly string[] =
+	getLegacyBuilderToolNames(ASK_USER_TOOL_NAME);
+
+export const ASK_USER_TOOL_NAMES: readonly string[] = [
+	ASK_USER_TOOL_NAME,
+	...LEGACY_ASK_USER_TOOL_NAMES,
+];

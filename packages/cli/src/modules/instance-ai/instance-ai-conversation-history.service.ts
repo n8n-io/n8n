@@ -16,7 +16,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ASK_USER_TOOL_NAME, TOOL_CALL_PART_TYPES } from './conversation-history-content';
+import { ASK_USER_TOOL_NAMES, TOOL_CALL_PART_TYPES } from './conversation-history-content';
 import type { InstanceAiMessage } from './entities/instance-ai-message.entity';
 import { cleanStoredUserMessage, sanitisePromptText } from './internal-messages';
 import { extractTextFromContent } from './message-parser';
@@ -66,7 +66,7 @@ const THREAD_NOT_FOUND = 'Conversation not found';
 /**
  * Conversations named in the first-turn hint. Three is enough to prove there is
  * history worth searching; more would spend the turn's tokens on a directory
- * listing the `conversation-history` tool can produce on demand.
+ * listing the `conversation_history` tool can produce on demand.
  */
 const PAST_CONVERSATIONS_HINT_LIMIT = 3;
 
@@ -82,7 +82,7 @@ const askUserAnswerSchema = z.object({
 
 const askUserPartSchema = z.object({
 	type: z.literal('tool-call'),
-	toolName: z.literal(ASK_USER_TOOL_NAME),
+	toolName: z.string().refine((name) => ASK_USER_TOOL_NAMES.includes(name)),
 	state: z.literal('resolved'),
 	output: z.object({
 		answered: z.boolean(),
@@ -229,7 +229,7 @@ function formatConversationAge(updatedAt: Date, nowMs: number): string {
 
 /**
  * Read-only recall over a user's past conversations, backing the
- * `conversation-history` tool. Scoped per run by {@link forContext}: the tool
+ * `conversation_history` tool. Scoped per run by {@link forContext}: the tool
  * never supplies the user or project, and the current thread is excluded from
  * search (the agent already has it in context).
  */
@@ -365,7 +365,7 @@ export class InstanceAiConversationHistoryService {
 		}
 
 		if (dropped > 0) {
-			this.logger.debug('Dropped conversation-history hits with no verified match', { dropped });
+			this.logger.debug('Dropped conversation_history hits with no verified match', { dropped });
 		}
 		return verified.slice(0, pageLimit);
 	}

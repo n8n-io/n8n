@@ -72,6 +72,8 @@ function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 
 describe('InstanceAiService build mode recovery', () => {
 	it.each([
+		{ toolName: 'agent_ask_credential', hasBuilderCheckpoint: false },
+		// Runs suspended before the builder ran in the orchestrator store the former tool.
 		{ toolName: 'build-agent', hasBuilderCheckpoint: true },
 		{ toolName: 'build-agent', hasBuilderCheckpoint: false },
 		{ toolName: 'workflows', hasBuilderCheckpoint: true },

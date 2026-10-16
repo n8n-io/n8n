@@ -8,7 +8,7 @@ description: >-
 recommended_tools:
   - activity
   - workflows
-  - executions
+  - workflow_executions
   - credentials
 ---
 
@@ -41,7 +41,7 @@ or failed. Read it before your first tool call.
 
 It is a set of pointers, not contents. Each change line ends with the resource
 it is about, and the bracketed number is a stable id. Run lines carry the
-execution id of the last failure, which is what `executions` takes.
+execution id of the last failure, which is what `workflow_executions` takes.
 
 A later turn may bring a shorter block that says it is an addition. Those are
 extra entries, not a replacement — the earlier ones still stand.
@@ -60,7 +60,7 @@ or a workflow you want the history of. An id that no longer resolves is ordinary
 — entries are pruned — so carry on rather than treating it as an error.
 
 The log covers workflow and credential changes. It does not record runs; those
-come from the block, and `executions` has the detail.
+come from the block, and `workflow_executions` has the detail.
 
 ### 2. One workflow, read in full
 
@@ -82,8 +82,8 @@ probably no pattern to follow.
 | What already exists here? | the block, rung 0 |
 | What did they just change? | the block, rung 0 |
 | Which workflow do they mean by "it"? | the block — the most recent one they touched |
-| What is broken right now? | the block's run lines, then `executions` for the detail |
-| Did the nightly job run? | the block, then `executions` |
+| What is broken right now? | the block's run lines, then `workflow_executions` for the detail |
+| Did the nightly job run? | the block, then `workflow_executions` |
 | Who changed this, and was it me? | `activity(action="expand")` — entries carry provenance |
 | How do they configure it? | one workflow, rung 2 |
 | Do they have a credential for X? | `credentials(action="list")` |

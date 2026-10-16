@@ -1115,27 +1115,29 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 }
 
 function classifyToolCategory(name: string): string {
+	if (name === DOMAIN_TOOL_IDS.DATA_TABLES) return 'data-table';
+	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
+	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
+	if (name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) return 'planning';
 	if (name.includes('credential')) return 'credential';
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('data-table')) return 'data-table';
 	if (name.includes('workflow')) {
 		return 'workflow';
 	}
-	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
 	if (name.includes('research')) return 'research';
-	if (name.includes('plan') || name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) {
-		return 'planning';
-	}
+	if (name.includes('plan')) return 'planning';
 	if (name.startsWith('workspace_')) return 'workspace';
 	if (name.includes('file') || name.includes('filesystem')) return 'filesystem';
 	return 'other';
 }
 
 function classifyToolSideEffect(name: string): string {
+	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execute';
+	if (name === DOMAIN_TOOL_IDS.ASK_USER) return 'none';
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('research')) return 'network';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS || name.includes('execute') || name.includes('run')) {
+	if (name.includes('execute') || name.includes('run')) {
 		return 'execute';
 	}
 	if (
@@ -1151,7 +1153,7 @@ function classifyToolSideEffect(name: string): string {
 	) {
 		return 'write';
 	}
-	if (name.includes(DOMAIN_TOOL_IDS.ASK_USER) || name.includes('pause-for-user')) return 'none';
+	if (name.includes('pause-for-user')) return 'none';
 	return 'read';
 }
 

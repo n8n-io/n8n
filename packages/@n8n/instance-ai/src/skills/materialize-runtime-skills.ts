@@ -533,15 +533,17 @@ export async function buildRuntimeSkillWorkspaceBundle({
 	const ownSkillsById = new Map(materialized.map((skill) => [skill.id, skill]));
 	await Promise.all(
 		source.registry.skills.map(async (entry) => {
-			if (!entry.reference || ownSkillsById.has(entry.reference.owner)) return;
+			if (!entry.reference) return;
 			const host = referenceHost(entry, ownSkillsById);
 			if (!host) return;
+			const { materializedPath } = safeLinkedFilePath(host.directory, entry, entry.reference);
+			// The owner already wrote the references that its linked files list.
+			if (files.has(materializedPath)) return;
 
 			const reference = await source.loadSkill(entry.id);
 			if (!reference) {
 				throw new Error(`Runtime skill "${entry.name}" is registered but cannot be loaded`);
 			}
-			const { materializedPath } = safeLinkedFilePath(host.directory, entry, entry.reference);
 			const content = renderRuntimeSkillMarkdown(
 				reference,
 				entry,

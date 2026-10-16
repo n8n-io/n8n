@@ -36,6 +36,8 @@ import {
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
+	resolveBuilderToolName,
+	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -2091,8 +2093,8 @@ export class InstanceAiService {
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
-			// Runs holding an inline HITL confirmation (`create-tasks`,
-			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
+			// Runs holding an inline HITL confirmation (`workflow_create_tasks`,
+			// sub-agent `ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible
@@ -2661,7 +2663,7 @@ export class InstanceAiService {
 		this.runState.setBuildMode(threadId, buildMode);
 		// Read per run so a settings change applies to the next message.
 		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
-		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
+		// The frontend writes the exit to thread metadata when the agent calls `leave_onboarding` or
 		// starts a build, so a thread that left gets the tool no more.
 		const thread = await memory.getThread(threadId);
 		const onboardingThread =
@@ -2835,7 +2837,7 @@ export class InstanceAiService {
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
 			instanceContextEnabled,
-			// The agent-building skills need the build-agent tool, which needs a builder delegate.
+			// The agent-building skills need the Agent Builder tools, which need a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
 		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
@@ -2939,35 +2941,6 @@ export class InstanceAiService {
 			logger: this.logger,
 			trackTelemetry: (eventName, properties) => {
 				this.telemetry.track(eventName, redactTelemetryProperties(properties));
-			},
-			// Aggregate on the instance-AI thread (not the `ia-builder:` session
-			// thread) so the credit service's per-thread display total and FE push
-			// attribute builder tokens to the conversation the user sees. The tool
-			// awaits this before returning/cascading a terminal segment outcome, so
-			// a billing failure must never propagate — best-effort by contract.
-			claimSubAgentUsage: async (dedupeId, usage, status) => {
-				try {
-					await this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
-				} catch (error) {
-					// claimRunUsage() handles ordinary claim failures (network, retries)
-					// internally and only throws for exceptional contract violations
-					// (e.g. a negative quota) — those must still reach centralized
-					// Instance AI error reporting even though billing stays best-effort.
-					this.instanceAiErrorReporter.report(error, {
-						component: 'instance-ai-agent-builder-usage',
-						threadId,
-						runId,
-						userId: user.id,
-						...(boundProjectId ? { projectId: boundProjectId } : {}),
-						...(messageGroupId ? { messageGroupId } : {}),
-					});
-					this.logger.warn('Failed to claim agent-builder usage', {
-						threadId,
-						runId,
-						dedupeId,
-						error: getErrorMessage(error),
-					});
-				}
 			},
 			abortSignal,
 			taskStorage,
@@ -3296,7 +3269,9 @@ export class InstanceAiService {
 		toolName: string | undefined,
 		suspendPayload: Record<string, unknown> | undefined,
 	): string | undefined {
-		if (toolName !== 'workflows' || !suspendPayload) return undefined;
+		if (!toolName || !suspendPayload) return undefined;
+		if (resolveBuilderToolName(toolName) !== WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS)
+			return undefined;
 		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
 		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 	}
@@ -4124,7 +4099,7 @@ export class InstanceAiService {
 					...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
 				} as typeof context.permissions;
 				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
-				// the orchestrator can call `executions(action="run")` on a depended-on workflow
+				// the orchestrator can call `workflow_executions(action="run")` on a depended-on workflow
 				// without HITL, but any other workflow id still requires user approval.
 				const runPolicy = await this.getCheckpointRunPolicy(threadId, checkpoint.checkpointTaskId);
 				context.allowedRunWorkflowIds = runPolicy.allowedWorkflowIds;
@@ -5024,7 +4999,7 @@ export class InstanceAiService {
 			// not when it merely suspended for HITL):
 			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
 			//      follow-up and the orchestrator exited without calling
-			//      complete-checkpoint, mark the task failed so the scheduler
+			//      workflow_complete_checkpoint, mark the task failed so the scheduler
 			//      can transition to awaiting_replan. Runs even on a stop: the
 			//      cancelled run's context is the only thing that knows about
 			//      this follow-up, so skipping it strands the task at `running`.
@@ -5080,7 +5055,7 @@ export class InstanceAiService {
 				// that child is still running, leave the checkpoint running. The
 				// child's settlement path re-emits `orchestrate-checkpoint` so the
 				// orchestrator re-enters the same checkpoint context and can then
-				// call `complete-checkpoint`.
+				// call `workflow_complete_checkpoint`.
 				const inflightChildren = this.backgroundTasks.getRunningTasksByParentCheckpoint(
 					threadId,
 					checkpointTaskId,

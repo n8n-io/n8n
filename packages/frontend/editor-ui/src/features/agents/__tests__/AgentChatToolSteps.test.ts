@@ -354,6 +354,18 @@ describe('AgentChatToolSteps', () => {
 		expect(wrapper.find('button').exists()).toBe(false);
 	});
 
+	it('labels a legacy builder tool name from persisted history', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-legacy',
+				state: TOOL_CALL_STATE.DONE,
+			},
+		]);
+
+		expect(wrapper.text()).toContain('Search nodes');
+	});
+
 	it('shows a completed memory flag as a compact acknowledgement', () => {
 		const running = mountSteps([
 			{

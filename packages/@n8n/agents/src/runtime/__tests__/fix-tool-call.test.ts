@@ -192,6 +192,29 @@ describe('fixToolCall — successful repair', () => {
 		expect(result).toMatchObject({ type: 'tool-call', input: '{}' });
 	});
 
+	it('calls the current tool when the model calls a legacy name', async () => {
+		const tool = makeTool({ name: 'new_name', inputSchema: z.object({ q: z.string() }) });
+		const toolMap = new Map([
+			['new_name', tool],
+			['old-name', tool],
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ toolName: 'old-name', input: '{"q":"x"}' }),
+				error: makeNoSuchToolError(),
+			},
+			toolMap,
+		);
+		expect(result).toEqual({
+			type: 'tool-call',
+			toolCallId: 'tc-1',
+			toolName: 'new_name',
+			input: '{"q":"x"}',
+			providerExecuted: false,
+			dynamic: false,
+		});
+	});
+
 	it('preserves dynamic flag from the original tool call', async () => {
 		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
 		const result = await fixToolCall(

@@ -20,6 +20,7 @@
  */
 
 import { getRenderHint, isKnownInstanceAiErrorCode, isSafeObjectKey } from './instance-ai.schema';
+import { resolveBuilderToolName } from '../builder-tool-names';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
@@ -290,7 +291,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
 					toolCallId: event.payload.toolCallId,
-					toolName: event.payload.toolName,
+					toolName: resolveBuilderToolName(event.payload.toolName),
 					args: {},
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
@@ -385,7 +386,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (agent) {
 				const tc: InstanceAiToolCallState = {
 					toolCallId: event.payload.toolCallId,
-					toolName: event.payload.toolName,
+					toolName: resolveBuilderToolName(event.payload.toolName),
 					args: event.payload.args,
 					isLoading: true,
 					renderHint: getRenderHint(event.payload.toolName),
