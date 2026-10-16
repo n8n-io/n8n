@@ -477,6 +477,31 @@ it('reports task ownership conflicts across project plans', async () => {
 	);
 });
 
+it('blocks unavailable Agent tool node types without changing destination records', async () => {
+	const source = agent('source', {
+		tools: [
+			{
+				type: 'node',
+				name: 'Missing tool',
+				node: { nodeType: 'missing.node', nodeTypeVersion: 1, nodeParameters: {} },
+			},
+		],
+	});
+	const before = await records();
+	const [plan] = await planner.planPackage([input([source])]);
+	const issue = {
+		type: 'missing-node-type',
+		nodeType: 'missing.node',
+		typeVersion: 1,
+		usedBy: [{ kind: 'agent', id: 'source' }],
+	};
+	expect(plan.blockingIssues).toEqual([issue]);
+	await expect(planner.assertNotBlocked([plan], { apiKeyScopes: undefined })).rejects.toMatchObject(
+		{ httpStatusCode: 422, meta: { issues: [issue] } },
+	);
+	expect(await records()).toEqual(before);
+});
+
 it.each(['skills', 'self-reference'] as const)(
 	'uses the UI validation rule for %s',
 	async (invalid) => {
