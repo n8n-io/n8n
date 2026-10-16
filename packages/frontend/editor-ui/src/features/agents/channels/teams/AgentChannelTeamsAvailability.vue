@@ -19,6 +19,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	ENTRA_APP_REGISTRATIONS_URL,
 	entraApiPermissionsUrl,
+	permissionUseFor,
 	type TeamsAvailability,
 } from './constants';
 import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
@@ -122,7 +123,7 @@ const fileAccess = computed(() => {
 	if (props.fileAccessState === 'hidden') return null;
 	if (props.fileAccessConsentUrl) {
 		return {
-			hint: 'agents.channels.teams.setup.availability.fileAccessNotApproved' as const,
+			hint: `agents.channels.teams.setup.availability.fileAccessNotApproved.${permissionUseFor(value.value)}` as const,
 			url: props.fileAccessConsentUrl,
 		};
 	}

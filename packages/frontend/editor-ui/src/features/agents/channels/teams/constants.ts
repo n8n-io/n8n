@@ -19,6 +19,19 @@ export interface TeamsAvailability {
 	readAllGroupMessages: boolean;
 }
 
+/**
+ * What the Graph approval unlocks for the surfaces that are on. The admin
+ * approves the same permissions either way; only what the agent gains differs.
+ */
+export type TeamsPermissionUse = 'directOnly' | 'groupChats' | 'teamChannels' | 'channelsAndGroups';
+
+export function permissionUseFor(availability: TeamsAvailability): TeamsPermissionUse {
+	if (availability.teamChannels && availability.groupChats) return 'channelsAndGroups';
+	if (availability.teamChannels) return 'teamChannels';
+	if (availability.groupChats) return 'groupChats';
+	return 'directOnly';
+}
+
 /** The settings a saved channel runs on, defaulted for a channel with none. */
 export function availabilityFrom(saved?: Partial<TeamsAvailability>): TeamsAvailability {
 	return {

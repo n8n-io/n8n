@@ -1299,6 +1299,17 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			const { getByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
 
 			expect(getByText('agents.channels.teams.managed.fileAccess.title')).toBeInTheDocument();
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.directOnly'),
+			).toBeInTheDocument();
+		});
+
+		it('describes what the approval unlocks for the surfaces that are on', () => {
+			const { getByText } = renderWith(deployed(CONSENT_URL));
+
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.teamChannels'),
+			).toBeInTheDocument();
 		});
 
 		it('asks for file access in its own step, before the last one', async () => {

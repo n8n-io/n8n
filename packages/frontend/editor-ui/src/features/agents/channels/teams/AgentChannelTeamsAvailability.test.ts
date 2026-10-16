@@ -130,7 +130,7 @@ describe('AgentChannelTeamsAvailability', () => {
 		});
 
 		expect(getByTestId('teams-file-access')).toHaveTextContent(
-			'Until an admin approves, the agent can’t find people by email, find channels by name, or read files in channels and group chats.',
+			'Until an admin approves, the agent can’t find people by email, find channels by name, or read files in channels.',
 		);
 		expect(getByTestId('teams-file-access-approve')).toHaveTextContent(
 			'If you are an admin in Acme Corp',

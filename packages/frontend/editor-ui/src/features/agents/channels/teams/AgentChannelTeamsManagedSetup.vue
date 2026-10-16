@@ -30,6 +30,7 @@ import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import {
 	availabilityFrom,
 	entraApiPermissionsUrl,
+	permissionUseFor,
 	TEAMS_PACKAGE_FILENAME,
 	type TeamsAvailability,
 } from './constants';
@@ -323,7 +324,9 @@ const steps = computed(() => [
 	{
 		id: 'file-access',
 		title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
-		description: i18n.baseText('agents.channels.teams.managed.fileAccess.description'),
+		description: i18n.baseText(
+			`agents.channels.teams.managed.fileAccess.description.${permissionUseFor(availability.value)}`,
+		),
 	},
 	{
 		id: 'finish',
