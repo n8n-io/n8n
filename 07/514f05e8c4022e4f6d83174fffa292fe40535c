@@ -1145,6 +1145,8 @@ packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
   s_71ad2034164515::t_734ba3dd007431 64,98
   s_71ad2034164515::t_85cc59724d62ed 20
   s_71ad2034164515::t_391be95d1c093c 7,92-94
+  s_71ad2034164515::t_ebfcffecf4a59e 19,53
+  s_71ad2034164515::t_f74d9bdbd2c654 29-34,42-47
 packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
   s_71ad2034164515::t_87f57b02bb38e3 173,189
 packages/@n8n/permissions/src/constants.ee.ts
@@ -1256,6 +1258,7 @@ packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
   s_71ad2034164515::t_84eae534882500 555,560-562,996-997,1685,1700
   s_71ad2034164515::t_640a7ab7cf9d08 501-503
   s_71ad2034164515::t_56f87139385644 504,511
+  s_71ad2034164515::t_ebfcffecf4a59e 559
 packages/frontend/editor-ui/src/features/agents/utils/telegramAccessSettings.ts
   s_71ad2034164515::t_764b3c3bdbd08a 11,19-20
 packages/cli/src/modules/agents/integrations/platforms/slack/slack-manual-setup.service.ts
@@ -1267,6 +1270,7 @@ packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.
 packages/cli/test/migration/1792152456800-add-agent-pending-channel-setup.test.ts
   s_71ad2034164515::t_898499e9e87de4 1-11,13-33,43-48,52-53,60-66,73,77-83
   s_71ad2034164515::t_640a7ab7cf9d08 34-42,49-51,54-59,67-72,74-76
+  s_71ad2034164515::t_f74d9bdbd2c654 12
 packages/@n8n/api-types/src/agents/index.ts
   s_71ad2034164515::t_740d0aa94f83d2 6
 packages/cli/src/modules/agents/utils/__tests__/agent-channel-setup.test.ts
@@ -1287,6 +1291,7 @@ packages/cli/src/modules/agents/agent-integration-persistence.service.ts
   s_71ad2034164515::t_640a7ab7cf9d08 226-229,249-250,252-258,261-264,267-275,286-289
   s_71ad2034164515::t_6374a87c43d324 18-19,244,246
   s_71ad2034164515::t_aea076d904b2f5 285
+  s_71ad2034164515::t_ebfcffecf4a59e 26,208-209,235,245
 packages/@n8n/api-types/src/agents/types.ts
   s_71ad2034164515::t_640a7ab7cf9d08 3-7,168-172
   s_71ad2034164515::t_82ffa76c303135 8
@@ -1448,6 +1453,7 @@ packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
 packages/@n8n/db/src/migrations/common/1792152456800-AddAgentPendingChannelSetup.ts
   s_71ad2034164515::t_740d0aa94f83d2 4-13,16-19
   s_71ad2034164515::t_b2795a19e0e1ea 1-2,14-15,20-21
+  s_71ad2034164515::t_71c7056cdf4e0d 3
 packages/cli/src/scaling/pubsub/pubsub.event-map.ts
   s_71ad2034164515::t_0f36ad45bf8612 358
 packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationStatus.ts
