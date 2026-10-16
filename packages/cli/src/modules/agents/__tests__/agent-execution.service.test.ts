@@ -5,6 +5,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -134,6 +135,7 @@ describe('AgentExecutionService', () => {
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 
 		service = new AgentExecutionService(
+			mock<AgentTaskCancellationRepository>(),
 			mockLogger(),
 			agentExecutionRepository,
 			agentExecutionThreadRepository,
@@ -769,6 +771,7 @@ describe('AgentExecutionService', () => {
 		it('writes the timeline to blob storage in non-db mode', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 			service = new AgentExecutionService(
+				mock<AgentTaskCancellationRepository>(),
 				mockLogger(),
 				agentExecutionRepository,
 				agentExecutionThreadRepository,
@@ -866,6 +869,7 @@ describe('AgentExecutionService', () => {
 			async (failure, currentLocation, shouldDeleteBlob) => {
 				storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 				service = new AgentExecutionService(
+					mock<AgentTaskCancellationRepository>(),
 					mockLogger(),
 					agentExecutionRepository,
 					agentExecutionThreadRepository,
@@ -1480,6 +1484,7 @@ describe('AgentExecutionService', () => {
 		it('preserves an interrupted execution inline without overwriting blob storage', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 			service = new AgentExecutionService(
+				mock<AgentTaskCancellationRepository>(),
 				mockLogger(),
 				agentExecutionRepository,
 				agentExecutionThreadRepository,
