@@ -20,7 +20,7 @@ export function withModelName(
 		const provider = splitModelId(config).provider || 'custom';
 		return `${provider}/${nameFor(provider)}`;
 	}
-	if ('specificationVersion' in config) return undefined;
+	if (!('kind' in config)) return undefined;
 	switch (config.kind) {
 		case 'vertex-anthropic':
 			return { ...config, id: `google-vertex-anthropic/${nameFor('google-vertex-anthropic')}` };
