@@ -32,8 +32,18 @@ export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
 export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
+export const AGENT_PUBLISHED_MODAL_KEY = 'agentPublished';
+export const AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY = 'agentUnpublishedWorkflows';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
 export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
+
+/**
+ * localStorage flag for the "Agent published" confirmation modal's
+ * "Don't show again" checkbox — same mechanism as the workflow-side
+ * `N8N_HIDE_ACTIVATION_ALERT`.
+ */
+export const LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION =
+	'N8N_HIDE_AGENT_PUBLISHED_CONFIRMATION';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
@@ -65,8 +75,11 @@ export const RECENT_CHATS_LIMIT = 5;
 export const AGENT_N8N_CHAT_HISTORY_PAGE_SIZE = 30;
 
 export {
+	CHAT_MESSAGE_ROLE,
 	CHAT_MESSAGE_STATUS,
+	HOST_EVENT_PLACEMENT,
 	TOOL_CALL_STATE,
+	type ChatMessageRole,
 	type ChatMessageStatus,
 	type ToolCallState,
 } from '@/features/ai/shared/agentsChat/constants';

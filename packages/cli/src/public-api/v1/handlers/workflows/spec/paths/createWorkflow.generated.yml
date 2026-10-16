@@ -4,9 +4,8 @@ tags:
 summary: Create a workflow
 description: Create a workflow in your instance.
 x-required-scope: workflow:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   required: true
   content:
@@ -1226,6 +1225,8 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':

@@ -32,7 +32,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowPublishedDataService } from '@n8n/backend-services';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 

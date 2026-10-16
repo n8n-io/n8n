@@ -52,6 +52,25 @@ describe('buildAgentPlanDisplayGroups', () => {
 		expect(selectLatestAgentPlan(messages)?.revision).toBe(2);
 	});
 
+	it('keeps a tool run with only hidden plan calls when it has host events', () => {
+		const userMessage: ChatMessage = { id: 'user-1', role: 'user', content: 'Continue' };
+		const created = planMessage(initial);
+		const eventless = update(progress);
+		const hidden: ChatMessage = {
+			...eventless,
+			hostEvents: [{ id: 'host-1', name: 'test.start', payload: {} }],
+		};
+
+		const groups = buildAgentPlanDisplayGroups([created, userMessage, hidden]);
+
+		const run = groups.at(-1);
+		expect(run?.id).toBe(hidden.id);
+		expect(run?.kind === 'toolRun' && run.toolCalls).toEqual([]);
+		expect(
+			buildAgentPlanDisplayGroups([created, userMessage, eventless]).map((group) => group.id),
+		).not.toContain(eventless.id);
+	});
+
 	it('filters each plan call independently across messages', () => {
 		const current = { ...initial, revision: 2, document: progress };
 		const created = planMessage(initial);

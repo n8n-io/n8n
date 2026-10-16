@@ -1,8 +1,12 @@
+import { DateTime } from 'luxon';
+
 import { ExpressionExtensionError } from '../../errors/expression-extension.error';
 import { ExpressionError } from '../../errors/expression.error';
+import { extend } from '../../extensions';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
+	EXTENSION_METHODS,
 	ITERATOR_NATIVES,
 	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
@@ -10,6 +14,8 @@ import {
 	MAX_WORK,
 	NUMBER_METHODS,
 	STRING_METHODS,
+	TIME_MEMBERS,
+	TIME_METHODS,
 	hasOwn,
 	isArray,
 	isObj,
@@ -118,6 +124,10 @@ const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = Object.freeze({
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): unknown {
+	if (node.object.kind === 'timeRoot') {
+		return evalTimeRead(env.data[node.object.name], TIME_MEMBERS.get(toStr(node.key)));
+	}
+
 	const object = evalNode(node.object, env);
 
 	if (node.optional && (object === null || object === undefined)) {
@@ -140,6 +150,9 @@ function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): un
 	if (inherited) {
 		throw new EngineFallbackError();
 	}
+
+	// A node reference member (`.item`, `.json`) resolves through the proxy.
+	if (node.object.kind === 'nodeRef') env.charge(1);
 
 	const value = isParameterRead(node) ? readParameter(object, node.key, env) : object[node.key];
 
@@ -289,6 +302,31 @@ function assertPrimitiveElements(receiver: unknown[]): void {
 }
 
 /**
+ * toSorted() stringifies both operands of every comparison, and includes(),
+ * indexOf() and lastIndexOf() compare each element with the search value, so
+ * their work follows element content, not element count. Returns that
+ * content, which the caller charges on top of the preflight bound.
+ */
+function elementContentWork(receiver: unknown[], method: string): number {
+	if (method === 'toSorted') {
+		let content = 0;
+		for (const element of receiver) content += toStr(element).length;
+
+		// Each comparison reads both operands, so a pass can read the content twice.
+		return 2 * content * Math.ceil(Math.log2(receiver.length + 1));
+	}
+
+	if (method === 'includes' || method === 'indexOf' || method === 'lastIndexOf') {
+		let content = 0;
+		for (const element of receiver) content += typeof element === 'string' ? element.length : 1;
+
+		return content;
+	}
+
+	return 0;
+}
+
+/**
  * Content size of a JSON value: string lengths plus one per element and
  * key, stopping early past the budget. Deeper than the grammar's own depth
  * cap hands off: the engine owns data that deep.
@@ -352,11 +390,17 @@ function evalReceiver(
 }
 
 function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
-	const receiver = evalReceiver(node, env);
-
 	if (node.receiver.kind === 'nodeRef') {
-		return evalNodeRefCall(receiver, node.method);
+		return evalNodeRefCall(evalReceiver(node, env), node.method, env);
 	}
+
+	if (node.receiver.kind === 'timeRoot') {
+		return evalTimeRead(evalReceiver(node, env), TIME_METHODS.get(node.method));
+	}
+
+	if (EXTENSION_METHODS.has(node.method)) return evalExtension(node, env);
+
+	const receiver = evalReceiver(node, env);
 
 	// An own property shadowing the method (an engine-resolved $parameter value
 	// can carry one) would take precedence in the engines.
@@ -365,19 +409,54 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 	}
 
 	const method = methodFor(receiver, node.method);
-
-	const args = node.args.map((argument) => evalNode(argument, env));
-	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
-		throw new EngineFallbackError();
-	}
+	const args = evalArgs(node, env);
 
 	if (isArray(receiver)) {
 		if (STRINGIFIES_ELEMENTS.has(node.method)) assertPrimitiveElements(receiver);
 		if (node.method === 'concat') assertConcatWeight(receiver, args);
 	}
 	env.charge(preflightSize(receiver, node.method, args));
+	if (isArray(receiver)) env.charge(elementContentWork(receiver, node.method));
 
 	return bounded(method.apply(receiver, args));
+}
+
+function evalArgs(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown[] {
+	const args = node.args.map((argument) => evalNode(argument, env));
+	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
+		throw new EngineFallbackError();
+	}
+
+	return args;
+}
+
+/**
+ * An allowlisted extension runs through extend(), the same host dispatch the
+ * engines call. extendSyntax rewrites the call into that dispatch whatever
+ * the receiver holds: an own property does not shadow it, and a missing
+ * receiver is extend()'s own error, not a TypeError. Every extension is at
+ * most linear in its receiver, so the receiver's content is the work charged
+ * and the pre-flight bound. A receiver that can be a root proxy is declined
+ * at parse time (mayBeRoot), and a result the engines would copy
+ * differently (a Date, a class instance, an iterator) is theirs too.
+ */
+function evalExtension(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
+	const receiver = evalNode(node.receiver, env);
+	if (node.optional && (receiver === null || receiver === undefined)) {
+		throw chainShortCircuit;
+	}
+
+	const args = evalArgs(node, env);
+	const weight = contentWeight(receiver, MAX_RESULT_LENGTH);
+	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+	env.charge(weight);
+
+	const result: unknown = extend(receiver, node.method, args);
+	if (isObj(result) && !isArray(result) && Object.getPrototypeOf(result) !== Object.prototype) {
+		throw new EngineFallbackError();
+	}
+
+	return bounded(result);
 }
 
 /**
@@ -421,12 +500,40 @@ function evalIterate(node: Extract<SimpleNode, { kind: 'iterate' }>, env: Env): 
  * `first()`, `last()` and `all()` on a node proxy. The proxy hands back a
  * host function that reads run data for the node the reference names, which
  * is what the engines call too (the vm bridge routes it through typed RPC).
+ * The host can copy every item per call (combined binary mode does), so the
+ * result is charged per element; a callback body repeats the call per visit.
  */
-function evalNodeRefCall(proxy: unknown, method: string): unknown {
+function evalNodeRefCall(proxy: unknown, method: string, env: Env): unknown {
 	const fn: unknown = Reflect.get(proxy as object, method);
 	if (typeof fn !== 'function') throw new EngineFallbackError();
 
-	return bounded(fn.call(proxy));
+	const result = bounded(fn.call(proxy));
+
+	// A node name that is an Object.prototype key resolves through a plain
+	// object lookup on the host. Only the item shapes stay native.
+	const expected = method === 'all' ? isArray(result) : result === undefined || isItem(result);
+	if (!expected) throw new EngineFallbackError();
+
+	env.charge(isArray(result) ? result.length : 1);
+
+	return result;
+}
+
+const isItem = (value: unknown): boolean => isObj(value) && !isArray(value);
+
+/**
+ * A captured Luxon getter or zero-argument method on `$now`/`$today`. The
+ * root is the proxy's own DateTime (anything else is the engine's), and the
+ * result is a primitive by allowlist; a non-primitive would mean a patched
+ * prototype, which is also the engine's.
+ */
+function evalTimeRead(root: unknown, fn: NativeMethod | undefined): unknown {
+	if (fn === undefined || !DateTime.isDateTime(root)) throw new EngineFallbackError();
+
+	const result = fn.call(root);
+	if (!isPrimitive(result)) throw new EngineFallbackError();
+
+	return result;
 }
 
 function evalNodeRef(node: Extract<SimpleNode, { kind: 'nodeRef' }>, env: Env): unknown {
@@ -498,6 +605,8 @@ function evalNode(node: SimpleNode, env: Env): unknown {
 			return env.data[node.name];
 		case 'nodeRef':
 			return evalNodeRef(node, env);
+		case 'timeRoot':
+			return env.data[node.name];
 		case 'undefined':
 			return undefined;
 		case 'member':

@@ -1,3 +1,4 @@
+import { isEnvFeatureEnabled } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -6,6 +7,7 @@ import {
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
+	ResourceAdmission,
 	TrustedSourceGate,
 	TrustedSourceStore,
 	type AuthorizationServerMetadata,
@@ -13,6 +15,8 @@ import {
 } from '@n8n/inbound-auth';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
+
+import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 // Discovery of the local source must fail, not succeed with made-up documents.
 class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
@@ -52,6 +56,12 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		if (Container.get(InstanceSettings).instanceType === 'main') {
 			const { SystemTrustedSourceSeeder } = await import('./system-trusted-source.seeder.js');
 			await Container.get(SystemTrustedSourceSeeder).seed();
+
+			// Ships dark. Set `N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED=true` on a main instance to register
+			// the `/trusted-sources` management routes; the license gates only create and update.
+			if (isEnvFeatureEnabled('N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED')) {
+				await import('./trusted-source.controller.js');
+			}
 		}
 
 		const { OAuth2AuthenticationService } = await import('./authentication.service.js');
@@ -66,6 +76,17 @@ export class InboundAuthCoreModule implements ModuleInterface {
 
 		const { InboundAuthPipeline } = await import('./authentication-pipeline.js');
 		Container.set(AuthenticationPipeline, Container.get(InboundAuthPipeline));
+
+		const { InboundResourceAdmission } = await import('./resource-admission.js');
+		Container.set(ResourceAdmission, Container.get(InboundResourceAdmission));
+
+		// Only main serves the public API. The strategy resolves the pipeline, so it registers last.
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			const { PublicApiProtectedResource } = await import('./public-api-protected-resource.js');
+			const { PublicApiOAuthStrategy } = await import('./public-api-oauth.strategy.js');
+			Container.get(ProtectedResourceRegistry).register(Container.get(PublicApiProtectedResource));
+			Container.get(AuthStrategyRegistry).register(Container.get(PublicApiOAuthStrategy));
+		}
 	}
 
 	// Ungated: the runner skips a cluster-scoped task on webhook and worker instances itself.

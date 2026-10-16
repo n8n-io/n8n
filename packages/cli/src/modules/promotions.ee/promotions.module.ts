@@ -26,6 +26,15 @@ export class PromotionsModule implements ModuleInterface {
 			'./database/entities/promotion-connection-project.entity.js'
 		);
 		const { PromotionConfig } = await import('./database/entities/promotion-config.entity.js');
-		return [PromotionProvider, PromotionConnection, PromotionConnectionProject, PromotionConfig];
+		const { PromotionRun } = await import('./database/entities/promotion-run.entity.js');
+		const { PromotionReview } = await import('./database/entities/promotion-review.entity.js');
+		return [
+			PromotionProvider,
+			PromotionConnection,
+			PromotionConnectionProject,
+			PromotionConfig,
+			PromotionRun,
+			PromotionReview,
+		];
 	}
 }

@@ -1,59 +1,3 @@
-import type {
-	UpdateOtelSettingsDto,
-	TestOtelTraceDto,
-	UpdateSamlConfigurationDto,
-} from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
-
-import type { AuthlessRequest } from '@/requests';
-
-export type PaginatedRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		limit?: number;
-		cursor?: string;
-		offset?: number;
-		lastId?: string;
-	}
->;
-export declare namespace UserRequest {
-	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
-
-	export type ResolveSignUp = AuthlessRequest<
-		{},
-		{},
-		{},
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type SignUp = AuthenticatedRequest<
-		{ id: string },
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type Delete = AuthenticatedRequest<
-		{ id: string; email: string },
-		{},
-		{},
-		{ transferId?: string; includeRole: boolean }
-	>;
-
-	export type Reinvite = AuthenticatedRequest<{ id: string }>;
-
-	export type Update = AuthlessRequest<
-		{ id: string },
-		{},
-		{
-			inviterId: string;
-			firstName: string;
-			lastName: string;
-			password: string;
-		}
-	>;
-}
-
 type PaginationBase = { limit: number };
 
 export type PaginationOffsetDecoded = PaginationBase & { offset: number };
@@ -63,7 +7,8 @@ export type PaginationCursorDecoded = PaginationBase & { lastId: string };
 export type OffsetPagination = PaginationBase & { offset: number; numberOfTotalRecords: number };
 
 export type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
-export interface IRequired {
+
+interface IRequired {
 	required?: string[];
 }
 export interface IDependency {
@@ -77,33 +22,4 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
-}
-
-// ----------------------------------
-//           /community-packages
-// ----------------------------------
-
-export declare namespace CommunityPackageRequest {
-	type Install = AuthenticatedRequest<{}, {}, { name: string; version?: string }>;
-	type List = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
-	type Uninstall = AuthenticatedRequest<{ name: string }>;
-}
-
-// ----------------------------------
-//        /settings/otel
-// ----------------------------------
-
-export declare namespace OtelSettingsRequest {
-	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
-	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
-}
-
-// ----------------------------------
-//        /settings/sso/saml
-// ----------------------------------
-
-export declare namespace SsoSamlRequest {
-	type Get = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
 }

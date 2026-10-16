@@ -19,6 +19,7 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalCredentialTestTargetRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	findSeedFolderIssues,
@@ -31,6 +32,7 @@ import type {
 	InstanceAiThreadTabsResponse,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -92,6 +94,8 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 
 @RestController('/instance-ai')
 export class InstanceAiController {
+	private readonly instanceAiConfig: GlobalConfig['instanceAi'];
+
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
@@ -112,8 +116,11 @@ export class InstanceAiController {
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
+		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
-	) {}
+	) {
+		this.instanceAiConfig = globalConfig.instanceAi;
+	}
 
 	private requireInstanceAiEnabled(): void {
 		if (!this.settingsService.isInstanceAiEnabled()) {
@@ -1148,6 +1155,29 @@ export class InstanceAiController {
 			payload.credentialIds,
 			payload.bypassCredentialTest,
 		);
+		return { ok: true };
+	}
+
+	/**
+	 * Send the thread's connection tests for one credential type to a provider
+	 * stand-in, so the agent's own test checks the captured secret.
+	 */
+	@Post('/eval/thread-credential-test-target')
+	@GlobalScope('instanceAi:eval')
+	async setThreadCredentialTestTarget(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalCredentialTestTargetRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		// Redirecting a credential test sends its secret elsewhere, so only a
+		// throwaway eval instance offers it.
+		if (!this.instanceAiConfig.evalInstance) {
+			throw new NotFoundError('Credential test targets are only available on an eval instance');
+		}
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const { threadId, ...target } = payload;
+		this.evalCredentialAllowlists.setTestTarget(threadId, target);
 		return { ok: true };
 	}
 

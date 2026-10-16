@@ -14,19 +14,16 @@ Notion for why the substrate looks the way it does.
 
 ## Turn it on
 
-Two gates, both required:
+This is a default module. The license feature `feat:typeAvailabilityPolicies` is the only gate.
+Without it, `init()` never runs, so the controllers are not mounted and no check is registered.
 
-1. The license feature `feat:typeAvailabilityPolicies`. Without it, `init()` never runs, so the
-   controllers are not mounted and no check is registered.
-2. `N8N_ENABLED_MODULES=type-availability-policies`. This module is not a default module yet.
+**Do not disable the module on only some instance types.** Each process reads its own
+configuration. An instance that disables it only on its queue workers enforces saves and
+publishes on main, and enforces nothing at all on the workers — every execution there is
+admitted.
 
-**Set the environment variable on every instance type.** The module has no instance-type
-restriction, but each process reads its own configuration. An instance that enables it only on
-main enforces saves and publishes, and enforces nothing at all on its queue workers — every
-execution there is admitted.
-
-The break-glass levers stay the ones the substrate documents: remove this module from
-`N8N_ENABLED_MODULES`, or disable `policy-infrastructure` to stop every policy feature.
+The break-glass levers stay the ones the substrate documents: add this module to
+`N8N_DISABLED_MODULES`, or disable `policy-infrastructure` to stop every policy feature.
 
 ## What each point decides
 
@@ -166,12 +163,23 @@ One violation per blocked type, deduplicated, in the order the types first appea
 	"subject": "n8n-nodes-base.slack",
 	"subjectType": "nodeType",
 	"scope": "instance",
-	"matchedRuleId": "rule-7"
+	"matchedRuleId": "rule-7",
+	"projectId": "project-1",
+	"optInAvailable": false
 }
 ```
 
 `matchedRuleId` is absent when the scope's default action decided and no rule matched. `scope`
 names the scope whose verdict decided, which is what a user needs to know who to ask.
+
+`projectId` names the project whose policy was evaluated, also for an instance denial. A
+sub-workflow is checked against its own project, so its refusal names that project, not the
+caller's. It is absent when no project applied. A project denial's message says "a project
+policy" and never names the project: the client resolves the name, and only for a project the
+user can see.
+
+`optInAvailable` is `true` when the instance delegated the type, so the project can lift the
+block with its own allow rule. It is always `false` when no project applied.
 
 The violations reach the caller as HTTP 403 with `meta.violations`, and a blocked run stores
 them on the execution's error. Today that error is the whole story a user gets: the builder

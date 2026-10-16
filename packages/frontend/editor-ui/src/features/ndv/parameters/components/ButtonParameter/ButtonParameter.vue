@@ -263,7 +263,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			<N8nTooltip :disabled="isSubmitEnabled">
 				<div>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:disabled="!isSubmitEnabled"
 						size="small"
 						:loading="isLoading"
@@ -305,7 +305,7 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 }
 
 .intro {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 	padding: var(--spacing--2xs) 0 0;

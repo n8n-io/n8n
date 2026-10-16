@@ -6,6 +6,7 @@
  */
 
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+export const TEXT_CLASSIFIER_NODE_TYPE = '@n8n/n8n-nodes-langchain.textClassifier';
 
 /**
  * Vendor API nodes (OpenAI, Anthropic, …): AI roots for detection purposes,
@@ -30,7 +31,7 @@ const AI_ROOT_NODE_TYPES = new Set<string>([
 	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
 	'@n8n/n8n-nodes-langchain.chainSummarization',
 	'@n8n/n8n-nodes-langchain.informationExtractor',
-	'@n8n/n8n-nodes-langchain.textClassifier',
+	TEXT_CLASSIFIER_NODE_TYPE,
 	'@n8n/n8n-nodes-langchain.sentimentAnalysis',
 	...VENDOR_AI_ROOT_NODE_TYPES,
 ]);
@@ -39,19 +40,26 @@ export function isAiRootNodeType(nodeType: string): boolean {
 	return AI_ROOT_NODE_TYPES.has(nodeType);
 }
 
+export interface AiRootShapeOptions {
+	classifierReportsConfidence?: boolean;
+}
+
 /**
  * Per-root-type pinned item shape for the roots whose shape can't live in a
- * `__schema__` file at all: textClassifier is a pure input passthrough and
- * vendor nodes emit their API response. Every other root's shape (including
- * the parser-conditional Agent/ChainLlm variants) ships as
+ * `__schema__` file at all: textClassifier passes its input through, adding a
+ * `classification` object only when its options ask for one, and vendor nodes
+ * emit their API response. Every other root's shape (including the
+ * parser-conditional Agent/ChainLlm variants) ships as
  * `__schema__/v<X>/output[.with-parser].json` in nodes-langchain — the prompt
  * embeds those via the schema lookup and only falls back to this prose when
  * no schema resolves (missing/stale package build).
  */
-export function describeAiRootShape(nodeType: string): string {
+export function describeAiRootShape(nodeType: string, options?: AiRootShapeOptions): string {
 	switch (nodeType) {
-		case '@n8n/n8n-nodes-langchain.textClassifier':
-			return 'the INPUT item passed through UNCHANGED (this node routes items to a category branch without reshaping them) — emit a plausible input item, no classification wrapper key.';
+		case TEXT_CLASSIFIER_NODE_TYPE:
+			return options?.classifierReportsConfidence
+				? 'the INPUT item passed through unchanged, plus a `classification` object holding `category` (the branch name), `confidence` (0-1), and `scores` (0-1 for every category) — the node routes items and adds only that one key.'
+				: 'the INPUT item passed through UNCHANGED (this node routes items to a category branch without reshaping them) — emit a plausible input item, no classification wrapper key.';
 		default:
 			if (VENDOR_AI_ROOT_NODE_TYPES.has(nodeType)) {
 				return "a plausible vendor API response for the node's configured resource and operation — there is NO `output` wrapper key; mirror the vendor's response fields.";

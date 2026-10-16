@@ -61,9 +61,18 @@ export function buildLakebaseQuery(input: LakebaseQueryInput): IDataObject {
 			}
 
 			const column = quotePostgrestComponent(rule.column);
-			return VALUELESS_OPERATORS.has(condition)
-				? `${column}.${condition}`
-				: `${column}.${condition}.${quotePostgrestComponent(rule.value ?? '')}`;
+			if (VALUELESS_OPERATORS.has(condition)) return `${column}.${condition}`;
+
+			// An expression resolving to null would read as `col.eq.`, which selects rows
+			// holding an empty string rather than rows holding nothing. An untouched Value
+			// field is '', so only an expression or a hand-authored workflow gets here.
+			if (rule.value === null || rule.value === undefined) {
+				throw new UserError(`The filter on "${String(rule.column)}" has no value`, {
+					description: 'Use the Is Null or Is Not Null condition to match rows with no value.',
+				});
+			}
+
+			return `${column}.${condition}.${quotePostgrestComponent(rule.value)}`;
 		});
 
 	if (terms.length > 0) {

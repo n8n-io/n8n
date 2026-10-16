@@ -17,6 +17,12 @@ export const lakebaseOperations: INodeProperties = {
 			description: 'Get many rows from a table',
 			action: 'Get many rows',
 		},
+		{
+			name: 'Insert',
+			value: 'insert',
+			description: 'Insert a row into a table',
+			action: 'Insert a row',
+		},
 	],
 	default: 'getAll',
 };

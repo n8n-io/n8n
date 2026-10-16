@@ -37,6 +37,10 @@ import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.s
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
+import {
+	SkillNameTakenError,
+	skillNameTakenToolMessage,
+} from '@/modules/agents/skills/skill-name-taken.error';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,
@@ -703,6 +707,17 @@ export class McpAgentToolsService {
 						try {
 							mutation = await this.applyMutation(user, input, config, projectId, configHash);
 						} catch (error) {
+							// A taken name is a conflict too, but a retry with a fresh config would fail the same way.
+							if (error instanceof SkillNameTakenError) {
+								return {
+									ok: false,
+									code: 'skill_name_taken',
+									agentId: input.agentId,
+									// The agent may have changed meanwhile, so send the hash the next call needs.
+									configHash: await this.fetchConfigHash(projectId, input.agentId),
+									message: skillNameTakenToolMessage(error.skillName),
+								};
+							}
 							if (!(error instanceof ConflictError)) throw error;
 							const latestConfigHash = await this.fetchConfigHash(projectId, input.agentId);
 							if (latestConfigHash === configHash) throw error;
@@ -1121,6 +1136,11 @@ export class McpAgentToolsService {
 			this.agentSkillsService.listSkills(agentId, projectId),
 			this.agentTaskService.list(agentId),
 		]);
+		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(
+			config.skills ?? [],
+			skills,
+			{},
+		);
 		const taskEnabled = new Map((config.tasks ?? []).map((task) => [task.id, task.enabled]));
 
 		// The hash covers the full persisted config (integrations included) so it
@@ -1148,6 +1168,7 @@ export class McpAgentToolsService {
 			skillHashes: Object.fromEntries(
 				Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 			),
+			outdatedSkillIds,
 			tasks: tasks.map((task) => ({ ...task, enabled: taskEnabled.get(task.id) ?? false })),
 			customTools: Object.entries(agent.tools ?? {}).map(([id, tool]) => ({
 				id,
@@ -1644,10 +1665,18 @@ export class McpAgentToolsService {
 				),
 			),
 		];
+		const warnings = (configuration.warnings ?? []).flatMap((warning) =>
+			warning.code === 'similar_skill_names'
+				? [
+						`Skills ${warning.names.map((name) => `"${name}"`).join(', ')} have names that are hard to tell apart. Rename one of them.`,
+					]
+				: [],
+		);
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,
 			missing,
+			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	}
 

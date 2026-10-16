@@ -3,7 +3,12 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RuntimeCredentialProxyService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
@@ -49,14 +54,16 @@ import {
 	getSubWorkflowOutputPolicy,
 	attachDynamicCredentialsUsage,
 	summarizeDynamicCredentialsUsage,
+	attachSubWorkflowRedaction,
+	summarizeSubWorkflowRedaction,
 } from 'n8n-workflow';
 
 import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
 import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
-import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 import { ActiveExecutions } from '@/active-executions';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
@@ -78,7 +85,6 @@ import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -162,6 +168,7 @@ async function fetchWorkflowData(
 				workflowData.nodes ?? [],
 				parentWorkflowId,
 			);
+			WorkflowHelpers.validateWorkflowStructure(workflowData);
 			// An inline sub-workflow is part of the parent that embeds it, not a
 			// workflow of its own, so it runs under the parent workflow's id.
 			workflowData.id = parentWorkflowId;
@@ -605,6 +612,12 @@ async function startExecution(
 
 	const startTime = Date.now();
 
+	// Reported to the caller so its redaction covers this run's output: the parent's own
+	// nodes do not reference these credentials.
+	const workflowCredentialIds = isCredSharingEnabled()
+		? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(workflowData.nodes)
+		: [];
+
 	let data;
 	try {
 		// The original mode of the whole run tree: a sub-workflow's own
@@ -744,18 +757,21 @@ async function startExecution(
 		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
 		// credential flags on already-executed tasks — ride them on the error like the
 		// regular failure path below.
-		throw attachDynamicCredentialsUsage(
-			objectToError(
-				{
-					...executionError,
-					executionId,
-					workflowId: workflowData.id,
-					stack: executionError?.stack,
-					message: executionError?.message,
-				},
-				workflow,
+		throw attachSubWorkflowRedaction(
+			attachDynamicCredentialsUsage(
+				objectToError(
+					{
+						...executionError,
+						executionId,
+						workflowId: workflowData.id,
+						stack: executionError?.stack,
+						message: executionError?.message,
+					},
+					workflow,
+				),
+				summarizeDynamicCredentialsUsage(runData.executionData, workflowCredentialIds),
 			),
-			summarizeDynamicCredentialsUsage(runData.executionData),
+			summarizeSubWorkflowRedaction(runData.executionData, { includeOwn: true }),
 		);
 	}
 
@@ -773,7 +789,9 @@ async function startExecution(
 				: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
-			...summarizeDynamicCredentialsUsage(data.data),
+			...summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
+			// The caller keeps a copy of the output above, so it must redact what this run redacts.
+			subWorkflowRedaction: summarizeSubWorkflowRedaction(data.data, { includeOwn: true }),
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);
@@ -783,18 +801,21 @@ async function startExecution(
 
 	// A failed child may still have attempted or resolved private credentials before failing;
 	// ride the usage on the error so a continue-on-fail caller still flags its task
-	// (see `BaseExecuteContext.executeWorkflow`).
-	throw attachDynamicCredentialsUsage(
-		objectToError(
-			{
-				...error,
-				executionId,
-				workflowId: workflowData.id,
-				stack: error?.stack,
-			},
-			workflow,
+	// (see `BaseExecuteContext.executeWorkflow`). The redaction channels ride along the same way.
+	throw attachSubWorkflowRedaction(
+		attachDynamicCredentialsUsage(
+			objectToError(
+				{
+					...error,
+					executionId,
+					workflowId: workflowData.id,
+					stack: error?.stack,
+				},
+				workflow,
+			),
+			summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
 		),
-		summarizeDynamicCredentialsUsage(data.data),
+		summarizeSubWorkflowRedaction(data.data, { includeOwn: true }),
 	);
 }
 

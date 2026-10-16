@@ -23,6 +23,11 @@ export interface RedactionInfo {
 	reason: string;
 	canReveal: boolean;
 	/**
+	 * With the `credential_inaccessible` reason: the credentials the viewer cannot
+	 * use, so the editor can point to where access is granted.
+	 */
+	credentialIds?: string[];
+	/**
 	 * True when the info is synthesized from live push markers before the
 	 * authoritative executionFinished metadata arrives. `canReveal` is a
 	 * pessimistic guess while this is set.

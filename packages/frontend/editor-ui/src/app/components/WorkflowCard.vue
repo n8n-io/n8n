@@ -183,7 +183,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 						projectId: props.data.homeProject?.id,
 						folderId: props.data.parentFolder.id,
 					},
-				}).href,
+				}).fullPath,
 			},
 		];
 	}
@@ -688,6 +688,7 @@ const tags = computed(
 			[$style.cardArchived]: data.isArchived,
 		}"
 		data-test-id="workflow-card"
+		hoverable
 		@click="onClick"
 	>
 		<template #header>
@@ -833,14 +834,8 @@ const tags = computed(
 @use '@n8n/design-system/css/mixins/breakpoints';
 
 .cardLink {
-	transition: box-shadow 0.3s ease;
-	cursor: pointer;
 	padding: 0;
 	align-items: stretch;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
 }
 
 .cardHeading {

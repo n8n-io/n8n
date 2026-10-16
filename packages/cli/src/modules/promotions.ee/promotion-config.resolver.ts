@@ -1,5 +1,5 @@
 import type { PromotionDirection } from '@n8n/api-types';
-import { promotionConnectionTargetSchema, promotionProviderTypeSchema } from '@n8n/api-types';
+import { promotionProviderTypeSchema } from '@n8n/api-types';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -9,6 +9,7 @@ import type { PromotionConfig } from './database/entities/promotion-config.entit
 import { PromotionConfigRepository } from './database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from './database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
+import { resolvePromotionGitTarget } from './git-hosts/git-host-target';
 import { resolveStoredConfig } from './promotion-config-settings';
 import type { PromotionOperationInput } from './promotions.types';
 
@@ -96,10 +97,7 @@ export class PromotionConfigResolver {
 			throw new BadRequestError('The stored provider type is not supported');
 		}
 
-		const target = promotionConnectionTargetSchema.safeParse(connection.target);
-		if (!target.success) {
-			throw new BadRequestError('The stored connection target cannot be read');
-		}
+		const target = resolvePromotionGitTarget(provider, connection.target);
 
 		const resolved = resolveStoredConfig(config);
 		if (!resolved) {
@@ -114,7 +112,7 @@ export class PromotionConfigResolver {
 			providerType: providerType.data,
 			authType: provider.authType,
 			encryptedAuth: provider.auth,
-			target: target.data,
+			target,
 			config: resolved,
 		});
 	}

@@ -7,7 +7,7 @@ import jsonwebtoken from 'jsonwebtoken';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 const INSTANCE_ENCRYPTION_KEY = 'signing-secrets-instance-key';
 

@@ -8,6 +8,7 @@ import type {
 	CreateTeamsManagerCredentialResponse,
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
+	TeamsFileAccessCheck,
 	TeamsManagedSetupState,
 	TeamsAzureSubscription,
 	TeamsCatalogState,
@@ -24,6 +25,7 @@ import type { Request, Response } from 'express';
 import { TeamsCredentialCheckService } from './integrations/platforms/teams/teams-credential-check.service';
 import { TeamsBotProvisioningService } from './integrations/platforms/teams/teams-bot-provisioning.service';
 import { TeamsCatalogService } from './integrations/platforms/teams/teams-catalog.service';
+import { TeamsCredentialNotesService } from './integrations/platforms/teams/teams-credential-notes.service';
 import { TeamsEntraProvisioningService } from './integrations/platforms/teams/teams-entra-provisioning.service';
 import { TeamsSetupTelemetryService } from './integrations/platforms/teams/teams-setup-telemetry.service';
 import { TeamsManagedSetupService } from './integrations/platforms/teams/teams-managed-setup.service';
@@ -51,6 +53,7 @@ export class AgentTeamsIntegrationsController {
 		private readonly botProvisioningService: TeamsBotProvisioningService,
 		private readonly catalogService: TeamsCatalogService,
 		private readonly setupTelemetry: TeamsSetupTelemetryService,
+		private readonly credentialNotes: TeamsCredentialNotesService,
 	) {}
 
 	/**
@@ -199,6 +202,7 @@ export class AgentTeamsIntegrationsController {
 				projectId,
 				agentId,
 				agentName: identity.agentName,
+				credentialId: payload.credentialId,
 				managerCredentialId: payload.managerCredentialId,
 				subscriptionId: payload.subscriptionId,
 				msaAppId: identity.clientId,
@@ -295,6 +299,20 @@ export class AgentTeamsIntegrationsController {
 		return await this.credentialCheckService.check(req.user, req.params.projectId, credentialId);
 	}
 
+	@Get('/:agentId/integrations/teams/file-access/:credentialId')
+	@ProjectScope('agent:update')
+	async checkFileAccess(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('credentialId') credentialId: string,
+	): Promise<TeamsFileAccessCheck> {
+		return await this.credentialCheckService.checkFileAccess(
+			req.user,
+			req.params.projectId,
+			credentialId,
+		);
+	}
+
 	@Get('/:agentId/integrations/teams/setup')
 	@ProjectScope('agent:update')
 	async getSetupState(
@@ -322,12 +340,14 @@ export class AgentTeamsIntegrationsController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentTeamsPackageDto,
 	): Promise<void> {
-		const archive = await this.setupService.buildPackage(
+		const { archive, fingerprint, credentialId } = await this.setupService.buildPackage(
 			req.user,
 			{ projectId: req.params.projectId, agentId },
 			payload.credentialId,
 			payload.settings,
 		);
+		// The settings compare against this to say Teams holds an older version.
+		await this.credentialNotes.write(req.user, credentialId, { teamsAppFingerprint: fingerprint });
 
 		res.setHeader('Content-Type', 'application/zip');
 		res.setHeader('Content-Disposition', 'attachment; filename="n8n-agent-teams-app.zip"');

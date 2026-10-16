@@ -17,10 +17,18 @@ export const CONFIG_EVAL_PLAYBOOK_SKILL_ID = 'config-eval-playbook';
  */
 export const INSTANCE_AWARENESS_SKILL_ID = 'instance-awareness';
 
+/** Skill folder ids that only work when the Assistant can build agents. */
+export const AGENT_BUILDING_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
+
 /** Resolved feature flags that gate one or more runtime skills. */
 export interface InstanceAiSkillFlags {
 	configEvalsEnabled: boolean;
 	instanceContextEnabled: boolean;
+	/**
+	 * Whether the host gives the Assistant a builder delegate, so it can build
+	 * agents. This needs the Agents module and the Settings > Agents switch.
+	 */
+	agentBuildingEnabled: boolean;
 }
 
 /** Skill ids to hide from a user's catalog given their resolved flags. */
@@ -30,5 +38,6 @@ export function disabledInstanceAiSkillIds(flags: InstanceAiSkillFlags): string[
 		disabled.push(CONFIG_EVALS_SKILL_ID, CONFIG_EVAL_PLAYBOOK_SKILL_ID);
 	}
 	if (!flags.instanceContextEnabled) disabled.push(INSTANCE_AWARENESS_SKILL_ID);
+	if (!flags.agentBuildingEnabled) disabled.push(...AGENT_BUILDING_SKILL_IDS);
 	return disabled;
 }

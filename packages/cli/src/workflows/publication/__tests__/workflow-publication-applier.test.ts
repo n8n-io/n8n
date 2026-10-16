@@ -24,7 +24,7 @@ import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-pub
 import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowPublishedDataService } from '@n8n/backend-services';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 describe('WorkflowPublicationApplier', () => {
