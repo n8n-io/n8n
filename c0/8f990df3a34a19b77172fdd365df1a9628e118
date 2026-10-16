@@ -1,0 +1,27 @@
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/suspends-a-tool-call-and-resumes-it-only-for-the-session-owner.json
+  s_e5ac11fb92a0ab::t_6de419fbdbe7e6 6,16
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/sends-an-image-to-the-model-and-reloads-the-stored-attachment.json
+  s_e5ac11fb92a0ab::t_6de419fbdbe7e6 6
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/allows-only-the-session-owner-to-cancel-a-suspended-run.json
+  s_e5ac11fb92a0ab::t_6de419fbdbe7e6 6
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/streams-the-published-instructions-and-records-a-private-production-session.json
+  s_e5ac11fb92a0ab::t_6de419fbdbe7e6 6,26
+packages/@n8n/agents/src/__tests__/integration/cassettes/vercel-ai-gateway/generates-a-response-through-the-native-gateway.json
+  s_e5ac11fb92a0ab::t_1dc20957be3ec6 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c08f990df3a34a19b77172fdd365df1a9628e118",
+  "prompts": {},
+  "sessions": {
+    "s_e5ac11fb92a0ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc385048-38ab-49d4-91fd-be1db22d34e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
