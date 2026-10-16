@@ -8,6 +8,7 @@ import {
 	skillNameKey,
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
+	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
 } from '@n8n/api-types';
@@ -495,10 +496,12 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				onConfirm: ({
 					skill,
 					availableTo,
+					method,
 				}: {
 					id?: string;
 					skill: AgentSkill;
 					availableTo?: AgentSkillAvailability;
+					method?: SkillCreateMethod;
 				}) => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return;
@@ -536,6 +539,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 								targetAgentId,
 								sanitizedSkill,
 								hubSkillsEnabled.value ? availableTo : undefined,
+								method,
 							);
 							skillId = result.id;
 							created = result.skill;

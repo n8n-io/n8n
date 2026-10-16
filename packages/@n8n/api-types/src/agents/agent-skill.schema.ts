@@ -92,6 +92,16 @@ export const agentSkillAvailabilitySchema = z.enum(['project', 'agent', 'instanc
 
 export type AgentSkillAvailability = z.infer<typeof agentSkillAvailabilitySchema>;
 
+/**
+ * How a person made a new skill in the skill modal: typed it, or uploaded a SKILL.md file
+ * or folder. The browser parses an upload, so only the client knows. Telemetry reads it
+ * and the server does not store it.
+ */
+export const skillCreateMethodSchema = z.enum(['manual', 'upload']);
+
+export type SkillCreateMethod = z.infer<typeof skillCreateMethodSchema>;
+
 export const createAgentSkillSchema = agentSkillSchema.extend({
 	availableTo: agentSkillAvailabilitySchema.optional(),
+	method: skillCreateMethodSchema.optional(),
 });
