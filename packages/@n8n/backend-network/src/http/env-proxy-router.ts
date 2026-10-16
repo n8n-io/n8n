@@ -48,7 +48,11 @@ export class EnvProxyRouter<TProxyAgent extends { destroy(): void }> {
 		return agent;
 	}
 
-	/** Destroys the cached proxy agents and empties the cache. */
+	/**
+	 * Destroys the cached proxy agents and empties the cache.
+	 * Agents created past `MAX_CACHED_AGENTS` are not tracked, so this does not destroy them.
+	 * Reaching the limit needs that many distinct environment proxies, which is already a misconfiguration.
+	 */
 	destroy(): void {
 		for (const agent of this.proxyCache.values()) agent.destroy();
 		this.proxyCache.clear();
