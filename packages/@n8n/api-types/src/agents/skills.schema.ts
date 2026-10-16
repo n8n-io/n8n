@@ -1,15 +1,14 @@
 import { z } from 'zod';
 
-import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
+import {
+	AGENT_SKILL_NAME_MAX_LENGTH,
+	agentSkillSchema,
+	agentSkillShape,
+} from './agent-skill.schema';
 import type { AgentSkill } from './types';
+import type { ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
-
-/**
- * PostHog flag for the rollout of the skills hub, read for the instance once at startup.
- * Off: agents keep their inline skills and the skills routes answer 404.
- */
-export const SKILLS_FLAG = '125_context_skills';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
 
@@ -30,6 +29,14 @@ export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 export type SkillSource = 'ui' | 'agent';
 
+/** The user who created a skill, as the settings list names them. */
+export type SkillUserDto = {
+	id: string;
+	email: string | null;
+	firstName: string | null;
+	lastName: string | null;
+};
+
 /** One row of the skills list. Name and description come from the latest version. */
 export type SkillListItem = {
 	id: string;
@@ -39,10 +46,14 @@ export type SkillListItem = {
 	/** The project of a project skill, or the project of the agent of an agent skill. */
 	projectId: string | null;
 	projectName: string | null;
+	/** Lets the editor name another member's personal project, which it does not list. */
+	projectType: ProjectType | null;
 	/** Set for an agent skill: the only agent that can use it. */
 	agentId: string | null;
 	agentName: string | null;
 	source: SkillSource;
+	/** Null when the creator is unknown or the user no longer exists. */
+	createdBy: SkillUserDto | null;
 	/** Number of the latest version, the one following agents run. */
 	latestVersion: number;
 	/** Distinct agents that use the skill: draft refs plus published pins. */
@@ -106,6 +117,25 @@ export class ListSkillsQueryDto extends Z.class({
 	attachableTo: z.string().max(36).optional(),
 }) {}
 
+/**
+ * Asks for a name that no skill in the scope has yet, as `/workflows/new` does for a
+ * workflow: the requested name, or the same name with the first free number after it.
+ */
+export class SkillNewNameQueryDto extends Z.class({
+	scope: skillScopeSchema,
+	/** Required for a project skill, absent otherwise. */
+	projectId: z.string().max(36).optional(),
+	/** Required for an agent skill, absent otherwise. */
+	agentId: z.string().max(36).optional(),
+	/** Trimmed first, so a name of only spaces is refused instead of suggested as "". */
+	name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH),
+}) {}
+
+export type SkillNewNameResponse = { name: string };
+
+/** The 409 message for a skill name that its scope already holds. The editor matches it. */
+export const SKILL_NAME_TAKEN_MESSAGE = 'That name is taken, choose another';
+
 export class CreateSkillDto extends Z.class({
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */
@@ -126,4 +156,11 @@ export class SaveSkillDto extends Z.class({
 	instructions: agentSkillShape.instructions.optional(),
 	references: agentSkillShape.references.optional(),
 	baseSkillHash: z.string().min(1),
+	/**
+	 * Moves the skill to the instance or to a project. Refused with 409 while an agent
+	 * uses it. An agent skill is made from inside its agent, so `agent` is not a choice.
+	 */
+	scope: z.enum(['project', 'instance']).optional(),
+	/** Required when `scope` is `project`, absent otherwise. */
+	projectId: z.string().max(36).optional(),
 }) {}

@@ -15,16 +15,29 @@ interface QueuedMessageInput {
 	attachments?: StoredAttachmentRef[];
 }
 
-/** A message from an n8n user. Preview runs the draft agent. n8n Chat runs the published agent. */
+/**
+ * A message from an n8n user. Preview runs the draft agent. n8n Chat runs the
+ * published agent. System runs a code-defined system agent.
+ */
 export interface QueuedUserChatMessage extends QueuedMessageInput {
-	kind: 'preview' | 'n8n_chat';
+	kind: 'preview' | 'n8n_chat' | 'system';
 	userId: string;
 	messageId?: string;
+	/** Turn options for a system agent. The queue keeps them opaque; the provider defines their shape. */
+	options?: Record<string, unknown>;
+	/**
+	 * A machine turn. The message is model input only: it is stored with
+	 * `origin.hidden`, stays out of the transcript and the pending list.
+	 */
+	hidden?: boolean;
 }
 
-/** One rule for steering eligibility: the allow-list of kinds. Integrations never steer. */
+/**
+ * One rule for steering eligibility: the allow-list of kinds. Integrations never steer.
+ * A running hidden `system` turn accepts steering too: the user sees its output.
+ */
 export const acceptsSteering = (kind: AgentQueuedMessage['kind']): boolean =>
-	kind === 'preview' || kind === 'n8n_chat';
+	kind === 'preview' || kind === 'n8n_chat' || kind === 'system';
 
 export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	kind: 'integration';
@@ -43,7 +56,8 @@ export type AgentQueuedMessage = QueuedUserChatMessage | QueuedIntegrationMessag
 
 /** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
 export type AgentQueueDispatch =
-	| { kind: QueuedUserChatMessage['kind'] }
+	// `hidden` is stored on the message origin, not in the dispatch.
+	| { kind: QueuedUserChatMessage['kind']; options?: Record<string, unknown> }
 	| (Omit<
 			QueuedIntegrationMessage,
 			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'

@@ -463,7 +463,7 @@ describe('AgentSkillRefsService', () => {
 				service.createSkills(agent, [body], 'user-1', availableTo, ctx),
 			).resolves.toEqual(['skill_created']);
 			expect(skillService.create).toHaveBeenCalledWith(
-				{ target, skill: body, source: 'agent', createdById: 'user-1' },
+				{ target, skill: body, source: 'agent', createdById: 'user-1', checkNameTaken: true },
 				ctx,
 			);
 		});
@@ -478,6 +478,19 @@ describe('AgentSkillRefsService', () => {
 				{ projectId: null, agentId: 'agent-1' },
 				'agent-1',
 				ctx,
+				undefined,
+			);
+		});
+
+		it('checks the name that the same save gives the skill', async () => {
+			await service.setAvailability(agent, 'skill_a', 'project', ctx, 'Condense');
+
+			expect(skillService.changeTarget).toHaveBeenCalledWith(
+				'skill_a',
+				{ projectId: agent.projectId, agentId: null },
+				'agent-1',
+				ctx,
+				'Condense',
 			);
 		});
 	});

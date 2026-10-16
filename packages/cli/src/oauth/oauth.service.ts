@@ -11,6 +11,7 @@ import {
 	UrlService,
 	CredentialsFinderService,
 } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -68,7 +69,6 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { Time } from '@n8n/constants';
 
@@ -645,6 +645,21 @@ export class OauthService {
 	}
 
 	/**
+	 * Derive the heading for the OAuth callback error page.
+	 * Some token endpoints (e.g. Meta Graph API) send `error` as an object with its own text.
+	 * The page shows that text only when the credential type fixes the token endpoint,
+	 * so a user cannot point the request at a host of their choice.
+	 * Callers log the full error before rendering.
+	 */
+	extractCallbackErrorMessage(error: Error, credentialType?: string): string {
+		const hasServerText = error instanceof OAuth2AuthError && error.fromErrorObject;
+		if (hasServerText && !(credentialType && this.hasFixedTokenEndpoint(credentialType))) {
+			return 'The OAuth2 server rejected the token request';
+		}
+		return error.message;
+	}
+
+	/**
 	 * Derive a human-readable reason for the OAuth callback error page.
 	 * Surfaces the fixed OAuth2 error code when the authorization server returned one,
 	 * then falls back to the wrapped `cause` chain so errors like
@@ -907,6 +922,25 @@ export class OauthService {
 				});
 			},
 		});
+	}
+
+	/**
+	 * Whether the credential type sets `accessTokenUrl` to a static hidden value.
+	 * Stored data never overrides a hidden endpoint (see `OAUTH_PINNED_FIELDS`).
+	 */
+	private hasFixedTokenEndpoint(credentialType: string): boolean {
+		try {
+			const tokenUrl = this.credentialsHelper
+				.getCredentialsProperties(credentialType)
+				.find((property) => property.name === 'accessTokenUrl');
+			return (
+				tokenUrl?.type === 'hidden' &&
+				typeof tokenUrl.default === 'string' &&
+				!tokenUrl.default.startsWith('=')
+			);
+		} catch {
+			return false;
+		}
 	}
 
 	/**

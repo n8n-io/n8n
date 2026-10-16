@@ -1,6 +1,6 @@
 import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -38,7 +38,7 @@ import {
 } from '../execution-lifecycle-hooks';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';

@@ -106,7 +106,8 @@ test.describe(
 					state,
 				});
 				expect(authorizeResponse.status()).toBe(302);
-				expect(authorizeResponse.headers().location).toBe('/oauth/consent');
+				// The redirect names the pending authorization request it just stored.
+				expect(authorizeResponse.headers().location).toMatch(/^\/oauth\/consent\?flow=/);
 
 				// The consent page can resolve the pending session to the client name
 				const detailsResponse = await api.mcpOauth.getConsentDetails();

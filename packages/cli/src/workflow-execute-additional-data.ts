@@ -3,7 +3,12 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RuntimeCredentialProxyService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
@@ -54,7 +59,6 @@ import {
 import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
 import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
 import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
-import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
@@ -79,7 +83,6 @@ import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,

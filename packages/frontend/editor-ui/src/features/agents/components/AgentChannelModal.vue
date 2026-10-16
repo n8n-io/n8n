@@ -321,17 +321,13 @@ watch(
 
 // n8n Chat's setup view also needs a footer ("Make available"), unlike every
 // other channel's setup, which connects straight from its own view.
-/**
- * A setup that outlives its connect gets the footer too, so its Done button
- * sits where every other dialog's does rather than at the end of the scroll.
- */
 const setupCanFinish = computed(
 	() => isSetupMode.value && channelViewRef.value?.canFinish === true,
 );
 const showFooterActions = computed(
 	() =>
 		selectedChannelType.value !== null &&
-		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value) || setupCanFinish.value),
+		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value)),
 );
 
 const currentChannelCredentialId = computed(() =>
@@ -419,6 +415,7 @@ function completeAndClose() {
  * from the agent. Staying open on a failure keeps the reason on screen.
  */
 async function finishSetup() {
+	if (!setupCanFinish.value) return completeAndClose();
 	if (await writeChannelConfig()) completeAndClose();
 }
 
@@ -724,7 +721,7 @@ watch(
 					@connect="saveChannelConfig"
 					@persist="writeChannelConfig"
 					@connected="handlePlatformConnected"
-					@done="completeAndClose"
+					@done="finishSetup"
 				/>
 				<N8nText
 					v-if="saveAttempted && !currentChannelCredentialId"
@@ -758,17 +755,7 @@ watch(
 			</N8nButton>
 		</template>
 		<template v-if="showFooterActions" #footerActions>
-			<N8nButton
-				v-if="setupCanFinish"
-				variant="solid"
-				size="medium"
-				:loading="actionInFlight"
-				data-testid="agent-channel-setup-done"
-				@click="finishSetup"
-			>
-				{{ i18n.baseText('generic.done') }}
-			</N8nButton>
-			<template v-else-if="isN8nChatSelected">
+			<template v-if="isN8nChatSelected">
 				<N8nButton
 					variant="ghost"
 					size="medium"
