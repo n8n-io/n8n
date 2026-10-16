@@ -86,7 +86,12 @@ export class SkillsApiService {
 			source: 'ui',
 			createdById: user.id,
 		});
-		await this.skillsTelemetry.created(user.id, [id], 'ui', payload.method ?? 'manual');
+		await this.skillsTelemetry.created(
+			user.id,
+			[{ id, ...target }],
+			'ui',
+			payload.method ?? 'manual',
+		);
 		// No second access check: a custom role can create skills it cannot read later.
 		const [skill] = await this.skillRepository.findByIds([id]);
 		if (!skill) throw new NotFoundError('Skill not found');
@@ -115,7 +120,8 @@ export class SkillsApiService {
 				user.id,
 			);
 			if (saved.created) {
-				await this.skillsTelemetry.updated(user.id, skillId, 'ui', saved.version, false);
+				// No move, so the skill stays where `requireAccess` read it.
+				await this.skillsTelemetry.updated(user.id, skill, 'ui', saved.version, false);
 			}
 			return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 		}
@@ -130,7 +136,13 @@ export class SkillsApiService {
 		// `save` leaves the refresh to the caller when it joins a transaction.
 		await this.skillService.refreshFollowingAgents(followingAgentIds);
 		if (saved.created) {
-			await this.skillsTelemetry.updated(user.id, skillId, 'ui', saved.version, true);
+			await this.skillsTelemetry.updated(
+				user.id,
+				{ id: skillId, ...target },
+				'ui',
+				saved.version,
+				true,
+			);
 		}
 		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 	}

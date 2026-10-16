@@ -76,6 +76,22 @@ describe('SkillsTelemetry', () => {
 		});
 	});
 
+	it('reports the place the caller passed without reading the skill back', async () => {
+		await service.updated(
+			'user-1',
+			{ id: 'skill_project', projectId: 'project-9', agentId: null },
+			'ui',
+			2,
+			true,
+		);
+
+		expect(repository.findByIds).not.toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL,
+			expect.objectContaining({ scope: 'project', project_id: 'project-9' }),
+		);
+	});
+
 	it('reports a delete from the skill read before the delete', async () => {
 		repository.findByIds.mockResolvedValue([]);
 

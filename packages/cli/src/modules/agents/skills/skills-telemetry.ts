@@ -17,6 +17,14 @@ export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai';
 
 type SkillPlace = { scope: SkillScope; project_id?: string };
 
+type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId' | 'agentId'>;
+
+/**
+ * A skill with the place the write put it. A bare id is read back after the write, and a
+ * concurrent move can land before that read, so pass the place when the caller has it.
+ */
+export type SkillTelemetryRef = SkillTelemetryTarget | string;
+
 /**
  * Skills hub telemetry. Callers emit only once the write commits and only with the hub
  * on. An emit never fails the write: an error is logged and dropped.
@@ -31,12 +39,12 @@ export class SkillsTelemetry {
 
 	async created(
 		userId: string,
-		skillIds: string[],
+		refs: SkillTelemetryRef[],
 		source: SkillTelemetrySource,
 		method: SkillTelemetryMethod,
 	): Promise<void> {
 		await this.safely(async () => {
-			const skills = await this.skillRepository.findByIds(skillIds);
+			const skills = await this.resolve(refs);
 			const placeOf = await this.placeResolver(skills);
 			for (const skill of skills) {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CREATED_SKILL, {
@@ -53,13 +61,13 @@ export class SkillsTelemetry {
 	/** Call only for a save that stored a new version. */
 	async updated(
 		userId: string,
-		skillId: string,
+		ref: SkillTelemetryRef,
 		source: SkillTelemetrySource,
 		version: number,
 		scopeChanged: boolean,
 	): Promise<void> {
 		await this.safely(async () => {
-			const [skill] = await this.skillRepository.findByIds([skillId]);
+			const [skill] = await this.resolve([ref]);
 			if (!skill) return;
 			const placeOf = await this.placeResolver([skill]);
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL, {
@@ -74,7 +82,7 @@ export class SkillsTelemetry {
 	}
 
 	/** Takes the skill as read before the delete, since the row is gone after it. */
-	async deleted(userId: string, skill: Skill): Promise<void> {
+	async deleted(userId: string, skill: SkillTelemetryTarget): Promise<void> {
 		await this.safely(async () => {
 			const placeOf = await this.placeResolver([skill]);
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_SKILL, {
@@ -85,8 +93,17 @@ export class SkillsTelemetry {
 		});
 	}
 
+	/** Reads back only the refs that came as a bare id, in one query. */
+	private async resolve(refs: SkillTelemetryRef[]): Promise<SkillTelemetryTarget[]> {
+		const ids = refs.filter((ref) => typeof ref === 'string');
+		const read = ids.length > 0 ? await this.skillRepository.findByIds(ids) : [];
+		return [...refs.filter((ref) => typeof ref !== 'string'), ...read];
+	}
+
 	/** An agent skill has no projectId of its own, so its project comes from its agent. */
-	private async placeResolver(skills: Skill[]): Promise<(skill: Skill) => SkillPlace> {
+	private async placeResolver(
+		skills: SkillTelemetryTarget[],
+	): Promise<(skill: SkillTelemetryTarget) => SkillPlace> {
 		const agents = await this.skillRepository.findAgents(
 			skills.flatMap((skill) => (skill.agentId ? [skill.agentId] : [])),
 		);

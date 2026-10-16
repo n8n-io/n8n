@@ -384,7 +384,12 @@ describe('SkillsApiService', () => {
 
 			await service.create(user, payload({ method: 'upload' }));
 
-			expect(skillsTelemetry.created).toHaveBeenCalledWith(user.id, ['skill_new'], 'ui', 'upload');
+			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+				user.id,
+				[{ id: 'skill_new', projectId: null, agentId: null }],
+				'ui',
+				'upload',
+			);
 		});
 
 		it('reports a create without a method as manual', async () => {
@@ -392,7 +397,12 @@ describe('SkillsApiService', () => {
 
 			await service.create(user, payload({}));
 
-			expect(skillsTelemetry.created).toHaveBeenCalledWith(user.id, ['skill_new'], 'ui', 'manual');
+			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+				user.id,
+				[{ id: 'skill_new', projectId: null, agentId: null }],
+				'ui',
+				'manual',
+			);
 		});
 
 		it('reports nothing for a refused create', async () => {
@@ -507,7 +517,7 @@ describe('SkillsApiService', () => {
 				user.id,
 			);
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'update');
-			expect(skillsTelemetry.updated).toHaveBeenCalledWith(user.id, 'skill_a', 'ui', 3, false);
+			expect(skillsTelemetry.updated).toHaveBeenCalledWith(user.id, visible[0], 'ui', 3, false);
 			const { followingAgentIds: _following, ...response } = saved;
 			expect(result).toEqual({
 				id: 'skill_a',
@@ -560,7 +570,14 @@ describe('SkillsApiService', () => {
 				TX_CTX,
 			);
 			expect(skillService.refreshFollowingAgents).toHaveBeenCalledWith(['agent-1']);
-			expect(skillsTelemetry.updated).toHaveBeenCalledWith(user.id, 'skill_a', 'ui', 3, true);
+			// The place the move wrote, not a read after the commit.
+			expect(skillsTelemetry.updated).toHaveBeenCalledWith(
+				user.id,
+				{ id: 'skill_a', projectId: 'project-1', agentId: null },
+				'ui',
+				3,
+				true,
+			);
 			// The move runs first, so the save checks a rename in the new scope.
 			expect(skillService.changeTarget.mock.invocationCallOrder[0]).toBeLessThan(
 				skillService.save.mock.invocationCallOrder[0],
