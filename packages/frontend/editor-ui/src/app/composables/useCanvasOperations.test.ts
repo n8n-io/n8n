@@ -5143,26 +5143,24 @@ describe('useCanvasOperations', () => {
 			expect(copiedData.nodeGroups).toBeUndefined();
 		});
 
-		it('should not copy a selection that contains a restricted node type', async () => {
+		it('should copy a selection that contains a restricted node type', async () => {
 			const toast = useToast();
 			const nodes = buildImportNodes();
 			nodes[1].type = 'n8n-nodes-base.slack';
 			workflowDocumentStoreInstance.allNodes = nodes;
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
 				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
 			);
 
 			const { copyNodes } = useCanvasOperations();
-			const copied = await copyNodes(['1', '2']);
+			await copyNodes(['1', '2']);
 
-			expect(copied).toBe(false);
-			expect(useClipboard().copy).not.toHaveBeenCalled();
-			expect(toast.showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'warning',
-					message: expect.stringContaining('n8n-nodes-base.slack'),
-				}),
+			const copiedData = JSON.parse(vi.mocked(useClipboard().copy).mock.calls[0][0] as string);
+			expect(copiedData.nodes.map((node: INodeUi) => node.type)).toContain('n8n-nodes-base.slack');
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning' }),
 			);
 		});
 
@@ -5369,6 +5367,28 @@ describe('useCanvasOperations', () => {
 			await cutNodes(['1', '2']);
 			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
 			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
+		});
+
+		it('should cut a selection that contains a restricted node type', async () => {
+			const nodes = buildImportNodes();
+			nodes[1].type = 'n8n-nodes-base.slack';
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
+				nodes.find((node) => node.id === id),
+			);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+			const removeNodeByIdSpy = vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById');
+
+			const { cutNodes } = useCanvasOperations();
+			await cutNodes(['1', '2']);
+
+			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
+			expect(removeNodeByIdSpy).toHaveBeenCalledWith('2');
 		});
 
 		it('does not restore an anchor when cutting an explicitly selected group', async () => {

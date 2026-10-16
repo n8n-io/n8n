@@ -544,6 +544,55 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
+	describe('blank optional fields', () => {
+		it.each(['', '  \n'])(
+			'builds the existing file content when sourceCode is %j',
+			async (sourceCode) => {
+				const source = 'workflow source from workspace';
+				const { context, files, filePath } = makeContext({ source });
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					sourceCode,
+					workflowId: 'wf-1',
+				});
+
+				expect(result).toMatchObject({ success: true, sourceHash: hashWorkflowSource(source) });
+				expect(files.get(filePath)).toBe(source);
+				expect(context.workspace?.filesystem?.writeFile).not.toHaveBeenCalled();
+				expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+			},
+		);
+
+		it('writes non-blank sourceCode to the file before building', async () => {
+			const { context, files, filePath } = makeContext({ source: 'old source' });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				sourceCode: 'new source',
+				workflowId: 'wf-1',
+			});
+
+			expect(result).toMatchObject({
+				success: true,
+				sourceHash: hashWorkflowSource('new source'),
+			});
+			expect(files.get(filePath)).toBe('new source');
+		});
+
+		it('uses the file path as the work item when workItemId is blank', async () => {
+			const { context, filePath } = makeContext({});
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workItemId: '',
+				name: 'Blank work item',
+			});
+
+			expect(result).toMatchObject({ success: true, workItemId: filePath });
+		});
+	});
+
 	it('builds a new workflow from a workspace source file', async () => {
 		const source = 'workflow source from workspace';
 		const { context, filePath } = makeContext({ source });

@@ -3696,10 +3696,8 @@ export function useCanvasOperations() {
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
 
-	async function copyNodes(ids: string[]): Promise<boolean> {
+	async function copyNodes(ids: string[]) {
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
-		if (refuseRestrictedNodes(nodes)) return false;
-
 		const workflowData = deepCopy(getNodesToSave(nodes));
 		if (!emptyCanvasGroupsEnabled.value) {
 			removeEmptyCanvasGroupsFromWorkflowData(workflowData, nodes);
@@ -3716,13 +3714,10 @@ export function useCanvasOperations() {
 			node_types: workflowData.nodes.map((node) => node.type),
 			workflow_id: workflowDocumentStore.value.workflowId,
 		});
-
-		return true;
 	}
 
 	async function cutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
-		if (!(await copyNodes(ids))) return;
-
+		await copyNodes(ids);
 		deleteNodes(ids, { deleteWholeGroupIds });
 	}
 
