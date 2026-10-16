@@ -35,10 +35,16 @@ registerAgGridModulesOnce();
 type Props = {
 	dataTable: DataTable;
 	search?: string;
+	/** Locks the whole grid: rows and columns. */
 	readOnly?: boolean;
+	/** Locks only the columns, for example on a protected instance. Rows stay editable. */
+	schemaReadOnly?: boolean;
+	schemaReadOnlyTooltip?: string;
 };
 
 const props = defineProps<Props>();
+
+const isSchemaReadOnly = computed(() => !!props.readOnly || !!props.schemaReadOnly);
 
 const emit = defineEmits<{
 	toggleSave: [value: boolean];
@@ -73,6 +79,8 @@ const dataTableColumns = useDataTableColumns({
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
 	readOnly: computed(() => props.readOnly ?? false),
+	schemaReadOnly: computed(() => props.schemaReadOnly ?? false),
+	schemaReadOnlyTooltip: computed(() => props.schemaReadOnlyTooltip),
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
@@ -121,7 +129,7 @@ const dataTableOperations = useDataTableOperations({
 	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
 	currentFilterJSON,
 	searchQuery: computed(() => props.search),
-	readOnly: computed(() => props.readOnly ?? false),
+	schemaReadOnly: isSchemaReadOnly,
 });
 
 async function onDeleteColumnFunction(columnId: string) {
@@ -223,7 +231,7 @@ defineExpose({
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
-				:suppress-movable-columns="props.readOnly"
+				:suppress-movable-columns="isSchemaReadOnly"
 				:loading="dataTableOperations.contentLoading.value"
 				:row-selection="selection.rowSelection.value"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"

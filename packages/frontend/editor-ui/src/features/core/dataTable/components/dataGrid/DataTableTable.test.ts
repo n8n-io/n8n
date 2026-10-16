@@ -14,8 +14,16 @@ vi.mock('ag-grid-vue3', () => ({
 	AgGridVue: {
 		name: 'AgGridVue',
 		template:
-			"<div data-test-id=\"ag-grid-vue\" :data-row-selection=\"rowSelection && typeof rowSelection === 'object' && rowSelection.isRowSelectable && rowSelection.isRowSelectable({ data: { id: 1 } }) ? 'enabled' : 'disabled'\" />",
-		props: ['rowData', 'columnDefs', 'domLayout', 'animateRows', 'theme', 'rowSelection'],
+			'<div data-test-id="ag-grid-vue" :data-row-selection="rowSelection && typeof rowSelection === \'object\' && rowSelection.isRowSelectable && rowSelection.isRowSelectable({ data: { id: 1 } }) ? \'enabled\' : \'disabled\'" :data-suppress-movable-columns="!!suppressMovableColumns" />',
+		props: [
+			'rowData',
+			'columnDefs',
+			'domLayout',
+			'animateRows',
+			'theme',
+			'rowSelection',
+			'suppressMovableColumns',
+		],
 		emits: ['gridReady'],
 		mounted(this: MockComponentInstance) {
 			this.$emit('gridReady', {
@@ -251,6 +259,34 @@ describe('DataTableTable', () => {
 				const agGridVue = getByTestId('ag-grid-vue');
 				expect(agGridVue).toBeInTheDocument();
 				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
+			});
+		});
+
+		it('should keep row selection and lock column moves when only the schema is read-only', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					schemaReadOnly: true,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue.getAttribute('data-row-selection')).toBe('enabled');
+				expect(agGridVue.getAttribute('data-suppress-movable-columns')).toBe('true');
+			});
+		});
+
+		it('should allow column moves when nothing is read-only', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+				},
+			});
+
+			await waitFor(() => {
+				const agGridVue = getByTestId('ag-grid-vue');
+				expect(agGridVue.getAttribute('data-suppress-movable-columns')).toBe('false');
 			});
 		});
 

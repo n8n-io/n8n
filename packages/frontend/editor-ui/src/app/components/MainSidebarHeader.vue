@@ -15,6 +15,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { PROTECTED_INSTANCE_DOCS_URL } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
@@ -78,10 +79,7 @@ const {
 					<template #content>
 						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
 							<template #link>
-								<N8nLink
-									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
-									size="small"
-								>
+								<N8nLink :to="PROTECTED_INSTANCE_DOCS_URL" size="small">
 									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
 								</N8nLink>
 							</template>

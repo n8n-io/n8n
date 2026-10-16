@@ -73,6 +73,7 @@ const mockDataTableWithoutProject: DataTable = {
 const renderComponent = createComponentRenderer(DataTableBreadcrumbs, {
 	props: {
 		dataTable: mockDataTable,
+		schemaReadOnly: false,
 	},
 });
 
@@ -208,6 +209,16 @@ describe('DataTableBreadcrumbs', () => {
 					'project-1',
 				);
 			});
+		});
+
+		it('should not rename when the table structure is locked', async () => {
+			const { getByTestId } = renderComponent({ props: { schemaReadOnly: true } });
+
+			await userEvent.click(getByTestId('inline-editable-area'));
+			const input = getByTestId('inline-edit-input');
+			await userEvent.type(input, ' Renamed{Enter}');
+
+			expect(dataTableStore.updateDataTable).not.toHaveBeenCalled();
 		});
 
 		it('should show error toast when rename fails', async () => {
