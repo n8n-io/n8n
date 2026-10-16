@@ -76,11 +76,8 @@ export class RateLimitService {
 	}
 
 	/**
-	 * Creates a rate limit middleware keyed by API key.
-	 * Runs AFTER authentication. Requests without an API key are not counted.
-	 * The limiter only counts. It stores its numbers on the request under `requestPropertyName`
-	 * and never blocks, so a later middleware can see every limit before it sends a 429. That
-	 * middleware takes the count back from `store` when it blocks the request.
+	 * Counts requests for each API key and never blocks. Requests without an API key are skipped.
+	 * The counts are stored on the request under `requestPropertyName`.
 	 */
 	createApiKeyRateLimitMiddleware(
 		limits: Required<RateLimiterLimits>,
