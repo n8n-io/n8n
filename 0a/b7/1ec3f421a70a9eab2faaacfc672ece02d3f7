@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/types/agent-task-stop.ts
+  s_fbba0b32ee6f59::t_326b75fa1e573c 24-28
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_fbba0b32ee6f59::t_326b75fa1e573c 7,25
+packages/cli/test/integration/database/repositories/agent-task-cancellation.repository.test.ts
+  s_fbba0b32ee6f59::t_8e7db60669ba32 88,95,97-103,105-146
+  s_fbba0b32ee6f59::t_326b75fa1e573c 89-94,96
+  s_fbba0b32ee6f59::t_eb8eeea41b914c 104
+packages/cli/src/modules/agents/repositories/agent-task-cancellation.repository.ts
+  s_fbba0b32ee6f59::t_326b75fa1e573c 33,228-231,261-264,307-319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ab71ec3f421a70a9eab2faaacfc672ece02d3f7",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

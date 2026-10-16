@@ -1,0 +1,22 @@
+packages/workflow/src/request-target.ts
+  s_2e1fa95fc44f8f::t_227a6889639982 50-51
+packages/workflow/test/request-target.test.ts
+  s_2e1fa95fc44f8f::t_d63b6456f30a4e 93-99
+  s_2e1fa95fc44f8f::t_b4b7bd78a73f4a 92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfdecbbb7f3bfdce45e6087f5820c2340e305744",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

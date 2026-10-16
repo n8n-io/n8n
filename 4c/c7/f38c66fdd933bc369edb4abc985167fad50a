@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_52b10b84086ac8 469-493
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_8ec1e2c1463788 156-159
+  s_2e1fa95fc44f8f::t_5a689e7da527b6 160-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cc7f38c66fdd933bc369edb4abc985167fad50a",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

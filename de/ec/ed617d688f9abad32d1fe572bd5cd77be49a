@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_1f1250847a1c32::t_e9cfac136576a3 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "deeced617d688f9abad32d1fe572bd5cd77be49a",
+  "prompts": {},
+  "sessions": {
+    "s_1f1250847a1c32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb4d32fe-a837-4e9b-b2ac-a45226b2c12c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

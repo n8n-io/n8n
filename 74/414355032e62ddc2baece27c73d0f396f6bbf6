@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Lemlist/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_13ba845e7815a1 12-15
+packages/nodes-base/nodes/Lemlist/Lemlist.node.ts
+  s_2e1fa95fc44f8f::t_a5c095f203ed72 14,21
+packages/nodes-base/nodes/Lemlist/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_0e1efa12992f45 10-15,134-143
+packages/nodes-base/nodes/Lemlist/test/Lemlist.workflow.test.ts
+  s_2e1fa95fc44f8f::t_54ced2d24a649e 76-89
+packages/nodes-base/nodes/Lemlist/v1/LemlistV1.node.ts
+  s_2e1fa95fc44f8f::t_389a55785b4e2b 13,224,236,252,262,292,305
+packages/nodes-base/nodes/Lemlist/v2/LemlistV2.node.ts
+  s_2e1fa95fc44f8f::t_b6810dfea8e48b 29,35,122,256,268,284,294,332,345
+packages/nodes-base/nodes/Lemlist/test/encoded-email.workflow.json
+  s_2e1fa95fc44f8f::t_f017c2338d9ae9 1-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74414355032e62ddc2baece27c73d0f396f6bbf6",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

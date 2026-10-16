@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Jenkins/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_de4d1f4cc04f9d 35-42
+packages/nodes-base/nodes/Jenkins/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_282f7fa27dadd6 15-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62b6f9cd3b7948b1d0ca43a9b825599721bbaca3",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

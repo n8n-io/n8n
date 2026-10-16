@@ -1,0 +1,17 @@
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  ai_agent 2-6,12-13,15-19,23-30,73-81
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  ai_agent 168,200,213-243
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  ai_agent 15,21,24,35,37,143,159,162,218,222-240,272-275
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  ai_agent 4,32-40
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  ai_agent 153-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9dd31538b6f3beae3c4fa8ce0dc69bb3416bb47b",
+  "prompts": {}
+}

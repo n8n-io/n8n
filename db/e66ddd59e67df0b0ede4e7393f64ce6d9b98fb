@@ -1,0 +1,122 @@
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 96-110
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_fbba0b32ee6f59::t_5b560322934995 175,415,427
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 24-27,148-152,169-170
+packages/cli/src/modules/agents/repositories/agent-plan-work.repository.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 53-59
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 370,380,382,385,389-390,392,406-412,414-418
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 20
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 110-113
+  s_fbba0b32ee6f59::t_40e0501ed2bc2b 114
+packages/cli/src/modules/agents/agent-plan.service.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 98
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 168-174
+packages/cli/src/modules/agents/__tests__/agent-plan.service.test.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 49
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 68-72
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 62
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 146,167,170,172-173,252
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_fbba0b32ee6f59::t_7141ebeade1038 1-28,36-40,52-54
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 29-35,41-51
+packages/@n8n/db/src/migrations/common/1791548871825-AddSourceExecutionToAgentBackgroundJob.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 4,6,19,22-23
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 96-97,155-156,158
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 251-254
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 36,138,140-143,161-172,176,187-195
+packages/cli/src/modules/agents/plans/agent-plan-tools.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 4,274
+  s_fbba0b32ee6f59::t_8c84916788c564 220-227
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 10,40,47-49,78-81,83-84,95,104,125,145,155
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_fbba0b32ee6f59::t_40e0501ed2bc2b 208
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 177-207
+packages/cli/test/integration/database/repositories/agent-plan-work.repository.test.ts
+  s_fbba0b32ee6f59::t_a465ec7cdc07cb 130-136
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 129,137-165
+packages/@n8n/api-types/src/agents/task-cancellation.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 26,31,38-40,42
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 7,36-39,74,89,91-101,103,152,164,175,251-257,259-260,262-279,281-282,284-288,290-291
+packages/@n8n/api-types/src/agents/dto.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 462
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 140-143,145,192-194,196,337
+packages/cli/src/modules/agents/repositories/agent-task-cancellation.repository.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 260-261,263-264,266-272,299
+  s_fbba0b32ee6f59::t_a465ec7cdc07cb 265
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 18,110
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_fbba0b32ee6f59::t_5b560322934995 119
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 323-327
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 60
+packages/cli/test/integration/database/repositories/agent-task-cancellation.repository.test.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 59-61
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_fbba0b32ee6f59::t_5b560322934995 844-845,930,957,961-962
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 925-928
+  s_fbba0b32ee6f59::t_8588ddecba8bef 220-226,228-234,236-241
+packages/cli/test/migration/1791548871825-add-source-execution-to-agent-background-job.test.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 92
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 125-144
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 219-222,329-332
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 43,803
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_fbba0b32ee6f59::t_5b560322934995 1823,1860
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 1824-1832,1861-1882,1884-1909
+  s_fbba0b32ee6f59::t_40e0501ed2bc2b 1317
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 6,105-108,120
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 148-156
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_fbba0b32ee6f59::t_65ab033fe3b5f8 124-144
+packages/cli/src/modules/agents/plans/__tests__/agent-plan-tools.test.ts
+  s_fbba0b32ee6f59::t_40e0501ed2bc2b 595
+  s_fbba0b32ee6f59::t_8588ddecba8bef 574-578,580-581,583,585-591,593-594,596
+  s_fbba0b32ee6f59::t_8c84916788c564 598-621
+packages/@n8n/agents/src/types/sdk/guardrail.ts
+  s_fbba0b32ee6f59::t_c077442ffb18da 19
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_fbba0b32ee6f59::t_367aa77d5c764c 764
+packages/cli/test/migration/1791548880239-add-task-stop-to-agent-execution-threads.test.ts
+  s_fbba0b32ee6f59::t_8588ddecba8bef 115-116,119
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_fbba0b32ee6f59::t_367aa77d5c764c 433
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_fbba0b32ee6f59::t_40e0501ed2bc2b 432-435,445-448
+  s_fbba0b32ee6f59::t_c077442ffb18da 383-391,393-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dbe66ddd59e67df0b0ede4e7393f64ce6d9b98fb",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
