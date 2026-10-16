@@ -1398,7 +1398,7 @@ export class InstanceAiController {
 					// that triggered the rollback.
 				}
 			}
-			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId, req.user);
 			// Every seed this restore published, not only the created ones: a re-applied
 			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
 			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);

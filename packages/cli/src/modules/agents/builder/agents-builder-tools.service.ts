@@ -35,11 +35,10 @@ import {
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createAgentContextTool, type InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from './builder-session';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -60,7 +59,6 @@ import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -309,10 +307,9 @@ interface AgentConfigSnapshot {
 	configHash: string | null;
 }
 
-/** Builder-session options from the Instance AI host. */
+/** Options for a builder turn. */
 interface BuilderToolsOptions {
-	threadId?: string;
-	runId?: string;
+	track?: BuilderTrackFn;
 	useEvalModelCatalog?: boolean;
 }
 
@@ -387,7 +384,6 @@ export interface BuilderTools {
 @Service()
 export class AgentsBuilderToolsService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
@@ -409,7 +405,6 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
-		private readonly agentContextAdapter: InstanceAiAgentContextAdapterService,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
@@ -489,7 +484,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuilderTools {
@@ -510,18 +505,18 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		user: User,
 		options?: BuilderToolsOptions,
 	): BuiltTool[] {
-		const track: BuilderTrackFn = (entry, properties) =>
-			this.telemetry.track(entry, {
-				agent_id: agentId,
-				user_id: user.id,
-				...(options?.threadId ? { thread_id: options.threadId } : {}),
-				...(options?.runId ? { run_id: options.runId } : {}),
-				...properties,
-			});
+		const track: BuilderTrackFn =
+			options?.track ??
+			((entry, properties) =>
+				this.telemetry.track(entry, {
+					agent_id: agentId,
+					user_id: user.id,
+					...properties,
+				}));
 		const writeConfigTool = this.buildWriteConfigTool(agentId, projectId, user);
 		const patchConfigTool = this.buildPatchConfigTool(agentId, projectId, user);
 		const publishAgentTool = this.buildPublishAgentTool(user, projectId, agentId);
@@ -582,7 +577,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createFinishSetupTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		agentId: string,
 		projectId: string,
 		track: BuilderTrackFn,
@@ -630,7 +625,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createEmbeddingCredentialTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		projectId: string,
 		track: BuilderTrackFn,
 	): BuiltTool {
@@ -644,7 +639,7 @@ export class AgentsBuilderToolsService {
 	}
 
 	private createCredentialTool(
-		credentialService: InstanceAiCredentialService,
+		credentialService: BuilderCredentialService,
 		projectId: string,
 		agentId: string,
 		track: BuilderTrackFn,
@@ -987,11 +982,6 @@ export class AgentsBuilderToolsService {
 		const createTasksTool = this.buildCreateTasksTool(agentId, projectId, user);
 
 		return [
-			createAgentContextTool({
-				reader: this.agentContextAdapter.createReader(user, projectId),
-				resolveDefaultAgentId: async () => agentId,
-				logger: this.logger,
-			}),
 			this.withConfigMutationMarker(buildCustomToolTool, agentId),
 			this.withConfigMutationMarker(createSkillsTool, agentId),
 			this.withConfigMutationMarker(updateSkillTool, agentId),

@@ -9,7 +9,7 @@ import {
 	shouldAutoResolveCredential,
 	type InteractionQuestion,
 } from '@n8n/api-types';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../builder-session';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -27,7 +27,7 @@ function credentialsOfType(
 
 /** Resolve a credential's display name by id via `get`, falling back to the id if it was deleted between suspend and resume. */
 async function credentialNameById(
-	credentialService: InstanceAiCredentialService,
+	credentialService: BuilderCredentialService,
 	credentialId: string,
 ): Promise<string> {
 	try {

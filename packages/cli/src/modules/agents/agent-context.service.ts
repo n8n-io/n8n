@@ -5,8 +5,9 @@ import { Service } from '@n8n/di';
 import type {
 	AgentContextLookup,
 	AgentSessionSummary,
-	InstanceAiAgentContextReader,
-} from '@n8n/instance-ai';
+	AgentContextReader,
+	AgentContextResult,
+} from './agent-context.contracts';
 import { UserError } from 'n8n-workflow';
 
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -28,7 +29,7 @@ import { AgentsToolsService } from './agents-tools.service';
 import { AgentsService } from './agents.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
-import { formatPreviewSessionContext } from './builder/format-preview-context';
+import { toAgentSessionDetail } from './agent-session-read';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
@@ -76,7 +77,7 @@ const toSessionDetailSummary = (detail: ThreadDetail): AgentSessionSummary => {
 };
 
 @Service()
-export class InstanceAiAgentContextAdapterService {
+export class AgentContextService {
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly agentSkillsService: AgentSkillsService,
@@ -90,16 +91,14 @@ export class InstanceAiAgentContextAdapterService {
 		private readonly agentsSettingsService: AgentsSettingsService,
 	) {}
 
-	createReader(user: User, projectId: string): InstanceAiAgentContextReader {
-		let canReadAgents: Promise<boolean> | undefined;
+	createReader(user: User, projectId: string): AgentContextReader {
 		return {
 			lookup: async (input) => {
 				// Checked on every lookup, so a run loses access as soon as Agents are turned off.
 				await this.agentsSettingsService.assertEnabled().catch((error: unknown) => {
 					throw error instanceof ForbiddenError ? new UserError(error.message) : error;
 				});
-				canReadAgents ??= userHasScopes(user, ['agent:read'], false, { projectId });
-				if (!(await canReadAgents)) {
+				if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
 					throw new UserError("You don't have permission to read Agents in this project.");
 				}
 				try {
@@ -118,7 +117,7 @@ export class InstanceAiAgentContextAdapterService {
 		user: User,
 		projectId: string,
 		input: AgentContextLookup,
-	): Promise<Record<string, unknown>> {
+	): Promise<AgentContextResult> {
 		if (input.type === 'agents') {
 			const agents = await this.agentsService.findByProjectId(projectId);
 			return {
@@ -255,13 +254,10 @@ export class InstanceAiAgentContextAdapterService {
 					user.id,
 				);
 				if (!detail) return { notFound: true };
-				const transcript = formatPreviewSessionContext(
-					detail.thread,
-					detail.executions,
-					input.executionId,
-				);
-				if (transcript === null) return { notFound: true };
-				return { session: toSessionDetailSummary(detail), transcript };
+				return {
+					session: toSessionDetailSummary(detail),
+					sessionDetail: toAgentSessionDetail(detail),
+				};
 			}
 		}
 	}
