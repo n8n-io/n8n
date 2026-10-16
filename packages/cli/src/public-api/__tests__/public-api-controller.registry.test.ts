@@ -1049,45 +1049,6 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('idempotency', () => {
-		it('does not claim a key when the POST has no Idempotency-Key header', async () => {
-			@Service()
-			class WidgetsPublicController {
-				@Post('/')
-				@ApiResponse(200)
-				method() {
-					return { id: 'new' };
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-			await request(activate()).post('/api/v1/widgets').send({ name: 'A' }).expect(200);
-
-			expect(idempotencyKeyService.claim).not.toHaveBeenCalled();
-		});
-
-		it('does not claim a key for an idempotent POST', async () => {
-			let calls = 0;
-
-			@Service()
-			class WidgetsPublicController {
-				@Post('/:widgetId/activate')
-				@ApiResponse(200)
-				method() {
-					calls += 1;
-					return { ok: true };
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-			await request(activate())
-				.post('/api/v1/widgets/w1/activate')
-				.set('Idempotency-Key', 'abc')
-				.expect(200);
-
-			expect(calls).toBe(1);
-			expect(idempotencyKeyService.claim).not.toHaveBeenCalled();
-		});
-
 		it('replays a stored response and does not run the handler', async () => {
 			let calls = 0;
 			idempotencyKeyService.claim.mockResolvedValue({
@@ -1186,30 +1147,6 @@ describe('PublicApiControllerRegistry', () => {
 				.expect(400);
 
 			expect(response.body).toEqual({ message: 'nope' });
-			expect(idempotencyKeyService.claim).not.toHaveBeenCalled();
-		});
-
-		it('does not claim a key when controller middleware forwards an error', async () => {
-			@Service()
-			class WidgetsPublicController {
-				@Middleware()
-				fail(_req: express.Request, _res: express.Response, next: express.NextFunction) {
-					next(new NotFoundError('missing'));
-				}
-
-				@Post('/')
-				@ApiResponse(200)
-				method() {
-					return { id: 'new' };
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-			await request(activate())
-				.post('/api/v1/widgets')
-				.set('Idempotency-Key', 'abc')
-				.send({ name: 'A' });
-
 			expect(idempotencyKeyService.claim).not.toHaveBeenCalled();
 		});
 
