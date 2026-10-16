@@ -10,7 +10,7 @@ function hasOwn(object: Record<string, unknown>, key: string) {
 	return Object.prototype.hasOwnProperty.call(object, key);
 }
 
-export class RemoveUnusedInstanceAiSettings1791883841008 implements IrreversibleMigration {
+export class RemoveUnusedInstanceAiSettings1792161049107 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
 		await this.removeAdminSettingKeys(ctx);
 		await this.removeUserPreferenceKey(ctx);
