@@ -8,6 +8,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
+import { UserError } from 'n8n-workflow';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -826,21 +827,24 @@ describe('buildFromJson()', () => {
 	});
 
 	it('rejects native web search config for unsupported providers without fallback settings', async () => {
-		await expect(
-			buildFromJson(
-				makeConfig({
-					model: 'google/gemini-2.5-flash',
-					config: { webSearch: { enabled: true } },
-					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-				}),
-				{},
-				{
-					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
-					memoryFactory: makeMockMemoryFactory(),
-				},
-			),
-		).rejects.toThrow('Web search is enabled but no fallback search provider is configured.');
+		const rejected = buildFromJson(
+			makeConfig({
+				model: 'google/gemini-2.5-flash',
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		await expect(rejected).rejects.toThrow(UserError);
+		await expect(rejected).rejects.toThrow(
+			'Web search is enabled but no fallback search provider is configured.',
+		);
 	});
 
 	it('does not enable native web search when config is sparse', async () => {
@@ -1008,20 +1012,23 @@ describe('buildFromJson()', () => {
 	});
 
 	it('requires fallback web search credentials for providers without native web search', async () => {
-		await expect(
-			buildFromJson(
-				makeConfig({
-					model: 'deepseek/deepseek-chat',
-					config: { webSearch: { enabled: true, provider: 'brave' } },
-				}),
-				{},
-				{
-					toolExecutor: makeMockToolExecutor(),
-					credentialProvider: makeMockCredentialProvider(),
-					memoryFactory: makeMockMemoryFactory(),
-				},
-			),
-		).rejects.toThrow('Web search is enabled but no search credential is configured.');
+		const rejected = buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'brave' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		await expect(rejected).rejects.toThrow(UserError);
+		await expect(rejected).rejects.toThrow(
+			'Web search is enabled but no search credential is configured.',
+		);
 	});
 
 	it('adds fallback web search tool for the n8n Connect managed credential (brave)', async () => {

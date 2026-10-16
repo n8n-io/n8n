@@ -513,7 +513,6 @@ describe('GlobalConfig', () => {
 			retentionIntervalSeconds: 3600,
 			retentionTimeoutSeconds: 300,
 			jitterRatio: 0.1,
-			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'new',
 			enabledForPollTriggers: false,

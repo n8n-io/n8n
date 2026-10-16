@@ -248,7 +248,7 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 			: calculateNodePositions(ctx.nodes);
 
 		// Sticky notes are placed last: their box depends on where their anchors landed
-		const stickyGeometry = resolveStickyGeometry(ctx.nodes, nodePositions);
+		const stickyGeometry = resolveStickyGeometry(ctx.nodes, nodePositions, ctx.nodePorts);
 
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {

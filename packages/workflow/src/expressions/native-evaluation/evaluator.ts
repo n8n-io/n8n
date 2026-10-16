@@ -508,10 +508,18 @@ function evalNodeRefCall(proxy: unknown, method: string, env: Env): unknown {
 	if (typeof fn !== 'function') throw new EngineFallbackError();
 
 	const result = bounded(fn.call(proxy));
+
+	// A node name that is an Object.prototype key resolves through a plain
+	// object lookup on the host. Only the item shapes stay native.
+	const expected = method === 'all' ? isArray(result) : result === undefined || isItem(result);
+	if (!expected) throw new EngineFallbackError();
+
 	env.charge(isArray(result) ? result.length : 1);
 
 	return result;
 }
+
+const isItem = (value: unknown): boolean => isObj(value) && !isArray(value);
 
 /**
  * A captured Luxon getter or zero-argument method on `$now`/`$today`. The

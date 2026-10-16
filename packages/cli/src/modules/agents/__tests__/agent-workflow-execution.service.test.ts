@@ -110,11 +110,12 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 				.fn()
 				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
-			close: vi.fn(),
+			close: vi.fn().mockResolvedValue(undefined),
 		} as unknown as RuntimeAgent & {
 			stream: Mock;
 			resume: Mock;
 			structuredOutput: Mock;
+			close: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
 		mcpServerAttributions: new Map<string, string>(),
@@ -159,8 +160,9 @@ function makeService() {
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 
+	const logger = mockLogger();
 	const service = new AgentWorkflowExecutionService(
-		mockLogger(),
+		logger,
 		agentRepository,
 		new AgentTurnExecutionService(
 			mockLogger(),
@@ -194,6 +196,7 @@ function makeService() {
 		executionLevelTracer,
 		nodeToolAiGatewayService,
 		integrationMessageContextService,
+		logger,
 	};
 }
 
@@ -1615,5 +1618,103 @@ describe('AgentWorkflowExecutionService', () => {
 			expect(entity.agent.integrations).toEqual(integrations);
 			expect(passedInstrumentation).toBeUndefined();
 		});
+	});
+
+	describe('isolated agent close', () => {
+		const inlinePayload = {
+			config: {
+				name: 'Inline Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'cred-1',
+				instructions: 'Help users',
+			},
+		};
+
+		function arrange(source: 'stored' | 'inline') {
+			const context = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			if (source === 'stored') {
+				context.agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+				context.reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			} else {
+				context.reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+			}
+			return { ...context, runtime };
+		}
+
+		async function execute(source: 'stored' | 'inline', service: AgentWorkflowExecutionService) {
+			return source === 'stored'
+				? await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId)
+				: await service.executeInlineForWorkflow(
+						inlinePayload,
+						'hello',
+						'execution-1',
+						'thread-1',
+						projectId,
+					);
+		}
+
+		it.each(['stored', 'inline'] as const)(
+			'closes the %s agent once after a successful run',
+			async (source) => {
+				const { service, runtime } = arrange(source);
+
+				const result = await execute(source, service);
+
+				expect(result.finishReason).toBe('stop');
+				expect(runtime.agent.close).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it.each(['stored', 'inline'] as const)(
+			'closes the %s agent when the stream fails and keeps the original error',
+			async (source) => {
+				const { service, runtime } = arrange(source);
+				runtime.agent.stream.mockRejectedValue(new Error('stream failed'));
+
+				await expect(execute(source, service)).rejects.toThrow('stream failed');
+				expect(runtime.agent.close).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it.each(['stored', 'inline'] as const)(
+			'keeps the %s run result when close fails',
+			async (source) => {
+				const { service, runtime, logger } = arrange(source);
+				runtime.agent.close.mockRejectedValue(new Error('close failed'));
+
+				const result = await execute(source, service);
+
+				expect(result.finishReason).toBe('stop');
+				expect(logger.warn).toHaveBeenCalledWith('Failed to close workflow agent after execution', {
+					error: 'close failed',
+				});
+			},
+		);
+
+		it.each(['stored', 'inline'] as const)(
+			'returns the %s run result when close does not settle',
+			async (source) => {
+				vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+				try {
+					const { service, runtime, logger } = arrange(source);
+					runtime.agent.close.mockReturnValue(new Promise(() => {}));
+
+					const pending = execute(source, service);
+					await vi.advanceTimersByTimeAsync(10_000);
+					const result = await pending;
+
+					expect(result.finishReason).toBe('stop');
+					expect(logger.warn).toHaveBeenCalledWith(
+						'Failed to close workflow agent after execution',
+						{
+							error: 'Agent close timed out after 10000ms',
+						},
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 	});
 });

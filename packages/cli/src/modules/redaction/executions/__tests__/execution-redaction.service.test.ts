@@ -84,6 +84,7 @@ describe('ExecutionRedactionService', () => {
 			withDynamicCredentials?: boolean;
 			usesDynamicCredentials?: boolean;
 			executedByUserId?: string | null;
+			subWorkflowRedaction?: { production: boolean; manual: boolean };
 			nodes?: INode[];
 		} = {},
 	): RedactableExecution => {
@@ -97,6 +98,7 @@ describe('ExecutionRedactionService', () => {
 			withDynamicCredentials = false,
 			usesDynamicCredentials = false,
 			executedByUserId = null,
+			subWorkflowRedaction,
 			nodes = [],
 		} = overrides;
 
@@ -152,6 +154,18 @@ describe('ExecutionRedactionService', () => {
 				source: mode,
 				...executionData.runtimeData,
 				executedByUserId,
+			};
+		}
+
+		// Stamp the channels a sub-workflow reported, mirroring what
+		// `BaseExecuteContext.executeWorkflow` does when a sub-workflow returns.
+		if (subWorkflowRedaction) {
+			executionData.runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: mode,
+				...executionData.runtimeData,
+				subWorkflowRedaction,
 			};
 		}
 
@@ -997,6 +1011,170 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('sub-workflow redaction', () => {
+		const NO_CHANNELS = { production: false, manual: false };
+		const BOTH_CHANNELS = { production: true, manual: true };
+		const PRODUCTION_ONLY = { production: true, manual: false };
+
+		it('redacts an execution whose sub-workflow reported a channel that covers its mode', async () => {
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it('does not redact a manual execution when the sub-workflow reported production only', async () => {
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: PRODUCTION_ONLY,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('redacts a production execution when the sub-workflow reported production only', async () => {
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: PRODUCTION_ONLY,
+				mode: 'trigger',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('combines the channels with a V1 snapshot', async () => {
+			const execution = makeExecution({
+				policy: 'non-manual',
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('combines the channels with the workflow-setting fallback', async () => {
+			const execution = makeExecution({
+				withRuntimeData: false,
+				workflowSettingsPolicy: 'none',
+				subWorkflowRedaction: PRODUCTION_ONLY,
+				mode: 'webhook',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('ignores the channels when the data-redaction license is missing', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		// Escalated redaction follows the policy rule: `execution:reveal` on the calling
+		// workflow allows reveal.
+		it('lets a user with execution:reveal on the workflow reveal', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).resolves.toBe(execution);
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('advertises canReveal to a user with execution:reveal on the workflow', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.userCanReveal).toBe(true);
+		});
+
+		it('rejects reveal for a user without execution:reveal on the workflow', async () => {
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toBeInstanceOf(ScopeForbiddenError);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-reveal-failure',
+				expect.objectContaining({ redactionPolicy: 'all' }),
+			);
+		});
+
+		it('keeps the dynamic-credentials rule ahead of the sub-workflow redaction', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				withDynamicCredentials: true,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.enforceDynCredRedaction).toBe(true);
+			// The execution:reveal scope does not bypass the dynamic-credentials rule.
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it.each([
+			[PRODUCTION_ONLY, 'manual' as const],
+			[PRODUCTION_ONLY, 'trigger' as const],
+			[BOTH_CHANNELS, 'manual' as const],
+			[BOTH_CHANNELS, 'webhook' as const],
+		])('channels %j mode %s: console gate matches data pipeline', async (reported, mode) => {
+			const redaction = { version: 2 as const, ...NO_CHANNELS };
+			const execution = makeExecution({
+				mode,
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: reported,
+			});
+
+			await service.processExecutions([execution], { user: mockUser });
+			const dataPipelineRedacts = fullItemRedactionStrategy.apply.mock.calls.length > 0;
+
+			expect(shouldRedactConsoleOutput(redaction, undefined, mode, reported)).toBe(
+				dataPipelineRedacts,
+			);
 		});
 	});
 

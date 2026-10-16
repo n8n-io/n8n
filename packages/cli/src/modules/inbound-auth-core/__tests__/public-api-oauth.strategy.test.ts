@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { JwtService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import type { AuthenticationPipeline, AuthenticationService } from '@n8n/inbound-auth';
@@ -9,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { PublicApiOAuthStrategy } from '../public-api-oauth.strategy';
 import type { PublicApiProtectedResource } from '../public-api-protected-resource';
+import { InboundResourceAdmission } from '../resource-admission';
 
 const RESOURCE_URL = 'https://n8n.test/api/v1';
 const CHALLENGE =
@@ -55,6 +57,7 @@ const makeUser = (id: string, scopeSlugs: string[]): User =>
 beforeEach(() => {
 	vi.clearAllMocks();
 	resource.isAvailable.mockResolvedValue(true);
+	resource.authorize.mockResolvedValue(true);
 	resource.getResourceUrl.mockReturnValue(RESOURCE_URL);
 	resource.getAudiences.mockReturnValue([RESOURCE_URL]);
 	authenticationService.advertise.mockResolvedValue({
@@ -63,8 +66,7 @@ beforeEach(() => {
 	});
 	strategy = new PublicApiOAuthStrategy(
 		resource,
-		pipeline,
-		authenticationService,
+		new InboundResourceAdmission(pipeline, authenticationService, mock<Logger>()),
 		jwtService,
 		userRepository,
 	);
@@ -196,6 +198,22 @@ describe('PublicApiOAuthStrategy', () => {
 				authMethod: 'oauth-access-token',
 				subjectClaim: { sourceId: 'source-1', issuer: 'https://idp.example', subject: 'alice' },
 				...(tokenScopes && { tokenScopes }),
+			});
+
+			it('fails fast with error=insufficient_scope when the resource refuses the subject', async () => {
+				pipeline.run.mockResolvedValue({ ok: true, value: contextWith() });
+				resource.authorize.mockResolvedValue(false);
+				const { req, res } = makeReq({
+					authorization: `Bearer ${tokenFrom('https://idp.example')}`,
+				});
+
+				expect(await strategy.authenticate(req)).toBe(false);
+
+				expect(res.setHeader).toHaveBeenCalledWith(
+					'WWW-Authenticate',
+					`${CHALLENGE}, error="insufficient_scope", error_description="insufficient_scope"`,
+				);
+				expect(userRepository.findByIdWithRole).not.toHaveBeenCalled();
 			});
 
 			it('sets the reloaded user, a role-derived grant and the security context on the request', async () => {

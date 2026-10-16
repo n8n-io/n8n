@@ -41,6 +41,13 @@ describe('CustomDirectoryLoader hot reload (NODE-5225)', () => {
 		return file;
 	};
 
+	const writePackage = (dir: string, name: string) => {
+		fs.writeFileSync(
+			path.join(dir, 'package.json'),
+			JSON.stringify({ name, n8n: { nodes: ['dist/nodes/Reloadable.node.js'] } }),
+		);
+	};
+
 	// The node description type is a union; the fixture is a non-versioned node.
 	const loadedVersion = (loader: CustomDirectoryLoader) =>
 		(loader.getNode('reloadable').type.description as INodeTypeDescription).version;
@@ -59,6 +66,7 @@ describe('CustomDirectoryLoader hot reload (NODE-5225)', () => {
 		// The developer's node project, compiled to `dist`.
 		const projectDir = path.join(tmpRoot, 'my-node-project');
 		const nodeFile = writeNode(path.join(projectDir, 'dist', 'nodes'), 1);
+		writePackage(projectDir, 'n8n-nodes-reloadable');
 
 		// The project is symlinked into node_modules, exactly how `n8n-node dev`
 		// installs the node for live preview.
@@ -86,6 +94,7 @@ describe('CustomDirectoryLoader hot reload (NODE-5225)', () => {
 		// one level deeper, under `node_modules/@scope/<pkg>`.
 		const projectDir = path.join(tmpRoot, 'my-scoped-node-project');
 		const nodeFile = writeNode(path.join(projectDir, 'dist', 'nodes'), 1);
+		writePackage(projectDir, '@scope/n8n-nodes-reloadable');
 
 		const scopeDir = path.join(customDir, 'node_modules', '@scope');
 		fs.mkdirSync(scopeDir, { recursive: true });

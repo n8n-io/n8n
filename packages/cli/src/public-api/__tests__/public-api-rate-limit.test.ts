@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { GlobalConfig } from '@n8n/config';
@@ -21,6 +22,7 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
 import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
+import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import { RateLimitService } from '@/services/rate-limit.service';
@@ -64,6 +66,8 @@ describe('Public API rate limiting', () => {
 			lastActiveAtService,
 			mock<EventService>(),
 			new PublicApiRateLimitService(globalConfig, new RateLimitService()),
+			mock<IdempotencyKeyService>(),
+			mock<Logger>(),
 		).activate(router, 'v1');
 		app.use('/api/v1', router);
 		return app;
