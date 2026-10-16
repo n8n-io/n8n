@@ -7,8 +7,21 @@ export const SELF_HEALING_RESOURCE_PREFIX = 'ia-self-healing:';
 export const selfHealingOutputSchema = z
 	.object({
 		outcome: selfHealingResultOutcomeSchema,
-		summary: z.string().trim().min(1).max(500),
-		report: z.string().trim().min(1).max(50_000),
+		summary: z
+			.string()
+			.trim()
+			.min(1)
+			.max(80)
+			.describe('Short, plain-language title. Aim for 5–10 words. Do not use Markdown.'),
+		report: z
+			.string()
+			.trim()
+			.min(1)
+			.max(50_000)
+			.describe(
+				'A concise Markdown report under 150 words. Use only **What happened** and **What changed** sections. ' +
+					'Include verification limits and any next step under What changed. State when no changes were made.',
+			),
 		candidateFilePath: z.string().trim().min(1).optional(),
 	})
 	.strict()

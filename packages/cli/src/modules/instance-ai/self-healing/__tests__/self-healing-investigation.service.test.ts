@@ -170,7 +170,7 @@ describe('SelfHealingInvestigationService', () => {
 	});
 
 	it.each([
-		['summary', 500],
+		['summary', 80],
 		['report', 50_000],
 	] as const)('keeps %s within its limit after text replacement', async (field, limit) => {
 		const output = selfHealingOutputSchema.parse({
@@ -258,6 +258,12 @@ describe('SelfHealingInvestigationService', () => {
 				expect(resultInput?.output.report).not.toContain(value);
 				expect(resultInput?.output.report).toContain('httpHeaderAuth');
 				expect(resultInput?.output.report).not.toContain('credential was created');
+				expect(resultInput?.output.report?.match(/^\*\*.+\*\*$/gm)).toEqual([
+					'**What happened**',
+					'**What changed**',
+				]);
+				expect(resultInput?.output.report).toContain('has not been applied');
+				expect(resultInput?.output.report).toContain('Continue in chat');
 			} else {
 				expect(resultInput?.output).toEqual(output);
 			}

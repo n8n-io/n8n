@@ -89,8 +89,10 @@ describe('createSelfHealingAgent', () => {
 		});
 		const output = {
 			outcome: 'fix_ready',
-			summary: 'Corrected the field mapping.',
-			report: 'The candidate passed verification.',
+			summary: 'Correct the field mapping',
+			report:
+				'**What happened**\n\nThe node used the wrong field.\n\n' +
+				'**What changed**\n\nThe proposed mapping passed verification. Nothing has been applied.',
 			candidateFilePath: 'self-healing/candidate.workflow.ts',
 		};
 		const turns = [

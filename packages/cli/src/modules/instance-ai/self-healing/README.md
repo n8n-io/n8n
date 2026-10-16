@@ -144,7 +144,13 @@ It does not remove arbitrary private information.
 | `needs_you`     | Optional   | Continue in chat, Dismiss                    |
 | `could_not_fix` | None       | Continue in chat, Dismiss                    |
 
-The report is one string. Usage contains `turns` and `durationSeconds`.
+The summary is a plain-language title with at most 80 characters.
+The agent writes the report as one Markdown string with two sections: **What happened**
+and **What changed**. The prompt asks for fewer than 150 words. Verification limits,
+blockers, and next steps belong under **What changed**. The stored report size limit
+remains 50,000 characters. Existing reports remain readable.
+
+Usage contains `turns` and `durationSeconds`.
 The runtime selects the usage shape before setup from the AI service proxy setting.
 Credit usage contains `credits` and no token counts.
 Token usage contains `promptTokens`, `completionTokens`, and `totalTokens`, with no `credits` field.

@@ -177,13 +177,16 @@ export class SelfHealingInvestigationService {
 			) {
 				const missingCredentials = Object.entries(
 					candidate.credentialResolution.mockedCredentialsByNode,
-				).map(([node, types]) => `${node}: ${types.join(', ')}`);
+				).map(([node, types]) => `- ${node}: ${types.join(', ')}`);
 				result.output = {
 					...output,
 					outcome: 'needs_you',
-					summary: 'Connect the missing credentials to complete this repair.',
+					summary: 'Connect the missing credentials to complete this repair',
 					report:
-						`The candidate still needs credentials for:\n${missingCredentials.join('\n')}\n\n` +
+						'**What happened**\n\n' +
+						`The proposed repair still needs credentials for:\n\n${missingCredentials.join('\n')}\n\n` +
+						'**What changed**\n\n' +
+						'The proposed repair has not been applied. ' +
 						'Simulated verification does not confirm that these connections work. ' +
 						'Continue in chat to connect the credentials and verify the repair.',
 				};

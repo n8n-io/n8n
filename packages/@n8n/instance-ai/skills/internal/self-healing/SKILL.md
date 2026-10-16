@@ -50,11 +50,41 @@ Missing credentials require `needs_you`, even when simulated verification succee
 This investigation cannot create credentials. Explain which connections need setup.
 It can include a partial candidate. Omit `candidateFilePath` when the candidate has no changes.
 Use `could_not_fix` when you cannot
-prepare a useful candidate. Include findings, checks, blockers, and the next
-step in the report. State uncertainty and incomplete checks clearly.
+prepare a useful candidate. State uncertainty and incomplete checks clearly.
 Describe a verified candidate as ready for review. This investigation does not
 apply or publish a production fix. Do not claim that simulated or unreached
 nodes have been verified against live systems.
+
+Write `summary` and `report` for a non-technical workflow owner. Use everyday
+language to explain the affected step and its impact. Avoid internal terms such
+as candidate, schema, payload, and credential resolution. Use node and field
+names when they help the person find the problem.
+
+Write `summary` as a short, plain-language title. Aim for 5–10 words and use
+at most 80 characters. Use sentence case without Markdown or a final period.
+Name the issue or proposed repair. Do not include an investigation recap.
+
+Write `report` in Markdown with exactly two sections: `**What happened**` and
+`**What changed**`. Put a blank line after each heading. Use 1–3 short sentences
+per section and fewer than 150 words in total. Use fewer words when enough.
+Under **What happened**, explain the failure and its cause, or what remains unknown.
+Under **What changed**, describe the proposed change or say that no changes were
+made. Include any verification limits, blocker, and next action in this section.
+Keep important limits even when shortening the report.
+Do not add other sections, repeat the title,
+or include tool logs, code blocks, or an investigation timeline.
+
+Example summary: Use the customer email address
+
+Example report:
+
+**What happened**
+
+The email step tried to send the receipt to an order number instead of an email address.
+
+**What changed**
+
+Prepared a change to use the customer email address. A test with sample data passed.
 
 Keep secrets and personal data out of summaries and reports. Do not copy raw
 execution inputs or outputs, credential values, or sensitive parameters into
