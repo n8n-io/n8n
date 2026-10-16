@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, useTemplateRef, watch } from 'vue';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import set from 'lodash/set';
@@ -386,7 +386,12 @@ async function saveDestination() {
 			is_active: submittedParameters.enabled,
 		});
 	} catch (error) {
-		if (modalClosed && !hasOnceBeenSaved.value) logStreamingStore.removeDestination(destination.id);
+		// A reopened modal or the card swaps the stored object, so then the item is no longer ours.
+		const ownsStoreItem =
+			toRaw(logStreamingStore.items[destination.id]?.destination) === toRaw(nodeParameters.value);
+		if (modalClosed && !hasOnceBeenSaved.value && ownsStoreItem) {
+			logStreamingStore.removeDestination(destination.id);
+		}
 		showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
 	} finally {
 		isSaving.value = false;

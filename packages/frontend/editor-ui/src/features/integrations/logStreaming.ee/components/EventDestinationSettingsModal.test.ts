@@ -202,7 +202,7 @@ describe('EventDestinationSettingsModal save', () => {
 		{ outcome: 'fails', kept: false },
 	])(
 		'keeps a new destination closed during its first save only if the save $outcome',
-		async ({ outcome, kept }) => {
+		async ({ kept }) => {
 			const { wrapper, store, saveButton } = await setup({ isNew: true });
 			let finish!: () => void;
 			vi.mocked(store.saveDestination).mockReturnValueOnce(
@@ -219,4 +219,21 @@ describe('EventDestinationSettingsModal save', () => {
 			expect(store.removeDestination).toHaveBeenCalledTimes(kept ? 0 : 1);
 		},
 	);
+
+	it('keeps a new destination that was saved elsewhere while its first save was pending', async () => {
+		const { wrapper, store, saveButton } = await setup({ isNew: true });
+		let fail!: (error: Error) => void;
+		vi.mocked(store.saveDestination).mockReturnValueOnce(
+			new Promise((_, reject) => {
+				fail = reject;
+			}),
+		);
+		saveButton.vm.$emit('click');
+		await flushPromises();
+		wrapper.findComponent(Modal).props('beforeClose')?.();
+		store.items.destinationId.destination = { id: 'destinationId' };
+		fail(new Error('Request timed out'));
+		await flushPromises();
+		expect(store.removeDestination).not.toHaveBeenCalled();
+	});
 });
