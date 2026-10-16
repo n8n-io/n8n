@@ -61,8 +61,11 @@ export interface SystemAgentTurnHandle {
 	input?: string | Message[];
 	/** Stored on the checkpoint. A resume receives it back. */
 	hostMetadata?: JSONObject;
-	/** Extra SDK run options, such as telemetry. `abortSignal` stops the turn at any time. */
-	runOptions?: Partial<RunOptions & ExecutionOptions> & Partial<ResumeOptions>;
+	/**
+	 * Extra SDK run options, such as telemetry. `abortSignal` stops the turn at
+	 * any time. The host sets `persistence`, so a provider cannot change it.
+	 */
+	runOptions?: Omit<Partial<RunOptions & ExecutionOptions> & Partial<ResumeOptions>, 'persistence'>;
 	/** Hide the user message from the transcript (machine turns). */
 	hideUserMessage?: boolean;
 	onChunk?: (chunk: AgentExecutionStreamChunk) => void;

@@ -40,6 +40,22 @@ type SuspendedToolCall = Extract<
 
 export type SystemAgentThreadStatus = 'running' | 'suspended' | 'idle';
 
+interface ResumeParams {
+	agentId: string;
+	user: User;
+	threadId: string;
+	resumeData: unknown;
+	runId?: string;
+	toolCallId?: string;
+	send?: (event: AgentSseEvent) => void;
+}
+
+interface ResumeHandle {
+	runId: string;
+	toolCallId: string;
+	done: Promise<void>;
+}
+
 /** The SDK run options of a handle, without its abort signal. `runTurn` links that signal. */
 function runOptionsOf(handle: SystemAgentTurnHandle) {
 	const { abortSignal: _abortSignal, ...runOptions } = handle.runOptions ?? {};
@@ -344,15 +360,7 @@ export class SystemAgentExecutionService {
 			options: payload.options ?? {},
 		});
 		const text = handle.input ?? payload.message;
-		if (attachments.length > 0) {
-			// Messages keep file references. The runtime loads bytes from binary data per call.
-			handle.agent.fileStore(
-				this.attachmentService.getFileStore(
-					{ agentId: thread.agentId, projectId: thread.projectId },
-					handle.agent.snapshot.model.provider ?? '',
-				),
-			);
-		}
+		this.attachFileStore(handle, thread);
 		const input =
 			attachments.length > 0 && typeof text === 'string'
 				? buildInboundUserMessage(text, attachments)
@@ -361,8 +369,8 @@ export class SystemAgentExecutionService {
 			type: 'start',
 			input,
 			options: {
-				persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
 				...runOptionsOf(handle),
+				persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
 				// The claim signal stops the turn only until the runtime admits it.
 				abortSignal: signal,
 			},
@@ -373,16 +381,20 @@ export class SystemAgentExecutionService {
 		}));
 	}
 
-	/** Resume a suspended tool call. Runs the continuation in the background. */
-	async resume(params: {
-		agentId: string;
-		user: User;
-		threadId: string;
-		resumeData: unknown;
-		runId?: string;
-		toolCallId?: string;
-		send?: (event: AgentSseEvent) => void;
-	}): Promise<{ runId: string; toolCallId: string; done: Promise<void> }> {
+	/**
+	 * Resume a suspended tool call. Runs the continuation in the background:
+	 * `done` settles when the turn ends and logs a failure instead of rejecting.
+	 */
+	async resume(params: ResumeParams): Promise<ResumeHandle> {
+		const resumed = await this.startResume(params);
+		const done = resumed.done.catch((error: unknown) => {
+			this.logger.warn('System agent resume failed', { threadId: params.threadId, error });
+		});
+		return { ...resumed, done };
+	}
+
+	/** Start a resume. `done` rejects when the turn fails. */
+	private async startResume(params: ResumeParams): Promise<ResumeHandle> {
 		const thread = await this.getUsableThread(params.agentId, params.user, params.threadId);
 		const provider = this.getProvider(params.agentId);
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
@@ -412,6 +424,7 @@ export class SystemAgentExecutionService {
 			checkpointHostMetadata: checkpoint.persistence.hostMetadata ?? {},
 			resumeData: params.resumeData,
 		});
+		this.attachFileStore(handle, thread);
 		const recording: StartExecutionParams = {
 			threadId: thread.id,
 			agentId: thread.agentId,
@@ -441,9 +454,7 @@ export class SystemAgentExecutionService {
 				},
 				recording,
 			}),
-		).catch((error: unknown) => {
-			this.logger.warn('System agent resume failed', { threadId: thread.id, error });
-		});
+		);
 		return { runId, toolCallId: pending.toolCallId, done };
 	}
 
@@ -517,7 +528,8 @@ export class SystemAgentExecutionService {
 		const state = await this.checkpointStorage.load(params.runId, params.agentId);
 		const threadId = state?.persistence?.threadId;
 		if (!threadId) throw new UserError('This action is no longer waiting for input');
-		const { done } = await this.resume({
+		// A failure rejects, so the route can send an error event.
+		const { done } = await this.startResume({
 			agentId: params.agentId,
 			user: params.user,
 			threadId,
@@ -547,6 +559,19 @@ export class SystemAgentExecutionService {
 			userId: user.id,
 			surface: 'system',
 		});
+	}
+
+	/**
+	 * Attach the attachment store on every turn. Memory keeps file references,
+	 * and without the store a later turn cannot load the files of earlier turns.
+	 */
+	private attachFileStore(handle: SystemAgentTurnHandle, thread: AgentExecutionThread): void {
+		handle.agent.fileStore(
+			this.attachmentService.getFileStore(
+				{ agentId: thread.agentId, projectId: thread.projectId },
+				handle.agent.snapshot.model.provider ?? '',
+			),
+		);
 	}
 
 	/**
@@ -611,7 +636,8 @@ export class SystemAgentExecutionService {
 					error: settleError,
 				});
 			}
-			if (status !== 'suspended' && status !== 'cancelled') {
+			// Like Preview, only a completed turn sends `done`. An error has its own event.
+			if (status === 'completed') {
 				send({ type: 'done', sessionId: thread.id, executionId: executionId ?? '' });
 			}
 		}

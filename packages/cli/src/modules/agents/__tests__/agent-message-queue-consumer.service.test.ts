@@ -524,18 +524,25 @@ describe('AgentMessageQueueConsumer', () => {
 			expect(queue.recordFailure).not.toHaveBeenCalled();
 		});
 
+		/** A refused system turn fails the item, streams an error and never runs. */
+		function expectRefused(item: ReturnType<typeof systemClaim>) {
+			expect(queue.recordFailure).toHaveBeenCalledWith(
+				item,
+				expect.objectContaining({ message: 'You can no longer execute this agent' }),
+				expect.any(AbortSignal),
+			);
+			expect(chatExecutions.register).not.toHaveBeenCalled();
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+			expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		}
+
 		it('records a failure when the provider no longer authorizes the owner', async () => {
 			registerSystemAgent(false);
 			const item = systemClaim('session');
 
 			await consumeOne(item);
 
-			expect(queue.recordFailure).toHaveBeenCalledWith(
-				item,
-				expect.objectContaining({ message: 'You can no longer execute this agent' }),
-				expect.any(AbortSignal),
-			);
-			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+			expectRefused(item);
 		});
 
 		it('records a failure when the owner can no longer read the working project', async () => {
@@ -545,9 +552,8 @@ describe('AgentMessageQueueConsumer', () => {
 
 			await consumeOne(item);
 
-			expect(queue.recordFailure).toHaveBeenCalled();
+			expectRefused(item);
 			expect(provider.authorize).not.toHaveBeenCalled();
-			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
 		});
 
 		it('records a failure for a system message without a registered provider', async () => {
@@ -555,8 +561,7 @@ describe('AgentMessageQueueConsumer', () => {
 
 			await consumeOne(item);
 
-			expect(queue.recordFailure).toHaveBeenCalled();
-			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+			expectRefused(item);
 		});
 
 		it('keeps the agent:execute check for Preview messages of a system agent id', async () => {
