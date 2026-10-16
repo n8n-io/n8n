@@ -48,7 +48,13 @@ export type PackageResolver = (typeName: string) => string | null;
  * prefix and needs a different resolver — see `credentialTypePackageResolver` in
  * `package-resolver.ts`.
  */
-export const nodeTypePackageResolver: PackageResolver = (typeName) => typeName.split('.')[0];
+
+// export const nodeTypePackageResolver: PackageResolver = (typeName) => typeName.split('.')[0];
+
+export const nodeTypePackageResolver: PackageResolver = (typeName) => {
+	const lastDotIndex = typeName.lastIndexOf('.');
+	return lastDotIndex !== -1 ? typeName.substring(0, lastDotIndex) : typeName;
+};
 
 /** `ancestors` lists what a credential type is built on through `extends`; empty for node types. */
 export type PolicedType = {
