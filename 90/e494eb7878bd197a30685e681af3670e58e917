@@ -1,0 +1,22 @@
+packages/cli/src/public-api/v1/__tests__/public-api-error-response.test.ts
+  s_cc78c4b360d16c::t_136bc9678a18ee 162-165,171-172
+packages/cli/src/public-api/v1/public-api-error-response.ts
+  s_cc78c4b360d16c::t_c974029f20e85c 42
+  s_cc78c4b360d16c::t_1f1e33196107e2 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90e494eb7878bd197a30685e681af3670e58e917",
+  "prompts": {},
+  "sessions": {
+    "s_cc78c4b360d16c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "300794b4-9fbb-4d01-8694-871ab4c82b25",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
