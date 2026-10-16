@@ -141,6 +141,18 @@ describe('workflow_step_execution table (integration)', () => {
 		]);
 	});
 
+	it('PgStepStore.createSteps stores outputs with quotes, backslashes and nulls unchanged', async () => {
+		const executionId = await createExecution();
+		const store = new PgStepStore(poolOf(dataSource));
+		const outputs = [[{ json: { text: 'say "hi"', path: 'C:\\tmp\\{a,b}', none: null } }], null];
+
+		const [{ id }] = await store.createSteps(executionId, [
+			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs },
+		]);
+
+		expect((await store.loadStep(id)).outputs).toEqual(outputs);
+	});
+
 	it('PgStepStore.createSteps is a no-op for an empty batch', async () => {
 		const store = new PgStepStore(poolOf(dataSource));
 		expect(await store.createSteps('00000000-0000-7000-8000-000000000000', [])).toEqual([]);

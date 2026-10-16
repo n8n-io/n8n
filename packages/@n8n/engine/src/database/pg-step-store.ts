@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import { generateId } from './generate-id';
 import { toJsonb } from './jsonb';
+import type { PreparedStatement } from './prepared-statement';
 import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
@@ -51,6 +52,35 @@ const STEP_KEY_FILTER = `(step.node_id, step.iteration) IN (
 	SELECT * FROM unnest($2::varchar[], $3::int[])
 )`;
 
+const LOCK_EXECUTION_FOR_SHARE: PreparedStatement = {
+	name: 'engine_lock_execution_for_share',
+	text: 'SELECT id FROM workflow_execution WHERE id = $1::uuid FOR SHARE',
+};
+
+/**
+ * The failed-step test must be a statement after the lock: a statement that
+ * waits for the lock keeps the snapshot it started with, and would miss a
+ * failure committed during the wait.
+ *
+ * `ON CONFLICT DO NOTHING` is the unique key doing its job: a node another
+ * planner already queued is skipped, leaving the rest of the batch to land.
+ * RETURNING emits exactly the rows that were inserted, in input order.
+ */
+const INSERT_STEPS: PreparedStatement = {
+	name: 'engine_insert_steps',
+	text: `INSERT INTO workflow_step_execution (id, execution_id, node_id, iteration, status, outputs)
+		SELECT candidate.id, $1::uuid, candidate.node_id, candidate.iteration, candidate.status, candidate.outputs
+		FROM unnest($2::uuid[], $3::varchar[], $4::int[], $5::varchar[], $6::jsonb[])
+			WITH ORDINALITY AS candidate (id, node_id, iteration, status, outputs, position)
+		WHERE NOT EXISTS (
+			SELECT 1 FROM workflow_step_execution
+			WHERE execution_id = $1::uuid AND status = 'failed'
+		)
+		ORDER BY candidate.position
+		ON CONFLICT DO NOTHING
+		RETURNING id, node_id AS "nodeId", iteration`,
+};
+
 type ClaimedStepRow = Pick<
 	StepRecord,
 	'id' | 'executionId' | 'nodeId' | 'iteration' | 'waitDeclaration' | 'resumeCause'
@@ -98,45 +128,23 @@ export class PgStepStore implements StepStore {
 
 		for (const record of records) assertCreatableRecord(record);
 
-		const rows = records.map((record) => ({ ...record, id: generateId() }));
+		// One array per column keeps the statement text the same for every batch size.
+		const values = [
+			executionId,
+			records.map(() => generateId()),
+			records.map((record) => record.nodeId),
+			records.map((record) => record.iteration),
+			records.map((record) => record.status),
+			records.map((record) => toJsonb(record.outputs)),
+		];
 
 		// The execution-row lock serializes this insert with `failStep`, so rows
 		// land before the failure (its sweep cancels them) or not at all.
 		// Otherwise rows inserted after the sweep would stay `queued` forever.
-		// The failed-step check is in the INSERT, so its snapshot comes after the lock.
 		return await inTransaction(this.pool, async (client) => {
-			await client.query('SELECT id FROM workflow_execution WHERE id = $1 FOR SHARE', [
-				executionId,
-			]);
-
-			// `ON CONFLICT DO NOTHING` is the unique key doing its job: a node another
-			// planner already queued is skipped, leaving the rest of the batch to land.
-			// RETURNING emits exactly the rows that were inserted.
-			const { rows: inserted } = await client.query<{ id: string } & StepKey>(
-				`INSERT INTO workflow_step_execution (id, execution_id, node_id, iteration, status, outputs)
-				SELECT record.id, $1, record.node_id, record.iteration, record.status, record.outputs
-				FROM jsonb_to_recordset($2::jsonb)
-					AS record(id uuid, node_id varchar, iteration int, status varchar, outputs jsonb)
-				WHERE NOT EXISTS (
-					SELECT 1 FROM workflow_step_execution
-					WHERE execution_id = $1 AND status = 'failed'
-				)
-				ON CONFLICT DO NOTHING
-				RETURNING id, node_id AS "nodeId", iteration`,
-				[
-					executionId,
-					JSON.stringify(
-						rows.map((row) => ({
-							id: row.id,
-							node_id: row.nodeId,
-							iteration: row.iteration,
-							status: row.status,
-							outputs: row.outputs,
-						})),
-					),
-				],
-			);
-			return inserted;
+			await client.query({ ...LOCK_EXECUTION_FOR_SHARE, values: [executionId] });
+			const { rows } = await client.query<{ id: string } & StepKey>({ ...INSERT_STEPS, values });
+			return rows;
 		});
 	}
 
