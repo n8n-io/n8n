@@ -2,6 +2,7 @@ import {
 	type AgentBackgroundJobsResponse,
 	type AgentChatAttachmentPayload,
 	AgentChatMessageDto,
+	AgentChatCancelDto,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
 	AgentChatQueueReorderDto,
@@ -24,6 +25,7 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -457,6 +459,7 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Param('threadId') threadId: string,
 		@Param('executionId') executionId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		const cancelRequested = await this.chatExecutionService.requestCancel({
 			projectId: req.params.projectId,
@@ -465,6 +468,7 @@ export class AgentChatController {
 			executionId,
 			userId: req.user.id,
 			surface: 'preview',
+			...(payload.scope ? { scope: payload.scope } : {}),
 		});
 		return { cancelRequested };
 	}
@@ -476,6 +480,7 @@ export class AgentChatController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('runId') runId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		const { projectId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
@@ -485,6 +490,7 @@ export class AgentChatController {
 			agentId,
 			runId,
 			resourceId: draftChatMemoryResourceId(req.user.id),
+			...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 		});
 		return { cancelled };
 	}

@@ -33,6 +33,7 @@ type CancelExecutionPayload = PubSubCommandMap['cancel-agent-chat-execution'];
 // compatibility with mains still running the previous version.
 type ExecutionContext = Omit<CancelExecutionPayload, 'productionN8nChat'> & {
 	surface: AgentChatSurface;
+	scope?: 'foreground' | 'all';
 };
 
 export interface CancelSuspendedRunParams {
@@ -134,18 +135,22 @@ export class AgentChatExecutionService {
 					if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
 					this.cancelOrRemember(context);
 					if (!this.instanceSettings.isMultiMain) return true;
-					const { surface, ...rest } = context;
+					const { surface, scope, ...rest } = context;
 					await this.publisher.publishCommand({
-						command: 'cancel-agent-chat-execution',
+						command:
+							scope === 'foreground'
+								? 'cancel-agent-chat-foreground'
+								: 'cancel-agent-chat-execution',
 						payload: { ...rest, productionN8nChat: surface === 'n8n-chat' },
 					});
 					return true;
 				} finally {
-					await this.backgroundJobService.cancelForParent(
-						context.agentId,
-						context.threadId,
-						chatSurfaceMemoryResourceId(context.surface, context.userId),
-					);
+					if (context.scope !== 'foreground')
+						await this.backgroundJobService.cancelForParent(
+							context.agentId,
+							context.threadId,
+							chatSurfaceMemoryResourceId(context.surface, context.userId),
+						);
 				}
 			},
 		);
@@ -153,9 +158,22 @@ export class AgentChatExecutionService {
 
 	@OnPubSubEvent('cancel-agent-chat-execution', { instanceType: 'main' })
 	async handleCancel(payload: CancelExecutionPayload): Promise<void> {
+		await this.handleCancellation(payload);
+	}
+
+	@OnPubSubEvent('cancel-agent-chat-foreground', { instanceType: 'main' })
+	async handleForegroundCancel(payload: CancelExecutionPayload): Promise<void> {
+		await this.handleCancellation(payload, 'foreground');
+	}
+
+	private async handleCancellation(
+		payload: CancelExecutionPayload,
+		scope?: ExecutionContext['scope'],
+	): Promise<void> {
 		const { productionN8nChat, ...rest } = payload;
 		const context: ExecutionContext = {
 			...rest,
+			scope,
 			surface: productionN8nChat ? 'n8n-chat' : 'preview',
 		};
 		if (await this.cancelLocalWithChildren(context)) return;
@@ -166,7 +184,15 @@ export class AgentChatExecutionService {
 				if (await this.cancelLocalWithChildren(context)) return;
 				const execution = await this.getOwnedExecution(context);
 				if (!execution) return;
-				if (execution.status === 'running') this.cancelOrRemember(context);
+				if (execution.status === 'running') {
+					this.cancelOrRemember(context);
+					if (context.scope !== 'foreground')
+						await this.backgroundJobService.cancelForParent(
+							context.agentId,
+							context.threadId,
+							chatSurfaceMemoryResourceId(context.surface, context.userId),
+						);
+				}
 				await this.cancelRecordedSuspension(context);
 			},
 		);
@@ -174,6 +200,7 @@ export class AgentChatExecutionService {
 
 	private async cancelLocalWithChildren(context: ExecutionContext): Promise<boolean> {
 		if (!this.cancelLocal(context)) return false;
+		if (context.scope === 'foreground') return true;
 		await this.backgroundJobService.cancelForParent(
 			context.agentId,
 			context.threadId,
@@ -203,7 +230,11 @@ export class AgentChatExecutionService {
 			execution.context.userId !== context.userId
 		)
 			return false;
-		execution.controller.abort(PARENT_TASK_CANCELLED_REASON);
+		execution.controller.abort(
+			context.scope === 'foreground'
+				? new DOMException('Response stopped', 'AbortError')
+				: PARENT_TASK_CANCELLED_REASON,
+		);
 		return true;
 	}
 
@@ -240,6 +271,7 @@ export class AgentChatExecutionService {
 		return await this.cancelSuspended({
 			agentId: context.agentId,
 			runId: pending.runId,
+			cancelBackgroundJobs: context.scope !== 'foreground',
 			resourceId: chatSurfaceMemoryResourceId(context.surface, context.userId),
 		});
 	}
