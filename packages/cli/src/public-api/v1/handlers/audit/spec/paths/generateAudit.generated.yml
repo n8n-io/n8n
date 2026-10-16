@@ -4,6 +4,8 @@ tags:
 summary: Generate an audit
 description: Generate a security audit for your n8n instance.
 x-required-scope: securityAudit:generate
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   content:
     application/json:
@@ -633,7 +635,11 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
   '500':
     $ref: ../../../../shared/spec/responses/internalServerError.yml

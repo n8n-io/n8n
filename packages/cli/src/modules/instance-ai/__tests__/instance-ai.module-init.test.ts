@@ -7,6 +7,9 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
+import { InboxSourceRegistry } from '../../inbox/inbox-source.registry';
+import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
+
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -43,6 +46,9 @@ vi.mock('../instance-ai-event-relay.service', () => ({
 vi.mock('../event-bus/interrupted-run-sweeper', () => ({
 	InterruptedRunSweeper: vi.fn(),
 }));
+vi.mock('../self-healing/self-healing-result.service', () => ({
+	SelfHealingResultService: vi.fn(),
+}));
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
 vi.mock('../self-healing/self-healing-investigation.service', () => ({
 	SelfHealingInvestigationService: vi.fn(),
@@ -67,6 +73,8 @@ vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () =>
 describe('InstanceAiModule.init', () => {
 	function setup() {
 		const config = mockInstance(InstanceAiConfig, { workflowSuggestionsEnabled: false });
+		const sources = mockInstance(InboxSourceRegistry);
+		mockInstance(SelfHealingResultService);
 		mockInstance(InstanceCredentialBroker);
 		mockInstance(SandboxSettingsService);
 		mockInstance(InstanceAiSettingsService);
@@ -80,11 +88,11 @@ describe('InstanceAiModule.init', () => {
 		const logger = mockInstance(Logger);
 		logger.scoped.mockReturnValue(logger);
 		vi.stubEnv('E2E_TESTS', 'false');
-		return { config, sweeper, investigations, logger };
+		return { config, sources, sweeper, investigations, logger };
 	}
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
-		const { config, investigations } = setup();
+		const { config, sources, investigations } = setup();
 
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
@@ -92,6 +100,7 @@ describe('InstanceAiModule.init', () => {
 		expect(loadSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(createSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(loadResultController).not.toHaveBeenCalled();
+		expect(sources.register).not.toHaveBeenCalled();
 
 		config.workflowSuggestionsEnabled = true;
 		await new InstanceAiModule().init();
@@ -100,6 +109,9 @@ describe('InstanceAiModule.init', () => {
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(createSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(loadResultController).toHaveBeenCalledOnce();
+		expect(sources.register).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'self_healing_result' }),
+		);
 	});
 
 	it('starts reconciliation after the interrupted-run sweep finishes', async () => {

@@ -276,8 +276,8 @@ describe('GET /inbox', () => {
 		expect(response.body.data).toMatchObject({ data: [], disabledSources: ['workflow_review'] });
 	});
 
-	test('pages through the inbox with a cursor', async () => {
-		await seedInboxRequests();
+	test('paginates by latest update even when a review was created earlier', async () => {
+		const { openRequest } = await seedInboxRequests();
 		const secondRequest = await requestRepository.createRequest(
 			{
 				projectId: teamProject.id,
@@ -289,9 +289,18 @@ describe('GET /inbox', () => {
 		);
 		await linkToNewWorkflow(secondRequest.id);
 
+		await requestRepository.update(openRequest.id, {
+			createdAt: new Date('2026-10-01T00:00:00Z'),
+			updatedAt: new Date('2026-10-03T00:00:00Z'),
+		});
+		await requestRepository.update(secondRequest.id, {
+			createdAt: new Date('2026-10-02T00:00:00Z'),
+			updatedAt: new Date('2026-10-02T00:00:00Z'),
+		});
+
 		const firstPage = await ownerAgent.get('/inbox').query({ state: 'open', limit: 1 }).expect(200);
 
-		expect(firstPage.body.data.data).toHaveLength(1);
+		expect(firstPage.body.data.data).toMatchObject([{ id: openRequest.id }]);
 		expect(firstPage.body.data.hasMore).toBe(true);
 		expect(firstPage.body.data.nextCursor).toBeTruthy();
 
@@ -305,7 +314,44 @@ describe('GET /inbox', () => {
 			.expect(200);
 
 		expect(secondPage.body.data.data).toHaveLength(1);
-		expect(secondPage.body.data.data[0].id).not.toBe(firstPage.body.data.data[0].id);
+		expect(secondPage.body.data.data[0].id).toBe(secondRequest.id);
+		expect(secondPage.body.data.hasMore).toBe(false);
+	});
+
+	test('pages through reviews with equal update times without repeating or skipping rows', async () => {
+		const { openRequest } = await seedInboxRequests();
+		const second = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Second review',
+				createdById: owner.id,
+				state: 'open',
+			},
+			{},
+		);
+		await linkToNewWorkflow(second.id);
+		const updatedAt = new Date('2026-10-03T00:00:00Z');
+		await requestRepository.update(openRequest.id, {
+			createdAt: new Date('2026-10-01T00:00:00Z'),
+			updatedAt,
+		});
+		await requestRepository.update(second.id, {
+			createdAt: new Date('2026-10-02T00:00:00Z'),
+			updatedAt,
+		});
+		const all = await ownerAgent.get('/inbox').query({ state: 'open' }).expect(200);
+		const firstPage = await ownerAgent.get('/inbox').query({ state: 'open', limit: 1 }).expect(200);
+		const nextPage = await ownerAgent
+			.get('/inbox')
+			.query({
+				state: 'open',
+				limit: 1,
+				cursor: firstPage.body.data.nextCursor,
+			})
+			.expect(200);
+		expect([...firstPage.body.data.data, ...nextPage.body.data.data]).toEqual(all.body.data.data);
+		expect(all.body.data.data).toHaveLength(2);
+		expect(nextPage.body.data).toMatchObject({ hasMore: false, nextCursor: null });
 	});
 
 	test('hides reviews from projects the member cannot read, even when assigned as reviewer', async () => {

@@ -4,6 +4,8 @@ tags:
 summary: Pull changes from the remote repository
 description: Fetches changes from the connected Git branch into the instance.
 x-required-scope: sourceControl:pull
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   required: true
   content:
@@ -345,3 +347,5 @@ responses:
               - updatedAt
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
