@@ -23,24 +23,31 @@ const itemId = z.union([
 		.string()
 		.regex(/^new:[A-Za-z0-9_-]+$/, 'Use a temporary ID such as new:research for new items.'),
 ]);
+
 const itemFields = { id: itemId, dependsOn: z.array(itemId) };
+
 const taskInput = agentPlanTaskSchema
 	.omit({ startedAt: true, endedAt: true })
 	.extend({ ...itemFields, fallbackFor: itemId.optional() });
+
 const groupInput = agentPlanGroupSchema
 	.omit({ startedAt: true, endedAt: true })
 	.extend({ ...itemFields, tasks: z.array(taskInput) });
+
 const documentInput = agentPlanDocumentSchema.extend({
 	items: z.array(z.discriminatedUnion('kind', [taskInput, groupInput])),
 });
+
 const taskUpdate = taskInput.partial().required({ id: true }).extend({
 	resultSummary: taskInput.shape.resultSummary.unwrap().nullable().optional(),
 	fallbackFor: taskInput.shape.fallbackFor.unwrap().nullable().optional(),
 });
+
 const itemUpdate = taskUpdate.extend({
 	kind: z.enum(['task', 'group']).optional(),
 	tasks: z.array(taskUpdate).optional(),
 });
+
 const documentUpdate = documentInput.partial().extend({
 	presentation: agentPlanDocumentSchema.shape.presentation
 		.unwrap()
@@ -52,6 +59,7 @@ const documentUpdate = documentInput.partial().extend({
 		.optional(),
 	items: z.array(itemUpdate).optional(),
 });
+
 const writeInput = z
 	.object({
 		planId: z.string().uuid().toLowerCase(),
@@ -76,10 +84,12 @@ function mergeDocumentUpdate(
 			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
 			.map((item) => [item.id, item]),
 	);
+
 	const removed = new Set(removeItemIds);
 	if (removed.size !== removeItemIds.length) {
 		throw new AgentPlanValidationError('Removal IDs must be unique.');
 	}
+
 	for (const id of removeItemIds) {
 		const item = existing.get(id);
 		if (!item) throw new AgentPlanValidationError(`Unknown removal ID: ${id}`);
@@ -96,6 +106,7 @@ function mergeDocumentUpdate(
 		const merged = new Map<string, unknown>();
 		for (const item of items) {
 			if (removed.has(item.id)) continue;
+
 			merged.set(
 				item.id,
 				item.kind === 'group'
@@ -103,18 +114,22 @@ function mergeDocumentUpdate(
 					: withoutTiming(item),
 			);
 		}
+
 		for (const change of changes) {
 			if (updated.has(change.id)) {
 				throw new AgentPlanValidationError(`Duplicate update ID: ${change.id}`);
 			}
 			updated.add(change.id);
+
 			if (removed.has(change.id)) {
 				throw new AgentPlanValidationError(`Cannot update and remove the same item: ${change.id}`);
 			}
+
 			const current = items.find((item) => item.id === change.id);
 			if (!current && !change.id.startsWith('new:')) {
 				throw new AgentPlanValidationError(`Unknown item ID at this level: ${change.id}`);
 			}
+
 			const { tasks, ...fields } = change;
 			const item = { ...(current ? withoutTiming(current) : {}), ...fields };
 			if (item.resultSummary === null) delete item.resultSummary;
@@ -129,6 +144,7 @@ function mergeDocumentUpdate(
 					: item,
 			);
 		}
+
 		return [...merged.values()];
 	};
 
@@ -140,7 +156,9 @@ function mergeDocumentUpdate(
 					...previous.presentation,
 					...presentation,
 				};
+
 	if (nextPresentation?.detail === null) delete nextPresentation.detail;
+
 	return documentInput.parse({
 		...previous,
 		...fields,
@@ -168,6 +186,7 @@ function prepareDocument(
 			if (aliases.has(item.id)) {
 				throw new AgentPlanValidationError(`Duplicate temporary ID: ${item.id}`);
 			}
+
 			aliases.set(item.id, randomUUID());
 		} else if (!existing.has(item.id)) {
 			throw new AgentPlanValidationError(`Use a new: temporary ID for the new item: ${item.id}`);
