@@ -182,7 +182,6 @@ function publishableFixture(wholeProject = false) {
 			instructions: 'Help with requests.',
 			mcpServers: [],
 		});
-		config.skills![0].enabled = true;
 		config.tools![0].enabled = true;
 		config.tasks![0].enabled = true;
 		input.files[`${entry.target}/agent-metadata.json`] = {
