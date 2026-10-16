@@ -55,6 +55,7 @@ export const AGENT_MODEL_PROVIDER_DEFINITIONS = {
 	moonshotai: { displayName: 'Moonshot' },
 	alibaba: { displayName: 'Qwen Cloud' },
 	minimax: { displayName: 'MiniMax' },
+	ollama: { displayName: 'Ollama' },
 } satisfies Record<
 	AgentModelProvider,
 	{
