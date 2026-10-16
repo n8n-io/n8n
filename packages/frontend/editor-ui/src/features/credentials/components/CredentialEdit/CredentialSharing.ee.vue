@@ -265,12 +265,6 @@ function shareUsedInProject(projectId: string) {
 	sharedWithProjects.value = [...sharedWithProjects.value, project];
 }
 
-const sharingSelectPlaceholder = computed(() =>
-	projectsStore.teamProjects.length
-		? i18n.baseText('projects.sharing.select.placeholder.project')
-		: i18n.baseText('projects.sharing.select.placeholder.user'),
-);
-
 const canShareGlobally = computed(() => {
 	const permissions = getResourcePermissions(usersStore.currentUser?.globalScopes);
 	return permissions.credential?.shareGlobally ?? false;
@@ -344,7 +338,7 @@ function goToUpgrade() {
 						? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')
 						: undefined
 				"
-				:placeholder="sharingSelectPlaceholder"
+				:placeholder="i18n.baseText('projects.sharing.select.placeholder.project')"
 				:show-suffix="true"
 				:can-share-globally="canShareGlobally"
 				:is-shared-globally="isSharedGlobally"

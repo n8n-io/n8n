@@ -43,6 +43,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string, string> }) => {
 	const translations: Record<string, string> = {
 		'projects.sharing.allUsers': 'All users and projects',
+		'projects.sharing.select.placeholder.user': 'Share with user(s)',
+		'projects.sharing.select.placeholder.project': 'Share with users or projects...',
 		'credentialEdit.credentialSharing.info.owner':
 			'Only users with credential sharing permission can change who this credential is shared with',
 		'credentialEdit.credentialSharing.info.sharee.team': 'Shared by team project',
@@ -200,6 +202,36 @@ describe('CredentialSharing.ee', () => {
 		});
 
 		expect(getByTestId('project-sharing-select')).toBeInTheDocument();
+	});
+
+	it('should mention users and projects when shareable projects are not cached', async () => {
+		projectsStore.projects = [];
+		const teamProject = {
+			...createProjectListItem(ProjectTypes.Team),
+			id: 'shareable-team-project',
+			name: 'Shared team project',
+		};
+		vi.mocked(projectsStore.searchShareableProjects).mockResolvedValue({
+			count: 1,
+			data: [teamProject],
+		});
+
+		const credential = createCredential();
+		const { getByTestId, getByPlaceholderText } = renderComponent({
+			props: {
+				credentialId: credential.id,
+				credentialData: {},
+				credentialPermissions: { share: true },
+				credential,
+				modalBus: createEventBus(),
+			},
+		});
+
+		const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+		expect(dropdownItems).toHaveLength(1);
+		expect(dropdownItems[0]).toHaveTextContent('Shared team project');
+		expect(projectsStore.projects).toEqual([]);
+		expect(getByPlaceholderText('Share with users or projects...')).toBeInTheDocument();
 	});
 
 	describe('canShareGlobally computed property', () => {
