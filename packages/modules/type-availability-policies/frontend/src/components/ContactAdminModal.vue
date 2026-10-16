@@ -66,13 +66,13 @@ function mailtoHref(email: string): string {
 		:description="description"
 		size="medium"
 		stacked
-		data-test-id="contact-instance-admin-modal"
+		data-test-id="contact-admin-modal"
 	>
 		<N8nLoading v-if="isLoading" :rows="2" variant="p" :class="$style.body" />
 		<ul
 			v-else-if="owners.length"
 			:class="[$style.body, $style.list]"
-			data-test-id="contact-instance-admin-list"
+			data-test-id="contact-admin-list"
 		>
 			<li v-for="owner in owners" :key="owner.id" :class="$style.owner">
 				<N8nAvatar :first-name="owner.firstName" :last-name="owner.lastName" size="small" />
@@ -90,7 +90,7 @@ function mailtoHref(email: string): string {
 			size="small"
 			color="text-base"
 			:class="$style.body"
-			data-test-id="contact-instance-admin-empty"
+			data-test-id="contact-admin-empty"
 		>
 			{{ i18n.baseText('typeAvailabilityPolicies.contactAdmin.empty') }}
 		</N8nText>
