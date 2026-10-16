@@ -35,6 +35,27 @@ const config = {
 	rootDir: rootDir,
 };
 
+const nativeModulesConfig = {
+	modulesDirectory: path.join('node_modules', '.pnpm', 'node_modules', '@napi-rs'),
+	target: {
+		os: 'linux',
+		cpu: ['x64', 'arm64'],
+		libc: 'musl',
+	},
+	modules: [
+		{
+			packageName: '@napi-rs/canvas',
+			directoryName: 'canvas',
+			bindings: ['@napi-rs/canvas-linux-x64-musl', '@napi-rs/canvas-linux-arm64-musl'],
+		},
+		{
+			packageName: '@napi-rs/image',
+			directoryName: 'image',
+			bindings: ['@napi-rs/image-linux-x64-musl', '@napi-rs/image-linux-arm64-musl'],
+		},
+	],
+};
+
 // #endregion ===== Configuration =====
 
 // #region ===== Helper Functions =====
@@ -67,6 +88,49 @@ function printHeader(title) {
 
 function printDivider() {
 	echo(chalk.gray('-----------------------------------------------'));
+}
+
+async function installNativeModules(compiledAppDir, nativeConfig) {
+	const nativeBindingsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-native-bindings-'));
+	try {
+		const dependencies = {};
+		const moduleDirs = new Map();
+		for (const nativeModule of nativeConfig.modules) {
+			const moduleDir = await fs.realpath(
+				path.join(compiledAppDir, nativeConfig.modulesDirectory, nativeModule.directoryName),
+			);
+			moduleDirs.set(nativeModule.packageName, moduleDir);
+			const manifest = await fs.readJson(path.join(moduleDir, 'package.json'));
+			for (const binding of nativeModule.bindings) {
+				const version = manifest.optionalDependencies?.[binding];
+				if (!version) {
+					throw new Error(
+						`${binding} is not an optional dependency of ${nativeModule.packageName}`,
+					);
+				}
+				dependencies[binding] = version;
+			}
+		}
+
+		await fs.writeJson(path.join(nativeBindingsDir, 'package.json'), {
+			private: true,
+			dependencies,
+		});
+		const cpu = nativeConfig.target.cpu.join(',');
+		await $`pnpm --dir ${nativeBindingsDir} --ignore-workspace install --prod --frozen-lockfile=false --os=${nativeConfig.target.os} --cpu=${cpu} --libc=${nativeConfig.target.libc} --ignore-scripts`;
+
+		for (const nativeModule of nativeConfig.modules) {
+			const moduleDir = moduleDirs.get(nativeModule.packageName);
+			if (!moduleDir) throw new Error(`Could not resolve ${nativeModule.packageName}`);
+
+			for (const binding of nativeModule.bindings) {
+				const source = await fs.realpath(path.join(nativeBindingsDir, 'node_modules', binding));
+				await fs.copy(source, path.join(path.dirname(moduleDir), path.basename(binding)));
+			}
+		}
+	} finally {
+		await fs.remove(nativeBindingsDir);
+	}
 }
 
 // #endregion ===== Helper Functions =====
@@ -241,59 +305,7 @@ try {
 
 	// The app deploy excludes optional dependencies, but these packages contain the
 	// native bindings that Edit Image loads at runtime.
-	const nativeModules = [
-		{
-			name: 'canvas',
-			bindings: ['@napi-rs/canvas-linux-x64-musl', '@napi-rs/canvas-linux-arm64-musl'],
-		},
-		{
-			name: 'image',
-			bindings: ['@napi-rs/image-linux-x64-musl', '@napi-rs/image-linux-arm64-musl'],
-		},
-	];
-	const nativeBindingsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-native-bindings-'));
-	try {
-		const dependencies = {};
-		const moduleDirs = {};
-		for (const nativeModule of nativeModules) {
-			const moduleDir = await fs.realpath(
-				path.join(
-					config.compiledAppDir,
-					'node_modules/.pnpm/node_modules/@napi-rs',
-					nativeModule.name,
-				),
-			);
-			moduleDirs[nativeModule.name] = moduleDir;
-			const manifest = await fs.readJson(path.join(moduleDir, 'package.json'));
-			for (const binding of nativeModule.bindings) {
-				const version = manifest.optionalDependencies?.[binding];
-				if (!version) {
-					throw new Error(
-						`${binding} is not an optional dependency of @napi-rs/${nativeModule.name}`,
-					);
-				}
-				dependencies[binding] = version;
-			}
-		}
-
-		await fs.writeJson(path.join(nativeBindingsDir, 'package.json'), {
-			private: true,
-			dependencies,
-		});
-		await $`pnpm --dir ${nativeBindingsDir} --ignore-workspace install --prod --frozen-lockfile=false --os=linux --cpu=x64,arm64 --libc=musl --ignore-scripts`;
-
-		for (const nativeModule of nativeModules) {
-			for (const binding of nativeModule.bindings) {
-				const packageName = binding.slice('@napi-rs/'.length);
-				const source = await fs.realpath(
-					path.join(nativeBindingsDir, 'node_modules/@napi-rs', packageName),
-				);
-				await fs.copy(source, path.join(path.dirname(moduleDirs[nativeModule.name]), packageName));
-			}
-		}
-	} finally {
-		await fs.remove(nativeBindingsDir);
-	}
+	await installNativeModules(config.compiledAppDir, nativeModulesConfig);
 
 	// Strip test/example/benchmark dirs shipped inside production deps that lack a
 	// `files` field in their package.json. These are valid runtime deps but their
