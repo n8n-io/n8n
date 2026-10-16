@@ -639,6 +639,17 @@ describe('AgentRepository', () => {
 			expect(row?.revision).toBe(1);
 		});
 
+		it('rejects a stale import after MCP availability changes', async () => {
+			const agent = await createAgent({ availableInMCP: false });
+			await agentRepo.setAvailableInMCP([agent.id], true);
+
+			const won = await agentRepo.saveDraftFenced(agent, {}, { availableInMCP: false });
+
+			expect(won).toBe(false);
+			const row = await agentRepo.findById(agent.id);
+			expect(row).toMatchObject({ availableInMCP: true, revision: 1 });
+		});
+
 		it('cannot roll back a publish that won between load and save', async () => {
 			const agent = await createAgent();
 			const publishedVersionId = uuid();
