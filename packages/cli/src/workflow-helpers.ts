@@ -4,6 +4,7 @@ import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	collectSubWorkflowOutput,
+	escalateSubWorkflowRedaction,
 	getLastExecutedNodeData,
 	Workflow,
 	UnexpectedError,
@@ -17,6 +18,7 @@ import {
 	resolveVariables,
 	safeParseWorkflowStructure,
 	summarizeDynamicCredentialsUsage,
+	summarizeSubWorkflowRedaction,
 	validateWorkflowGroups,
 	type IDataObject,
 	type INodeCredentialsDetails,
@@ -553,6 +555,13 @@ export async function updateParentExecutionWithChildResults(
 			runtimeData.executedByUserId = dynamicCredentialsUsage.dynamicCredentialsResolvedUserId;
 		}
 	}
+
+	// The parent keeps a copy of the child's output (or error), so it redacts at least what the
+	// child redacts. The resume restores this context as is, so escalate it before it is saved.
+	escalateSubWorkflowRedaction(
+		parentWithSubWorkflowResults.data.executionData?.runtimeData,
+		summarizeSubWorkflowRedaction(subworkflowResults.data, { includeOwn: true }),
+	);
 
 	if (subworkflowError) {
 		// Record the error on the waiting parent's Execute Workflow node so the node
