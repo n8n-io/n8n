@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/v1/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_310440b218e696 46-56,58,60-62
+packages/nodes-base/nodes/Microsoft/Teams/v1/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_4f4cdc865458e6 10,123-126
+packages/nodes-base/nodes/Microsoft/Teams/v1/MicrosoftTeamsV1.node.ts
+  s_2e1fa95fc44f8f::t_e5dcdc8cdf78ec 18,323,334,369,392,430,456,481,491
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f486ccefb6e93019651e7287759efd8c1b0c192",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
