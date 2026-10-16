@@ -922,7 +922,12 @@ describe('SubAgentRunner', () => {
 			parentThreadId,
 			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
 		};
+		const planTask = {
+			planId: '00000000-0000-4000-a000-000000000001',
+			planTaskId: '00000000-0000-4000-a000-000000000002',
+		};
 		const runContext = {
+			planTask,
 			projectId,
 			parentAgentId,
 			credentialProvider,
@@ -949,10 +954,12 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.resumePaused).toHaveBeenCalledWith(
 			expect.objectContaining({
 				runId: 'child-run-1',
-				hostMetadata: { n8nExecutionId: 'agent-execution-1' },
+				hostMetadata: { n8nExecutionId: 'agent-execution-1', n8nPlanTask: planTask },
 				shouldPause: expect.any(Function),
 			}),
 		);
+		expect(await childAgent.resumePaused.mock.calls[0][0].shouldPause?.()).toBe(true);
+		expect(shouldPause).toHaveBeenCalled();
 		expect(result).toMatchObject({
 			threadId: 'child-thread-1',
 			status: 'paused',

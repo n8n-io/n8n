@@ -1,3 +1,5 @@
+import { AgentPlanValidationError } from '../plans/agent-plan.schema';
+import { readPlanTaskContext } from '../plans/agent-plan-task-context';
 import type { BuiltTool, CreateDelegateSubAgentToolOptions, ToolContext } from '@n8n/agents';
 import { INLINE_SUB_AGENT_ID } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
@@ -23,6 +25,7 @@ import type {
 const RESULT_ECHO_MAX_CHARS = 8000;
 
 export interface BackgroundJobToolsOptions {
+	planTasksEnabled?: boolean;
 	jobService: AgentBackgroundJobService;
 	backgroundRunner: SubAgentBackgroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
@@ -89,29 +92,39 @@ export function createBackgroundSubAgentHandler(
 				note: 'Background jobs need a valid parent identity; none is active.',
 			};
 		}
-		const receipt = await options.backgroundRunner.spawn(
-			{
-				subAgentId: source.agentId,
-				source,
-				taskName: input.taskName,
-				goal: input.goal,
-				context: input.context,
-				expectedOutput: input.expectedOutput,
-				...(isSelfDelegation && input.difficulty !== undefined
-					? { difficulty: input.difficulty }
-					: {}),
-				sourceExecutionId: executionIdFromMetadata(ctx.persistence?.hostMetadata),
-				parentThreadId,
-				parentResourceId,
-				parentSandboxPrincipalHash: sandboxScope.principalHash,
-				parentMessageContext: readIntegrationMessageContext(ctx.persistence) ?? null,
-			},
-			{
-				projectId: options.projectId,
-				parentAgentId: options.parentAgentId,
-				...options.runContext,
-			},
-		);
+		const receipt = await options.backgroundRunner
+			.spawn(
+				{
+					subAgentId: source.agentId,
+					planTask: readPlanTaskContext(ctx.persistence?.hostMetadata) ?? input.planTask,
+					validatePlanTask: options.planTasksEnabled,
+					inheritedPlanTask: Boolean(readPlanTaskContext(ctx.persistence?.hostMetadata)),
+					source,
+					taskName: input.taskName,
+					goal: input.goal,
+					context: input.context,
+					expectedOutput: input.expectedOutput,
+					...(isSelfDelegation && input.difficulty !== undefined
+						? { difficulty: input.difficulty }
+						: {}),
+					sourceExecutionId: executionIdFromMetadata(ctx.persistence?.hostMetadata),
+					parentThreadId,
+					parentResourceId,
+					parentSandboxPrincipalHash: sandboxScope.principalHash,
+					parentMessageContext: readIntegrationMessageContext(ctx.persistence) ?? null,
+				},
+				{
+					projectId: options.projectId,
+					parentAgentId: options.parentAgentId,
+					...options.runContext,
+				},
+			)
+			.catch((error: unknown) => {
+				if (error instanceof AgentPlanValidationError)
+					return { status: 'rejected' as const, note: error.message };
+				throw error;
+			});
+		if (receipt.status === 'rejected') return receipt;
 
 		if (receipt.status === 'started') {
 			// A Stop can race the job insert. A disconnected chat does not cancel children.
@@ -121,6 +134,7 @@ export function createBackgroundSubAgentHandler(
 			return {
 				status: 'started',
 				jobId: receipt.jobId,
+				planTask: readPlanTaskContext(ctx.persistence?.hostMetadata) ?? input.planTask,
 				note: 'Job dispatched. Continue independent work or end this turn with a short progress message. Completion triggers a follow-up. Do not wait, sleep, or poll for completion.',
 			};
 		}
@@ -171,6 +185,9 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 			return {
 				jobs: jobs.map((job) => ({
 					jobId: job.id,
+					...(job.planId && job.planTaskId
+						? { planTask: { planId: job.planId, planTaskId: job.planTaskId } }
+						: {}),
 					kind: job.kind,
 					title: job.title,
 					status: job.status,
@@ -196,13 +213,20 @@ export function createResumeBackgroundJobsTool(
 ): BuiltTool {
 	return new Tool('resume_background_jobs')
 		.description(
-			'Resume paused sub-agents and identify cancelled workflows from the latest stop group in this conversation.',
+			'Resume the selected stopped plan tasks. Pass planId and optional taskIds. Omit taskIds for the whole plan. Without planId, use the saved stopped plan, or the latest stop group if there is no plan.',
 		)
 		.systemInstruction(
-			'Call resume_background_jobs first when the latest user message explicitly asks to continue stopped tasks. Continue applies only to the latest stop group. Do not restart tasks from older stop groups unless the user explicitly asks for that work. Do not call this tool for an unrelated message or an automatic notification. Never replace paused sub-agents with new jobs. If stopping is still in progress, ask the user to wait for the combined report and ask again. Do not poll or remember an early request for automatic continuation. The tool returns cancelled workflow references separately. It does not restart those workflows. Check conversation history and current jobs before repeating a workflow call, including repeated Continue requests. Call the normal workflow tool with inputs from the conversation only when a new execution is still needed. A new execution uses current configuration and starts from the beginning. Earlier actions can repeat and webhook URLs change. Continuing does not approve pending tools or bypass permissions.',
+			'Call resume_background_jobs first when the latest user message explicitly asks to continue stopped tasks. For a plan, pass its planId. For a selective request, pass only the requested taskIds. A group selects its unfinished children. Selected tasks without jobs leave the stopped state but stay pending until their prerequisites are Done. Continue does not start those tasks. Paused jobs with unfinished prerequisites stay stopped. Do not resume unrelated tasks or prerequisites. Read workState from the plan: a new user message does not resume stopped rows. Without a plan, Continue applies to the latest stop group. Do not call this tool for an unrelated message or an automatic notification. Never replace paused sub-agents with new jobs. If stopping is still in progress, ask the user to wait for the combined report and ask again. Do not poll or remember an early request for automatic continuation. The tool returns cancelled workflow references separately. It does not restart those workflows. Check conversation history and current jobs before repeating a workflow call, including repeated Continue requests. Call the normal workflow tool with inputs from the conversation only when a new execution is still needed. A new execution uses current configuration and starts from the beginning. Earlier actions can repeat and webhook URLs change. Continuing does not approve pending tools or bypass permissions.',
 		)
-		.input(z.object({}))
-		.handler(async (_input, ctx) => {
+		.input(
+			z
+				.object({
+					planId: z.string().uuid().optional(),
+					taskIds: z.array(z.string().uuid()).min(1).optional(),
+				})
+				.refine((input) => !input.taskIds || input.planId, 'taskIds requires planId.'),
+		)
+		.handler(async (input, ctx) => {
 			const { persistence } = ctx;
 			const executionId = persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
 			const scope = decodeAgentSandboxHostMetadata(persistence?.hostMetadata);
@@ -217,18 +241,32 @@ export function createResumeBackgroundJobsTool(
 					note: 'Resuming needs an explicit user request in this conversation.',
 				};
 			}
-			const candidates = await options.jobService.preparePausedResume(
-				options.parentAgentId,
-				persistence.threadId,
-				persistence.resourceId,
-				executionId,
-			);
+			const candidates = await options.jobService
+				.preparePausedResume(
+					options.parentAgentId,
+					persistence.threadId,
+					persistence.resourceId,
+					executionId,
+					input.planId ? { planId: input.planId, taskIds: input.taskIds } : undefined,
+				)
+				.catch((error: unknown) => {
+					if (error instanceof AgentPlanValidationError)
+						return { status: 'rejected' as const, jobs: [], note: error.message };
+					throw error;
+				});
+			if (candidates.status === 'rejected')
+				return { status: candidates.status, note: candidates.note };
 			if (candidates.status === 'limit-reached') {
 				return {
 					status: candidates.status,
 					note: 'There are not enough active task slots for the stopped group. Wait for active tasks to finish, then ask to continue again.',
 				};
 			}
+			if (candidates.status === 'task-selection-unavailable')
+				return {
+					status: candidates.status,
+					note: 'These older jobs have no saved task links. Only the whole stopped group can continue.',
+				};
 			if (candidates.status === 'expired')
 				return { status: candidates.status, note: EXPIRED_BACKGROUND_CHECKPOINT_ERROR };
 			if (candidates.status !== 'ready') {
@@ -237,6 +275,7 @@ export function createResumeBackgroundJobsTool(
 					note: 'Wait for the combined status report, then ask to continue again.',
 				};
 			}
+			let resumedJobIds: string[] = [];
 			try {
 				const results = await Promise.allSettled(
 					candidates.jobs.map(
@@ -246,16 +285,27 @@ export function createResumeBackgroundJobsTool(
 								{
 									...options.runContext,
 									projectId: options.projectId,
-									parentAgentId: options.parentAgentId,
+									parentAgentId: job.parentAgentId,
 								},
 								candidates.timeoutAt,
 							),
 					),
 				);
+				resumedJobIds = results.flatMap((result, index) =>
+					result.status === 'fulfilled' ? [candidates.jobs[index].id] : [],
+				);
 				return {
-					status: candidates.jobs.length > 0 ? 'resumed' : 'ready',
+					status:
+						results.some((result) => result.status === 'rejected') || candidates.failed?.length
+							? 'partial'
+							: candidates.jobs.length > 0
+								? 'resumed'
+								: 'ready',
+					blocked: candidates.blocked,
+					failed: candidates.failed,
 					jobs: results.map((result, index) => ({
 						jobId: candidates.jobs[index].id,
+						planTaskId: candidates.jobs[index].planTaskId,
 						status: result.status === 'fulfilled' ? 'resumed' : 'failed',
 						...(result.status === 'rejected' ? { error: String(result.reason) } : {}),
 					})),
@@ -263,6 +313,13 @@ export function createResumeBackgroundJobsTool(
 				};
 			} finally {
 				await options.jobService.releaseResumeReservations(candidates.jobs, candidates.timeoutAt);
+				if (candidates.selection)
+					await options.jobService.finishPlanResume(
+						options.parentAgentId,
+						persistence.threadId,
+						candidates.selection,
+						resumedJobIds,
+					);
 			}
 		})
 		.build();

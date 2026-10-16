@@ -1,3 +1,4 @@
+import { AgentPlanWorkRepository } from '@/modules/agents/repositories/agent-plan-work.repository';
 import type {
 	AgentSessionOrigin,
 	AgentSessionQueryFilters,
@@ -502,6 +503,7 @@ describe('AgentExecutionRepository', () => {
 					mock<AgentExecutionUpdateBroadcaster>(),
 					storage,
 					Container.get(AgentMessageRepository),
+					mock<AgentPlanWorkRepository>(),
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
