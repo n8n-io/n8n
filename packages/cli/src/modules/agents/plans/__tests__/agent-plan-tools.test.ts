@@ -1,4 +1,5 @@
 import type { BuiltTool, ToolContext } from '@n8n/agents';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -62,6 +63,13 @@ beforeEach(() => {
 });
 
 describe('Agent plan tools', () => {
+	it('exports nullable update fields without undefined schema branches', () => {
+		const tool = tools.find((candidate) => candidate.name === 'update_plan');
+		const schema = zodToJsonSchema(tool?.inputSchema);
+		expect(schema).not.toBeNull();
+		expect(JSON.stringify(schema)).not.toContain('"not":{}');
+	});
+
 	it('updates only the supplied task fields and preserves omitted items', async () => {
 		const done = { ...task(randomUUID()), status: 'done', resultSummary: 'Saved findings' };
 		const running = { ...task(randomUUID()), status: 'in_progress' };

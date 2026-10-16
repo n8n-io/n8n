@@ -34,8 +34,8 @@ const documentInput = agentPlanDocumentSchema.extend({
 	items: z.array(z.discriminatedUnion('kind', [taskInput, groupInput])),
 });
 const taskUpdate = taskInput.partial().required({ id: true }).extend({
-	resultSummary: taskInput.shape.resultSummary.nullable(),
-	fallbackFor: taskInput.shape.fallbackFor.nullable(),
+	resultSummary: taskInput.shape.resultSummary.unwrap().nullable().optional(),
+	fallbackFor: taskInput.shape.fallbackFor.unwrap().nullable().optional(),
 });
 const itemUpdate = taskUpdate.extend({
 	kind: z.enum(['task', 'group']).optional(),
