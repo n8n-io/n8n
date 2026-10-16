@@ -339,7 +339,8 @@ function onModalClose() {
 	modalClosed = true;
 	if (!hasOnceBeenSaved.value) {
 		workflowDocumentStore.value.removeNode(node.value);
-		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
+		// A pending first save decides whether the new destination stays in the list.
+		if (!isSaving.value && nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
@@ -359,13 +360,14 @@ async function saveDestination() {
 		const saveResult = await logStreamingStore.saveDestination(submittedParameters);
 		if (!saveResult) return;
 
+		// Cards refresh their copy from this event, so it must fire even after close.
+		callEventBus('destinationWasSaved', destination.id);
 		if (!modalClosed) {
 			hasOnceBeenSaved.value = true;
 			testMessageSent.value = false;
 			unchanged.value =
 				isEqual(nodeParameters.value, submittedParameters) &&
 				isEqual(logStreamingStore.getSelectedEvents(destination.id), submittedEvents);
-			callEventBus('destinationWasSaved', destination.id);
 			if (unchanged.value) uiStore.markStateClean();
 		}
 
@@ -384,9 +386,8 @@ async function saveDestination() {
 			is_active: submittedParameters.enabled,
 		});
 	} catch (error) {
-		if (!modalClosed) {
-			showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
-		}
+		if (modalClosed && !hasOnceBeenSaved.value) logStreamingStore.removeDestination(destination.id);
+		showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
 	} finally {
 		isSaving.value = false;
 	}

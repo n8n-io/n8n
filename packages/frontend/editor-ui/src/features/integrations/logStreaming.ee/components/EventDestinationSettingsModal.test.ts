@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { ref } from 'vue';
 import { N8nInlineTextEdit } from '@n8n/design-system';
 import { defaultMessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
+import { createEventBus } from '@n8n/utils/event-bus';
 import SaveButton from '@/app/components/SaveButton.vue';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -32,7 +33,7 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 describe('EventDestinationSettingsModal save', () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	async function setup() {
+	async function setup({ isNew = false } = {}) {
 		const pinia = createTestingPinia();
 		const store = useLogStreamingStore();
 		vi.mocked(store.getSelectedEvents).mockReturnValue([]);
@@ -42,9 +43,13 @@ describe('EventDestinationSettingsModal save', () => {
 			selectedEvents: new Set(),
 			isNew: false,
 		};
+		const eventBus = createEventBus();
+		vi.spyOn(eventBus, 'emit');
 		const wrapper = shallowMount(EventDestinationSettingsModal, {
 			props: {
 				modalName: 'settingsLogStream',
+				eventBus,
+				isNew,
 				destination: {
 					...defaultMessageEventBusDestinationWebhookOptions,
 					id: 'destinationId',
@@ -65,7 +70,7 @@ describe('EventDestinationSettingsModal save', () => {
 		await flushPromises();
 		wrapper.findComponent(N8nInlineTextEdit).vm.$emit('update:modelValue', 'Changed label');
 		await flushPromises();
-		return { wrapper, store, saveButton: wrapper.findComponent(SaveButton) };
+		return { wrapper, store, eventBus, saveButton: wrapper.findComponent(SaveButton) };
 	}
 
 	it('shows save errors and allows a retry', async () => {
@@ -152,7 +157,7 @@ describe('EventDestinationSettingsModal save', () => {
 	});
 
 	it('records a successful save after closure without marking later UI state clean', async () => {
-		const { wrapper, store, saveButton } = await setup();
+		const { wrapper, store, eventBus, saveButton } = await setup();
 		const uiStore = useUIStore();
 		let finish!: (result: boolean) => void;
 		vi.mocked(store.saveDestination).mockReturnValueOnce(
@@ -171,9 +176,10 @@ describe('EventDestinationSettingsModal save', () => {
 			expect.any(Object),
 		);
 		expect(uiStore.markStateClean).not.toHaveBeenCalled();
+		expect(eventBus.emit).toHaveBeenCalledWith('destinationWasSaved', 'destinationId');
 	});
 
-	it.each(['close', 'unmount'])('does not show a stale error after %s', async (action) => {
+	it.each(['close', 'unmount'])('shows a save error after %s', async (action) => {
 		const { wrapper, store, saveButton } = await setup();
 		let fail!: (error: Error) => void;
 		vi.mocked(store.saveDestination).mockReturnValueOnce(
@@ -185,8 +191,32 @@ describe('EventDestinationSettingsModal save', () => {
 		await flushPromises();
 		if (action === 'close') wrapper.findComponent(Modal).props('beforeClose')?.();
 		else wrapper.unmount();
-		fail(new Error('Invalid URL'));
+		const error = new Error('Invalid URL');
+		fail(error);
 		await flushPromises();
-		expect(showError).not.toHaveBeenCalled();
+		expect(showError).toHaveBeenCalledWith(error, expect.any(String));
 	});
+
+	it.each([
+		{ outcome: 'succeeds', kept: true },
+		{ outcome: 'fails', kept: false },
+	])(
+		'keeps a new destination closed during its first save only if the save $outcome',
+		async ({ outcome, kept }) => {
+			const { wrapper, store, saveButton } = await setup({ isNew: true });
+			let finish!: () => void;
+			vi.mocked(store.saveDestination).mockReturnValueOnce(
+				new Promise((resolve, reject) => {
+					finish = () => (kept ? resolve(true) : reject(new Error('Invalid URL')));
+				}),
+			);
+			saveButton.vm.$emit('click');
+			await flushPromises();
+			wrapper.findComponent(Modal).props('beforeClose')?.();
+			expect(store.removeDestination).not.toHaveBeenCalled();
+			finish();
+			await flushPromises();
+			expect(store.removeDestination).toHaveBeenCalledTimes(kept ? 0 : 1);
+		},
+	);
 });

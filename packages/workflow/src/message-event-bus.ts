@@ -69,12 +69,10 @@ const isValidHostname = (value: string) => {
 	// the destination clients do not.
 	if (/^[\d.]+$/.test(hostname) && !ipv4Schema.safeParse(hostname).success) return false;
 
+	// Underscores are not valid DNS, but Docker service names use them and resolve.
 	return hostname
 		.split('.')
-		.every(
-			(label) =>
-				label.length > 0 && label.length <= 63 && /^[a-z\d](?:[a-z\d-]*[a-z\d])?$/i.test(label),
-		);
+		.every((label) => label.length > 0 && label.length <= 63 && /^\w(?:[\w-]*\w)?$/.test(label));
 };
 
 const isValidHost = (value: string) =>

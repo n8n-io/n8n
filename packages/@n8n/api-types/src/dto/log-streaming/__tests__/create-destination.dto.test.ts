@@ -520,6 +520,7 @@ describe('Destination host validation', () => {
 	test.each([
 		'localhost',
 		'otel-collector',
+		'log_collector',
 		'123.example.com',
 		'example.com.',
 		'127.0.0.1',
@@ -565,6 +566,7 @@ describe('Destination host validation', () => {
 			'http://127.0.0.1/1',
 			'http://[::1]/1',
 			'https://public@sentry-internal/1',
+			'http://log_collector:8080/1',
 		])('accepts %s', (value) => {
 			expect(CreateDestinationDto.safeParse({ __type, [field]: value }).success).toBe(true);
 		});
@@ -574,7 +576,6 @@ describe('Destination host validation', () => {
 			'https://-host.com/1',
 			'https://host-.com/1',
 			'ftp://example.com/1',
-			'https://host_name/1',
 		])('rejects %s', (value) => {
 			const result = CreateDestinationDto.safeParse({ __type, [field]: value });
 			expect(result.success).toBe(false);
