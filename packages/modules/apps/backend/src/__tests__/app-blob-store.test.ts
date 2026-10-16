@@ -1,7 +1,13 @@
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { AzureBlobService } from '@n8n/blob-storage/azure-blob';
-import { BinaryDataRepository, DbLockService, type ExecutionDataStorageLocation } from '@n8n/db';
+import {
+	BinaryDataRepository,
+	DbLock,
+	DbLockService,
+	type ExecutionDataStorageLocation,
+	type OperationContext,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { FsByteStoreService, StorageConfig } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -11,14 +17,19 @@ import { AppBlobStore } from '../storage/app-blob-store';
 
 function createStore(mode: ExecutionDataStorageLocation = 'fs') {
 	const fs = mock<FsByteStoreService>();
+	const binaryData = mock<BinaryDataRepository>();
+	const artifacts = mock<AppArtifactRepository>();
+	const locks = mock<DbLockService>();
+	const ctx = mock<OperationContext>();
+	locks.withLockContext.mockImplementation(async (_key, fn) => await fn(ctx));
 	const store = new AppBlobStore(
 		fs,
 		mock<StorageConfig>({ modeTag: mode }),
-		mock<BinaryDataRepository>(),
-		mock<AppArtifactRepository>(),
-		mock<DbLockService>(),
+		binaryData,
+		artifacts,
+		locks,
 	);
-	return { store, fs };
+	return { store, fs, binaryData, artifacts, locks, ctx };
 }
 
 beforeEach(() => {
@@ -94,4 +105,50 @@ it('writes, reads, and deletes Azure bytes through the shared store', async () =
 	await store.delete(blob);
 	expect(client.delete).toHaveBeenCalledWith(blob.storageKey);
 	expect(await store.read(blob)).toBeNull();
+});
+
+it('writes database content under the storage lock', async () => {
+	const { store, artifacts, locks, ctx } = createStore('db');
+	const blob = { ...store.newBlob(), id: 1 };
+	const body = Buffer.from('content');
+
+	await store.write(blob, body);
+
+	expect(locks.withLockContext).toHaveBeenCalledWith(DbLock.APPS_STORAGE, expect.any(Function));
+	expect(artifacts.storeDatabaseContent).toHaveBeenCalledWith(blob, body, ctx);
+});
+
+it('reads and deletes filesystem content after new writes switch to the database', async () => {
+	const { store, fs } = createStore('db');
+	const blob = { storedAt: 'fs', storageKey: 'apps/artifacts/existing.tgz' } as const;
+	const body = Buffer.from('existing content');
+	fs.read.mockResolvedValue(body);
+
+	expect(await store.read(blob)).toEqual(body);
+	await store.delete(blob);
+
+	expect(fs.delete).toHaveBeenCalledWith([blob.storageKey]);
+});
+
+it('reads and deletes database content after new writes switch to the filesystem', async () => {
+	const { store, binaryData } = createStore('fs');
+	const blob = { storedAt: 'db', storageKey: '11111111-1111-4111-8111-111111111111' } as const;
+	const body = Buffer.from('existing content');
+	binaryData.findContentByFileId.mockResolvedValue(body);
+
+	expect(await store.read(blob)).toEqual(body);
+	await store.delete(blob);
+
+	expect(binaryData.deleteByFileIds).toHaveBeenCalledWith([blob.storageKey]);
+});
+
+it('fails startup when the selected backend cannot connect', async () => {
+	const error = new Error('Storage is unavailable.');
+	const client = mock<ObjectStoreService>();
+	client.checkConnection.mockRejectedValue(error);
+	Container.set(ObjectStoreConfig, mock<ObjectStoreConfig>({ bucket: { name: 'apps' } }));
+	Container.set(ObjectStoreService, client);
+	const { store } = createStore('s3');
+
+	await expect(store.init()).rejects.toBe(error);
 });
