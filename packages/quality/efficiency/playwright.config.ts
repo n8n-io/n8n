@@ -18,6 +18,12 @@ export default defineQualityConfig<object, ContainerWorkerFixtures>({
 	retries: 0,
 	use: { trace: 'off', video: 'off', screenshot: 'off' },
 	projects: [
+		{
+			name: 'memory-profiler',
+			testDir: './memory/session/__tests__',
+			testMatch: '**/*.spec.mjs',
+			use: { channel: process.env.PLAYWRIGHT_CHANNEL },
+		},
 		...images.map((image) => ({
 			name: `image-efficiency:${image.name}`,
 			testDir: './images',

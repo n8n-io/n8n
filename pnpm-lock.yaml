@@ -560,6 +560,9 @@ catalogs:
     dotenv:
       specifier: 17.2.3
       version: 17.2.3
+    echarts:
+      specifier: ^6.1.0
+      version: 6.1.0
     electron:
       specifier: 41.10.4
       version: 41.10.4
@@ -593,6 +596,9 @@ catalogs:
     google-auth-library:
       specifier: 10.9.1
       version: 10.9.1
+    gridstack:
+      specifier: ^14.0.0
+      version: 14.0.0
     http-proxy-agent:
       specifier: 7.0.2
       version: 7.0.2
@@ -8224,6 +8230,12 @@ importers:
       '@playwright/test':
         specifier: catalog:e2e
         version: 1.62.1
+      echarts:
+        specifier: 'catalog:'
+        version: 6.1.0
+      gridstack:
+        specifier: 'catalog:'
+        version: 14.0.0
       n8n-playwright:
         specifier: workspace:*
         version: link:../testing/playwright
@@ -8233,9 +8245,15 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 0.21.1
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -18017,6 +18035,9 @@ packages:
   ecdsa-sig-formatter@1.0.11:
     resolution: {integrity: sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ==}
 
+  echarts@6.1.0:
+    resolution: {integrity: sha512-q0yaFPggC9FUdsWH4blavRWFmxdrIodbkoKNAjJudAI6CA9gNPxHtV2RcZNEepZVlk4yvBYkOkbk6HIVpIyHZA==}
+
   eciesjs@0.4.18:
     resolution: {integrity: sha512-wG99Zcfcys9fZux7Cft8BAX/YrOJLJSZ3jyYPfhZHqN2E+Ffx+QXBDsv3gubEgPtV6dTzJMSQUwk1H98/t/0wQ==}
     engines: {bun: '>=1', deno: '>=2', node: '>=16'}
@@ -19120,6 +19141,9 @@ packages:
   graphql@16.11.0:
     resolution: {integrity: sha512-mS1lbMsxgQj6hge1XZ6p7GPhbrtFwUFYi3wRzXAC/FmYnyXMTvvI3td3rjmQ2u8ewXueaSvRPWaEcgVVOT9Jnw==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
+
+  gridstack@14.0.0:
+    resolution: {integrity: sha512-jkoGugExoCUHNbC3IMQEHUtf3+quii8BI+tTsP8h0bpHjf3Jr3KdCUbHpmqGz3VVHEb5tqciL6foBLum8/32FQ==}
 
   groq-sdk@0.19.0:
     resolution: {integrity: sha512-vdh5h7ORvwvOvutA80dKF81b0gPWHxu6K/GOJBOM0n6p6CSqAVLhFfeS79Ef0j/yCycDR09jqY7jkYz9dLiS6w==}
@@ -25285,6 +25309,9 @@ packages:
 
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
+
+  zrender@6.1.0:
+    resolution: {integrity: sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -36477,6 +36504,11 @@ snapshots:
     dependencies:
       safe-buffer: 5.2.1
 
+  echarts@6.1.0:
+    dependencies:
+      tslib: 2.8.1
+      zrender: 6.1.0
+
   eciesjs@0.4.18:
     dependencies:
       '@ecies/ciphers': 0.2.5(@noble/ciphers@1.3.0)
@@ -38077,6 +38109,8 @@ snapshots:
       - encoding
 
   graphql@16.11.0: {}
+
+  gridstack@14.0.0: {}
 
   groq-sdk@0.19.0(encoding@0.1.13):
     dependencies:
@@ -45551,6 +45585,10 @@ snapshots:
   zod@3.25.76: {}
 
   zod@4.5.4: {}
+
+  zrender@6.1.0:
+    dependencies:
+      tslib: 2.8.1
 
   zwitch@2.0.4: {}
 
