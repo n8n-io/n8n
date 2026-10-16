@@ -1,4 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { ResponseError } from '@n8n/rest-api-client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAgentEvalsStore } from '../agentEvals.store';
@@ -157,6 +158,9 @@ const mockRun = (options: {
 };
 
 describe('useAgentEvalsStore', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
@@ -1368,6 +1372,265 @@ describe('useAgentEvalsStore', () => {
 		});
 	});
 
+	describe.each(['rerun', 'suggestion'] as const)('%s progress', (operation) => {
+		afterEach(() => {
+			vi.useRealTimers();
+			vi.restoreAllMocks();
+		});
+		it('does not let an expired confirmation read undo a newer rerun', async () => {
+			vi.useFakeTimers();
+			const old = result('c1');
+			mockRun({ results: [old], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			const request = operation === 'rerun' ? rerunResult : applySuggestions;
+			request.mockRejectedValueOnce(new ResponseError('Forbidden', { httpStatusCode: 403 }));
+			let finishOldRead!: (value: unknown) => void;
+			getRunDetail.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishOldRead = resolve;
+					}),
+			);
+			const first =
+				operation === 'rerun'
+					? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+					: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+			const rejected = expect(first).rejects.toThrow('Forbidden');
+			await vi.advanceTimersByTimeAsync(30000);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(old);
+			let finishNew!: (value: unknown) => void;
+			request.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishNew = resolve;
+					}),
+			);
+			const second =
+				operation === 'rerun'
+					? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+					: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+			finishOldRead(runDetail([old], 1));
+			await rejected;
+			expect(store.getReview(RUN_ID).results[0]).toMatchObject({ status: 'running', output: null });
+			const progress = {
+				...old,
+				runAt: '2026-01-01T01:00:00.000Z',
+				status: 'running' as const,
+				output: null,
+			};
+			getRunDetail.mockResolvedValue(runDetail([progress], 1));
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(progress);
+			const final = { ...progress, status: 'success' as const };
+			finishNew(operation === 'rerun' ? final : { configHash: 'new', results: [final] });
+			await second;
+			expect(store.getReview(RUN_ID).results[0]).toEqual(final);
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		it('keeps a confirmed attempt after the confirmation window and later polling errors', async () => {
+			vi.useFakeTimers();
+			const old = result('c1');
+			mockRun({ results: [old], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			const progress = {
+				...old,
+				runAt: '2026-01-01T01:00:00.000Z',
+				status: 'running' as const,
+				output: null,
+			};
+			getRunDetail.mockResolvedValue(runDetail([progress], 1));
+			(operation === 'rerun' ? rerunResult : applySuggestions).mockRejectedValue(
+				new Error('timeout'),
+			);
+			const pending =
+				operation === 'rerun'
+					? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+					: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+			await expect(pending).rejects.toThrow('timeout');
+			await vi.advanceTimersByTimeAsync(35000);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(progress);
+			getRunDetail.mockRejectedValue(new Error('offline'));
+			await vi.advanceTimersByTimeAsync(15000);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(progress);
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		it('restores the previous result immediately after an authorization rejection', async () => {
+			vi.useFakeTimers();
+			const old = result('c1');
+			mockRun({ results: [old], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			(operation === 'rerun' ? rerunResult : applySuggestions).mockRejectedValue(
+				new ResponseError('Forbidden', { httpStatusCode: 403 }),
+			);
+			const pending =
+				operation === 'rerun'
+					? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+					: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+			await expect(pending).rejects.toThrow('Forbidden');
+			expect(store.getReview(RUN_ID).results[0]).toEqual(old);
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		it.each([false, true])(
+			'confirms a lost request before restoring an attempt not yet observed (read fails: %s)',
+			async (readFails) => {
+				vi.useFakeTimers();
+				const visibility = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+				const old = result('c1');
+				mockRun({ results: [old], count: 1, ratings: [] });
+				const store = useAgentEvalsStore();
+				await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+				(operation === 'rerun' ? rerunResult : applySuggestions).mockRejectedValue(
+					new Error('timeout'),
+				);
+				if (readFails) getRunDetail.mockRejectedValueOnce(new Error('offline'));
+				const pending =
+					operation === 'rerun'
+						? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+						: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+				await expect(pending).rejects.toThrow('timeout');
+				expect(store.getReview(RUN_ID).results[0]).toMatchObject({
+					status: 'running',
+					output: null,
+				});
+				// Whole-run reads must not erase the unconfirmed execution boundary either.
+				await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+				expect(store.getReview(RUN_ID).results[0].status).toBe('running');
+				const progress = {
+					...old,
+					runAt: '2026-01-01T01:00:00.000Z',
+					status: 'running' as const,
+					output: null,
+					toolCalls: { calls: [{ tool: 'wait_for_reply', status: 'running' }] },
+				};
+				getRunDetail.mockResolvedValue(runDetail([progress], 1));
+				await vi.advanceTimersByTimeAsync(5000);
+				expect(store.getReview(RUN_ID).results[0]).toEqual(progress);
+				visibility.mockReturnValue(false);
+				const final = {
+					...progress,
+					status: 'success' as const,
+					output: { finalText: 'Completed' },
+				};
+				getRunDetail.mockResolvedValue(runDetail([final], 1));
+				await vi.advanceTimersByTimeAsync(5000);
+				expect(store.getReview(RUN_ID).results[0]).toEqual(final);
+				expect(vi.getTimerCount()).toBe(0);
+			},
+		);
+
+		it.each([false, true])(
+			'keeps observed server progress after a request fails (recovery read fails: %s)',
+			async (readFails) => {
+				vi.useFakeTimers();
+				const old = result('c1');
+				mockRun({ results: [old], count: 1, ratings: [] });
+				const store = useAgentEvalsStore();
+				await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+				let reject!: (error: Error) => void;
+				(operation === 'rerun' ? rerunResult : applySuggestions).mockImplementation(
+					async () =>
+						await new Promise((_, fail) => {
+							reject = fail;
+						}),
+				);
+				const pending =
+					operation === 'rerun'
+						? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+						: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+				const progress = {
+					...old,
+					status: 'running' as const,
+					runAt: '2026-01-01T01:00:00.000Z',
+					output: null,
+					toolCalls: { calls: [{ tool: 'wait_for_reply', status: 'running' }] },
+				};
+				getRunDetail.mockResolvedValue(runDetail([progress], 1));
+				await vi.advanceTimersByTimeAsync(5000);
+				if (readFails) getRunDetail.mockRejectedValueOnce(new Error('offline'));
+				const rejected = expect(pending).rejects.toThrow('timeout');
+				reject(new Error('timeout'));
+				await rejected;
+				expect(store.getReview(RUN_ID).results[0]).toEqual(progress);
+				const final = {
+					...progress,
+					status: 'success' as const,
+					output: { finalText: 'Finished later' },
+				};
+				getRunDetail.mockResolvedValue(runDetail([final], 1));
+				await vi.advanceTimersByTimeAsync(5000);
+				expect(store.getReview(RUN_ID).results[0]).toEqual(final);
+				expect(vi.getTimerCount()).toBe(0);
+			},
+		);
+		it('clears previous output and polls the new attempt on a completed run, ignoring stale reads', async () => {
+			vi.useFakeTimers();
+			const old = { ...result('c1'), toolCalls: { calls: [{ tool: 'old_tool' }] } };
+			mockRun({ results: [old, result('c2')], count: 2, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			let finish!: (value: unknown) => void;
+			(operation === 'rerun' ? rerunResult : applySuggestions).mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						finish = resolve;
+					}),
+			);
+			const pending =
+				operation === 'rerun'
+					? store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')
+					: store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1']);
+			expect(store.getReview(RUN_ID).results[0]).toMatchObject({
+				status: 'running',
+				output: null,
+				toolCalls: null,
+				verdict: null,
+			});
+			// A batch refresh before the server claims the attempt must preserve the
+			// optimistic row while still updating siblings.
+			const sibling = { ...result('c2'), output: { finalText: 'Fresh sibling' } };
+			getRunDetail.mockResolvedValue(runDetail([old, sibling], 2));
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results[0].output).toBeNull();
+			expect(store.getReview(RUN_ID).results[1]).toEqual(sibling);
+			const progress = {
+				...old,
+				status: 'running' as const,
+				runAt: '2026-01-01T01:00:00.000Z',
+				output: null,
+				toolCalls: { calls: [{ tool: 'wait_for_reply', status: 'running' }] },
+			};
+			getRunDetail.mockResolvedValue(runDetail([progress], 2));
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(store.getReview(RUN_ID).results[0].toolCalls).toEqual(progress.toolCalls);
+			// A read already in flight cannot overwrite the final request response.
+			let staleRead!: (value: unknown) => void;
+			getRunDetail.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						staleRead = resolve;
+					}),
+			);
+			await vi.advanceTimersByTimeAsync(5000);
+			const final = {
+				...progress,
+				status: 'success' as const,
+				output: { finalText: 'New response' },
+			};
+			finish(operation === 'rerun' ? final : { configHash: 'new', results: [final] });
+			await pending;
+			staleRead(runDetail([progress], 2));
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(final);
+			expect(vi.getTimerCount()).toBe(0);
+		});
+	});
+
 	describe('applySuggestions', () => {
 		const failing = (id: string): AgentEvalResultRecord => ({
 			...result(id),
@@ -1431,16 +1694,18 @@ describe('useAgentEvalsStore', () => {
 			const store = useAgentEvalsStore();
 			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
 			applySuggestions.mockRejectedValue(new Error('conflict'));
-			getRunDetail.mockResolvedValue(runDetail([failing('c1')], 1));
+			const fresh = { ...failing('c1'), runAt: '2026-01-01T01:00:00.000Z' };
+			getRunDetail.mockResolvedValue(runDetail([fresh], 1));
 
 			await expect(store.applySuggestions(PROJECT_ID, AGENT_ID, ['c1'])).rejects.toThrow(
 				'conflict',
 			);
 
-			expect(store.getReview(RUN_ID).results[0]).toEqual(failing('c1'));
+			expect(store.getReview(RUN_ID).results[0]).toEqual(fresh);
 		});
 
 		it('restores the previous rows when reading them back also fails', async () => {
+			vi.useFakeTimers();
 			mockRun({ results: [failing('c1')], count: 1, ratings: [] });
 			const store = useAgentEvalsStore();
 			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
@@ -1451,11 +1716,85 @@ describe('useAgentEvalsStore', () => {
 				'conflict',
 			);
 
+			await vi.advanceTimersByTimeAsync(15000);
 			expect(store.getReview(RUN_ID).results[0]).toEqual(failing('c1'));
 		});
 	});
 
 	describe('rerunResult', () => {
+		it('ignores a timer task already queued when a rerun finishes', async () => {
+			vi.useFakeTimers();
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			let finish!: (value: AgentEvalResultRecord) => void;
+			rerunResult.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finish = resolve;
+					}),
+			);
+			const timer = vi.spyOn(globalThis, 'setTimeout');
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
+			const queued = timer.mock.calls.find(([, delay]) => delay === 5000)?.[0];
+			expect(typeof queued).toBe('function');
+			finish(result('c1'));
+			await pending;
+			getRunDetail.mockClear();
+			if (typeof queued !== 'function') throw new Error('Missing progress timer');
+			await queued();
+			expect(getRunDetail).not.toHaveBeenCalled();
+			expect(store.getReview(RUN_ID).results[0]).toEqual(result('c1'));
+			expect(vi.getTimerCount()).toBe(0);
+			timer.mockRestore();
+		});
+
+		it.each([false, true])('handles an uncached rerun (request fails: %s)', async (fails) => {
+			const store = useAgentEvalsStore();
+			if (fails) rerunResult.mockRejectedValueOnce(new Error('Unavailable'));
+			else rerunResult.mockResolvedValueOnce(result('uncached'));
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'uncached');
+			if (fails) await expect(pending).rejects.toThrow('Unavailable');
+			else expect(await pending).toEqual(result('uncached'));
+			expect(getRunDetail).not.toHaveBeenCalled();
+		});
+
+		it('preserves a newer attempt when a later refresh returns an older runAt', async () => {
+			const newer = { ...result('c1'), runAt: '2026-01-01T01:00:00.000Z' };
+			mockRun({ results: [newer], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			getRunDetail.mockResolvedValueOnce(runDetail([result('c1')], 1));
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(newer);
+		});
+
+		it('pauses normal progress reads while the document is hidden', async () => {
+			vi.useFakeTimers();
+			const visibility = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			let finish!: (value: AgentEvalResultRecord) => void;
+			rerunResult.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finish = resolve;
+					}),
+			);
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
+			getRunDetail.mockClear();
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(getRunDetail).not.toHaveBeenCalled();
+			visibility.mockReturnValue(false);
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(getRunDetail).toHaveBeenCalledOnce();
+			finish(result('c1'));
+			await pending;
+			expect(vi.getTimerCount()).toBe(0);
+			visibility.mockRestore();
+		});
+
 		it('patches the cached result to running before the request lands, then to the real response', async () => {
 			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
 			const store = useAgentEvalsStore();
@@ -1480,6 +1819,7 @@ describe('useAgentEvalsStore', () => {
 		});
 
 		it('reverts the optimistic patch when the rerun fails', async () => {
+			vi.useFakeTimers();
 			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
 			const store = useAgentEvalsStore();
 			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
@@ -1487,6 +1827,10 @@ describe('useAgentEvalsStore', () => {
 
 			await expect(store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')).rejects.toThrow('timeout');
 
+			await vi.advanceTimersByTimeAsync(25000);
+			expect(store.getReview(RUN_ID).results[0].status).toBe('running');
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(vi.getTimerCount()).toBe(0);
 			expect(store.getReview(RUN_ID).results[0].status).toBe('error');
 		});
 
@@ -1501,7 +1845,9 @@ describe('useAgentEvalsStore', () => {
 			);
 			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
 			// A poll lands first and replaces the optimistic row with settled data.
-			getRunDetail.mockResolvedValue(runDetail([{ ...result('c1'), status: 'success' }], 1));
+			getRunDetail.mockResolvedValue(
+				runDetail([{ ...result('c1'), status: 'success', runAt: '2026-01-01T01:00:00.000Z' }], 1),
+			);
 			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
 
 			rejectRerun(new Error('timeout'));
@@ -1522,7 +1868,14 @@ describe('useAgentEvalsStore', () => {
 			// The backend saved the rule before the failure.
 			getRunDetail.mockResolvedValue(
 				runDetail(
-					[{ ...result('c1'), status: 'error', input: { input: 'q', criteria: 'new' } }],
+					[
+						{
+							...result('c1'),
+							status: 'error',
+							runAt: '2026-01-01T01:00:00.000Z',
+							input: { input: 'q', criteria: 'new' },
+						},
+					],
 					1,
 				),
 			);
@@ -1540,6 +1893,7 @@ describe('useAgentEvalsStore', () => {
 		});
 
 		it('falls back to the previous row when reading it back also fails', async () => {
+			vi.useFakeTimers();
 			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
 			const store = useAgentEvalsStore();
 			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
@@ -1550,12 +1904,14 @@ describe('useAgentEvalsStore', () => {
 				store.rerunResult(PROJECT_ID, AGENT_ID, 'c1', { whatToCheck: 'new' }),
 			).rejects.toThrow('timeout');
 
+			await vi.advanceTimersByTimeAsync(15000);
 			expect(store.getReview(RUN_ID).results[0].status).toBe('error');
 		});
 
 		// A row deleted ahead of this one shifts the page offset, so the single-row
 		// read lands on a different result and must not be applied.
 		it('falls back to the previous row when the read-back returns a different result', async () => {
+			vi.useFakeTimers();
 			mockRun({
 				results: [
 					{ ...result('c1'), status: 'error' },
@@ -1573,6 +1929,7 @@ describe('useAgentEvalsStore', () => {
 				store.rerunResult(PROJECT_ID, AGENT_ID, 'c2', { whatToCheck: 'new' }),
 			).rejects.toThrow('timeout');
 
+			await vi.advanceTimersByTimeAsync(30000);
 			const rows = store.getReview(RUN_ID).results;
 			expect(rows.map((r) => r.id)).toEqual(['c1', 'c2']);
 			expect(rows[1].status).toBe('error');
@@ -1644,6 +2001,7 @@ describe('useAgentEvalsStore', () => {
 		});
 
 		it('reverts an edited rule along with the status when the rerun fails', async () => {
+			vi.useFakeTimers();
 			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
 			const store = useAgentEvalsStore();
 			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
@@ -1653,6 +2011,7 @@ describe('useAgentEvalsStore', () => {
 				store.rerunResult(PROJECT_ID, AGENT_ID, 'c1', { whatToCheck: 'New rule.' }),
 			).rejects.toThrow('timeout');
 
+			await vi.advanceTimersByTimeAsync(30000);
 			expect(store.getReview(RUN_ID).results[0].input).toEqual(result('c1').input);
 		});
 	});

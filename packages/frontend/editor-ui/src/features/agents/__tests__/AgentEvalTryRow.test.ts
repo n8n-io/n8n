@@ -30,6 +30,17 @@ describe('AgentEvalTryRow', () => {
 	});
 
 	describe('view="complete"', () => {
+		it('announces both disclosure states on the complete row', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent({ props: { testId: 'row' } });
+			const toggle = getByTestId('row-toggle');
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
+			await user.click(toggle);
+			expect(toggle).toHaveAttribute('aria-expanded', 'true');
+			await user.click(toggle);
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		});
+
 		it.each([
 			['pass', 'Passes'],
 			['strong', 'Passes'],

@@ -164,6 +164,9 @@ describe('AgentEvalRunnerService', () => {
 		moduleRegistry.isActive.mockReturnValue(true);
 		datasetRepository = mock<AgentEvalDatasetRepository>();
 		runRepository = mock<AgentEvalRunRepository>();
+		runRepository.markAsCompleted.mockResolvedValue(true);
+		runRepository.markAsCancelled.mockResolvedValue(true);
+		runRepository.markAsError.mockResolvedValue(true);
 		resultRepository = mock<AgentEvalResultRepository>();
 		agentRepository = mock<AgentRepository>();
 		dataTableService = mock<DataTableService>();
@@ -341,6 +344,246 @@ describe('AgentEvalRunnerService', () => {
 	});
 
 	describe('running cases', () => {
+		it('retries stale settlement until the repository confirms completion', async () => {
+			seedFor([{ id: 'row-1', question: 'First' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			runRepository.markAsCompleted.mockResolvedValueOnce(false).mockResolvedValue(true);
+			runRepository.findById
+				.mockResolvedValueOnce(mock({ id: 'run-1', status: 'running' }))
+				.mockResolvedValue(mock({ id: 'run-1', status: 'completed' }));
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(runRepository.markAsCompleted).toHaveBeenCalledTimes(2);
+			expect(runRepository.findById).toHaveBeenCalledOnce();
+		});
+
+		it('keeps one config snapshot when instructions change with a queued case', async () => {
+			seedFor(
+				[
+					{ id: 'row-1', question: 'First' },
+					{ id: 'row-2', question: 'Second' },
+				],
+				{ success: 2 },
+			);
+			let releaseFirst!: () => void;
+			const first = new Promise<void>((resolve) => {
+				releaseFirst = resolve;
+			});
+			const source = { agent: mock<Agent>({ id: 'agent-1' }), skillRefs: [], skills: {} };
+			evalAgentExecutionService.captureRunSource.mockResolvedValue(source);
+			evalAgentExecutionService.executeWithLlmMock
+				.mockImplementationOnce(async () => {
+					await first;
+					return successExec() as never;
+				})
+				.mockResolvedValue(successExec() as never);
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await vi.waitFor(() =>
+				expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledOnce(),
+			);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				mock<Agent>({ id: 'agent-1', schema: { instructions: 'Changed' } as never }),
+			);
+			releaseFirst();
+			await finished;
+			expect(evalAgentExecutionService.captureRunSource).toHaveBeenCalledOnce();
+			for (const call of evalAgentExecutionService.executeWithLlmMock.mock.calls) {
+				expect(call[4]?.source).toBe(source);
+			}
+		});
+
+		it('waits for an active targeted rerun after the last original case settles', async () => {
+			seedFor(
+				[
+					{ id: 'row-1', question: 'First' },
+					{ id: 'row-2', question: 'Second' },
+				],
+				{ success: 2 },
+			);
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.countByStatus.mockResolvedValue(counts({ running: 1, success: 1 }));
+			let finished = false;
+			const run = await service.startRun('ds-1', 'proj-1', user);
+			void run.finished.then(() => {
+				finished = true;
+			});
+			await vi.waitFor(() => expect(resultRepository.countByStatus).toHaveBeenCalled());
+			expect(finished).toBe(false);
+			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+			resultRepository.countByStatus.mockResolvedValue(counts({ success: 2 }));
+			await run.finished;
+			expect(runRepository.markAsCompleted).toHaveBeenCalledWith(
+				'run-1',
+				expect.objectContaining({ total: 2, success: 2, pending: 0 }),
+				expect.anything(),
+			);
+		});
+
+		it.each(['cancellation poll', 'original write'])(
+			'waits for active reruns after a %s failure',
+			async (failure) => {
+				seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				if (failure === 'cancellation poll') {
+					runRepository.isCancellationRequested
+						.mockResolvedValueOnce(false)
+						.mockResolvedValueOnce(false)
+						.mockRejectedValueOnce(new Error('Poll failed'))
+						.mockResolvedValue(false);
+				} else {
+					resultRepository.markAsCompleted.mockRejectedValueOnce(new Error('Write failed'));
+					resultRepository.markAsError.mockRejectedValueOnce(new Error('Error write failed'));
+				}
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await vi.waitFor(() => expect(resultRepository.countByStatus).toHaveBeenCalled());
+				// A failed original write may already have been repaired. This running
+				// count is a newer targeted attempt and must not be ignored.
+				expect(runRepository.markAsError).not.toHaveBeenCalled();
+				expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+				resultRepository.countByStatus.mockResolvedValue(counts({ success: 1 }));
+				await finished;
+				expect(runRepository.markAsError).toHaveBeenCalledWith(
+					'run-1',
+					'case_dispatch_failed',
+					expect.anything(),
+					expect.objectContaining({ success: 1, pending: 0 }),
+					counts({ success: 1 }),
+				);
+			},
+		);
+
+		it('honors a cancellation received while a targeted rerun is finishing', async () => {
+			seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await vi.waitFor(() => expect(resultRepository.countByStatus).toHaveBeenCalled());
+			runRepository.isCancellationRequested.mockResolvedValue(true);
+			resultRepository.countByStatus.mockResolvedValue(counts({ success: 1 }));
+			await finished;
+			expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
+				'run-1',
+				expect.objectContaining({ pending: 0 }),
+				counts({ success: 1 }),
+			);
+			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		it('ends with an error when a result cannot be recorded after execution', async () => {
+			seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockRejectedValue(new Error('Execution failed'));
+			resultRepository.markAsError.mockRejectedValue(new Error('Result write failed'));
+			resultRepository.markUnfinishedAsError
+				.mockRejectedValueOnce(new Error('Repair failed'))
+				.mockImplementationOnce(async () => {
+					resultRepository.countByStatus.mockResolvedValue(counts({ error: 1 }));
+				});
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+			expect(runRepository.markAsError).toHaveBeenCalledWith(
+				'run-1',
+				'case_dispatch_failed',
+				expect.anything(),
+				expect.objectContaining({ pending: 0, error: 1 }),
+				counts({ error: 1 }),
+			);
+			expect(resultRepository.markUnfinishedAsError).toHaveBeenCalledTimes(2);
+			expect(resultRepository.markUnfinishedAsError).toHaveBeenLastCalledWith(
+				'res-0',
+				expect.any(Date),
+				'Result write failed',
+			);
+			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
+		it('bounds the wait for a result left running by another process', async () => {
+			const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+			try {
+				seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await vi.waitFor(() => expect(resultRepository.countByStatus).toHaveBeenCalled());
+				now.mockReturnValue(1_000 + 65 * 60_000);
+				await finished;
+				expect(runRepository.markAsError).toHaveBeenCalledWith(
+					'run-1',
+					'result_settlement_timeout',
+					expect.anything(),
+					expect.objectContaining({ pending: 1 }),
+				);
+			} finally {
+				now.mockRestore();
+			}
+		});
+
+		it('preserves cancellation when an active rerun exceeds the settlement deadline', async () => {
+			const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+			try {
+				seedFor([{ id: 'row-1', question: 'First' }], { running: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await vi.waitFor(() => expect(resultRepository.countByStatus).toHaveBeenCalled());
+				runRepository.isCancellationRequested.mockResolvedValue(true);
+				now.mockReturnValue(1_000 + 65 * 60_000);
+				await finished;
+				expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
+					'run-1',
+					expect.objectContaining({ pending: 1 }),
+				);
+				expect(runRepository.markAsError).not.toHaveBeenCalled();
+				expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+			} finally {
+				now.mockRestore();
+			}
+		});
+
+		it.each(['cancellation poll', 'original write'])(
+			'reports a non-Error rejection from the %s',
+			async (failure) => {
+				seedFor([{ id: 'row-1', question: failure === 'original write' ? '' : 'First' }], {
+					error: 1,
+				});
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				const reason = `${failure} rejected`;
+				if (failure === 'cancellation poll') {
+					runRepository.isCancellationRequested
+						.mockResolvedValueOnce(false)
+						.mockResolvedValueOnce(false)
+						.mockRejectedValueOnce(reason);
+				} else {
+					resultRepository.markAsError.mockRejectedValueOnce(reason);
+				}
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+				expect(runRepository.markAsError).toHaveBeenCalledWith(
+					'run-1',
+					'case_dispatch_failed',
+					expect.objectContaining({ errors: [reason] }),
+					expect.objectContaining({ error: 1, pending: 0 }),
+					counts({ error: 1 }),
+				);
+				expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['removed', 'completed'] as const)(
+			'stops settlement when the run was %s by another worker',
+			async (state) => {
+				seedFor([{ id: 'row-1', question: 'First' }], { success: 1 });
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				runRepository.markAsCompleted.mockResolvedValue(false);
+				runRepository.findById.mockResolvedValue(
+					state === 'removed' ? null : mock({ id: 'run-1', status: 'completed' }),
+				);
+				const { finished } = await service.startRun('ds-1', 'proj-1', user);
+				await finished;
+				expect(runRepository.markAsCompleted).toHaveBeenCalledOnce();
+				expect(runRepository.findById).toHaveBeenCalledWith('run-1');
+				expect(runRepository.markAsError).not.toHaveBeenCalled();
+			},
+		);
+
 		it('runs each case with its input verbatim, persists results, aggregates the run', async () => {
 			seedFor(
 				[
@@ -369,6 +612,7 @@ describe('AgentEvalRunnerService', () => {
 				user,
 				{ projectId: 'proj-1' },
 				'What is 2+2?',
+				{ onProgress: expect.any(Function) },
 			);
 			expect(runRepository.markAsRunning).toHaveBeenCalledWith('run-1', 'main-1');
 			expect(resultRepository.markAsCompleted).toHaveBeenCalledTimes(2);
@@ -379,7 +623,38 @@ describe('AgentEvalRunnerService', () => {
 					error: 0,
 					usage: { inputTokens: 6, outputTokens: 14 },
 				}),
+				expect.anything(),
 			);
+		});
+
+		it('persists in-flight tool calls for the current attempt before completion', async () => {
+			seedFor([{ id: 'row-1', question: 'Send a message' }], { success: 1 });
+			const runAt = new Date();
+			resultRepository.markAsRunning.mockResolvedValue(runAt);
+			evalAgentExecutionService.executeWithLlmMock.mockImplementation(
+				async (_agent, _user, _options, _input, hooks) => {
+					await hooks?.onProgress?.([
+						{
+							tool: 'Slack_Tool',
+							toolCallId: 'call-1',
+							status: 'running',
+							kind: 'node',
+							mocked: false,
+							interceptedRequests: [],
+						},
+					]);
+					expect(resultRepository.markAsCompleted).not.toHaveBeenCalled();
+					return successExec() as never;
+				},
+			);
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+			expect(resultRepository.updateRunningToolCalls).toHaveBeenCalledWith(
+				expect.any(String),
+				runAt,
+				{ calls: [expect.objectContaining({ status: 'running', toolCallId: 'call-1' })] },
+			);
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledOnce();
 		});
 
 		it('snapshots input/expectedOutput/criteria onto the seeded case', async () => {
@@ -459,7 +734,7 @@ describe('AgentEvalRunnerService', () => {
 			expect(resultRepository.markAsRunning).not.toHaveBeenCalled();
 		});
 
-		it('still completes the run when recording an empty-input case fails', async () => {
+		it('reports an error and processes other cases when recording an empty-input case fails', async () => {
 			seedFor(
 				[
 					{ id: 'row-1', question: '   ' },
@@ -475,8 +750,14 @@ describe('AgentEvalRunnerService', () => {
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
-			expect(runRepository.markAsCompleted).toHaveBeenCalled();
-			expect(runRepository.markAsError).not.toHaveBeenCalled();
+			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
+			expect(runRepository.markAsError).toHaveBeenCalledWith(
+				'run-1',
+				'case_dispatch_failed',
+				expect.anything(),
+				expect.anything(),
+				counts({ success: 1, error: 1 }),
+			);
 		});
 
 		it('pages through every row when the table exceeds one page', async () => {
@@ -772,6 +1053,7 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.markAsCompleted).toHaveBeenCalledWith(
 				'run-1',
 				expect.objectContaining({ success: 1 }),
+				expect.anything(),
 			);
 		});
 
@@ -813,6 +1095,7 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
 				'run-1',
 				expect.objectContaining({ cancelled: 2 }),
+				expect.anything(),
 			);
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
@@ -852,6 +1135,9 @@ describe('AgentEvalRunnerService', () => {
 				.mockRejectedValueOnce(new Error('db down'))
 				.mockResolvedValue(undefined as never);
 
+			resultRepository.markUnfinishedAsError.mockImplementationOnce(async () => {
+				resultRepository.countByStatus.mockResolvedValue(counts({ cancelled: 1, error: 1 }));
+			});
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
@@ -859,7 +1145,8 @@ describe('AgentEvalRunnerService', () => {
 			expect(resultRepository.markAsCancelled).toHaveBeenCalledTimes(2);
 			expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
 				'run-1',
-				expect.objectContaining({ total: 2, cancelled: 1, pending: 1 }),
+				expect.objectContaining({ total: 2, cancelled: 1, error: 1, pending: 0 }),
+				counts({ cancelled: 1, error: 1 }),
 			);
 			expect(runRepository.markAsError).not.toHaveBeenCalled();
 		});
@@ -879,6 +1166,9 @@ describe('AgentEvalRunnerService', () => {
 				.mockResolvedValue(false);
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
 
+			resultRepository.markUnfinishedAsError.mockImplementationOnce(async () => {
+				resultRepository.countByStatus.mockResolvedValue(counts({ success: 1, error: 1 }));
+			});
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
@@ -887,7 +1177,8 @@ describe('AgentEvalRunnerService', () => {
 				'run-1',
 				'case_dispatch_failed',
 				expect.objectContaining({ errors: ['db down'] }),
-				expect.objectContaining({ total: 2, success: 1 }),
+				expect.objectContaining({ total: 2, success: 1, error: 1, pending: 0 }),
+				counts({ success: 1, error: 1 }),
 			);
 			expect(runRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
@@ -910,6 +1201,7 @@ describe('AgentEvalRunnerService', () => {
 				'case_dispatch_failed',
 				expect.objectContaining({ errors: ['db down'] }),
 				expect.objectContaining({ total: 1, success: 1 }),
+				counts({ success: 1 }),
 			);
 			// Not the tally-less `run_failed` path.
 			expect(runRepository.markAsError).not.toHaveBeenCalledWith(
@@ -957,6 +1249,7 @@ describe('AgentEvalRunnerService', () => {
 				}),
 				// counts land under `metrics`, same as every other terminal status
 				expect.objectContaining({ total: 2, cancelled: 2 }),
+				expect.anything(),
 			);
 			// A deadline is a failure, not the user's Stop.
 			expect(runRepository.markAsCancelled).not.toHaveBeenCalled();
@@ -976,7 +1269,11 @@ describe('AgentEvalRunnerService', () => {
 			await vi.advanceTimersByTimeAsync(30 * 60_000);
 			await finished;
 
-			expect(runRepository.markAsCancelled).toHaveBeenCalledWith('run-1', expect.anything());
+			expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
+				'run-1',
+				expect.anything(),
+				expect.anything(),
+			);
 			expect(runRepository.markAsError).not.toHaveBeenCalled();
 		});
 
@@ -1008,6 +1305,7 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.markAsCompleted).toHaveBeenCalledWith(
 				'run-1',
 				expect.objectContaining({ total: 1, success: 1 }),
+				expect.anything(),
 			);
 			expect(runRepository.markAsError).not.toHaveBeenCalled();
 		});
@@ -1107,7 +1405,11 @@ describe('AgentEvalRunnerService', () => {
 					executionId: expect.stringContaining('-case-1'),
 				}),
 			);
-			expect(runRepository.markAsCancelled).toHaveBeenCalledWith('run-1', expect.anything());
+			expect(runRepository.markAsCancelled).toHaveBeenCalledWith(
+				'run-1',
+				expect.anything(),
+				expect.anything(),
+			);
 			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 
@@ -1239,7 +1541,7 @@ describe('AgentEvalRunnerService', () => {
 				'already running',
 			);
 
-			expect(resultRepository.claimForRerun).toHaveBeenCalledWith('res-1');
+			expect(resultRepository.claimForRerun).toHaveBeenCalledWith('res-1', 'run-1');
 			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 
@@ -1311,8 +1613,9 @@ describe('AgentEvalRunnerService', () => {
 				user,
 				{ projectId: 'proj-1' },
 				'What is 2+2?',
+				{ onProgress: expect.any(Function) },
 			);
-			expect(resultRepository.markAsRunning).toHaveBeenCalledWith('res-1');
+			expect(resultRepository.markAsRunning).toHaveBeenCalledWith('res-1', expect.any(Date));
 			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
 				'res-1',
 				expect.objectContaining({ output: expect.objectContaining({ finalText: 'the answer' }) }),
@@ -1376,6 +1679,7 @@ describe('AgentEvalRunnerService', () => {
 				user,
 				{ projectId: 'proj-1' },
 				'What is 2+2?',
+				{ onProgress: expect.any(Function) },
 			);
 		});
 

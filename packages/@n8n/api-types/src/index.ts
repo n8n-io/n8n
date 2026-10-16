@@ -502,6 +502,7 @@ export {
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
+	INSTANCE_AI_EVAL_AGENT_MAX_TIMEOUT_MS,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalCredentialTestTargetRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,

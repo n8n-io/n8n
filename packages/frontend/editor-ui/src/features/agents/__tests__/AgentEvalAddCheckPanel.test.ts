@@ -28,7 +28,12 @@ const draft = (index: number): AgentEvalDraftCase => ({
 	scenario: `Scenario ${index}`,
 });
 
-type Props = { disabled?: boolean; busy?: boolean; caseSource?: typeof caseSource | null };
+type Props = {
+	deferRun?: boolean;
+	disabled?: boolean;
+	busy?: boolean;
+	caseSource?: typeof caseSource | null;
+};
 
 const renderPanel = (
 	props: Props = {},
@@ -63,6 +68,7 @@ const renderPanel = (
 			caseSource: 'caseSource' in props ? props.caseSource : caseSource,
 			disabled: props.disabled,
 			busy: props.busy,
+			deferRun: props.deferRun,
 		},
 	})({ pinia });
 
@@ -73,6 +79,67 @@ describe('AgentEvalAddCheckPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each([
+		['drafting a rule', 'deferRun'],
+		['saving a rule', 'busy'],
+		['saving a prepared case', 'deferRun'],
+		['saving a prepared case', 'busy'],
+	] as const)('remembers a run that starts and finishes while %s (%s)', async (phase, runProp) => {
+		const user = userEvent.setup();
+		const { store, findAllByTestId, getByTestId, rerender, emitted } = renderPanel();
+		await findAllByTestId('agent-eval-add-check-prepared-add');
+		let finish!: () => void;
+		const pending = new Promise<void>((resolve) => {
+			finish = resolve;
+		});
+		if (phase === 'drafting a rule') {
+			vi.mocked(store.generateDraftCases).mockImplementationOnce(async () => {
+				await pending;
+				return { cases: [draft(9)] };
+			});
+		} else {
+			vi.mocked(store.createCase).mockImplementationOnce(async () => {
+				await pending;
+				return { rowId: 9, input: 'new message', whatToCheck: 'new rule' };
+			});
+		}
+		if (phase === 'saving a prepared case') {
+			await user.click((await findAllByTestId('agent-eval-add-check-prepared-add'))[0]);
+		} else {
+			await user.type(getByTestId('agent-eval-add-check-rule-input'), 'Be polite{Enter}');
+		}
+
+		await rerender({ [runProp]: true });
+		await rerender({ [runProp]: false });
+		finish();
+		await waitFor(() => expect(emitted('added')).toEqual([[true]]));
+
+		// The next addition has no overlap with that finished run.
+		await user.click((await findAllByTestId('agent-eval-add-check-prepared-add'))[0]);
+		await waitFor(() => expect(emitted('added')).toEqual([[true], [false]]));
+	});
+
+	it.each([true, false])(
+		'defers additions if a run is active at either end of the save (initial: %s)',
+		async (initiallyRunning) => {
+			const user = userEvent.setup();
+			const { store, findAllByTestId, rerender, emitted } = renderPanel({
+				deferRun: initiallyRunning,
+			});
+			let save!: () => void;
+			vi.mocked(store.createCase).mockImplementation(async () => {
+				await new Promise<void>((resolve) => {
+					save = resolve;
+				});
+				return { rowId: 9, input: 'new message', whatToCheck: 'new rule' };
+			});
+			await user.click((await findAllByTestId('agent-eval-add-check-prepared-add'))[0]);
+			await rerender({ deferRun: !initiallyRunning });
+			save();
+			await waitFor(() => expect(emitted('added')).toEqual([[true]]));
+		},
+	);
 
 	describe('the prepared cases', () => {
 		it('drafts a batch of ten without saving anything when it opens', async () => {

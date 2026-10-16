@@ -1,4 +1,4 @@
-import type { GenerateResult } from '@n8n/agents';
+import { AgentEvent, type AgentEventHandler, type GenerateResult } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
@@ -29,6 +29,7 @@ import {
 import { generateAgentScenarioSeed } from '../agent-scenario-seed';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
+import { createWebSearchMock } from '../web-search-mock';
 
 // The service resolves the agents-module surface lazily; top-level vi.mock
 // keeps those specifiers from loading the real module graph (and avoids the
@@ -54,6 +55,7 @@ vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
 vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }));
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
+vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn(() => vi.fn()) }));
 
 const logger = mock<Logger>();
 const settingsService = mock<AgentsSettingsService>();
@@ -159,6 +161,500 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	});
 
 	const request = { projectId: 'proj-1' };
+
+	it('keeps a detached root config, tools, and resolved skills for each batch case', async () => {
+		const entity = makeEntity({ ...baseConfig });
+		const skills = { skill1: { name: 'Support', description: 'Before', content: 'Old skill' } };
+		const skillRefs = [{ type: 'skill', id: 'skill1' }];
+		const skillService = createAgentSkillRefsService();
+		vi.spyOn(skillService, 'readDraft').mockResolvedValue({ skillRefs, skills } as never);
+		Container.set(AgentSkillRefsService, skillService);
+		const service = buildService();
+		const source = await service.captureRunSource(entity);
+		entity.schema!.instructions = 'Changed instructions';
+		entity.tools!['t-1'].code = 'Changed code';
+		skills.skill1.content = 'Changed skill';
+		findByIdAndProjectId.mockResolvedValue(entity);
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+		});
+
+		await service.executeWithLlmMock('agent-1', user, { projectId: 'proj-1' }, 'First', { source });
+		await service.executeWithLlmMock('agent-1', user, { projectId: 'proj-1' }, 'Second', {
+			source,
+		});
+
+		expect(skillService.readDraft).toHaveBeenCalledOnce();
+		expect(reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		for (const [snapshot] of reconstructFromAgentEntity.mock.calls) {
+			expect(snapshot.agent.schema.instructions).toBe(baseConfig.instructions);
+			expect(snapshot.agent.tools['t-1'].code).toBe('export default 1');
+			expect(snapshot.skills.skill1.content).toBe('Old skill');
+		}
+		expect(source.agent.schema!.instructions).toBe(baseConfig.instructions);
+		expect(userHasScopes).toHaveBeenCalledTimes(2);
+		await service.executeWithLlmMock('agent-1', user, { projectId: 'proj-1' }, 'Rerun');
+		const [current] = reconstructFromAgentEntity.mock.calls[2];
+		expect(current.agent.schema.instructions).toBe('Changed instructions');
+		expect(current.agent.tools['t-1'].code).toBe('Changed code');
+		expect(current.skills.skill1.content).toBe('Changed skill');
+		expect(skillService.readDraft).toHaveBeenCalledTimes(2);
+	});
+
+	it('still checks permissions and project identity for a captured source', async () => {
+		const service = buildService();
+		const source = await service.captureRunSource(makeEntity({ ...baseConfig }));
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		expect(
+			await service.executeWithLlmMock('agent-1', user, { projectId: 'proj-1' }, 'Case', {
+				source,
+			}),
+		).toMatchObject({ success: false });
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		expect(
+			await service.executeWithLlmMock('agent-1', user, { projectId: 'other-project' }, 'Case', {
+				source,
+			}),
+		).toMatchObject({ success: false });
+		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
+	});
+
+	it('refuses a captured source when the agent is no longer in the project', async () => {
+		const service = buildService();
+		const source = await service.captureRunSource(makeEntity({ ...baseConfig }));
+		findByIdAndProjectId.mockResolvedValue(null);
+		const result = await service.executeWithLlmMock(
+			'agent-1',
+			user,
+			{ projectId: 'proj-1' },
+			'Case',
+			{ source },
+		);
+		expect(result.success).toBe(false);
+		expect(result.errors).toEqual(['Agent agent-1 not found or not accessible']);
+		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])(
+		'keeps runtime IDs for repeated calls at completion (identical: %s)',
+		async (identical) => {
+			const handlers = new Map<AgentEvent, AgentEventHandler>();
+			const first = { tool: 'Slack_Tool', input: { text: 'first' }, output: { sent: 'first' } };
+			const second = identical
+				? { ...first }
+				: { ...first, input: { text: 'second' }, output: { sent: 'second' } };
+			const skipped = { ...first, output: 'Skipped', canceled: true };
+			reconstructFromAgentEntity.mockResolvedValue({
+				agent: {
+					on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+					close: vi.fn(),
+					generate: vi.fn(async () => {
+						for (const [toolCallId, entry] of [
+							['first', first],
+							['second', second],
+						] as const) {
+							handlers.get(AgentEvent.ToolExecutionStart)?.({
+								type: AgentEvent.ToolExecutionStart,
+								toolCallId,
+								toolName: entry.tool,
+								args: entry.input,
+							});
+						}
+						// Completion order can differ from the original tool-call order.
+						for (const [toolCallId, entry] of [
+							['second', second],
+							['first', first],
+						] as const) {
+							handlers.get(AgentEvent.ToolExecutionEnd)?.({
+								type: AgentEvent.ToolExecutionEnd,
+								toolCallId,
+								toolName: entry.tool,
+								result: entry.output,
+								isError: false,
+							});
+						}
+						return makeGenerateResult({ toolCalls: [first, second, skipped] });
+					}),
+				},
+			});
+			const result = await buildService().executeWithLlmMock(
+				'agent-1',
+				user,
+				request,
+				'Send twice',
+				{ onProgress: vi.fn() },
+			);
+			expect(result.toolCalls).toEqual([
+				expect.objectContaining({ ...first, toolCallId: 'first', status: 'completed' }),
+				expect.objectContaining({ ...second, toolCallId: 'second', status: 'completed' }),
+				expect.objectContaining({ tool: 'Slack_Tool', output: 'Skipped', error: 'canceled' }),
+			]);
+		},
+	);
+
+	it('records search progress only for the matching active call and ignores late endings', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		const onProgress = vi.fn().mockResolvedValue(undefined);
+		const search = { query: 'shipping' };
+		const searchResult = { query: 'shipping', results: [] };
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+				close: vi.fn(),
+				generate: vi.fn(async () => {
+					for (const toolName of ['Slack_Tool', 'web_search']) {
+						handlers.get(AgentEvent.ToolExecutionStart)?.({
+							type: AgentEvent.ToolExecutionStart,
+							toolName,
+							toolCallId: toolName,
+							args: search,
+						});
+					}
+					const { onSearch } = vi.mocked(createWebSearchMock).mock.calls[0][0];
+					onSearch(search, searchResult);
+					handlers.get(AgentEvent.ToolExecutionEnd)?.({
+						type: AgentEvent.ToolExecutionEnd,
+						toolName: 'web_search',
+						toolCallId: 'web_search',
+						result: searchResult,
+						isError: false,
+					});
+					// A delegated search has no active parent call to update.
+					onSearch({ query: 'returns' }, { query: 'returns', results: [] });
+					// A runtime can report completion without a prior start event.
+					handlers.get(AgentEvent.ToolExecutionEnd)?.({
+						type: AgentEvent.ToolExecutionEnd,
+						toolName: 'lookup',
+						toolCallId: 'orphan',
+						result: 'found',
+						isError: false,
+					});
+					return makeGenerateResult({
+						toolCalls: [{ tool: 'lookup', input: {}, output: 'found' }],
+					});
+				}),
+			},
+		});
+		const result = await buildService().executeWithLlmMock('agent-1', user, request, 'Search', {
+			onProgress,
+		});
+		expect(onProgress.mock.calls[2][0]).toEqual([
+			expect.objectContaining({ tool: 'Slack_Tool', mocked: false, interceptedRequests: [] }),
+			expect.objectContaining({
+				tool: 'web_search',
+				status: 'running',
+				mocked: true,
+				interceptedRequests: [expect.objectContaining({ requestBody: search })],
+			}),
+		]);
+		expect(onProgress).toHaveBeenCalledTimes(6);
+		expect(
+			result.toolCalls.find((call) => call.tool === 'web_search')?.interceptedRequests,
+		).toHaveLength(2);
+		expect(result.toolCalls.find((call) => call.toolCallId === 'orphan')).toMatchObject({
+			kind: 'other',
+			output: 'found',
+		});
+		handlers.get(AgentEvent.ToolExecutionEnd)?.({
+			type: AgentEvent.ToolExecutionEnd,
+			toolName: 'lookup',
+			toolCallId: 'late',
+			result: 'ignored',
+			isError: false,
+		});
+		await Promise.resolve();
+		expect(onProgress).toHaveBeenCalledTimes(6);
+	});
+
+	it('classifies delegated MCP records from their intercepted request metadata', async () => {
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				close: vi.fn(),
+				generate: vi.fn(async () => {
+					vi.mocked(createMcpMockFetch).mock.calls[0][0].onToolCall({
+						serverName: 'child',
+						toolName: 'lookup',
+						args: {},
+						result: { text: 'found', isError: false },
+					});
+					const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
+						onMcpToolCallSettled: (event: {
+							serverName: string;
+							toolName: string;
+							success: boolean;
+						}) => void;
+					};
+					instrumentation.onMcpToolCallSettled({
+						serverName: 'child',
+						toolName: 'lookup',
+						success: true,
+					});
+					return makeGenerateResult({ toolCalls: [] });
+				}),
+			},
+		});
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+		expect(result.toolCalls).toEqual([
+			expect.objectContaining({ tool: 'child_lookup', kind: 'mcp', mocked: true }),
+		]);
+	});
+
+	it('reports tool progress before generation finishes and flushes writes before returning', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		const onProgress = vi.fn().mockResolvedValue(undefined);
+		let finish: (value: GenerateResult) => void = () => {};
+		const generate = vi.fn(async () => {
+			handlers.get(AgentEvent.ToolExecutionStart)?.({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId: 'send-1',
+				toolName: 'Slack_Tool',
+				args: { text: 'hello' },
+			});
+			handlers.get(AgentEvent.ToolExecutionEnd)?.({
+				type: AgentEvent.ToolExecutionEnd,
+				toolCallId: 'send-1',
+				toolName: 'Slack_Tool',
+				result: { sent: true },
+				isError: false,
+			});
+			handlers.get(AgentEvent.ToolExecutionStart)?.({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId: 'wait-1',
+				toolName: 'wait_for_reply',
+				args: {},
+			});
+			return await new Promise<GenerateResult>((resolve) => {
+				finish = resolve;
+			});
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate,
+				close: vi.fn(),
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+			},
+			toolRegistry: {},
+		});
+		let settled = false;
+		const running = buildService()
+			.executeWithLlmMock('agent-1', user, request, 'Send a message', { onProgress })
+			.then((value) => {
+				settled = true;
+				return value;
+			});
+		await vi.waitFor(() => expect(onProgress).toHaveBeenCalledTimes(3));
+		expect(settled).toBe(false);
+		expect(onProgress.mock.calls[2][0]).toEqual([
+			expect.objectContaining({
+				toolCallId: 'send-1',
+				status: 'completed',
+				output: { sent: true },
+			}),
+			expect.objectContaining({ toolCallId: 'wait-1', status: 'running' }),
+		]);
+		finish(makeGenerateResult());
+		await running;
+	});
+
+	it('publishes a mocked send while the tool waits for a reply', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		const onProgress = vi.fn().mockResolvedValue(undefined);
+		let finish!: (value: GenerateResult) => void;
+		let mockRequest!: EvalLlmMockHandler;
+		const send = async () =>
+			await mockRequest(
+				{ url: 'https://slack.com/api/chat.postMessage', method: 'POST', body: { text: 'Hello' } },
+				{ name: 'Slack_Tool', type: 'n8n-nodes-base.slackTool' } as INode,
+			);
+		const generate = vi.fn(async () => {
+			handlers.get(AgentEvent.ToolExecutionStart)?.({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId: 'send-1',
+				toolName: 'Slack_Tool',
+				args: { text: 'Hello' },
+			});
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
+				configureToolAdditionalData: (
+					data: Record<string, unknown>,
+					context: { toolName: string; toolKind: string },
+				) => void;
+			};
+			const data: Record<string, unknown> = { credentialsHelper: { getDecrypted: vi.fn() } };
+			instrumentation.configureToolAdditionalData(data, {
+				toolName: 'Slack_Tool',
+				toolKind: 'node',
+			});
+			mockRequest = data.evalLlmMockHandler as EvalLlmMockHandler;
+			await send();
+			return await new Promise<GenerateResult>((resolve) => {
+				finish = resolve;
+			});
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate,
+				close: vi.fn(),
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+			},
+		});
+		let settled = false;
+		const running = buildService()
+			.executeWithLlmMock('agent-1', user, request, 'Send then wait', { onProgress })
+			.then((result) => {
+				settled = true;
+				return result;
+			});
+		try {
+			await vi.waitFor(() => expect(onProgress).toHaveBeenCalledTimes(2));
+			expect(settled).toBe(false);
+			expect(onProgress).toHaveBeenLastCalledWith([
+				expect.objectContaining({
+					toolCallId: 'send-1',
+					status: 'running',
+					mocked: true,
+					interceptedRequests: [
+						expect.objectContaining({ requestBody: { text: 'Hello' }, mockResponse: { ok: true } }),
+					],
+				}),
+			]);
+		} finally {
+			finish(makeGenerateResult());
+			await running;
+		}
+		const writes = onProgress.mock.calls.length;
+		await send();
+		await Promise.resolve();
+		expect(onProgress).toHaveBeenCalledTimes(writes);
+	});
+
+	it('serializes progress writes and waits for the last write without failing the run', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		let releaseWrite: () => void = () => {};
+		const onProgress = vi
+			.fn()
+			.mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						releaseWrite = resolve;
+					}),
+			)
+			.mockRejectedValueOnce(new Error('progress unavailable'))
+			.mockResolvedValue(undefined);
+		const generate = vi.fn(async () => {
+			handlers.get(AgentEvent.ToolExecutionStart)?.({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId: 'call-1',
+				toolName: 'Slack_Tool',
+				args: {},
+			});
+			handlers.get(AgentEvent.ToolExecutionEnd)?.({
+				type: AgentEvent.ToolExecutionEnd,
+				toolCallId: 'call-1',
+				toolName: 'Slack_Tool',
+				result: { sent: true },
+				isError: false,
+			});
+			return makeGenerateResult();
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate,
+				close: vi.fn(),
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+			},
+			toolRegistry: {},
+		});
+		let settled = false;
+		const running = buildService()
+			.executeWithLlmMock('agent-1', user, request, 'Send a message', { onProgress })
+			.then((value) => {
+				settled = true;
+				return value;
+			});
+		await vi.waitFor(() => expect(onProgress).toHaveBeenCalledOnce());
+		expect(settled).toBe(false);
+		releaseWrite();
+		expect((await running).success).toBe(true);
+		expect(onProgress).toHaveBeenCalledTimes(3);
+		handlers.get(AgentEvent.ToolExecutionStart)?.({
+			type: AgentEvent.ToolExecutionStart,
+			toolCallId: 'late',
+			toolName: 'Slack_Tool',
+			args: {},
+		});
+		await Promise.resolve();
+		expect(onProgress).toHaveBeenCalledTimes(3);
+	});
+
+	it('flushes failed and interrupted tool progress before returning a generation error', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		const onProgress = vi.fn().mockResolvedValue(undefined);
+		const close = vi.fn();
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate: vi.fn(async () => {
+					for (const toolCallId of ['failed', 'interrupted']) {
+						handlers.get(AgentEvent.ToolExecutionStart)?.({
+							type: AgentEvent.ToolExecutionStart,
+							toolCallId,
+							toolName: 'Slack_Tool',
+							args: {},
+						});
+					}
+					handlers.get(AgentEvent.ToolExecutionEnd)?.({
+						type: AgentEvent.ToolExecutionEnd,
+						toolCallId: 'failed',
+						toolName: 'Slack_Tool',
+						result: 'Tool failed',
+						isError: true,
+					});
+					throw new Error('Generation stopped');
+				}),
+				close,
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+			},
+			toolRegistry: {},
+		});
+		const result = await buildService().executeWithLlmMock(
+			'agent-1',
+			user,
+			request,
+			'Send a message',
+			{ onProgress },
+		);
+		expect(result.success).toBe(false);
+		expect(result.errors).toContain('Agent run failed: Generation stopped');
+		expect(result.toolCalls).toEqual([
+			expect.objectContaining({
+				toolCallId: 'failed',
+				status: 'error',
+				error: 'tool_execution_failed',
+				output: 'Tool failed',
+			}),
+			expect.objectContaining({
+				toolCallId: 'interrupted',
+				status: 'error',
+				error: 'execution_stopped',
+			}),
+		]);
+		expect(onProgress).toHaveBeenLastCalledWith([
+			expect.objectContaining({
+				toolCallId: 'failed',
+				status: 'error',
+				error: 'tool_execution_failed',
+				output: 'Tool failed',
+			}),
+			expect.objectContaining({
+				toolCallId: 'interrupted',
+				status: 'error',
+				error: 'execution_stopped',
+			}),
+		]);
+		expect(close).toHaveBeenCalledOnce();
+		expect(onProgress.mock.invocationCallOrder.at(-1)).toBeLessThan(
+			close.mock.invocationCallOrder[0],
+		);
+	});
 
 	it('refuses queue mode upfront', async () => {
 		const result = await buildService({ queueMode: true }).executeWithLlmMock(

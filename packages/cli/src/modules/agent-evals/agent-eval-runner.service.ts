@@ -1,4 +1,9 @@
-import type { AgentEvalVerdict, AgentEvalRunSummary } from '@n8n/api-types';
+import { setTimeout as sleep } from 'node:timers/promises';
+import {
+	INSTANCE_AI_EVAL_AGENT_MAX_TIMEOUT_MS,
+	type AgentEvalVerdict,
+	type AgentEvalRunSummary,
+} from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
@@ -26,6 +31,7 @@ import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-co
 import { License } from '@/license';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
@@ -46,6 +52,9 @@ const MAX_CASES = 500;
 // `setTimeout` holds its delay in a 32-bit int and silently coerces anything
 // larger to 1ms, so a deadline past ~24.8 days must be clamped, not passed on.
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
+// Cover the maximum agent execution budget, plus five minutes for judging.
+const RESULT_SETTLEMENT_TIMEOUT_MS = INSTANCE_AI_EVAL_AGENT_MAX_TIMEOUT_MS + 5 * 60_000;
+const RESULT_SETTLEMENT_POLL_MS = 1_000;
 
 /** A dataset row resolved into a runnable case via the dataset's column mapping. */
 interface ResolvedCase {
@@ -60,6 +69,12 @@ interface ResolvedCase {
 interface CaseUsage {
 	inputTokens: number;
 	outputTokens: number;
+}
+
+interface RunDeadline {
+	hasExpired: () => boolean;
+	clear: () => void;
+	deadlineMinutes: number;
 }
 
 /**
@@ -148,13 +163,11 @@ export class AgentEvalRunnerService {
 			throw new BadRequestError('The dataset has no rows to run.');
 		}
 
+		const source = await this.evalAgentExecutionService.captureRunSource(agent);
+
 		const run = await this.runRepository.createRun({
 			datasetId: dataset.id,
-			// Left unpinned: execution reloads the live agent by id (there is no
-			// snapshot-execution path yet), so tagging a specific version would
-			// misrepresent what actually ran — mirrors the workflow eval, which
-			// records a version only when it executes that pinned snapshot.
-			// Version-pinned execution is a follow-up.
+			// This is a detached draft snapshot, not a published agent version.
 			agentVersionId: null,
 			createdById: user.id,
 		});
@@ -191,6 +204,7 @@ export class AgentEvalRunnerService {
 			user,
 			cases,
 			seeded,
+			source,
 			timeoutMs: options.timeoutMs,
 		});
 
@@ -242,7 +256,7 @@ export class AgentEvalRunnerService {
 
 		// Atomic, unlike the caller's snapshot status check: of two concurrent
 		// requests for the same result, only one wins the claim and executes.
-		if (!(await this.resultRepository.claimForRerun(result.id))) {
+		if (!(await this.resultRepository.claimForRerun(result.id, result.runId))) {
 			throw new BadRequestError(`Agent eval result ${result.id} is already running.`);
 		}
 
@@ -299,6 +313,7 @@ export class AgentEvalRunnerService {
 		user: User;
 		cases: ResolvedCase[];
 		seeded: AgentEvalResult[];
+		source: AgentRunSource;
 		timeoutMs?: number;
 	}): Promise<void> {
 		const { runId, cases, seeded } = ctx;
@@ -350,8 +365,7 @@ export class AgentEvalRunnerService {
 			};
 
 			// An empty input can't produce an execution, so its verdict is recorded
-			// without taking a queue slot. Self-contained like `runCase`: one unusable
-			// case must not fail the run just because recording it failed.
+			// without taking a queue slot. A failed write reaches the batch error path.
 			const markEmptyInput = async (resultRow: AgentEvalResult) => {
 				try {
 					await this.resultRepository.markAsError(resultRow.id, 'empty_input', {
@@ -362,10 +376,12 @@ export class AgentEvalRunnerService {
 						`[AgentEvalRunner] Could not record empty input for case ${resultRow.id}`,
 						{ error: error instanceof Error ? error.message : String(error) },
 					);
+					throw error;
 				}
 			};
 
 			const deadline = this.startRunDeadline(abort);
+			const originalAttempts = new Map<string, Date>();
 
 			// The stop reads/writes around `runCase` sit outside its safety net, so
 			// collect their throws instead of letting one reject the whole pool.
@@ -401,7 +417,10 @@ export class AgentEvalRunnerService {
 									await stopCase(resultRow);
 									return;
 								}
-								const usage = await this.runCase(resultRow, resolvedCase, ctx);
+								const usage = await this.runCase(resultRow, resolvedCase, {
+									...ctx,
+									onAttemptStarted: (runAt) => originalAttempts.set(resultRow.id, runAt),
+								});
 								if (usage) {
 									totalUsage.inputTokens += usage.inputTokens;
 									totalUsage.outputTokens += usage.outputTokens;
@@ -416,22 +435,13 @@ export class AgentEvalRunnerService {
 			deadline.clear();
 
 			const dispatchFailures: string[] = [];
-			for (const settlement of settlements) {
+			const unfinishedOriginals = new Map<string, string>();
+			for (const [index, settlement] of settlements.entries()) {
 				if (settlement.status !== 'rejected') continue;
 				const reason: unknown = settlement.reason;
-				dispatchFailures.push(reason instanceof Error ? reason.message : String(reason));
-			}
-			// Re-read once more: a cancel that arrived after every case had already
-			// settled is never observed above, so honor it rather than reporting the
-			// run completed with the flag still set. Collected like the pool's throws,
-			// since letting this one escape would lose the tally it guards.
-			let wasCancelled = cancelObserved;
-			if (!wasCancelled) {
-				try {
-					wasCancelled = await this.runRepository.isCancellationRequested(runId);
-				} catch (error) {
-					dispatchFailures.push(error instanceof Error ? error.message : String(error));
-				}
+				const message = reason instanceof Error ? reason.message : String(reason);
+				dispatchFailures.push(message);
+				unfinishedOriginals.set(seeded[index].id, message);
 			}
 
 			if (dispatchFailures.length > 0) {
@@ -441,25 +451,111 @@ export class AgentEvalRunnerService {
 				);
 			}
 
+			await this.settleRun({
+				runId,
+				unfinishedOriginals,
+				originalAttempts,
+				dispatchFailures,
+				cancelObserved,
+				totalUsage,
+				deadline,
+				stoppedCases,
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			await this.failRun(runId, message);
+		}
+	}
+
+	private async settleRun(ctx: {
+		runId: string;
+		unfinishedOriginals: Map<string, string>;
+		originalAttempts: Map<string, Date>;
+		dispatchFailures: string[];
+		cancelObserved: boolean;
+		totalUsage: CaseUsage;
+		deadline: RunDeadline;
+		stoppedCases: number;
+	}): Promise<void> {
+		const {
+			runId,
+			unfinishedOriginals,
+			originalAttempts,
+			dispatchFailures,
+			cancelObserved,
+			totalUsage,
+			deadline,
+			stoppedCases,
+		} = ctx;
+		let wasCancelled = cancelObserved;
+
+		// A settled sibling can be rerun while the original pool is active.
+		// Fence the terminal write against those attempts, including other mains.
+		const settlementDeadline = Date.now() + RESULT_SETTLEMENT_TIMEOUT_MS;
+		while (true) {
+			for (const [resultId, message] of unfinishedOriginals) {
+				try {
+					await this.resultRepository.markUnfinishedAsError(
+						resultId,
+						originalAttempts.get(resultId),
+						message,
+					);
+					unfinishedOriginals.delete(resultId);
+				} catch (error) {
+					this.logger.warn(`[AgentEvalRunner] Could not settle original case ${resultId}`, {
+						error,
+					});
+				}
+			}
+			if (!wasCancelled) {
+				try {
+					wasCancelled = await this.runRepository.isCancellationRequested(runId);
+				} catch (error) {
+					dispatchFailures.push(error instanceof Error ? error.message : String(error));
+				}
+			}
 			const counts = await this.resultRepository.countByStatus(runId);
 			const metrics: IDataObject = { ...toSummaryCounts(counts), usage: { ...totalUsage } };
+			if (Date.now() >= settlementDeadline) {
+				if (wasCancelled) {
+					await this.runRepository.markAsCancelled(runId, metrics);
+				} else {
+					await this.runRepository.markAsError(
+						runId,
+						'result_settlement_timeout',
+						{
+							message: 'A result did not settle after the original batch finished.',
+						},
+						metrics,
+					);
+				}
+				break;
+			}
+			if (counts.new > 0 || counts.running > 0) {
+				await sleep(RESULT_SETTLEMENT_POLL_MS);
+				continue;
+			}
+			// Dispatch failures use the same claim fence as successful completion.
+			const finalCounts = counts;
 
+			let settled;
 			// Every branch records the tally under `metrics`, so pollers never find a
 			// settled run whose counts are missing or filed elsewhere.
 			if (wasCancelled) {
 				// A user stop outranks the deadline: it's intent, not a failure.
-				await this.runRepository.markAsCancelled(runId, metrics);
+				settled = await this.runRepository.markAsCancelled(runId, metrics, finalCounts);
 			} else if (deadline.hasExpired() && stoppedCases > 0) {
-				await this.runRepository.markAsError(
+				settled = await this.runRepository.markAsError(
 					runId,
 					'timeout',
 					{
 						message: `Run exceeded its ${deadline.deadlineMinutes}-minute deadline; ${stoppedCases} case(s) were not started.`,
 					},
 					metrics,
+					finalCounts,
 				);
 			} else if (dispatchFailures.length > 0) {
-				await this.runRepository.markAsError(
+				settled = await this.runRepository.markAsError(
 					runId,
 					'case_dispatch_failed',
 					{
@@ -467,6 +563,7 @@ export class AgentEvalRunnerService {
 						errors: dispatchFailures,
 					},
 					metrics,
+					finalCounts,
 				);
 			} else {
 				if (deadline.hasExpired()) {
@@ -476,11 +573,12 @@ export class AgentEvalRunnerService {
 						`[AgentEvalRunner] Run ${runId} overran its ${deadline.deadlineMinutes}-minute deadline, but every case had finished`,
 					);
 				}
-				await this.runRepository.markAsCompleted(runId, metrics);
+				settled = await this.runRepository.markAsCompleted(runId, metrics, finalCounts);
 			}
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			await this.failRun(runId, message);
+			if (settled) break;
+			const current = await this.runRepository.findById(runId);
+			if (current?.status !== 'running') break;
+			await sleep(RESULT_SETTLEMENT_POLL_MS);
 		}
 	}
 
@@ -488,11 +586,7 @@ export class AgentEvalRunnerService {
 	 * Arm the run-level deadline; expiring trips the run's abort. Non-positive
 	 * disables. Bounds when the last case may *start*, not when the run ends.
 	 */
-	private startRunDeadline(abort: AbortController): {
-		hasExpired: () => boolean;
-		clear: () => void;
-		deadlineMinutes: number;
-	} {
+	private startRunDeadline(abort: AbortController): RunDeadline {
 		const deadlineMinutes = this.globalConfig.evaluation.agentEvalsRunTimeoutMinutes;
 		if (deadlineMinutes <= 0) {
 			return { hasExpired: () => false, clear: () => undefined, deadlineMinutes };
@@ -593,10 +687,9 @@ export class AgentEvalRunnerService {
 
 	/**
 	 * Execute one case and persist its result. Returns the case's token usage.
-	 * Fully self-contained: a thrown execution or DB error is converted into a
-	 * per-case error so one case can never abort the batch or leave its result
-	 * stuck `running`. Assumes a non-empty input — the caller screens those out
-	 * before taking a queue slot.
+	 * Execution errors become per-case errors. If that write also fails, the batch
+	 * reports the persistence failure. The caller screens out empty input before
+	 * taking a queue slot.
 	 *
 	 * On a successful execution, also grades the output via {@link judgeCase}
 	 * and persists the verdict — this is the one place both `executeRun`'s pool
@@ -607,16 +700,35 @@ export class AgentEvalRunnerService {
 	private async runCase(
 		resultRow: AgentEvalResult,
 		resolvedCase: ResolvedCase,
-		ctx: { agentId: string; projectId: string; user: User; timeoutMs?: number },
+		ctx: {
+			agentId: string;
+			projectId: string;
+			user: User;
+			timeoutMs?: number;
+			source?: AgentRunSource;
+			onAttemptStarted?: (runAt: Date) => void;
+		},
 	): Promise<CaseUsage | undefined> {
 		try {
-			await this.resultRepository.markAsRunning(resultRow.id);
+			const attemptStartedAt = new Date();
+			ctx.onAttemptStarted?.(attemptStartedAt);
+			const runAt = await this.resultRepository.markAsRunning(resultRow.id, attemptStartedAt);
 
 			const execResult = await this.evalAgentExecutionService.executeWithLlmMock(
 				ctx.agentId,
 				ctx.user,
 				{ projectId: ctx.projectId, ...(ctx.timeoutMs ? { timeoutMs: ctx.timeoutMs } : {}) },
 				resolvedCase.input,
+				{
+					...(ctx.source ? { source: ctx.source } : {}),
+					onProgress: async (calls) => {
+						await this.resultRepository.updateRunningToolCalls(
+							resultRow.id,
+							runAt,
+							toJsonObject({ calls }),
+						);
+					},
+				},
 			);
 
 			const usage = normalizeUsage(execResult.usage);
@@ -673,6 +785,7 @@ export class AgentEvalRunnerService {
 				this.logger.error(`[AgentEvalRunner] Could not record failure for case ${resultRow.id}`, {
 					error: markError instanceof Error ? markError.message : String(markError),
 				});
+				throw markError;
 			}
 			return undefined;
 		}

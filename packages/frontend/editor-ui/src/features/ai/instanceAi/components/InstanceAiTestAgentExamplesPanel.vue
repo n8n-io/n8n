@@ -158,6 +158,7 @@ watch(applyingAny, (applying) => {
 });
 
 function onApplyAllSuggestions() {
+	if (applyingAny.value) return;
 	applyingAll.value = true;
 	emit('apply-suggestions', applicableSuggestionIds.value);
 }
@@ -385,7 +386,7 @@ function onCheckYourAgent() {
 			</div>
 
 			<N8nButton
-				v-if="runSettled && summaryExpanded && applicableSuggestionIds.length > 1"
+				v-if="(!runSettled || summaryExpanded) && applicableSuggestionIds.length > 1"
 				variant="solid"
 				size="small"
 				:disabled="applyingAny"
@@ -415,6 +416,15 @@ function onCheckYourAgent() {
 				@click="onStopRun"
 			>
 				{{ i18n.baseText('agents.builder.agentEvals.run.cancel') }}
+			</N8nButton>
+
+			<N8nButton
+				variant="ghost"
+				size="small"
+				data-test-id="instance-ai-test-agent-examples-manage-checks"
+				@click="emit('open-case', null)"
+			>
+				{{ i18n.baseText('agents.builder.agentEvals.checks.manageChecks') }}
 			</N8nButton>
 
 			<N8nButton

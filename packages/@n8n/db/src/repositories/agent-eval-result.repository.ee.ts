@@ -1,8 +1,10 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import type { IDataObject, JsonObject } from 'n8n-workflow';
 
-import { AgentEvalResult } from '../entities';
+import { AgentEvalResult, AgentEvalRun } from '../entities';
+import { TransactionRunner } from '../services/transaction';
+import { BaseRepository } from './base-repository';
 import type { AgentEvalResultStatus } from '../entities/agent-eval-result.ee';
 
 type CreateAgentEvalResultAttrs = {
@@ -18,9 +20,9 @@ export type AgentEvalResultStatusCounts = Record<AgentEvalResultStatus, number>;
 // parameter limit (SQLite in particular).
 const SEED_CHUNK_SIZE = 100;
 
-const startedAttempt = () => ({
+const startedAttempt = (runAt = new Date()) => ({
 	status: 'running' as const,
-	runAt: new Date(),
+	runAt,
 	completedAt: null,
 	output: null,
 	toolCalls: null,
@@ -31,9 +33,9 @@ const startedAttempt = () => ({
 });
 
 @Service()
-export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
-	constructor(dataSource: DataSource) {
-		super(AgentEvalResult, dataSource.manager);
+export class AgentEvalResultRepository extends BaseRepository<AgentEvalResult> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentEvalResult, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -83,8 +85,15 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 
 	/** Starts an attempt. Clears whatever a previous attempt left behind, so a
 	 *  rerun can't settle with an old error next to a new answer (or the reverse). */
-	async markAsRunning(id: string) {
-		return await this.update(id, startedAttempt());
+	async markAsRunning(id: string, runAt = new Date()) {
+		const attempt = startedAttempt(runAt);
+		await this.update(id, attempt);
+		return attempt.runAt;
+	}
+
+	/** Progress belongs to one running attempt, identified by its start timestamp. */
+	async updateRunningToolCalls(id: string, runAt: Date, toolCalls: JsonObject): Promise<void> {
+		await this.update({ id, status: 'running', runAt }, { toolCalls });
 	}
 
 	/**
@@ -92,12 +101,32 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 	 * not settled — already running, or claimed by a concurrent request — so only
 	 * one caller ever executes a given rerun.
 	 */
-	async claimForRerun(id: string): Promise<boolean> {
-		const claimed = await this.update(
-			{ id, status: In<AgentEvalResultStatus>(['success', 'error', 'cancelled']) },
-			startedAttempt(),
-		);
-		return (claimed.affected ?? 0) > 0;
+	async claimForRerun(id: string, runId: string): Promise<boolean> {
+		return await this.runInTransaction({}, async (manager) => {
+			// Serialize with terminal aggregation before changing any result. A write
+			// lock works on both Postgres and SQLite and needs no schema change.
+			await manager.update(AgentEvalRun, { id: runId }, { id: runId });
+			const claimed = await manager.update(
+				AgentEvalResult,
+				{ id, runId, status: In<AgentEvalResultStatus>(['success', 'error', 'cancelled']) },
+				startedAttempt(),
+			);
+			return (claimed.affected ?? 0) > 0;
+		});
+	}
+
+	/** Repair only an unfinished original attempt. Never overwrite a newer rerun. */
+	async markUnfinishedAsError(id: string, runAt: Date | undefined, message: string): Promise<void> {
+		await this.createQueryBuilder()
+			.update()
+			.set({
+				status: 'error',
+				completedAt: new Date(),
+				errorCode: 'case_dispatch_failed',
+				errorDetails: { message },
+			})
+			.where([{ id, status: 'new' }, ...(runAt ? [{ id, status: 'running', runAt }] : [])])
+			.execute();
 	}
 
 	async markAsCancelled(id: string) {
