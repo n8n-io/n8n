@@ -1,8 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import type { AgentJsonConfig, AgentJsonToolConfig } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentEvalMockNotice from '../components/AgentEvalMockNotice.vue';
+
+const { ensureLoaded } = vi.hoisted(() => ({ ensureLoaded: vi.fn() }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
@@ -19,7 +22,7 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 			{ type: 'slack', label: 'Slack' },
 			{ type: 'telegram', label: 'Telegram' },
 		]),
-		ensureLoaded: vi.fn().mockResolvedValue([]),
+		ensureLoaded,
 	}),
 }));
 const node = (nodeType: string): AgentJsonToolConfig => ({
@@ -36,6 +39,21 @@ const config = (overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig => ({
 });
 
 describe('AgentEvalMockNotice', () => {
+	beforeEach(() => {
+		ensureLoaded.mockReset().mockResolvedValue([]);
+	});
+
+	it.each([undefined, null])('shows the generic assurance before config loads', (agentConfig) => {
+		const { getByText } = renderComponent({
+			props: { config: agentConfig, projectId: 'project-1' },
+		});
+
+		expect(
+			getByText("Your agent won't really message anyone or change anything here."),
+		).toBeInTheDocument();
+		expect(ensureLoaded).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		[[], "Your agent won't really message anyone or change anything here."],
 		[[node('slack')], "Your agent won't really use Slack here."],
@@ -83,5 +101,66 @@ describe('AgentEvalMockNotice', () => {
 			},
 		});
 		expect(getByText("Your agent won't really use Create order or CRM here.")).toBeInTheDocument();
+	});
+
+	it('uses the configured node name when node metadata has no display name', () => {
+		const { getByText } = renderComponent({
+			props: {
+				projectId: 'project-1',
+				config: config({ tools: [{ ...node('community.inventory'), name: 'Inventory API' }] }),
+			},
+		});
+
+		expect(getByText("Your agent won't really use Inventory API here.")).toBeInTheDocument();
+	});
+
+	it('uses the workflow name and a readable custom tool id when no alias exists', () => {
+		const { getByText } = renderComponent({
+			props: {
+				projectId: 'project-1',
+				config: config({
+					tools: [
+						{ type: 'workflow', workflow: 'Order management' },
+						{ type: 'custom', id: 'send_invoice' },
+					],
+				}),
+			},
+		});
+
+		expect(
+			getByText("Your agent won't really use Order management or Send invoice here."),
+		).toBeInTheDocument();
+	});
+
+	it('excludes built-in chat and channels without a connected credential', () => {
+		const { getByText } = renderComponent({
+			props: {
+				projectId: 'project-1',
+				config: config({
+					integrations: [
+						{ type: 'n8n_chat', credentialId: '' },
+						{ type: 'slack', credentialId: '  ' },
+					],
+				}),
+			},
+		});
+
+		expect(
+			getByText("Your agent won't really message anyone or change anything here."),
+		).toBeInTheDocument();
+	});
+
+	it('keeps the assurance readable when the integration catalog cannot load', async () => {
+		ensureLoaded.mockRejectedValueOnce(new Error('Catalog unavailable'));
+		const { getByText } = renderComponent({
+			props: {
+				projectId: 'project-1',
+				config: config({ integrations: [{ type: 'discord', credentialId: 'discord-1' }] }),
+			},
+		});
+		await flushPromises();
+
+		expect(ensureLoaded).toHaveBeenCalledWith('project-1');
+		expect(getByText("Your agent won't really use Discord here.")).toBeInTheDocument();
 	});
 });

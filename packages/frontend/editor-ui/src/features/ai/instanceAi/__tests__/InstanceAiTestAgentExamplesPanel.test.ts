@@ -183,6 +183,19 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(getByText('Running 1 check, 0 done')).toBeInTheDocument();
 		});
 
+		it('limits the running summary to three avatars and shows the remaining count', () => {
+			const fiveRuns = Array.from({ length: 5 }, (_, index) => ({
+				...caseRuns[1],
+				rowId: index + 1,
+			}));
+			const { getByText, getAllByTestId } = renderComponent({ props: { caseRuns: fiveRuns } });
+
+			const extraCount = getByText('+2');
+			expect(extraCount.parentElement?.children).toHaveLength(4);
+			expect(getByText('Running 5 checks, 0 done')).toBeInTheDocument();
+			expect(getAllByTestId(/^instance-ai-test-agent-examples-case-\d+$/)).toHaveLength(5);
+		});
+
 		it('updates elapsed time from the run start and removes the timer when settled', async () => {
 			vi.useFakeTimers();
 			vi.setSystemTime(new Date('2026-10-15T12:00:09Z'));
@@ -573,6 +586,28 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			});
 
 			expect(getByTestId(BUTTON)).toBeDisabled();
+		});
+
+		it('clears the applying state when the request finishes so suggestions can be retried', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, rerender, emitted } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2)] },
+			});
+			const button = getByTestId(BUTTON);
+
+			await user.click(button);
+			await rerender({ applyingSuggestionIds: ['result-1', 'result-2'] });
+			expect(button).toHaveAttribute('aria-busy', 'true');
+			expect(button).toBeDisabled();
+
+			await rerender({ applyingSuggestionIds: [] });
+			expect(button).not.toHaveAttribute('aria-busy');
+			expect(button).toBeEnabled();
+			await user.click(button);
+			expect(emitted('apply-suggestions')).toEqual([
+				[['result-1', 'result-2']],
+				[['result-1', 'result-2']],
+			]);
 		});
 
 		it('is hidden while the run is still going', () => {
