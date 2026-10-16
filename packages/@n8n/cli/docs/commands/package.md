@@ -96,6 +96,7 @@ Requires the API key to hold:
 - `dataTable:update` — when `--data-table-schema-conflict-policy` is `overwrite` or `overwrite-non-destructive` and changes at least one matched table
 - `variable:create` — when the import actually creates a variable, i.e. `--variable-missing-mode` is `create-with-value` (the default) or `create-stub` and at least one referenced variable does not already resolve. A package whose variables all resolve creates nothing and needs neither this scope nor a variables-enabled license.
 - `variable:update` — when the import would overwrite a variable, i.e. `--variable-conflict-policy=overwrite` and at least one resolved variable's value differs from the package's. `keep-existing` (the default) never overwrites and needs neither this scope nor a variables-enabled license.
+- `credential:create` — when `--credential-missing-mode=create-with-values` and the import creates at least one credential.
 - `tag:create` — when the import would create a tag (under `--tag-missing-mode create`, the instance default; tags that match, are dropped, or belong only to skipped workflows need no scope)
 - `tag:update` — when the import would rename or reconcile a tag (under `--tag-conflict-policy rename`).
 

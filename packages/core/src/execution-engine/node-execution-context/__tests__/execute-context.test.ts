@@ -835,6 +835,19 @@ describe('ExecuteContext', () => {
 			});
 		});
 
+		it('redacts console messages when a sub-workflow reported the channel', () => {
+			const context = makeContext('manual', {
+				executionData: {
+					runtimeData: {
+						redaction: { version: 2, production: false, manual: false },
+						subWorkflowRedaction: { production: true, manual: true },
+					},
+				},
+			} as unknown as IRunExecutionData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
 		it('fails closed when resolving the policy throws', () => {
 			const throwingRunData = {
 				get executionData(): never {

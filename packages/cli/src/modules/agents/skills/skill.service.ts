@@ -71,6 +71,24 @@ function assertHasInstructions(skill: AgentSkill): void {
 	if (!skill.instructions.trim()) throw new UserError('Skill instructions are required.');
 }
 
+/**
+ * Builder and MCP tools write here without the REST DTOs, so the name is trimmed here
+ * too. A name of only spaces is refused.
+ */
+function trimmedName(name: string): string {
+	const trimmed = name.trim();
+	if (!trimmed) throw new UserError('Skill name is required.');
+	return trimmed;
+}
+
+/**
+ * The skill with the name that `create` stores. A caller that answers with the body or
+ * its hash uses this, so the answer matches the stored skill.
+ */
+export function withTrimmedName<T extends { name: string }>(skill: T): T {
+	return { ...skill, name: trimmedName(skill.name) };
+}
+
 function toRecord(rows: Map<string, ResolvedSkillRow>): Record<string, AgentSkill> {
 	return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
 }
@@ -183,14 +201,15 @@ export class SkillService {
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
-		assertHasInstructions(input.skill);
+		const skill = withTrimmedName(input.skill);
+		assertHasInstructions(skill);
 		if (input.checkNameTaken) {
-			await this.assertNameFree(input.skill.name, input.target, undefined, ctx);
+			await this.assertNameFree(skill.name, input.target, undefined, ctx);
 		}
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
-			toSkillContent(input.skill),
+			toSkillContent(skill),
 			ctx,
 		);
 		this.logger.debug('Created skill', { skillId: id });
@@ -220,6 +239,8 @@ export class SkillService {
 			if (!latest) throw new NotFoundError('Skill not found');
 			const current = toAgentSkill(latest);
 			const { baseSkillHash, allowedTools: _ignored, ...changes } = update;
+			// Only a new name is trimmed, so a save never renames a skill it did not rename.
+			if (changes.name !== undefined) changes.name = trimmedName(changes.name);
 			if (baseSkillHash !== getAgentSkillHash(current)) {
 				throw new ConflictError(
 					'The skill was changed somewhere else. Reload to get the latest version.',

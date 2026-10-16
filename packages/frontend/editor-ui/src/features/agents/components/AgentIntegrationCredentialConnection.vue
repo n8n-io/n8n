@@ -66,7 +66,7 @@ const connectDisabled = computed(() => !props.modelValue || props.loading || pro
 <template>
 	<div :class="$style.connectForm">
 		<label :class="$style.label">
-			<N8nText size="small" bold>
+			<N8nText step="sm" bold>
 				{{ integrationLabel }}
 				{{ i18n.baseText('agents.builder.addTrigger.credential') }}
 			</N8nText>
@@ -167,7 +167,7 @@ const connectDisabled = computed(() => !props.modelValue || props.loading || pro
 .connectForm {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	width: 100%;
 }
 

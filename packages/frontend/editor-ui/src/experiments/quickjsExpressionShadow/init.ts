@@ -32,6 +32,27 @@ export interface ShadowSettings {
 	timeoutMs: number;
 }
 
+// Every report field, with the telemetry prefix. A field added to the report
+// fails the typecheck below until it is also sent.
+type PrefixedReport = { [K in keyof ShadowReport as `quickjs_fe_${K}`]: ShadowReport[K] };
+
+function toTelemetryProperties(report: ShadowReport): PrefixedReport {
+	return {
+		quickjs_fe_evaluations: report.evaluations,
+		quickjs_fe_same: report.same,
+		quickjs_fe_different: report.different,
+		quickjs_fe_unchecked: report.unchecked,
+		quickjs_fe_legacy_ok_quickjs_error: report.legacy_ok_quickjs_error,
+		quickjs_fe_legacy_error_quickjs_ok: report.legacy_error_quickjs_ok,
+		quickjs_fe_both_error: report.both_error,
+		quickjs_fe_legacy_missing_input: report.legacy_missing_input,
+		quickjs_fe_quickjs_timeouts: report.quickjs_timeouts,
+		quickjs_fe_legacy_latency_buckets: report.legacy_latency_buckets,
+		quickjs_fe_quickjs_latency_buckets: report.quickjs_latency_buckets,
+		quickjs_fe_mismatches: report.mismatches,
+	};
+}
+
 /** Read the shadow settings from the flag payload, so they change without a release. */
 export function readShadowSettings(payload: unknown): ShadowSettings {
 	const settings: Record<string, unknown> = isRecord(payload) ? payload : {};
@@ -81,12 +102,12 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 
 	const send = (initStatus: 'ready' | 'failed', report: ShadowReport) => {
 		telemetry.track(TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED, {
-			init_status: initStatus,
-			init_duration_ms: initDurationMs,
-			sample_rate: settings.sampleRate,
-			timeout_ms: settings.timeoutMs,
-			latency_bucket_bounds_ms: LATENCY_BUCKET_BOUNDS_MS,
-			...report,
+			quickjs_fe_init_status: initStatus,
+			quickjs_fe_init_duration_ms: initDurationMs,
+			quickjs_fe_sample_rate: settings.sampleRate,
+			quickjs_fe_timeout_ms: settings.timeoutMs,
+			quickjs_fe_latency_bucket_bounds_ms: LATENCY_BUCKET_BOUNDS_MS,
+			...toTelemetryProperties(report),
 		});
 	};
 
