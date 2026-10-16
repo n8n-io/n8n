@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "promotion_review" ("id" varchar(36) PRIMARY KEY NOT NULL, "connectionId" varchar(36), "type" varchar(16) NOT NULL, "remoteReviewId" varchar(255), "state" varchar(32) NOT NULL DEFAULT ('open'), "mergedAt" datetime(3), "closedAt" datetime(3), "createdById" varchar, "approvedById" varchar, "approvedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_review_state" CHECK ("state" IN ('open', 'changes_requested', 'merged', 'closed')), CONSTRAINT "FK_promotion_review_connectionId" FOREIGN KEY ("connectionId") REFERENCES "promotion_connection" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_review_createdById" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_review_approvedById" FOREIGN KEY ("approvedById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "promotion_review" ("id" varchar PRIMARY KEY NOT NULL, "connectionId" varchar(36), "type" varchar(16) NOT NULL, "remoteReviewId" varchar(255), "state" varchar(32) NOT NULL DEFAULT ('open'), "lastStateChangeAt" datetime(3), "createdById" varchar, "approvedById" varchar, "approvedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_review_type" CHECK ("type" IN ('gitlab')), CONSTRAINT "CHK_promotion_review_state" CHECK ("state" IN ('open', 'changes_requested', 'merged', 'closed')), CONSTRAINT "FK_promotion_review_connectionId" FOREIGN KEY ("connectionId") REFERENCES "promotion_connection" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_review_createdById" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_review_approvedById" FOREIGN KEY ("approvedById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -17,12 +17,11 @@ CREATE TABLE "promotion_review" ("id" varchar(36) PRIMARY KEY NOT NULL, "connect
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | approvedAt | datetime(3) |  | true |  |  |  |
 | approvedById | varchar |  | true |  | [user](user.md) |  |
-| closedAt | datetime(3) |  | true |  |  |  |
 | connectionId | varchar(36) |  | true |  | [promotion_connection](promotion_connection.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
-| id | varchar(36) |  | false | [promotion_run](promotion_run.md) |  |  |
-| mergedAt | datetime(3) |  | true |  |  |  |
+| id | varchar |  | false | [promotion_run](promotion_run.md) |  |  |
+| lastStateChangeAt | datetime(3) |  | true |  |  |  |
 | remoteReviewId | varchar(255) |  | true |  |  |  |
 | state | varchar(32) | 'open' | false |  |  |  |
 | type | varchar(16) |  | false |  |  |  |
@@ -31,6 +30,7 @@ CREATE TABLE "promotion_review" ("id" varchar(36) PRIMARY KEY NOT NULL, "connect
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("type" IN ('gitlab')) |
 | - | CHECK | CHECK ("state" IN ('open', 'changes_requested', 'merged', 'closed')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (approvedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
@@ -60,12 +60,11 @@ erDiagram
 "promotion_review" {
   datetime_3_ approvedAt
   varchar approvedById FK
-  datetime_3_ closedAt
   varchar_36_ connectionId FK
   datetime_3_ createdAt
   varchar createdById FK
-  varchar_36_ id PK
-  datetime_3_ mergedAt
+  varchar id PK
+  datetime_3_ lastStateChangeAt
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type
@@ -102,8 +101,8 @@ erDiagram
   varchar createdById FK
   TEXT details
   varchar_16_ direction
-  varchar_36_ id PK
-  varchar_36_ reviewId FK
+  varchar id PK
+  varchar reviewId FK
   varchar_16_ type
 }
 ```

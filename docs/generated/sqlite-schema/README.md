@@ -121,7 +121,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [promotion_connection](promotion_connection.md) | 7 |  | table |
 | [promotion_connection_project](promotion_connection_project.md) | 4 |  | table |
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
-| [promotion_review](promotion_review.md) | 11 |  | table |
+| [promotion_review](promotion_review.md) | 10 |  | table |
 | [promotion_run](promotion_run.md) | 8 |  | table |
 | [role](role.md) | 7 |  | table |
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
@@ -1553,12 +1553,11 @@ erDiagram
 "promotion_review" {
   datetime_3_ approvedAt
   varchar approvedById FK
-  datetime_3_ closedAt
   varchar_36_ connectionId FK
   datetime_3_ createdAt
   varchar createdById FK
-  varchar_36_ id PK
-  datetime_3_ mergedAt
+  varchar id PK
+  datetime_3_ lastStateChangeAt
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type
@@ -1569,8 +1568,8 @@ erDiagram
   varchar createdById FK
   TEXT details
   varchar_16_ direction
-  varchar_36_ id PK
-  varchar_36_ reviewId FK
+  varchar id PK
+  varchar reviewId FK
   varchar_16_ type
 }
 "role" {

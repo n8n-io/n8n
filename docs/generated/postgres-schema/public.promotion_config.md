@@ -66,8 +66,8 @@ erDiagram
   uuid createdById FK
   json details
   varchar_16_ direction
-  varchar_36_ id
-  varchar_36_ reviewId FK
+  uuid id
+  uuid reviewId FK
   varchar_16_ type
 }
 ```

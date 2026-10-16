@@ -71,8 +71,8 @@ erDiagram
   varchar createdById FK
   TEXT details
   varchar_16_ direction
-  varchar_36_ id PK
-  varchar_36_ reviewId FK
+  varchar id PK
+  varchar reviewId FK
   varchar_16_ type
 }
 ```

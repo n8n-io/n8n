@@ -63,8 +63,8 @@ export const promotionReviewSummarySchema = z.object({
 	approvedBy: reviewUserSchema.nullable(),
 	createdAt: z.string().datetime(),
 	approvedAt: z.string().datetime().nullable(),
-	mergedAt: z.string().datetime().nullable(),
-	closedAt: z.string().datetime().nullable(),
+	/** Time of the latest state change. NULL until the first change. */
+	lastStateChangeAt: z.string().datetime().nullable(),
 	remote: promotionReviewRemoteSchema.nullable(),
 });
 export type PromotionReviewSummary = z.infer<typeof promotionReviewSummarySchema>;

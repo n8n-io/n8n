@@ -9,15 +9,16 @@
 | createdById | uuid |  | true |  | [public.user](public.user.md) | The user who ran Promote or Apply. |
 | details | json |  | true |  |  | Payload for type. A git run stores schemaVersion, branchName and commitSha. NULL when the type has no details. |
 | direction | varchar(16) |  | false |  |  | PromotionDirection enum: "promote" pushes to the remote, "apply" imports from it. Copied from the config when the run is written. |
-| id | varchar(36) |  | false |  |  |  |
-| reviewId | varchar(36) |  | true |  | [public.promotion_review](public.promotion_review.md) | The review this run belongs to. NULL when the push has no review. Not unique: an amend adds another run. |
-| type | varchar(16) |  | false |  |  | How the package moved. "git" covers GitHub, GitLab and plain Git. The application checks the value. The database does not. |
+| id | uuid |  | false |  |  |  |
+| reviewId | uuid |  | true |  | [public.promotion_review](public.promotion_review.md) | The review this run belongs to. NULL when the push has no review. Not unique: an amend adds another run. |
+| type | varchar(16) |  | false |  |  | PromotionRunType enum: "git". Git covers GitHub, GitLab and plain Git. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_promotion_run_direction | CHECK | CHECK (((direction)::text = ANY ((ARRAY['promote'::character varying, 'apply'::character varying])::text[]))) |
+| CHK_promotion_run_type | CHECK | CHECK (((type)::text = 'git'::text)) |
 | FK_promotion_run_configId | FOREIGN KEY | FOREIGN KEY ("configId") REFERENCES promotion_config(id) ON DELETE SET NULL |
 | FK_promotion_run_createdById | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_promotion_run_reviewId | FOREIGN KEY | FOREIGN KEY ("reviewId") REFERENCES promotion_review(id) ON DELETE SET NULL |
@@ -50,8 +51,8 @@ erDiagram
   uuid createdById FK
   json details
   varchar_16_ direction
-  varchar_36_ id
-  varchar_36_ reviewId FK
+  uuid id
+  uuid reviewId FK
   varchar_16_ type
 }
 "public.promotion_config" {
@@ -83,12 +84,11 @@ erDiagram
 "public.promotion_review" {
   timestamp_3__with_time_zone approvedAt
   uuid approvedById FK
-  timestamp_3__with_time_zone closedAt
   varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
-  varchar_36_ id
-  timestamp_3__with_time_zone mergedAt
+  uuid id
+  timestamp_3__with_time_zone lastStateChangeAt
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type

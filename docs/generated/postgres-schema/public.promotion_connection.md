@@ -72,12 +72,11 @@ erDiagram
 "public.promotion_review" {
   timestamp_3__with_time_zone approvedAt
   uuid approvedById FK
-  timestamp_3__with_time_zone closedAt
   varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
-  varchar_36_ id
-  timestamp_3__with_time_zone mergedAt
+  uuid id
+  timestamp_3__with_time_zone lastStateChangeAt
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type

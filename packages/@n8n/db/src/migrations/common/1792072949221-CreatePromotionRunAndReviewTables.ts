@@ -7,15 +7,17 @@ const connectionTable = 'promotion_connection';
 const userTable = 'user';
 
 // Inlined on purpose: a migration must not import live enums from other packages.
-const DIRECTIONS = ['promote', 'apply'];
-const REVIEW_STATES = ['open', 'changes_requested', 'merged', 'closed'];
+const directions = ['promote', 'apply'];
+const reviewTypes = ['gitlab'];
+const reviewStates = ['open', 'changes_requested', 'merged', 'closed'];
+const runTypes = ['git'];
 
 /**
  * A promotion run is one successful Promote or Apply. A promotion review is the
  * gate on that push. The run points at the review, so one review can collect
  * several runs. A direct push has a run and no review.
  */
-export class CreatePromotionReviewTable1792072949221 implements ReversibleMigration {
+export class CreatePromotionRunAndReviewTables1792072949221 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { createTable, column, createIndex },
 		tablePrefix,
@@ -24,7 +26,7 @@ export class CreatePromotionReviewTable1792072949221 implements ReversibleMigrat
 		// The run references the review, so the review table comes first.
 		await createTable(reviewTable)
 			.withColumns(
-				column('id').varchar(36).primary,
+				column('id').uuid.primary,
 				column('connectionId')
 					.varchar(36)
 					.comment(
@@ -32,9 +34,8 @@ export class CreatePromotionReviewTable1792072949221 implements ReversibleMigrat
 					),
 				column('type')
 					.varchar(16)
-					.notNull.comment(
-						'Where the review lives. "gitlab" now. The application checks the value. The database does not.',
-					),
+					.notNull.withEnumCheck(reviewTypes)
+					.comment('PromotionReviewType enum: "gitlab".'),
 				column('remoteReviewId')
 					.varchar(255)
 					.comment(
@@ -43,12 +44,15 @@ export class CreatePromotionReviewTable1792072949221 implements ReversibleMigrat
 				column('state')
 					.varchar(32)
 					.notNull.default("'open'")
-					.withEnumCheck(REVIEW_STATES)
+					.withEnumCheck(reviewStates)
 					.comment(
 						'PromotionReviewState enum: "open", "changes_requested", "merged", "closed". "merged" and "closed" are terminal.',
 					),
-				column('mergedAt').timestampTimezone().comment('Mirrored from the host.'),
-				column('closedAt').timestampTimezone().comment('Mirrored from the host.'),
+				column('lastStateChangeAt')
+					.timestampTimezone()
+					.comment(
+						'Time of the latest state change. Covers every transition, including changes_requested and a reopened review. NULL until the first change.',
+					),
 				column('createdById').uuid.comment(
 					'The n8n user whose Promote opened this review. NULL after that user is deleted.',
 				),
@@ -91,30 +95,27 @@ export class CreatePromotionReviewTable1792072949221 implements ReversibleMigrat
 
 		await createTable(runTable)
 			.withColumns(
-				column('id').varchar(36).primary,
+				column('id').uuid.primary,
 				column('configId')
 					.varchar(36)
 					.comment('The config this run used. NULL after the config is deleted.'),
 				column('direction')
 					.varchar(16)
-					.notNull.withEnumCheck(DIRECTIONS)
+					.notNull.withEnumCheck(directions)
 					.comment(
 						'PromotionDirection enum: "promote" pushes to the remote, "apply" imports from it. Copied from the config when the run is written.',
 					),
 				column('type')
 					.varchar(16)
-					.notNull.comment(
-						'How the package moved. "git" covers GitHub, GitLab and plain Git. The application checks the value. The database does not.',
-					),
+					.notNull.withEnumCheck(runTypes)
+					.comment('PromotionRunType enum: "git". Git covers GitHub, GitLab and plain Git.'),
 				column('createdById').uuid.comment('The user who ran Promote or Apply.'),
 				column('details').json.comment(
 					'Payload for type. A git run stores schemaVersion, branchName and commitSha. NULL when the type has no details.',
 				),
-				column('reviewId')
-					.varchar(36)
-					.comment(
-						'The review this run belongs to. NULL when the push has no review. Not unique: an amend adds another run.',
-					),
+				column('reviewId').uuid.comment(
+					'The review this run belongs to. NULL when the push has no review. Not unique: an amend adds another run.',
+				),
 			)
 			.withCreatedAt.withForeignKey('configId', {
 				tableName: configTable,

@@ -1,5 +1,5 @@
 import type { PromotionReviewState, PromotionReviewType } from '@n8n/api-types';
-import { DateTimeColumn, generateNanoId, User, WithCreatedAt } from '@n8n/db';
+import { DateTimeColumn, User, WithCreatedAt } from '@n8n/db';
 import {
 	BeforeInsert,
 	Column,
@@ -11,6 +11,7 @@ import {
 	PrimaryColumn,
 	type Relation,
 } from '@n8n/typeorm';
+import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionConnection } from './promotion-connection.entity';
 import { PromotionRun } from './promotion-run.entity';
@@ -27,12 +28,12 @@ import { PromotionRun } from './promotion-run.entity';
 	where: '"remoteReviewId" IS NOT NULL',
 })
 export class PromotionReview extends WithCreatedAt {
-	@PrimaryColumn({ type: 'varchar', length: 36 })
+	@PrimaryColumn({ type: 'uuid' })
 	id: string;
 
 	@BeforeInsert()
 	generateId() {
-		if (!this.id) this.id = generateNanoId();
+		if (!this.id) this.id = uuidv7();
 	}
 
 	@Index()
@@ -53,11 +54,9 @@ export class PromotionReview extends WithCreatedAt {
 	@Column({ type: 'varchar', length: 32, default: 'open' })
 	state: PromotionReviewState;
 
+	/** Time of the latest state change. NULL until the first change. */
 	@DateTimeColumn({ nullable: true })
-	mergedAt: Date | null;
-
-	@DateTimeColumn({ nullable: true })
-	closedAt: Date | null;
+	lastStateChangeAt: Date | null;
 
 	/** The n8n user whose Promote opened this review. NULL after that user is deleted. */
 	@Column({ type: 'uuid', nullable: true })

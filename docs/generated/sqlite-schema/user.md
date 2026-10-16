@@ -395,12 +395,11 @@ erDiagram
 "promotion_review" {
   datetime_3_ approvedAt
   varchar approvedById FK
-  datetime_3_ closedAt
   varchar_36_ connectionId FK
   datetime_3_ createdAt
   varchar createdById FK
-  varchar_36_ id PK
-  datetime_3_ mergedAt
+  varchar id PK
+  datetime_3_ lastStateChangeAt
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type
@@ -411,8 +410,8 @@ erDiagram
   varchar createdById FK
   TEXT details
   varchar_16_ direction
-  varchar_36_ id PK
-  varchar_36_ reviewId FK
+  varchar id PK
+  varchar reviewId FK
   varchar_16_ type
 }
 "self_healing_result" {

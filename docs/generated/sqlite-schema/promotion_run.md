@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "promotion_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "configId" varchar(36), "direction" varchar(16) NOT NULL, "type" varchar(16) NOT NULL, "createdById" varchar, "details" text, "reviewId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_run_direction" CHECK ("direction" IN ('promote', 'apply')), CONSTRAINT "FK_promotion_run_configId" FOREIGN KEY ("configId") REFERENCES "promotion_config" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_run_createdById" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_run_reviewId" FOREIGN KEY ("reviewId") REFERENCES "promotion_review" ("id") ON DELETE SET NULL)
+CREATE TABLE "promotion_run" ("id" varchar PRIMARY KEY NOT NULL, "configId" varchar(36), "direction" varchar(16) NOT NULL, "type" varchar(16) NOT NULL, "createdById" varchar, "details" text, "reviewId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_run_direction" CHECK ("direction" IN ('promote', 'apply')), CONSTRAINT "CHK_promotion_run_type" CHECK ("type" IN ('git')), CONSTRAINT "FK_promotion_run_configId" FOREIGN KEY ("configId") REFERENCES "promotion_config" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_run_createdById" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_promotion_run_reviewId" FOREIGN KEY ("reviewId") REFERENCES "promotion_review" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -20,8 +20,8 @@ CREATE TABLE "promotion_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "configId" 
 | createdById | varchar |  | true |  | [user](user.md) |  |
 | details | TEXT |  | true |  |  |  |
 | direction | varchar(16) |  | false |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
-| reviewId | varchar(36) |  | true |  | [promotion_review](promotion_review.md) |  |
+| id | varchar |  | false |  |  |  |
+| reviewId | varchar |  | true |  | [promotion_review](promotion_review.md) |  |
 | type | varchar(16) |  | false |  |  |  |
 
 ## Constraints
@@ -29,6 +29,7 @@ CREATE TABLE "promotion_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "configId" 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("direction" IN ('promote', 'apply')) |
+| - | CHECK | CHECK ("type" IN ('git')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (reviewId) REFERENCES promotion_review (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (configId) REFERENCES promotion_config (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
@@ -58,8 +59,8 @@ erDiagram
   varchar createdById FK
   TEXT details
   varchar_16_ direction
-  varchar_36_ id PK
-  varchar_36_ reviewId FK
+  varchar id PK
+  varchar reviewId FK
   varchar_16_ type
 }
 "promotion_config" {
@@ -91,12 +92,11 @@ erDiagram
 "promotion_review" {
   datetime_3_ approvedAt
   varchar approvedById FK
-  datetime_3_ closedAt
   varchar_36_ connectionId FK
   datetime_3_ createdAt
   varchar createdById FK
-  varchar_36_ id PK
-  datetime_3_ mergedAt
+  varchar id PK
+  datetime_3_ lastStateChangeAt
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type

@@ -6,21 +6,21 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | approvedAt | timestamp(3) with time zone |  | true |  |  | When the n8n user approved the review. |
 | approvedById | uuid |  | true |  | [public.user](public.user.md) | The one n8n user who approved the review in n8n. NULL until then. n8n does not copy an approver from the host. |
-| closedAt | timestamp(3) with time zone |  | true |  |  | Mirrored from the host. |
 | connectionId | varchar(36) |  | true |  | [public.promotion_connection](public.promotion_connection.md) | The connection that remoteReviewId resolves through. NULL after the connection is deleted. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | The n8n user whose Promote opened this review. NULL after that user is deleted. |
-| id | varchar(36) |  | false | [public.promotion_run](public.promotion_run.md) |  |  |
-| mergedAt | timestamp(3) with time zone |  | true |  |  | Mirrored from the host. |
+| id | uuid |  | false | [public.promotion_run](public.promotion_run.md) |  |  |
+| lastStateChangeAt | timestamp(3) with time zone |  | true |  |  | Time of the latest state change. Covers every transition, including changes_requested and a reopened review. NULL until the first change. |
 | remoteReviewId | varchar(255) |  | true |  |  | Host reference for type. GitLab stores "\<projectId\>!\<iid\>". NULL when the review lives in n8n. |
 | state | varchar(32) | 'open'::character varying | false |  |  | PromotionReviewState enum: "open", "changes_requested", "merged", "closed". "merged" and "closed" are terminal. |
-| type | varchar(16) |  | false |  |  | Where the review lives. "gitlab" now. The application checks the value. The database does not. |
+| type | varchar(16) |  | false |  |  | PromotionReviewType enum: "gitlab". |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_promotion_review_state | CHECK | CHECK (((state)::text = ANY ((ARRAY['open'::character varying, 'changes_requested'::character varying, 'merged'::character varying, 'closed'::character varying])::text[]))) |
+| CHK_promotion_review_type | CHECK | CHECK (((type)::text = 'gitlab'::text)) |
 | FK_promotion_review_approvedById | FOREIGN KEY | FOREIGN KEY ("approvedById") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_promotion_review_connectionId | FOREIGN KEY | FOREIGN KEY ("connectionId") REFERENCES promotion_connection(id) ON DELETE SET NULL |
 | FK_promotion_review_createdById | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
@@ -52,12 +52,11 @@ erDiagram
 "public.promotion_review" {
   timestamp_3__with_time_zone approvedAt
   uuid approvedById FK
-  timestamp_3__with_time_zone closedAt
   varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
-  varchar_36_ id
-  timestamp_3__with_time_zone mergedAt
+  uuid id
+  timestamp_3__with_time_zone lastStateChangeAt
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type
@@ -94,8 +93,8 @@ erDiagram
   uuid createdById FK
   json details
   varchar_16_ direction
-  varchar_36_ id
-  varchar_36_ reviewId FK
+  uuid id
+  uuid reviewId FK
   varchar_16_ type
 }
 ```

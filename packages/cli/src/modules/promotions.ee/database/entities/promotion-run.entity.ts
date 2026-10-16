@@ -1,5 +1,5 @@
 import type { PromotionDirection, PromotionRunDetails, PromotionRunType } from '@n8n/api-types';
-import { generateNanoId, JsonColumn, User, WithCreatedAt } from '@n8n/db';
+import { JsonColumn, User, WithCreatedAt } from '@n8n/db';
 import {
 	BeforeInsert,
 	Column,
@@ -10,6 +10,7 @@ import {
 	PrimaryColumn,
 	type Relation,
 } from '@n8n/typeorm';
+import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionConfig } from './promotion-config.entity';
 import { PromotionReview } from './promotion-review.entity';
@@ -21,12 +22,12 @@ import { PromotionReview } from './promotion-review.entity';
  */
 @Entity('promotion_run')
 export class PromotionRun extends WithCreatedAt {
-	@PrimaryColumn({ type: 'varchar', length: 36 })
+	@PrimaryColumn({ type: 'uuid' })
 	id: string;
 
 	@BeforeInsert()
 	generateId() {
-		if (!this.id) this.id = generateNanoId();
+		if (!this.id) this.id = uuidv7();
 	}
 
 	@Index()
@@ -50,7 +51,7 @@ export class PromotionRun extends WithCreatedAt {
 
 	/** Not unique. An amend adds another run for the same review. */
 	@Index()
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	reviewId: string | null;
 
 	@ManyToOne(() => PromotionConfig, { onDelete: 'SET NULL', nullable: true })

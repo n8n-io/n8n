@@ -15,8 +15,7 @@ export type NewPromotionReview = Pick<
 const OPEN_STATES: PromotionReviewState[] = ['open', 'changes_requested'];
 const TERMINAL_STATES: PromotionReviewState[] = ['merged', 'closed'];
 
-// Runs stay off this query. findAndCount paginates joined rows, so one review
-// with several runs would fill several inbox slots.
+// Do not load runs for inbox rows. The summary does not use them.
 const LIST_RELATIONS = {
 	connection: true,
 	createdBy: true,

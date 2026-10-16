@@ -121,7 +121,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.promotion_connection](public.promotion_connection.md) | 7 |  | BASE TABLE |
 | [public.promotion_connection_project](public.promotion_connection_project.md) | 4 |  | BASE TABLE |
 | [public.promotion_provider](public.promotion_provider.md) | 8 |  | BASE TABLE |
-| [public.promotion_review](public.promotion_review.md) | 11 |  | BASE TABLE |
+| [public.promotion_review](public.promotion_review.md) | 10 |  | BASE TABLE |
 | [public.promotion_run](public.promotion_run.md) | 8 |  | BASE TABLE |
 | [public.role](public.role.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
@@ -1567,12 +1567,11 @@ erDiagram
 "public.promotion_review" {
   timestamp_3__with_time_zone approvedAt
   uuid approvedById FK
-  timestamp_3__with_time_zone closedAt
   varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
-  varchar_36_ id
-  timestamp_3__with_time_zone mergedAt
+  uuid id
+  timestamp_3__with_time_zone lastStateChangeAt
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type
@@ -1583,8 +1582,8 @@ erDiagram
   uuid createdById FK
   json details
   varchar_16_ direction
-  varchar_36_ id
-  varchar_36_ reviewId FK
+  uuid id
+  uuid reviewId FK
   varchar_16_ type
 }
 "public.role" {

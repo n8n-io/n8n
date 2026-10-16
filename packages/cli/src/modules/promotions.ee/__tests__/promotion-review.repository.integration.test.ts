@@ -2,6 +2,7 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { v7 as uuidv7 } from 'uuid';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 
@@ -75,7 +76,7 @@ let reviewCount = 0;
 async function insertReview(over: { id?: string; remoteReviewId?: string } = {}) {
 	reviewCount += 1;
 	const review = await reviewRepository.insertReview({
-		id: over.id ?? `review-${reviewCount}`,
+		id: over.id ?? uuidv7(),
 		connectionId,
 		type: 'gitlab',
 		remoteReviewId: over.remoteReviewId ?? `7!${reviewCount}`,
@@ -98,17 +99,17 @@ async function insertReview(over: { id?: string; remoteReviewId?: string } = {})
 
 describe('PromotionReviewRepository', () => {
 	it('stores a new review as open with the id the caller chose', async () => {
-		const { review, run } = await insertReview({ id: 'chosen-id' });
+		const chosenReviewId = '018f6b2e-7c3a-7000-8000-0000000000aa';
+		const { review, run } = await insertReview({ id: chosenReviewId });
 
-		const found = await reviewRepository.findByIdWithRelations('chosen-id');
+		const found = await reviewRepository.findByIdWithRelations(chosenReviewId);
 		expect(found).toMatchObject({
-			id: 'chosen-id',
+			id: chosenReviewId,
 			state: 'open',
 			type: 'gitlab',
 			connectionId,
 			remoteReviewId: review.remoteReviewId,
-			mergedAt: null,
-			closedAt: null,
+			lastStateChangeAt: null,
 			approvedById: null,
 			approvedAt: null,
 			createdById: owner.id,
@@ -129,7 +130,7 @@ describe('PromotionReviewRepository', () => {
 
 	it('attaches a recorded run to its review', async () => {
 		const review = await reviewRepository.insertReview({
-			id: 'review-later',
+			id: uuidv7(),
 			connectionId,
 			type: 'gitlab',
 			remoteReviewId: '9!1',
@@ -200,11 +201,11 @@ describe('PromotionReviewRepository', () => {
 		}
 		await reviewRepository.update(
 			{ id: merged.id },
-			{ state: 'merged', mergedAt: new Date(), closedAt: null },
+			{ state: 'merged', lastStateChangeAt: new Date() },
 		);
 		await reviewRepository.update(
 			{ id: closed.id },
-			{ state: 'closed', mergedAt: null, closedAt: null },
+			{ state: 'closed', lastStateChangeAt: new Date() },
 		);
 
 		const all = await reviewRepository.listReviews({ offset: 0, limit: 10 });
@@ -225,17 +226,19 @@ describe('PromotionReviewRepository', () => {
 	});
 
 	it('pages stably when reviews share a creation time', async () => {
-		const { review: olderId } = await insertReview({ id: 'review-a' });
-		const { review: newerId } = await insertReview({ id: 'review-b' });
+		const olderReviewId = '018f6b2e-7c3a-7000-8000-000000000001';
+		const newerReviewId = '018f6b2e-7c3a-7000-8000-000000000002';
+		const { review: older } = await insertReview({ id: olderReviewId });
+		const { review: newer } = await insertReview({ id: newerReviewId });
 		const createdAt = new Date('2026-01-01T00:00:00.000Z');
-		await reviewRepository.update({ id: olderId.id }, { createdAt });
-		await reviewRepository.update({ id: newerId.id }, { createdAt });
+		await reviewRepository.update({ id: older.id }, { createdAt });
+		await reviewRepository.update({ id: newer.id }, { createdAt });
 
 		const first = await reviewRepository.listReviews({ offset: 0, limit: 1 });
 		const second = await reviewRepository.listReviews({ offset: 1, limit: 1 });
 
-		expect(first.data.map((r) => r.id)).toEqual(['review-b']);
-		expect(second.data.map((r) => r.id)).toEqual(['review-a']);
+		expect(first.data.map((r) => r.id)).toEqual([newerReviewId]);
+		expect(second.data.map((r) => r.id)).toEqual([olderReviewId]);
 	});
 
 	it('rejects a second review with the same remote id on one connection', async () => {
@@ -254,7 +257,7 @@ describe('PromotionReviewRepository', () => {
 		});
 
 		const review = await reviewRepository.insertReview({
-			id: 'other-review',
+			id: uuidv7(),
 			connectionId: other.id,
 			type: 'gitlab',
 			remoteReviewId: '7!1',
@@ -266,14 +269,14 @@ describe('PromotionReviewRepository', () => {
 
 	it('allows several reviews without a remote id', async () => {
 		await reviewRepository.insertReview({
-			id: 'local-a',
+			id: uuidv7(),
 			connectionId,
 			type: 'gitlab',
 			remoteReviewId: null,
 			createdById: owner.id,
 		});
 		await reviewRepository.insertReview({
-			id: 'local-b',
+			id: uuidv7(),
 			connectionId,
 			type: 'gitlab',
 			remoteReviewId: null,
