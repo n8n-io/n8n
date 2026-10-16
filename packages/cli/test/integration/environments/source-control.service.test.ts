@@ -12,6 +12,7 @@ import {
 	type TagEntity,
 	type User,
 	WorkflowEntity,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
@@ -716,6 +717,52 @@ describe('SourceControlService', () => {
 					expect(new Set(modifiedWorkflows.map((wf) => wf.id))).toEqual(
 						new Set([movedOutOfScopeWorkflow.id, movedIntoScopeWorkflow.id]),
 					);
+				});
+
+				it('should list a workflow as modified when only Available in MCP changes', async () => {
+					// LIGO-836: A settings-only change must appear in the push preview.
+					const workflow = await createWorkflow({ settings: { availableInMCP: false } }, projectA);
+					const workflowRepository = Container.get(WorkflowRepository);
+					const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
+					gitFiles[fileName] = {
+						...toExportableWorkflow(workflow, projectA),
+						settings: { ...workflow.settings },
+					};
+
+					try {
+						const options = {
+							direction: 'push',
+							preferLocalVersion: true,
+							verbose: false,
+						} as const;
+						const initialStatus = await statusService.getStatus(globalAdmin, options);
+						expect(initialStatus.filter((file) => file.id === workflow.id)).toEqual([]);
+
+						await workflowRepository.update(workflow.id, {
+							settings: { ...workflow.settings, availableInMCP: true },
+						});
+						const updatedWorkflow = await workflowRepository.findOneByOrFail({ id: workflow.id });
+						expect(updatedWorkflow).toMatchObject({
+							versionId: workflow.versionId,
+							nodes: workflow.nodes,
+							connections: workflow.connections,
+							settings: { ...workflow.settings, availableInMCP: true },
+						});
+
+						const status = await statusService.getStatus(globalAdmin, options);
+
+						expect(status.filter((file) => file.id === workflow.id)).toEqual([
+							expect.objectContaining({
+								id: workflow.id,
+								type: 'workflow',
+								status: 'modified',
+								location: 'local',
+							}),
+						]);
+					} finally {
+						delete gitFiles[fileName];
+						await workflowRepository.delete(workflow.id);
+					}
 				});
 
 				it('should see all credentials', async () => {
