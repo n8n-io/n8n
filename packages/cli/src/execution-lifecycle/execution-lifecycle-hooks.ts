@@ -1,5 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import {
+	EventService,
+	type RedactableExecution,
+	ExecutionRedactionServiceProxy,
+} from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
