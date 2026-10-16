@@ -108,7 +108,7 @@ async function onDropdownToggle(open: boolean) {
 	>
 		<template #trigger>
 			<N8nTooltip :content="tooltipText" placement="top" as-child>
-				<N8nBadge variant="outline" leading-icon="link" clickable>
+				<N8nBadge variant="outline" leading-icon="graph" clickable>
 					{{ effectiveCount }}
 				</N8nBadge>
 			</N8nTooltip>

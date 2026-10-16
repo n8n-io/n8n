@@ -230,7 +230,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		nameAndMetadata.push({
 			id: WORKFLOW_MENU_ACTIONS.DEPENDENCIES,
 			label: locale.baseText('menuActions.dependencies'),
-			icon: { type: 'icon', value: 'link' },
+			icon: { type: 'icon', value: 'graph' },
 			children: dependencyMenuChildren.value,
 		});
 	}
