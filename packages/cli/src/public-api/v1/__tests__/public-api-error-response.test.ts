@@ -204,15 +204,22 @@ describe('sendPublicApiErrorResponse', () => {
 			);
 		});
 
-		it('still sends the response when the logger throws', () => {
-			logger.error.mockImplementation(() => {
-				throw new Error('logger unavailable');
-			});
+		it('still sends the response when building the log line fails', () => {
+			const error = Object.assign(new Error('plain'), { message: 42 });
 			const res = createMockRes();
-			sendPublicApiErrorResponse(res, new Error('plain'));
+			sendPublicApiErrorResponse(res, error);
 
 			expect(res._payload.statusCode).toBe(500);
 			expect(res._payload.body).toEqual({ message: 'Internal server error' });
+		});
+
+		it('logs a fixed message with the error name when building the log line fails', () => {
+			const error = Object.assign(new Error('plain'), { message: 42 });
+			sendPublicApiErrorResponse(createMockRes(), error);
+
+			expect(logger.error).toHaveBeenLastCalledWith('Failed to log Public API server error', {
+				errorName: 'TypeError',
+			});
 		});
 	});
 });

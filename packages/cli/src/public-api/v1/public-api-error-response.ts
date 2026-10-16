@@ -3,6 +3,7 @@ import { classifyRestError, RestErrorKind, serializePublicApiError } from '@n8n/
 import { isAuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 
 const MAX_LOGGED_MESSAGE_LENGTH = 1000;
@@ -18,16 +19,17 @@ export function sendPublicApiErrorResponse(res: Response, error: Error): void {
 		descriptor.kind === RestErrorKind.unexpectedError ||
 		(descriptor.kind === RestErrorKind.responseError && descriptor.status >= 500);
 
+	const logger = Container.get(Logger);
+
 	if (shouldReport) {
-		const req = res.req;
-
-		const method = req.method;
-		const route = `${req.baseUrl}${req.route?.path ?? req.path}`;
-		const userId = isAuthenticatedRequest(req) ? req.user.id : undefined;
-		const message = sanitizeErrorDetail(error.message, MAX_LOGGED_MESSAGE_LENGTH);
-
 		try {
-			const logger = Container.get(Logger);
+			const req = res.req;
+
+			const method = req.method;
+			const route = `${req.baseUrl}${req.route?.path ?? req.path}`;
+			const userId = isAuthenticatedRequest(req) ? req.user.id : undefined;
+			const message = sanitizeErrorDetail(error.message, MAX_LOGGED_MESSAGE_LENGTH);
+
 			logger.error(`Public API request failed (${method} ${route}): ${error.name}: ${message}`, {
 				method,
 				route,
@@ -35,8 +37,11 @@ export function sendPublicApiErrorResponse(res: Response, error: Error): void {
 				errorName: error.name,
 				stack: error.stack ? sanitizeErrorDetail(error.stack, Infinity) : undefined,
 			});
-		} catch {
-			// Logging must never change the response.
+		} catch (failure) {
+			// Logging must never change the response. Record that logging failed,
+			logger.error('Failed to log Public API server error', {
+				errorName: ensureError(failure).name,
+			});
 		}
 	}
 
