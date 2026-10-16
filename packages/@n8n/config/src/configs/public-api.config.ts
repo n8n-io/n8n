@@ -1,11 +1,25 @@
+import { z } from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
 import { nonnegativeIntSchema, positiveIntSchema } from '../schemas';
+
+const rateLimitModeSchema = z.enum(['enforce', 'observe']);
+type RateLimitMode = z.infer<typeof rateLimitModeSchema>;
 
 /** Requests per API key. A limit of 0 turns off that layer. */
 @Config
 export class PublicApiRateLimitConfig {
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_ENABLED')
 	enabled: boolean = false;
+
+	/**
+	 * How n8n applies the Public API rate limits. One of `enforce` or `observe`. With `enforce`, a
+	 * request over a limit gets a 429 response. With `observe`, n8n counts requests but never
+	 * blocks one, and doesn't add rate-limit headers to responses. Use `observe` to measure your
+	 * traffic before you turn on blocking.
+	 */
+	@Env('N8N_PUBLIC_API_RATE_LIMIT_MODE', rateLimitModeSchema)
+	mode: RateLimitMode = 'enforce';
 
 	/** Read requests for one API key across all endpoints. */
 	@Env('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT', nonnegativeIntSchema)
