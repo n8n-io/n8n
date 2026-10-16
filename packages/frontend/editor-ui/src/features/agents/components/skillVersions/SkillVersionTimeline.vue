@@ -131,6 +131,11 @@ function agentCount(chips: AgentChip[]): string {
 	});
 }
 
+/** For example "3 agents · 2 drafts · 1 published": the label of the agents button and the list header. */
+function agentSummary(chips: AgentChip[]): string {
+	return `${agentCount(chips)} · ${agentBreakdown(chips)}`;
+}
+
 /** For example "2 drafts · 1 published". A merged entry counts in both states. */
 function agentBreakdown(chips: AgentChip[]): string {
 	const order: AgentState[] = ['draft', 'pinned', 'published'];
@@ -265,88 +270,90 @@ function authorName(version: SkillVersionSummary): string {
 						<N8nText size="xsmall" color="text-light" :class="$style.number">
 							{{ versionNumber(entry.version) }}
 						</N8nText>
-						<N8nTooltip
-							v-if="entry.version.version !== latestVersion"
-							:content="i18n.baseText('settings.context.skills.versions.timeline.compare')"
-							placement="top"
-						>
-							<N8nIconButton
-								variant="ghost"
-								icon="arrow-left-right"
-								size="xsmall"
-								:class="$style.compare"
-								:aria-label="i18n.baseText('settings.context.skills.versions.timeline.compare')"
-								data-testid="skill-version-row-compare"
-								@click.stop="emit('compare', entry.version.version)"
-								@keydown.stop
-							/>
-						</N8nTooltip>
+						<span :class="$style.rowActions">
+							<span v-if="entry.version.version !== latestVersion">
+								<N8nTooltip
+									:content="i18n.baseText('settings.context.skills.versions.timeline.compare')"
+									placement="top"
+								>
+									<N8nIconButton
+										variant="ghost"
+										icon="arrow-left-right"
+										size="xsmall"
+										:class="$style.compare"
+										:aria-label="i18n.baseText('settings.context.skills.versions.timeline.compare')"
+										data-testid="skill-version-row-compare"
+										@click.stop="emit('compare', entry.version.version)"
+										@keydown.stop
+									/>
+								</N8nTooltip>
+							</span>
+							<span v-if="chipsByVersion.get(entry.version.version)?.length">
+								<N8nPopover
+									width="280px"
+									max-height="320px"
+									align="end"
+									:z-index="APP_Z_INDEXES.MODALS + 1"
+								>
+									<template #trigger>
+										<button
+											type="button"
+											:class="$style.agentsTrigger"
+											:aria-label="agentSummary(chipsByVersion.get(entry.version.version) ?? [])"
+											data-testid="skill-version-agents"
+											@click.stop
+											@keydown.stop
+										>
+											<N8nIcon icon="bot" size="xsmall" />
+											{{ chipsByVersion.get(entry.version.version)?.length }}
+										</button>
+									</template>
+									<template #content>
+										<N8nText
+											size="xsmall"
+											color="text-light"
+											tag="div"
+											:class="$style.agentListHeader"
+											data-testid="skill-version-agents-summary"
+										>
+											{{ agentSummary(chipsByVersion.get(entry.version.version) ?? []) }}
+										</N8nText>
+										<ul :class="$style.agentList" data-testid="skill-version-agents-list">
+											<li
+												v-for="chip in chipsByVersion.get(entry.version.version)"
+												:key="chip.key"
+												:class="$style.agentItem"
+												data-testid="skill-version-agent"
+												:data-live="chip.live ? 'true' : undefined"
+											>
+												<N8nIcon icon="bot" size="small" color="text-light" />
+												<N8nText size="small" color="text-dark" :class="$style.agentName">
+													{{ chip.name }}
+												</N8nText>
+												<N8nTooltip :content="chip.tooltip" placement="top">
+													<N8nBadge
+														:variant="chip.variant"
+														size="xsmall"
+														:class="$style.agentBadge"
+														data-testid="skill-version-agent-state"
+													>
+														<template v-if="chip.icon" #leading>
+															<N8nIcon :icon="chip.icon" size="xsmall" />
+														</template>
+														{{ chip.label }}
+													</N8nBadge>
+												</N8nTooltip>
+											</li>
+										</ul>
+									</template>
+								</N8nPopover>
+							</span>
+						</span>
 					</div>
 					<N8nText size="xsmall" color="text-light" tag="div">
 						{{ authorName(entry.version) }} ·
 						<TimeAgo :date="entry.version.createdAt" />
 					</N8nText>
-					<div
-						v-if="chipsByVersion.get(entry.version.version)?.length"
-						:class="$style.agents"
-						data-testid="skill-version-agents-summary"
-					>
-						<N8nPopover
-							width="280px"
-							max-height="320px"
-							align="start"
-							:z-index="APP_Z_INDEXES.MODALS + 1"
-						>
-							<template #trigger>
-								<button
-									type="button"
-									:class="$style.agentsTrigger"
-									:aria-label="
-										i18n.baseText('settings.context.skills.versions.timeline.agents.label')
-									"
-									data-testid="skill-version-agents"
-									@click.stop
-									@keydown.stop
-								>
-									<N8nIcon icon="bot" size="xsmall" />
-									{{ agentCount(chipsByVersion.get(entry.version.version) ?? []) }}
-									<N8nIcon icon="chevron-down" size="xsmall" />
-								</button>
-							</template>
-							<template #content>
-								<ul :class="$style.agentList" data-testid="skill-version-agents-list">
-									<li
-										v-for="chip in chipsByVersion.get(entry.version.version)"
-										:key="chip.key"
-										:class="$style.agentItem"
-										data-testid="skill-version-agent"
-										:data-live="chip.live ? 'true' : undefined"
-									>
-										<N8nIcon icon="bot" size="small" color="text-light" />
-										<N8nText size="small" color="text-dark" :class="$style.agentName">
-											{{ chip.name }}
-										</N8nText>
-										<N8nTooltip :content="chip.tooltip" placement="top">
-											<N8nBadge
-												:variant="chip.variant"
-												size="xsmall"
-												:class="$style.agentBadge"
-												data-testid="skill-version-agent-state"
-											>
-												<template v-if="chip.icon" #leading>
-													<N8nIcon :icon="chip.icon" size="xsmall" />
-												</template>
-												{{ chip.label }}
-											</N8nBadge>
-										</N8nTooltip>
-									</li>
-								</ul>
-							</template>
-						</N8nPopover>
-						<N8nText size="xsmall" color="text-light" :class="$style.agentBreakdown">
-							{{ agentBreakdown(chipsByVersion.get(entry.version.version) ?? []) }}
-						</N8nText>
-					</div>
 				</div>
 			</template>
 		</div>
@@ -437,6 +444,8 @@ function authorName(version: SkillVersionSummary): string {
 .rowTitle {
 	display: flex;
 	align-items: baseline;
+	/* Full row width, so the compare button sits at the right edge. */
+	align-self: stretch;
 	gap: var(--spacing--3xs);
 	min-width: 0;
 	width: 100%;
@@ -522,10 +531,21 @@ function authorName(version: SkillVersionSummary): string {
 	flex-shrink: 0;
 }
 
-.compare {
+/* Agents and compare sit at the right edge. Each tooltip wraps its button in an element. */
+.rowActions {
+	display: inline-flex;
 	flex-shrink: 0;
 	align-self: center;
+	align-items: center;
+	gap: var(--spacing--5xs);
 	margin-left: auto;
+}
+
+.agentListHeader {
+	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--3xs);
+}
+
+.compare {
 	opacity: 0;
 }
 

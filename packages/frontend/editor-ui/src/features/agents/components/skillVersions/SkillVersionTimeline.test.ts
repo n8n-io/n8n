@@ -48,8 +48,9 @@ function rowVersions(rows: HTMLElement[]) {
 
 const normalize = (text: string | null | undefined) => text?.replace(/\s+/g, ' ').trim();
 
+/** The agents button shows only the count; its label carries the summary. */
 function summaryOf(row: HTMLElement | undefined) {
-	return normalize(within(row!).getByTestId('skill-version-agents-summary').textContent);
+	return within(row!).getByTestId('skill-version-agents').getAttribute('aria-label');
 }
 
 /** Opens the agents popover of a row and reads its entries. */
@@ -110,9 +111,9 @@ describe('SkillVersionTimeline', () => {
 		});
 		const rows = getAllByTestId('skill-version-row');
 
-		expect(summaryOf(rows[0])).toBe('1 agent 1 draft');
-		expect(summaryOf(rows[1])).toBe('1 agent 1 published');
-		expect(summaryOf(rows[2])).toBe('1 agent 1 pinned');
+		expect(summaryOf(rows[0])).toBe('1 agent · 1 draft');
+		expect(summaryOf(rows[1])).toBe('1 agent · 1 published');
+		expect(summaryOf(rows[2])).toBe('1 agent · 1 pinned');
 		expect(within(rows[3]).queryByTestId('skill-version-agents')).not.toBeInTheDocument();
 		// The agents are in the popover only.
 		expect(screen.queryAllByTestId('skill-version-agent')).toHaveLength(0);
@@ -140,7 +141,7 @@ describe('SkillVersionTimeline', () => {
 
 		// One merges its draft and published entries, so it counts once.
 		expect(summaryOf(getAllByTestId('skill-version-row')[0])).toBe(
-			'4 agents 2 drafts · 1 pinned · 2 published',
+			'4 agents · 2 drafts · 1 pinned · 2 published',
 		);
 	});
 
@@ -216,7 +217,7 @@ describe('SkillVersionTimeline', () => {
 				hiddenAgents: 0,
 			});
 
-			expect(summaryOf(rowOf(6))).toBe('1 agent 1 draft · 1 published');
+			expect(summaryOf(rowOf(6))).toBe('1 agent · 1 draft · 1 published');
 			expect(await openAgents(rowOf(6))).toEqual([
 				{ text: 'Support bot Draft · Published', live: 'true' },
 			]);
