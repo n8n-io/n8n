@@ -12,6 +12,7 @@ import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
+import { NamingService } from '@/services/naming.service';
 import { BadRequestError } from '@n8n/errors';
 
 import { stringProperty } from '../../integration-helpers';
@@ -88,6 +89,7 @@ export class TeamsManagedSetupService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly oauthService: OauthService,
+		private readonly namingService: NamingService,
 	) {}
 
 	/**
@@ -184,7 +186,7 @@ export class TeamsManagedSetupService {
 		this.assertSetupAvailable();
 		const credential = await this.credentialsService.createUnmanagedCredential(
 			{
-				name: DEFAULT_MANAGER_CREDENTIAL_NAME,
+				name: await this.namingService.getUniqueCredentialName(DEFAULT_MANAGER_CREDENTIAL_NAME),
 				type: TEAMS_MANAGER_CREDENTIAL_TYPE,
 				data: {},
 				projectId: options.projectId,
