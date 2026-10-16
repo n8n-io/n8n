@@ -50,7 +50,7 @@ properties:
                 - unchanged
                 - blocked
                 - failed
-              description: '`blocked` means the imported version could not be published and no version is active (for example because the workflow uses an empty or partially seeded credential, or uses a node type this instance does not have). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
+              description: '`blocked` means the imported version could not be published and no version is active (for example because the workflow uses an empty or incomplete credential, or uses a node type this instance does not have). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
             error:
               type: string
               description: Present when `state` is `failed`. Explains why publish or unpublish could not be applied.
@@ -58,14 +58,16 @@ properties:
               type: string
               enum:
                 - stub-credential
+                - incomplete-credential
                 - missing-node-type
               description: 'Present when `state` is `blocked`: the imported version could not be published and no version is active.'
             skippedPublishReason:
               type: string
               enum:
                 - stub-credential
+                - incomplete-credential
                 - missing-node-type
-              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with incomplete credentials).'
+              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with empty or incomplete credentials).'
           required:
             - state
           description: Outcome of applying the selected publishing policy to this workflow.
@@ -205,7 +207,7 @@ properties:
         type: object
         additionalProperties:
           type: string
-        description: Credential id from `requirements.credentials` in the package manifest → resolved target credential id on the target instance. Covers both a matched existing credential and a credential created as a stub under `credentialMissingMode=create-stub`.
+        description: Credential id from `requirements.credentials` in the package manifest → resolved target credential id on the target instance. Covers both a matched existing credential and a credential that the import created under `credentialMissingMode=create-stub` or `create-with-values`.
     required:
       - workflows
       - credentials
@@ -227,12 +229,18 @@ properties:
         type: array
         items:
           type: string
-        description: Source credential ids for which credentials were created with bundled expression values in the target project. Partial or unverified bundled data still blocks workflow publishing.
+        description: Source credential ids for which credentials were created in the target project with all their source data from the bundled expression values.
+      incomplete:
+        type: array
+        items:
+          type: string
+        description: Source credential ids for which credentials were created in the target project with bundled expression values, but the package does not confirm that it carries all source data. These credentials need input. The import does not publish the imported version of workflows that use them (`incomplete-credential`).
     required:
       - matched
       - stubbed
       - seeded
-    description: Source credential ids grouped by whether they matched an existing credential or were created as empty stubs or seeded credentials. Full source→target id mapping is in `bindings.credentials`.
+      - incomplete
+    description: Source credential ids grouped by whether they matched an existing credential or were created as empty stubs, seeded credentials, or incomplete credentials. Full source→target id mapping is in `bindings.credentials`.
   dataTables:
     type: object
     properties:

@@ -17,7 +17,7 @@ const settingsSidebarItems = ref<Array<{ id: string; available: boolean; order?:
 const activeModules = ref<string[]>([]);
 const promotionsFlag = ref('false');
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
-const contextPreferencesEnabled = vi.hoisted(() => ({ value: true }));
+const contextEnabled = vi.hoisted(() => ({ value: true }));
 const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
@@ -25,7 +25,7 @@ vi.mock('./useUserHelpers', () => ({
 	useUserHelpers: vi.fn(() => ({ canUserAccessRouteByName })),
 }));
 vi.mock('@/features/settings/context/context.utils', () => ({
-	isContextPreferencesEnabled: () => contextPreferencesEnabled.value,
+	isContextEnabled: () => contextEnabled.value,
 }));
 vi.mock('./useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({ balance: computed(() => balance.value) })),
@@ -83,7 +83,7 @@ describe('useSettingsItems', () => {
 		activeModules.value = [];
 		promotionsFlag.value = 'false';
 		canUserAccessRouteByName.mockReturnValue(true);
-		contextPreferencesEnabled.value = true;
+		contextEnabled.value = true;
 	});
 
 	describe('sidebar order', () => {
@@ -186,7 +186,7 @@ describe('useSettingsItems', () => {
 		});
 
 		it('is hidden when the flag is off, because the route guard does not run here', () => {
-			contextPreferencesEnabled.value = false;
+			contextEnabled.value = false;
 
 			expect(idsOf()).not.toContain('settings-context');
 		});

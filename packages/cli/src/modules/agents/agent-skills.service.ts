@@ -27,7 +27,8 @@ import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { findIntroducedNameClashes, findNameClashGroups } from './skills/skill-names';
-import { SkillService } from './skills/skill.service';
+import type { SkillTarget } from './repositories/skill.repository';
+import { SkillService, withTrimmedName } from './skills/skill.service';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
@@ -134,10 +135,13 @@ export class AgentSkillsService {
 		);
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
-		// With the hub off, skills keep `allowedTools` as on master. Hub skills ignore it.
+		// With the hub off, skills keep `allowedTools` as on master. Hub skills ignore it, and
+		// get the trimmed name the hub stores, so the answer and its hash match the saved skill.
 		const bodies = skills.map((skill) => {
 			const validated = this.validateSkill(skill);
-			return this.agentSkillRefs.usesSkillsHub ? toStoredSkill(validated) : validated;
+			return this.agentSkillRefs.usesSkillsHub
+				? withTrimmedName(toStoredSkill(validated))
+				: validated;
 		});
 		if (this.agentSkillRefs.usesSkillsHub) {
 			await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
@@ -239,14 +243,24 @@ export class AgentSkillsService {
 		this.validateSkill(updated);
 
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
+		let checkedSource: SkillTarget | undefined;
 		if (nextAvailability) {
 			await this.skillService.assertCanEdit(context.user, [skillId]);
+			checkedSource = await this.skillService.assertCanMove(context.user, skillId);
 			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
 		}
 
 		if (isEqual(existing, updated)) {
 			if (nextAvailability) {
-				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, {});
+				await this.agentSkillRefs.setAvailability(
+					entity,
+					skillId,
+					nextAvailability,
+					{},
+					{
+						checkedSource,
+					},
+				);
 			}
 			return {
 				id: skillId,
@@ -277,7 +291,11 @@ export class AgentSkillsService {
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			if (nextAvailability) {
-				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx);
+				// The move checks the name the skill has after the save, not the old one.
+				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx, {
+					nameAfterMove: updated.name,
+					checkedSource,
+				});
 			}
 			if (pinned) {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);

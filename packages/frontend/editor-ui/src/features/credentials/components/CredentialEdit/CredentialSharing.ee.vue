@@ -156,13 +156,18 @@ const confirmRemoval = computed(() => {
 const { fetchDependencies, getDependencies } = useDependencies();
 
 onMounted(() => {
-	if (isCredSharingEnabled.value && props.credentialPermissions.share) {
+	if (isCredSharingEnabled.value) {
 		void fetchDependencies([props.credentialId], 'credential');
 	}
 });
 
+/**
+ * Projects where the credential is used without a share. The rows stay visible
+ * when the viewer cannot share: where a credential is used is audit information,
+ * so the share permission only gates the Share button.
+ */
 const usedInProjects = computed(() => {
-	if (!isCredSharingEnabled.value || !props.credentialPermissions.share) return [];
+	if (!isCredSharingEnabled.value) return [];
 
 	const deps = getDependencies(props.credentialId, 'credential');
 	if (!deps) return [];
@@ -215,6 +220,12 @@ function usedInProjectName(project: Pick<ProjectSharingData, 'name'>) {
 }
 
 function usedInShareTooltip(project: ProjectSharingData) {
+	if (!props.credentialPermissions.share) {
+		return isPersonalSpaceRestricted.value
+			? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')
+			: '';
+	}
+
 	const name = usedInProjectName(project);
 
 	if (hasInstanceWideUse(project)) {
@@ -264,12 +275,6 @@ function shareUsedInProject(projectId: string) {
 	if (!project) return;
 	sharedWithProjects.value = [...sharedWithProjects.value, project];
 }
-
-const sharingSelectPlaceholder = computed(() =>
-	projectsStore.teamProjects.length
-		? i18n.baseText('projects.sharing.select.placeholder.project')
-		: i18n.baseText('projects.sharing.select.placeholder.user'),
-);
 
 const canShareGlobally = computed(() => {
 	const permissions = getResourcePermissions(usersStore.currentUser?.globalScopes);
@@ -344,7 +349,7 @@ function goToUpgrade() {
 						? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')
 						: undefined
 				"
-				:placeholder="sharingSelectPlaceholder"
+				:placeholder="i18n.baseText('projects.sharing.select.placeholder.project')"
 				:show-suffix="true"
 				:can-share-globally="canShareGlobally"
 				:is-shared-globally="isSharedGlobally"
@@ -379,13 +384,17 @@ function goToUpgrade() {
 							:disabled="!usedInShareTooltip(project)"
 							placement="top"
 						>
-							<N8nButton
-								variant="outline"
-								data-test-id="credential-used-in-project-share"
-								@click="shareUsedInProject(project.id)"
-							>
-								{{ i18n.baseText('credentialEdit.credentialSharing.share') }}
-							</N8nButton>
+							<!-- A disabled button gets no hover events, so the span carries the tooltip -->
+							<span>
+								<N8nButton
+									variant="outline"
+									:disabled="!credentialPermissions.share"
+									data-test-id="credential-used-in-project-share"
+									@click="shareUsedInProject(project.id)"
+								>
+									{{ i18n.baseText('credentialEdit.credentialSharing.share') }}
+								</N8nButton>
+							</span>
 						</N8nTooltip>
 					</div>
 				</template>

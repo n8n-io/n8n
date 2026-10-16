@@ -1,4 +1,4 @@
-import type { ResourceUser } from '@n8n/inbound-auth';
+import type { ResourcePrincipal } from '@n8n/inbound-auth';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
 import { authorizeAgainstGrant } from '@/modules/inbound-auth-core/grant-authorization';
@@ -19,7 +19,7 @@ export function triggerResourceGate(
 ): Pick<ProtectedResource, 'getGrant' | 'authorize'> {
 	return {
 		getGrant: () => grant,
-		authorize: async (user: ResourceUser) =>
+		authorize: async (user: ResourcePrincipal) =>
 			await authorizeAgainstGrant(workflowFinderService, grant, user),
 	};
 }

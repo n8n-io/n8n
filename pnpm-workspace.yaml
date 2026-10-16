@@ -103,8 +103,8 @@ catalog:
   '@langchain/anthropic': 1.5.6
   '@langchain/community': 1.1.27
   '@langchain/core': 1.2.8
-  '@langchain/langgraph': 1.0.2
-  '@langchain/langgraph-checkpoint': 1.0.0
+  '@langchain/langgraph': 1.4.21
+  '@langchain/langgraph-checkpoint': 1.1.6
   '@langchain/openai': 1.4.4
   '@lezer/common': 1.5.0
   '@lezer/generator': 1.8.0
@@ -427,7 +427,7 @@ overrides:
   express-rate-limit: 8.2.2
   underscore: 1.13.8
   flatted: 3.4.2
-  handlebars: 4.7.9
+  handlebars: 4.7.10
   path-to-regexp: 8.4.0
   path-to-regexp@<0.1.13: 0.1.13
   picomatch@2: 2.3.2
@@ -491,6 +491,9 @@ overrides:
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   'toml@<4.2.0': 4.2.0
+  # Keep the copies that langchain brings in on the catalog version.
+  '@langchain/langgraph': 'catalog:'
+  '@langchain/langgraph-checkpoint': 'catalog:'
 
 patchedDependencies:
   bull@4.16.4: patches/bull@4.16.4.patch

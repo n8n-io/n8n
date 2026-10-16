@@ -364,6 +364,7 @@ describe('AgentSkillsService', () => {
 				skills: { skill_a: skill },
 			});
 			skillRefs.availabilityOf.mockResolvedValue('project');
+			skillService.assertCanMove.mockResolvedValue({ projectId, agentId: null });
 
 			await service.updateSkill(
 				agentId,
@@ -377,7 +378,40 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(skillService.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
-			expect(skillRefs.setAvailability).toHaveBeenCalledWith(agent, 'skill_a', 'agent', {});
+			expect(skillService.assertCanMove).toHaveBeenCalledWith(user, 'skill_a');
+			expect(skillRefs.setAvailability).toHaveBeenCalledWith(
+				agent,
+				'skill_a',
+				'agent',
+				{},
+				{ checkedSource: { projectId, agentId: null } },
+			);
+			expect(skillService.save).not.toHaveBeenCalled();
+		});
+
+		it('refuses to change where the skill can be added without the delete permission', async () => {
+			givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
+			});
+			skillRefs.availabilityOf.mockResolvedValue('project');
+			skillService.assertCanMove.mockRejectedValue(
+				new ForbiddenError('You are not allowed to move this skill out of its scope.'),
+			);
+
+			await expect(
+				service.updateSkill(
+					agentId,
+					projectId,
+					'skill_a',
+					{},
+					context,
+					undefined,
+					undefined,
+					'agent',
+				),
+			).rejects.toThrow('You are not allowed to move this skill out of its scope.');
+			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
 			expect(skillService.save).not.toHaveBeenCalled();
 		});
 

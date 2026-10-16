@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, inject, ref } from 'vue';
-import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nIcon,
+	N8nSpinner,
+	N8nSwitch2,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
@@ -24,6 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
+	disconnect: [item: ToolConnectionItem];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
@@ -183,7 +192,11 @@ function handleConnect() {
 			</template>
 
 			<template v-else>
-				<ToolIcon :source="resolvedIcon" :fallback-icon="placeholderIcon" />
+				<ToolIcon
+					v-if="item.kind !== 'skill'"
+					:source="resolvedIcon"
+					:fallback-icon="placeholderIcon"
+				/>
 				<span :class="$style.text">
 					<span :class="$style.titleRow">
 						<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
@@ -230,12 +243,7 @@ function handleConnect() {
 				:anchor="rowRef"
 				:side-offset="48"
 			/>
-			<N8nTooltip
-				v-else-if="isDisabled"
-				:content="item.disabledReason ?? ''"
-				:disabled="!item.disabledReason"
-				placement="top"
-			>
+			<N8nTooltip v-else-if="isDisabled" :disabled="!item.disabledReason" placement="top">
 				<span
 					:class="$style.disabledMarker"
 					role="img"
@@ -245,7 +253,20 @@ function handleConnect() {
 				>
 					<N8nIcon icon="info" :size="14" color="text-light" />
 				</span>
+				<template #content>{{ item.disabledReason }}</template>
 			</N8nTooltip>
+			<N8nSwitch2
+				v-else-if="item.kind === 'skill'"
+				:model-value="item.attached"
+				:disabled="item.attaching"
+				:label="
+					i18n.baseText(
+						item.attached ? 'tools.connection.action.attached' : 'tools.connection.action.detached',
+					)
+				"
+				data-test-id="tools-connection-row-attach"
+				@update:model-value="$event ? emit('connect', item) : emit('disconnect', item)"
+			/>
 			<N8nButton
 				v-else-if="item.kind === 'service'"
 				variant="outline"

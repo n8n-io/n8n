@@ -172,7 +172,7 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 	 * expression, or a node type that isn't installed, can't be resolved here, so it adds nothing.
 	 */
 	private parameterCredentialTypes(node: INode): string[] {
-		const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters[name]).filter(
+		const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
 			(value): value is string => typeof value === 'string' && value !== '',
 		);
 		if (named.length === 0) return [];
