@@ -10,11 +10,12 @@
  * never passes `label` to `AgentEvalTryRow`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nSegmentControl } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSegmentControl, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import type { AgentEvalCase } from '../agentEvals.types';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { useApplyAgentEvalSuggestions } from '../composables/useApplyAgentEvalSuggestions';
 import {
@@ -110,6 +111,39 @@ const rows = computed<CheckRow[]>(() =>
 	}),
 );
 
+// Cases in the dataset that the shown run did not start with: added since, so not
+// run yet. Read only once every result is in, or a result on a later page would
+// read as not run.
+const datasetCases = ref<AgentEvalCase[]>([]);
+const notRunRows = computed<CheckRow[]>(() => {
+	if (hasMore.value) return [];
+	const ranRowIds = new Set(rows.value.map((row) => row.sourceRowId));
+	return datasetCases.value
+		.filter((item) => !ranRowIds.has(String(item.rowId)))
+		.map((item) => ({
+			id: `case-${item.rowId}`,
+			sourceRowId: String(item.rowId),
+			status: 'idle',
+			input: item.input,
+			output: null,
+			runAt: null,
+			errorMessage: null,
+			toolCalls: [],
+			whatToCheck: item.whatToCheck || null,
+			fixSuggestion: null,
+		}));
+});
+
+async function loadCases() {
+	const source = resolveCaseSource();
+	if (!source) return;
+	try {
+		datasetCases.value = await store.fetchCases(props.projectId, source);
+	} catch {
+		// The run's own rows still show; only the not-run ones are missing.
+	}
+}
+
 const passedCount = computed(() => rows.value.filter((row) => row.status === 'pass').length);
 const needsWorkCount = computed(
 	() => rows.value.filter((row) => row.status === 'work' || row.status === 'fail').length,
@@ -150,7 +184,7 @@ const statusFilterOptions = computed<StatusFilterOption[]>(() => [
 	},
 	{
 		key: 'all',
-		count: rows.value.length,
+		count: rows.value.length + notRunRows.value.length,
 		labelKey: 'agents.builder.agentEvals.checks.all',
 		alwaysShown: true,
 	},
@@ -163,7 +197,7 @@ const visibleStatusFilters = computed(() =>
 // Every check in one status: a status option and "All" would list the same rows,
 // so the control shows one option that reads as a summary ("All 9 passed").
 const uniformStatus = computed<Exclude<StatusFilter, 'all'> | null>(() => {
-	const total = rows.value.length;
+	const total = rows.value.length + notRunRows.value.length;
 	if (total === 0) return null;
 	if (passedCount.value === total) return 'pass';
 	if (needsWorkCount.value === total) return 'needs-work';
@@ -172,7 +206,7 @@ const uniformStatus = computed<Exclude<StatusFilter, 'all'> | null>(() => {
 
 const statusFilterSegments = computed(() => {
 	if (uniformStatus.value) {
-		const count = rows.value.length;
+		const count = rows.value.length + notRunRows.value.length;
 		return [
 			{
 				value: uniformStatus.value,
@@ -208,9 +242,10 @@ const STATUS_RANK: Record<AgentAvatarKind, number> = {
 	strong: 2,
 };
 
-const sortedRows = computed(() =>
-	[...rows.value].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]),
-);
+const sortedRows = computed(() => [
+	...[...rows.value].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]),
+	...notRunRows.value,
+]);
 
 const filteredRows = computed(() => {
 	if (statusFilter.value === 'pass') return sortedRows.value.filter((row) => row.status === 'pass');
@@ -355,6 +390,17 @@ function toggleAddCheck() {
 	addCheckOpen.value = !addCheckOpen.value;
 }
 
+// "Practice more" in the Assistant's thread opens the tab with Add a check open.
+watch(
+	() => store.pendingAddCheckOpen,
+	() => {
+		if (!store.consumeAddCheckOpen(props.agentId)) return;
+		addCheckMounted.value = true;
+		addCheckOpen.value = true;
+	},
+	{ immediate: true },
+);
+
 async function onDeleteCheck(row: CheckRow) {
 	const source = resolveCaseSource();
 	if (!source || !row.sourceRowId) {
@@ -372,6 +418,10 @@ async function onDeleteCheck(row: CheckRow) {
 				new Error('Failed to remove the test case'),
 				i18n.baseText('agents.builder.agentEvals.case.removeError'),
 			);
+			return;
+		}
+		if (row.status === 'idle') {
+			await loadCases();
 			return;
 		}
 		await store.deleteResult(props.projectId, props.agentId, row.id);
@@ -400,6 +450,7 @@ const load = async () => {
 		await store.openRun(props.projectId, props.agentId, props.runId);
 		if (generation !== loadGeneration) return;
 		openedGeneration = generation;
+		void loadCases();
 		if (store.isRunInFlight(props.runId)) {
 			store.startPollingRun(props.projectId, props.agentId, props.runId);
 		} else {
@@ -486,6 +537,7 @@ watch(() => props.runId, load);
 watch(inFlight, (isInFlight, wasInFlight) => {
 	if (wasInFlight && !isInFlight && openedGeneration === loadGeneration) {
 		void loadRemainingResults(loadGeneration);
+		void loadCases();
 	}
 });
 onBeforeUnmount(store.stopPollingRun);
@@ -493,9 +545,17 @@ onBeforeUnmount(store.stopPollingRun);
 
 <template>
 	<section :class="$style.panel" data-testid="agent-eval-checks-panel">
+		<div :class="$style.intro">
+			<N8nText tag="h3" bold size="large" color="text-dark">
+				{{ i18n.baseText('agents.builder.agentEvals.checks.title') }}
+			</N8nText>
+			<N8nText tag="p" size="medium" color="text-light">
+				{{ i18n.baseText('agents.builder.agentEvals.checks.description') }}
+			</N8nText>
+		</div>
 		<header :class="$style.header">
 			<N8nSegmentControl
-				v-if="rows.length > 0"
+				v-if="sortedRows.length > 0"
 				:model-value="selectedStatusSegment"
 				:options="statusFilterSegments"
 				@update:model-value="setStatusFilter"
@@ -577,7 +637,7 @@ onBeforeUnmount(store.stopPollingRun);
 			:disabled="disabled || showingPreviousRun"
 			:busy="rerunning || inFlight"
 			@close="addCheckOpen = false"
-			@added="emit('rerun')"
+			@added="loadCases"
 		/>
 
 		<!-- Gives way to the panel while it is open, and comes back when it is closed. -->
@@ -609,6 +669,18 @@ onBeforeUnmount(store.stopPollingRun);
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
+}
+
+.intro {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	max-width: 40rem;
+
+	h3,
+	p {
+		margin: 0;
+	}
 }
 
 .header {

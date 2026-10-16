@@ -826,6 +826,17 @@ describe('AgentEvalChecksPanel', () => {
 		expect(getByTestId('agent-eval-check-c2')).toHaveAttribute('data-hide-revise', 'true');
 	});
 
+	it('titles the view "Checks" and says what checks are for', () => {
+		const { getByRole, getByText } = render({ results: [result('c1', 'success')] });
+
+		expect(getByRole('heading', { name: 'Checks' })).toBeInTheDocument();
+		expect(
+			getByText(
+				'See how your agent handles requests from different angles. Run them again after any change to check it still does.',
+			),
+		).toBeInTheDocument();
+	});
+
 	describe('adding a check', () => {
 		const dataset = {
 			id: 'ds-1',
@@ -847,6 +858,8 @@ describe('AgentEvalChecksPanel', () => {
 				rerunning?: boolean;
 				inFlight?: boolean;
 				sourceRowId?: string | null;
+				/** The dataset's rows, read for the checks the run did not start with. */
+				cases?: Array<{ rowId: number; input: string; whatToCheck: string }>;
 			} = {},
 		) => {
 			const pinia = createTestingPinia({ stubActions: true });
@@ -885,6 +898,7 @@ describe('AgentEvalChecksPanel', () => {
 			vi.mocked(store.getDatasets).mockReturnValue([
 				{ ...dataset, columnMapping: options.columnMapping ?? dataset.columnMapping },
 			]);
+			vi.mocked(store.fetchCases).mockResolvedValue(options.cases ?? []);
 			return {
 				...renderComponent({
 					pinia,
@@ -985,14 +999,104 @@ describe('AgentEvalChecksPanel', () => {
 			expect(addCheckPanelMounts.count).toBe(1);
 		});
 
-		it('runs the checks again once a check was added, since a run only holds the cases it started with', async () => {
+		it('reads the dataset again once a check was added, and does not run the checks', async () => {
 			const user = userEvent.setup();
-			const { getByTestId, getByText, emitted } = renderWithDataset();
+			const { getByTestId, getByText, emitted, store } = renderWithDataset({ sourceRowId: '7' });
+			vi.mocked(store.fetchCases).mockResolvedValue([
+				{ rowId: 7, input: 'request c1', whatToCheck: 'rule c1' },
+			]);
 			await user.click(getByTestId('agent-eval-checks-add-check'));
+			await vi.waitFor(() => expect(store.fetchCases).toHaveBeenCalled());
+			vi.mocked(store.fetchCases).mockClear();
+			vi.mocked(store.fetchCases).mockResolvedValue([
+				{ rowId: 7, input: 'request c1', whatToCheck: 'rule c1' },
+				{ rowId: 8, input: 'request new', whatToCheck: 'rule new' },
+			]);
 
 			await user.click(getByText('added a check'));
 
-			expect(emitted('rerun')).toHaveLength(1);
+			expect(store.fetchCases).toHaveBeenCalledWith(
+				'project-1',
+				expect.objectContaining({ datasetId: 'ds-1' }),
+			);
+			expect(await vi.waitFor(() => getByTestId('agent-eval-check-case-8'))).toHaveAttribute(
+				'data-status',
+				'idle',
+			);
+			expect(emitted('rerun')).toBeUndefined();
+		});
+
+		it('shows the dataset’s cases that the run did not start with as not run, after the run’s own', async () => {
+			const { getAllByTestId, getByTestId } = renderWithDataset({
+				sourceRowId: '7',
+				cases: [
+					{ rowId: 7, input: 'request c1', whatToCheck: 'rule c1' },
+					{ rowId: 8, input: 'request new', whatToCheck: 'rule new' },
+				],
+			});
+
+			await vi.waitFor(() => expect(getAllByTestId(/^agent-eval-check-/)).toHaveLength(2));
+			const [ran, notRun] = getAllByTestId(/^agent-eval-check-/);
+			expect(ran).toHaveAttribute('data-testid', 'agent-eval-check-c1');
+			expect(notRun).toHaveAttribute('data-testid', 'agent-eval-check-case-8');
+			expect(notRun).toHaveAttribute('data-status', 'idle');
+			expect(notRun).toHaveTextContent('request new');
+			// "All" counts every check, run or not, so the summary option gives way.
+			expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('All 2');
+			expect(getByTestId('agent-eval-checks-filter-pass')).toHaveTextContent('1 passed');
+		});
+
+		it('removes a not-run check from the dataset only, since it has no result', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, store } = renderWithDataset({ sourceRowId: '7' });
+			vi.mocked(store.fetchCases).mockResolvedValue([
+				{ rowId: 7, input: 'request c1', whatToCheck: 'rule c1' },
+				{ rowId: 8, input: 'request new', whatToCheck: 'rule new' },
+			]);
+			vi.mocked(store.deleteCase).mockResolvedValue(true);
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+			await user.click(getByTestId('add-check-panel-stub').querySelectorAll('button')[1]);
+			const notRun = await vi.waitFor(() => getByTestId('agent-eval-check-case-8'));
+
+			await user.click(within(notRun).getByText('delete check'));
+
+			expect(store.deleteCase).toHaveBeenCalledWith(
+				'project-1',
+				expect.objectContaining({ datasetId: 'ds-1' }),
+				8,
+			);
+			expect(store.deleteResult).not.toHaveBeenCalled();
+		});
+
+		it('opens Add a check on arrival when the Assistant asked for it', () => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.consumeAddCheckOpen).mockImplementation((agentId) => agentId === 'agent-1');
+			vi.mocked(store.getReview).mockReturnValue({
+				run: null,
+				results: [result('c1', 'success')],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			vi.mocked(store.isRunInFlight).mockReturnValue(false);
+			vi.mocked(store.isStartingRun).mockReturnValue(false);
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			expect(store.consumeAddCheckOpen).toHaveBeenCalledWith('agent-1');
+			expect(getByTestId('add-check-panel-stub')).toBeVisible();
+		});
+
+		it('keeps Add a check closed on arrival when nothing asked for it', () => {
+			const { queryByTestId, store } = renderWithDataset();
+
+			expect(store.consumeAddCheckOpen).toHaveBeenCalledWith('agent-1');
+			expect(queryByTestId('add-check-panel-stub')).not.toBeInTheDocument();
 		});
 
 		// "Run all checks" reads the dataset rows, not the results' snapshots, so an
@@ -1119,6 +1223,7 @@ describe('AgentEvalChecksPanel', () => {
 			vi.mocked(store.isRunInFlight).mockReturnValue(false);
 			vi.mocked(store.isStartingRun).mockReturnValue(false);
 			vi.mocked(store.getDatasets).mockReturnValue([dataset]);
+			vi.mocked(store.fetchCases).mockResolvedValue([]);
 			return { ...renderComponent({ pinia }), store };
 		};
 

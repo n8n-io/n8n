@@ -107,23 +107,42 @@ describe('AgentEvalAddCheckPanel', () => {
 			expect(queryByTestId('agent-eval-add-check-loading')).not.toBeInTheDocument();
 		});
 
-		it('shows each case with its scenario above the message', async () => {
+		it('titles each case by its rule, with its message quoted under it, and picks none', async () => {
 			const { findAllByTestId } = renderPanel({}, { batchSize: 2 });
 
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
 
-			expect(within(rows[0]).getByText('Scenario 1')).toBeInTheDocument();
-			expect(within(rows[0]).getByText('message 1')).toBeInTheDocument();
-			expect(within(rows[1]).getByText('Scenario 2')).toBeInTheDocument();
+			expect(within(rows[0]).getByText('rule 1')).toBeInTheDocument();
+			expect(within(rows[0]).getByText('“message 1”')).toBeInTheDocument();
+			expect(within(rows[1]).getByText('rule 2')).toBeInTheDocument();
+			for (const row of rows) {
+				expect(within(row).getByRole('checkbox')).not.toBeChecked();
+			}
 		});
 
-		it('shows the first three and a "+N more" toggle for the rest', async () => {
+		it('titles a case with no rule by its message', async () => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.generateDraftCases).mockResolvedValue({
+				cases: [{ input: 'message 1', whatToCheck: '', scenario: 'Custom' }],
+			});
+			const { findAllByTestId } = createComponentRenderer(AgentEvalAddCheckPanel, {
+				props: { projectId: 'project-1', agentId: 'agent-1', caseSource },
+			})({ pinia });
+
+			const [row] = await findAllByTestId('agent-eval-add-check-prepared-row');
+
+			expect(within(row).getByText('message 1')).toBeInTheDocument();
+			expect(within(row).queryByText('“message 1”')).not.toBeInTheDocument();
+		});
+
+		it('shows the first three and a "Show N more" toggle for the rest', async () => {
 			const user = userEvent.setup();
 			const { findAllByTestId, getByTestId, queryByText } = renderPanel({}, { batchSize: 10 });
 
 			expect(await findAllByTestId('agent-eval-add-check-prepared-row')).toHaveLength(3);
-			expect(getByTestId('agent-eval-add-check-more')).toHaveTextContent('+7 more');
-			expect(queryByText('message 4')).not.toBeInTheDocument();
+			expect(getByTestId('agent-eval-add-check-more')).toHaveTextContent('Show 7 more');
+			expect(queryByText('rule 4')).not.toBeInTheDocument();
 
 			await user.click(getByTestId('agent-eval-add-check-more'));
 
@@ -162,47 +181,128 @@ describe('AgentEvalAddCheckPanel', () => {
 		});
 	});
 
-	describe('adding a prepared case', () => {
-		it('writes the case to the dataset, tells the parent, and drops it from the list', async () => {
+	describe('adding prepared cases', () => {
+		const pick = async (
+			user: ReturnType<typeof userEvent.setup>,
+			rows: HTMLElement[],
+			indexes: number[],
+		) => {
+			for (const index of indexes) await user.click(within(rows[index]).getByRole('checkbox'));
+		};
+
+		it('keeps "Add checks" off until a case is picked, then counts the picked cases', async () => {
 			const user = userEvent.setup();
-			const { findAllByTestId, store, emitted, getAllByTestId } = renderPanel({}, { batchSize: 3 });
+			const { findAllByTestId, getByTestId } = renderPanel({}, { batchSize: 3 });
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
+			const add = getByTestId('agent-eval-add-check-prepared-add');
 
-			await user.click(within(rows[1]).getByTestId('agent-eval-add-check-prepared-add'));
+			expect(add).toBeDisabled();
+			expect(add).toHaveTextContent('Add checks');
 
-			expect(store.createCase).toHaveBeenCalledWith('project-1', caseSource, {
-				input: 'message 2',
-				whatToCheck: 'rule 2',
-			});
-			await waitFor(() => expect(emitted('added')).toHaveLength(1));
-			await waitFor(() =>
-				expect(getAllByTestId('agent-eval-add-check-prepared-row')).toHaveLength(2),
-			);
-			expect(
-				within(getAllByTestId('agent-eval-add-check-prepared-row')[1]).getByText('message 3'),
-			).toBeInTheDocument();
+			await pick(user, rows, [0]);
+			expect(add).toBeEnabled();
+			expect(add).toHaveTextContent('Add 1 check');
+
+			await pick(user, rows, [2]);
+			expect(add).toHaveTextContent('Add 2 checks');
+
+			await pick(user, rows, [0]);
+			expect(add).toHaveTextContent('Add 1 check');
 		});
 
-		it('toasts and keeps the case when the write fails', async () => {
+		it('writes nothing until "Add checks" is pressed', async () => {
 			const user = userEvent.setup();
 			const { findAllByTestId, store, emitted } = renderPanel({}, { batchSize: 3 });
-			vi.mocked(store.createCase).mockRejectedValue(new Error('table is full'));
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
 
-			await user.click(within(rows[0]).getByTestId('agent-eval-add-check-prepared-add'));
+			await pick(user, rows, [0, 1]);
+
+			expect(store.createCase).not.toHaveBeenCalled();
+			expect(emitted('added')).toBeUndefined();
+		});
+
+		it('writes the picked cases in order, tells the parent once, and drops them from the list', async () => {
+			const user = userEvent.setup();
+			const { findAllByTestId, store, emitted, getAllByTestId, getByTestId } = renderPanel(
+				{},
+				{ batchSize: 3 },
+			);
+			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
+			await pick(user, rows, [2, 0]);
+
+			await user.click(getByTestId('agent-eval-add-check-prepared-add'));
+
+			await waitFor(() => expect(emitted('added')).toHaveLength(1));
+			expect(vi.mocked(store.createCase).mock.calls).toEqual([
+				['project-1', caseSource, { input: 'message 1', whatToCheck: 'rule 1' }],
+				['project-1', caseSource, { input: 'message 3', whatToCheck: 'rule 3' }],
+			]);
+			await waitFor(() =>
+				expect(getAllByTestId('agent-eval-add-check-prepared-row')).toHaveLength(1),
+			);
+			expect(
+				within(getAllByTestId('agent-eval-add-check-prepared-row')[0]).getByText('rule 2'),
+			).toBeInTheDocument();
+			expect(getByTestId('agent-eval-add-check-prepared-add')).toBeDisabled();
+		});
+
+		it('toasts and keeps the cases when the write fails', async () => {
+			const user = userEvent.setup();
+			const { findAllByTestId, store, emitted, getByTestId } = renderPanel({}, { batchSize: 3 });
+			vi.mocked(store.createCase).mockRejectedValue(new Error('table is full'));
+			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
+			await pick(user, rows, [0, 1]);
+
+			await user.click(getByTestId('agent-eval-add-check-prepared-add'));
 
 			await waitFor(() =>
 				expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't add the test case"),
 			);
+			expect(store.createCase).toHaveBeenCalledTimes(1);
 			expect(emitted('added')).toBeUndefined();
 			expect(await findAllByTestId('agent-eval-add-check-prepared-row')).toHaveLength(3);
+		});
+
+		it('stops at the first failed write, keeps that case and the rest, and reports what was written', async () => {
+			const user = userEvent.setup();
+			const { findAllByTestId, store, emitted, getAllByTestId, getByTestId } = renderPanel(
+				{},
+				{ batchSize: 3 },
+			);
+			vi.mocked(store.createCase)
+				.mockResolvedValueOnce({ rowId: 1 } as never)
+				.mockRejectedValueOnce(new Error('table is full'));
+			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
+			await pick(user, rows, [0, 1, 2]);
+
+			await user.click(getByTestId('agent-eval-add-check-prepared-add'));
+
+			await waitFor(() => expect(emitted('added')).toHaveLength(1));
+			expect(store.createCase).toHaveBeenCalledTimes(2);
+			await waitFor(() =>
+				expect(getAllByTestId('agent-eval-add-check-prepared-row')).toHaveLength(2),
+			);
+			expect(getByTestId('agent-eval-add-check-prepared-add')).toHaveTextContent('Add 2 checks');
+		});
+
+		it('treats a write that returns no row as a failure', async () => {
+			const user = userEvent.setup();
+			const { findAllByTestId, store, emitted, getByTestId } = renderPanel({}, { batchSize: 3 });
+			vi.mocked(store.createCase).mockResolvedValue(null);
+			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
+			await pick(user, rows, [0]);
+
+			await user.click(getByTestId('agent-eval-add-check-prepared-add'));
+
+			await waitFor(() => expect(showError).toHaveBeenCalled());
+			expect(emitted('added')).toBeUndefined();
 		});
 
 		// The panel is only unmounted when the checks view goes away, e.g. on an agent
 		// switch. A failure that lands after that must not toast over the new screen.
 		it('does not toast a failed write once the panel is gone', async () => {
 			const user = userEvent.setup();
-			const { findAllByTestId, store, unmount } = renderPanel({}, { batchSize: 3 });
+			const { findAllByTestId, store, unmount, getByTestId } = renderPanel({}, { batchSize: 3 });
 			let rejectWrite!: (error: Error) => void;
 			vi.mocked(store.createCase).mockImplementation(
 				async () =>
@@ -211,7 +311,8 @@ describe('AgentEvalAddCheckPanel', () => {
 					}),
 			);
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
-			await user.click(within(rows[0]).getByTestId('agent-eval-add-check-prepared-add'));
+			await pick(user, rows, [0]);
+			await user.click(getByTestId('agent-eval-add-check-prepared-add'));
 			await waitFor(() => expect(rejectWrite).toBeDefined());
 			showError.mockClear();
 
@@ -245,19 +346,7 @@ describe('AgentEvalAddCheckPanel', () => {
 			expect(showError).not.toHaveBeenCalled();
 		});
 
-		it('treats a write that returns no row as a failure', async () => {
-			const user = userEvent.setup();
-			const { findAllByTestId, store, emitted } = renderPanel({}, { batchSize: 3 });
-			vi.mocked(store.createCase).mockResolvedValue(null);
-			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
-
-			await user.click(within(rows[0]).getByTestId('agent-eval-add-check-prepared-add'));
-
-			await waitFor(() => expect(showError).toHaveBeenCalled());
-			expect(emitted('added')).toBeUndefined();
-		});
-
-		it('disables every add button while one case is being written', async () => {
+		it('disables picking and adding while the picked cases are being written', async () => {
 			const user = userEvent.setup();
 			const { findAllByTestId, store, getByTestId, getAllByTestId } = renderPanel(
 				{},
@@ -268,12 +357,13 @@ describe('AgentEvalAddCheckPanel', () => {
 				async () => await new Promise((resolve) => (finishWrite = resolve)),
 			);
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
+			await pick(user, rows, [0]);
 
-			await user.click(within(rows[0]).getByTestId('agent-eval-add-check-prepared-add'));
+			await user.click(getByTestId('agent-eval-add-check-prepared-add'));
 
 			await waitFor(() => {
-				for (const button of getAllByTestId('agent-eval-add-check-prepared-add')) {
-					expect(button).toBeDisabled();
+				for (const row of getAllByTestId('agent-eval-add-check-prepared-row')) {
+					expect(within(row).getByRole('checkbox')).toBeDisabled();
 				}
 			});
 			await user.type(getByTestId('agent-eval-add-check-rule-input'), 'a rule');
@@ -281,7 +371,9 @@ describe('AgentEvalAddCheckPanel', () => {
 
 			finishWrite({ rowId: 1 } as never);
 			await waitFor(() =>
-				expect(getAllByTestId('agent-eval-add-check-prepared-add')[0]).toBeEnabled(),
+				expect(
+					within(getAllByTestId('agent-eval-add-check-prepared-row')[0]).getByRole('checkbox'),
+				).toBeEnabled(),
 			);
 		});
 	});
@@ -399,23 +491,28 @@ describe('AgentEvalAddCheckPanel', () => {
 	});
 
 	describe('when adding is not allowed', () => {
-		it('disables the input and every add button for a read-only viewer', async () => {
+		const expectNothingAddable = (
+			rows: HTMLElement[],
+			getByTestId: (id: string) => HTMLElement,
+		) => {
+			expect(getByTestId('agent-eval-add-check-rule-submit')).toBeDisabled();
+			expect(getByTestId('agent-eval-add-check-prepared-add')).toBeDisabled();
+			for (const row of rows) expect(within(row).getByRole('checkbox')).toBeDisabled();
+		};
+
+		it('disables the input, the picks and "Add checks" for a read-only viewer', async () => {
 			const { getByTestId, findAllByTestId } = renderPanel({ disabled: true });
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
 
 			expect(getByTestId('agent-eval-add-check-rule-input')).toBeDisabled();
-			expect(getByTestId('agent-eval-add-check-rule-submit')).toBeDisabled();
-			for (const row of rows) {
-				expect(within(row).getByTestId('agent-eval-add-check-prepared-add')).toBeDisabled();
-			}
+			expectNothingAddable(rows, getByTestId);
 		});
 
-		it('disables the add buttons while the checks are running, so a second run cannot start', async () => {
+		it('disables adding while the checks are running, so their run is not changed under them', async () => {
 			const { getByTestId, findAllByTestId } = renderPanel({ busy: true });
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
 
-			expect(getByTestId('agent-eval-add-check-rule-submit')).toBeDisabled();
-			expect(within(rows[0]).getByTestId('agent-eval-add-check-prepared-add')).toBeDisabled();
+			expectNothingAddable(rows, getByTestId);
 		});
 
 		it('disables everything when the dataset has nowhere to write a case', async () => {
@@ -423,16 +520,18 @@ describe('AgentEvalAddCheckPanel', () => {
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
 
 			expect(getByTestId('agent-eval-add-check-rule-input')).toBeDisabled();
-			expect(within(rows[0]).getByTestId('agent-eval-add-check-prepared-add')).toBeDisabled();
+			expectNothingAddable(rows, getByTestId);
 		});
 
-		it('does not add when an add button is clicked while disabled', async () => {
+		it('does not pick or add when a case is clicked while disabled', async () => {
 			const user = userEvent.setup();
-			const { store, findAllByTestId } = renderPanel({ disabled: true });
+			const { store, findAllByTestId, getByTestId } = renderPanel({ disabled: true });
 			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
 
-			await user.click(within(rows[0]).getByTestId('agent-eval-add-check-prepared-add'));
+			await user.click(within(rows[0]).getByRole('checkbox'));
+			await user.click(getByTestId('agent-eval-add-check-prepared-add'));
 
+			expect(within(rows[0]).getByRole('checkbox')).not.toBeChecked();
 			expect(store.createCase).not.toHaveBeenCalled();
 		});
 	});
