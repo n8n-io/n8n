@@ -40,6 +40,7 @@ export type BackgroundSubAgentRunContext = Pick<
 >;
 
 export interface BackgroundSpawnRequest {
+	sourceExecutionId?: string;
 	subAgentId: string;
 	source: SubAgentSource;
 	taskName: string;
@@ -93,6 +94,7 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			sourceExecutionId: request.sourceExecutionId,
 			parentResourceId: request.parentResourceId,
 			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,

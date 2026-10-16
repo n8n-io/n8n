@@ -113,19 +113,25 @@ describe('delegate_subagent background mode', () => {
 		},
 	);
 
-	it('reads the parent thread from ctx.persistence at call time', async () => {
+	it('reads the parent thread and execution from ctx.persistence at call time', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
 			{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
-			{ persistence },
+			{
+				persistence: {
+					...persistence,
+					hostMetadata: { ...persistence.hostMetadata, [EXECUTION_METADATA_KEY]: 'execution-1' },
+				},
+			},
 		);
 
 		expect(output).toMatchObject({ status: 'started', jobId: 'job-1' });
 		expect(backgroundRunner.spawn.mock.calls[0][0]).toMatchObject({
 			parentThreadId: 'thread-1',
+			sourceExecutionId: 'execution-1',
 			parentResourceId: 'resource-1',
 		});
 	});
