@@ -20,10 +20,11 @@ export function sendPublicApiErrorResponse(res: Response, error: Error): void {
 		descriptor.kind === RestErrorKind.unexpectedError ||
 		(descriptor.kind === RestErrorKind.responseError && descriptor.status >= 500);
 
-	const logger = Container.get(Logger);
-
+	// We're being overly cautious by wrapping the DI and logging in a try/catch.
+	// We don't want to risk changing the response if something goes wrong.
 	if (shouldReport) {
 		try {
+			const logger = Container.get(Logger);
 			const req = res.req;
 
 			const method = req.method;
@@ -39,10 +40,13 @@ export function sendPublicApiErrorResponse(res: Response, error: Error): void {
 				stack: error.stack ? sanitizeErrorDetail(error.stack, MAX_LOGGED_STACK_LENGTH) : undefined,
 			});
 		} catch (failure) {
-			// Logging must never change the response. Record that logging failed,
-			logger.error('Failed to log Public API server error', {
-				errorName: ensureError(failure).name,
-			});
+			try {
+				Container.get(Logger).error('Failed to log Public API server error', {
+					errorName: ensureError(failure).name,
+				});
+			} catch {
+				// The logger failed again, so there is nowhere left to record the failure.
+			}
 		}
 	}
 
