@@ -53,19 +53,7 @@ export abstract class CredentialMatcher {
 			this.credentialTypes,
 			(reference) => this.matchesById || context.credentialBindings?.has(reference.id) === true,
 		);
-		const { bound, unbound } = partitionByExplicitBinding(known, context.credentialBindings);
-
-		const usableCredentials =
-			known.length === 0
-				? []
-				: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(context.user, {
-						projectId: context.projectId,
-					});
-		const usableTypesById = new Map(usableCredentials.map((c) => [c.id, c.type]));
-
-		const boundLocated = resolveExplicitBindings(bound, usableTypesById);
-		const resolvedLocated = this.resolve(unbound, usableCredentials, context);
-		const located = new Map([...boundLocated, ...resolvedLocated]);
+		const located = await this.locateRequirements(known, context);
 
 		const successes: ImportBindingMap = new Map();
 		const notFoundFailures: CredentialResolutionFailure[] = [];
@@ -93,6 +81,41 @@ export abstract class CredentialMatcher {
 				...typeMismatchFailures,
 			],
 		};
+	}
+
+	private async locateRequirements(
+		requirements: PackageCredentialRequirement[],
+		context: CredentialMatcherContext,
+	): Promise<Map<string, ResolvedCredentialMatch>> {
+		const located = new Map<string, ResolvedCredentialMatch>();
+
+		for (const excludePersonalRoute of [false, true]) {
+			const references = requirements.filter(
+				(reference) =>
+					reference.usedBy.some(({ kind }) => kind === 'agent') === excludePersonalRoute,
+			);
+			if (references.length === 0) continue;
+
+			const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+				context.user,
+				{
+					projectId: context.projectId,
+					excludePersonalRoute,
+				},
+			);
+			const usableTypesById = new Map(
+				usableCredentials.map((credential) => [credential.id, credential.type]),
+			);
+			const { bound, unbound } = partitionByExplicitBinding(references, context.credentialBindings);
+			const boundLocated = resolveExplicitBindings(bound, usableTypesById);
+			const resolvedLocated = this.resolve(unbound, usableCredentials, context);
+
+			for (const [sourceId, match] of [...boundLocated, ...resolvedLocated]) {
+				located.set(sourceId, match);
+			}
+		}
+
+		return located;
 	}
 
 	/**
