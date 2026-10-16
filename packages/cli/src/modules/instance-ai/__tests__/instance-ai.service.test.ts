@@ -6469,6 +6469,7 @@ describe('createAgentMemoryOptions', () => {
 		).toBe('anthropic/claude-haiku-4-5');
 		// The proxy and credential paths return object configs, which must pass through as-is.
 		const credentialModel: ModelConfig = {
+			kind: 'endpoint',
 			id: 'anthropic/claude-haiku-4-5',
 			url: '',
 			apiKey: 'main-key',

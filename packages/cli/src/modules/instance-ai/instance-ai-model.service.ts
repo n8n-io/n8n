@@ -9,7 +9,7 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ModelConfig } from '@n8n/instance-ai';
+import { isEndpointModelConfig, type ModelConfig } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 
@@ -177,8 +177,9 @@ export class InstanceAiModelService {
 		if (!modelId) return undefined;
 
 		const { provider, model: modelName } = splitModelId(modelId);
-		const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
-		const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
+		const endpoint = isEndpointModelConfig(config) ? config : undefined;
+		const apiKey = endpoint?.apiKey;
+		const baseURL = endpoint?.url;
 		if (provider !== 'anthropic') return undefined;
 
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
