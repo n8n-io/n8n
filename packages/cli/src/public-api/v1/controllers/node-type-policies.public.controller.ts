@@ -47,6 +47,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { TypeAvailabilityPolicy } from '@/modules/type-availability-policies/database/entities/type-availability-policy.entity';
+import type { ScopeAttachments } from '@/modules/type-availability-policies/type-availability-policy.service';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -71,6 +72,18 @@ function toPublicDocument(policy: TypeAvailabilityPolicy): PolicyDocumentPublicD
 		updatedBy: policy.updatedBy,
 		createdAt: policy.createdAt.toISOString(),
 		updatedAt: policy.updatedAt.toISOString(),
+	};
+}
+
+function toPublicAttachments(result: ScopeAttachments): PolicyAttachmentsPublicDto {
+	return {
+		attachments: result.attachments.map((attachment) => ({
+			policyId: attachment.policyId,
+			rules: toNodeTypeRules(attachment.rules),
+			priority: attachment.priority,
+			isFloor: attachment.isFloor,
+		})),
+		version: result.version,
 	};
 }
 
@@ -340,6 +353,28 @@ export class NodeTypePoliciesPublicController {
 		await (await this.service()).deletePolicyDocument(NODE_TYPES_KIND, policyId, req.user.id);
 	}
 
+	@Get('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@ApiKeyScope('nodeTypePolicy:manage')
+	@GlobalScope('nodeTypePolicy:manage')
+	@ApiSummary("Preview: Retrieve a scope's attached policy documents")
+	@ApiDescription(
+		'**Preview** — breaking changes may still occur without major version bump.\n\nReturns every attached policy document and the scope version. Attachments use evaluation order: floor first, then priority ascending within each group. Use this version when replacing the attachments. `scopeId` comes from `GET /instance` or `GET /projects/{projectId}`, and is null until the scope is first written. This route needs instance-level access, also for a project scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PolicyAttachmentsPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getNodeTypePolicyAttachments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('scopeId', nodeTypePolicyScopeIdParamSchema) scopeId: string,
+	): Promise<PolicyAttachmentsPublicDto> {
+		const result = await (await this.service()).getAttachments(NODE_TYPES_KIND, scopeId);
+
+		return toPublicAttachments(result);
+	}
+
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
@@ -367,14 +402,6 @@ export class NodeTypePoliciesPublicController {
 			req.user.id,
 		);
 
-		return {
-			attachments: result.attachments.map((attachment) => ({
-				policyId: attachment.policyId,
-				rules: toNodeTypeRules(attachment.rules),
-				priority: attachment.priority,
-				isFloor: attachment.isFloor,
-			})),
-			version: result.version,
-		};
+		return toPublicAttachments(result);
 	}
 }
