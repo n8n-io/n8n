@@ -700,27 +700,11 @@ export async function getLakebaseSchemas(
 	return { results: [{ name: 'public', value: 'public' }] };
 }
 
-// The chat memory sub-node lists only tables with the chat history shape; any other table fails on the first read
-export async function getLakebaseChatHistoryTables(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-): Promise<INodeListSearchResult> {
-	return await listLakebaseTables(this, ['session_id', 'message'], filter);
-}
-
 export async function getLakebaseTables(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await listLakebaseTables(this, [], filter);
-}
-
-async function listLakebaseTables(
-	context: ILoadOptionsFunctions,
-	columns: string[],
-	filter: string | undefined,
-): Promise<INodeListSearchResult> {
-	const { project, branch, database, schema } = getSelectedLakebaseTarget(context);
+	const { project, branch, database, schema } = getSelectedLakebaseTarget(this);
 	if (!project) {
 		return { results: [{ name: 'Please Select a Project First', value: '' }] };
 	}
@@ -734,23 +718,21 @@ async function listLakebaseTables(
 		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
 	}
 	// A PAT can read the endpoints, so check before the lookup to name the real cause
-	assertLakebaseOAuth(context);
+	assertLakebaseOAuth(this);
 	try {
-		const base = await resolveLakebaseRestBase(context, project, branch);
-		const doc: {
-			components?: { schemas?: Record<string, { properties?: Record<string, unknown> }> };
-		} = await lakebaseApiRequest(context, {
-			method: 'GET',
-			url: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}/openapi.json`,
-			headers: { Accept: 'application/openapi+json, application/json' },
-			json: true,
-		});
-		const results = Object.entries(doc.components?.schemas ?? {})
-			.filter(
-				([name, table]) =>
-					!INTERNAL_TABLE_PREFIX.test(name) && columns.every((c) => c in (table.properties ?? {})),
-			)
-			.map(([name]) => ({ name, value: name }))
+		const base = await resolveLakebaseRestBase(this, project, branch);
+		const doc: { components?: { schemas?: Record<string, unknown> } } = await lakebaseApiRequest(
+			this,
+			{
+				method: 'GET',
+				url: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}/openapi.json`,
+				headers: { Accept: 'application/openapi+json, application/json' },
+				json: true,
+			},
+		);
+		const results = Object.keys(doc.components?.schemas ?? {})
+			.filter((name) => !INTERNAL_TABLE_PREFIX.test(name))
+			.map((name) => ({ name, value: name }))
 			.filter(byText(filter));
 		return { results };
 	} catch (error) {

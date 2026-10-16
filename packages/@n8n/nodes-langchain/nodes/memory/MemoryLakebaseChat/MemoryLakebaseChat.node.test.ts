@@ -1,7 +1,10 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { getActiveCredentialType } from 'n8n-nodes-base/dist/nodes/Databricks/actions/helpers';
 import { resolveLakebaseTableUrl } from 'n8n-nodes-base/dist/nodes/Databricks/actions/lakebase/helpers';
-import { LAKEBASE_MAX_PAGES } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
+import {
+	LAKEBASE_MAX_PAGES,
+	LAKEBASE_PAGE_SIZE,
+} from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { lakebaseApiRequest } from 'n8n-nodes-base/dist/nodes/Databricks/transport';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { INode, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
@@ -31,7 +34,6 @@ vi.mock('n8n-nodes-base/dist/nodes/Databricks/methods/listSearch', () => ({
 	getLakebaseBranches: vi.fn(),
 	getLakebaseDatabases: vi.fn(),
 	getLakebaseSchemas: vi.fn(),
-	getLakebaseChatHistoryTables: vi.fn(),
 }));
 
 vi.mock('@n8n/ai-utilities', () => ({
@@ -102,13 +104,12 @@ describe('MemoryLakebaseChat', () => {
 		const { description } = new MemoryLakebaseChat();
 		const byName = (name: string) => description.properties.find((p) => p.name === name);
 
-		it('should show the five Lakebase locators without a resource condition', () => {
+		it('should show the four Lakebase locators without a resource condition', () => {
 			for (const name of [
 				'lakebaseProject',
 				'lakebaseBranch',
 				'lakebaseDatabase',
 				'lakebaseSchema',
-				'lakebaseTable',
 			]) {
 				const property = byName(name);
 				expect(property?.type).toBe('resourceLocator');
@@ -116,11 +117,12 @@ describe('MemoryLakebaseChat', () => {
 			}
 		});
 
-		it('should default the table to n8n_chat_histories', () => {
-			expect(byName('lakebaseTable')?.default).toEqual({
-				mode: 'list',
-				value: 'n8n_chat_histories',
-				cachedResultName: 'n8n_chat_histories',
+		it('should take the table as a plain name that defaults to n8n_chat_histories', () => {
+			// A locator default is cleared when the project is picked, so the table is a string
+			expect(byName('lakebaseTable')).toMatchObject({
+				type: 'string',
+				default: 'n8n_chat_histories',
+				required: true,
 			});
 		});
 
@@ -143,11 +145,29 @@ describe('MemoryLakebaseChat', () => {
 				method: 'POST',
 				url: TABLE_URL,
 				json: true,
-				body: {
-					session_id: 'fixed-session',
-					message: { content: 'hi', additional_kwargs: {}, response_metadata: {}, type: 'human' },
-				},
+				body: [
+					{
+						session_id: 'fixed-session',
+						message: { content: 'hi', additional_kwargs: {}, response_metadata: {}, type: 'human' },
+					},
+				],
 			});
+		});
+
+		it('should write a whole turn in one request', async () => {
+			request.mockResolvedValueOnce(undefined);
+
+			await createStore().addMessages([new HumanMessage('hi'), new AIMessage('hello')]);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			const { body } = request.mock.calls[0][1] as { body: Array<{ message: { type: string } }> };
+			expect(body.map((row) => row.message.type)).toEqual(['human', 'ai']);
+		});
+
+		it('should not post an empty turn', async () => {
+			await createStore().addMessages([]);
+
+			expect(request).not.toHaveBeenCalled();
 		});
 
 		it('should read a session in one request when the count fits a page', async () => {
@@ -220,16 +240,16 @@ describe('MemoryLakebaseChat', () => {
 			expect(messages.map((m) => m.content)).toEqual(['a']);
 		});
 
-		it('should stop at the page cap when the API keeps returning rows', async () => {
+		it('should fail at the page cap rather than return the oldest rows', async () => {
 			request.mockResolvedValue({
 				body: [{ message: { type: 'human', content: 'x', additional_kwargs: {} } }],
-				headers: {},
+				headers: { 'content-range': `0-0/${LAKEBASE_MAX_PAGES + 1}` },
 			});
 
-			const messages = await createStore().getMessages();
-
+			await expect(createStore().getMessages()).rejects.toThrow(
+				`The session holds more rows than one run can read (${LAKEBASE_MAX_PAGES * LAKEBASE_PAGE_SIZE})`,
+			);
 			expect(request).toHaveBeenCalledTimes(LAKEBASE_MAX_PAGES);
-			expect(messages).toHaveLength(LAKEBASE_MAX_PAGES);
 		});
 
 		it('should delete the session rows', async () => {
@@ -317,19 +337,28 @@ describe('MemoryLakebaseChat', () => {
 				const { message, description } = error as NodeOperationError;
 				expect(message).toBe('Table analytics.chat_log does not exist');
 				expect(description).toContain(
-					'CREATE TABLE "analytics"."chat_log" (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);',
+					'`CREATE TABLE "analytics"."chat_log" (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);`',
 				);
-				expect(description).toContain('CREATE INDEX ON "analytics"."chat_log" (session_id, id);');
-				expect(description).toContain('GRANT SELECT, INSERT, DELETE ON "analytics"."chat_log"');
-				expect(description).toContain('GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq"');
+				expect(description).toContain('`CREATE INDEX ON "analytics"."chat_log" (session_id, id);`');
+				expect(description).toContain('`GRANT USAGE ON SCHEMA "analytics" TO "your-role";`');
+				expect(description).toContain(
+					'`GRANT SELECT, INSERT, DELETE ON "analytics"."chat_log" TO "your-role";`',
+				);
+				expect(description).toContain(
+					'`GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq" TO "your-role";`',
+				);
+				// The error view strips any tag it does not know, so a <placeholder> would vanish
+				expect(String(description).replaceAll('<br>', '')).not.toMatch(/<[^\s>]+>/);
 			},
 		);
 
-		it('should explain a table without grants with the GRANT statements only', async () => {
+		it.each([
+			'permission denied for schema analytics',
+			'permission denied for table chat_log',
+			'permission denied for sequence chat_log_id_seq',
+		])('should explain "%s" with the GRANT statements only', async (apiMessage) => {
 			(resolveLakebaseTableUrl as unknown as Mock).mockResolvedValue(TABLE_URL);
-			request.mockRejectedValueOnce(
-				apiError(403, { code: '42501', message: 'permission denied for table chat_log' }),
-			);
+			request.mockRejectedValueOnce(apiError(403, { code: '42501', message: apiMessage }));
 			const context = createContext({
 				lakebaseSchema: 'analytics',
 				lakebaseTable: 'chat_log',
@@ -347,13 +376,17 @@ describe('MemoryLakebaseChat', () => {
 			const { message, description } = error as NodeOperationError;
 			expect(message).toBe('The OAuth2 identity cannot use table analytics.chat_log');
 			expect(description).not.toContain('CREATE TABLE');
+			expect(description).toContain('`GRANT USAGE ON SCHEMA "analytics" TO "your-role";`');
 			expect(description).toContain(
-				'GRANT SELECT, INSERT, DELETE ON "analytics"."chat_log" TO "<your-role>";',
+				'`GRANT SELECT, INSERT, DELETE ON "analytics"."chat_log" TO "your-role";`',
 			);
-			expect(description).toContain('GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq"');
+			expect(description).toContain(
+				'`GRANT USAGE ON SEQUENCE "analytics"."chat_log_id_seq" TO "your-role";`',
+			);
+			expect(String(description).replaceAll('<br>', '')).not.toMatch(/<[^\s>]+>/);
 		});
 
-		it('should pass a set-role 42501 error through for the shared hint', async () => {
+		it('should leave a set-role 42501 error to the transport hint rather than show the GRANT statements', async () => {
 			(resolveLakebaseTableUrl as unknown as Mock).mockResolvedValue(TABLE_URL);
 			const apiFailure = apiError(403, {
 				code: '42501',

@@ -13,7 +13,6 @@ import {
 } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import {
 	getLakebaseBranches,
-	getLakebaseChatHistoryTables,
 	getLakebaseDatabases,
 	getLakebaseProjects,
 	getLakebaseSchemas,
@@ -48,33 +47,43 @@ type StoredRow = { message: StoredMessage['data'] & { type: string } };
 
 type LakebaseTarget = { tableUrl: string; schema: string; table: string; sessionId: string };
 
+// The error view renders the description as HTML and strips unknown tags, so the placeholder
+// is plain quoted text (like the shared transport hints), the statements are code and the
+// lines are joined with <br>
 const ROLE_PLACEHOLDER =
-	'replace <your-role> with the Postgres role of the OAuth2 identity (user email or service principal application ID), then retry.';
+	'replace "your-role" with the Postgres role of the OAuth2 identity (user email or service principal application ID), then retry.';
 
 function grantStatements(schema: string, table: string): string[] {
 	const qualified = `${escapeSqlIdentifier(schema)}.${escapeSqlIdentifier(table)}`;
 	const sequence = `${escapeSqlIdentifier(schema)}.${escapeSqlIdentifier(`${table}_id_seq`)}`;
 	return [
-		`GRANT SELECT, INSERT, DELETE ON ${qualified} TO "<your-role>";`,
-		`GRANT USAGE ON SEQUENCE ${sequence} TO "<your-role>";`,
+		`GRANT USAGE ON SCHEMA ${escapeSqlIdentifier(schema)} TO "your-role";`,
+		`GRANT SELECT, INSERT, DELETE ON ${qualified} TO "your-role";`,
+		`GRANT USAGE ON SEQUENCE ${sequence} TO "your-role";`,
 	];
+}
+
+function sqlHint(intro: string, statements: string[]): string {
+	return [intro, ...statements.map((statement) => `\`${statement}\``)].join('<br>');
 }
 
 function missingTableHint(schema: string, table: string): string {
 	const qualified = `${escapeSqlIdentifier(schema)}.${escapeSqlIdentifier(table)}`;
-	return [
+	return sqlHint(
 		`The Lakebase Data API cannot create tables. Run this in the Databricks SQL editor, ${ROLE_PLACEHOLDER}`,
-		`CREATE TABLE ${qualified} (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);`,
-		`CREATE INDEX ON ${qualified} (session_id, id);`,
-		...grantStatements(schema, table),
-	].join('\n');
+		[
+			`CREATE TABLE ${qualified} (id SERIAL PRIMARY KEY, session_id VARCHAR(255) NOT NULL, message JSONB NOT NULL);`,
+			`CREATE INDEX ON ${qualified} (session_id, id);`,
+			...grantStatements(schema, table),
+		],
+	);
 }
 
 function missingGrantHint(schema: string, table: string): string {
-	return [
+	return sqlHint(
 		`The table exists but the OAuth2 identity has no rights on it. Run this in the Databricks SQL editor as the table owner, ${ROLE_PLACEHOLDER}`,
-		...grantStatements(schema, table),
-	].join('\n');
+		grantStatements(schema, table),
+	);
 }
 
 export class LakebaseChatMessageHistory extends BaseListChatMessageHistory {
@@ -110,7 +119,7 @@ export class LakebaseChatMessageHistory extends BaseListChatMessageHistory {
 			if (
 				data.code === '42501' &&
 				typeof data.message === 'string' &&
-				/permission denied for (table|sequence)/.test(data.message)
+				/permission denied for (schema|table|sequence)/.test(data.message)
 			) {
 				throw new NodeOperationError(
 					this.context.getNode(),
@@ -124,7 +133,7 @@ export class LakebaseChatMessageHistory extends BaseListChatMessageHistory {
 
 	async getMessages(): Promise<BaseMessage[]> {
 		const rows: StoredRow[] = [];
-		// ponytail: stops silently after LAKEBASE_MAX_PAGES * LAKEBASE_PAGE_SIZE rows, like Get Many
+		let readToTheEnd = false;
 		for (let page = 0; page < LAKEBASE_MAX_PAGES; page++) {
 			const response: { body?: StoredRow[]; headers?: Record<string, unknown> } =
 				await this.request({
@@ -142,7 +151,19 @@ export class LakebaseChatMessageHistory extends BaseListChatMessageHistory {
 			rows.push(...batch);
 			// PostgREST answers count=exact with `Content-Range: 0-9/10`; without the header the loop ends on the first empty page
 			const total = Number(/\/(\d+)$/.exec(String(response.headers?.['content-range']))?.[1]);
-			if (batch.length === 0 || rows.length >= total) break;
+			if (batch.length === 0 || rows.length >= total) {
+				readToTheEnd = true;
+				break;
+			}
+		}
+		// The window takes the newest messages and the Memory Manager rewrites the session from
+		// what it read, so a partial read would lose turns. Fail loudly instead, like Get Many.
+		if (!readToTheEnd) {
+			throw new NodeOperationError(
+				this.context.getNode(),
+				`The session holds more rows than one run can read (${LAKEBASE_MAX_PAGES * LAKEBASE_PAGE_SIZE})`,
+				{ description: 'Clear the session with the Memory Manager node or use a new Session ID.' },
+			);
 		}
 		return mapStoredMessagesToChatMessages(
 			rows.map(({ message: { type, ...data } }) => ({ type, data })),
@@ -150,10 +171,21 @@ export class LakebaseChatMessageHistory extends BaseListChatMessageHistory {
 	}
 
 	async addMessage(message: BaseMessage): Promise<void> {
-		const { data, type } = mapChatMessagesToStoredMessages([message])[0];
+		await this.addMessages([message]);
+	}
+
+	/**
+	 * The agent saves a tool-calling turn through this method. One array POST inserts the
+	 * rows in a single statement, so a failed request leaves no half-written turn behind.
+	 */
+	async addMessages(messages: BaseMessage[]): Promise<void> {
+		if (messages.length === 0) return;
 		await this.request({
 			method: 'POST',
-			body: { session_id: this.target.sessionId, message: { ...data, type } },
+			body: mapChatMessagesToStoredMessages(messages).map(({ data, type }) => ({
+				session_id: this.target.sessionId,
+				message: { ...data, type },
+			})),
 		});
 	}
 
@@ -208,18 +240,17 @@ export class MemoryLakebaseChat implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			// Read by getActiveCredentialType in nodes-base; the Data API accepts OAuth2 only
 			{ displayName: 'Authentication', name: 'authentication', type: 'hidden', default: 'oAuth2' },
-			...lakebaseLocators.map((p) =>
-				p.name === 'lakebaseTable'
-					? {
-							...p,
-							default: {
-								mode: 'list',
-								value: 'n8n_chat_histories',
-								cachedResultName: 'n8n_chat_histories',
-							},
-						}
-					: p,
-			),
+			// A plain string rather than the shared table locator: the editor clears a locator whenever
+			// a parameter it depends on changes, so the default would not survive picking the project
+			...lakebaseLocators.filter((p) => p.name !== 'lakebaseTable'),
+			{
+				displayName: 'Table Name',
+				name: 'lakebaseTable',
+				type: 'string',
+				default: 'n8n_chat_histories',
+				required: true,
+				description: 'The table in the schema that stores the chat history',
+			},
 			{
 				displayName:
 					'This node cannot create the table. Create it in the Lakebase SQL editor before the first run. A run against a missing table shows the SQL to copy.',
@@ -241,8 +272,6 @@ export class MemoryLakebaseChat implements INodeType {
 			getLakebaseBranches,
 			getLakebaseDatabases,
 			getLakebaseSchemas,
-			// The shared locator names this method
-			getLakebaseTables: getLakebaseChatHistoryTables,
 		},
 	};
 
