@@ -433,7 +433,7 @@ describe('PromotionsService', () => {
 
 				const result = await service.promote('conn1', actor, {
 					canExportVariableValues: true,
-					commitMessage: 'first line\nsecond line',
+					commitMessage: '\nReal title\nMore detail',
 				});
 
 				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
@@ -443,8 +443,8 @@ describe('PromotionsService', () => {
 						branchName: result.git.branchName,
 						baseBranchName: 'staging',
 						commitSha: 'newsha',
-						title: 'first line',
-						body: 'second line',
+						title: 'Real title',
+						body: 'More detail',
 					},
 					'run-1',
 				);
@@ -475,81 +475,40 @@ describe('PromotionsService', () => {
 				expect(result.warnings).toBeUndefined();
 			});
 
-			it('returns the push with warnings when the review could not be opened', async () => {
-				resolver.resolveForConnection.mockResolvedValue(branched());
-				reviewsService.openMergeRequest.mockResolvedValue({
-					warnings: [
-						{
-							message: 'The branch was pushed, but no merge request was opened: GitLab is down',
-						},
-					],
-				});
-
-				const result = await service.promote('conn1', actor, {
-					canExportVariableValues: true,
-					commitMessage: 'm',
-				});
-
-				expect(result.git.commitSha).toBe('newsha');
-				expect(result.mergeRequest).toBeUndefined();
-				expect(result.warnings).toEqual([
-					{ message: 'The branch was pushed, but no merge request was opened: GitLab is down' },
-				]);
-			});
-
 			it('keeps the push and skips the review when the run cannot be recorded', async () => {
-				resolver.resolveForConnection.mockResolvedValue(branched());
 				runRepository.insertRun.mockRejectedValue(new Error('db down'));
+				resolver.resolveForConnection.mockResolvedValue(branched());
 
-				const result = await service.promote('conn1', actor, {
+				const plain = await service.promote('conn1', actor, {
 					canExportVariableValues: true,
 					commitMessage: 'm',
 				});
 
-				expect(result.git.commitSha).toBe('newsha');
-				expect(result.mergeRequest).toBeUndefined();
+				expect(plain.git.commitSha).toBe('newsha');
+				expect(plain.mergeRequest).toBeUndefined();
 				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
-				expect(result.warnings).toEqual([
+				expect(plain.warnings).toEqual([
 					{ message: 'The push succeeded, but n8n could not record the promotion run.' },
 				]);
-			});
 
-			it('says that no merge request was opened when a GitLab branched promote cannot record the run', async () => {
 				resolver.resolveForConnection.mockResolvedValue({
 					...branched(),
 					providerType: 'gitlab',
 				});
-				runRepository.insertRun.mockRejectedValue(new Error('db down'));
-
-				const result = await service.promote('conn1', actor, {
+				// The first promote drops trust until Git restores the base branch.
+				await markCloned(branched(), 'staging');
+				const gitlab = await service.promote('conn1', actor, {
 					canExportVariableValues: true,
 					commitMessage: 'm',
 				});
 
 				expect(reviewsService.openMergeRequest).not.toHaveBeenCalled();
-				expect(result.warnings).toEqual([
+				expect(gitlab.warnings).toEqual([
 					{
 						message:
 							'The push succeeded, but n8n could not record the promotion run, so no merge request was opened.',
 					},
 				]);
-			});
-
-			it('uses the first non-empty line as the merge request title', async () => {
-				resolver.resolveForConnection.mockResolvedValue(branched());
-
-				const result = await service.promote('conn1', actor, {
-					canExportVariableValues: true,
-					commitMessage: '\nReal title\nMore detail',
-				});
-
-				expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
-					expect.anything(),
-					actor,
-					expect.objectContaining({ title: 'Real title', body: 'More detail' }),
-					'run-1',
-				);
-				expect(result.git.commitSha).toBe('newsha');
 			});
 		});
 

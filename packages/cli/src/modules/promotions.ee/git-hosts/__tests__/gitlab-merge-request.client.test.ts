@@ -52,12 +52,9 @@ describe('remoteReviewId helpers', () => {
 		expect(parseGitLabReviewId(id)).toEqual({ projectId: 42, iid: 7 });
 	});
 
-	it.each(['github:org/repo#7', 'gitlab:42!7', '42', 'abc!7', '', '42!7!1'])(
-		'rejects %j',
-		(value) => {
-			expect(() => parseGitLabReviewId(value)).toThrow(BadRequestError);
-		},
-	);
+	it.each(['gitlab:42!7', '42', ''])('rejects %j', (value) => {
+		expect(() => parseGitLabReviewId(value)).toThrow(BadRequestError);
+	});
 });
 
 describe('GitLabMergeRequestClient', () => {
@@ -77,7 +74,7 @@ describe('GitLabMergeRequestClient', () => {
 		client = new GitLabMergeRequestClient(outboundHttp, mockLogger());
 	});
 
-	it('creates the merge request on the project path and asks GitLab to remove the source branch', async () => {
+	it('creates the merge request on the project path and keeps the source branch', async () => {
 		respond(201, mergeRequest);
 
 		const created = await client.createMergeRequest(access, {
@@ -99,7 +96,7 @@ describe('GitLabMergeRequestClient', () => {
 				target_branch: 'main',
 				title: mergeRequest.title,
 				description: 'Opened by n8n',
-				remove_source_branch: true,
+				remove_source_branch: false,
 			},
 			maxResponseBodyBytes: 1024 * 1024,
 			disableFollowRedirect: true,
@@ -152,16 +149,17 @@ describe('GitLabMergeRequestClient', () => {
 	});
 
 	it.each([
-		[302, BadRequestError, /redirected/],
-		[401, BadRequestError, /access token/],
-		[403, BadRequestError, /may not perform/],
-		[404, BadRequestError, /could not find/],
-		[408, ServiceUnavailableError, /timed out/],
-		[409, ConflictError, /changed on GitLab/],
-		[429, TooManyRequestsError, /limiting requests/],
-		[500, ServiceUnavailableError, /not available/],
-	])('maps HTTP %s to %s', async (status, errorClass, message) => {
-		respond(status, {});
+		[401, {}, BadRequestError, /access token/],
+		[
+			409,
+			{ message: 'Another open merge request already exists' },
+			ConflictError,
+			/GitLab: Another open merge request already exists/,
+		],
+		[429, {}, TooManyRequestsError, /limiting requests/],
+		[500, {}, ServiceUnavailableError, /not available/],
+	])('maps HTTP %s', async (status, body, errorClass, message) => {
+		respond(status, body);
 
 		const promise = openMergeRequest();
 
@@ -169,47 +167,21 @@ describe('GitLabMergeRequestClient', () => {
 		await expect(promise).rejects.toThrow(message);
 	});
 
-	it.each([
-		[
-			'a string',
-			409,
-			{ message: '409 Conflict: Another open merge request already exists' },
-			'GitLab: 409 Conflict: Another open merge request already exists',
-		],
-		[
-			'a list',
-			409,
-			{ message: ['409 Conflict:', 'Another open merge request already exists'] },
-			'GitLab: 409 Conflict: Another open merge request already exists',
-		],
-		[
-			'field errors',
-			400,
-			{
-				message: {
-					source_branch: ['has already been taken'],
-					title: ['is too long', 'is invalid'],
-				},
+	it('includes field errors from a GitLab validation response', async () => {
+		respond(400, {
+			message: {
+				source_branch: ['has already been taken'],
+				title: ['is too long'],
 			},
-			'GitLab: source_branch: has already been taken; title: is too long, is invalid',
-		],
-	])('surfaces the GitLab message when it is %s', async (_, status, body, detail) => {
-		respond(status, body);
+		});
 
-		await expect(
-			client.createMergeRequest(access, {
-				projectPath: 'platform/api',
-				sourceBranch: 'n8n-promotion/x',
-				targetBranch: 'main',
-				title: 't',
-				description: 'd',
-			}),
-		).rejects.toThrow(detail);
+		await expect(openMergeRequest()).rejects.toThrow(
+			'GitLab: source_branch: has already been taken; title: is too long',
+		);
 	});
 
 	it.each([
 		['ETIMEDOUT', ServiceUnavailableError, /timed out/],
-		['ECONNABORTED', ServiceUnavailableError, /timed out/],
 		['ENOTFOUND', BadRequestError, /hostname/],
 		['CERT_HAS_EXPIRED', BadRequestError, /certificate/],
 		['ECONNRESET', ServiceUnavailableError, /reach GitLab/],

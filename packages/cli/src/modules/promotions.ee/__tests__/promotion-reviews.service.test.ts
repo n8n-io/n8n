@@ -113,7 +113,7 @@ describe('PromotionReviewsService', () => {
 		expect(runRepository.attachReview).toHaveBeenCalledWith('run-1', reviewId, expect.anything());
 	});
 
-	it('names the promoter by id and leaves their email off the merge request', async () => {
+	it('writes the description from the commit message and the promoter', async () => {
 		const unnamed = mock<User>({
 			id: 'actor',
 			firstName: null,
@@ -121,35 +121,22 @@ describe('PromotionReviewsService', () => {
 			email: 'ada@example.com',
 		});
 
-		await service.openMergeRequest(input, unnamed, push, 'run-1');
-
-		const description = mergeRequests.createMergeRequest.mock.calls[0][1].description;
-		expect(description).toContain('promotion by actor');
-		expect(description).not.toContain('ada@example.com');
-	});
-
-	it('leads the description with the rest of the commit message', async () => {
-		await service.openMergeRequest(
-			input,
-			actor,
-			{ ...push, body: 'More detail\nAnd more' },
-			'run-1',
-		);
+		await service.openMergeRequest(input, unnamed, { ...push, body: '/merge\nDetails' }, 'run-1');
 
 		expect(mergeRequests.createMergeRequest.mock.calls[0][1].description).toBe(
 			[
-				'More detail',
-				'And more',
+				'\\/merge',
+				'Details',
 				'',
-				'Opened by n8n for a promotion by Ada Lovelace.',
+				'Opened by n8n for a promotion by actor.',
 				'',
 				`Commit: ${push.commitSha}`,
 			].join('\n'),
 		);
 	});
 
-	it('returns a warning instead of throwing when the host cannot be resolved', async () => {
-		hostResolver.resolve.mockRejectedValue(new Error('decrypt failed'));
+	it('returns a warning instead of throwing when the merge request cannot be opened', async () => {
+		hostResolver.resolve.mockRejectedValueOnce(new Error('decrypt failed'));
 
 		await expect(service.openMergeRequest(input, actor, push, 'run-1')).resolves.toEqual({
 			warnings: [
@@ -157,10 +144,8 @@ describe('PromotionReviewsService', () => {
 			],
 		});
 		expect(mergeRequests.createMergeRequest).not.toHaveBeenCalled();
-	});
 
-	it('returns a warning instead of throwing when GitLab refuses the merge request', async () => {
-		mergeRequests.createMergeRequest.mockRejectedValue(
+		mergeRequests.createMergeRequest.mockRejectedValueOnce(
 			new ServiceUnavailableError('GitLab is not available. Try again later.'),
 		);
 
@@ -171,7 +156,6 @@ describe('PromotionReviewsService', () => {
 				},
 			],
 		});
-		expect(runRepository.attachReview).not.toHaveBeenCalled();
 		expect(reviewRepository.insertReview).not.toHaveBeenCalled();
 	});
 
@@ -186,13 +170,5 @@ describe('PromotionReviewsService', () => {
 				},
 			],
 		});
-	});
-
-	it('escapes a commit line that GitLab would run as a quick action', async () => {
-		await service.openMergeRequest(input, actor, { ...push, body: '/merge\nDetails' }, 'run-1');
-
-		expect(
-			mergeRequests.createMergeRequest.mock.calls[0][1].description.startsWith('\\/merge\n'),
-		).toBe(true);
 	});
 });

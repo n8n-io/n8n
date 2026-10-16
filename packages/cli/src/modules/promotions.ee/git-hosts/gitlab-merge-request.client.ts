@@ -149,8 +149,8 @@ export class GitLabMergeRequestClient {
 				target_branch: targetBranch,
 				title: title.slice(0, mergeRequestTitleMaxLength),
 				description,
-				// GitLab deletes the source branch only after the merge request is merged.
-				remove_source_branch: true,
+				// Keep the source branch until the connection can choose this.
+				remove_source_branch: false,
 			},
 		});
 		return this.parse(mergeRequestSchema, body);
