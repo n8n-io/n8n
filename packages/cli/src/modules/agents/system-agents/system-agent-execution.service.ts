@@ -355,20 +355,27 @@ export class SystemAgentExecutionService {
 			attachments.length > 0 && typeof text === 'string'
 				? buildInboundUserMessage(text, attachments)
 				: text;
-		await this.runTurn(provider, thread, handle, send, controller, admission, async () => ({
-			type: 'start',
-			input,
-			options: {
-				...runOptionsOf(handle),
-				persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
-				// The claim signal stops the turn only until the runtime admits it.
-				abortSignal: signal,
-			},
-			recording: {
-				...claim.recording,
-				...(handle.hideUserMessage ? { hideUserMessageFromTranscript: true } : {}),
-			},
-		}));
+		await this.runTurn({
+			thread,
+			handle,
+			send,
+			controller,
+			admission,
+			prepare: async () => ({
+				type: 'start',
+				input,
+				options: {
+					...runOptionsOf(handle),
+					persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
+					// The claim signal stops the turn only until the runtime admits it.
+					abortSignal: signal,
+				},
+				recording: {
+					...claim.recording,
+					...(handle.hideUserMessage ? { hideUserMessageFromTranscript: true } : {}),
+				},
+			}),
+		});
 	}
 
 	/**
@@ -426,14 +433,12 @@ export class SystemAgentExecutionService {
 			sessionMode: 'existing',
 			source: SYSTEM_CHAT_SOURCE,
 		};
-		const done = this.runTurn(
-			provider,
+		const done = this.runTurn({
 			thread,
 			handle,
-			params.send ?? (() => {}),
+			send: params.send ?? (() => {}),
 			controller,
-			undefined,
-			async () => ({
+			prepare: async () => ({
 				type: 'resume',
 				resumeData: params.resumeData,
 				options: {
@@ -444,7 +449,7 @@ export class SystemAgentExecutionService {
 				},
 				recording,
 			}),
-		);
+		});
 		return { runId, toolCallId: pending.toolCallId, done };
 	}
 
@@ -584,15 +589,22 @@ export class SystemAgentExecutionService {
 	 * the signal of. A cancel aborts it, and the abort signal in the run
 	 * options of the handle stops the turn at any time.
 	 */
-	private async runTurn(
-		provider: SystemAgentProvider,
-		thread: AgentExecutionThread,
-		handle: SystemAgentTurnHandle,
-		send: (event: AgentSseEvent) => void,
-		controller: AbortController,
-		admission: AgentExecutionAdmission | undefined,
-		prepare: () => Promise<AgentTurnRequest>,
-	): Promise<void> {
+	private async runTurn({
+		thread,
+		handle,
+		send,
+		controller,
+		admission,
+		prepare,
+	}: {
+		thread: AgentExecutionThread;
+		handle: SystemAgentTurnHandle;
+		send: (event: AgentSseEvent) => void;
+		controller: AbortController;
+		/** Set when the queue admitted the turn. A resume admits its own turn. */
+		admission?: AgentExecutionAdmission;
+		prepare: () => Promise<AgentTurnRequest>;
+	}): Promise<void> {
 		let status: SystemAgentTurnStatus = 'completed';
 		let executionId = admission?.executionId;
 		let error: unknown;
@@ -606,7 +618,7 @@ export class SystemAgentExecutionService {
 				agentInstance: handle.agent,
 				toolRegistry: handle.toolRegistry ?? new Map(),
 				mcpServerAttributions: new Map(),
-				context: { projectId: thread.projectId, agentId: provider.agentId, threadId: thread.id },
+				context: { projectId: thread.projectId, agentId: thread.agentId, threadId: thread.id },
 				chatSurface: 'system',
 				chatController: controller,
 				onExecutionStarted: (id) => {
