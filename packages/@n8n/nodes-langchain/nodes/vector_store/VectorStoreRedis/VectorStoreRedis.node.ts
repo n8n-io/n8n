@@ -168,7 +168,7 @@ const ttlField: INodeProperties = {
 
 const upgradeNotice: INodeProperties = {
 	displayName:
-		'A newer version of this node is available with advanced filtering and custom metadata schema support. To upgrade, delete this node and add a new Redis Vector Store node. Note: you will need to recreate your index and reimport all your documents to use advanced filtering.',
+		"A newer version of this node supports advanced filtering and a custom metadata schema. To use it, add a new Redis Vector Store node with a new index, then reimport your documents. Don't point the new node at an index created by this version: metadata will be missing and filters will return wrong results. This node and its index keep working as they are.",
 	name: 'upgradeNotice',
 	type: 'notice',
 	default: '',
