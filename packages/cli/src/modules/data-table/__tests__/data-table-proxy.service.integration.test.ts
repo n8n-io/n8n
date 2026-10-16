@@ -1,6 +1,7 @@
 import type { ListDataTableQueryDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { CacheService } from '@n8n/backend-services';
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
@@ -17,7 +18,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import * as checkAccess from '@/permissions.ee/check-access';
-import type { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@/services/ownership.service';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
 import { DataTableProxyService } from '../data-table-proxy.service';
@@ -299,7 +300,15 @@ describe('DataTableProxyService (with database)', () => {
 	const workflow = mock<Workflow>({ id: 'workflow-id' });
 
 	afterEach(async () => {
-		await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
+		await testDb.truncate([
+			'DataTable',
+			'DataTableColumn',
+			'SharedWorkflow',
+			'WorkflowEntity',
+			'Project',
+			'ProjectRelation',
+		]);
+		await Container.get(CacheService).delete('workflow-project');
 	});
 
 	it('resolves the proxy when the data table exists in the project', async () => {
@@ -327,6 +336,29 @@ describe('DataTableProxyService (with database)', () => {
 			node,
 			table.id,
 			projectA.id,
+		);
+
+		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(promise).rejects.toThrow(table.id);
+	});
+
+	it('rejects a table from another project for a workflow with the id `__proto__`', async () => {
+		const workflowProject = await createTeamProject();
+		const otherProject = await createTeamProject();
+		const table = await Container.get(DataTableService).createDataTable(otherProject.id, {
+			name: 'Other Project Table',
+			columns: [],
+		});
+		await createWorkflow({ id: '__proto__' }, workflowProject);
+		// The ownership cache must already exist, as it does on any instance that ran a workflow
+		await Container.get(CacheService).setHash('workflow-project', {
+			'other-workflow': Container.get(OwnershipService).copyProject(workflowProject),
+		});
+
+		const promise = Container.get(DataTableProxyService).getDataTableProxy(
+			mock<Workflow>({ id: '__proto__' }),
+			node,
+			table.id,
 		);
 
 		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);

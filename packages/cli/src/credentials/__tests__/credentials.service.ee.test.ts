@@ -14,6 +14,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -28,6 +29,7 @@ describe('EnterpriseCredentialsService', () => {
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const licenseState = mock<LicenseState>();
 	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
 
 	const service = new EnterpriseCredentialsService(
 		sharedCredentialsRepository,
@@ -40,6 +42,7 @@ describe('EnterpriseCredentialsService', () => {
 		externalSecretsProviderAccessCheckService,
 		licenseState,
 		connectionStatusProxy,
+		policyEnforcementService,
 	);
 
 	beforeEach(() => {
@@ -120,8 +123,40 @@ describe('EnterpriseCredentialsService', () => {
 		beforeEach(() => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
+			policyEnforcementService.enforceCredentialTransfer.mockResolvedValue(mock());
 			externalSecretsConfig.externalSecretsForProjects = true;
 			licenseState.isExternalSecretsLicensed.mockReturnValue(true);
+		});
+
+		describe('policy', () => {
+			it('calls enforceCredentialTransfer with the target project, not the source', async () => {
+				mockTransactionManager();
+
+				await service.transferOne(user, credentialId, destinationProjectId);
+
+				expect(policyEnforcementService.enforceCredentialTransfer).toHaveBeenCalledExactlyOnceWith(
+					{
+						credential: { id: credentialId, type: 'testApi' },
+						targetProjectId: destinationProjectId,
+					},
+					{ kind: 'user', user },
+				);
+			});
+
+			it('blocks the transfer and performs no mutation when the policy check throws', async () => {
+				const violation = new Error('blocked by policy');
+				policyEnforcementService.enforceCredentialTransfer.mockRejectedValue(violation);
+				const transaction = vi.fn();
+				// @ts-expect-error - Mocking manager for testing
+				sharedCredentialsRepository.manager = { transaction };
+
+				await expect(service.transferOne(user, credentialId, destinationProjectId)).rejects.toThrow(
+					violation,
+				);
+
+				expect(credentialsService.decrypt).not.toHaveBeenCalled();
+				expect(transaction).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('external secrets', () => {

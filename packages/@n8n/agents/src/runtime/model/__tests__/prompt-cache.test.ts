@@ -87,10 +87,12 @@ describe('buildSkillInstructionCacheOptions', () => {
 });
 
 describe('buildInstructionPromptCacheOptions — Anthropic', () => {
-	it('defaults to a 1h cache breakpoint when enabled with no ttl override', () => {
-		expect(
-			buildInstructionPromptCacheOptions({ enabled: true }, 'anthropic/claude-sonnet-4-5'),
-		).toEqual({
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'google-vertex-anthropic/claude-opus-4-8',
+		'google-vertex/claude-opus-5@default',
+	])('defaults to a 1h cache breakpoint for %s', (modelId) => {
+		expect(buildInstructionPromptCacheOptions({ enabled: true }, modelId)).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
@@ -106,9 +108,12 @@ describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 		});
 	});
 
-	it('returns undefined for a non-Anthropic model', () => {
-		expect(buildInstructionPromptCacheOptions({ enabled: true }, 'openai/gpt-5.1')).toBeUndefined();
-	});
+	it.each(['openai/gpt-5.1', 'google-vertex/gemini-3-flash-preview'])(
+		'returns undefined for %s without Anthropic caching',
+		(modelId) => {
+			expect(buildInstructionPromptCacheOptions({ enabled: true }, modelId)).toBeUndefined();
+		},
+	);
 
 	it('returns undefined when config is disabled', () => {
 		expect(
@@ -212,11 +217,12 @@ describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
 });
 
 describe('getEffectiveAnthropicCacheTtl', () => {
-	it('returns the configured TTL (default 1h) for an Anthropic model with caching enabled', () => {
-		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, 'anthropic/claude-sonnet-4-5')).toBe(
-			'1h',
-		);
-	});
+	it.each(['anthropic/claude-sonnet-4-5', 'google-vertex/claude-opus-5@default'])(
+		'returns the default 1h TTL for %s with caching enabled',
+		(modelId) => {
+			expect(getEffectiveAnthropicCacheTtl({ enabled: true }, modelId)).toBe('1h');
+		},
+	);
 
 	it('returns an explicit 5m override for an Anthropic model', () => {
 		expect(
@@ -269,23 +275,26 @@ describe('mergeProviderOptions', () => {
 });
 
 describe('applyRuntimeCacheBreakpoints', () => {
-	it('marks the last conversation message with an Anthropic cache breakpoint', () => {
-		const messages = [makeUserMessage('hi'), makeUserMessage('there')];
+	it.each(['anthropic/claude-sonnet-4-5', 'google-vertex/claude-opus-5@default'])(
+		'marks the last conversation message with an Anthropic cache breakpoint for %s',
+		(modelId) => {
+			const messages = [makeUserMessage('hi'), makeUserMessage('there')];
 
-		const { messages: result } = applyRuntimeCacheBreakpoints({
-			system: anthropicSystem,
-			messages,
-			aiTools: {},
-			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
-			staticToolCacheName: undefined,
-		});
+			const { messages: result } = applyRuntimeCacheBreakpoints({
+				system: anthropicSystem,
+				messages,
+				aiTools: {},
+				promptCaching: { enabled: true },
+				modelId,
+				staticToolCacheName: undefined,
+			});
 
-		expect(result[0].providerOptions).toBeUndefined();
-		expect(result[1].providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
-		});
-	});
+			expect(result[0].providerOptions).toBeUndefined();
+			expect(result[1].providerOptions).toEqual({
+				anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+			});
+		},
+	);
 
 	it('marks the static tool with a cache breakpoint when staticToolCacheName is provided', () => {
 		const aiTools = { tool_a: makeTool(), tool_b: makeTool() };

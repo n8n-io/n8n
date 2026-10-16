@@ -51,8 +51,7 @@ import {
 import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
 import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
 import WorkflowCardMcpToggle from '@/app/components/WorkflowCardMcpToggle.vue';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMCPStore, useMcp } from '@n8n/frontend-module-mcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
@@ -184,7 +183,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 						projectId: props.data.homeProject?.id,
 						folderId: props.data.parentFolder.id,
 					},
-				}).href,
+				}).fullPath,
 			},
 		];
 	}
@@ -689,6 +688,7 @@ const tags = computed(
 			[$style.cardArchived]: data.isArchived,
 		}"
 		data-test-id="workflow-card"
+		hoverable
 		@click="onClick"
 	>
 		<template #header>
@@ -834,14 +834,8 @@ const tags = computed(
 @use '@n8n/design-system/css/mixins/breakpoints';
 
 .cardLink {
-	transition: box-shadow 0.3s ease;
-	cursor: pointer;
 	padding: 0;
 	align-items: stretch;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
 }
 
 .cardHeading {

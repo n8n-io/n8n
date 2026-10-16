@@ -1,3 +1,4 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
@@ -29,6 +30,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 import {
 	integrationTypeFromMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
 } from '../utils/agent-memory-scope';
 
 export const WAKE_DEBOUNCE_MS = 5_000;
@@ -260,20 +262,27 @@ export class AgentWakeService {
 		principalHash: string,
 		projectId: string,
 	): Promise<ExecuteForWakeConfig['identity']> {
-		const userId = userIdFromDraftChatMemoryResourceId(resourceId);
+		const draftUserId = userIdFromDraftChatMemoryResourceId(resourceId);
+		const userId = draftUserId ?? userIdFromProductionChatMemoryResourceId(resourceId);
 		if (userId) {
 			const expectedHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId });
 			if (expectedHash !== principalHash) {
-				throw new UnexpectedError('Draft wake identity does not match its principal');
+				throw new UnexpectedError('Wake identity does not match its principal');
 			}
 
 			// Load the current user role to verify that the user still has permission to run the agent.
 			const user = await this.userRepository.findByIdWithRole(userId);
-			if (!user || user.disabled) throw new OperationalError('Draft wake user is no longer active');
+			if (!user || user.disabled) throw new OperationalError('Wake user is no longer active');
 			if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
-				throw new OperationalError('Draft wake user can no longer execute this agent');
+				throw new OperationalError('Wake user can no longer execute this agent');
 			}
-			return { type: 'draft', user, principalHash: expectedHash };
+			return draftUserId
+				? { type: 'draft', user, principalHash: expectedHash }
+				: {
+						type: 'published',
+						integrationType: N8N_CHAT_INTEGRATION_TYPE,
+						principalHash: expectedHash,
+					};
 		}
 
 		const integrationType = integrationTypeFromMemoryResourceId(resourceId);

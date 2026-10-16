@@ -85,6 +85,36 @@ export type {
 
 const MAX_LOOP_ITERATIONS = 100;
 
+function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
+	return batch.results.some(
+		({ toolName, toolEntry }) => toolMap.get(toolName)?.endsTurn?.(toolEntry.output) === true,
+	);
+}
+
+/**
+ * A resumed batch holds only the calls that were pending, so the calls that
+ * settled before the suspension are read back from their assistant message.
+ */
+function resumedTurnEnds(
+	messages: readonly AgentMessage[],
+	resumedToolCallId: string,
+	toolMap: Map<string, BuiltTool>,
+): boolean {
+	const calls = messages
+		.flatMap((message) => ('content' in message ? [message.content] : []))
+		.find((content) =>
+			content.some((c) => c.type === 'tool-call' && c.toolCallId === resumedToolCallId),
+		);
+	return (
+		calls?.some(
+			(c) =>
+				c.type === 'tool-call' &&
+				c.state === 'resolved' &&
+				toolMap.get(c.toolName)?.endsTurn?.(c.output) === true,
+		) ?? false
+	);
+}
+
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
 const logger = createFilteredLogger();
@@ -509,9 +539,11 @@ export class AgentRuntime {
 
 		const list = await this.restoreCheckpointMessages(state);
 
-		const tool = this.context
-			.getCurrentTools(state.persistence)
-			.find((t) => t.name === toolCall.toolName);
+		// A skill dependency loads a deferred tool without a `load_tool` record, and
+		// skills restore only when the loop starts. Accept any registered deferred tool.
+		const tool =
+			this.context.getCurrentTools(state.persistence).find((t) => t.name === toolCall.toolName) ??
+			this.deferredToolManager?.getTool(toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -689,11 +721,7 @@ export class AgentRuntime {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
-			// oxlint-disable-next-line typescript/no-deprecated
-			...(options?.onStepEnd || options?.onStepFinish
-				? // oxlint-disable-next-line typescript/no-deprecated
-					{ onStepEnd: options.onStepEnd ?? options.onStepFinish }
-				: {}),
+			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
 			repairToolCall: async (options) => {
 				return await fixToolCall(
 					{
@@ -961,6 +989,10 @@ export class AgentRuntime {
 		if (settlement.suspended) return settlement;
 		// Resumed tool results form a new observation boundary before the next model call.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
+		if (resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)) {
+			state.lastFinishReason = 'stop';
+			state.reachedStopCondition = true;
+		}
 		return settlement;
 	}
 
@@ -1009,7 +1041,12 @@ export class AgentRuntime {
 			state.iterationCount + 1,
 		);
 		if (settlement.suspended) return settlement;
-		await this.completeToolTurn(ctx, state, turn);
+		const stop = endsTurn(batch, toolMap);
+		await this.completeToolTurn(ctx, state, turn, { stepCheckpoint: !stop });
+		if (stop) {
+			state.lastFinishReason = 'stop';
+			state.reachedStopCondition = true;
+		}
 		return settlement;
 	}
 
@@ -1168,11 +1205,14 @@ export class AgentRuntime {
 		ctx: PreparedLoopContext,
 		state: LoopState,
 		turn: ModelTurnResult,
+		// A step checkpoint resumes at the next model call, which a run that
+		// ends here must not make.
+		{ stepCheckpoint }: { stepCheckpoint: boolean },
 	): Promise<void> {
 		this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(ctx.list.responseDelta()));
 		// All tools have settled. Observe before the next call and its checkpoint.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
-		if (ctx.options?.stepCheckpoints) {
+		if (stepCheckpoint && ctx.options?.stepCheckpoints) {
 			await this.persistStepCheckpoint(
 				ctx.list,
 				state.totalUsage,

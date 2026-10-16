@@ -62,30 +62,35 @@ export class ToolCallExecutor {
 		return this.deps.concurrency;
 	}
 
-	private isDelegateSubAgentCall(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
-		const tool = toolMap.get(toolName);
+	private isForegroundDelegateCall(
+		call: RuntimeToolCall,
+		toolMap: Map<string, BuiltTool>,
+	): boolean {
+		if (call.input.mode === 'background') return false;
+		const tool = toolMap.get(call.toolName);
 		return tool !== undefined && isDelegateSubAgentTool(tool);
 	}
 
-	private getToolCallBatchSize(toolName: string, toolMap: Map<string, BuiltTool>): number {
-		const tool = toolMap.get(toolName);
+	private getToolCallBatchSize(call: RuntimeToolCall, toolMap: Map<string, BuiltTool>): number {
+		if (!this.isForegroundDelegateCall(call, toolMap)) return this.concurrency;
+		const tool = toolMap.get(call.toolName);
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
 		if (!delegateOptions) return this.concurrency;
 		return delegateOptions.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
 	}
 
-	private takeNextToolCallBatch<T extends { toolName: string }>(
-		calls: T[],
+	private takeNextToolCallBatch(
+		calls: RuntimeToolCall[],
 		start: number,
 		toolMap: Map<string, BuiltTool>,
-	): T[] {
+	): RuntimeToolCall[] {
 		const first = calls[start];
 		if (!first) {
 			throw new Error('Unable to build tool-call batch');
 		}
 
-		const isDelegateBatch = this.isDelegateSubAgentCall(first.toolName, toolMap);
-		const batchSize = this.getToolCallBatchSize(first.toolName, toolMap);
+		const isDelegateBatch = this.isForegroundDelegateCall(first, toolMap);
+		const batchSize = this.getToolCallBatchSize(first, toolMap);
 		if (
 			batchSize < 1 ||
 			Number.isNaN(batchSize) ||
@@ -93,11 +98,11 @@ export class ToolCallExecutor {
 		) {
 			throw new Error(`Invalid tool-call batch size for ${first.toolName}: ${batchSize}`);
 		}
-		const batch: T[] = [];
+		const batch: RuntimeToolCall[] = [];
 
 		for (let i = start; i < calls.length && batch.length < batchSize; i++) {
 			const candidate = calls[i];
-			if (this.isDelegateSubAgentCall(candidate.toolName, toolMap) !== isDelegateBatch) break;
+			if (this.isForegroundDelegateCall(candidate, toolMap) !== isDelegateBatch) break;
 			batch.push(candidate);
 		}
 
@@ -107,7 +112,7 @@ export class ToolCallExecutor {
 	/**
 	 * Execute tool calls concurrently in batches.
 	 *
-	 * Regular tools use `toolCallConcurrency`. Consecutive delegate-subagent
+	 * Regular tools and background dispatch use `toolCallConcurrency`. Foreground delegation
 	 * calls use the effective `maxChildren` policy from the built delegate tool.
 	 * Provider-executed calls are skipped.
 	 *

@@ -1,9 +1,9 @@
-ARG NODE_VERSION=26.7.0
+ARG NODE_VERSION=26.10.0
 ARG N8N_VERSION=snapshot
 
-# The digest pins node:26.7.0-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
-ARG BUILDER_IMAGE=node:26.7.0-alpine3.24@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019
-ARG RUNTIME_IMAGE=n8nio/base:26.7.0@sha256:33687300c4e94dc00f42ec79ae15082ae07330ecd82ae1167125905b65908ff8
+# The digest pins node:26.10.0-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
+ARG BUILDER_IMAGE=node:26.10.0-alpine3.24@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80
+ARG RUNTIME_IMAGE=n8nio/base:26.10.0@sha256:9205c76a7745bfe71de35c2a0b7420238ccb0bdf69fc5273ab2e617fe918cf5f
 
 # The runtime base has no compiler, so this stage supplies one.
 FROM ${BUILDER_IMAGE} AS toolchain

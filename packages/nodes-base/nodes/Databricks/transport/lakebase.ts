@@ -4,9 +4,11 @@ import { sleep } from '@n8n/utils/sleep';
 import type { IExecuteFunctions, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { makeLakebaseErrorLegible } from './lakebaseErrors';
 import {
 	databricksApiRequest,
 	getActiveCredentialType,
+	makePermissionErrorLegible,
 	type DatabricksContext,
 } from '../actions/helpers';
 
@@ -35,6 +37,30 @@ function isExpiredToken(error: unknown, body: Record<string, unknown> | undefine
 }
 
 /**
+ * A dropdown shows only an error's message, so the hint `lakebaseApiRequest` already
+ * attached is not visible there. Mutates rather than re-wraps, because only a
+ * NodeApiError carries its description as far as the dropdown.
+ */
+export function explainLakebaseSchemaError(error: unknown, openApiMessage: string): never {
+	if (error instanceof NodeApiError && errorBody(error)?.code === 'PGRST205') {
+		error.message = openApiMessage;
+		throw error;
+	}
+
+	makePermissionErrorLegible(error);
+	throw error;
+}
+
+export function assertLakebaseOAuth(context: DatabricksContext): void {
+	if (getActiveCredentialType(context) === 'databricksApi') {
+		throw new NodeOperationError(context.getNode(), 'Lakebase requires OAuth2 authentication', {
+			description:
+				'The Lakebase Data API does not accept personal access tokens. Set Authentication to OAuth2 and use a Databricks OAuth2 credential.',
+		});
+	}
+}
+
+/**
  * Pass JSON bodies only. The helper resends the request after a token refresh or a
  * schema-cache retry, so do not pass a stream or FormData body.
  */
@@ -42,12 +68,7 @@ export async function lakebaseApiRequest(
 	context: DatabricksContext,
 	options: IHttpRequestOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
-	if (getActiveCredentialType(context) === 'databricksApi') {
-		throw new NodeOperationError(context.getNode(), 'Lakebase requires OAuth2 authentication', {
-			description:
-				'The Lakebase Data API does not accept personal access tokens. Set Authentication to OAuth2 and use a Databricks OAuth2 credential.',
-		});
-	}
+	assertLakebaseOAuth(context);
 	const abortSignal =
 		'getExecutionCancelSignal' in context ? context.getExecutionCancelSignal() : undefined;
 
@@ -82,6 +103,7 @@ export async function lakebaseApiRequest(
 				await sleep(SCHEMA_CACHE_RETRY_DELAY_MS, abortSignal);
 				continue;
 			}
+			makeLakebaseErrorLegible(error, options);
 			throw error;
 		}
 	}

@@ -564,7 +564,7 @@ export class ProvisioningService {
 		};
 	}
 
-	private async applyExpressionMappedRoles(
+	async applyResolvedRoles(
 		user: User,
 		resolved: ResolvedRoles,
 		managed: { instanceRole: boolean; projectRoles: boolean },
@@ -828,7 +828,7 @@ export class ProvisioningService {
 			matchedProjectRuleIds: [...resolved.projectRoles.values()].map((r) => r.matchedRuleId),
 		});
 
-		await this.applyExpressionMappedRoles(user, resolved, {
+		await this.applyResolvedRoles(user, resolved, {
 			instanceRole: applyInstanceRole,
 			projectRoles: projectRolesManaged,
 		});

@@ -41,7 +41,12 @@ const router = createRouter({
 });
 
 function agent(id: string, name: string): AgentChatListItem {
-	return { id, name, project: { id: 'p', name: 'P' } };
+	return {
+		id,
+		name,
+		project: { id: 'p', name: 'P' },
+		attachments: { image: false, pdf: false, audio: false },
+	};
 }
 
 function renderSection() {

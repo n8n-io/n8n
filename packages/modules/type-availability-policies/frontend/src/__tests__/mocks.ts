@@ -1,4 +1,4 @@
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+import type { CredentialTypeAvailabilityScope, NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { vi } from 'vitest';
 
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
@@ -11,6 +11,18 @@ export function mockRestrictedNodeTypes(
 	restricted: Record<string, NodeTypeAvailabilityScope> = {},
 ): void {
 	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
+		(name) => {
+			const scope = restricted[name];
+			return scope ? { name, available: false, scope } : { name, available: true };
+		},
+	);
+}
+
+/** The credential-type counterpart of `mockRestrictedNodeTypes`. */
+export function mockRestrictedCredentialTypes(
+	restricted: Record<string, CredentialTypeAvailabilityScope> = {},
+): void {
+	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getCredentialTypeAvailability').mockImplementation(
 		(name) => {
 			const scope = restricted[name];
 			return scope ? { name, available: false, scope } : { name, available: true };

@@ -6,7 +6,7 @@ import type {
 	ITaskDataConnections,
 } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import type { RedactableExecution } from '@n8n/backend-services';
 
 import type {
 	IExecutionRedactionStrategy,
@@ -76,6 +76,9 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 			isRedacted: true,
 			reason,
 			canReveal: context.userCanReveal,
+			...(reason === 'credential_inaccessible' && {
+				credentialIds: [...context.inaccessibleCredentialIds],
+			}),
 		};
 	}
 

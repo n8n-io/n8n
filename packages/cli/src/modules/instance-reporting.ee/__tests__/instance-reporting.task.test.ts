@@ -3,7 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { ScheduledJobRepository } from '@n8n/db';
-import { resolveSystemTaskRunOptions, SystemTaskMetadata } from '@n8n/decorators';
+import { resolveSystemTask, SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Tracing, type ErrorReporter, type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -32,7 +32,7 @@ describe('InstanceReportingTask', () => {
 
 	it('leaves delivery retries to the report row', () => {
 		const { task } = setup();
-		expect(resolveSystemTaskRunOptions(task)).toMatchObject({ maxAttempts: 1 });
+		expect(resolveSystemTask(task).runOptions).toMatchObject({ maxAttempts: 1 });
 		expect(task.schedule).toEqual({
 			kind: 'interval',
 			intervalSeconds: 15 * Time.minutes.toSeconds,
@@ -125,7 +125,7 @@ describe('InstanceReportingTask', () => {
 				await runner.init();
 				await vi.advanceTimersByTimeAsync(15 * Time.minutes.toMilliseconds);
 				expect(service.sendDueReport).not.toHaveBeenCalled();
-				expect(registrar.provision).toHaveBeenCalledWith(task);
+				expect(registrar.provision).toHaveBeenCalledWith(expect.objectContaining({ task }));
 				expect(scheduler.registerTaskHandler).toHaveBeenCalledWith(
 					'system:instance-reporting',
 					expect.anything(),

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { promotionProviderTypeCapabilities, supportsPromotionAuthType } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -18,7 +19,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, onMounted, reactive, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, useTemplateRef, watch } from 'vue';
 
 import { MODAL_CONFIRM } from '@/app/constants';
 import {
@@ -34,7 +35,9 @@ import {
 	buildProviderCreatePayload,
 	buildProviderUpdatePayload,
 	emptyProviderForm,
+	isSamePromotionHostUrl,
 	providerFormFrom,
+	type PromotionProviderChange,
 	type ProviderFormState,
 } from '../promotionsSettings.utils';
 
@@ -45,7 +48,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	saved: [id: string];
+	saved: [change: PromotionProviderChange];
 	deleted: [id: string];
 }>();
 
@@ -62,10 +65,31 @@ const usedBy = ref<PromotionConnectionSummary[]>([]);
 const generatedPublicKey = ref<string | null>(null);
 const isLoading = ref(false);
 const isSubmitting = ref(false);
+const saveError = ref<string>();
 const nameInput = useTemplateRef<InstanceType<typeof N8nInput>>('nameInput');
 const doneButton = useTemplateRef<{ $el?: HTMLElement }>('doneButton');
 
 const isEdit = computed(() => props.providerId !== undefined);
+const capabilities = computed(() => promotionProviderTypeCapabilities[form.type]);
+
+watch(
+	() => form.type,
+	() => {
+		if (!supportsPromotionAuthType(form.type, form.authType)) {
+			form.authType = capabilities.value.authTypes[0];
+		}
+		form.username = '';
+		form.password = '';
+		saveError.value = undefined;
+	},
+);
+
+watch(
+	() => [form.baseUrl, form.password],
+	() => {
+		saveError.value = undefined;
+	},
+);
 
 const title = computed(() => {
 	if (step.value === 'key') return i18n.baseText('settings.promotions.provider.dialog.title.key');
@@ -95,10 +119,18 @@ const usedByNames = computed(() => usedBy.value.map((connection) => connection.n
 
 const hasUsername = computed(() => form.username.trim().length > 0);
 const hasPassword = computed(() => form.password.length > 0);
+const hasHostUrlChange = computed(() => {
+	const config = current.value?.config;
+	return config && 'baseUrl' in config
+		? !isSamePromotionHostUrl(config.baseUrl, form.baseUrl)
+		: false;
+});
 
 // Token credentials change as a pair. Empty edit fields keep the stored credentials.
 const areCredentialsIncomplete = computed(() => {
 	if (form.authType !== 'token') return false;
+	if (capabilities.value.tokenUsername)
+		return (!isEdit.value || hasHostUrlChange.value) && !hasPassword.value;
 	if (!isEdit.value) return !(hasUsername.value && hasPassword.value);
 	if (!hasUsername.value && !hasPassword.value) return false;
 	return !(hasUsername.value && hasPassword.value);
@@ -111,6 +143,8 @@ const hasChanges = computed(() => {
 
 const saveDisabledReason = computed(() => {
 	if (!form.name.trim()) return i18n.baseText('settings.promotions.provider.form.incomplete');
+	if (capabilities.value.hasHostApi && !form.baseUrl.trim())
+		return i18n.baseText('settings.promotions.provider.form.incomplete');
 	if (areCredentialsIncomplete.value)
 		return i18n.baseText('settings.promotions.provider.form.credentials.required');
 	if (!hasChanges.value) return i18n.baseText('settings.promotions.provider.form.noChanges');
@@ -177,12 +211,14 @@ async function submit() {
 
 	const existing = current.value;
 	isSubmitting.value = true;
+	saveError.value = undefined;
 	try {
 		if (existing) {
+			const payload = buildProviderUpdatePayload(form, existing);
 			const updated = await updatePromotionProvider(
 				rootStore.publicApiContext,
 				existing.id,
-				buildProviderUpdatePayload(form, existing),
+				payload,
 			);
 			const rotatedKey =
 				'publicKey' in updated.config && updated.config.publicKey !== storedPublicKey.value
@@ -193,7 +229,11 @@ async function submit() {
 				title: i18n.baseText('settings.promotions.provider.toast.updated'),
 				type: 'success',
 			});
-			emit('saved', updated.id);
+			emit('saved', {
+				id: updated.id,
+				hostChanged: payload.config !== undefined,
+				credentialsChanged: payload.auth !== undefined,
+			});
 
 			if (rotatedKey) {
 				generatedPublicKey.value = rotatedKey;
@@ -211,7 +251,7 @@ async function submit() {
 				title: i18n.baseText('settings.promotions.provider.toast.created'),
 				type: 'success',
 			});
-			emit('saved', created.provider.id);
+			emit('saved', { id: created.provider.id, hostChanged: false, credentialsChanged: false });
 
 			if (created.publicKey) {
 				generatedPublicKey.value = created.publicKey;
@@ -222,7 +262,10 @@ async function submit() {
 			}
 		}
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.promotions.provider.toast.error.save'));
+		saveError.value =
+			error instanceof Error
+				? error.message
+				: i18n.baseText('settings.promotions.provider.toast.error.save');
 	} finally {
 		isSubmitting.value = false;
 	}
@@ -322,12 +365,47 @@ async function onDelete() {
 					id="promotion-provider-name"
 					ref="nameInput"
 					v-model="form.name"
-					:disabled="isLoading"
+					:disabled="isLoading || isSubmitting"
 					data-test-id="promotion-provider-name-input"
 				/>
 			</N8nInputLabel>
 
 			<N8nInputLabel
+				input-name="promotion-provider-type"
+				:label="i18n.baseText('settings.promotions.provider.form.type')"
+			>
+				<N8nSelect
+					id="promotion-provider-type"
+					v-model="form.type"
+					:teleported="false"
+					:disabled="isLoading || isSubmitting || isEdit"
+					data-test-id="promotion-provider-type-select"
+				>
+					<N8nOption value="git" :label="i18n.baseText('settings.promotions.providers.type.git')" />
+					<N8nOption
+						value="gitlab"
+						:label="i18n.baseText('settings.promotions.providers.type.gitlab')"
+					/>
+				</N8nSelect>
+			</N8nInputLabel>
+
+			<N8nInputLabel
+				v-if="capabilities.hasHostApi"
+				input-name="promotion-provider-base-url"
+				:label="i18n.baseText('settings.promotions.provider.form.baseUrl')"
+				required
+			>
+				<N8nInput
+					id="promotion-provider-base-url"
+					v-model="form.baseUrl"
+					:placeholder="i18n.baseText('settings.promotions.provider.form.baseUrl.placeholder')"
+					:disabled="isLoading || isSubmitting"
+					data-test-id="promotion-provider-base-url-input"
+				/>
+			</N8nInputLabel>
+
+			<N8nInputLabel
+				v-if="capabilities.authTypes.length > 1"
 				input-name="promotion-provider-auth-type"
 				:label="i18n.baseText('settings.promotions.provider.form.authType')"
 				:tooltip-text="
@@ -338,7 +416,7 @@ async function onDelete() {
 					id="promotion-provider-auth-type"
 					v-model="form.authType"
 					:teleported="false"
-					:disabled="isLoading || isEdit"
+					:disabled="isLoading || isSubmitting || isEdit"
 					data-test-id="promotion-provider-auth-type-select"
 				>
 					<N8nOption
@@ -362,7 +440,7 @@ async function onDelete() {
 						id="promotion-provider-key-type"
 						v-model="form.keyType"
 						:teleported="false"
-						:disabled="isLoading"
+						:disabled="isLoading || isSubmitting"
 						data-test-id="promotion-provider-key-type-select"
 					>
 						<N8nOption value="ed25519" label="ED25519" />
@@ -386,7 +464,7 @@ async function onDelete() {
 					<N8nCheckbox
 						v-model="form.regenerateKey"
 						:label="i18n.baseText('settings.promotions.provider.regenerateKey')"
-						:disabled="isLoading"
+						:disabled="isLoading || isSubmitting"
 						data-test-id="promotion-provider-regenerate-key"
 					/>
 					<N8nText v-if="form.regenerateKey" size="small" color="text-light">
@@ -397,6 +475,7 @@ async function onDelete() {
 
 			<template v-else>
 				<N8nInputLabel
+					v-if="!capabilities.tokenUsername"
 					input-name="promotion-provider-username"
 					:label="i18n.baseText('settings.promotions.provider.form.username')"
 					:required="!isEdit"
@@ -404,34 +483,68 @@ async function onDelete() {
 					<N8nInput
 						id="promotion-provider-username"
 						v-model="form.username"
-						:disabled="isLoading"
+						:disabled="isLoading || isSubmitting"
 						data-test-id="promotion-provider-username-input"
 					/>
 				</N8nInputLabel>
 
 				<N8nInputLabel
 					input-name="promotion-provider-password"
-					:label="i18n.baseText('settings.promotions.provider.form.password')"
-					:required="!isEdit"
+					:label="
+						i18n.baseText(
+							capabilities.hasHostApi
+								? 'settings.promotions.provider.form.accessToken'
+								: 'settings.promotions.provider.form.password',
+						)
+					"
+					:required="!isEdit || hasHostUrlChange"
 				>
 					<N8nInput
 						id="promotion-provider-password"
 						v-model="form.password"
 						type="password"
 						autocomplete="new-password"
-						:disabled="isLoading"
+						:disabled="isLoading || isSubmitting"
 						data-test-id="promotion-provider-password-input"
 					/>
 				</N8nInputLabel>
 
-				<N8nText v-if="hasUsername !== hasPassword" size="small" color="danger">
+				<N8nText
+					v-if="!capabilities.tokenUsername && hasUsername !== hasPassword"
+					size="small"
+					color="danger"
+				>
 					{{ i18n.baseText('settings.promotions.provider.form.credentials.required') }}
 				</N8nText>
 
-				<N8nText v-if="isEdit" size="small" color="text-light">
-					{{ i18n.baseText('settings.promotions.provider.form.credentials.keepHint') }}
+				<N8nText
+					v-if="isEdit"
+					size="small"
+					:color="capabilities.hasHostApi ? 'text-base' : 'text-light'"
+				>
+					{{
+						i18n.baseText(
+							capabilities.hasHostApi
+								? hasHostUrlChange
+									? 'settings.promotions.provider.form.accessToken.urlChangeHint'
+									: 'settings.promotions.provider.form.accessToken.keepHint'
+								: 'settings.promotions.provider.form.credentials.keepHint',
+						)
+					}}
+				</N8nText>
+				<N8nText v-if="capabilities.hasHostApi" size="small" color="text-base">
+					{{ i18n.baseText('settings.promotions.provider.form.accessToken.hint') }}
 				</N8nText>
 			</template>
+
+			<N8nNotice
+				v-if="saveError"
+				theme="danger"
+				role="alert"
+				data-test-id="promotion-provider-save-error"
+			>
+				{{ saveError }}
+			</N8nNotice>
 
 			<N8nDialogFooter>
 				<N8nButton

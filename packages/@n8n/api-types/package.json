@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.43.0",
+  "version": "1.44.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -42,7 +42,9 @@
     "n8n-workflow": "workspace:*",
     "validator": "catalog:",
     "xss": "catalog:",
-    "@n8n/permissions": "workspace:*"
+    "@n8n/permissions": "workspace:*",
+    "@n8n/inbound-auth": "workspace:*",
+    "@n8n/utils": "workspace:*"
   },
   "peerDependencies": {
     "zod": "catalog:"

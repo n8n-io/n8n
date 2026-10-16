@@ -60,12 +60,14 @@ type EndpointGroup =
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
+	| 'trusted-sources'
 	| 'encryption-keys'
 	| 'workflow-reviews'
 	| 'test-webhooks'
 	| 'type-availability-policies';
 
 type ModuleName =
+	| 'inbox'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'
@@ -84,7 +86,8 @@ type ModuleName =
 	| 'token-exchange'
 	| 'policy-infrastructure'
 	| 'workflow-reviews'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'inbound-auth-core';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

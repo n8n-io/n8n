@@ -31,7 +31,7 @@ export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
 
-Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from "When To Build vs When To Converse" (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
+Preview links work in this chat. Include a markdown Preview link after a successful build and when \`call_agent\` reports an unsupported interaction as \`approval_required\`, using the exact relative path from the "Session context" section (form: \`[Preview](<path>)\`). Do not invent absolute URLs. Do not omit the link and describe the path in plain text instead.
 
 When you mention the agent editor, say Sessions tab for history and Preview for live chat. Never say Runs, Executions, or Activity History for agents.
 
@@ -145,27 +145,31 @@ export class InstanceAiBuilderDelegateAdapterService {
 				throw new ForbiddenError('You do not have permission to access agents in this project.');
 			}
 		};
+		// Checked on every call, not when the delegate is created: a run that started
+		// before an admin turned Agents off must lose access at its next step.
+		const assertAccess = async (...scopes: Scope[]): Promise<void> => {
+			await this.agentsSettingsService.assertEnabled();
+			await assertProjectScope(...scopes);
+		};
 
 		return {
 			createAgent: async (name, options) => {
 				// Adopting also needs `agent:update` — see the port's `adoptOnCollision` docs.
-				await assertProjectScope(
+				await assertAccess(
 					...(options?.adoptOnCollision
 						? (['agent:create', 'agent:update'] as const)
 						: (['agent:create'] as const)),
 				);
-				const { agent, adopted } = await this.agentsService.createOrAdopt(
-					projectId,
-					name,
-					options ?? {},
-				);
+				const { agent, adopted } = await this.agentsService.createOrAdopt(projectId, name, {
+					...options,
+					actor: { kind: 'user', user },
+				});
 				// An adopted row keeps the winner's name, so report the persisted one.
 				return { agentId: agent.id, projectId, name: agent.name, adopted };
 			},
 
 			streamBuild: async (agentId, message, session) => {
-				await this.agentsSettingsService.assertEnabled();
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.buildAgent(
@@ -186,7 +190,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			resumeBuild: async (agentId, resume, session) => {
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.resumeBuild(
@@ -209,7 +213,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			findOpenSuspensions: async (agentId, session) => {
-				await assertProjectScope('agent:update');
+				await assertAccess('agent:update');
 				const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
 					agentId,
 					session.threadId,
@@ -226,11 +230,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 
 			resolveAgentName: async (agentId) => {
-				await assertProjectScope('agent:read');
+				await assertAccess('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
 			},
 			readAgentArtifact: async (agentId) => {
-				await assertProjectScope('agent:read');
+				await assertAccess('agent:read');
 				// No JSON config yet (freshly created) is an empty snapshot, not an error.
 				// Anything else propagates: the callers already treat a throw as "no
 				// snapshot", and it gets logged there instead of vanishing here.

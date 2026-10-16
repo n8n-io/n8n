@@ -12,13 +12,17 @@ export const useDataTableSelection = ({
 	const selectedRowIds = ref<Set<number>>(new Set());
 	const selectedCount = computed(() => selectedRowIds.value.size);
 
-	const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
-		mode: 'multiRow',
-		enableClickSelection: false,
-		checkboxes: (params) => params.data?.id !== ADD_ROW_ROW_ID,
-		isRowSelectable: (params) => !readOnly.value && params.data?.id !== ADD_ROW_ROW_ID,
-		hideDisabledCheckboxes: false,
-	};
+	const rowSelection = computed<RowSelectionOptions>(() => {
+		// AG Grid updates row selectability when the callback changes.
+		const locked = readOnly.value;
+		return {
+			mode: 'multiRow',
+			enableClickSelection: false,
+			checkboxes: (params) => params.data?.id !== ADD_ROW_ROW_ID,
+			isRowSelectable: (params) => !locked && params.data?.id !== ADD_ROW_ROW_ID,
+			hideDisabledCheckboxes: false,
+		};
+	});
 
 	const onSelectionChanged = () => {
 		const selectedNodes = gridApi.value.getSelectedNodes();

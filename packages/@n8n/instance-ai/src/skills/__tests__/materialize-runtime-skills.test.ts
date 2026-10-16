@@ -1,7 +1,9 @@
 import {
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+	createRuntimeSkillSource,
 	createSkillLoadTool,
+	filterRuntimeSkillSource,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillSource,
 	type Workspace,
@@ -24,7 +26,12 @@ import {
 	createLazyWorkspaceRuntimeSkillSource,
 	materializeRuntimeSkillsIntoWorkspace,
 } from '../materialize-runtime-skills';
-import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import { INSTANCE_AI_PROMPT_PROFILES } from '../../prompts/prompt-profiles';
+import {
+	INSTANCE_AI_SKILLS_DIR,
+	loadInstanceAiPromptSkills,
+	loadInstanceAiRuntimeSkillSource,
+} from '../runtime-skills';
 
 /** Extract the text body from the content-block form of a load_skill success result. */
 function skillLoadText(output: unknown): string {
@@ -237,7 +244,30 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const text = skillLoadText(result);
 		expect(text).toContain('[Skill: "data-table-manager"]');
 		expect(text).toContain(`${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`);
-		expect(text).toContain('references/data-table-playbook.md');
+		expect(text).toContain('- "data-table-playbook": ');
+	});
+
+	it('serves references from their owner directory with sandbox placeholders resolved', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace } = createMockWorkspace();
+		const root = '/home/daytona/workspace';
+
+		const materialized = await materializeRuntimeSkillsIntoWorkspace({
+			logger: mockLogger,
+			source,
+			workspace,
+			root,
+		});
+		if (!materialized) throw new Error('Expected runtime skills to materialize');
+
+		const referencePath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/workflow-builder/references/post-build-flow.md`;
+		const text = skillLoadText(
+			await createSkillLoadTool(materialized.source).handler?.({ skillId: 'post-build-flow' }, {}),
+		);
+		expect(text).toContain(`[Skill path: "${referencePath}"]`);
+		expect(text).toContain(`${root}/knowledge-base/reference/trigger-input-data-shapes.md`);
+		expect(text).not.toContain('{N8N_WORKSPACE_DIR}');
+		expect(materialized.skills.map(({ id }) => id)).not.toContain('post-build-flow');
 	});
 
 	it('materializes skills into the workspace before load_skill reads them', async () => {
@@ -292,6 +322,167 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const text = skillLoadText(result);
 		expect(text).toContain('[Skill: "data-table-manager"]');
 		expect(text).toContain(skillPath);
+	});
+
+	it('checks a prebaked bundle once per sandbox and reads only the manifest', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace, writes, readFile, writeFile } = createMockWorkspace();
+		const root = '/home/daytona/workspace';
+		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
+		if (!bundle) throw new Error('Expected runtime skill bundle');
+		for (const [path, content] of bundle.files) {
+			writes.set(path, content);
+		}
+		const verifiedBundles = new Map<string, string>();
+		const runSkillLoad = async () => {
+			const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+				logger: mockLogger,
+				source,
+				workspace,
+				resolveVerifiedBundles: async () => await Promise.resolve(verifiedBundles),
+			});
+			return await createSkillLoadTool(runtimeSource).handler?.(
+				{ skillId: 'data-table-manager' },
+				{},
+			);
+		};
+
+		await runSkillLoad();
+
+		expect(readFile).toHaveBeenCalledTimes(1);
+		expect(readFile).toHaveBeenCalledWith(bundle.manifestPath, expect.anything());
+
+		readFile.mockClear();
+		const result = await runSkillLoad();
+
+		expect(readFile).not.toHaveBeenCalled();
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(skillLoadText(result)).toContain('[Skill: "data-table-manager"]');
+	});
+
+	describe('with an unfiltered bundle source', () => {
+		const root = '/home/daytona/workspace';
+		const hiddenSkillIds = ['progressive-building', 'instance-awareness'];
+
+		function createSources() {
+			const bundleSource = loadInstanceAiRuntimeSkillSource();
+			const source = filterRuntimeSkillSource(bundleSource, hiddenSkillIds);
+			return { bundleSource, source };
+		}
+
+		it('reuses a baked bundle of all skills and serves only the filtered skills', async () => {
+			const { bundleSource, source } = createSources();
+			const { workspace, writes, readFile, writeFile } = createMockWorkspace();
+			const baked = await buildRuntimeSkillWorkspaceBundle({
+				source: bundleSource,
+				root,
+				logger: mockLogger,
+			});
+			if (!baked) throw new Error('Expected runtime skill bundle');
+			for (const [path, content] of baked.files) writes.set(path, content);
+
+			const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+				logger: mockLogger,
+				source,
+				bundleSource,
+				workspace,
+			});
+			await runtimeSource.prepare?.();
+
+			expect(readFile).toHaveBeenCalledTimes(1);
+			expect(readFile).toHaveBeenCalledWith(baked.manifestPath, expect.anything());
+			expect(writeFile).not.toHaveBeenCalled();
+			const registeredIds = runtimeSource.registry.skills.map(({ id }) => id);
+			for (const hiddenId of hiddenSkillIds) {
+				expect(registeredIds).not.toContain(hiddenId);
+				await expect(runtimeSource.loadSkill(hiddenId)).resolves.toBeNull();
+			}
+			const text = skillLoadText(
+				await createSkillLoadTool(runtimeSource).handler?.({ skillId: 'data-table-manager' }, {}),
+			);
+			expect(text).toContain(`${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`);
+		});
+
+		it.each(INSTANCE_AI_PROMPT_PROFILES.map((profile) => [profile.version, profile] as const))(
+			'reuses the baked bundle for the %s prompt profile',
+			async (_version, profile) => {
+				const bundleSource = loadInstanceAiRuntimeSkillSource();
+				const { source } = await loadInstanceAiPromptSkills(profile);
+				const { workspace, writes, writeFile } = createMockWorkspace();
+				const baked = await buildRuntimeSkillWorkspaceBundle({
+					source: bundleSource,
+					root,
+					logger: mockLogger,
+				});
+				if (!baked) throw new Error('Expected runtime skill bundle');
+				for (const [path, content] of baked.files) writes.set(path, content);
+
+				const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+					logger: mockLogger,
+					source,
+					bundleSource,
+					workspace,
+				});
+				await runtimeSource.prepare?.();
+
+				expect(writeFile).not.toHaveBeenCalled();
+				// Served skills keep the profile's composed instructions, with the sandbox
+				// paths filled in.
+				const skillsRoot = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}`;
+				for (const entry of source.registry.skills) {
+					const served = await runtimeSource.loadSkill(entry.id);
+					const original = await source.loadSkill(entry.id);
+					if (!served || !original) throw new Error(`Expected skill "${entry.id}"`);
+					expect(served.description).toBe(original.description);
+					expect(served.instructions).toBe(
+						original.instructions
+							.replaceAll('$' + '{N8N_SKILL_DIR}', served.directory ?? '')
+							.replaceAll('$' + '{N8N_SKILLS_DIR}', skillsRoot)
+							.replaceAll('$' + '{N8N_WORKSPACE_DIR}', root),
+					);
+				}
+			},
+		);
+
+		it('writes all skills when the sandbox has no bundle', async () => {
+			const { bundleSource, source } = createSources();
+			const { workspace, writes } = createMockWorkspace();
+
+			const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+				logger: mockLogger,
+				source,
+				bundleSource,
+				workspace,
+			});
+			await runtimeSource.prepare?.();
+
+			const skillsRoot = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}`;
+			expect(writes.has(`${skillsRoot}/progressive-building/SKILL.md`)).toBe(true);
+			const manifest = jsonParse<{ skillsHash: string }>(
+				writes.get(`${skillsRoot}/${RUNTIME_SKILL_MANIFEST_FILE}`) ?? '{}',
+			);
+			expect(manifest.skillsHash).toBe(bundleSource.registry.skillsHash);
+			expect(manifest.skillsHash).not.toBe(source.registry.skillsHash);
+		});
+
+		it('gives each served skill a path that exists in the bundle', async () => {
+			const { bundleSource, source } = createSources();
+			const { workspace, writes } = createMockWorkspace();
+
+			const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+				logger: mockLogger,
+				source,
+				bundleSource,
+				workspace,
+			});
+			await runtimeSource.prepare?.();
+
+			expect(runtimeSource.registry.skills.length).toBe(source.registry.skills.length);
+			for (const entry of runtimeSource.registry.skills) {
+				expect(entry.path).toBeDefined();
+				expect(writes.has(entry.path ?? '')).toBe(true);
+			}
+		});
 	});
 
 	it('falls back to live materialization when the prebaked manifest is stale', async () => {
@@ -354,6 +545,70 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 				root: '/home/daytona/workspace',
 			}),
 		).rejects.toThrow('Runtime skill linked file escapes skill directory');
+	});
+
+	describe('reference skills', () => {
+		const root = '/home/daytona/workspace';
+		const skillsRoot = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}`;
+
+		function createReferenceSource(): RuntimeSkillSource {
+			const ownerFiles = emptyLinkedFiles();
+			ownerFiles.references.push({ path: 'references/models.md', bytes: 6, sha256: 'sha' });
+			return createRuntimeSkillSource([
+				{
+					id: 'builder',
+					name: 'builder',
+					description: 'Build workflows.',
+					instructions: 'Build steps.',
+					sourceDirectory: 'builder',
+					linkedFiles: ownerFiles,
+				},
+				{
+					id: 'agents',
+					name: 'agents',
+					description: 'Build agents.',
+					instructions: 'Agent steps.',
+					sourceDirectory: 'agents',
+					sharedReferences: ['models'],
+				},
+				{
+					id: 'models',
+					name: 'models',
+					description: 'Load before choosing a model.',
+					instructions: 'Model rules in ' + '$' + '{N8N_WORKSPACE_DIR}.',
+					parents: ['builder'],
+					reference: { owner: 'builder', path: 'references/models.md' },
+				},
+			]);
+		}
+
+		it('materializes references without a file loader', async () => {
+			const bundle = await buildRuntimeSkillWorkspaceBundle({
+				source: createReferenceSource(),
+				root,
+				logger: mockLogger,
+			});
+
+			expect(bundle?.files.get(`${skillsRoot}/builder/references/models.md`)).toContain(
+				`Model rules in ${root}.`,
+			);
+		});
+
+		it('materializes a shared reference under a remaining parent when its owner is filtered out', async () => {
+			const source = filterRuntimeSkillSource(createReferenceSource(), ['builder']);
+
+			const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
+			if (!bundle) throw new Error('Expected a skill bundle');
+
+			const referencePath = `${skillsRoot}/agents/references/models.md`;
+			expect(bundle.files.get(referencePath)).toContain(`Model rules in ${root}.`);
+			expect(bundle.files.has(`${skillsRoot}/builder/SKILL.md`)).toBe(false);
+			const text = skillLoadText(
+				await createSkillLoadTool(bundle.source).handler?.({ skillId: 'models' }, {}),
+			);
+			expect(text).toContain(`[Skill path: "${referencePath}"]`);
+			expect(text).toContain(`Model rules in ${root}.`);
+		});
 	});
 
 	it('warns when materialized skill files exceed the load_skill output limit', async () => {

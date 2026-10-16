@@ -4,7 +4,7 @@ import { test, expect } from '../../../fixtures/base';
 test.skip(
 	'Node Creator Categories',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

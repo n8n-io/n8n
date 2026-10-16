@@ -2016,6 +2016,8 @@ export interface InstanceAiMemoryConfig {
 		reflectorThresholdTokens: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
+		/** Model for the Observer and Reflector. Defaults to the agent's model. */
+		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
@@ -2156,6 +2158,11 @@ export interface InstanceAiTraceContext {
 	 * for any agent (main or sub-agent) whose spans should join this trace.
 	 */
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/**
+	 * Keep the trace open until a background operation settles, so its spans
+	 * finish normally when it outlives the root run.
+	 */
+	keepOpenUntilSettled?: (operation: Promise<unknown>) => void;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */

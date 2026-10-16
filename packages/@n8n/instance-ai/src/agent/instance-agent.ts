@@ -14,7 +14,7 @@ import {
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { hasRuntimeSkills } from '../skills/runtime-skills';
+import { hasRuntimeSkills, warmRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -254,6 +254,10 @@ export async function createInstanceAgent(
 	const runtimeSkills = orchestrationContext?.runtimeSkills;
 	if (hasRuntimeSkills(runtimeSkills)) {
 		agent.skills(runtimeSkills);
+		warmRuntimeSkills(runtimeSkills, {
+			logger: orchestrationContext?.logger,
+			tracing: orchestrationContext?.tracing,
+		});
 	}
 	if (telemetry) {
 		agent.telemetry(telemetry);
@@ -267,16 +271,22 @@ export async function createInstanceAgent(
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens, midRunObservation, onTaskUsage } =
-				memoryConfig.observationalMemory;
+			const {
+				observerThresholdTokens,
+				reflectorThresholdTokens,
+				midRunObservation,
+				onTaskUsage,
+				model: memoryModel,
+			} = memoryConfig.observationalMemory;
+			const taskModel = memoryModel ?? modelId;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
 				...(midRunObservation !== undefined ? { midRunObservation } : {}),
-				...(onTaskUsage
+				...(onTaskUsage || memoryModel
 					? {
-							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),
-							reflect: createObservationLogReflectFn(modelId, { onUsage: onTaskUsage }),
+							observe: createObservationLogObserveFn(taskModel, { onUsage: onTaskUsage }),
+							reflect: createObservationLogReflectFn(taskModel, { onUsage: onTaskUsage }),
 						}
 					: {}),
 			});

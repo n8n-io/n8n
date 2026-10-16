@@ -217,7 +217,7 @@ exports[`InputPanel > should render 1`] = `
         >
           <button
             aria-live="polite"
-            class="button button subtle medium"
+            class="button button outline medium"
             data-v-5b5900d0=""
             type="button"
           >

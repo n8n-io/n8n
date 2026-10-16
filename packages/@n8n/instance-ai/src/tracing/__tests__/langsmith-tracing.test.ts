@@ -1185,6 +1185,66 @@ describe('createInstanceAiTraceContext', () => {
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
 	});
 
+	it('keeps the trace open for a background operation that outlives the root run', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-background-op',
+			messageId: 'message-background-op',
+			runId: 'run-background-op',
+			userId: 'user-background-op',
+			input: { message: 'hi' },
+		});
+		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
+		const provider = agentsMock.getProvider();
+
+		const acquired = createDeferredPromise<undefined>();
+		const operation = tracing!.withActiveSpan(tracing!.actorRun, async () => {
+			await withCurrentTraceSpan({ name: 'sandbox: acquire' }, async () => await acquired.promise);
+			await withCurrentTraceSpan({ name: 'sandbox: sync-skills' }, async () => {});
+		});
+		tracing!.keepOpenUntilSettled?.(operation);
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		expect(provider.shutdown).not.toHaveBeenCalled();
+		expect(tracing?.isLive?.()).toBe(true);
+
+		acquired.resolve(undefined);
+		await operation;
+		await vi.waitFor(() => expect(provider.shutdown).toHaveBeenCalledTimes(1));
+
+		const spans = agentsMock.getSpans();
+		const acquireSpan = spans.find((span) => span.name === 'sandbox: acquire');
+		expect(acquireSpan?.ended).toBe(true);
+		expect(acquireSpan?.status?.message).toBeUndefined();
+		expect(spans.find((span) => span.name === 'sandbox: sync-skills')?.ended).toBe(true);
+		expect(tracing?.isLive?.()).toBe(false);
+	});
+
+	it('releases the trace after a time limit when a background operation does not settle', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-stuck-op',
+			messageId: 'message-stuck-op',
+			runId: 'run-stuck-op',
+			userId: 'user-stuck-op',
+			input: { message: 'hi' },
+		});
+		expect(tracing).toBeDefined();
+		const provider = agentsMock.getProvider();
+
+		vi.useFakeTimers();
+		try {
+			tracing!.keepOpenUntilSettled?.(new Promise<void>(() => {}));
+			await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+			expect(provider.shutdown).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+			expect(provider.shutdown).toHaveBeenCalledTimes(1);
+			expect(tracing?.isLive?.()).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('keeps the provider alive for a queued memory task until it releases, then exports its span and shuts down', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-late-memory-task',

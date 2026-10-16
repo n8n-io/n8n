@@ -5,11 +5,13 @@ import {
 	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
+	getProviderAttachmentCapabilities,
 	type AgentChatListItem,
 	type AgentChatListResponse,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentModelCredentialConfig,
+	type AgentN8nChatAgentDetails,
 	type AgentN8nChatThreadSummary,
 	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
@@ -17,7 +19,13 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
-import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
+import {
+	In,
+	isUniqueConstraintError,
+	ProjectRelationRepository,
+	TransactionRunner,
+	type User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
@@ -27,18 +35,22 @@ import { v4 as uuid } from 'uuid';
 // in this area (see `agents-credential-provider.ts`). Resolved lazily by DI.
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { ConflictError } from '@n8n/errors';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { fromAgentDocument } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { toAgentRef } from './utils/agent-ref';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -52,6 +64,8 @@ import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
 type CreateAgentOptions = {
+	/** Who asked for the create, named on the policy block audit event. */
+	actor: PolicyActor;
 	availableInMCP?: boolean;
 	id?: string;
 	adoptOnCollision?: boolean;
@@ -59,7 +73,12 @@ type CreateAgentOptions = {
 	/** Create with this config instead of the empty draft, so eval thread seeding
 	 *  can recreate an already-built agent in one insert. */
 	schema?: AgentJsonConfig;
+	/** Skill bodies keyed by the ref ids of `schema`. A ref to a skills hub skill
+	 *  stays a ref; a ref with only a body gets a new hub skill in this project. */
 	skills?: Record<string, AgentSkill>;
+	/** Creates the hub skills of refs with only a body when `user` is not set.
+	 *  Without either, those refs are dropped. */
+	skillCreator?: User;
 	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
 	 *  validated when the source agent was authored). */
 	tools?: Record<string, unknown>;
@@ -89,6 +108,9 @@ export class AgentsService {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly agentPolicyService: AgentPolicyService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	/**
@@ -111,7 +133,7 @@ export class AgentsService {
 	 * dedicated "User duplicated agent" event for that case (carrying the
 	 * source agent id), mirroring "User duplicated workflow".
 	 */
-	async create(projectId: string, name: string, options: CreateAgentOptions = {}): Promise<Agent> {
+	async create(projectId: string, name: string, options: CreateAgentOptions): Promise<Agent> {
 		return (await this.createOrAdopt(projectId, name, options)).agent;
 	}
 
@@ -124,15 +146,17 @@ export class AgentsService {
 		projectId: string,
 		name: string,
 		{
+			actor,
 			availableInMCP = false,
 			id,
 			adoptOnCollision = false,
 			defaultModel,
 			schema,
 			skills,
+			skillCreator,
 			tools,
 			user,
-		}: CreateAgentOptions = {},
+		}: CreateAgentOptions,
 	): Promise<{ agent: Agent; adopted: boolean }> {
 		await this.settingsService.assertEnabled();
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(projectId, name, {
@@ -140,14 +164,15 @@ export class AgentsService {
 			user,
 			defaultModel,
 		});
+		await this.agentPolicyService.enforceSave(projectId, null, schemaConfig, null, actor);
+		const { config: storedConfig, skillRefs } = fromAgentDocument(schemaConfig);
 
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
 			name,
 			projectId,
-			schema: schemaConfig,
+			schema: storedConfig,
 			...(integrations.length > 0 ? { integrations } : {}),
-			...(skills ? { skills } : {}),
 			...(tools ? { tools: tools as Agent['tools'] } : {}),
 			versionId: uuid(),
 			availableInMCP,
@@ -157,7 +182,16 @@ export class AgentsService {
 		try {
 			// `insertNew`, not `save`: `save` would update the row a reused
 			// client-minted id names instead of letting the primary key reject it.
-			await this.agentRepository.insertNew(agent);
+			await this.transactionRunner.run({}, async (ctx) => {
+				await this.agentRepository.insertNew(agent, ctx);
+				await this.agentSkillRefs.createDraftRefs(
+					agent,
+					skillRefs,
+					skills ?? {},
+					user ?? skillCreator ?? null,
+					ctx,
+				);
+			});
 			saved = agent;
 		} catch (error) {
 			return {
@@ -262,9 +296,10 @@ export class AgentsService {
 
 		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
 
-		const skills = (schema?.skills ?? []).map((skill) => ({
+		const draftSkills = await this.agentSkillRefs.readDraft(entity, {});
+		const skills = (draftSkills.skillRefs ?? []).map((skill) => ({
 			id: skill.id,
-			name: entity.skills[skill.id]?.name ?? skill.id,
+			name: draftSkills.skills[skill.id]?.name ?? skill.id,
 		}));
 
 		const tasks = await this.getCapabilityTasks(entity);
@@ -363,10 +398,30 @@ export class AgentsService {
 	async findChatReachableAgentForUser(
 		agentId: string,
 		user: User,
-	): Promise<AgentChatListItem | null> {
+	): Promise<AgentN8nChatAgentDetails | null> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
 		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
-		return agent ? toChatListItem(agent) : null;
+		if (!agent) return null;
+
+		const schema = agent.activeVersion?.schema;
+		// Names are labels only: keep disabled sub-agents so older threads that
+		// delegated to them still show a name. Dedupe so a repeated entry shows once.
+		const subAgentIds = [
+			...new Set((schema?.subAgents?.agents ?? []).map((subAgent) => subAgent.agentId)),
+		];
+		const namesById = new Map(
+			(await this.agentRepository.findByIdsAndProjectId(subAgentIds, agent.projectId)).map(
+				(row) => [row.id, row.name],
+			),
+		);
+
+		return {
+			...toChatListItem(agent),
+			subAgents: subAgentIds.flatMap((id) => {
+				const name = namesById.get(id);
+				return name ? [{ id, name }] : [];
+			}),
+		};
 	}
 
 	/**
@@ -378,18 +433,15 @@ export class AgentsService {
 	 */
 	async findN8nChatThreadsForUser(
 		user: User,
-		options: { limit: number; cursor?: string; agentId?: string },
+		options: { limit: number; cursor?: string; agentId?: string; search?: string },
 	): Promise<AgentN8nChatThreadsResponse> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
 		const agentIds = options.agentId
 			? await this.reachableAgentIds(options.agentId, projectIds)
 			: await this.agentRepository.findChatReachableIds(projectIds);
-		return await this.agentExecutionService.findN8nChatThreadsForAgents(
-			user.id,
-			agentIds,
-			options.limit,
-			options.cursor,
-		);
+		// `options` also carries `agentId`, already consumed above; the callee only reads
+		// `limit`/`cursor`/`search` off it.
+		return await this.agentExecutionService.findN8nChatThreadsForAgents(user.id, agentIds, options);
 	}
 
 	/**
@@ -418,13 +470,12 @@ export class AgentsService {
 		return await this.agentExecutionService.findN8nChatThreadForAgents(user.id, agentIds, threadId);
 	}
 
-	/** The agents overview list: every project the user belongs to, no scope check. */
-	async findByUserMembershipPaginated(
+	/** The agents overview list: every project where the user holds `agent:list`. */
+	async findListableByUserPaginated(
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
-		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
-		const projectIds = projectRelations.map((pr) => pr.projectId);
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 
@@ -487,7 +538,7 @@ export class AgentsService {
 	private async prepareInitialConfig(
 		projectId: string,
 		name: string,
-		{ schema, user, defaultModel }: CreateAgentOptions,
+		{ schema, user, defaultModel }: Pick<CreateAgentOptions, 'schema' | 'user' | 'defaultModel'>,
 	): Promise<ReturnType<typeof decomposeJsonConfig>> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
@@ -612,12 +663,16 @@ export class AgentsService {
 	}
 }
 
-/** Keeps the chat list to what the page renders: icon and blurb from the published snapshot. */
+/** Keeps the chat list to what the page renders: icon, blurb, and attachment support from the published snapshot. */
 function toChatListItem(agent: Agent): AgentChatListItem {
-	const description = agent.activeVersion?.schema?.description;
+	const schema = agent.activeVersion?.schema;
+	const description = schema?.description;
 	return {
 		...toAgentRef(agent),
 		...(description ? { description } : {}),
 		project: { id: agent.projectId, name: agent.project.name },
+		attachments: getProviderAttachmentCapabilities(
+			schema?.model ? splitModelId(schema.model).provider : undefined,
+		),
 	};
 }

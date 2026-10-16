@@ -22,7 +22,8 @@ export class AgentToolApprovalService {
 			threadId,
 			agentId,
 			telemetry,
-		}: Pick<StartExecutionParams, 'threadId' | 'agentId' | 'telemetry'>,
+			source,
+		}: Pick<StartExecutionParams, 'threadId' | 'agentId' | 'telemetry' | 'source'>,
 		toolRegistry?: ToolRegistry,
 	): Promise<ToolApprovalContext> {
 		const approvedKeys = await this.grants.findKeys(threadId);
@@ -37,6 +38,7 @@ export class AgentToolApprovalService {
 						run_type: telemetry.runType,
 						approved: decision.approved,
 						scope: decision.scope ?? 'once',
+						counts_by_source: { [source || 'unknown']: { count: 1 } },
 					});
 				}
 				if (!decision.approved || decision.scope !== 'session') return;

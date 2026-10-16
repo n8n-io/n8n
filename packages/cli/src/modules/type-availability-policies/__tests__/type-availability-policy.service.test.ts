@@ -15,7 +15,7 @@ import type { TypeAvailabilityPolicyScopeRepository } from '../database/reposito
 import type { TypeAvailabilityPolicyRepository } from '../database/repositories/type-availability-policy.repository';
 import { TypeAvailabilityPolicy } from '../database/entities/type-availability-policy.entity';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';
-import type { PolicyRule } from '../policy-rule.types';
+import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 import {
 	LOCAL_READ_MAX_ENTRIES,
 	TypeAvailabilityPolicyService,
@@ -45,6 +45,8 @@ const RULE: PolicyRule = {
 	action: 'deny',
 	selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
 };
+
+const RULE_2: PolicyRule = { ...RULE, id: 'r2' };
 
 const DELEGATE_RULE: PolicyRule = {
 	id: 'r-delegate',
@@ -113,6 +115,11 @@ describe('TypeAvailabilityPolicyService', () => {
 		scopeRepository.findScopeKeysByIds.mockResolvedValue([]);
 		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
 		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
+		// Fixture `name` rules name Slack, so it must resolve as a loaded node.
+		Object.defineProperty(loadNodesAndCredentials, 'knownNodes', {
+			configurable: true,
+			value: { 'n8n-nodes-base.slack': { className: '', sourcePath: '' } },
+		});
 		nodeTypes.resolveBaseName.mockImplementation((name) => ({
 			baseName: name,
 			isSyntheticTool: false,
@@ -157,6 +164,85 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(result.defaultAction).toBe('deny');
 			expect(result.version).toBe(3);
 		});
+	});
+
+	describe('getAttachments', () => {
+		it.each([
+			[KIND, null],
+			[KIND, 'project-1'],
+			[CREDENTIAL_TYPES_KIND, null],
+			[CREDENTIAL_TYPES_KIND, 'project-1'],
+		])('reads %s attachments for project %s in evaluation order', async (kind, projectId) => {
+			const ctx: OperationContext = {};
+			const scope = makeScope({ kind, projectId, version: 7 });
+			const normalLate: PolicyAttachment = {
+				policyId: 'normal-late',
+				rules: [RULE],
+				priority: 10,
+				isFloor: false,
+			};
+			const floorLate: PolicyAttachment = {
+				policyId: 'floor-late',
+				rules: [],
+				priority: 20,
+				isFloor: true,
+			};
+			const normalEarly: PolicyAttachment = {
+				policyId: 'normal-early',
+				rules: [],
+				priority: -5,
+				isFloor: false,
+			};
+			const floorEarly: PolicyAttachment = {
+				policyId: 'floor-early',
+				rules: [RULE],
+				priority: 0,
+				isFloor: true,
+			};
+			const stored = [normalLate, floorLate, normalEarly, floorEarly];
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(scope);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue(stored);
+
+			const result = await service.getAttachments(kind, scope.id, ctx);
+
+			expect(result).toEqual({
+				attachments: [floorEarly, floorLate, normalEarly, normalLate],
+				version: 7,
+			});
+			expect(stored).toEqual([normalLate, floorLate, normalEarly, floorEarly]);
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, kind, ctx);
+			expect(attachmentRepository.listAttachmentsForScope).toHaveBeenCalledWith(scope.id, ctx);
+			expect(scopeRepository.findScopeByIdAndKind.mock.invocationCallOrder[0]).toBeLessThan(
+				attachmentRepository.listAttachmentsForScope.mock.invocationCallOrder[0],
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(cacheService.get).not.toHaveBeenCalled();
+			expect(cacheService.set).not.toHaveBeenCalled();
+			expect(cacheService.deleteMany).not.toHaveBeenCalled();
+		});
+
+		it.each([KIND, CREDENTIAL_TYPES_KIND])('rejects an unknown scope for %s', async (kind) => {
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
+
+			await expect(service.getAttachments(kind, 'missing')).rejects.toThrow(NotFoundError);
+			expect(attachmentRepository.listAttachmentsForScope).not.toHaveBeenCalled();
+		});
+
+		it.each([KIND, CREDENTIAL_TYPES_KIND])(
+			'rejects a scope of another kind for %s',
+			async (kind) => {
+				const otherKind = kind === KIND ? CREDENTIAL_TYPES_KIND : KIND;
+				const scope = makeScope({ kind: otherKind });
+				scopeRepository.findScopeByIdAndKind.mockImplementation(async (id, requestedKind) =>
+					id === scope.id && requestedKind === scope.kind ? scope : null,
+				);
+
+				await expect(service.getAttachments(kind, scope.id)).rejects.toThrow(NotFoundError);
+				expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, kind, {});
+				expect(attachmentRepository.listAttachmentsForScope).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('setDefaultAction', () => {
@@ -315,21 +401,153 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			const { warnings } = await service.createPolicyDocument(KIND, [RULE, shadowed], 'user-1');
 
-			expect(warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+			expect(warnings).toEqual([{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' }]);
 			expect(policyRepository.createPolicy).toHaveBeenCalled();
 		});
 
-		it('rejects a package rule naming a package that is not installed', async () => {
+		it('saves a package rule naming a package that is not installed, with a warning', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
 			const rule: PolicyRule = {
 				id: 'r1',
 				action: 'deny',
 				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
 			};
 
-			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
+			const { warnings } = await service.createPolicyDocument(KIND, [rule], 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+			expect(policyRepository.createPolicy).toHaveBeenCalled();
+		});
+
+		it('saves a name rule naming a node type that is not loaded, with a warning', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.notLoaded' },
+			};
+
+			const { warnings } = await service.createPolicyDocument(KIND, [rule], 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+		});
+
+		it('checks a synthetic tool variant rule against its base node', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			nodeTypes.resolveBaseName.mockImplementation((name) => ({
+				baseName: name.replace(/Tool$/, ''),
+				isSyntheticTool: name.endsWith('Tool'),
+			}));
+			const rules: PolicyRule[] = [
+				{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'n8n-nodes-base.slackTool' } },
+				{ id: 'r2', action: 'deny', selector: { kind: 'name', value: 'n8n-nodes-base.fooTool' } },
+			];
+
+			const { warnings } = await service.createPolicyDocument(KIND, rules, 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r2' }]);
+		});
+
+		it('lists a shadowed warning before a notLoaded warning for the same rule, in rule order', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			const missing = (id: string): PolicyRule => ({
+				id,
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.notLoaded' },
+			});
+
+			const { warnings } = await service.createPolicyDocument(
+				KIND,
+				[missing('r1'), RULE_2, missing('r3')],
+				'user-1',
 			);
-			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+
+			expect(warnings).toEqual([
+				{ kind: 'notLoaded', ruleId: 'r1' },
+				{ kind: 'shadowed', ruleId: 'r3', shadowedByRuleId: 'r1' },
+				{ kind: 'notLoaded', ruleId: 'r3' },
+			]);
+		});
+
+		describe('extends rules', () => {
+			const familyRule = (id: string, value: string): PolicyRule => ({
+				id,
+				action: 'deny',
+				selector: { kind: 'extends', value },
+			});
+
+			beforeEach(() => {
+				Object.defineProperty(loadNodesAndCredentials, 'knownCredentials', {
+					configurable: true,
+					value: {
+						oAuth2Api: { className: '', sourcePath: '' },
+						googleSheetsOAuth2Api: { className: '', sourcePath: '', extends: ['oAuth2Api'] },
+					},
+				});
+			});
+
+			afterEach(() => {
+				delete (loadNodesAndCredentials as { knownCredentials?: unknown }).knownCredentials;
+			});
+
+			it('rejects an extends rule in a node type policy', async () => {
+				await expect(
+					service.createPolicyDocument(KIND, [familyRule('r1', 'oAuth2Api')], 'user-1'),
+				).rejects.toThrow('An "extends" rule is only valid in a credential type policy');
+				expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+			});
+
+			it('saves an extends rule naming a credential type that is not installed, with a warning', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
+				);
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[familyRule('r1', 'notLoadedApi')],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+			});
+
+			it('saves a credential name rule naming a type that is not installed, with a warning', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
+				);
+				const rule: PolicyRule = {
+					id: 'r1',
+					action: 'deny',
+					selector: { kind: 'name', value: 'notLoadedApi' },
+				};
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[rule],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+			});
+
+			it('warns about a derived-type rule placed after the family rule that covers it', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
+				);
+				const allowSheets: PolicyRule = {
+					id: 'r2',
+					action: 'allow',
+					selector: { kind: 'name', value: 'googleSheetsOAuth2Api' },
+				};
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[familyRule('r1', 'oAuth2Api'), allowSheets],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+			});
 		});
 
 		it('accepts a package rule naming an installed package', async () => {
@@ -342,6 +560,45 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).resolves.toBeDefined();
 		});
+
+		it('rejects a node type rule naming a credential-only node, and names the rule to write instead', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
+			};
+
+			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
+				'Node type rule names the credential-only node "n8n-creds-base.virusTotalApi", which is HTTP Request with a credential attached. Write a credential type rule on "virusTotalApi" instead.',
+			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+		});
+
+		it('accepts a credential type rule on the type a credential-only node wraps', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy({ kind: CREDENTIAL_TYPES_KIND }));
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'virusTotalApi' },
+			};
+
+			await expect(
+				service.createPolicyDocument(CREDENTIAL_TYPES_KIND, [rule], 'user-1'),
+			).resolves.toBeDefined();
+		});
+
+		it('rejects a package rule on the credential-only prefix, which no loader provides', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-creds-base' },
+			};
+
+			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
+				'Package rule names "n8n-creds-base", which no package provides. Write a credential type rule instead.',
+			);
+			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('updatePolicyDocument', () => {
@@ -351,18 +608,41 @@ describe('TypeAvailabilityPolicyService', () => {
 			scopeRepository.containsProjectScope.mockResolvedValue(false);
 		});
 
-		it('rejects a package rule naming a package that is not installed, before opening a transaction', async () => {
+		it('keeps accepting edits to a document whose package rule names an uninstalled package', async () => {
+			const missingPackage: PolicyRule = {
+				id: 'r-missing',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-mcp' },
+			};
+			policyRepository.findByIdAndKind.mockResolvedValue(
+				makePolicy({ rules: [missingPackage], version: 1 }),
+			);
+			policyRepository.updateRules.mockResolvedValue(
+				makePolicy({ rules: [missingPackage, RULE], version: 2 }),
+			);
+
+			const { warnings } = await service.updatePolicyDocument(
+				KIND,
+				'policy-1',
+				[missingPackage, RULE],
+				1,
+				'user-1',
+			);
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-missing' }]);
+			expect(policyRepository.updateRules).toHaveBeenCalled();
+		});
+
+		it('rejects a node type rule naming a credential-only node, before opening a transaction', async () => {
 			const rule: PolicyRule = {
 				id: 'r1',
 				action: 'deny',
-				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
 			};
 
 			await expect(
 				service.updatePolicyDocument(KIND, 'policy-1', [rule], 1, 'user-1'),
-			).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
-			);
+			).rejects.toThrow('Node type rule names the credential-only node');
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -573,6 +853,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p1', priority: 1, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow('Duplicate policyId');
@@ -590,6 +871,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p2', priority: 0, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow('Duplicate (isFloor, priority)');
@@ -605,6 +887,7 @@ describe('TypeAvailabilityPolicyService', () => {
 					KIND,
 					'missing',
 					[{ policyId: 'p1', priority: 0, isFloor: false }],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow(NotFoundError);
@@ -618,7 +901,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
 
 			await expect(
-				service.replaceAttachments(CREDENTIAL_TYPES_KIND, 'scope-1', [], 'user-1'),
+				service.replaceAttachments(CREDENTIAL_TYPES_KIND, 'scope-1', [], 1, 'user-1'),
 			).rejects.toThrow(NotFoundError);
 
 			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(
@@ -630,7 +913,24 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
 		});
 
-		it('replaces attachments, bumps the version, and emits once', async () => {
+		it('throws ConflictError for a stale version and writes nothing', async () => {
+			const scope = makeScope({ version: 2 });
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+
+			const write = service.replaceAttachments(KIND, scope.id, [], 1, 'user-1');
+			await expect(write).rejects.toThrow(ConflictError);
+			await expect(write).rejects.toThrow(
+				'Policy scope has changed since it was last read (expected version 1, found 2)',
+			);
+
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, KIND, ROOT, true);
+			expect(attachmentRepository.replaceAttachmentsForScope).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
+			expect(cacheService.deleteMany).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('replaces attachments with the current version, bumps the version, and emits once', async () => {
 			const scope = makeScope({ version: 1 });
 			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
 			scopeRepository.findScopeById.mockResolvedValueOnce(makeScope({ version: 2 }));
@@ -642,6 +942,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 
@@ -677,10 +978,47 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				scope.id,
 				[{ policyId: 'p1', priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 
 			expect(result.version).toBe(2);
+		});
+
+		it.each([
+			[KIND, null],
+			[KIND, 'project-1'],
+			[CREDENTIAL_TYPES_KIND, null],
+			[CREDENTIAL_TYPES_KIND, 'project-1'],
+		])('returns %s attachments for project %s in evaluation order', async (kind, projectId) => {
+			const scope = makeScope({ kind, projectId, version: 1 });
+			const stored: PolicyAttachment[] = [
+				{ policyId: 'normal-late', rules: [RULE], priority: 10, isFloor: false },
+				{ policyId: 'floor-late', rules: [], priority: 20, isFloor: true },
+				{ policyId: 'normal-early', rules: [], priority: -5, isFloor: false },
+				{ policyId: 'floor-early', rules: [RULE], priority: 0, isFloor: true },
+			];
+			scopeRepository.findScopeByIdAndKind.mockResolvedValueOnce(scope);
+			scopeRepository.findScopeById.mockResolvedValueOnce(
+				makeScope({ kind, projectId, version: 2 }),
+			);
+			policyRepository.findManyByIds.mockResolvedValue([]);
+			attachmentRepository.listAttachmentsForScope
+				.mockResolvedValueOnce([])
+				.mockResolvedValueOnce(stored);
+
+			const result = await service.replaceAttachments(
+				kind,
+				scope.id,
+				stored.map(({ policyId, priority, isFloor }) => ({ policyId, priority, isFloor })),
+				scope.version,
+				'user-1',
+			);
+
+			expect(result).toEqual({
+				attachments: [stored[3], stored[1], stored[2], stored[0]],
+				version: 2,
+			});
 		});
 
 		it('rejects attaching a document with a delegate rule to a project scope, and writes nothing', async () => {
@@ -698,6 +1036,7 @@ describe('TypeAvailabilityPolicyService', () => {
 						{ policyId: 'p1', priority: 0, isFloor: false },
 						{ policyId: 'p2', priority: 1, isFloor: false },
 					],
+					1,
 					'user-1',
 				),
 			).rejects.toThrow(DELEGATE_RULE_AT_PROJECT_SCOPE);
@@ -717,6 +1056,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				KIND,
 				'scope-1',
 				[{ policyId: 'p-delegating', priority: 0, isFloor: false }],
+				1,
 				'user-1',
 			);
 
@@ -731,11 +1071,11 @@ describe('TypeAvailabilityPolicyService', () => {
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
 		});
 
-		it('rejects a package rule naming a package that is not installed, before opening a transaction', async () => {
+		it('rejects a package rule on the credential-only prefix, before opening a transaction', async () => {
 			const rule: PolicyRule = {
 				id: 'r1',
 				action: 'deny',
-				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+				selector: { kind: 'package', value: 'n8n-creds-base' },
 			};
 
 			await expect(
@@ -746,9 +1086,26 @@ describe('TypeAvailabilityPolicyService', () => {
 					0,
 					'user-1',
 				),
-			).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
-			);
+			).rejects.toThrow('Package rule names "n8n-creds-base"');
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a node type rule naming a credential-only node, before opening a transaction', async () => {
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-creds-base.virusTotalApi' },
+			};
+
+			await expect(
+				service.setEffectivePolicy(
+					KIND,
+					null,
+					{ rules: [rule], defaultAction: 'allow' },
+					0,
+					'user-1',
+				),
+			).rejects.toThrow('Node type rule names the credential-only node');
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -830,6 +1187,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(policyRepository.findByIdAndKind.mock.invocationCallOrder[0]).toBeLessThan(
 				attachmentRepository.listScopeIdsAttachedToPolicy.mock.invocationCallOrder[0],
 			);
+			expect(scopeRepository.bumpVersion).toHaveBeenCalledWith(scope.id, ROOT);
 		});
 
 		it('rejects a delegate defaultAction at project scope before opening a transaction', async () => {
@@ -874,7 +1232,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			});
 			policyRepository.createPolicy.mockResolvedValue(makePolicy({ rules: [], version: 1 }));
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'delegate', version: 2 }),
+				makeScope({ defaultAction: 'delegate', version: 1 }),
 			);
 
 			await expect(
@@ -943,7 +1301,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			const createdPolicy = makePolicy({ rules: [RULE], version: 1 });
 			policyRepository.createPolicy.mockResolvedValue(createdPolicy);
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 2 }),
+				makeScope({ defaultAction: 'deny', version: 1 }),
 			);
 
 			const result = await service.setEffectivePolicy(
@@ -954,8 +1312,9 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-1',
 			);
 
-			expect(result.version).toBe(2);
+			expect(result.version).toBe(1);
 			expect(result.rules).toEqual([RULE]);
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
 			expect(attachmentRepository.replaceAttachmentsForScope).toHaveBeenCalledWith(
 				createdScope.id,
 				[{ policyId: createdPolicy.id, priority: 0, isFloor: false }],
@@ -976,10 +1335,11 @@ describe('TypeAvailabilityPolicyService', () => {
 				projectId: null,
 				scopeId: createdScope.id,
 				before: null,
-				after: { defaultAction: 'deny', version: 2 },
+				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [RULE],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 		});
 
@@ -994,7 +1354,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			const updatedPolicy = makePolicy({ rules: [RULE], version: 2 });
 			policyRepository.updateRules.mockResolvedValue(updatedPolicy);
 			scopeRepository.findScopeById.mockResolvedValue(
-				makeScope({ defaultAction: 'deny', version: 3 }),
+				makeScope({ defaultAction: 'deny', version: 2 }),
 			);
 
 			await service.setEffectivePolicy(
@@ -1011,6 +1371,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				'user-2',
 				ROOT,
 			);
+			expect(scopeRepository.bumpVersion).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledTimes(3);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-updated',
@@ -1026,11 +1387,48 @@ describe('TypeAvailabilityPolicyService', () => {
 				projectId: null,
 				scopeId: scope.id,
 				before: { defaultAction: 'allow', version: 1 },
-				after: { defaultAction: 'deny', version: 3 },
+				after: { defaultAction: 'deny', version: 2 },
 				rulesBefore: [],
 				rulesAfter: [RULE],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
+		});
+
+		it('saves a rule for an uninstalled package, returns its warning and counts it apart', async () => {
+			const missingPackage: PolicyRule = {
+				id: 'r-missing',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-mcp' },
+			};
+			const scope = makeScope({ defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			const existingPolicy = makePolicy({ rules: [missingPackage], version: 1 });
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [missingPackage], priority: 0, isFloor: false },
+			]);
+			policyRepository.findByIdAndKind.mockResolvedValue(existingPolicy);
+			policyRepository.updateRules.mockResolvedValue(
+				makePolicy({ rules: [missingPackage, RULE, RULE_2], version: 2 }),
+			);
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
+
+			const result = await service.setEffectivePolicy(
+				KIND,
+				null,
+				{ rules: [missingPackage, RULE, RULE_2], defaultAction: 'allow' },
+				1,
+				'user-2',
+			);
+
+			expect(result.warnings).toEqual([
+				{ kind: 'notLoaded', ruleId: 'r-missing' },
+				{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' },
+			]);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'node-type-policy-saved',
+				expect.objectContaining({ shadowWarningCount: 1, notLoadedWarningCount: 1 }),
+			);
 		});
 
 		it('throws NotFoundError when the document update unexpectedly finds no row', async () => {
@@ -1099,6 +1497,31 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			expect(result.defaultAction).toBe('deny');
 			expect(result.version).toBe(1);
+		});
+
+		it('moves the version once when neither the rules nor the default action change', async () => {
+			const scope = makeScope({ defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			const existingPolicy = makePolicy({ rules: [RULE], version: 1 });
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [RULE], priority: 0, isFloor: false },
+			]);
+			policyRepository.findByIdAndKind.mockResolvedValue(existingPolicy);
+			policyRepository.updateRules.mockResolvedValue(existingPolicy);
+			scopeRepository.findScopeById.mockResolvedValue(
+				makeScope({ defaultAction: 'allow', version: 2 }),
+			);
+
+			await service.setEffectivePolicy(
+				KIND,
+				null,
+				{ rules: [RULE], defaultAction: 'allow' },
+				1,
+				'user-2',
+			);
+
+			expect(scopeRepository.updateDefaultAction).not.toHaveBeenCalled();
+			expect(scopeRepository.bumpVersion).toHaveBeenCalledTimes(1);
 		});
 	});
 

@@ -12,13 +12,21 @@ vi.mock('@langchain/core/tools', () => ({
 			description: string;
 			schema: unknown;
 			func: unknown;
+			metadata: unknown;
 		},
-		config: { name: string; description: string; schema: unknown; func: unknown },
+		config: {
+			name: string;
+			description: string;
+			schema: unknown;
+			func: unknown;
+			metadata: unknown;
+		},
 	) {
 		this.name = config.name;
 		this.description = config.description;
 		this.schema = config.schema;
 		this.func = config.func;
+		this.metadata = config.metadata;
 	}),
 }));
 
@@ -125,6 +133,36 @@ describe('createNodeAsTool', () => {
 				expect.anything(),
 			);
 			expect(tool.description).toBe('Plain static description');
+		});
+	});
+
+	describe('Tool metadata', () => {
+		it('should set sourceNodeName in metadata', () => {
+			const tool = createNodeAsTool(options).response;
+
+			expect(tool.metadata?.sourceNodeName).toBe('Test_Node');
+		});
+
+		it('should set metadata.attribution from the toolAttribution parameter', () => {
+			node.parameters.toolAttribution = 'Powered by Databricks Genie';
+
+			const tool = createNodeAsTool(options).response;
+
+			expect(tool.metadata?.attribution).toBe('Powered by Databricks Genie');
+		});
+
+		it('should not set metadata.attribution when toolAttribution is absent', () => {
+			const tool = createNodeAsTool(options).response;
+
+			expect(tool.metadata).not.toHaveProperty('attribution');
+		});
+
+		it('should not set metadata.attribution when toolAttribution is empty', () => {
+			node.parameters.toolAttribution = '';
+
+			const tool = createNodeAsTool(options).response;
+
+			expect(tool.metadata).not.toHaveProperty('attribution');
 		});
 	});
 

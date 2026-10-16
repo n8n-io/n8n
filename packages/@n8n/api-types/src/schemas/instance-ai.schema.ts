@@ -10,6 +10,7 @@ import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
 import type { McpToolPermissions } from './mcp-tool-permissions.schema';
+import { threadTitleSearchSchema } from './thread-title-search.schema';
 import { Z } from '../zod-class';
 
 // ---------------------------------------------------------------------------
@@ -26,14 +27,11 @@ export const UNLIMITED_CREDITS = -1;
  * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
- * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
- * disabled, or the amounts are deliberately withheld from a cohort that must not see a balance.
+ * `creditsQuota` is {@link UNLIMITED_CREDITS} when the AI service proxy is disabled.
  */
 export type InstanceAiCredits = {
 	creditsQuota: number;
 	creditsClaimed: number;
-	/** Whether the pool has been locked by the activation cap. */
-	quotaLocked?: boolean;
 };
 
 /**
@@ -2171,13 +2169,7 @@ export interface InstanceAiThreadListResponse {
 
 export class InstanceAiThreadHistoryQuery extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100).default(30),
-	// Postgres rejects NUL bytes in text parameters, so reject them here as a 400.
-	search: z
-		.string()
-		.trim()
-		.max(500)
-		.refine((value) => !value.includes('\u0000'))
-		.optional(),
+	search: threadTitleSearchSchema,
 	cursor: z.string().min(1).max(256).optional(),
 }) {}
 
@@ -2881,6 +2873,19 @@ export interface InstanceAiEvalRewrittenCredential {
 	field: string;
 }
 
+/** Token usage of the eval's own model calls (mocks, judges, simulated user), per agent and model. */
+export interface InstanceAiEvalLlmUsage {
+	/** Eval agent name, e.g. `eval-mock-responder`. */
+	agent: string;
+	model: string;
+	calls: number;
+	/** Prompt tokens billed at the full input price: cache reads and writes are not included. */
+	uncachedInputTokens: number;
+	cacheReadTokens: number;
+	cacheWriteTokens: number;
+	outputTokens: number;
+}
+
 export interface InstanceAiEvalExecutionResult {
 	executionId: string;
 	success: boolean;
@@ -2889,6 +2894,8 @@ export interface InstanceAiEvalExecutionResult {
 	hints: InstanceAiEvalMockHints;
 	mockedCredentials: InstanceAiEvalMockedCredential[];
 	rewrittenCredentials?: InstanceAiEvalRewrittenCredential[];
+	/** Model usage of the mocks, pin data and hints for this run. */
+	llmUsage?: InstanceAiEvalLlmUsage[];
 }
 
 export class InstanceAiEvalExecutionRequest extends Z.class({
@@ -2999,6 +3006,8 @@ export interface InstanceAiEvalAgentExecutionResult {
 	seed: InstanceAiEvalAgentScenarioSeed;
 	skippedFeatures: InstanceAiEvalAgentSkippedFeature[];
 	mockedCredentials: InstanceAiEvalMockedCredential[];
+	/** Model usage of the seed and the mocks for this run. The agent's own model call is in `usage`. */
+	llmUsage?: InstanceAiEvalLlmUsage[];
 }
 
 export class InstanceAiEvalAgentExecutionRequest extends Z.class({
@@ -3028,6 +3037,18 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 * behaviour, so every existing case is unaffected.
 	 */
 	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
+}) {}
+
+/**
+ * Aims the thread's connection tests for one credential type at a provider
+ * stand-in, so the eval checks the captured secret without the real provider.
+ */
+export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
+	threadId: z.string().uuid(),
+	credentialType: z.string().min(1),
+	baseUrl: z.string().url(),
+	/** Credential field the stand-in URL is written into. */
+	urlField: z.string().min(1),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

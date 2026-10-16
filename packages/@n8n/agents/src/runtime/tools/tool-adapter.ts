@@ -170,6 +170,7 @@ function createToolContext(
 		abortSignal: executionContext.abortSignal,
 		executionCounter: executionContext.executionCounter,
 		approvalContext: executionContext.approvalContext,
+		onGuardrailNotice: executionContext.onGuardrailNotice,
 	};
 }
 

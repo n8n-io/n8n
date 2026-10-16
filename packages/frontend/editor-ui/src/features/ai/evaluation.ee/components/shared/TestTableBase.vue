@@ -230,7 +230,7 @@ defineSlots<{
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-size: 12px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 

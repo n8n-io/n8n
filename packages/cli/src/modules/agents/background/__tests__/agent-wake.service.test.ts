@@ -1,4 +1,5 @@
 import type { SerializableAgentState } from '@n8n/agents';
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { LockService, Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
@@ -723,6 +724,90 @@ describe('AgentWakeService', () => {
 					identity: { type: 'published', integrationType: 'slack', principalHash: 'A'.repeat(43) },
 				}),
 			);
+		});
+
+		it('passes a published identity to the orchestrator for a production n8n Chat wake', async () => {
+			const { service, jobRepository, orchestrator } = setup();
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: principalHash,
+				}),
+			]);
+
+			await service.attemptWake('thread-1');
+
+			expect(orchestrator.executeForWake).toHaveBeenCalledWith(
+				expect.objectContaining({
+					identity: {
+						type: 'published',
+						integrationType: N8N_CHAT_INTEGRATION_TYPE,
+						principalHash,
+					},
+				}),
+			);
+		});
+
+		it('rejects a production n8n Chat identity whose principal hash does not match', async () => {
+			const { service, jobRepository, orchestrator } = setup();
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: otherPrincipalHash,
+				}),
+			]);
+
+			await service.attemptWake('thread-1');
+
+			expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
+		it('rejects a production n8n Chat wake when its user no longer exists or is disabled', async () => {
+			const gone = setup();
+			gone.jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: principalHash,
+				}),
+			]);
+			gone.userRepository.findByIdWithRole.mockResolvedValue(null);
+			await gone.service.attemptWake('thread-1');
+			expect(gone.orchestrator.executeForWake).not.toHaveBeenCalled();
+
+			const disabled = setup();
+			disabled.jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: principalHash,
+				}),
+			]);
+			disabled.userRepository.findByIdWithRole.mockResolvedValue({
+				...user,
+				disabled: true,
+			} as never);
+			await disabled.service.attemptWake('thread-1');
+			expect(disabled.orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(disabled.jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
+		it('rejects a production n8n Chat wake when its user can no longer execute the agent', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({
+					parentResourceId: `n8n-chat-production:${user.id}`,
+					parentPrincipalHash: principalHash,
+				}),
+			]);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await service.attemptWake('thread-1');
+
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:execute'], false, {
+				projectId: 'project-1',
+			});
+			expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		});
 
 		it('leaves results pending when the parent agent no longer exists', async () => {

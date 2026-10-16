@@ -7,6 +7,7 @@ export {
 	TaskHandlerRegistry,
 	createDispatchReporter,
 	type TaskHandler,
+	type TaskRun,
 	type DispatchReporter,
 	type DispatchDecision,
 } from './task-handler';

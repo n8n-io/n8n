@@ -206,6 +206,24 @@ describe('components/N8nMarkdownEditor', () => {
 		expect(getEditorElement(wrapper.container)).toHaveTextContent('Content');
 	});
 
+	it.each(['', 'Content'])(
+		'keeps text edits from the editor DOM with initial content %j',
+		async (initialContent) => {
+			const { wrapper, editor } = await renderEditor(initialContent);
+			const paragraph = getEditorElement(wrapper.container)!.querySelector('p')!;
+			const updatedContent = `${initialContent}x`;
+
+			// Browser typing changes the DOM before ProseMirror reads the new text.
+			paragraph.textContent = updatedContent;
+
+			await waitFor(() => expect(editor.getMarkdown()).toBe(updatedContent));
+			expect(wrapper.emitted<string[]>('update:modelValue').at(-1)?.[0]).toBe(updatedContent);
+
+			await wrapper.rerender({ modelValue: updatedContent, showToolbar: 'never' });
+			expect(getEditorElement(wrapper.container)).toHaveTextContent(updatedContent);
+		},
+	);
+
 	it('does not show the collapse control by default', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {

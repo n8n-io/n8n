@@ -180,7 +180,9 @@ const showDeploymentName = computed(() => {
 	const credentialId = props.config?.credential;
 	if (!credentialId || credentialId === AI_GATEWAY_MANAGED_TAG) return false;
 	if (!credentialsStore.getCredentialById(credentialId)) return false;
-	return azureEndpointType.value !== 'foundry';
+	// Visible for classic, foundry, and unknown endpoint types alike: a
+	// deployment name is optional on Foundry but can override the model id.
+	return true;
 });
 
 const deploymentName = ref(props.config?.modelDeploymentName ?? '');
@@ -268,17 +270,19 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	// A default applied by the resolver surfaces a hint so the user knows they
 	// can change it; any explicit user pick clears the hint.
 	defaultModelHint.value = source === 'auto';
-	// Azure OpenAI classic needs a user-named deployment; seed it from the model
-	// so the field isn't blank. Following the model on change is the sensible
-	// default — deployments are usually named after the model. Foundry endpoints
-	// take the model id directly and don't need one.
-	// Drop any in-flight typed/cleared value so it can't land after this seed
-	// and wipe the model-derived name.
+	// The deployment name is optional on Foundry: an empty value means the
+	// call uses the model id. Classic requires a user-named deployment, so
+	// seed it from the model — deployments are usually named after the model.
+	// Foundry deployments are often named differently, so a model-derived
+	// guess would be wrong; clear instead, so the old model's deployment
+	// name can't survive a model switch.
 	cancelDeploymentNameEmit();
-	const deploymentNameChange =
-		selection.provider === 'azure-openai' && azureEndpointType.value !== 'foundry'
-			? { modelDeploymentName: deriveDefaultDeploymentName(selection) }
-			: {};
+	const deploymentNameChange: { modelDeploymentName?: string } =
+		selection.provider !== 'azure-openai'
+			? {}
+			: azureEndpointType.value === 'foundry'
+				? { modelDeploymentName: '' }
+				: { modelDeploymentName: deriveDefaultDeploymentName(selection) };
 	if (deploymentNameChange.modelDeploymentName !== undefined) {
 		deploymentName.value = deploymentNameChange.modelDeploymentName;
 	}
@@ -354,6 +358,8 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 }
 
 const instructions = ref(props.config?.instructions ?? '');
+const instructionsEditor = ref<InstanceType<typeof N8nMarkdownEditor>>();
+const modelSelector = ref<InstanceType<typeof AgentModelSelector>>();
 
 // Keep the local editor stable while external config updates arrive.
 watch(
@@ -367,6 +373,14 @@ const emitInstructionsDebounced = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
+function focusInstructions() {
+	instructionsEditor.value?.focus();
+}
+
+function focusModel() {
+	modelSelector.value?.open();
+}
+
 function onInstructionsInput(value: string) {
 	instructions.value = value;
 	emit('draft:config');
@@ -376,6 +390,7 @@ function onInstructionsInput(value: string) {
 	}
 	void emitInstructionsDebounced();
 }
+defineExpose({ focusInstructions, focusModel });
 </script>
 
 <template>
@@ -397,6 +412,7 @@ function onInstructionsInput(value: string) {
 						</N8nText>
 					</div>
 					<AgentModelSelector
+						ref="modelSelector"
 						:disabled="props.disabled"
 						:selected-model="selectedAgent"
 						:credentials="effectiveCredentials"
@@ -479,6 +495,7 @@ function onInstructionsInput(value: string) {
 					</N8nText>
 				</div>
 				<N8nMarkdownEditor
+					ref="instructionsEditor"
 					:id="instructionsEditorId"
 					:class="$style.instructionsDocument"
 					:model-value="instructions"

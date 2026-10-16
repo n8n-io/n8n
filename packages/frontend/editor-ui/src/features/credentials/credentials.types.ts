@@ -88,4 +88,6 @@ export interface IShareCredentialsPayload {
 }
 
 /** What the picker's credential list is narrowed to: an open workflow, else a project. */
-export type CredentialFetchScope = { workflowId: string } | { projectId: string };
+export type CredentialFetchScope = ({ workflowId: string } | { projectId: string }) & {
+	forAgent?: boolean;
+};

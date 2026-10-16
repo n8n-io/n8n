@@ -18,7 +18,7 @@ async function expectButtonAligned(inputBorder: Locator, fromAiButton: Locator) 
 
 test.describe(
 	'ADO-5599: From AI button alignment',
-	{ annotation: [{ type: 'owner', description: 'Adore' }] },
+	{ annotation: [{ type: 'owner', description: 'NODES' }] },
 	() => {
 		test('aligns the From AI button outline with the tool parameter input border', async ({
 			n8n,

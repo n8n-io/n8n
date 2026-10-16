@@ -41,6 +41,16 @@ vi.mock('@n8n/agents', () => ({
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),
+	createObservationLogObserveFn: vi.fn((model: unknown, options: unknown) => ({
+		task: 'observe',
+		model,
+		options,
+	})),
+	createObservationLogReflectFn: vi.fn((model: unknown, options: unknown) => ({
+		task: 'reflect',
+		model,
+		options,
+	})),
 }));
 
 const mockBuiltTool = (name: string, marker?: string) => ({
@@ -455,6 +465,63 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('starts preparing runtime skills in the background without waiting for them', async () => {
+		let finishPrepare: () => void = () => {};
+		const prepare = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishPrepare = resolve;
+				}),
+		);
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
+			},
+			prepare,
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkills },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(prepare).toHaveBeenCalledTimes(1);
+		finishPrepare();
+	});
+
+	it('logs a background skill preparation failure instead of rejecting', async () => {
+		const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() };
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
+			},
+			prepare: vi.fn(async () => await Promise.reject(new Error('sandbox unavailable'))),
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkills, logger },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		await vi.waitFor(() =>
+			expect(logger.warn).toHaveBeenCalledWith('Failed to warm runtime skills in the background', {
+				error: 'sandbox unavailable',
+			}),
+		);
+	});
+
 	it('passes the selected catalog to domain tools before workspace materialization', async () => {
 		const runtimeSkillCatalog = {
 			registry: { schemaVersion: 1, skillsHash: 'selected-skills', skills: [] },
@@ -858,6 +925,85 @@ describe('createInstanceAgent', () => {
 			reflectorThresholdTokens: 40_000,
 		});
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
+	});
+
+	it('runs the Observer and Reflector on the memory model when one is set', async () => {
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-5-5',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					model: 'anthropic/claude-haiku-4-5',
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+			reflectorThresholdTokens: 40_000,
+			observe: {
+				task: 'observe',
+				model: 'anthropic/claude-haiku-4-5',
+				options: { onUsage: undefined },
+			},
+			reflect: {
+				task: 'reflect',
+				model: 'anthropic/claude-haiku-4-5',
+				options: { onUsage: undefined },
+			},
+		});
+	});
+
+	it('runs the Observer and Reflector on the agent model when only usage reporting is set', async () => {
+		const onTaskUsage = vi.fn();
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-5-5',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					onTaskUsage,
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith(
+			expect.objectContaining({
+				observe: {
+					task: 'observe',
+					model: 'anthropic/claude-opus-5-5',
+					options: { onUsage: onTaskUsage },
+				},
+				reflect: {
+					task: 'reflect',
+					model: 'anthropic/claude-opus-5-5',
+					options: { onUsage: onTaskUsage },
+				},
+			}),
+		);
 	});
 
 	it('forwards midRunObservation to the Memory builder when provided', async () => {

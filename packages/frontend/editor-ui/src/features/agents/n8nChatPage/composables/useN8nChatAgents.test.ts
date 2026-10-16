@@ -21,6 +21,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
 }));
 
+const NO_ATTACHMENTS = { image: false, pdf: false, audio: false };
+
 describe('useN8nChatAgents', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -137,13 +139,37 @@ describe('useN8nChatAgents', () => {
 		// Newer request (page 2) resolves first; older (page 1) resolves after.
 		second.resolve({
 			count: 1,
-			data: [{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' } }],
+			data: [
+				{
+					id: 'a2',
+					name: 'Two',
+					project: { id: 'p', name: 'P' },
+					attachments: NO_ATTACHMENTS,
+				},
+			],
 		});
 		await flushPromises();
-		first.resolve({ count: 1, data: [{ id: 'a1', name: 'One', project: { id: 'p', name: 'P' } }] });
+		first.resolve({
+			count: 1,
+			data: [
+				{
+					id: 'a1',
+					name: 'One',
+					project: { id: 'p', name: 'P' },
+					attachments: NO_ATTACHMENTS,
+				},
+			],
+		});
 		await flushPromises();
 
-		expect(agents.value).toEqual([{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' } }]);
+		expect(agents.value).toEqual([
+			{
+				id: 'a2',
+				name: 'Two',
+				project: { id: 'p', name: 'P' },
+				attachments: NO_ATTACHMENTS,
+			},
+		]);
 		expect(count.value).toBe(1);
 	});
 
@@ -164,7 +190,9 @@ describe('useN8nChatAgents', () => {
 		// Newer request (page 2) resolves first; older (page 1) fails after.
 		second.resolve({
 			count: 1,
-			data: [{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' } }],
+			data: [
+				{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' }, attachments: NO_ATTACHMENTS },
+			],
 		});
 		await flushPromises();
 		first.reject(new Error('network down'));
@@ -172,7 +200,9 @@ describe('useN8nChatAgents', () => {
 
 		expect(showErrorMock).not.toHaveBeenCalled();
 		expect(loadFailed.value).toBe(false);
-		expect(agents.value).toEqual([{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' } }]);
+		expect(agents.value).toEqual([
+			{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' }, attachments: NO_ATTACHMENTS },
+		]);
 	});
 
 	it('toasts a translated error, clears results, flags loadFailed, and stops loading on failure', async () => {
