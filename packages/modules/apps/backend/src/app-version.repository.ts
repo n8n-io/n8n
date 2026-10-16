@@ -69,7 +69,6 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	}
 
 	async attachBundle(
-		appId: string,
 		versionId: string,
 		artifactId: number,
 		ctx: OperationContext,
@@ -78,7 +77,6 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			AppVersion,
 			{
 				id: versionId,
-				appId,
 				bundleArtifactId: IsNull(),
 				buildStatus: In(['queued', 'running']),
 			},
@@ -92,22 +90,22 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 		versionId: string,
 		label: string | null,
 		ctx: OperationContext,
-	): Promise<void> {
-		await this.managerFor(ctx).update(AppVersion, { id: versionId, appId }, { label });
+	): Promise<AppVersion | null> {
+		const manager = this.managerFor(ctx);
+		const where = { id: versionId, appId };
+		const result = await manager.update(AppVersion, where, { label });
+		if (!result.affected) return null;
+		return await manager.findOneBy(AppVersion, where);
 	}
 
-	async clearBundles(appId: string, versionIds: string[], ctx: OperationContext): Promise<void> {
+	async clearBundles(versionIds: string[], ctx: OperationContext): Promise<void> {
 		for (const ids of chunkIds(versionIds)) {
-			await this.managerFor(ctx).update(
-				AppVersion,
-				{ id: In(ids), appId },
-				{ bundleArtifactId: null },
-			);
+			await this.managerFor(ctx).update(AppVersion, { id: In(ids) }, { bundleArtifactId: null });
 		}
 	}
 
-	async removeVersions(appId: string, versionIds: string[], ctx: OperationContext): Promise<void> {
+	async removeVersions(versionIds: string[], ctx: OperationContext): Promise<void> {
 		for (const ids of chunkIds(versionIds))
-			await this.managerFor(ctx).delete(AppVersion, { id: In(ids), appId });
+			await this.managerFor(ctx).delete(AppVersion, { id: In(ids) });
 	}
 }

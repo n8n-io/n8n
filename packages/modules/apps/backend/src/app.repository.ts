@@ -31,7 +31,6 @@ export class AppRepository extends BaseRepository<App> {
 	}
 
 	async advanceDraft(
-		projectId: string,
 		appId: string,
 		expectedVersionId: string | null,
 		versionId: string,
@@ -41,7 +40,6 @@ export class AppRepository extends BaseRepository<App> {
 			App,
 			{
 				id: appId,
-				projectId,
 				draftVersionId: expectedVersionId ?? IsNull(),
 			},
 			{ draftVersionId: versionId },

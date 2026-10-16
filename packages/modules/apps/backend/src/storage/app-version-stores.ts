@@ -21,11 +21,7 @@ export abstract class AppSourceVersionStore {
 	abstract readSourceFile(versionId: string, filePath: string): Promise<Buffer | null>;
 
 	/** Removes selected versions in the caller's transaction. */
-	abstract removeVersions(
-		appId: string,
-		versionIds: string[],
-		ctx: OperationContext,
-	): Promise<void>;
+	abstract removeVersions(versionIds: string[], ctx: OperationContext): Promise<void>;
 }
 
 export abstract class AppBuildResultStore {
@@ -35,5 +31,5 @@ export abstract class AppBuildResultStore {
 	abstract readBundle(versionId: string): Promise<AppFiles>;
 
 	/** Removes selected bundles in the caller's transaction. */
-	abstract removeBundles(appId: string, versionIds: string[], ctx: OperationContext): Promise<void>;
+	abstract removeBundles(versionIds: string[], ctx: OperationContext): Promise<void>;
 }

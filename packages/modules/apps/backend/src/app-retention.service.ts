@@ -36,7 +36,7 @@ export class AppRetentionService {
 				protectedIds,
 				this.config.maxBundlesPerApp,
 			);
-			await this.buildResults.removeBundles(appId, bundlesToRemove, ctx);
+			await this.buildResults.removeBundles(bundlesToRemove, ctx);
 			const removedBundles = new Set(bundlesToRemove);
 			for (const version of built) {
 				if (!removedBundles.has(version.id)) protectedIds.add(version.id);
@@ -46,7 +46,7 @@ export class AppRetentionService {
 				protectedIds,
 				this.config.maxVersionsPerApp,
 			);
-			await this.sourceVersions.removeVersions(appId, versionsToRemove, ctx);
+			await this.sourceVersions.removeVersions(versionsToRemove, ctx);
 		});
 	}
 
