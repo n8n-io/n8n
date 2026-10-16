@@ -1,4 +1,6 @@
+import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
@@ -120,7 +122,7 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 	}),
 	ContactAdminModal: {
 		name: 'ContactAdminModal',
-		props: ['open', 'nodeTypeName', 'kind'],
+		props: ['open', 'nodeTypeName', 'kind', 'audience'],
 		template: '<div v-if="open" data-testid="contact-admin-modal">{{ nodeTypeName }}</div>',
 	},
 }));
@@ -128,7 +130,7 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 vi.mock('../components/model-selector/ModelSelectorRestrictedMarker.vue', () => ({
 	default: {
 		name: 'ModelSelectorRestrictedMarker',
-		props: ['name', 'scope'],
+		props: ['name', 'scope', 'optInAvailable'],
 		emits: ['contactAdmin'],
 		template:
 			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\')">{{ name }}</button>',
@@ -318,6 +320,7 @@ function getFreeOpenAiCreditsItem(wrapper: VueWrapper) {
 
 describe('AgentModelSelector', () => {
 	beforeEach(() => {
+		setActivePinia(createTestingPinia());
 		vi.clearAllMocks();
 		credentialsByType.value = {
 			anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
@@ -439,6 +442,7 @@ describe('AgentModelSelector', () => {
 			open: true,
 			kind: 'credential',
 			nodeTypeName: 'OpenAI credentials',
+			audience: 'project',
 		});
 	});
 

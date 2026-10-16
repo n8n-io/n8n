@@ -240,6 +240,7 @@ function handleConnect() {
 				v-if="restriction"
 				:node-type-name="item.title"
 				:scope="restriction.scope"
+				:opt-in-available="restriction.optInAvailable"
 				:anchor="rowRef"
 				:side-offset="48"
 			/>

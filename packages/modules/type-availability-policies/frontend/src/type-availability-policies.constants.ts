@@ -19,23 +19,59 @@ export type RestrictedTypeKind = 'node' | 'credential';
 
 export const RESTRICTED_TYPE_COPY: Record<
 	RestrictedTypeKind,
-	{
-		title: BaseTextKey;
-		popoverDescription: BaseTextKey;
-		contactDescription: BaseTextKey;
-		mailSubject: BaseTextKey;
-	}
+	{ title: BaseTextKey; mailSubject: BaseTextKey }
 > = {
 	node: {
 		title: 'typeAvailabilityPolicies.restrictedNode.title',
-		popoverDescription: 'typeAvailabilityPolicies.restrictedNode.popover.description',
-		contactDescription: 'typeAvailabilityPolicies.contactAdmin.description',
 		mailSubject: 'typeAvailabilityPolicies.contactAdmin.mailSubject',
 	},
 	credential: {
 		title: 'typeAvailabilityPolicies.restrictedCredentialType.title',
-		popoverDescription: 'typeAvailabilityPolicies.restrictedCredentialType.popover.description',
-		contactDescription: 'typeAvailabilityPolicies.contactAdmin.credentialType.description',
 		mailSubject: 'typeAvailabilityPolicies.contactAdmin.credentialType.mailSubject',
 	},
+};
+
+export type ContactAudience = 'instance' | 'project';
+
+export const CONTACT_ADMIN_COPY: Record<
+	ContactAudience,
+	{
+		action: BaseTextKey;
+		dialogTitle: BaseTextKey;
+		empty: BaseTextKey;
+		dialogDescription: Record<RestrictedTypeKind, BaseTextKey>;
+		popoverDescription: Record<RestrictedTypeKind, BaseTextKey>;
+	}
+> = {
+	instance: {
+		action: 'typeAvailabilityPolicies.restrictedNode.contactAdmin',
+		dialogTitle: 'typeAvailabilityPolicies.contactAdmin.title',
+		empty: 'typeAvailabilityPolicies.contactAdmin.empty',
+		dialogDescription: {
+			node: 'typeAvailabilityPolicies.contactAdmin.description',
+			credential: 'typeAvailabilityPolicies.contactAdmin.credentialType.description',
+		},
+		popoverDescription: {
+			node: 'typeAvailabilityPolicies.restrictedNode.popover.description',
+			credential: 'typeAvailabilityPolicies.restrictedCredentialType.popover.description',
+		},
+	},
+	project: {
+		action: 'typeAvailabilityPolicies.restrictedNode.contactProjectAdmin',
+		dialogTitle: 'typeAvailabilityPolicies.contactProjectAdmin.title',
+		empty: 'typeAvailabilityPolicies.contactProjectAdmin.empty',
+		dialogDescription: {
+			node: 'typeAvailabilityPolicies.contactProjectAdmin.description',
+			credential: 'typeAvailabilityPolicies.contactProjectAdmin.credentialType.description',
+		},
+		popoverDescription: {
+			node: 'typeAvailabilityPolicies.restrictedNode.popover.description.project',
+			credential: 'typeAvailabilityPolicies.restrictedCredentialType.popover.description.project',
+		},
+	},
+};
+
+export const OPT_IN_POPOVER_DESCRIPTION: Record<RestrictedTypeKind, BaseTextKey> = {
+	node: 'typeAvailabilityPolicies.restrictedNode.popover.description.optIn',
+	credential: 'typeAvailabilityPolicies.restrictedCredentialType.popover.description.optIn',
 };

@@ -6,6 +6,7 @@ import { computed, useTemplateRef } from 'vue';
 defineProps<{
 	name: string;
 	scope?: CredentialTypeAvailabilityScope;
+	optInAvailable?: boolean;
 }>();
 
 const emit = defineEmits<{ contactAdmin: [] }>();
@@ -23,6 +24,7 @@ const row = computed(() => rootRef.value?.closest<HTMLElement>('[role="menuitem"
 			marker-size="xsmall"
 			:node-type-name="name"
 			:scope="scope"
+			:opt-in-available="optInAvailable"
 			:anchor="row"
 			@contact-admin="emit('contactAdmin')"
 		/>

@@ -5,14 +5,16 @@ import { setActivePinia } from 'pinia';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import RestrictedNodePanel from './RestrictedNodePanel.vue';
+import { mockPolicyProject } from '../__tests__/mocks';
 
 const renderComponent = createComponentRenderer(RestrictedNodePanel, {
 	props: { nodeTypeName: 'Slack' },
 	global: {
 		stubs: {
 			ContactAdminModal: {
-				props: ['open', 'nodeTypeName'],
-				template: '<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}</div>',
+				props: ['open', 'nodeTypeName', 'audience'],
+				template:
+					'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}</div>',
 			},
 		},
 	},
@@ -63,5 +65,38 @@ describe('RestrictedNodePanel', () => {
 		await fireEvent.click(getByTestId('node-restricted-replace'));
 
 		expect(emitted('replaceNode')).toHaveLength(1);
+	});
+
+	it('sends a project restriction to the project admins', async () => {
+		mockPolicyProject({ type: 'team' });
+		const { getByTestId } = renderComponent({ props: { scope: 'project' } });
+
+		expect(getByTestId('node-restricted-panel')).toHaveTextContent(
+			"An administrator blocked 'Slack' in this project. Contact a project admin or replace the node to continue.",
+		);
+		expect(getByTestId('node-restricted-contact-admin')).toHaveTextContent('Contact project admin');
+		await fireEvent.click(getByTestId('node-restricted-contact-admin'));
+		expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-audience', 'project');
+	});
+
+	it('says a project admin can allow a delegated node', () => {
+		mockPolicyProject({ type: 'team' });
+		const { getByTestId } = renderComponent({
+			props: { scope: 'instance', optInAvailable: true },
+		});
+
+		expect(getByTestId('node-restricted-panel')).toHaveTextContent(
+			'A project admin can allow it for this project. Contact one or replace the node to continue.',
+		);
+		expect(getByTestId('node-restricted-contact-admin')).toHaveTextContent('Contact project admin');
+	});
+
+	it('keeps the instance admin for a project restriction in a personal project', () => {
+		mockPolicyProject({ type: 'personal' });
+		const { getByTestId } = renderComponent({ props: { scope: 'project' } });
+
+		expect(getByTestId('node-restricted-contact-admin')).toHaveTextContent(
+			'Contact instance admin',
+		);
 	});
 });

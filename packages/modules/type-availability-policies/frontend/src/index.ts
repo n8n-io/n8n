@@ -1,12 +1,21 @@
 export { TypeAvailabilityPoliciesModule } from './type-availability-policies.module';
 export { useTypeAvailabilityPoliciesStore } from './type-availability-policies.store';
-export { SCOPE_LABEL_KEY, type RestrictedTypeKind } from './type-availability-policies.constants';
+export {
+	CONTACT_ADMIN_COPY,
+	SCOPE_LABEL_KEY,
+	type ContactAudience,
+	type RestrictedTypeKind,
+} from './type-availability-policies.constants';
 export {
 	describeNodeTypeRestriction,
 	describeRestrictedNodeTypes,
 	getNodeTypeRestriction,
+	getRestrictionContact,
+	getViolationVerdict,
+	isOptInRestriction,
 	isNodeTypeRestricted,
 	useNodeTypeRestriction,
+	type RestrictionVerdict,
 	type TypeRestriction,
 } from './composables/useNodeTypeRestriction';
 export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';

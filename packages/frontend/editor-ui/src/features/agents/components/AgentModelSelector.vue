@@ -18,8 +18,10 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailability } from '@n8n/api-types';
 import {
 	ContactAdminModal,
+	getRestrictionContact,
 	SCOPE_LABEL_KEY,
 	useTypeAvailabilityPoliciesStore,
+	type ContactAudience,
 } from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
@@ -104,6 +106,7 @@ const pendingDefaultCredential = ref<{
 	credentialId: string;
 } | null>(null);
 const contactAdminSubject = ref<string | null>(null);
+const contactAdminAudience = ref<ContactAudience>('instance');
 const forceModelOptionsDisabled = ref(false);
 const isResolvingDefaultModel = computed(
 	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
@@ -244,8 +247,9 @@ function restrictedCredentialsName(item: MenuItem): string {
 	});
 }
 
-function requestContactAdmin(subject: string) {
+function requestContactAdmin(subject: string, restriction?: CredentialTypeAvailability) {
 	dropdownRef.value?.close();
+	contactAdminAudience.value = restriction ? getRestrictionContact(restriction) : 'instance';
 	contactAdminSubject.value = subject;
 }
 
@@ -753,13 +757,17 @@ defineExpose({
 				<ModelSelectorRestrictedMarker
 					:name="restrictedCredentialsName(item)"
 					:scope="item.data?.restriction?.scope"
-					@contact-admin="requestContactAdmin(restrictedCredentialsName(item))"
+					:opt-in-available="item.data?.restriction?.optInAvailable"
+					@contact-admin="
+						requestContactAdmin(restrictedCredentialsName(item), item.data?.restriction)
+					"
 				/>
 			</template>
 		</N8nAiModelSelectorDropdown>
 		<ContactAdminModal
 			kind="credential"
 			:node-type-name="contactAdminSubject ?? ''"
+			:audience="contactAdminAudience"
 			:open="contactAdminSubject !== null"
 			@update:open="(isOpen) => !isOpen && (contactAdminSubject = null)"
 		/>
