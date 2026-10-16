@@ -52,4 +52,14 @@ describe('SettingsSidebar', () => {
 		expect(getByTestId('settings-section-ai')).toContainElement(getByText('AI'));
 		expect(getByTestId('settings-section-ai')).toContainElement(getByText('Gateway credits'));
 	});
+
+	it('keeps the back link out of the scrolling list', () => {
+		const { getByTestId } = renderComponent();
+
+		const scrollArea = getByTestId('settings-sidebar-scroll');
+		expect(scrollArea).not.toContainElement(getByTestId('settings-back'));
+		expect(scrollArea).toContainElement(getByTestId('settings-section-personal'));
+		expect(scrollArea).toContainElement(getByTestId('scroll-area-fade-top'));
+		expect(scrollArea).toContainElement(getByTestId('scroll-area-fade-bottom'));
+	});
 });

@@ -2,7 +2,7 @@
 import { onMounted } from 'vue';
 import { ABOUT_MODAL_KEY } from '@/app/constants';
 
-import { N8nIcon, N8nLink, N8nMenuItem, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useSettingsItems } from '../composables/useSettingsItems';
 import { useAiGateway } from '../composables/useAiGateway';
 import { useI18n } from '@n8n/i18n';
@@ -33,36 +33,39 @@ onMounted(() => {
 			</div>
 			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
-		<div :class="$style.items">
-			<div
-				v-for="section in settingsSections"
-				:key="section.id"
-				:class="$style.section"
-				:data-test-id="`settings-section-${section.id}`"
-			>
-				<N8nText
-					v-if="section.title"
-					tag="div"
-					size="small"
-					bold
-					color="text-light"
-					:class="$style.sectionTitle"
+		<!-- The back link stays put; only the links scroll, with fades showing there is more. -->
+		<N8nScrollArea edge-fade :class="$style.scrollArea" data-test-id="settings-sidebar-scroll">
+			<div :class="$style.items">
+				<div
+					v-for="section in settingsSections"
+					:key="section.id"
+					:class="$style.section"
+					:data-test-id="`settings-section-${section.id}`"
 				>
-					{{ section.title }}
-				</N8nText>
-				<N8nMenuItem
-					v-for="item in section.items"
-					:key="item.id"
-					:item="item"
-					@click="handleSettingsItemSelect(item.id)"
-				/>
+					<N8nText
+						v-if="section.title"
+						tag="div"
+						size="small"
+						bold
+						color="text-light"
+						:class="$style.sectionTitle"
+					>
+						{{ section.title }}
+					</N8nText>
+					<N8nMenuItem
+						v-for="item in section.items"
+						:key="item.id"
+						:item="item"
+						@click="handleSettingsItemSelect(item.id)"
+					/>
+				</div>
 			</div>
-		</div>
-		<div :class="$style.versionContainer">
-			<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
-				{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
-			</N8nLink>
-		</div>
+			<div :class="$style.versionContainer">
+				<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
+					{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
+				</N8nLink>
+			</div>
+		</N8nScrollArea>
 	</div>
 </template>
 
@@ -70,16 +73,26 @@ onMounted(() => {
 @use '@/app/css/variables' as *;
 
 .container {
+	--scroll-area--fade-color: var(--color--background--light-3);
+
 	min-width: $sidebar-expanded-width;
 	height: 100%;
 	background-color: var(--color--background--light-3);
 	border-right: var(--border);
 	position: relative;
-	overflow: auto;
+	/* Grid rows are definite once sized, so the scroll area can fill the rest and scroll. */
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr);
+	overflow: hidden;
+}
+
+.scrollArea {
+	min-height: 0;
 }
 
 .returnButton {
 	padding: var(--spacing--xs);
+	border-bottom: var(--border);
 	cursor: pointer;
 	display: flex;
 	gap: var(--spacing--4xs);
@@ -101,7 +114,7 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 
-	padding: 0 var(--spacing--3xs);
+	padding: var(--spacing--xs) var(--spacing--3xs) 0;
 }
 
 .section {

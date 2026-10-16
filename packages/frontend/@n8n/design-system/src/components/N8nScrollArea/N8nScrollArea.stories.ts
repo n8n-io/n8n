@@ -29,6 +29,9 @@ export default {
 		enableVerticalScroll: {
 			control: 'boolean',
 		},
+		edgeFade: {
+			control: 'boolean',
+		},
 	},
 
 	parameters: {
@@ -96,6 +99,22 @@ WithMaxHeight.args = {
 	maxHeight: '150px',
 	enableVerticalScroll: true,
 	enableHorizontalScroll: false,
+};
+
+export const WithEdgeFade = Template.bind({});
+WithEdgeFade.args = {
+	type: 'hover',
+	edgeFade: true,
+	enableVerticalScroll: true,
+	enableHorizontalScroll: false,
+};
+WithEdgeFade.parameters = {
+	docs: {
+		description: {
+			story:
+				'Fades the top and bottom edges while more content can be scrolled into view. Set `--scroll-area--fade-color` to match a non-surface background.',
+		},
+	},
 };
 
 const HorizontalScrollTemplate: StoryFn = (args) => ({

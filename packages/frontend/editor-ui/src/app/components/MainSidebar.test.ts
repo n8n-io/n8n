@@ -277,5 +277,16 @@ describe('MainSidebar', () => {
 			expect(within(aiSection).getByText('Gateway credits')).toBeInTheDocument();
 			expect(queryByTestId('main-sidebar-settings-section-general')).not.toBeInTheDocument();
 		});
+
+		it('should pin sign out below the scrolling settings list', async () => {
+			const { getByText, findByTestId, getByTestId } = renderComponent();
+
+			getByText('Settings').click();
+			const signOut = await findByTestId('main-sidebar-log-out');
+
+			expect(getByTestId('popover-footer')).toContainElement(signOut);
+			expect(getByTestId('main-sidebar-settings-list')).not.toContainElement(signOut);
+			expect(getByTestId('scroll-area-fade-bottom')).toBeInTheDocument();
+		});
 	});
 });

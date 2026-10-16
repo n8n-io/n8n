@@ -6,7 +6,8 @@ import {
 	ScrollAreaThumb,
 	ScrollAreaViewport,
 } from 'reka-ui';
-import { computed, ref, nextTick, type Ref } from 'vue';
+import { useResizeObserver, useScroll } from '@vueuse/core';
+import { computed, ref, nextTick, onMounted, type Ref } from 'vue';
 
 export interface Props {
 	/**
@@ -45,6 +46,14 @@ export interface Props {
 	 * Change the default rendered element for the one passed as a child, merging their props and behavior.
 	 */
 	asChild?: boolean;
+	/**
+	 * Fade the content at the top and bottom edges while more of it can be scrolled into
+	 * view: the bottom fade shows until the viewport reaches the end, the top fade shows
+	 * once it has left the start. The fade colour defaults to the surface background; set
+	 * `--scroll-area--fade-color` on the component to match a different background, and
+	 * `--scroll-area--fade-size` to change its height.
+	 */
+	edgeFade?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -56,6 +65,7 @@ const props = withDefaults(defineProps<Props>(), {
 	enableHorizontalScroll: false,
 	enableVerticalScroll: true,
 	asChild: false,
+	edgeFade: false,
 });
 
 // Type for the ScrollAreaRoot instance with the viewport property
@@ -96,6 +106,28 @@ function getViewportElement(): HTMLElement | undefined {
 
 	return undefined;
 }
+
+// Edge fades follow the viewport's scroll position. The viewport element is only known
+// after mount, so the scroll tracking targets a ref that is filled in then.
+const viewportElement = ref<HTMLElement>();
+const fadeTarget = computed(() => (props.edgeFade ? viewportElement.value : undefined));
+const { arrivedState, measure } = useScroll(fadeTarget, { offset: { top: 1, bottom: 1 } });
+
+// Content or viewport size changes move the edges without a scroll event. The first
+// div inside the viewport is the content wrapper that grows with the slot.
+useResizeObserver(
+	() =>
+		props.edgeFade && viewportElement.value
+			? [viewportElement.value, viewportElement.value.querySelector('div')]
+			: [],
+	() => measure(),
+);
+
+onMounted(async () => {
+	viewportElement.value = getViewportElement();
+	await nextTick();
+	measure();
+});
 
 /**
  * Scrolls the viewport to the bottom
@@ -174,6 +206,19 @@ defineExpose({
 			<slot />
 		</ScrollAreaViewport>
 
+		<template v-if="edgeFade">
+			<div
+				aria-hidden="true"
+				data-test-id="scroll-area-fade-top"
+				:class="[$style.fade, $style.fadeTop, { [$style.fadeVisible]: !arrivedState.top }]"
+			/>
+			<div
+				aria-hidden="true"
+				data-test-id="scroll-area-fade-bottom"
+				:class="[$style.fade, $style.fadeBottom, { [$style.fadeVisible]: !arrivedState.bottom }]"
+			/>
+		</template>
+
 		<ScrollAreaScrollbar
 			v-if="enableVerticalScroll"
 			orientation="vertical"
@@ -208,6 +253,38 @@ defineExpose({
 	height: 100%;
 	border-radius: inherit;
 	overflow-anchor: none;
+}
+
+/* Edge fades sit over the viewport and under the scrollbar; they never take pointer events. */
+.fade {
+	position: absolute;
+	inset-inline: 0;
+	height: var(--scroll-area--fade-size, var(--spacing--lg));
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 160ms ease-out;
+}
+
+.fadeTop {
+	top: 0;
+	background: linear-gradient(
+		to bottom,
+		var(--scroll-area--fade-color, var(--background--surface)),
+		transparent
+	);
+}
+
+.fadeBottom {
+	bottom: 0;
+	background: linear-gradient(
+		to top,
+		var(--scroll-area--fade-color, var(--background--surface)),
+		transparent
+	);
+}
+
+.fadeVisible {
+	opacity: 1;
 }
 
 .scrollbar {

@@ -149,9 +149,10 @@ function onLogout() {
 					align="end"
 					:side-offset="12"
 					max-height="var(--reka-popover-content-available-height)"
+					scroll-edge-fade
 				>
 					<template #content>
-						<div :class="$style.popover">
+						<div :class="$style.popover" data-test-id="main-sidebar-settings-list">
 							<template v-if="settingsSections">
 								<div
 									v-for="section in settingsSections"
@@ -186,6 +187,11 @@ function onLogout() {
 									<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
 								</template>
 							</template>
+						</div>
+					</template>
+					<!-- Pinned below the list so it stays reachable when the list scrolls. -->
+					<template #footer>
+						<div :class="$style.popoverFooter">
 							<span :class="$style.divider" />
 							<N8nMenuItem
 								:data-test-id="'main-sidebar-log-out'"
@@ -245,6 +251,15 @@ function onLogout() {
 .popover {
 	padding: var(--spacing--4xs);
 	min-width: 260px;
+}
+
+/* Same inset as the list above it, whose bottom padding already spaces the divider. */
+.popoverFooter {
+	padding: 0 var(--spacing--4xs) var(--spacing--4xs);
+
+	.divider {
+		padding-top: var(--spacing--5xs);
+	}
 }
 
 .popoverTitle {

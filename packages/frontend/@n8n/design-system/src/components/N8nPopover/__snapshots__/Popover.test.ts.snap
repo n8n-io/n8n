@@ -23,10 +23,12 @@ exports[`N8nPopover > should render correctly with default props 1`] = `
             display: none;
           }
         </style>
+        <!--v-if-->
         <!---->
         <!--v-if-->
         <!--v-if-->
       </div>
+      <!--v-if-->
       <!--v-if-->
     </mock-popover-content>
   </mock-popover-portal>
