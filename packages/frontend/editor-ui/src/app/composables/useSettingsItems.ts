@@ -108,10 +108,11 @@ export function useSettingsItems() {
 				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
 				route: { to: { name: VIEWS.LDAP_SETTINGS } },
 			},
-			// AI (modules add MCP at 10, Assistant at 40, Agents at 50 and Chat at 70)
+			// AI (modules add MCP at 10, Assistant at 20, Agents at 30 and Chat at 50).
+			// Features come first; the cross-cutting usage and billing pages close the section.
 			{
 				id: 'settings-ai',
-				order: 20,
+				order: 60,
 				section: 'ai',
 				icon: 'sparkles',
 				label: i18n.baseText('settings.ai'),
@@ -122,7 +123,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-n8n-connect',
-				order: 30,
+				order: 70,
 				section: 'ai',
 				icon: 'plug-zap',
 				label: i18n.baseText(
@@ -146,7 +147,7 @@ export function useSettingsItems() {
 			{
 				// The flag is read here because the middleware check does not run route guards.
 				id: 'settings-context',
-				order: 60,
+				order: 40,
 				section: 'ai',
 				icon: 'brain',
 				label: i18n.baseText('settings.context.title'),
