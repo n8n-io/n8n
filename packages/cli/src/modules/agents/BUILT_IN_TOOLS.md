@@ -68,7 +68,7 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 ### `write_todos`
 
 - Purpose: Writes a task list for the run. The agent uses it to plan and to track progress.
-- Attach condition: Top-level agent.
+- Attach condition: Top-level agent when plan tools are disabled or the caller passes `allowPlanTools: false`.
 - Source: [`packages/@n8n/agents/src/runtime/tools/write-todos-tool.ts`](../../../../@n8n/agents/src/runtime/tools/write-todos-tool.ts).
 
 ### `mark_session_failed`
@@ -76,6 +76,9 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 See the [dedicated section](#mark_session_failed-session-outcomes).
 
 ## Plan tools
+
+Attach condition: Top-level agent with `AgentsConfig.planToolsEnabled` enabled, unless the caller passes `allowPlanTools: false`.
+Other top-level agents receive `write_todos`. Sub-agents receive neither tool set.
 
 Source: [`plans/agent-plan-tools.ts`](./plans/agent-plan-tools.ts).
 
@@ -104,6 +107,11 @@ The service validates the complete result and saves it with its history in one t
 Final items, task prerequisites, and service timestamps retain their existing rules.
 If an update fails, correct it and retry before reporting progress. Read the plan again after a revision conflict.
 `close_plan` closes the active plan without changing its document or cancelling work.
+
+Snapshots report `finishedAt` when all task leaves have a final status.
+A group with children contributes its child tasks. An empty group counts as one task.
+The timestamp is the last leaf end time. A later group status update does not extend it.
+Group statuses remain independent, so readiness can still list a pending group after its children finish.
 
 ## Background job tools
 

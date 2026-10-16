@@ -604,3 +604,35 @@ it('uses the last task end time when all leaves finish before the plan closes', 
 		finishedAt: null,
 	});
 });
+
+it.each(['pending', 'in_progress', 'done'] as const)(
+	'uses child end times when a non-empty group is %s',
+	(status) => {
+		const childEnd = '2026-10-15T10:01:00.000Z';
+		const group = {
+			...task(randomUUID()),
+			kind: 'group',
+			status,
+			endedAt: status === 'done' ? '2026-10-15T10:02:00.000Z' : null,
+			tasks: [{ ...task(randomUUID()), status: 'done', endedAt: childEnd }],
+		};
+		const plan = stored(parseAgentPlan(document(group), 1));
+		expect(presentPlan(plan)).toMatchObject({
+			finishedAt: childEnd,
+			readiness: { ready: status === 'pending' ? [group.id] : [], blocked: [] },
+		});
+	},
+);
+
+it('waits for an empty group before reporting a finish time', () => {
+	const finished = { ...task(randomUUID()), status: 'done', endedAt: '2026-10-15T10:01:00.000Z' };
+	const emptyGroup = { ...task(randomUUID()), kind: 'group', tasks: [] };
+	expect(presentPlan(stored(parseAgentPlan(document(finished, emptyGroup), 1)))).toMatchObject({
+		finishedAt: null,
+	});
+	const endedAt = '2026-10-15T10:02:00.000Z';
+	const plan = stored(
+		parseAgentPlan(document(finished, { ...emptyGroup, status: 'cancelled', endedAt }), 1),
+	);
+	expect(presentPlan(plan)).toMatchObject({ finishedAt: endedAt });
+});
