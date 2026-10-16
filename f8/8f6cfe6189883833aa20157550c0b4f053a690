@@ -1005,6 +1005,7 @@ packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-requ
   s_71ad2034164515::t_87f57b02bb38e3 22,42,128,134,143,149,156,188
 packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
   s_71ad2034164515::t_5605a7e11b9efe 14,72,80-97,262-264,282-289
+  s_71ad2034164515::t_56486576c7f38e 18
 packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
   s_71ad2034164515::t_87f57b02bb38e3 173,189
 packages/@n8n/permissions/src/constants.ee.ts
