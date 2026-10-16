@@ -13,7 +13,7 @@ const MAX_CACHED_AGENTS = 64;
  *
  * @typeParam TProxyAgent - the proxy-agent type for this scheme (`HttpProxyAgent` or `HttpsProxyAgent`).
  */
-export class EnvProxyRouter<TProxyAgent> {
+export class EnvProxyRouter<TProxyAgent extends { destroy(): void }> {
 	private readonly proxyCache = new Map<string, TProxyAgent>();
 
 	// Defensive upper bound on cached agents. Normally unreachable: the cache is keyed by the *proxy* URL.
@@ -46,6 +46,16 @@ export class EnvProxyRouter<TProxyAgent> {
 		const agent = this.createProxyAgent(proxyUrl);
 		this.cacheAgent(proxyUrl, agent);
 		return agent;
+	}
+
+	/**
+	 * Destroys the cached proxy agents and empties the cache.
+	 * Agents created past `MAX_CACHED_AGENTS` are not tracked, so this does not destroy them.
+	 * Reaching the limit needs that many distinct environment proxies, which is already a misconfiguration.
+	 */
+	destroy(): void {
+		for (const agent of this.proxyCache.values()) agent.destroy();
+		this.proxyCache.clear();
 	}
 
 	private cacheAgent(proxyUrl: string, agent: TProxyAgent): void {
