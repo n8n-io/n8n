@@ -176,7 +176,8 @@ export class AgentConfigPreparationService {
 			user,
 		);
 		if (prepared.config !== null) {
-			const accessibleIds = new Set((await credentialProvider.list()).map(({ id }) => id));
+			const accessibleCredentials = await credentialProvider.list();
+			const accessibleIds = new Set(accessibleCredentials.map(({ id }) => id));
 			visitAgentCredentialReferences(prepared.config, ({ id, path, managedToken }) => {
 				if (id && id !== managedToken && !accessibleIds.has(id)) {
 					throw new UserError(
@@ -184,6 +185,12 @@ export class AgentConfigPreparationService {
 					);
 				}
 			});
+			if (prepared.config.tools !== undefined) {
+				await this.nodeToolAiGatewayService.assignManagedCredentials(
+					prepared.config.tools.filter((tool) => tool.enabled !== false),
+					new Set(accessibleCredentials.map((credential) => credential.type)),
+				);
+			}
 			await this.validateAgentDestinations(prepared.config, projectId, user, planned);
 			await normalizeWorkflowToolRefs(this.workflowRepository, prepared.config, projectId);
 			await this.validateWorkflowDestinations(prepared.config, projectId, user, planned);
