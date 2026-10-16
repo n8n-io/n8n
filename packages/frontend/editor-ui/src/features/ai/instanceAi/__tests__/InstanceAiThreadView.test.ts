@@ -2497,6 +2497,9 @@ describe('InstanceAiThreadView', () => {
 			return evalsStore;
 		}
 
+		// The panel shows the run's steps in turn before its next steps appear.
+		const PLAYBACK_TIMEOUT = { timeout: 5000 };
+
 		it('renders the preview panel instead of the generic offer when the main eval flag is on', async () => {
 			seedReadyAgent();
 			seedPreviewRun();
@@ -2550,23 +2553,24 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId, queryByText } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
-				'“Summarize the thread”',
-			);
-			expect(await findByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled();
+			expect(
+				await findByTestId('instance-ai-test-agent-preview-practice-more', {}, PLAYBACK_TIMEOUT),
+			).toBeEnabled();
 			expect(evalsStore.previewRun).toHaveBeenCalledTimes(1);
 			expect(queryByText(/Summarize the thread about the outage/)).not.toBeInTheDocument();
 			expect(evalsStore.generateDraftCases).not.toHaveBeenCalled();
 			expect(evalsStore.startRun).not.toHaveBeenCalled();
 		});
 
-		it('persists the dismissal on "Later" without requesting the evals focus', async () => {
+		it('persists the dismissal on "Try it for real" without requesting the evals focus', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await user.click(await findByTestId('instance-ai-test-agent-preview-later'));
+			await user.click(
+				await findByTestId('instance-ai-test-agent-preview-try-for-real', {}, PLAYBACK_TIMEOUT),
+			);
 
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 				dismissedContextKeys: ['test-agent:agent-1'],
@@ -2574,23 +2578,25 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('persists the dismissal on "Looks good" without requesting the evals focus yet', async () => {
+		it('persists the dismissal on "Practice more" and opens the Checks tab without generating', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewRun();
-			evalsStore.generateDraftCases.mockResolvedValueOnce({
-				datasetId: 'dataset-2',
-				dataTableId: 'table-2',
-				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
-			});
+			// The agent already has checks, so nothing is saved before the tab opens.
+			evalsStore.fetchDatasets.mockResolvedValueOnce([{ id: 'dataset-1' } as never]);
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await user.click(await findByTestId('instance-ai-test-agent-preview-check-harder'));
+			await user.click(
+				await findByTestId('instance-ai-test-agent-preview-practice-more', {}, PLAYBACK_TIMEOUT),
+			);
 
+			await vi.waitFor(() =>
+				expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false),
+			);
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 				dismissedContextKeys: ['test-agent:agent-1'],
 			});
-			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
+			expect(evalsStore.requestAddCheckOpen).toHaveBeenCalledWith('agent-1');
 		});
 
 		it('drops the preview panel if the dataset cache populates from elsewhere before the user commits', async () => {
@@ -2775,7 +2781,7 @@ describe('InstanceAiThreadView', () => {
 			const evalsStore = seedPreviewRun();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await findByTestId('instance-ai-test-agent-preview-example');
+			await findByTestId('instance-ai-test-agent-preview-practice-more', {}, PLAYBACK_TIMEOUT);
 
 			expect(evalsStore.previewRun).toHaveBeenCalledTimes(1);
 			expect(evalsStore.startRun).not.toHaveBeenCalled();
@@ -2812,20 +2818,6 @@ describe('InstanceAiThreadView', () => {
 			unmount();
 
 			expect(evalsStore.clearEvalsFocus).not.toHaveBeenCalled();
-		});
-
-		it('persists the dismissal without requesting generation on "Later"', async () => {
-			seedReadyAgent();
-			const user = userEvent.setup();
-			const evalsStore = seedPreviewRun();
-			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
-
-			await user.click(await findByTestId('instance-ai-test-agent-preview-later'));
-
-			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
-			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-				dismissedContextKeys: ['test-agent:agent-1'],
-			});
 		});
 
 		it("does not reuse another agent's call_agent result when the offer's own target has no agent id", async () => {
@@ -2894,7 +2886,8 @@ describe('InstanceAiThreadView', () => {
 				verdict: PASS_VERDICT,
 			});
 
-			const { findByTestId, queryByText } = renderView({
+			const user = userEvent.setup();
+			const { findByTestId, findByText, queryByText } = renderView({
 				props: { threadId: 'thread-1' },
 			});
 
@@ -2903,13 +2896,12 @@ describe('InstanceAiThreadView', () => {
 			// result as its `initialCase`.
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 			expect(evalsStore.previewRun).toHaveBeenCalled();
-			expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
-				'“A different question”',
-			);
+			await user.click(await findByTestId('instance-ai-test-agent-preview-first-check'));
+			expect(await findByText('A different question', {}, PLAYBACK_TIMEOUT)).toBeInTheDocument();
 			expect(queryByText(/Ticket #48219 is a P1 SSO outage\./)).not.toBeInTheDocument();
 		});
 
-		it('clears the latch and opens the evals surface from "Open evals", without requesting generation', async () => {
+		it('opens the Checks tab from "Practice more" and keeps the first check in the thread', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
@@ -2918,20 +2910,18 @@ describe('InstanceAiThreadView', () => {
 				global: {
 					stubs: {
 						...defaultViewStubs,
-						// The real panel never wires its `open-evals` emit to a visible
-						// control yet — stub it so the test can fire that emit directly.
 						InstanceAiTestAgentPreviewPanel: defineComponent({
 							name: 'InstanceAiTestAgentPreviewPanelStub',
-							emits: ['confirm', 'dismiss', 'open-evals'],
+							emits: ['confirm', 'dismiss', 'practice-more', 'try-agent'],
 							setup(_, { emit }) {
 								return () =>
 									h(
 										'button',
 										{
-											'data-test-id': 'instance-ai-test-agent-preview-open-evals-stub',
-											onClick: () => emit('open-evals'),
+											'data-test-id': 'instance-ai-test-agent-preview-practice-more-stub',
+											onClick: () => emit('practice-more'),
 										},
-										'Open evals',
+										'Practice more',
 									);
 							},
 						}),
@@ -2939,57 +2929,19 @@ describe('InstanceAiThreadView', () => {
 				},
 			});
 
-			await user.click(await findByTestId('instance-ai-test-agent-preview-open-evals-stub'));
+			await user.click(await findByTestId('instance-ai-test-agent-preview-practice-more-stub'));
 
-			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false, undefined);
+			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false);
 			// The stub only renders once `preview.activeAgentId`/`activeAgentProjectId`
 			// resolve to this agent — its presence with the right id is proof
 			// `preview.openAgentPreview` switched the canvas to it.
 			const agentPreview = await findByTestId('instance-ai-agent-preview-stub');
 			expect(agentPreview).toHaveAttribute('data-agent-id', 'agent-1');
 			expect(agentPreview).toHaveAttribute('data-project-id', 'project-1');
-			// The latch clears — the stub panel itself unmounts.
-			await vi.waitFor(() => {
-				expect(
-					queryByTestId('instance-ai-test-agent-preview-open-evals-stub'),
-				).not.toBeInTheDocument();
-			});
-		});
-		it('opens the evals surface on one case without clearing the latch', async () => {
-			seedReadyAgent();
-			const evalsStore = seedPreviewRun();
-			const user = userEvent.setup();
-			const { findByTestId, queryByTestId } = renderView({
-				props: { threadId: 'thread-1' },
-				global: {
-					stubs: {
-						...defaultViewStubs,
-						InstanceAiTestAgentPreviewPanel: defineComponent({
-							name: 'InstanceAiTestAgentPreviewPanelStub',
-							emits: ['confirm', 'dismiss', 'open-evals'],
-							setup(_, { emit }) {
-								return () =>
-									h(
-										'button',
-										{
-											'data-test-id': 'instance-ai-test-agent-preview-open-evals-stub',
-											onClick: () => emit('open-evals', 'result-1'),
-										},
-										'Open case',
-									);
-							},
-						}),
-					},
-				},
-			});
-
-			await user.click(await findByTestId('instance-ai-test-agent-preview-open-evals-stub'));
-
-			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false, 'result-1');
-			const agentPreview = await findByTestId('instance-ai-agent-preview-stub');
-			expect(agentPreview).toHaveAttribute('data-agent-id', 'agent-1');
-			// Opening one case is a peek, so the chat panel stays.
-			expect(queryByTestId('instance-ai-test-agent-preview-open-evals-stub')).toBeInTheDocument();
+			// The latch stays, so the first check stays in the thread.
+			expect(
+				queryByTestId('instance-ai-test-agent-preview-practice-more-stub'),
+			).toBeInTheDocument();
 		});
 
 		describe('the offer latch', () => {
@@ -2998,7 +2950,7 @@ describe('InstanceAiThreadView', () => {
 			const PreviewPanelStub = defineComponent({
 				name: 'InstanceAiTestAgentPreviewPanelStub',
 				props: { target: { type: Object as PropType<{ agentId: string }>, required: true } },
-				emits: ['confirm', 'dismiss', 'open-evals', 'try-agent'],
+				emits: ['confirm', 'dismiss', 'practice-more', 'try-agent'],
 				setup(props, { emit }) {
 					return () =>
 						h('div', { 'data-test-id': 'preview-stub', 'data-agent-id': props.target.agentId }, [
@@ -3089,7 +3041,7 @@ describe('InstanceAiThreadView', () => {
 						...defaultViewStubs,
 						InstanceAiTestAgentPreviewPanel: defineComponent({
 							name: 'InstanceAiTestAgentPreviewPanelStub',
-							emits: ['confirm', 'dismiss', 'open-evals', 'try-agent'],
+							emits: ['confirm', 'dismiss', 'practice-more', 'try-agent'],
 							setup(_, { emit }) {
 								return () =>
 									h(

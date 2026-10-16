@@ -178,6 +178,20 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		pendingEvalsFocus.value = { agentId, generate, resultId };
 	};
 
+	/** The agent whose Checks tab should open with Add a check open. */
+	const pendingAddCheckOpen = ref<string | null>(null);
+
+	const requestAddCheckOpen = (agentId: string) => {
+		pendingAddCheckOpen.value = agentId;
+	};
+
+	/** Claims the request when it names this agent, so Add a check opens only once. */
+	const consumeAddCheckOpen = (agentId: string) => {
+		if (pendingAddCheckOpen.value !== agentId) return false;
+		pendingAddCheckOpen.value = null;
+		return true;
+	};
+
 	/** Claims the request when it names this agent, so only one builder acts on it. */
 	const consumeEvalsFocus = (agentId: string) => {
 		const request = pendingEvalsFocus.value;
@@ -1351,6 +1365,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		deleteCase,
 		pendingEvalsFocus,
 		requestEvalsFocus,
+		pendingAddCheckOpen,
+		requestAddCheckOpen,
+		consumeAddCheckOpen,
 		consumeEvalsFocus,
 		focusedEvalResult,
 		consumeFocusedEvalResult,

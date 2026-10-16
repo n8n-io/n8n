@@ -802,18 +802,14 @@ async function handleConfirmTestAgentPreview() {
 }
 
 /**
- * The preview panel has already generated every case by the time this fires,
- * so — unlike `handleGenerateTestCasesFromOffer` — this does not request
- * generation on arrival. This is the end of the preview flow, so the latch
- * clears here.
+ * "Practice more" has saved the first check, so the builder opens on the Checks
+ * tab without generating. The first check stays in the thread, so the latch stays.
  */
-function handleOpenEvalsFromPreview(resultId: string | null) {
+function handlePracticeMoreFromPreview() {
 	const target = latchedTestAgentOffer.value;
 	if (!target) return;
-	agentEvalsStore.requestEvalsFocus(target.agentId, false, resultId ?? undefined);
+	agentEvalsStore.requestEvalsFocus(target.agentId, false);
 	preview.openAgentPreview(target.agentId, target.projectId);
-	// Opening a single case is a peek: the chat panel stays so the user can come back.
-	if (!resultId) clearTestAgentOfferLatch();
 }
 
 function handleTryAgentFromPreview() {
@@ -1000,7 +996,7 @@ function handleNewThreadClick() {
 								:initial-case="latestCallAgentResult"
 								@confirm="handleConfirmTestAgentPreview"
 								@dismiss="dismissTestAgentOffer"
-								@open-evals="handleOpenEvalsFromPreview($event)"
+								@practice-more="handlePracticeMoreFromPreview"
 								@try-agent="handleTryAgentFromPreview"
 							/>
 						</Transition>
