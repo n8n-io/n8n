@@ -1025,6 +1025,17 @@ function onRemove() {
 				>
 					{{ versionStatus }}
 				</N8nText>
+				<!-- The timeline is also in the Save menu, but a menu entry alone is easy to miss. -->
+				<N8nTooltip :content="i18n.baseText('settings.context.skills.versions.timeline.open')">
+					<N8nIconButton
+						variant="ghost"
+						icon="history"
+						:aria-label="i18n.baseText('settings.context.skills.versions.timeline.open')"
+						:aria-pressed="timelineOpen"
+						data-testid="skill-version-timeline-toggle"
+						@click="toggleTimeline"
+					/>
+				</N8nTooltip>
 				<div v-if="canWriteVersions" :class="$style.buttonGroup">
 					<N8nButton
 						:class="$style.groupButtonLeft"
@@ -1067,15 +1078,6 @@ function onRemove() {
 						</template>
 					</N8nActionDropdown>
 				</div>
-				<N8nIconButton
-					v-else
-					variant="ghost"
-					icon="history"
-					:aria-label="i18n.baseText('settings.context.skills.versions.timeline.open')"
-					:aria-pressed="timelineOpen"
-					data-testid="skill-version-timeline-toggle"
-					@click="toggleTimeline"
-				/>
 			</div>
 		</template>
 		<div v-if="hasPicker" v-show="step === 'select'" :class="$style.picker">

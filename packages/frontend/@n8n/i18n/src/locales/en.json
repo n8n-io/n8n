@@ -3527,7 +3527,7 @@
 	"settings.context.skills.versions.menu.saveWithName": "Save with a name",
 	"settings.context.skills.versions.menu.timeline": "View timeline",
 	"settings.context.skills.versions.timeline.title": "Timeline",
-	"settings.context.skills.versions.timeline.open": "Show the timeline",
+	"settings.context.skills.versions.timeline.open": "View timeline",
 	"settings.context.skills.versions.timeline.close": "Close the timeline",
 	"settings.context.skills.versions.timeline.version": "Version {version}",
 	"settings.context.skills.versions.timeline.latest": "latest",

@@ -203,6 +203,17 @@ describe('AgentSkillModal with versions', () => {
 		expect(getByTestId('skill-version-save')).toHaveTextContent('Save');
 	});
 
+	it('opens the timeline from the header icon next to Save', async () => {
+		const { getByTestId, findAllByTestId, container } = renderModal();
+
+		await editable(container);
+		expect(getByTestId('skill-version-save')).toBeInTheDocument();
+		await fireEvent.click(getByTestId('skill-version-timeline-toggle'));
+
+		expect(await findAllByTestId('skill-version-row')).not.toHaveLength(0);
+		expect(getByTestId('skill-version-timeline-toggle')).toHaveAttribute('aria-pressed', 'true');
+	});
+
 	it('adds the version name to the status', async () => {
 		getSkillVersions.mockResolvedValue([summary(2, 'EU rules'), summary(1)]);
 		const { getByTestId } = renderModal({ initialVersionView: 'timeline' });
