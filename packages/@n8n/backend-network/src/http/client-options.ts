@@ -43,6 +43,12 @@ export interface HttpRequestClientOptions {
 	 * The client throws if it does, because the shared agents cannot apply them.
 	 */
 	connectionPool?: HttpConnectionPoolOptions;
+
+	/**
+	 * Reuse open connections across the calls on this client.
+	 * Same as an empty `connectionPool`. `connectionPool` wins when both are set.
+	 */
+	keepAlive?: boolean;
 }
 
 export interface HttpConnectionPoolOptions {
