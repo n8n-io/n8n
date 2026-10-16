@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/NocoDB/test/v1/NocoDBV1.node.test.ts
+  s_2e1fa95fc44f8f::t_d4343bf9f0d0cd 50-68
+packages/nodes-base/nodes/NocoDB/v1/NocoDBV1.node.ts
+  s_2e1fa95fc44f8f::t_abd6db6a34c347 12-18,312,576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad25dd22943f575796922b80d91e84e0f446d00f",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
