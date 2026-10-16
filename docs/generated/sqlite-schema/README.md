@@ -52,6 +52,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
+| [automation_map](automation_map.md) | 15 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
 | [chat_hub_agent_tools](chat_hub_agent_tools.md) | 2 |  | table |
 | [chat_hub_agents](chat_hub_agents.md) | 13 |  | table |
@@ -253,6 +254,7 @@ erDiagram
 "ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "auth_identity" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"automation_map" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_tools" : "FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agent_tools" |o--|| "chat_hub_agents" : "FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agents" }o--|| "user" : "FOREIGN KEY (ownerId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -900,6 +902,23 @@ erDiagram
   DATETIME startedAt
   TEXT status
   INTEGER updated
+}
+"automation_map" {
+  TEXT annotations
+  boolean autoUpdate
+  datetime_3_ builtAt
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT error
+  TEXT fingerprint
+  TEXT graph
+  varchar_36_ id PK
+  varchar_255_ name
+  TEXT prompt
+  boolean saved
+  TEXT scope
+  varchar_16_ status
+  datetime_3_ updatedAt
 }
 "binary_data" {
   datetime_3_ createdAt

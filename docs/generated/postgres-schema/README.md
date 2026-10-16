@@ -52,6 +52,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
+| [public.automation_map](public.automation_map.md) | 15 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
 | [public.chat_hub_agent_tools](public.chat_hub_agent_tools.md) | 2 |  | BASE TABLE |
 | [public.chat_hub_agents](public.chat_hub_agents.md) | 13 |  | BASE TABLE |
@@ -271,6 +272,7 @@ erDiagram
 "public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.ai_preference" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.auth_identity" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id)"
+"public.automation_map" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES chat_hub_agents(id) ON DELETE CASCADE"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_tools" : "FOREIGN KEY (#quot;toolId#quot;) REFERENCES chat_hub_tools(id) ON DELETE CASCADE"
 "public.chat_hub_agents" }o--|| "public.user" : "FOREIGN KEY (#quot;ownerId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -914,6 +916,23 @@ erDiagram
   timestamp_3__with_time_zone startedAt
   text status
   integer updated
+}
+"public.automation_map" {
+  json annotations
+  boolean autoUpdate
+  timestamp_3__with_time_zone builtAt
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  text error
+  json fingerprint
+  json graph
+  varchar_36_ id
+  varchar_255_ name
+  text prompt
+  boolean saved
+  json scope
+  varchar_16_ status
+  timestamp_3__with_time_zone updatedAt
 }
 "public.binary_data" {
   timestamp_3__with_time_zone createdAt

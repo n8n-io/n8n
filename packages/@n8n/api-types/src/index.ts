@@ -979,6 +979,7 @@ export type {
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
 
 export type * from './workflow-suggestions';
+export * from './automation-maps';
 export * from './self-healing-results';
 export * from './model-priority';
 

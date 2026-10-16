@@ -5,6 +5,7 @@ import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
 import { WorkflowReviewsModule } from '@/features/workflow-reviews/module.descriptor';
+import { AutomationMapsModule } from '@/features/automation-maps/module.descriptor';
 import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
 import { OtelModule } from '@n8n/frontend-module-otel';
 import { InsightsModule } from '@n8n/frontend-module-insights/insights.module';
@@ -43,4 +44,5 @@ export const modules: FrontendModuleDescription[] = [
 	ContextModule,
 	TypeAvailabilityPoliciesModule,
 	LogStreamingModule,
+	AutomationMapsModule,
 ];
