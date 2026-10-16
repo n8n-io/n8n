@@ -1,9 +1,9 @@
+import type { ExportPackageRequestDto } from '@n8n/api-types/dist/dto/packages/export-package-request.dto';
 import type {
-	ExportPackageRequestDto,
 	ImportPackageRequestDto,
 	ImportPackageSelectionRequestDto,
-	ImportResultDto,
-} from '@n8n/api-types';
+} from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
+import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
 
 export interface PaginatedResponse<T> {
 	data: T[];

@@ -36,7 +36,7 @@ export default class PackageImport extends BaseCommand {
 		})(),
 		publishingPolicy: Flags.option({
 			description:
-				'Publication policy for imported Agents and workflows (instance default: preserve-published-state). Preserve republishes an updated entity only if it was published and the package contains its source-published version. match-source follows source publication when that version is included. publish-all publishes imported entities. unpublish-all leaves them unpublished. Skipped entities stay unchanged.',
+				'Publication policy for imported Agents and workflows (instance default: preserve-published-state). Preserve republishes an updated entity only if it was published and the package contains its source-published version. match-source follows source publication when that version is included. publish-all publishes imported entities. unpublish-all keeps new entities unpublished and unpublishes updated entities that were published. Skipped entities stay unchanged.',
 			options: [
 				'preserve-published-state',
 				'match-source',
