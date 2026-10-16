@@ -114,7 +114,7 @@ describe('GitLabMergeRequestClient', () => {
 			description: 'Opened by n8n',
 		});
 
-		expect(lastRequest().body).toMatchObject({ title: 'a'.repeat(255) });
+		expect(lastRequest()?.body).toMatchObject({ title: 'a'.repeat(255) });
 	});
 
 	const openMergeRequest = () =>

@@ -116,8 +116,8 @@ describe('PromotionReviewsService', () => {
 	it('writes the description from the commit message and the promoter', async () => {
 		const unnamed = mock<User>({
 			id: 'actor',
-			firstName: null,
-			lastName: null,
+			firstName: undefined,
+			lastName: undefined,
 			email: 'ada@example.com',
 		});
 
