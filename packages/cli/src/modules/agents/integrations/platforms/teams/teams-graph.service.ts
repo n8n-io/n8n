@@ -122,10 +122,10 @@ export class TeamsGraphService {
 	}
 }
 
-/** Graph reports failures as `{ error: { code, message } }`. */
 /** OData closes a string literal on a quote, and escapes one by doubling it. */
 export const odataLiteral = (value: string) => value.replace(/'/g, "''");
 
+/** Graph reports failures as `{ error: { code, message } }`. */
 export function graphErrorCode(body: unknown): string | undefined {
 	if (!isRecord(body)) return undefined;
 	const error = body.error;

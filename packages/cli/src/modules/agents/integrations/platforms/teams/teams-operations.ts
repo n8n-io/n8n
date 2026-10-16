@@ -15,15 +15,16 @@ const USER_FIELDS = 'id,displayName,mail,userPrincipalName';
 /** Each team costs one channel request, so a large tenant is searched only in part. */
 const MAX_TEAMS_SEARCHED = 50;
 const CHANNEL_REQUESTS_AT_ONCE = 5;
+const PARTIAL_CHANNEL_SEARCH = `This organisation has more than ${MAX_TEAMS_SEARCHED} teams and only the first ${MAX_TEAMS_SEARCHED} were searched. If the channel is missing, ask someone to mention the bot in it once and use the channelId from get_current_message_context.`;
 
 const getUserSchema = z.object({ userId: z.string().min(1) });
 const searchUsersSchema = z.object({
-	query: z.string().min(1).optional(),
-	email: z.string().min(1).optional(),
+	query: z.string().trim().min(1).optional(),
+	email: z.string().trim().min(1).optional(),
 	limit: z.number().int().min(1).max(50).default(10),
 });
 const searchChannelsSchema = z.object({
-	query: z.string().min(1),
+	query: z.string().trim().min(1),
 	limit: z.number().int().min(1).max(50).default(10),
 });
 
@@ -79,8 +80,13 @@ export async function executeTeamsContextQuery(params: {
 	if (query === 'search_channels') {
 		const parsed = searchChannelsSchema.parse(input);
 		return await withGraphAccess('channels', async () => {
-			const channels = await searchGraphChannels(http, parsed);
-			return { ok: true, channels, resultCount: channels.length };
+			const { channels, partial } = await searchGraphChannels(http, parsed);
+			return {
+				ok: true,
+				channels,
+				resultCount: channels.length,
+				...(partial ? { note: PARTIAL_CHANNEL_SEARCH } : {}),
+			};
 		});
 	}
 
@@ -117,8 +123,7 @@ async function searchGraphUsers(
 	http: GraphHttp,
 	input: z.infer<typeof searchUsersSchema>,
 ): Promise<TeamsUserResult[]> {
-	const email =
-		input.email?.trim() ?? (input.query?.includes('@') ? input.query.trim() : undefined);
+	const email = input.email ?? (input.query?.includes('@') ? input.query : undefined);
 	if (email) {
 		const address = odataString(email);
 		return await listUsers(
@@ -147,7 +152,7 @@ async function listUsers(http: GraphHttp, filter: string, limit: number) {
 async function searchGraphChannels(
 	http: GraphHttp,
 	input: z.infer<typeof searchChannelsSchema>,
-): Promise<TeamsChannelResult[]> {
+): Promise<{ channels: TeamsChannelResult[]; partial: boolean }> {
 	const query = new URLSearchParams({
 		$select: 'id,displayName',
 		$top: String(MAX_TEAMS_SEARCHED),
@@ -168,10 +173,15 @@ async function searchGraphChannels(
 		const batch = teams.slice(start, start + CHANNEL_REQUESTS_AT_ONCE);
 		const channelLists = await Promise.all(
 			batch.map(async (team) => {
-				const { data: channels } = await http.get(
-					`${GRAPH_V1}/teams/${encodeURIComponent(team.id)}/channels?$select=id,displayName`,
-				);
-				return valuesOf(channels).flatMap((channel) => {
+				const channels = await http
+					.get(`${GRAPH_V1}/teams/${encodeURIComponent(team.id)}/channels?$select=id,displayName`)
+					.then(({ data: body }) => valuesOf(body))
+					// A missing permission fails every team, so only that is worth failing the search for.
+					.catch((error: unknown) => {
+						if (statusOf(error) === 403) throw error;
+						return [];
+					});
+				return channels.flatMap((channel) => {
 					const channelId = stringProperty(channel, 'id');
 					if (!channelId) return [];
 					const name = stringProperty(channel, 'displayName') ?? channelId;
@@ -184,7 +194,10 @@ async function searchGraphChannels(
 			if (words.every((word) => haystack.includes(word))) matches.push(channel);
 		}
 	}
-	return matches.slice(0, input.limit);
+	return {
+		channels: matches.slice(0, input.limit),
+		partial: isRecord(data) && typeof data['@odata.nextLink'] === 'string',
+	};
 }
 
 function toUser(value: unknown): TeamsUserResult | undefined {

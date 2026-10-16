@@ -62,6 +62,13 @@ describe('executeTeamsContextQuery', () => {
 			expect(new URL(get.mock.calls[0][0]).searchParams.get('$filter')).toContain('mail eq');
 		});
 
+		it('rejects an email that is only whitespace', async () => {
+			const { run, get } = setup({});
+
+			await expect(run('search_users', { email: '   ' })).rejects.toThrow();
+			expect(get).not.toHaveBeenCalled();
+		});
+
 		it('escapes a quote in a name search', async () => {
 			const { run, get } = setup({ [`${GRAPH}/users?`]: { value: [] } });
 
@@ -148,6 +155,30 @@ describe('executeTeamsContextQuery', () => {
 			const result = await run('search_channels', { query: '#General' });
 
 			expect(result).toMatchObject({ ok: true, resultCount: 2 });
+		});
+
+		it('skips a team whose channels cannot be read', async () => {
+			const { run } = setup({ ...routes, [`${GRAPH}/teams/team-2/channels`]: graphError(404) });
+
+			await expect(run('search_channels', { query: 'general' })).resolves.toMatchObject({
+				ok: true,
+				resultCount: 1,
+			});
+		});
+
+		it('says when only part of a large organisation was searched', async () => {
+			const { run } = setup({
+				...routes,
+				[`${GRAPH}/teams?`]: {
+					value: [{ id: 'team-1', displayName: 'Marketing' }],
+					'@odata.nextLink': `${GRAPH}/teams?$skiptoken=x`,
+				},
+			});
+
+			await expect(run('search_channels', { query: 'general' })).resolves.toMatchObject({
+				ok: true,
+				note: expect.stringContaining('only the first 50'),
+			});
 		});
 
 		it('tells the agent what to do when an admin has not approved the lookup', async () => {

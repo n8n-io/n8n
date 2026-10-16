@@ -106,7 +106,9 @@ export class TeamsCredentialCheckService {
 			const approved = GRAPH_APP_ROLES.every(({ permission }) => granted.includes(permission));
 			return { status: approved ? 'approved' : 'notApproved' };
 		} catch (error) {
-			this.logger.debug('[TeamsCredentialCheck] Could not read the file access grant', { error });
+			this.logger.debug('[TeamsCredentialCheck] Could not read the Graph permission grant', {
+				error,
+			});
 			return { status: 'unknown' };
 		}
 	}

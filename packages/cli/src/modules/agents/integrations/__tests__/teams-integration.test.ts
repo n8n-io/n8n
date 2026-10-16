@@ -113,6 +113,10 @@ describe('TeamsIntegration', () => {
 		it('leaves an ID that is already encoded untouched', () => {
 			expect(integration.normalizeChannelId('teams:abc:def', adapter)).toBe('teams:abc:def');
 		});
+
+		it('prefixes a bare ID like any other platform', () => {
+			expect(integration.normalizeChannelId('abc', adapter)).toBe('teams:abc');
+		});
 	});
 
 	describe('describeActionError', () => {

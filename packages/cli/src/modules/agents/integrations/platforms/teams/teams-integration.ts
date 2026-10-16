@@ -287,7 +287,9 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 * reads its own encoded form, which also carries the service URL.
 	 */
 	normalizeChannelId(channelId: string, adapter: unknown): string {
-		if (!channelId.startsWith('19:') || !canEncodeThreadId(adapter)) return channelId;
+		if (!channelId.startsWith('19:') || !canEncodeThreadId(adapter)) {
+			return super.normalizeChannelId(channelId, adapter);
+		}
 		return adapter.encodeThreadId({ conversationId: channelId, serviceUrl: `${TEAMS_API_URL}/` });
 	}
 
