@@ -7,6 +7,7 @@ import {
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
+	ResourceAdmission,
 	TrustedSourceGate,
 	TrustedSourceStore,
 	type AuthorizationServerMetadata,
@@ -75,6 +76,9 @@ export class InboundAuthCoreModule implements ModuleInterface {
 
 		const { InboundAuthPipeline } = await import('./authentication-pipeline.js');
 		Container.set(AuthenticationPipeline, Container.get(InboundAuthPipeline));
+
+		const { InboundResourceAdmission } = await import('./resource-admission.js');
+		Container.set(ResourceAdmission, Container.get(InboundResourceAdmission));
 
 		// Only main serves the public API. The strategy resolves the pipeline, so it registers last.
 		if (Container.get(InstanceSettings).instanceType === 'main') {

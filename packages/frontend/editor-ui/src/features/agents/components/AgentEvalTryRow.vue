@@ -351,6 +351,7 @@ watch(
 					:status="status"
 					:tool-calls="toolCalls"
 					:project-id="projectId"
+					:joined-below="!practiceBannerDismissed"
 				/>
 				<div v-if="!practiceBannerDismissed" :class="$style.practiceBanner">
 					<N8nText size="small">

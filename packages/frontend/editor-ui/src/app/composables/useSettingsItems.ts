@@ -6,7 +6,7 @@ import { computed } from 'vue';
 import type { IMenuSettingItem } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { isContextEnabled } from '@/features/settings/context/context.utils';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
@@ -218,8 +218,7 @@ export function useSettingsItems() {
 				icon: 'brain',
 				label: i18n.baseText('settings.context.title'),
 				position: 'top',
-				available:
-					isContextPreferencesEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+				available: isContextEnabled() && canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
 				route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
 				preview: true,
 			},

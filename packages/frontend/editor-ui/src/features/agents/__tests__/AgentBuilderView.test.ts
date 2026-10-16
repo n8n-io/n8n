@@ -5658,6 +5658,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			'summarize_notes',
 			updatedSkill,
 			'skill-hash-1',
+			undefined,
 		);
 	});
 
@@ -5710,6 +5711,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				instructions: skill.instructions,
 			},
 			'skill-hash-1',
+			undefined,
 		);
 	});
 

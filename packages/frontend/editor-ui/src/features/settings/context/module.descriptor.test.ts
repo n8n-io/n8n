@@ -8,6 +8,7 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-rout
 
 import { VIEWS } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { ContextModule } from './module.descriptor';
 
@@ -28,9 +29,10 @@ const createTestRouter = () =>
 	});
 
 /** The flag is multivariate, so only the enabled arm opens the pages. */
-const setup = (value?: string | boolean) => {
+const setup = (value?: string | boolean, skillsHubEnabled = false) => {
 	createTestingPinia({ stubActions: false });
 	if (value !== undefined) usePostHog().overrides[CONTEXT_PREFERENCES_FLAG] = { value };
+	useSettingsStore().moduleSettings.agents = { skillsHubEnabled } as never;
 };
 
 describe('ContextModule routes', () => {
@@ -59,6 +61,37 @@ describe('ContextModule routes', () => {
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
 		}
+	});
+
+	describe('skills', () => {
+		it('opens the skills page and the overview when the backend reports the skills hub on', async () => {
+			setup(undefined, true);
+			const router = createTestRouter();
+
+			await router.push('/settings/context/skills');
+			expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT_SKILLS);
+
+			await router.push('/settings/context');
+			expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT);
+		});
+
+		it('redirects to the homepage while the skills hub is off', async () => {
+			setup(CONTEXT_PREFERENCES_ENABLED_VARIANT, false);
+			const router = createTestRouter();
+
+			await router.push('/settings/context/skills');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+		});
+
+		it('keeps the preferences page closed when only the skills hub is on', async () => {
+			setup(undefined, true);
+			const router = createTestRouter();
+
+			await router.push('/settings/context/preferences');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+		});
 	});
 
 	it('lists no custom middleware, so the initializer does not gate it on a backend module', () => {

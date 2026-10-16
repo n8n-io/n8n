@@ -422,4 +422,80 @@ describe('finish_setup tool', () => {
 		).rejects.toThrow('Unsupported chat channel "carrier-pigeon"');
 		expect(ctx.suspend).not.toHaveBeenCalled();
 	});
+
+	describe('writing credentials to node tools', () => {
+		it('writes each resolved credential by its credential type', async () => {
+			const writeCredentialsToNodeTools = vi
+				.fn()
+				.mockResolvedValue({ credentialTypes: ['gmailOAuth2'], configHash: 'hash-2' });
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+				]),
+				writeCredentialsToNodeTools,
+			});
+
+			const result = await tool.handler!(
+				{
+					credentialRequests: [
+						{ credentialType: 'gmailOAuth2', purpose: 'Order emails', credentialSlot: 'gmail' },
+					],
+				},
+				makeCtx() as never,
+			);
+
+			expect(writeCredentialsToNodeTools).toHaveBeenCalledWith([
+				{ credentialType: 'gmailOAuth2', id: 'g1', name: 'Gmail account' },
+			]);
+			expect(result).toEqual({
+				completed: true,
+				credentials: { gmail: { id: 'g1', name: 'Gmail account' } },
+				credentialsWrittenToTools: ['gmailOAuth2'],
+				configHash: 'hash-2',
+			});
+		});
+
+		it('writes nothing when every credential is skipped', async () => {
+			const writeCredentialsToNodeTools = vi.fn();
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([]),
+				writeCredentialsToNodeTools,
+			});
+			const input = {
+				credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
+			};
+
+			const credentialsPayload = await tool.handler!(input, makeCtx() as never);
+			const result = await tool.handler!(
+				input,
+				makeCtx({ resumeData: { skipped: true }, suspendPayload: credentialsPayload }) as never,
+			);
+
+			expect(writeCredentialsToNodeTools).not.toHaveBeenCalled();
+			expect(result).toEqual({ completed: true, credentials: { airtableApi: 'skipped' } });
+		});
+
+		it('reports a failed write without failing the setup flow', async () => {
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
+				]),
+				writeCredentialsToNodeTools: vi.fn().mockRejectedValue(new Error('locked')),
+			});
+
+			const result = await tool.handler!(
+				{ credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }] },
+				makeCtx() as never,
+			);
+
+			expect(result).toEqual({
+				completed: true,
+				credentials: { airtableApi: { id: 'c1', name: 'My Airtable' } },
+				credentialWriteError: 'locked',
+			});
+		});
+	});
 });
