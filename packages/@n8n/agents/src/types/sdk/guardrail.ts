@@ -12,13 +12,9 @@ export interface BuiltGuardrail {
 	/** @internal */ readonly _config: Record<string, unknown>;
 }
 
-export type GuardrailDecision = { action: 'allow' } | ({ action: 'stop' } & GuardrailStop);
+export type GuardrailDecision = { action: 'allow' } | { action: 'stop'; code: string };
 
-export type GuardrailStop = {
-	code: string;
-	/** Record a stopped model or tool call as canceled. */
-	canceled?: true;
-};
+export type GuardrailStop = { code: string };
 export type GuardrailModelCallSource = 'turn' | 'title' | 'memory';
 
 export interface GuardrailModelCallContext {
