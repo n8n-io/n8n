@@ -1461,7 +1461,7 @@ and shows the Agent artifact.
 | `agent_verify_mcp_server` | Test the connection to an MCP server and list its tools |
 | `agent_call` | Test the draft Agent through Preview chat |
 | `agent_publish`, `agent_unpublish` | Publish or unpublish the Agent |
-| `search_nodes`, `get_node_types`, `get_resource_locator_options`, `list_credentials` | Shared node and credential helpers |
+| `search_nodes`, `get_node_types`, `get_resource_locator_options` | Shared node helpers |
 
 The interactive tools suspend the orchestrator run directly, so their cards
 render in the assistant conversation and survive a process restart.

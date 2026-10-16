@@ -45,6 +45,7 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	VERIFY_MCP_SERVER: 'agent_verify_mcp_server',
 	SEARCH_NODES: 'search_nodes',
 	GET_NODE_TYPES: 'get_node_types',
+	/** No longer registered: `credentials` with action `list` replaces it. Stored threads still contain its calls. */
 	LIST_CREDENTIALS: 'list_credentials',
 	ASK_CREDENTIAL: 'agent_ask_credential',
 	ASK_EMBEDDING_CREDENTIAL: 'agent_ask_embedding_credential',
@@ -57,6 +58,7 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 export const RETIRED_AGENT_BUILDER_TOOL_NAMES: ReadonlySet<string> = new Set([
 	AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT,
 	AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS,
+	AGENT_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 ]);
 
 export type WorkflowBuilderToolName =

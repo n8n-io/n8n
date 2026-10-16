@@ -519,7 +519,7 @@ export class AgentsBuilderToolsService {
 				user,
 				options,
 			),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
+			shared: this.getSharedTools(agentId, projectId, user),
 		};
 	}
 
@@ -1064,12 +1064,7 @@ export class AgentsBuilderToolsService {
 			.build();
 	}
 
-	private getSharedTools(
-		agentId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		user: User,
-	): BuiltTool[] {
+	private getSharedTools(agentId: string, projectId: string, user: User): BuiltTool[] {
 		const buildCustomToolTool = this.buildCustomToolTool(agentId, projectId, user);
 		const createSkillsTool = this.buildCreateSkillsTool(agentId, projectId, user);
 		const updateSkillTool = this.buildUpdateSkillTool(agentId, projectId, user);
@@ -1093,12 +1088,7 @@ export class AgentsBuilderToolsService {
 				user,
 				projectId,
 			}),
-			...this.agentsToolsService.getSharedTools(
-				credentialProvider,
-				'Read-only inspection of available credentials. Use agent_ask_credential to let the user ' +
-					'pick the credential to wire into a node tool — never copy ids from this list directly ' +
-					'into the config.',
-			),
+			...this.agentsToolsService.getSharedTools(),
 		];
 	}
 

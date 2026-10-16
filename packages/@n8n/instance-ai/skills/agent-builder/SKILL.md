@@ -383,7 +383,9 @@ overall goal.
   or fallback web-search credential slot. Never call it during an initial
   build. For an addition to an existing Agent, call it before the related config
   mutation. For MCP servers, call it before verification. NEVER use it for a
-  chat-channel credential.
+  chat-channel credential. `credentials(action: "list")` is only for
+  inspection. It can show personal credentials that an Agent cannot use, so
+  the card can offer fewer credentials than the list.
 - `agent_configure_channel`: ALWAYS use this to configure a chat
   platform (Slack, Telegram, and so on) as an Agent channel, with a type from
   `agent-context({ type: "integrations" })`. The setup UI creates and persists
@@ -468,7 +470,7 @@ Rules:
 - For "Anthropic via OpenRouter", pass `provider: "openrouter"`. If the user
   names a routed model, pass the routed id without another provider prefix.
 - Use `agent_resolve_llm` only for the main model credential. Never
-  copy main LLM credential ids from `list_credentials`.
+  copy main LLM credential ids from `credentials(action: "list")`.
 - For Episodic Memory, load `agent-builder-memory` and use
   `agent_ask_embedding_credential`.
 - The web-search rules are in the `agent-builder-config` skill.

@@ -45,7 +45,7 @@ const getResourceLocatorOptionsInputSchema = z.object({
 		.record(nodeCredentialSchema)
 		.optional()
 		.describe(
-			'Node credentials map returned by agent_ask_credential. Do not copy from list_credentials.',
+			'Node credentials map returned by agent_ask_credential. Do not copy ids from the credentials list.',
 		),
 	filter: z.string().optional().describe('Optional search string to narrow the returned options'),
 	paginationToken: z
