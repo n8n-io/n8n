@@ -120,8 +120,7 @@ describe('useSettingsItems', () => {
 				'settings-personal',
 				'settings-users',
 				'settings-roles',
-				'settings-sso',
-				'settings-ldap',
+				'settings-authentication',
 				'settings-mcp',
 				'settings-instance-ai',
 				'settings-agents',
@@ -166,7 +165,7 @@ describe('useSettingsItems', () => {
 				{
 					id: 'people',
 					title: 'settings.sections.people',
-					items: ['settings-users', 'settings-roles', 'settings-sso', 'settings-ldap'],
+					items: ['settings-users', 'settings-roles', 'settings-authentication'],
 				},
 				{
 					id: 'ai',

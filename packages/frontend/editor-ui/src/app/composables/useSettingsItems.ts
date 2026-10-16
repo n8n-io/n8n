@@ -89,24 +89,15 @@ export function useSettingsItems() {
 				new: true,
 			},
 			{
-				id: 'settings-sso',
+				// One entry for how people sign in; SSO and LDAP are rows on this page.
+				id: 'settings-authentication',
 				order: 30,
 				section: 'people',
 				icon: 'lock',
-				label: i18n.baseText('settings.sso'),
+				label: i18n.baseText('settings.authentication'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
-				route: { to: { name: VIEWS.SSO_SETTINGS } },
-			},
-			{
-				id: 'settings-ldap',
-				order: 40,
-				section: 'people',
-				icon: 'network',
-				label: i18n.baseText('settings.ldap'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
-				route: { to: { name: VIEWS.LDAP_SETTINGS } },
+				available: canUserAccessRouteByName(VIEWS.AUTHENTICATION_SETTINGS),
+				route: { to: { name: VIEWS.AUTHENTICATION_SETTINGS } },
 			},
 			// AI (modules add MCP at 10, Assistant at 20, Agents at 30 and Chat at 70).
 			// Features come first, then the cross-cutting usage and billing pages. Chat is last

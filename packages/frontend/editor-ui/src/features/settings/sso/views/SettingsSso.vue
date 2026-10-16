@@ -16,6 +16,7 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
 import { useUserRoleProvisioningStore } from '../provisioning/composables/userRoleProvisioning.store';
@@ -111,6 +112,7 @@ onMounted(() => {
 
 <template>
 	<div class="pb-2xl">
+		<AuthenticationBackLink />
 		<div :class="$style.heading">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</N8nHeading>
 		</div>
