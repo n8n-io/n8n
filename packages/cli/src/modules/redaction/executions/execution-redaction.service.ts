@@ -9,6 +9,8 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	channelsToPolicy,
+	mergeRedactionChannels,
+	policyToChannels,
 	runDataUsedCredentialIds,
 	runDataUsedDynamicCredentials,
 	WorkflowExecuteMode,
@@ -415,18 +417,32 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	}
 
 	/**
-	 * Resolves the effective redaction policy for an execution.
-	 *
-	 * Prefers the snapshot captured in `runtimeData.redaction` at execution time. That snapshot
-	 * is versioned: V2 stores per-channel booleans (reconstructed into the policy enum), while
-	 * V1 (older executions) stores the policy enum directly. Falls back to `workflowData.settings`
-	 * for executions captured before runtime snapshots existed, and defaults to 'none'.
+	 * Resolves the effective redaction policy for an execution: its own policy (see
+	 * {@link resolveBasePolicy}) combined, strictest per channel, with the channels its
+	 * sub-workflows reported (`runtimeData.subWorkflowRedaction`). The execution keeps a
+	 * copy of each sub-workflow's output, so it redacts at least what they redact.
 	 * Returns 'none' when the data-redaction license is not active, so that user-configured
 	 * policies are not applied without the license.
 	 */
 	private resolvePolicy(execution: RedactableExecution): WorkflowSettings.RedactionPolicy {
 		if (!this.licenseState.isDataRedactionLicensed()) return 'none';
 
+		const policy = this.resolveBasePolicy(execution);
+		const reported = execution.data.executionData?.runtimeData?.subWorkflowRedaction;
+		if (!reported?.production && !reported?.manual) return policy;
+
+		return channelsToPolicy(mergeRedactionChannels(policyToChannels(policy), reported));
+	}
+
+	/**
+	 * Resolves the execution's own redaction policy.
+	 *
+	 * Prefers the snapshot captured in `runtimeData.redaction` at execution time. That snapshot
+	 * is versioned: V2 stores per-channel booleans (reconstructed into the policy enum), while
+	 * V1 (older executions) stores the policy enum directly. Falls back to `workflowData.settings`
+	 * for executions captured before runtime snapshots existed, and defaults to 'none'.
+	 */
+	private resolveBasePolicy(execution: RedactableExecution): WorkflowSettings.RedactionPolicy {
 		const redaction = execution.data.executionData?.runtimeData?.redaction;
 
 		if (redaction?.version === 2) {
