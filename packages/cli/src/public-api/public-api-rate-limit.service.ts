@@ -6,6 +6,8 @@ import type { RequestHandler, Response } from 'express';
 import { MemoryStore } from 'express-rate-limit';
 import type { AugmentedRequest, RateLimitInfo } from 'express-rate-limit';
 
+import type { RateLimitName } from '@/public-api/public-api-rate-limit-summary';
+import { PublicApiRateLimitSummary } from '@/public-api/public-api-rate-limit-summary';
 import { RateLimitService } from '@/services/rate-limit.service';
 
 type RequestLimit = { maxRequests: number; windowSeconds: number };
@@ -13,6 +15,7 @@ type RequestLimit = { maxRequests: number; windowSeconds: number };
 type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLimit };
 
 type CountingLimiter = {
+	name: RateLimitName;
 	middleware: RequestHandler;
 	store: MemoryStore;
 	requestPropertyName: string;
@@ -49,6 +52,7 @@ export class PublicApiRateLimitService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly rateLimitService: RateLimitService,
+		private readonly summary: PublicApiRateLimitSummary,
 	) {}
 
 	private get config() {
@@ -72,15 +76,19 @@ export class PublicApiRateLimitService {
 
 	/**
 	 * Runs after the limiters, which only count. Sends a 429 when the request is over any limit.
-	 * Otherwise sets the headers from the limit with the fewest requests left.
+	 * Otherwise sets the headers from the limit with the fewest requests left. In observe mode, it
+	 * only records the counts and lets every request pass.
 	 */
 	private enforceLimits(limiters: CountingLimiter[]): RequestHandler {
 		return async (req: AugmentedRequest, res, next) => {
-			const counted = limiters.flatMap(({ store, requestPropertyName }) => {
+			const counted = limiters.flatMap(({ name, store, requestPropertyName }) => {
 				const limit: RateLimitInfo | undefined = req[requestPropertyName];
-				return limit ? [{ store, limit }] : [];
+				return limit ? [{ name, store, limit }] : [];
 			});
 			const limits = counted.map(({ limit }) => limit);
+
+			for (const { name, limit } of counted) this.summary.record(name, limit);
+			if (this.config.mode === 'observe') return next();
 
 			const exceeded = limits.filter((limit) => limit.used > limit.limit);
 			if (exceeded.length > 0) {
@@ -112,14 +120,22 @@ export class PublicApiRateLimitService {
 	}
 
 	private createPerEndpointLimiter(access: RateLimitAccessName) {
-		return this.createRateLimiter(this.getLimitsFromConfig(access).perEndpoint, ENDPOINT_LIMIT);
+		return this.createRateLimiter(
+			`${access}_endpoint`,
+			this.getLimitsFromConfig(access).perEndpoint,
+			ENDPOINT_LIMIT,
+		);
 	}
 
 	private getAllEndpointsLimiter(access: RateLimitAccessName) {
 		if (!this.allEndpointsLimiterCache.has(access)) {
 			this.allEndpointsLimiterCache.set(
 				access,
-				this.createRateLimiter(this.getLimitsFromConfig(access).allEndpoints, ALL_ENDPOINTS_LIMIT),
+				this.createRateLimiter(
+					`${access}_all_endpoints`,
+					this.getLimitsFromConfig(access).allEndpoints,
+					ALL_ENDPOINTS_LIMIT,
+				),
 			);
 		}
 		return this.allEndpointsLimiterCache.get(access);
@@ -153,6 +169,7 @@ export class PublicApiRateLimitService {
 	}
 
 	private createRateLimiter(
+		name: RateLimitName,
 		{ maxRequests, windowSeconds }: RequestLimit,
 		requestPropertyName: string,
 	): CountingLimiter | undefined {
@@ -164,6 +181,6 @@ export class PublicApiRateLimitService {
 			requestPropertyName,
 			store,
 		});
-		return { middleware, store, requestPropertyName };
+		return { name, middleware, store, requestPropertyName };
 	}
 }
