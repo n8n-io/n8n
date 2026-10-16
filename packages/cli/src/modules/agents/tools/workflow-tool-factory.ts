@@ -1,3 +1,4 @@
+import { readPlanTaskContext } from '../plans/agent-plan-task-context';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
@@ -799,6 +800,7 @@ async function backgroundWaitingExecution(
 	try {
 		const jobService = Container.get(AgentBackgroundJobService);
 		const receipt = await jobService.registerWorkflowJob({
+			planTask: readPlanTaskContext(ctx.persistence?.hostMetadata),
 			id: uuid(),
 			parentAgentId: agentRun.agentId,
 			parentThreadId: agentRun.threadId,
