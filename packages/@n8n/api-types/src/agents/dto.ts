@@ -453,3 +453,7 @@ export interface VectorStoreTestResult {
 	message?: string;
 	warning?: string;
 }
+
+export class AgentChatCancelDto extends Z.class({
+	scope: z.enum(['foreground', 'all']).optional(),
+}) {}
