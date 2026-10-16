@@ -186,7 +186,7 @@ async function onAction(action: SelfHealingResultAction) {
 					<N8nCallout theme="warning">
 						{{ i18n.baseText('inbox.selfHealing.detail.metadataError') }}
 						<template #trailingContent>
-							<N8nButton variant="subtle" @click="store.refreshWorkflow()">{{
+							<N8nButton variant="ghost" @click="store.refreshWorkflow()">{{
 								i18n.baseText('generic.retry')
 							}}</N8nButton>
 						</template>
