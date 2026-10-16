@@ -124,9 +124,7 @@ export class PublicApiRateLimitService {
 	) {
 		if (maxRequests === 0) return undefined;
 
-		return this.rateLimitService.createApiKeyRateLimitMiddleware(
-			{ limit: maxRequests, windowMs: windowSeconds * Time.seconds.toMilliseconds },
-			requestPropertyName,
-		);
+		const limits = { limit: maxRequests, windowMs: windowSeconds * Time.seconds.toMilliseconds };
+		return this.rateLimitService.createApiKeyRateLimitMiddleware(limits, requestPropertyName);
 	}
 }
