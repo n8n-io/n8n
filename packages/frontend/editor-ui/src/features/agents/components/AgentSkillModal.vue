@@ -2,6 +2,7 @@
 import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -25,6 +26,7 @@ import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
@@ -104,6 +106,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const router = useRouter();
 const rootStore = useRootStore();
 const { showError } = useToast();
 const agentTelemetry = useAgentTelemetry();
@@ -231,6 +234,7 @@ const showRemove = computed(() => {
 	return step.value === 'preview' ? previewIsAdded.value : isEditing.value;
 });
 const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>(() => {
+	if (step.value === 'select') return undefined;
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
 	if (isOutdated.value) return props.data.onUseLatestVersion ? 'useLatest' : undefined;
 	return isReadOnly.value ? undefined : 'save';
@@ -469,6 +473,11 @@ async function attachLibrarySkill(skillId: string) {
 	}
 }
 
+/** Opens Settings > Context > Skills in a new tab, so the agent and the picker stay open. */
+function onManageSkills() {
+	window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS }).href, '_blank', 'noopener');
+}
+
 function onPreviewAdd() {
 	if (!previewSkill.value) return;
 	void attachLibrarySkill(previewSkill.value.id);
@@ -651,7 +660,8 @@ function onRemove() {
 		:title-error="visibleNameError"
 		:editable-title="step === 'manual' || (step === 'edit' && !isReadOnly)"
 		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
-		:show-footer="step === 'manual' || step === 'edit' || step === 'preview'"
+		:show-footer="step === 'select' || step === 'manual' || step === 'edit' || step === 'preview'"
+		:show-cancel="step !== 'select'"
 		:body-flush="step !== 'select'"
 		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
@@ -844,6 +854,12 @@ function onRemove() {
 					><N8nIcon :icon="data.hubSkillsEnabled ? 'unlink' : 'trash-2'" :size="16"
 				/></template>
 				{{ removeLabel }}
+			</N8nButton>
+		</template>
+		<template v-else-if="step === 'select'" #footerLeft>
+			<N8nButton variant="ghost" data-testid="agent-skill-picker-manage" @click="onManageSkills">
+				<template #icon><N8nIcon icon="settings" :size="16" /></template>
+				{{ i18n.baseText('agents.builder.skills.picker.manage') }}
 			</N8nButton>
 		</template>
 		<template v-if="footerHint" #footerBeforeCancel>
