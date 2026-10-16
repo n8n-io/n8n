@@ -378,6 +378,24 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
+	ollama: {
+		build: (creds, model, fetch) => {
+			// Ollama serves its OpenAI-compatible API under `/v1`, but the
+			// `ollamaApi` credential stores the bare server host
+			// (e.g. `http://localhost:11434`), like the LmChatOllama node.
+			const normalizedBaseURL = ensureUrlPathSuffix(
+				creds.baseURL ?? 'http://localhost:11434',
+				'/v1',
+			);
+			return buildOpenAiCompatible(
+				'ollama',
+				undefined,
+				{ ...creds, baseURL: normalizedBaseURL },
+				model,
+				fetch,
+			);
+		},
+	},
 	moonshotai: {
 		build: (creds, model, fetch) => {
 			const { createMoonshotAI } =
