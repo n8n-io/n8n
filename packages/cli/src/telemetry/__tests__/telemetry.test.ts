@@ -15,6 +15,7 @@ import type { License } from '@/license';
 import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { PostHogClient } from '@/posthog';
+import { PublicApiRateLimitSummary } from '@/public-api/public-api-rate-limit-summary';
 import { Telemetry } from '@/telemetry';
 
 vi.unmock('@/telemetry');
@@ -1513,6 +1514,30 @@ describe('Telemetry', () => {
 	});
 
 	describe('flushBuffers', () => {
+		const rateLimitSummary = mockInstance(PublicApiRateLimitSummary);
+
+		beforeEach(() => {
+			rateLimitSummary.take.mockReturnValue(undefined);
+		});
+
+		test('should send the Public API rate limit summary', () => {
+			const summary = { mode: 'observe' as const, active_keys: 1 };
+			rateLimitSummary.take.mockReturnValue(summary);
+
+			telemetry.flushBuffers();
+
+			expect(spyTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.PUBLIC_API.RATE_LIMIT_SUMMARY, summary);
+		});
+
+		test('should not send a rate limit summary when there is none', () => {
+			telemetry.flushBuffers();
+
+			expect(spyTrack).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PUBLIC_API.RATE_LIMIT_SUMMARY,
+				expect.anything(),
+			);
+		});
+
 		test('should send the buffered events and empty the buffers', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',

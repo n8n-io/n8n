@@ -26,6 +26,7 @@ import type {
 } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
+import { PublicApiRateLimitSummary } from '@/public-api/public-api-rate-limit-summary';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
@@ -233,6 +234,7 @@ export class Telemetry {
 		this.flushAgentExecutionCounts();
 		this.flushAgentSessionMetrics();
 		this.flushApiInvocations();
+		this.flushPublicApiRateLimitSummary();
 	}
 
 	/**
@@ -279,6 +281,11 @@ export class Telemetry {
 			}
 		}
 		this.apiInvocationsBuffer = {};
+	}
+
+	private flushPublicApiRateLimitSummary() {
+		const summary = Container.get(PublicApiRateLimitSummary).take();
+		if (summary) this.track(TELEMETRY_EVENT.PUBLIC_API.RATE_LIMIT_SUMMARY, summary);
 	}
 
 	private flushWorkflowExecutionCounts() {
