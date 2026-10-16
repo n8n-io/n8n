@@ -239,6 +239,7 @@ describe('WorkflowImporter.apply', () => {
 		createWorkflow.mockResolvedValue(makeWorkflow('created'));
 
 		await importer.apply(context, plan, {
+			agents: new Map(),
 			credentials: new Map([['source-credential', 'target-credential']]),
 			workflows: new Map(),
 		});
