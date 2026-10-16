@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Aws/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_7f4f4bee0adfc0 1-112
+packages/nodes-base/nodes/Aws/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_726655a36e7727 1-40
+packages/nodes-base/nodes/Aws/SQS/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_4cba5ea6c14a9f 1-60
+packages/nodes-base/nodes/Aws/SES/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_c7cd60f2afd357 1-164
+packages/nodes-base/nodes/Aws/SES/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_c216d8e75447d2 1-46
+packages/nodes-base/nodes/Aws/SQS/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_bb86eca318e7c4 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b00fe3e80f85c39d5c855cf31913a9ee47d2e49",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
