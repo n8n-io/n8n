@@ -1976,6 +1976,11 @@ describe('InstanceAiSettingsService', () => {
 				'replacement',
 				{ id: 'custom/replacement', url: '', apiKey: 'key' },
 			],
+			[
+				{ id: 'google-vertex-anthropic/original', project: 'acme', location: 'us-east5' },
+				'replacement',
+				{ id: 'google-vertex-anthropic/replacement', project: 'acme', location: 'us-east5' },
+			],
 		] as const)(
 			'replaces the selected model while keeping its provider',
 			async (config, model, expected) => {

@@ -2016,6 +2016,8 @@ export interface InstanceAiMemoryConfig {
 		reflectorThresholdTokens: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
+		/** Model for the Observer and Reflector. Defaults to the agent's model. */
+		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
 		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};

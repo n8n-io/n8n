@@ -880,6 +880,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
+				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
 			};
 			ensureThreadExists: Mock;
@@ -957,6 +958,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			resolveMemoryModelConfig: vi.fn(async () => undefined),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -1279,6 +1281,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
+				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
 			};
 			ensureThreadExists: Mock;
@@ -1354,6 +1357,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			resolveMemoryModelConfig: vi.fn(async () => undefined),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -6419,9 +6423,11 @@ describe('createAgentMemoryOptions', () => {
 			user: User,
 			threadId: string,
 			runId: string,
+			memoryModelId?: ModelConfig,
 		) => {
 			observationalMemory: {
 				observerThresholdTokens: number;
+				model?: ModelConfig;
 				onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void>;
 			};
 		};
@@ -6452,6 +6458,28 @@ describe('createAgentMemoryOptions', () => {
 		).observationalMemory;
 		expect(observerThresholdTokens).toBe(8_000);
 		expect(service.runState.getObserverThresholdTokens).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('passes the memory model to the memory tasks, and leaves it unset by default', () => {
+		const service = buildService();
+		const user = { id: 'user-1' } as User;
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', 'anthropic/claude-haiku-4-5')
+				.observationalMemory.model,
+		).toBe('anthropic/claude-haiku-4-5');
+		// The proxy and credential paths return object configs, which must pass through as-is.
+		const credentialModel: ModelConfig = {
+			id: 'anthropic/claude-haiku-4-5',
+			url: '',
+			apiKey: 'main-key',
+		};
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1', credentialModel)
+				.observationalMemory.model,
+		).toBe(credentialModel);
+		expect(
+			service.createAgentMemoryOptions(user, 'thread-1', 'run-1').observationalMemory.model,
+		).toBeUndefined();
 	});
 
 	it('uses the per-thread override when an eval set one', () => {
