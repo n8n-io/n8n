@@ -156,10 +156,7 @@ export class AgentImportBindings {
 			'workflow:read',
 		]);
 		for (const workflow of direct) {
-			if (
-				!targets.has(workflow.id) &&
-				(workflow.sourceWorkflowId === null || workflow.sourceWorkflowId === workflow.id)
-			) {
+			if (!targets.has(workflow.id)) {
 				targets.set(workflow.id, workflow);
 			}
 		}
