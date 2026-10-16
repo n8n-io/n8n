@@ -1,4 +1,8 @@
 import type { PolicyViolation } from '@n8n/api-types';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { Project } from '@n8n/rest-api-client';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
@@ -45,6 +49,7 @@ function refusal(violations: [PolicyViolation, ...PolicyViolation[]]): ToolPolic
 describe('useToolPolicyRefusalText', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		setActivePinia(createTestingPinia());
 	});
 
 	describe('subjectName', () => {
@@ -95,6 +100,29 @@ describe('useToolPolicyRefusalText', () => {
 			expect(reason(violation({ subject: 'n8n-nodes-base.gmail' }), 'Send email')).toBe(
 				'agents.chat.toolPolicyRefusal.reason:Gmail',
 			);
+		});
+
+		it('names the project scope', () => {
+			const { reason } = useToolPolicyRefusalText();
+
+			expect(reason(violation({ scope: 'project' }), 'Send email')).toBe(
+				'agents.chat.toolPolicyRefusal.reason.project:Send email',
+			);
+		});
+
+		it('says a delegated type needs approval in a team project', () => {
+			useTypeAvailabilityPoliciesStore().policyProject = {
+				id: 'project-1',
+				type: 'team',
+			} as Project;
+			const { reason } = useToolPolicyRefusalText();
+
+			expect(
+				reason(
+					violation({ scope: 'instance', optInAvailable: true, projectId: 'project-1' }),
+					'Send email',
+				),
+			).toBe('agents.chat.toolPolicyRefusal.reason.optIn:Send email');
 		});
 
 		it('names the tool when the subject is not resolvable', () => {

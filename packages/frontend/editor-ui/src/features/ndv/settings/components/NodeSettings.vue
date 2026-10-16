@@ -193,7 +193,9 @@ const isCredentialPickerReadOnly = computed(() =>
 	isCredentialSharingEnabled.value ? props.readOnly : isReadOnly.value,
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
-const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => node.value?.type);
+const { isRestricted, restrictionScope, optInAvailable } = useNodeTypeRestriction(
+	() => node.value?.type,
+);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -742,6 +744,7 @@ function handleSelectAction(params: INodeParameters) {
 			v-if="node && nodeValid && isRestricted"
 			:node-type-name="nodeType?.displayName ?? node.type"
 			:scope="restrictionScope"
+			:opt-in-available="optInAvailable"
 			:show-replace="!isEmbeddedInCanvas && !readOnly"
 			@replace-node="emit('replaceNode', node.id)"
 		/>

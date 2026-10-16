@@ -5,14 +5,16 @@ import { setActivePinia } from 'pinia';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import RestrictedToolCallout from './RestrictedToolCallout.vue';
+import { mockPolicyProject } from '../__tests__/mocks';
 
 const renderComponent = createComponentRenderer(RestrictedToolCallout, {
 	props: { nodeTypeName: 'Slack' },
 	global: {
 		stubs: {
 			ContactAdminModal: {
-				props: ['open', 'nodeTypeName'],
-				template: '<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}</div>',
+				props: ['open', 'nodeTypeName', 'audience'],
+				template:
+					'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}</div>',
 			},
 		},
 	},
@@ -46,5 +48,25 @@ describe('RestrictedToolCallout', () => {
 		await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
 
 		expect(getByTestId('contact-admin-modal')).toHaveTextContent('Slack');
+	});
+
+	it('sends a project restriction to the project admins', async () => {
+		mockPolicyProject({ type: 'team' });
+		const { getByTestId } = renderComponent({ props: { scope: 'project' } });
+
+		expect(getByTestId('restricted-tool-contact-admin')).toHaveTextContent('Contact project admin');
+		await fireEvent.click(getByTestId('restricted-tool-contact-admin'));
+		expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-audience', 'project');
+	});
+
+	it('says a project admin can allow a delegated tool', () => {
+		mockPolicyProject({ type: 'team' });
+		const { getByTestId } = renderComponent({
+			props: { scope: 'instance', optInAvailable: true },
+		});
+
+		expect(getByTestId('restricted-tool-callout')).toHaveTextContent(
+			"Slack needs approval in this project. The agent can't use it until a project admin allows it.",
+		);
 	});
 });

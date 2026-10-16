@@ -1,5 +1,10 @@
 import type { PolicyViolation } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
+import {
+	getRestrictionContact,
+	getViolationVerdict,
+	isOptInRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
@@ -40,8 +45,18 @@ export function useToolPolicyRefusalText() {
 		]);
 	}
 
+	function reasonKey(violation: PolicyViolation): BaseTextKey {
+		const verdict = getViolationVerdict(violation);
+		if (isOptInRestriction(verdict, getRestrictionContact(verdict, violation.projectId))) {
+			return 'agents.chat.toolPolicyRefusal.reason.optIn';
+		}
+		return verdict.scope === 'project'
+			? 'agents.chat.toolPolicyRefusal.reason.project'
+			: 'agents.chat.toolPolicyRefusal.reason';
+	}
+
 	function reason(violation: PolicyViolation, fallbackName: string): string {
-		return i18n.baseText('agents.chat.toolPolicyRefusal.reason', {
+		return i18n.baseText(reasonKey(violation), {
 			interpolate: { name: subjectName(violation) ?? fallbackName },
 		});
 	}

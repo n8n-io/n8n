@@ -103,6 +103,7 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 				v-if="restriction"
 				:node-type-name="nodeType.displayName"
 				:scope="restriction.scope"
+				:opt-in-available="restriction.optInAvailable"
 				:anchor="rowRef"
 			/>
 

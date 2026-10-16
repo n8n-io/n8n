@@ -191,7 +191,7 @@ const publishBlockedReason = computed(() => {
 
 	for (const node of nodesWithValidationIssues.value) {
 		const restriction = getNodeTypeRestriction(node.type);
-		if (restriction) return describeNodeTypeRestriction(node.name, restriction.scope, 'replace');
+		if (restriction) return describeNodeTypeRestriction(node.name, restriction, 'replace');
 	}
 
 	return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {

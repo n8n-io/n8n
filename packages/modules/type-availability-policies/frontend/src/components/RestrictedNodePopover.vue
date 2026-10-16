@@ -6,7 +6,10 @@ import { unrefElement, useActiveElement, useElementHover, type MaybeElement } fr
 import { computed, getCurrentInstance, ref, watch } from 'vue';
 
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
+import { getRestrictionContact, isOptInRestriction } from '../composables/useNodeTypeRestriction';
 import {
+	CONTACT_ADMIN_COPY,
+	OPT_IN_POPOVER_DESCRIPTION,
 	RESTRICTED_TYPE_COPY,
 	SCOPE_LABEL_KEY,
 	type RestrictedTypeKind,
@@ -17,6 +20,7 @@ const props = withDefaults(
 	defineProps<{
 		nodeTypeName: string;
 		scope?: NodeTypeAvailabilityScope;
+		optInAvailable?: boolean;
 		kind?: RestrictedTypeKind;
 		/** The list row the popover explains. It opens beside this element, not beside the lock. */
 		anchor?: MaybeElement;
@@ -30,6 +34,7 @@ const props = withDefaults(
 	{
 		kind: 'node',
 		scope: undefined,
+		optInAvailable: false,
 		anchor: undefined,
 		active: false,
 		side: 'left',
@@ -74,9 +79,16 @@ const wantsOpen = computed(
 );
 const open = useExclusiveOpen(wantsOpen);
 
-const copy = computed(() => RESTRICTED_TYPE_COPY[props.kind]);
+const verdict = computed(() => ({ scope: props.scope, optInAvailable: props.optInAvailable }));
+const audience = computed(() => getRestrictionContact(verdict.value));
+const contactCopy = computed(() => CONTACT_ADMIN_COPY[audience.value]);
 const scopeKey = computed<BaseTextKey>(
-	() => (props.scope && SCOPE_LABEL_KEY[props.scope]) ?? copy.value.title,
+	() => (props.scope && SCOPE_LABEL_KEY[props.scope]) ?? RESTRICTED_TYPE_COPY[props.kind].title,
+);
+const descriptionKey = computed<BaseTextKey>(() =>
+	isOptInRestriction(verdict.value, audience.value)
+		? OPT_IN_POPOVER_DESCRIPTION[props.kind]
+		: contactCopy.value.popoverDescription[props.kind],
 );
 
 function requestContactAdmin() {
@@ -120,7 +132,7 @@ function requestContactAdmin() {
 					<N8nText tag="p" size="large" color="text-dark">{{ nodeTypeName }}</N8nText>
 					<N8nText tag="p" size="small" color="text-light">{{ i18n.baseText(scopeKey) }}</N8nText>
 					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
-						{{ i18n.baseText(copy.popoverDescription) }}
+						{{ i18n.baseText(descriptionKey) }}
 					</N8nText>
 					<N8nButton
 						variant="outline"
@@ -129,7 +141,7 @@ function requestContactAdmin() {
 						data-test-id="node-restricted-contact-admin"
 						@click="requestContactAdmin"
 					>
-						{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin') }}
+						{{ i18n.baseText(contactCopy.action) }}
 						<N8nIcon icon="arrow-up-right" size="xsmall" />
 					</N8nButton>
 				</div>
@@ -141,6 +153,7 @@ function requestContactAdmin() {
 			v-model:open="isContactAdminOpen"
 			:node-type-name="nodeTypeName"
 			:kind="kind"
+			:audience="audience"
 		/>
 	</span>
 </template>

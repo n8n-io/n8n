@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 
 import RestrictedNodePopover from './RestrictedNodePopover.vue';
+import { mockPolicyProject } from '../__tests__/mocks';
 
 const DESCRIPTION =
 	'An administrator blocked this node. To use it in your workflows, contact an instance administrator for access.';
@@ -13,10 +14,10 @@ const renderComponent = createComponentRenderer(RestrictedNodePopover, {
 	global: {
 		stubs: {
 			ContactAdminModal: {
-				props: ['open', 'nodeTypeName'],
+				props: ['open', 'nodeTypeName', 'audience'],
 				emits: ['update:open'],
 				template:
-					'<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
+					'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
 			},
 		},
 	},
@@ -228,5 +229,33 @@ describe('RestrictedNodePopover', () => {
 
 		expect(onDocumentPointerDown).not.toHaveBeenCalled();
 		document.removeEventListener('pointerdown', onDocumentPointerDown);
+	});
+
+	it('sends a project restriction to the project admins', async () => {
+		renderPopover({ active: true, scope: 'project' });
+		mockPolicyProject({ type: 'team' });
+
+		expect(
+			await screen.findByText(
+				'An administrator blocked this node in this project. To use it, contact a project admin for access.',
+			),
+		).toBeInTheDocument();
+		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
+
+		expect(screen.getByTestId('contact-admin-modal')).toHaveAttribute('data-audience', 'project');
+	});
+
+	it('says a project admin can allow a delegated node', async () => {
+		renderPopover({ active: true, scope: 'instance', optInAvailable: true });
+		mockPolicyProject({ type: 'team' });
+
+		expect(
+			await screen.findByText(
+				'This node needs approval in each project. A project admin can allow it for this project.',
+			),
+		).toBeInTheDocument();
+		expect(screen.getByTestId('node-restricted-contact-admin')).toHaveTextContent(
+			'Contact project admin',
+		);
 	});
 });
