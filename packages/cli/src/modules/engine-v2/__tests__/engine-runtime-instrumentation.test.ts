@@ -7,6 +7,7 @@ import type {
 	ExecutionStore,
 	ExecutionViewStore,
 	IStepExecutor,
+	NewExecutionRecord,
 	StepExecutionRequest,
 	StepExecutionResult,
 	StepMessage,
@@ -129,7 +130,7 @@ describe('engine runtime instrumentation', () => {
 
 	it('measures the awaited write, gather, and finish calls without recording data', async () => {
 		const gate = deferred();
-		const record = mock<ExecutionRecord>({ workflow: { password: secret } });
+		const record = mock<NewExecutionRecord>({ workflow: { password: secret } });
 		vi.mocked(stores.executionStore.createExecution).mockReturnValue(gate.promise);
 		vi.mocked(stores.stepStore.loadStepsByKeys).mockResolvedValue({});
 		vi.mocked(stores.stepStore.completeStep).mockResolvedValue(true);

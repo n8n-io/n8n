@@ -1,19 +1,41 @@
 import { In, type Repository } from '@n8n/typeorm';
 
 import type { WorkflowExecution } from './entities';
+import { queryPrepared, type PreparedStatement } from './prepared-query';
 import {
 	ExecutionNotFoundError,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
 } from '../execution/execution-store';
-import { LIVE_EXECUTION_STATUSES, type ExecutionStatus } from '../execution/execution.types';
+import {
+	LIVE_EXECUTION_STATUSES,
+	type ExecutionStatus,
+	type TriggerOutputs,
+} from '../execution/execution.types';
 
 /**
  * Insert payload accepted by the repository. Derived from the method rather than
  * imported: TypeORM's `QueryDeepPartialEntity` has no root export.
  */
 type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
+
+/**
+ * Every column the execution path reads, and none it does not: `workflow` is
+ * for the read path, and `trigger_outputs` is read once by `loadTriggerOutputs`.
+ */
+const LOAD_EXECUTION: PreparedStatement = {
+	name: 'engine_load_execution',
+	text: `SELECT id, workflow_id AS "workflowId", status, mode, graph,
+			caller_context AS "callerContext", response_expectation AS "responseExpectation",
+			finished_at AS "finishedAt"
+		FROM workflow_execution WHERE id = $1::uuid`,
+};
+
+const LOAD_TRIGGER_OUTPUTS: PreparedStatement = {
+	name: 'engine_load_trigger_outputs',
+	text: 'SELECT trigger_outputs FROM workflow_execution WHERE id = $1::uuid',
+};
 
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
@@ -28,21 +50,19 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async loadExecution(id: string): Promise<ExecutionRecord> {
-		const row: ExecutionRecord | undefined = await this.repo
-			.createQueryBuilder('execution')
-			.select('execution.id', 'id')
-			.addSelect('execution.workflow_id', 'workflowId')
-			.addSelect('execution.status', 'status')
-			.addSelect('execution.mode', 'mode')
-			.addSelect('execution.graph', 'graph')
-			.addSelect('execution.trigger_outputs', 'triggerOutputs')
-			.addSelect('execution.caller_context', 'callerContext')
-			.addSelect('execution.response_expectation', 'responseExpectation')
-			.addSelect('execution.finished_at', 'finishedAt')
-			.where('execution.id = :id', { id })
-			.getRawOne();
+		const [row] = await queryPrepared<ExecutionRecord>(this.repo.manager, LOAD_EXECUTION, [id]);
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row;
+	}
+
+	async loadTriggerOutputs(id: string): Promise<TriggerOutputs | null> {
+		const [row] = await queryPrepared<{ trigger_outputs: TriggerOutputs | null }>(
+			this.repo.manager,
+			LOAD_TRIGGER_OUTPUTS,
+			[id],
+		);
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row.trigger_outputs;
 	}
 
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {

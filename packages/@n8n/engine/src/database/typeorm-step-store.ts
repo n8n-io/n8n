@@ -1,8 +1,8 @@
-import { In, type EntityManager, type Repository } from '@n8n/typeorm';
-import type { PoolClient, QueryResultRow } from 'pg';
+import { In, type Repository } from '@n8n/typeorm';
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
+import { queryPrepared, type PreparedStatement } from './prepared-query';
 import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
@@ -17,6 +17,7 @@ import {
 } from '../execution/execution.types';
 import {
 	StepNotFoundError,
+	type CompletedStepOutputs,
 	type DueStep,
 	type NewStepRecord,
 	type StepRecord,
@@ -53,8 +54,7 @@ type ClaimedStepRow = {
 };
 type DueStepRow = { id: string; execution_id: string };
 
-/** A statement Postgres parses and plans once per connection. Its text must be static. */
-type PreparedStatement = { name: string; text: string };
+type CompletedStepOutputsRow = { node_id: string; iteration: number; outputs: StepSlots };
 
 const LOCK_EXECUTION_FOR_SHARE: PreparedStatement = {
 	name: 'engine_lock_execution_for_share',
@@ -85,19 +85,11 @@ const INSERT_STEPS: PreparedStatement = {
 		RETURNING id, node_id, iteration`,
 };
 
-/** Runs a prepared statement on the connection that holds the manager's transaction. */
-async function queryPrepared<Row extends QueryResultRow>(
-	manager: EntityManager,
-	statement: PreparedStatement,
-	values: unknown[],
-): Promise<Row[]> {
-	if (!manager.queryRunner) {
-		throw new UnexpectedError(`prepared statement ${statement.name} runs outside a transaction`);
-	}
-	const client: PoolClient = await manager.queryRunner.connect();
-	const result = await client.query<Row>({ ...statement, values });
-	return result.rows;
-}
+const LOAD_COMPLETED_STEP_OUTPUTS: PreparedStatement = {
+	name: 'engine_load_completed_step_outputs',
+	text: `SELECT node_id, iteration, outputs FROM workflow_step_execution
+		WHERE execution_id = $1::uuid AND status = 'completed' AND outputs IS NOT NULL`,
+};
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -390,11 +382,13 @@ export class TypeOrmStepStore implements StepStore {
 		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
 	}
 
-	async loadAllSteps(executionId: string): Promise<StepRecord[]> {
-		return await this.repo.find({
-			where: { executionId },
-			order: { nodeId: 'ASC', iteration: 'ASC' },
-		});
+	async loadCompletedStepOutputs(executionId: string): Promise<CompletedStepOutputs[]> {
+		const rows = await queryPrepared<CompletedStepOutputsRow>(
+			this.repo.manager,
+			LOAD_COMPLETED_STEP_OUTPUTS,
+			[executionId],
+		);
+		return rows.map(({ node_id: nodeId, iteration, outputs }) => ({ nodeId, iteration, outputs }));
 	}
 
 	async countSettledSteps(executionId: string): Promise<number> {

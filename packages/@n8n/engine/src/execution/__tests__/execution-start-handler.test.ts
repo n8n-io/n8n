@@ -26,6 +26,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
+		loadTriggerOutputs: vi.fn().mockResolvedValue(null),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
@@ -55,7 +56,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
-		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadCompletedStepOutputs: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
 	};
@@ -69,7 +70,6 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		mode: 'production',
 		graph,
 		workflow: {},
-		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		finishedAt: null,
@@ -87,9 +87,8 @@ describe('ExecutionStartHandler', () => {
 			edges: [{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 }],
 		};
 		const executionStore = makeExecutionStore({
-			loadExecution: vi
-				.fn()
-				.mockResolvedValue(record(graph, { triggerOutputs: [[{ json: { webhook: 'data' } }]] })),
+			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+			loadTriggerOutputs: vi.fn().mockResolvedValue([[{ json: { webhook: 'data' } }]]),
 		});
 		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
 		const stepStore = makeStepStore(createSteps);
@@ -123,11 +122,10 @@ describe('ExecutionStartHandler', () => {
 			edges: [],
 		};
 		const executionStore = makeExecutionStore({
-			loadExecution: vi.fn().mockResolvedValue(
-				record(graph, {
-					triggerOutputs: [[{ json: { i1: true } }], null, [{ json: { i2: true } }]],
-				}),
-			),
+			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+			loadTriggerOutputs: vi
+				.fn()
+				.mockResolvedValue([[{ json: { i1: true } }], null, [{ json: { i2: true } }]]),
 		});
 		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
 		const stepStore = makeStepStore(createSteps);
@@ -153,7 +151,8 @@ describe('ExecutionStartHandler', () => {
 			edges: [],
 		};
 		const executionStore = makeExecutionStore({
-			loadExecution: vi.fn().mockResolvedValue(record(graph, { triggerOutputs: null })),
+			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+			loadTriggerOutputs: vi.fn().mockResolvedValue(null),
 		});
 		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
 		const stepStore = makeStepStore(createSteps);

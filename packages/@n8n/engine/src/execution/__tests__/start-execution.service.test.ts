@@ -27,6 +27,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
+		loadTriggerOutputs: vi.fn().mockResolvedValue(null),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),

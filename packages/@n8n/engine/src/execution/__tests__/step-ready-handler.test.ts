@@ -79,7 +79,6 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		mode: 'production',
 		graph,
 		workflow: {},
-		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		finishedAt: null,
@@ -88,6 +87,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
+		loadTriggerOutputs: vi.fn().mockResolvedValue(null),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
@@ -120,7 +120,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
-		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadCompletedStepOutputs: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		suspendStep: vi.fn().mockResolvedValue(true),
@@ -153,9 +153,10 @@ describe('StepReadyHandler', () => {
 		);
 		const queue = makeQueue();
 		const executor = makeExecutor({ outputs: [[{ json: { ok: true } }]] });
-		// a stale payload on the execution record must not be consulted: the
-		// trigger's step row is the one source of its output
-		const executionStore = makeExecutionStore({ triggerOutputs: [{ body: { stale: true } }] });
+		// the stored trigger payload must not be consulted: the trigger's step row
+		// is the one source of its output
+		const executionStore = makeExecutionStore();
+		vi.mocked(executionStore.loadTriggerOutputs).mockResolvedValue([{ body: { stale: true } }]);
 		const handler = makeHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: executor,
 		});
@@ -184,6 +185,7 @@ describe('StepReadyHandler', () => {
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(executionStore.loadTriggerOutputs).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',

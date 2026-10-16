@@ -32,17 +32,12 @@ describe('createEngineStepDataLoader', () => {
 		} as unknown as ExecutionStore;
 		const stepStore = {
 			// the trigger's completed step carries its payload as output slot 0, and
-			// `a` ran twice, once per pass of a loop
-			loadAllSteps: vi.fn().mockResolvedValue([
-				{
-					nodeId: 't',
-					iteration: 0,
-					status: 'completed',
-					outputs: [{ body: { hello: 'world' } }],
-				},
-				{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { from: 'a' } }]] },
-				{ nodeId: 'a', iteration: 1, status: 'completed', outputs: [[{ json: { from: 'a2' } }]] },
-				{ nodeId: 'b', iteration: 0, status: 'running', outputs: null },
+			// `a` ran twice, once per pass of a loop. `b` is still running, so the
+			// store leaves it out.
+			loadCompletedStepOutputs: vi.fn().mockResolvedValue([
+				{ nodeId: 't', iteration: 0, outputs: [{ body: { hello: 'world' } }] },
+				{ nodeId: 'a', iteration: 0, outputs: [[{ json: { from: 'a' } }]] },
+				{ nodeId: 'a', iteration: 1, outputs: [[{ json: { from: 'a2' } }]] },
 			]),
 		} as unknown as StepStore;
 
@@ -50,11 +45,11 @@ describe('createEngineStepDataLoader', () => {
 		const stepData = await loadStepData(context);
 
 		expect(executionStore.loadExecution).toHaveBeenCalledWith('exec-1');
-		expect(stepStore.loadAllSteps).toHaveBeenCalledWith('exec-1');
+		expect(stepStore.loadCompletedStepOutputs).toHaveBeenCalledWith('exec-1');
 		expect(stepData.graph).toBe(graph);
-		// keyed by iteration, so a loop member's passes stay apart. Incomplete steps
-		// are omitted, not mapped to null, so expressions referencing them fail as
-		// "hasn't been executed"
+		// keyed by iteration, so a loop member's passes stay apart. A step without
+		// outputs is absent, not mapped to null, so expressions referencing it fail
+		// as "hasn't been executed"
 		expect(stepData.outputsByNode).toEqual({
 			t: { 0: [{ body: { hello: 'world' } }] },
 			a: { 0: [[{ json: { from: 'a' } }]], 1: [[{ json: { from: 'a2' } }]] },
