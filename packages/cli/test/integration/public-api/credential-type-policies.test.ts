@@ -665,15 +665,26 @@ describe('credential type policies public API attachments', () => {
 
 	test('PUT with a stale version returns 409 and preserves the attachments and version', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
-		const instance = await agent.put('/credential-type-policies/instance').send({
-			...ALLOW_ALL,
-			rules: [DENY_RULE],
-		});
+		const instance = await agent.put('/credential-type-policies/instance').send(ALLOW_ALL);
 		expect(instance.statusCode).toBe(200);
+		const created = await agent
+			.post('/credential-type-policies/policies')
+			.send({ rules: [DENY_RULE] });
+		expect(created.statusCode).toBe(201);
+		const policyId = created.body.policy.id as string;
 
 		const path = `/credential-type-policies/scopes/${instance.body.scopeId}/attachments`;
+		const attached = await agent.put(path).send({
+			attachments: [{ policyId, priority: 0, isFloor: false }],
+			version: instance.body.version,
+		});
+		expect(attached.statusCode).toBe(200);
 		const read = await agent.get(path);
 		expect(read.statusCode).toBe(200);
+		expect(read.body).toEqual({
+			attachments: [{ policyId, rules: [DENY_RULE], priority: 0, isFloor: false }],
+			version: instance.body.version + 1,
+		});
 		const replaced = await agent.put(path).send({
 			attachments: read.body.attachments.map(({ policyId }: { policyId: string }) => ({
 				policyId,
@@ -683,6 +694,10 @@ describe('credential type policies public API attachments', () => {
 			version: read.body.version,
 		});
 		expect(replaced.statusCode).toBe(200);
+		expect(replaced.body).toEqual({
+			attachments: [{ policyId, rules: [DENY_RULE], priority: 5, isFloor: false }],
+			version: read.body.version + 1,
+		});
 
 		const stale = await agent.put(path).send({ attachments: [], version: read.body.version });
 
