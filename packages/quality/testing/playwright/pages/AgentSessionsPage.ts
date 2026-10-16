@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import flatted from 'flatted';
 
 import { BasePage } from './BasePage';
 
@@ -12,6 +13,8 @@ interface WorkflowToolCallMock {
 	name: string;
 	workflowId: string;
 	executionId: string;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
 }
 
 interface AgentSessionMock {
@@ -101,8 +104,11 @@ export class AgentSessionsPage extends BasePage {
 					kind: 'workflow',
 					name: workflowTool.name,
 					toolCallId: 'workflow-tool-call-e2e',
-					input: {},
-					output: { executionId: workflowTool.executionId, status: 'success' },
+					input: workflowTool.input ?? {},
+					output: workflowTool.output ?? {
+						executionId: workflowTool.executionId,
+						status: 'success',
+					},
 					startTime: startedAtMs + 1_500,
 					endTime: startedAtMs + 2_500,
 					success: true,
@@ -128,6 +134,23 @@ export class AgentSessionsPage extends BasePage {
 			(url) => url.pathname === `${threadsPath}/${threadId}`,
 			async (route) => {
 				await route.fulfill({ json: { data: { thread, executions: [execution] } } });
+			},
+		);
+		await this.page.route(
+			(url) => url.pathname === `/rest/executions/${workflowTool.executionId}`,
+			async (route) => {
+				await route.fulfill({
+					json: {
+						data: {
+							id: workflowTool.executionId,
+							workflowId: workflowTool.workflowId,
+							finished: true,
+							mode: 'integrated',
+							status: 'success',
+							data: flatted.stringify({}),
+						},
+					},
+				});
 			},
 		);
 	}
@@ -183,7 +206,15 @@ export class AgentSessionsPage extends BasePage {
 		return this.page.getByTestId('agent-session-run-data-output');
 	}
 
-	async openWorkflowLogNode(name: string): Promise<void> {
-		await this.page.getByTestId('log-node-row').filter({ hasText: name }).click();
+	getWorkflowInput(): Locator {
+		return this.page.getByTestId('workflow-input');
+	}
+
+	getWorkflowOutput(): Locator {
+		return this.page.getByTestId('workflow-output');
+	}
+
+	getOpenFullExecution(): Locator {
+		return this.page.getByTestId('open-full-execution');
 	}
 }
