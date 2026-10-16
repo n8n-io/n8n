@@ -427,7 +427,7 @@ overrides:
   express-rate-limit: 8.2.2
   underscore: 1.13.8
   flatted: 3.4.2
-  handlebars: 4.7.9
+  handlebars: 4.7.10
   path-to-regexp: 8.4.0
   path-to-regexp@<0.1.13: 0.1.13
   picomatch@2: 2.3.2
