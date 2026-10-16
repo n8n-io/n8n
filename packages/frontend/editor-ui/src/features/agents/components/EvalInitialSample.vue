@@ -18,6 +18,8 @@ const props = defineProps<{
 	toolCalls?: ToolCall[];
 	projectId?: string;
 	hideBanner?: boolean;
+	/** Another element sits right below it, so the bottom corners are square to meet it. */
+	joinedBelow?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -30,7 +32,7 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 </script>
 
 <template>
-	<div :class="$style.evalPreview">
+	<div :class="[$style.evalPreview, { [$style.joinedBelow]: joinedBelow }]">
 		<div :class="$style.evalPreviewUserMessage">
 			<ChatBubble :text="previewInput" :status="status" />
 		</div>
@@ -79,6 +81,11 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 		width: 100%;
 		align-self: flex-end;
 	}
+}
+
+.joinedBelow {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .tools {
