@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -36,24 +36,34 @@ const renderComponent = createComponentRenderer(InstanceAiTestAgentExamplesPanel
 });
 
 describe('InstanceAiTestAgentExamplesPanel', () => {
-	it('shows the try input and a default slice of examples', () => {
-		const { getByText, getAllByTestId } = renderComponent();
+	it('shows a compact first-check summary and a default slice of examples', () => {
+		const { getByText, queryByText, getAllByTestId } = renderComponent();
 
-		expect(getByText('Summarize the thread about the Acme SSO outage')).toBeInTheDocument();
+		expect(getByText('First check passed')).toBeInTheDocument();
+		expect(queryByText('Summarize the thread about the Acme SSO outage')).not.toBeInTheDocument();
 		// Default slider value is 2.
 		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(2);
 	});
 
-	it('shows a right chevron on the try row that emits open-case instead of expanding it', async () => {
+	it('opens and closes the first check details with View', async () => {
 		const user = userEvent.setup();
-		const { getByTestId, queryByTestId, emitted } = renderComponent();
+		const { getByTestId, queryByText } = renderComponent();
+		const button = getByTestId('instance-ai-test-agent-examples-view-first');
+		expect(button).toHaveAttribute('aria-expanded', 'false');
+		await user.click(button);
+		expect(queryByText('Summarize the thread about the Acme SSO outage')).toBeInTheDocument();
+		expect(button).toHaveAttribute('aria-expanded', 'true');
+		await user.click(button);
+		expect(queryByText('Summarize the thread about the Acme SSO outage')).not.toBeInTheDocument();
+	});
 
-		await user.click(getByTestId('instance-ai-test-agent-examples-try-toggle'));
-
+	it('opens Checks from the expanded first check without replacing the inline peek', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, getByRole, emitted } = renderComponent();
+		await user.click(getByTestId('instance-ai-test-agent-examples-view-first'));
+		expect(emitted('open-case')).toBeUndefined();
+		await user.click(getByRole('button', { name: 'Open Checks' }));
 		expect(emitted('open-case')).toEqual([[null]]);
-		expect(
-			queryByTestId('instance-ai-test-agent-examples-try-placeholder'),
-		).not.toBeInTheDocument();
 	});
 
 	it('emits add-example with the typed text and clears the input', async () => {
@@ -111,14 +121,16 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		expect(emitted()['check-agent']).toEqual([[3]]);
 	});
 
-	it('labels the confirmed try with its scenario tag', () => {
-		const { getByText } = renderComponent();
+	it('labels the expanded confirmed try with its scenario tag', async () => {
+		const { getByText, getByTestId } = renderComponent();
+		await fireEvent.click(getByTestId('instance-ai-test-agent-examples-view-first'));
 
 		expect(getByText('Upset')).toBeInTheDocument();
 	});
 
-	it('falls back to "Your try" when the confirmed try has no scenario', () => {
-		const { getByText } = renderComponent({ props: { previewScenario: null } });
+	it('falls back to "Your try" when the confirmed try has no scenario', async () => {
+		const { getByText, getByTestId } = renderComponent({ props: { previewScenario: null } });
+		await fireEvent.click(getByTestId('instance-ai-test-agent-examples-view-first'));
 
 		expect(getByText('Your try')).toBeInTheDocument();
 	});
@@ -156,14 +168,49 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			},
 		];
 
-		it('hides the confirmed try and shows how many cases are left', () => {
-			const { getByText, queryByTestId, queryByText } = renderComponent({
+		it('hides the confirmed try and shows the completed check count', () => {
+			const { getByText, queryByTestId } = renderComponent({
 				props: { caseRuns },
 			});
 
-			expect(getByText('Checking, 1 left')).toBeInTheDocument();
+			expect(getByText('Running 2 checks, 1 done')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-try')).not.toBeInTheDocument();
-			expect(queryByText(/Saved as your first check/)).not.toBeInTheDocument();
+		});
+
+		it('uses the singular count for a single running check', () => {
+			const { getByText } = renderComponent({ props: { caseRuns: [caseRuns[1]] } });
+			expect(getByText('Running 1 check, 0 done')).toBeInTheDocument();
+		});
+
+		it('limits the running summary to three avatars and shows the remaining count', () => {
+			const fiveRuns = Array.from({ length: 5 }, (_, index) => ({
+				...caseRuns[1],
+				rowId: index + 1,
+			}));
+			const { getByText, getAllByTestId } = renderComponent({ props: { caseRuns: fiveRuns } });
+
+			const extraCount = getByText('+2');
+			expect(extraCount.parentElement?.children).toHaveLength(4);
+			expect(getByText('Running 5 checks, 0 done')).toBeInTheDocument();
+			expect(getAllByTestId(/^instance-ai-test-agent-examples-case-\d+$/)).toHaveLength(5);
+		});
+
+		it('updates elapsed time from the run start and removes the timer when settled', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-10-15T12:00:09Z'));
+			try {
+				const { getByTestId, queryByTestId, rerender, unmount } = renderComponent({
+					props: { caseRuns, runStartedAt: '2026-10-15T12:00:00Z' },
+				});
+				expect(getByTestId('instance-ai-test-agent-examples-timer')).toHaveTextContent('0:09');
+				await vi.advanceTimersByTimeAsync(2000);
+				expect(getByTestId('instance-ai-test-agent-examples-timer')).toHaveTextContent('0:11');
+				await rerender({ caseRuns: caseRuns.map((run) => ({ ...run, status: 'pass' })) });
+				expect(queryByTestId('instance-ai-test-agent-examples-timer')).not.toBeInTheDocument();
+				unmount();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('replaces the progress line and Stop with a retry once the run could not start', async () => {
@@ -173,7 +220,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			});
 
 			expect(getByTestId('instance-ai-test-agent-examples-run-failed')).toBeInTheDocument();
-			expect(queryByText(/Checking, \d+ left/)).not.toBeInTheDocument();
+			expect(queryByText(/Running \d+ checks?, \d+ done/)).not.toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
 
 			await user.click(getByTestId('instance-ai-test-agent-examples-retry-run'));
@@ -332,7 +379,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			await rerender({ caseRuns: null });
 
 			expect(queryByTestId('instance-ai-test-agent-examples-run-summary')).not.toBeInTheDocument();
-			expect(getByTestId('instance-ai-test-agent-examples-try')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-examples-first-summary')).toBeInTheDocument();
 		});
 	});
 
@@ -341,7 +388,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(
-				within(getByTestId('instance-ai-test-agent-examples-try')).getByRole('img', {
+				within(getByTestId('instance-ai-test-agent-examples-first-summary')).getByRole('img', {
 					name: /Passed/,
 				}),
 			).toBeInTheDocument();
@@ -349,7 +396,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 		it('reflects the state it was graded in instead of always passing', () => {
 			const { getByTestId } = renderComponent({ props: { previewStatus: 'work' as const } });
-			const row = getByTestId('instance-ai-test-agent-examples-try');
+			const row = getByTestId('instance-ai-test-agent-examples-first-summary');
 
 			expect(within(row).getByRole('img', { name: /Needs work/ })).toBeInTheDocument();
 			expect(within(row).queryByRole('img', { name: /Passed/ })).not.toBeInTheDocument();
@@ -538,6 +585,28 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			});
 
 			expect(getByTestId(BUTTON)).toBeDisabled();
+		});
+
+		it('clears the applying state when the request finishes so suggestions can be retried', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, rerender, emitted } = renderComponent({
+				props: { caseRuns: [failed(1), failed(2)] },
+			});
+			const button = getByTestId(BUTTON);
+
+			await user.click(button);
+			await rerender({ applyingSuggestionIds: ['result-1', 'result-2'] });
+			expect(button).toHaveAttribute('aria-busy', 'true');
+			expect(button).toBeDisabled();
+
+			await rerender({ applyingSuggestionIds: [] });
+			expect(button).not.toHaveAttribute('aria-busy');
+			expect(button).toBeEnabled();
+			await user.click(button);
+			expect(emitted('apply-suggestions')).toEqual([
+				[['result-1', 'result-2']],
+				[['result-1', 'result-2']],
+			]);
 		});
 
 		it('ignores a queued apply-all click after a suggestion starts applying', async () => {
