@@ -157,7 +157,7 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		defaultAction: 'deny' as const,
 		version: 4,
 		rules,
-		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
+		warnings: [{ kind: 'shadowed' as const, ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
 
 	it('fails loudly instead of returning an extends rule, which no node type write accepts', async () => {

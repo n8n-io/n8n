@@ -46,6 +46,8 @@ const RULE: PolicyRule = {
 	selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
 };
 
+const RULE_2: PolicyRule = { ...RULE, id: 'r2' };
+
 const DELEGATE_RULE: PolicyRule = {
 	id: 'r-delegate',
 	action: 'delegate',
@@ -113,6 +115,11 @@ describe('TypeAvailabilityPolicyService', () => {
 		scopeRepository.findScopeKeysByIds.mockResolvedValue([]);
 		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
 		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
+		// Fixture `name` rules name Slack, so it must resolve as a loaded node.
+		Object.defineProperty(loadNodesAndCredentials, 'knownNodes', {
+			configurable: true,
+			value: { 'n8n-nodes-base.slack': { className: '', sourcePath: '' } },
+		});
 		nodeTypes.resolveBaseName.mockImplementation((name) => ({
 			baseName: name,
 			isSyntheticTool: false,
@@ -315,21 +322,72 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			const { warnings } = await service.createPolicyDocument(KIND, [RULE, shadowed], 'user-1');
 
-			expect(warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+			expect(warnings).toEqual([{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' }]);
 			expect(policyRepository.createPolicy).toHaveBeenCalled();
 		});
 
-		it('rejects a package rule naming a package that is not installed', async () => {
+		it('saves a package rule naming a package that is not installed, with a warning', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
 			const rule: PolicyRule = {
 				id: 'r1',
 				action: 'deny',
 				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
 			};
 
-			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
+			const { warnings } = await service.createPolicyDocument(KIND, [rule], 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+			expect(policyRepository.createPolicy).toHaveBeenCalled();
+		});
+
+		it('saves a name rule naming a node type that is not loaded, with a warning', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			const rule: PolicyRule = {
+				id: 'r1',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.notLoaded' },
+			};
+
+			const { warnings } = await service.createPolicyDocument(KIND, [rule], 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+		});
+
+		it('checks a synthetic tool variant rule against its base node', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			nodeTypes.resolveBaseName.mockImplementation((name) => ({
+				baseName: name.replace(/Tool$/, ''),
+				isSyntheticTool: name.endsWith('Tool'),
+			}));
+			const rules: PolicyRule[] = [
+				{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'n8n-nodes-base.slackTool' } },
+				{ id: 'r2', action: 'deny', selector: { kind: 'name', value: 'n8n-nodes-base.fooTool' } },
+			];
+
+			const { warnings } = await service.createPolicyDocument(KIND, rules, 'user-1');
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r2' }]);
+		});
+
+		it('lists a shadowed warning before a notLoaded warning for the same rule, in rule order', async () => {
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			const missing = (id: string): PolicyRule => ({
+				id,
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.notLoaded' },
+			});
+
+			const { warnings } = await service.createPolicyDocument(
+				KIND,
+				[missing('r1'), RULE_2, missing('r3')],
+				'user-1',
 			);
-			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+
+			expect(warnings).toEqual([
+				{ kind: 'notLoaded', ruleId: 'r1' },
+				{ kind: 'shadowed', ruleId: 'r3', shadowedByRuleId: 'r1' },
+				{ kind: 'notLoaded', ruleId: 'r3' },
+			]);
 		});
 
 		describe('extends rules', () => {
@@ -360,17 +418,37 @@ describe('TypeAvailabilityPolicyService', () => {
 				expect(policyRepository.createPolicy).not.toHaveBeenCalled();
 			});
 
-			it('rejects an extends rule naming a credential type that is not installed', async () => {
-				await expect(
-					service.createPolicyDocument(
-						CREDENTIAL_TYPES_KIND,
-						[familyRule('r1', 'notInstalledApi')],
-						'user-1',
-					),
-				).rejects.toThrow(
-					'Extends rule names a credential type that is not installed: notInstalledApi',
+			it('saves an extends rule naming a credential type that is not installed, with a warning', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
 				);
-				expect(policyRepository.createPolicy).not.toHaveBeenCalled();
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[familyRule('r1', 'notLoadedApi')],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
+			});
+
+			it('saves a credential name rule naming a type that is not installed, with a warning', async () => {
+				policyRepository.createPolicy.mockResolvedValue(
+					makePolicy({ kind: CREDENTIAL_TYPES_KIND }),
+				);
+				const rule: PolicyRule = {
+					id: 'r1',
+					action: 'deny',
+					selector: { kind: 'name', value: 'notLoadedApi' },
+				};
+
+				const { warnings } = await service.createPolicyDocument(
+					CREDENTIAL_TYPES_KIND,
+					[rule],
+					'user-1',
+				);
+
+				expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r1' }]);
 			});
 
 			it('warns about a derived-type rule placed after the family rule that covers it', async () => {
@@ -389,7 +467,7 @@ describe('TypeAvailabilityPolicyService', () => {
 					'user-1',
 				);
 
-				expect(warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+				expect(warnings).toEqual([{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' }]);
 			});
 		});
 
@@ -438,7 +516,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			};
 
 			await expect(service.createPolicyDocument(KIND, [rule], 'user-1')).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-creds-base',
+				'Package rule names "n8n-creds-base", which no package provides. Write a credential type rule instead.',
 			);
 			expect(policyRepository.createPolicy).not.toHaveBeenCalled();
 		});
@@ -451,19 +529,29 @@ describe('TypeAvailabilityPolicyService', () => {
 			scopeRepository.containsProjectScope.mockResolvedValue(false);
 		});
 
-		it('rejects a package rule naming a package that is not installed, before opening a transaction', async () => {
-			const rule: PolicyRule = {
-				id: 'r1',
+		it('keeps accepting edits to a document whose package rule names an uninstalled package', async () => {
+			const missingPackage: PolicyRule = {
+				id: 'r-missing',
 				action: 'deny',
-				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+				selector: { kind: 'package', value: 'n8n-nodes-mcp' },
 			};
-
-			await expect(
-				service.updatePolicyDocument(KIND, 'policy-1', [rule], 1, 'user-1'),
-			).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
+			policyRepository.findByIdAndKind.mockResolvedValue(
+				makePolicy({ rules: [missingPackage], version: 1 }),
 			);
-			expect(transactionRunner.run).not.toHaveBeenCalled();
+			policyRepository.updateRules.mockResolvedValue(
+				makePolicy({ rules: [missingPackage, RULE], version: 2 }),
+			);
+
+			const { warnings } = await service.updatePolicyDocument(
+				KIND,
+				'policy-1',
+				[missingPackage, RULE],
+				1,
+				'user-1',
+			);
+
+			expect(warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-missing' }]);
+			expect(policyRepository.updateRules).toHaveBeenCalled();
 		});
 
 		it('rejects a node type rule naming a credential-only node, before opening a transaction', async () => {
@@ -868,11 +956,11 @@ describe('TypeAvailabilityPolicyService', () => {
 			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
 		});
 
-		it('rejects a package rule naming a package that is not installed, before opening a transaction', async () => {
+		it('rejects a package rule on the credential-only prefix, before opening a transaction', async () => {
 			const rule: PolicyRule = {
 				id: 'r1',
 				action: 'deny',
-				selector: { kind: 'package', value: 'n8n-nodes-not-installed' },
+				selector: { kind: 'package', value: 'n8n-creds-base' },
 			};
 
 			await expect(
@@ -883,9 +971,7 @@ describe('TypeAvailabilityPolicyService', () => {
 					0,
 					'user-1',
 				),
-			).rejects.toThrow(
-				'Package rule names a package that is not installed: n8n-nodes-not-installed',
-			);
+			).rejects.toThrow('Package rule names "n8n-creds-base"');
 			expect(transactionRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -1137,7 +1223,8 @@ describe('TypeAvailabilityPolicyService', () => {
 				after: { defaultAction: 'deny', version: 1 },
 				rulesBefore: null,
 				rulesAfter: [RULE],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
 		});
 
@@ -1188,8 +1275,45 @@ describe('TypeAvailabilityPolicyService', () => {
 				after: { defaultAction: 'deny', version: 2 },
 				rulesBefore: [],
 				rulesAfter: [RULE],
-				warningCount: 0,
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
 			});
+		});
+
+		it('saves a rule for an uninstalled package, returns its warning and counts it apart', async () => {
+			const missingPackage: PolicyRule = {
+				id: 'r-missing',
+				action: 'deny',
+				selector: { kind: 'package', value: 'n8n-nodes-mcp' },
+			};
+			const scope = makeScope({ defaultAction: 'allow', version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(scope);
+			const existingPolicy = makePolicy({ rules: [missingPackage], version: 1 });
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [missingPackage], priority: 0, isFloor: false },
+			]);
+			policyRepository.findByIdAndKind.mockResolvedValue(existingPolicy);
+			policyRepository.updateRules.mockResolvedValue(
+				makePolicy({ rules: [missingPackage, RULE, RULE_2], version: 2 }),
+			);
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
+
+			const result = await service.setEffectivePolicy(
+				KIND,
+				null,
+				{ rules: [missingPackage, RULE, RULE_2], defaultAction: 'allow' },
+				1,
+				'user-2',
+			);
+
+			expect(result.warnings).toEqual([
+				{ kind: 'notLoaded', ruleId: 'r-missing' },
+				{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' },
+			]);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'node-type-policy-saved',
+				expect.objectContaining({ shadowWarningCount: 1, notLoadedWarningCount: 1 }),
+			);
 		});
 
 		it('throws NotFoundError when the document update unexpectedly finds no row', async () => {

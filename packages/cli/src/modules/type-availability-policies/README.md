@@ -220,7 +220,15 @@ covers `googleOAuth2Api` and `googleSheetsOAuth2Api`. A `name` rule stays exact,
 `name oAuth2Api` blocks only the generic OAuth2 credential. Rule order decides as usual: an
 `allow name googleSheetsOAuth2Api` placed before `deny extends oAuth2Api` keeps Sheets usable,
 and placed after it, the shadow lint warns that it can never match. A write rejects an `extends`
-rule in a node type policy, and one that names a credential type that is not installed.
+rule in a node type policy.
+
+A rule can name a package or type that this instance has not loaded. The write saves it and
+returns a `notLoaded` warning for it, next to the `shadowed` warnings. This applies to all
+three selectors. Thus, when you uninstall a package, its rules do not block later writes to the
+policy. An installed node that `NODES_EXCLUDE` or `NODES_INCLUDE` filters out is not loaded
+either. The policy still enforces its rule, because evaluation matches type names, but a policy
+cannot make a filtered-out node available. One exception: a write rejects a `package` rule on `n8n-creds-base`, because no package
+can ever provide it.
 
 ### Reading it on the execution path
 
@@ -324,6 +332,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `credential-type-policy.check.ts`                 | Credential types: all eight points, including `credentialSave`                  |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
+| `policy-rule-lint.ts`                             | Adds `notLoaded` warnings and merges all write-time warnings in rule order      |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
 | `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |

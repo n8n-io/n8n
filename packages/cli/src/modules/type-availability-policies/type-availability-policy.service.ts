@@ -6,6 +6,7 @@ import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LRUCache } from 'lru-cache';
 import {
+	CREDENTIAL_ONLY_NODE_PREFIX,
 	getCredentialOnlyNodeCredentialType,
 	isCredentialOnlyNodeType,
 	OperationalError,
@@ -22,12 +23,7 @@ import { TypeAvailabilityPolicyRepository } from './database/repositories/type-a
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
 import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
-import {
-	isCredentialTypeKnown,
-	isPackageInstalled,
-	packageResolverFor,
-	policedTypeFor,
-} from './package-resolver';
+import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
 import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type {
 	PolicyAction,
@@ -35,7 +31,7 @@ import type {
 	PolicyRule,
 	PolicyScopeKey,
 } from './policy-rule.types';
-import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint';
+import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
 
 /**
  * A scope that has never been written has no row. That "unconfigured" state behaves as
@@ -187,7 +183,7 @@ export type ComposedTypeEvaluation = {
 
 type PolicyDocumentWrite = {
 	readonly policy: TypeAvailabilityPolicy;
-	readonly warnings: readonly ShadowWarning[];
+	readonly warnings: readonly PolicyRuleWarning[];
 };
 
 function flattenRules(attachments: readonly PolicyAttachment[]): PolicyRule[] {
@@ -227,33 +223,6 @@ function assertNoDelegateAtProjectScope(
 }
 
 /**
- * A `package` rule that names a package this instance never loaded can never match anything —
- * worse than not supporting the rule at all, since it looks like it works. Checked at every
- * write so a policy is never saved with one.
- */
-function assertPackagesInstalled(
-	rules: readonly PolicyRule[],
-	loadNodesAndCredentials: LoadNodesAndCredentials,
-): void {
-	const missing = new Set<string>();
-
-	for (const rule of rules) {
-		if (
-			rule.selector.kind === 'package' &&
-			!isPackageInstalled(loadNodesAndCredentials, rule.selector.value)
-		) {
-			missing.add(rule.selector.value);
-		}
-	}
-
-	if (missing.size > 0) {
-		throw new UserError(
-			`Package rule names a package that is not installed: ${[...missing].join(', ')}`,
-		);
-	}
-}
-
-/**
  * A credential-only node (`n8n-creds-base.<type>`) exists only in the editor. It is stored and
  * executed as `n8n-nodes-base.httpRequest`, so a node type rule on the generated name would
  * never match anything and never reach the builder. The credential type rule on `<type>` is
@@ -273,30 +242,25 @@ function assertNoCredentialOnlyNodeRules(kind: string, rules: readonly PolicyRul
 }
 
 /**
- * Only credential types declare `extends`, so the selector means nothing for another kind. An
- * unknown base would match nothing, the same trap `assertPackagesInstalled` closes.
+ * No loader provides the credential-only prefix, so a `package` rule on it can never match on
+ * any instance. Unlike a package that is merely not installed, nothing can fix it later.
  */
-function assertExtendsSelectorsValid(
-	kind: string,
-	rules: readonly PolicyRule[],
-	loadNodesAndCredentials: LoadNodesAndCredentials,
-): void {
-	const values = rules.flatMap((rule) =>
-		rule.selector.kind === 'extends' ? [rule.selector.value] : [],
-	);
-	if (values.length === 0) return;
-
-	if (kind !== CREDENTIAL_TYPES_KIND) {
-		throw new UserError('An "extends" rule is only valid in a credential type policy');
+function assertNoCredentialOnlyPackageRules(rules: readonly PolicyRule[]): void {
+	for (const rule of rules) {
+		if (rule.selector.kind === 'package' && rule.selector.value === CREDENTIAL_ONLY_NODE_PREFIX) {
+			throw new UserError(
+				`Package rule names "${CREDENTIAL_ONLY_NODE_PREFIX}", which no package provides. Write a credential type rule instead.`,
+			);
+		}
 	}
+}
 
-	const unknown = new Set(
-		values.filter((value) => !isCredentialTypeKnown(loadNodesAndCredentials, value)),
-	);
-	if (unknown.size > 0) {
-		throw new UserError(
-			`Extends rule names a credential type that is not installed: ${[...unknown].join(', ')}`,
-		);
+/** Only credential types declare `extends`, so the selector means nothing for another kind. */
+function assertExtendsSelectorsValid(kind: string, rules: readonly PolicyRule[]): void {
+	if (kind === CREDENTIAL_TYPES_KIND) return;
+
+	if (rules.some((rule) => rule.selector.kind === 'extends')) {
+		throw new UserError('An "extends" rule is only valid in a credential type policy');
 	}
 }
 
@@ -490,19 +454,28 @@ export class TypeAvailabilityPolicyService {
 		return scope;
 	}
 
+	/**
+	 * Rejects a rule that is malformed for this kind. A rule that only names something not
+	 * loaded saves, and comes back as a `notLoaded` warning.
+	 */
+	private validateAndLintRules(kind: string, rules: readonly PolicyRule[]): PolicyRuleWarning[] {
+		assertNoCredentialOnlyPackageRules(rules);
+		assertNoCredentialOnlyNodeRules(kind, rules);
+		assertExtendsSelectorsValid(kind, rules);
+
+		return lintPolicyRules(rules, {
+			resolvePackage: packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedType: policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
+			isLoaded: loadedCheckFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
+		});
+	}
+
 	async createPolicyDocument(
 		kind: string,
 		rules: readonly PolicyRule[],
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
-		assertNoCredentialOnlyNodeRules(kind, rules);
-		assertExtendsSelectorsValid(kind, rules, this.loadNodesAndCredentials);
-		const warnings = lintRulesForShadowing(
-			rules,
-			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
-		);
+		const warnings = this.validateAndLintRules(kind, rules);
 
 		const policy = await this.policyRepository.createPolicy({ kind, rules, updatedBy }, {});
 
@@ -535,14 +508,7 @@ export class TypeAvailabilityPolicyService {
 		expectedVersion: number,
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
-		assertNoCredentialOnlyNodeRules(kind, rules);
-		assertExtendsSelectorsValid(kind, rules, this.loadNodesAndCredentials);
-		const warnings = lintRulesForShadowing(
-			rules,
-			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
-		);
+		const warnings = this.validateAndLintRules(kind, rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			let invalidated: PolicyScopeKey[] = [];
@@ -791,18 +757,10 @@ export class TypeAvailabilityPolicyService {
 		defaultAction: PolicyAction;
 		version: number;
 		rules: PolicyRule[];
-		warnings: readonly ShadowWarning[];
+		warnings: readonly PolicyRuleWarning[];
 	}> {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
-		assertPackagesInstalled(input.rules, this.loadNodesAndCredentials);
-		assertNoCredentialOnlyNodeRules(kind, input.rules);
-		assertExtendsSelectorsValid(kind, input.rules, this.loadNodesAndCredentials);
-
-		const warnings = lintRulesForShadowing(
-			input.rules,
-			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
-		);
+		const warnings = this.validateAndLintRules(kind, input.rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
 			const scope = await this.scopeRepository.findScopeByKindAndProject(
@@ -991,7 +949,8 @@ export class TypeAvailabilityPolicyService {
 			after: result.scopeAfter,
 			rulesBefore: result.documentBefore?.rules ?? null,
 			rulesAfter: result.documentAfter.rules,
-			warningCount: warnings.length,
+			shadowWarningCount: warnings.filter((warning) => warning.kind === 'shadowed').length,
+			notLoadedWarningCount: warnings.filter((warning) => warning.kind === 'notLoaded').length,
 		});
 
 		return {

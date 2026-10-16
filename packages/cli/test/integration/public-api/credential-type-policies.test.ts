@@ -61,6 +61,13 @@ afterEach(async () => {
 	]);
 });
 
+// Fixture rules name `slackApi`; without it loaded, every write would also warn `notLoaded`.
+beforeEach(() => {
+	vi.spyOn(Container.get(LoadNodesAndCredentials), 'knownCredentials', 'get').mockReturnValue({
+		slackApi: { className: '', sourcePath: '' },
+	});
+});
+
 /**
  * Least privilege first: the API-key scope check and the RBAC check are independent, so a key
  * that lacks the scope and a key whose user lacks the RBAC grant are both rejected with 403.
@@ -425,7 +432,9 @@ describe('credential type policies public API policy documents', () => {
 			.send({ rules: [DENY_RULE, { ...DENY_RULE, id: 'r2', action: 'allow' }] });
 
 		expect(response.statusCode).toBe(201);
-		expect(response.body.warnings).toEqual([{ ruleId: 'r2', shadowedByRuleId: 'r1' }]);
+		expect(response.body.warnings).toEqual([
+			{ kind: 'shadowed', ruleId: 'r2', shadowedByRuleId: 'r1' },
+		]);
 	});
 
 	test('POST rejects duplicate rule ids with 400', async () => {
