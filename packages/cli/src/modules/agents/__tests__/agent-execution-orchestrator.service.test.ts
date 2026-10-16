@@ -1135,7 +1135,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					userId,
 				});
 			});
-			await expect(collect(stream)).rejects.toMatchObject({ name: 'AbortError' });
+			await expect(collect(stream)).resolves.toEqual([]);
 			expect(sdkStart).not.toHaveBeenCalled();
 			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 				'execution-1',

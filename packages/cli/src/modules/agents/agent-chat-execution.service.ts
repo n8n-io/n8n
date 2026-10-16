@@ -132,18 +132,20 @@ export class AgentChatExecutionService {
 				try {
 					await this.steering.close(context.threadId, context.executionId);
 					if (this.cancelLocal(context)) return true;
-					if (execution.status !== 'running') return await this.cancelRecordedSuspension(context);
-					this.cancelOrRemember(context);
-					if (!this.instanceSettings.isMultiMain) return true;
-					const { surface, scope, ...rest } = context;
-					await this.publisher.publishCommand({
-						command:
-							scope === 'foreground'
-								? 'cancel-agent-chat-foreground'
-								: 'cancel-agent-chat-execution',
-						payload: { ...rest, productionN8nChat: surface === 'n8n-chat' },
-					});
-					return true;
+					const running = execution.status === 'running';
+					if (running) this.cancelOrRemember(context);
+					// A task insert can outlive the reply on another main.
+					if (this.instanceSettings.isMultiMain && (running || context.scope !== 'foreground')) {
+						const { surface, scope, ...rest } = context;
+						await this.publisher.publishCommand({
+							command:
+								scope === 'foreground'
+									? 'cancel-agent-chat-foreground'
+									: 'cancel-agent-chat-execution',
+							payload: { ...rest, productionN8nChat: surface === 'n8n-chat' },
+						});
+					}
+					return running || (await this.cancelRecordedSuspension(context));
 				} finally {
 					if (context.scope !== 'foreground')
 						await this.backgroundJobService.cancelForParent(
@@ -186,13 +188,16 @@ export class AgentChatExecutionService {
 				if (!execution) return;
 				if (execution.status === 'running') {
 					this.cancelOrRemember(context);
-					if (context.scope !== 'foreground')
-						await this.backgroundJobService.cancelForParent(
-							context.agentId,
-							context.threadId,
-							chatSurfaceMemoryResourceId(context.surface, context.userId),
-						);
+				} else {
+					const latest = await this.executionRepository.findLatestByThreadId(context.threadId);
+					if (latest?.id !== context.executionId) return;
 				}
+				if (context.scope !== 'foreground')
+					await this.backgroundJobService.cancelForParent(
+						context.agentId,
+						context.threadId,
+						chatSurfaceMemoryResourceId(context.surface, context.userId),
+					);
 				await this.cancelRecordedSuspension(context);
 			},
 		);
@@ -211,7 +216,12 @@ export class AgentChatExecutionService {
 
 	private cancelOrRemember(context: ExecutionContext): void {
 		// Registration can finish while ownership validation awaits the database.
-		if (this.cancelLocal(context) || this.pendingCancellations.has(context.executionId)) return;
+		if (this.cancelLocal(context)) return;
+		const pending = this.pendingCancellations.get(context.executionId);
+		if (pending) {
+			if (context.scope !== 'foreground') pending.context = context;
+			return;
+		}
 		const timer = setTimeout(
 			() => this.pendingCancellations.delete(context.executionId),
 			AgentChatExecutionService.PENDING_CANCEL_TTL_MS,
