@@ -40,6 +40,17 @@ type SuspendedToolCall = Extract<
 
 export type SystemAgentThreadStatus = 'running' | 'suspended' | 'idle';
 
+type SystemQueueInput = Parameters<AgentMessageQueueService['enqueue']>[0];
+
+interface SystemMessageInput {
+	message: string;
+	attachments?: StoredAttachmentRef[];
+	options?: SystemAgentTurnOptions;
+	messageId?: string;
+	/** A machine turn: it stays out of the transcript. */
+	hidden?: boolean;
+}
+
 interface ResumeParams {
 	agentId: string;
 	user: User;
@@ -275,34 +286,11 @@ export class SystemAgentExecutionService {
 	 * While a turn runs, the caller can steer the queued message into it.
 	 * A `hidden` message is a machine turn: it stays out of the transcript.
 	 */
-	async sendMessage(params: {
-		agentId: string;
-		user: User;
-		threadId: string;
-		message: string;
-		attachments?: StoredAttachmentRef[];
-		options?: SystemAgentTurnOptions;
-		messageId?: string;
-		hidden?: boolean;
-	}) {
+	async sendMessage(
+		params: SystemMessageInput & { agentId: string; user: User; threadId: string },
+	) {
 		const thread = await this.getUsableThread(params.agentId, params.user, params.threadId);
-		return await this.messageQueue.enqueue({
-			agentId: params.agentId,
-			projectId: thread.projectId,
-			threadId: thread.id,
-			sessionMode: 'existing',
-			source: SYSTEM_CHAT_SOURCE,
-			payload: {
-				kind: 'system',
-				userId: params.user.id,
-				message: params.message,
-				resourceId: this.resourceIdFor(params.user),
-				...(params.attachments?.length ? { attachments: params.attachments } : {}),
-				...(params.messageId ? { messageId: params.messageId } : {}),
-				...(params.options ? { options: params.options } : {}),
-				...(params.hidden ? { hidden: true } : {}),
-			},
-		});
+		return await this.messageQueue.enqueue(this.queueInput(thread, params.user, params));
 	}
 
 	/**
@@ -477,7 +465,7 @@ export class SystemAgentExecutionService {
 			threadId: string,
 			projectId: string,
 		) => Promise<StoredAttachmentRef[] | undefined>;
-	}): Promise<Parameters<AgentMessageQueueService['enqueue']>[0]> {
+	}): Promise<SystemQueueInput> {
 		this.assertRegistered(params.agentId);
 		const existing = params.sessionId
 			? await this.threadRepository.findOwnedById(params.agentId, params.user.id, params.sessionId)
@@ -499,20 +487,35 @@ export class SystemAgentExecutionService {
 		const options =
 			(await provider.chatTurnOptions?.(params.user, thread, params.clientContext)) ?? {};
 		const attachments = await params.storeAttachments?.(thread.id, thread.projectId);
+		return this.queueInput(thread, params.user, {
+			message: params.message,
+			messageId: params.messageId,
+			attachments,
+			options,
+		});
+	}
+
+	/** The queue input of a system message in an existing thread. */
+	private queueInput(
+		thread: AgentExecutionThread,
+		user: User,
+		input: SystemMessageInput,
+	): SystemQueueInput {
 		return {
-			agentId: params.agentId,
+			agentId: thread.agentId,
 			projectId: thread.projectId,
 			threadId: thread.id,
 			sessionMode: 'existing',
 			source: SYSTEM_CHAT_SOURCE,
 			payload: {
 				kind: 'system',
-				userId: params.user.id,
-				message: params.message,
-				resourceId: this.resourceIdFor(params.user),
-				...(params.messageId ? { messageId: params.messageId } : {}),
-				...(attachments?.length ? { attachments } : {}),
-				options,
+				userId: user.id,
+				message: input.message,
+				resourceId: this.resourceIdFor(user),
+				...(input.attachments?.length ? { attachments: input.attachments } : {}),
+				...(input.messageId ? { messageId: input.messageId } : {}),
+				...(input.options ? { options: input.options } : {}),
+				...(input.hidden ? { hidden: true } : {}),
 			},
 		};
 	}
