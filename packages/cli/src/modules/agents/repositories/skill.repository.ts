@@ -556,6 +556,63 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.getMany();
 	}
 
+	/** Ids of the agents that have draft refs in the skills hub, in id order. */
+	async findAgentIdsWithDraftRefs(ctx: OperationContext = {}): Promise<string[]> {
+		// The primary key is (agentId, skillId), so one agent can have several rows.
+		const rows = await this.managerFor(ctx)
+			.createQueryBuilder(AgentSkillDependency, 'dep')
+			.select('dep.agentId', 'agentId')
+			.distinct(true)
+			.orderBy('dep.agentId', 'ASC')
+			.getRawMany<{ agentId: string }>();
+		return rows.map((row) => row.agentId);
+	}
+
+	/**
+	 * The content hash of each skill version a draft runs, by agent: the pinned version of
+	 * a ref, else the latest version of its skill.
+	 */
+	async findDraftContentHashes(
+		agentIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string[]>> {
+		const manager = this.managerFor(ctx);
+		const deps = await this.findDependencies(agentIds, ctx);
+		const refs = [...deps.values()].flat();
+		const pinnedIds = refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : []));
+		const followedIds = refs.flatMap((ref) => (ref.versionId ? [] : [ref.skillId]));
+		const pinned = await inChunks(
+			pinnedIds,
+			async (chunk) =>
+				await manager.find(SkillVersion, {
+					select: ['id', 'contentHash'],
+					where: { id: In(chunk) },
+				}),
+		);
+		const latest = await inChunks(
+			followedIds,
+			async (chunk) =>
+				await latestVersionsQuery(manager, chunk)
+					.select(['version.skillId', 'version.contentHash'])
+					.getMany(),
+		);
+		const hashByVersion = new Map(pinned.map((version) => [version.id, version.contentHash]));
+		const hashBySkill = new Map(latest.map((version) => [version.skillId, version.contentHash]));
+		const result = new Map<string, string[]>();
+		for (const [agentId, agentRefs] of deps) {
+			result.set(
+				agentId,
+				agentRefs.flatMap((ref) => {
+					const hash = ref.versionId
+						? hashByVersion.get(ref.versionId)
+						: hashBySkill.get(ref.skillId);
+					return hash ? [hash] : [];
+				}),
+			);
+		}
+		return result;
+	}
+
 	/** Whether a skill with this id exists. */
 	async existsById(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
 		return await this.managerFor(ctx).exists(Skill, { where: { id: skillId } });

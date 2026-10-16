@@ -49,6 +49,7 @@ export function createAgentSkillRefsService(
 		bodies,
 		draftRefs,
 		versionPins,
+		usesSkillsHub: true,
 	});
 	const readDraftRefs = (agent: Pick<Agent, 'id'>): AgentJsonSkillConfig[] =>
 		draftRefs.get(agent.id) ?? storedSkillRefs(agent);
@@ -80,7 +81,7 @@ export function createAgentSkillRefsService(
 		const skillRefs = storedSkillRefs(version);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
-	service.skillsForRefs.mockImplementation(async (refs) => pickBodies(refs));
+	service.skillsForRefs.mockImplementation(async (_agent, refs) => pickBodies(refs));
 	service.effectiveDraftRefs.mockImplementation(async (_agent, refs) => refs);
 	service.replaceDraftRefs.mockImplementation(async (agent, refs) => writeRefs(agent, refs));
 	service.restoreDraftRefs.mockImplementation(async (agent, version, refs) =>

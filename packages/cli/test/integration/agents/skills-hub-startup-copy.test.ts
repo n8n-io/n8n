@@ -1,12 +1,14 @@
 import type { AgentSkill } from '@n8n/api-types';
 import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { TransactionRunner, type Project } from '@n8n/db';
 import { DataSource } from '@n8n/typeorm';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
+import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
@@ -19,6 +21,7 @@ import { Skill } from '@/modules/agents/entities/skill.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
+import { SkillsHubRollout } from '@/modules/agents/skills/skills-hub-rollout';
 import { SkillsHubStartupCopy } from '@/modules/agents/skills/skills-hub-startup-copy';
 import { Telemetry } from '@/telemetry';
 
@@ -47,11 +50,13 @@ describe('SkillsHubStartupCopy', () => {
 		skills = Container.get(SkillRepository);
 		skillRefs = Container.get(AgentSkillRefsService);
 		copy = Container.get(SkillsHubStartupCopy);
+		// Every main copies. Only the leader logs the flag-off warning.
 		Container.get(InstanceSettings).markAsLeader();
 	});
 
 	beforeEach(async () => {
 		project = await createTeamProject();
+		setSkillsHubFlag(true);
 	});
 
 	afterEach(async () => {
@@ -269,7 +274,7 @@ describe('SkillsHubStartupCopy', () => {
 		expect(await skillRefs.refsForDraft(agent, {})).toEqual([]);
 	});
 
-	it('pins a version that an older main published inline to the matching hub version', async () => {
+	it('pins a version that was published with the flag off to the matching hub version', async () => {
 		const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
 		await copy.copyAll();
 		const versionId = await legacyVersion(agent, [{ type: 'skill', id: 'tone' }], {
@@ -282,7 +287,7 @@ describe('SkillsHubStartupCopy', () => {
 		expect(await skills.findPinnedSkillIds(versionId)).toEqual(['tone']);
 	});
 
-	it('copies on a main at startup', async () => {
+	it('copies on a main at startup while the flag is on', async () => {
 		const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
 
 		await copy.runOnStartup();
@@ -304,12 +309,19 @@ describe('SkillsHubStartupCopy', () => {
 	describe('restarts', () => {
 		/**
 		 * Boots the agents module again on the same database, as a restart of the process
-		 * does: a new startup copy runs. Only the database carries over, so nothing in memory
-		 * can stop a second copy.
+		 * does: the setting is read into a new rollout and a new startup copy runs. Only the
+		 * database carries over, so nothing in memory can stop a second copy.
 		 */
-		async function restart() {
+		async function restart(skillsHubEnabled: boolean) {
+			const config = Container.get(AgentsConfig);
+			config.skillsHubEnabled = skillsHubEnabled;
+			const rollout = new SkillsHubRollout(config, Container.get(Logger));
+			rollout.init();
+			// The services that read agent skills follow the same setting after the restart.
+			setSkillsHubFlag(skillsHubEnabled);
 			const freshCopy = new SkillsHubStartupCopy(
 				Container.get(Logger),
+				rollout,
 				Container.get(InstanceSettings),
 				agents,
 				skills,
@@ -350,10 +362,10 @@ describe('SkillsHubStartupCopy', () => {
 		it('copies on the first start and writes nothing on later restarts', async () => {
 			const agent = await agentWithPublishedSkills();
 
-			await restart();
+			await restart(true);
 			const afterFirst = await hubState();
-			await restart();
-			await restart();
+			await restart(true);
+			await restart(true);
 
 			expect(afterFirst).toMatchObject({ skills: 2, draftRefs: 2, pins: 2 });
 			expect(await hubState()).toEqual(afterFirst);
@@ -365,12 +377,12 @@ describe('SkillsHubStartupCopy', () => {
 
 		it('keeps hub edits and detached skills over a restart', async () => {
 			const agent = await agentWithPublishedSkills();
-			await restart();
+			await restart(true);
 			await editInHub('tone', 'Edited in the hub.');
 			await skillRefs.replaceDraftRefs(agent, [{ type: 'skill', id: 'tone' }], {});
 			const beforeRestart = await hubState();
 
-			await restart();
+			await restart(true);
 
 			expect(await hubState()).toEqual(beforeRestart);
 			expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
@@ -379,13 +391,136 @@ describe('SkillsHubStartupCopy', () => {
 			});
 		});
 
+		it('does not copy again when the setting goes off and back on', async () => {
+			const agent = await agentWithPublishedSkills();
+			await restart(true);
+			const afterFirst = await hubState();
+
+			await restart(false);
+			// With the setting off, agents write their inline columns again.
+			await agents.update(
+				{ id: agent.id },
+				{ skills: { tone: body('Tone', 'Inline edit.') } as never },
+			);
+			await restart(true);
+
+			expect(await hubState()).toEqual(afterFirst);
+			// The agent has hub rows, so the copy leaves it alone: inline edits are not merged.
+			expect(instructionsOf((await skillRefs.readDraft(agent, {})).skills)).toEqual({
+				tone: 'Draft tone.',
+				pricing: 'Pricing instructions.',
+			});
+		});
+
 		it('copies each agent once when two mains start at the same time', async () => {
 			await agentWithPublishedSkills();
 			await agentWithPublishedSkills();
 
-			await Promise.all([restart(), restart()]);
+			await Promise.all([restart(true), restart(true)]);
 
 			expect(await hubState()).toMatchObject({ skills: 4, draftRefs: 4, pins: 4 });
+		});
+	});
+
+	describe('with the flag off', () => {
+		beforeEach(() => {
+			vi.spyOn(Container.get(Logger), 'warn');
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		const hubOffWarning = () =>
+			vi
+				.mocked(Container.get(Logger).warn)
+				.mock.calls.find(([message]) => String(message).includes('The skills hub is off'));
+
+		it('copies nothing and reads only the draft refs and their content', async () => {
+			await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			setSkillsHubFlag(false);
+			const copyReads = [
+				vi.spyOn(agents, 'findPageForSkillCopy'),
+				vi.spyOn(skills, 'findUnpinnedVersions'),
+				vi.spyOn(skills, 'hasHubState'),
+				vi.spyOn(skills, 'findAgentSkillVersions'),
+				vi.spyOn(skills, 'createSkill'),
+				vi.spyOn(skills, 'replaceDependencies'),
+				vi.spyOn(skills, 'insertPins'),
+			];
+
+			await copy.runOnStartup();
+
+			for (const spy of copyReads) expect(spy).not.toHaveBeenCalled();
+			expect(await skills.find()).toEqual([]);
+			expect(hubOffWarning()).toBeUndefined();
+		});
+
+		it('reads nothing from the hub on a main that is not the leader', async () => {
+			await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await copy.copyAll();
+			await editInHub('tone', 'Edited in the hub.');
+			setSkillsHubFlag(false);
+			const findRefs = vi.spyOn(skills, 'findAgentIdsWithDraftRefs');
+			const settings = Container.get(InstanceSettings);
+			settings.markAsFollower();
+			try {
+				await copy.runOnStartup();
+			} finally {
+				settings.markAsLeader();
+			}
+
+			expect(findRefs).not.toHaveBeenCalled();
+			expect(hubOffWarning()).toBeUndefined();
+		});
+
+		it('names no agent when the hub runs the same content as the inline skills', async () => {
+			await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await copy.copyAll();
+			setSkillsHubFlag(false);
+
+			await copy.runOnStartup();
+
+			expect(hubOffWarning()).toBeUndefined();
+		});
+
+		it('names an agent whose skill changed in the hub, and counts it once', async () => {
+			const agent = await legacyAgent(
+				[
+					{ type: 'skill', id: 'tone' },
+					{ type: 'skill', id: 'pricing' },
+				],
+				{ tone: body('Tone'), pricing: body('Pricing') },
+			);
+			await legacyAgent([{ type: 'skill', id: 'other' }], { other: body('Other') });
+			await copy.copyAll();
+			await editInHub('tone', 'Edited in the hub.');
+			await editInHub('pricing', 'Edited in the hub.');
+			setSkillsHubFlag(false);
+
+			await copy.runOnStartup();
+
+			expect(hubOffWarning()?.[1]).toEqual({ agents: 1, agentIds: [agent.id] });
+		});
+
+		it('names an agent that got a skill only in the hub', async () => {
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await copy.copyAll();
+			await skills.createSkill(
+				{
+					id: 'added',
+					target: { projectId: null, agentId: agent.id },
+					source: 'agent',
+					createdById: null,
+				},
+				{ name: 'Added', description: 'd', instructions: 'New.', frontmatter: null, files: [] },
+			);
+			await skills.replaceDependencies(agent.id, [{ skillId: 'tone' }, { skillId: 'added' }]);
+			setSkillsHubFlag(false);
+
+			await copy.runOnStartup();
+
+			expect(hubOffWarning()?.[1]).toEqual({ agents: 1, agentIds: [agent.id] });
 		});
 	});
 
@@ -686,7 +821,7 @@ describe('SkillsHubStartupCopy', () => {
 			expect(await copy.copyAll()).toMatchObject({ agents: 0, versions: 0, pins: 0 });
 		});
 
-		it('keeps hub content when an older main changed the inline text', async () => {
+		it('keeps hub content when the inline text changed while the flag was off', async () => {
 			// Known gap: the merge rule for this case is open, so the hub wins.
 			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], {
 				tone: body('Tone', 'Before.'),
@@ -701,7 +836,7 @@ describe('SkillsHubStartupCopy', () => {
 			});
 		});
 
-		it('copies an agent that an older main created on the next run', async () => {
+		it('copies an agent created while the flag was off on the next run', async () => {
 			await copy.copyAll();
 			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
 
@@ -763,7 +898,7 @@ describe('SkillsHubStartupCopy', () => {
 			const findPage = agents.findPageForSkillCopy.bind(agents);
 			vi.spyOn(agents, 'findPageForSkillCopy').mockImplementationOnce(async (...args) => {
 				const page = await findPage(...args);
-				// An older main saves the draft after the page was read.
+				// A main with the flag still off saves the draft after the page was read.
 				await agents.update({ id: agent.id }, { skills: { tone: body('Tone', 'New.') } });
 				return page;
 			});
@@ -843,6 +978,26 @@ describe('SkillsHubStartupCopy', () => {
 			} finally {
 				Object.assign(settings, { instanceType });
 			}
+		});
+
+		it('names at most 20 agents in the warning, and counts all of them', async () => {
+			for (let index = 0; index < 22; index++) {
+				await legacyAgent([{ type: 'skill', id: `s${index}` }], {
+					[`s${index}`]: body(`S${index}`),
+				});
+			}
+			await copy.copyAll();
+			for (let index = 0; index < 22; index++) await editInHub(`s${index}`, 'Edited in the hub.');
+			setSkillsHubFlag(false);
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+
+			await copy.runOnStartup();
+
+			const [, meta] = warn.mock.calls.find(([message]) =>
+				String(message).includes('The skills hub is off'),
+			)!;
+			expect(meta).toMatchObject({ agents: 22 });
+			expect((meta as { agentIds: string[] }).agentIds).toHaveLength(20);
 		});
 	});
 

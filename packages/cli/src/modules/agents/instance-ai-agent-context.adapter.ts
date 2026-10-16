@@ -192,7 +192,7 @@ export class InstanceAiAgentContextAdapterService {
 				};
 			case 'skills': {
 				// The skills hub keeps no skill on an agent that is not attached.
-				const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, {});
+				const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
 				return {
 					skills: Object.entries(skills).map(([id, skill]) => ({
 						id,

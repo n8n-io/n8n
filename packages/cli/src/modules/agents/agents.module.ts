@@ -11,8 +11,10 @@ export class AgentsModule implements ModuleInterface {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
-		// The migration `MigrateAgentSkillsToHub` copied inline agent skills into the hub. Each
-		// main also copies what older mains wrote inline before it started.
+		// Read the skills hub setting once, before anything reads or writes agent skills. With
+		// it on, each main copies inline agent skills into the hub before agents run.
+		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
+		Container.get(SkillsHubRollout).init();
 		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
 		await Container.get(SkillsHubStartupCopy).runOnStartup();
 
@@ -227,6 +229,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
@@ -234,6 +237,7 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
+			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
 	}
 

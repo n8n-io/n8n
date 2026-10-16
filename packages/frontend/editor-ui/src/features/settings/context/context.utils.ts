@@ -161,9 +161,12 @@ export function canWriteInstanceSkillScope(): boolean {
 	return getResourcePermissions(currentUser?.globalScopes).skill?.create === true;
 }
 
-/** Skills live in the agents module, so the page is there while that module is active. */
+/**
+ * The backend reads `AgentsConfig.skillsHubEnabled` once at startup and reports it here.
+ * The skills routes answer 404 while it is off, so the editor follows the same value.
+ */
 export function isContextSkillsEnabled(): boolean {
-	return useSettingsStore().moduleSettings.agents !== undefined;
+	return useSettingsStore().moduleSettings.agents?.skillsHubEnabled === true;
 }
 
 /** The service builds the cap message from the scope and the number, so match the fixed part. */

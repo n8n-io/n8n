@@ -151,7 +151,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
 
 	const hubSkillsEnabled = computed(
-		() => !localSkills && settingsStore.moduleSettings.agents !== undefined,
+		() => !localSkills && settingsStore.moduleSettings.agents?.skillsHubEnabled === true,
 	);
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {

@@ -7,6 +7,7 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
@@ -81,6 +82,8 @@ describe('AgentRepository', () => {
 	});
 
 	afterEach(async () => {
+		// The rollout keeps the flag it read, so set it back off for the next test.
+		setSkillsHubFlag(false);
 		vi.restoreAllMocks();
 		await agentHistoryRepo.delete({});
 		await agentRepo.delete({});
@@ -218,6 +221,7 @@ describe('AgentRepository', () => {
 		});
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
+			setSkillsHubFlag(true);
 			const agent = await createAgent();
 			await Container.get(SkillRepository).createSkill(
 				{

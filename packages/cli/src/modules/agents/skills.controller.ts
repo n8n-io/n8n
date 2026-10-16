@@ -5,10 +5,21 @@ import {
 	SkillNewNameQueryDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Patch, Post, Query, RestController } from '@n8n/decorators';
-import type { Response } from 'express';
+import {
+	Body,
+	Delete,
+	Get,
+	Middleware,
+	Param,
+	Patch,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
+import type { NextFunction, Request, Response } from 'express';
 
 import { SkillsApiService } from './skills/skills-api.service';
+import { SkillsHubRollout } from './skills/skills-hub-rollout';
 
 /**
  * Skills for the settings page. No route scope: the scope of each skill decides who may
@@ -16,7 +27,20 @@ import { SkillsApiService } from './skills/skills-api.service';
  */
 @RestController('/skills')
 export class SkillsController {
-	constructor(private readonly skillsApi: SkillsApiService) {}
+	constructor(
+		private readonly skillsApi: SkillsApiService,
+		private readonly rollout: SkillsHubRollout,
+	) {}
+
+	/** Runs before the request is validated, so every request answers 404 while the flag is off. */
+	@Middleware()
+	requireSkillsHub(_req: Request, res: Response, next: NextFunction) {
+		if (!this.rollout.isEnabled) {
+			res.status(404).send('Not found');
+			return;
+		}
+		next();
+	}
 
 	@Get('/')
 	async list(req: AuthenticatedRequest, _res: Response, @Query query: ListSkillsQueryDto) {

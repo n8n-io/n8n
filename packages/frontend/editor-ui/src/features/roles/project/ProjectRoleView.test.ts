@@ -699,15 +699,15 @@ describe('ProjectRoleView', () => {
 	});
 
 	describe('Skill scopes', () => {
-		it('hides the Skills scopes without agents module settings', () => {
+		it('hides the Skills scopes while the skills hub is off', () => {
 			const { queryByText } = renderComponent();
 
 			expect(queryByText('Skills')).not.toBeInTheDocument();
 		});
 
-		it('shows the Skills scopes with agents module settings', () => {
+		it('shows the Skills scopes while the skills hub is on', () => {
 			settingsStore.moduleSettings = {
-				agents: { enabled: true, modules: [], knowledgeBaseEnabled: false, proxyEnabled: false },
+				agents: { skillsHubEnabled: true },
 			} as typeof settingsStore.moduleSettings;
 			const { getByText } = renderComponent();
 

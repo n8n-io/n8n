@@ -660,19 +660,22 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 	}
 
 	function setupHub({
-		agentsSettings = true,
+		skillsHubEnabled = true,
 		flushConfigSave,
-	}: { agentsSettings?: boolean; flushConfigSave?: () => Promise<unknown> } = {}) {
+	}: { skillsHubEnabled?: boolean; flushConfigSave?: () => Promise<unknown> } = {}) {
 		const agent = ref<AgentResource | null>({
 			id: 'agent-1',
 			skills: { tone: supportTone },
 			skillHashes: { tone: 'hash-tone' },
 		} as unknown as AgentResource);
 		const result = setup({ agent, agentId: ref('agent-1'), flushConfigSave });
-		// Skills use the hub whenever the agents module reports its settings.
-		useSettingsStore().moduleSettings.agents = agentsSettings
-			? { enabled: true, modules: [], knowledgeBaseEnabled: false, proxyEnabled: false }
-			: undefined;
+		useSettingsStore().moduleSettings.agents = {
+			enabled: true,
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled: false,
+			skillsHubEnabled,
+		};
 		result.localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
 		result.actions.onOpenAddSkillModal();
 		const modalData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
@@ -696,6 +699,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			modules: [],
 			knowledgeBaseEnabled: false,
 			proxyEnabled: false,
+			skillsHubEnabled: true,
 		};
 
 		void actions.onOpenAddSkillModal();
@@ -717,6 +721,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			modules: [],
 			knowledgeBaseEnabled: false,
 			proxyEnabled: false,
+			skillsHubEnabled: true,
 		};
 
 		await actions.onOpenAddSkillModal();
@@ -779,14 +784,14 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.builder.skills.create.error');
 	});
 
-	it('keeps the picker off and creates the skill on the agent without agents module settings', async () => {
+	it('keeps the picker off and creates the skill on the agent when the skills hub is off', async () => {
 		vi.mocked(createAgentSkill).mockResolvedValue({
 			id: 'sql',
 			skill: sqlHelper,
 			skillHash: 'hash-sql',
 			versionId: 'v2',
 		} as Awaited<ReturnType<typeof createAgentSkill>>);
-		const { modalData, actions, uiStore } = setupHub({ agentsSettings: false });
+		const { modalData, actions, uiStore } = setupHub({ skillsHubEnabled: false });
 
 		expect(modalData.hubSkillsEnabled).toBe(false);
 		// Without the hub, names are only unique per agent, so the modal numbers them itself.
@@ -980,7 +985,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(editData.outdated).toBe(false);
 	});
 
-	function openEdit(options: { agentsSettings?: boolean } = {}) {
+	function openEdit(options: { skillsHubEnabled?: boolean } = {}) {
 		const result = setupHub(options);
 		result.actions.onOpenSkillFromList('tone');
 		const editData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
@@ -1000,10 +1005,10 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		});
 	});
 
-	it('saves no target when the edit keeps it or the hub is not in use', () => {
+	it('saves no target when the edit keeps it or the skills hub is off', () => {
 		const kept = openEdit();
 		kept.editData.onConfirm({ id: 'tone', skill: supportTone });
-		const hubOff = openEdit({ agentsSettings: false });
+		const hubOff = openEdit({ skillsHubEnabled: false });
 		hubOff.editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
 
 		expect(kept.scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });

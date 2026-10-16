@@ -40,7 +40,7 @@ export class AgentDefinitionService {
 		const skillRefs = pending
 			? pending.skillRefs
 			: await this.agentSkillRefs.refsForDraft(agent, ctx);
-		const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, ctx);
+		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, ctx);
 		return {
 			...getAgentDefinitionContent(agent, skillRefs, skills),
 			tasks: new Map(tasks.map((task) => [task.id, getAgentTaskBody(task)])),
