@@ -1,4 +1,9 @@
-import type { InboxItem, InboxSelfHealingItem, ListInboxResponse } from '@n8n/api-types';
+import type {
+	InboxItem,
+	InboxSelfHealingItem,
+	InboxWorkflowReviewItem,
+	ListInboxResponse,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -358,7 +363,7 @@ it('does not infer Assistant availability from the Authored response', async () 
 	expect(store.lists.waiting.items[0].id).toBe('assistant');
 });
 
-function reviewItem(id: string): InboxItem {
+function reviewItem(id: string): InboxWorkflowReviewItem {
 	return {
 		type: 'workflow_review',
 		id,
