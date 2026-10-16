@@ -1,0 +1,631 @@
+{
+	"numTotalTestSuites": 5,
+	"numPassedTestSuites": 5,
+	"numFailedTestSuites": 0,
+	"numPendingTestSuites": 0,
+	"numTotalTests": 59,
+	"numPassedTests": 1,
+	"numFailedTests": 0,
+	"numPendingTests": 58,
+	"numTodoTests": 0,
+	"snapshot": {
+		"added": 0,
+		"failure": false,
+		"filesAdded": 0,
+		"filesRemoved": 0,
+		"filesRemovedList": [],
+		"filesUnmatched": 0,
+		"filesUpdated": 0,
+		"matched": 0,
+		"total": 0,
+		"unchecked": 0,
+		"uncheckedKeysByFile": [],
+		"unmatched": 0,
+		"updated": 0,
+		"didUpdate": false
+	},
+	"startTime": 1792158727292,
+	"success": true,
+	"testResults": [
+		{
+			"assertionResults": [
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) requires authentication",
+					"status": "skipped",
+					"title": "requires authentication",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 0",
+					"status": "skipped",
+					"title": "rejects an invalid search body 0",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 1",
+					"status": "skipped",
+					"title": "rejects an invalid search body 1",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 2",
+					"status": "skipped",
+					"title": "rejects an invalid search body 2",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 3",
+					"status": "skipped",
+					"title": "rejects an invalid search body 3",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 4",
+					"status": "skipped",
+					"title": "rejects an invalid search body 4",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 5",
+					"status": "skipped",
+					"title": "rejects an invalid search body 5",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 6",
+					"status": "skipped",
+					"title": "rejects an invalid search body 6",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 7",
+					"status": "skipped",
+					"title": "rejects an invalid search body 7",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 8",
+					"status": "skipped",
+					"title": "rejects an invalid search body 8",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 9",
+					"status": "skipped",
+					"title": "rejects an invalid search body 9",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 10",
+					"status": "skipped",
+					"title": "rejects an invalid search body 10",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects an invalid search body 11",
+					"status": "skipped",
+					"title": "rejects an invalid search body 11",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) accepts a search for waiting executions",
+					"status": "skipped",
+					"title": "accepts a search for waiting executions",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) rejects a cursor paired with a status-first sort at the store",
+					"status": "skipped",
+					"title": "rejects a cursor paired with a status-first sort at the store",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) filters workflows and selects exactly the summary columns",
+					"status": "skipped",
+					"title": "filters workflows and selects exactly the summary columns",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) allows all for the authenticated CP",
+					"status": "skipped",
+					"title": "allows all for the authenticated CP",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) compares modes exactly and applies status filters",
+					"status": "skipped",
+					"title": "compares modes exactly and applies status filters",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) walks equal timestamps without losing rows and keeps the total independent of the cursor",
+					"status": "skipped",
+					"title": "walks equal timestamps without losing rows and keeps the total independent of the cursor",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/search (integration)"],
+					"fullName": "POST /api/workflow-executions/search (integration) lists the top status first, then the rest, each newest first",
+					"status": "passed",
+					"title": "lists the top status first, then the rest, each newest first",
+					"duration": 95.2119160000002,
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) creates the row under the caller-minted id, publishes execution:enqueued, returns 201",
+					"status": "skipped",
+					"title": "creates the row under the caller-minted id, publishes execution:enqueued, returns 201",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects the execution id %p with 400",
+					"status": "skipped",
+					"title": "rejects the execution id %p with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects the execution id %p with 400",
+					"status": "skipped",
+					"title": "rejects the execution id %p with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects the execution id %p with 400",
+					"status": "skipped",
+					"title": "rejects the execution id %p with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) stores the caller context with the row",
+					"status": "skipped",
+					"title": "stores the caller context with the row",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) stores the response expectation with the row",
+					"status": "skipped",
+					"title": "stores the response expectation with the row",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) stores the expectation none when the body has no response expectation",
+					"status": "skipped",
+					"title": "stores the expectation none when the body has no response expectation",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects the response expectation {\"kind\":\"chunks\"} with 400",
+					"status": "skipped",
+					"title": "rejects the response expectation {\"kind\":\"chunks\"} with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects the response expectation {\"kind\":\"none\",\"extra\":true} with 400",
+					"status": "skipped",
+					"title": "rejects the response expectation {\"kind\":\"none\",\"extra\":true} with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects the response expectation \"none\" with 400",
+					"status": "skipped",
+					"title": "rejects the response expectation \"none\" with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a body without a caller context with 400",
+					"status": "skipped",
+					"title": "rejects a body without a caller context with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a caller context without a host mode with 400",
+					"status": "skipped",
+					"title": "rejects a caller context without a host mode with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a caller context with a key it does not know with 400",
+					"status": "skipped",
+					"title": "rejects a caller context with a key it does not know with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects an invalid body with 400",
+					"status": "skipped",
+					"title": "rejects an invalid body with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a workflow that is absent with 400",
+					"status": "skipped",
+					"title": "rejects a workflow that is absent with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a workflow that is not an object with 400",
+					"status": "skipped",
+					"title": "rejects a workflow that is not an object with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a workflow that is an array with 400",
+					"status": "skipped",
+					"title": "rejects a workflow that is an array with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a bare-object triggerOutputs with 400 (the legacy, dropped shape)",
+					"status": "skipped",
+					"title": "rejects a bare-object triggerOutputs with 400 (the legacy, dropped shape)",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects triggerOutputs %p with 400",
+					"status": "skipped",
+					"title": "rejects triggerOutputs %p with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects triggerOutputs %p with 400",
+					"status": "skipped",
+					"title": "rejects triggerOutputs %p with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects an empty-array triggerOutputs with 400 (send null or omit for \"no payload\")",
+					"status": "skipped",
+					"title": "rejects an empty-array triggerOutputs with 400 (send null or omit for \"no payload\")",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a triggerOutputs with more slots than the cap with 400",
+					"status": "skipped",
+					"title": "rejects a triggerOutputs with more slots than the cap with 400",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a graph without a trigger with 400, creating nothing",
+					"status": "skipped",
+					"title": "rejects a graph without a trigger with 400, creating nothing",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a back-edge to a node that cannot loop with 400, creating nothing",
+					"status": "skipped",
+					"title": "rejects a back-edge to a node that cannot loop with 400, creating nothing",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions (integration)"],
+					"fullName": "POST /api/workflow-executions (integration) rejects a nested loop with 501, creating nothing",
+					"status": "skipped",
+					"title": "rejects a nested loop with 501, creating nothing",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["GET /api/workflow-executions/:id (integration)"],
+					"fullName": "GET /api/workflow-executions/:id (integration) returns the host mode with the persisted execution data",
+					"status": "skipped",
+					"title": "returns the host mode with the persisted execution data",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["GET /api/workflow-executions/:id (integration)"],
+					"fullName": "GET /api/workflow-executions/:id (integration) returns 404 not_found for an unknown execution id",
+					"status": "skipped",
+					"title": "returns 404 not_found for an unknown execution id",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["GET /api/workflow-executions/:id (integration)"],
+					"fullName": "GET /api/workflow-executions/:id (integration) returns 400 invalid_request for a non-uuid id",
+					"status": "skipped",
+					"title": "returns 400 invalid_request for a non-uuid id",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["GET /api/workflow-executions/:id (integration)"],
+					"fullName": "GET /api/workflow-executions/:id (integration) returns the trigger step with its outputs in the slot shape the POST supplied",
+					"status": "skipped",
+					"title": "returns the trigger step with its outputs in the slot shape the POST supplied",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["GET /api/workflow-executions/:id (integration)"],
+					"fullName": "GET /api/workflow-executions/:id (integration) returns an empty step list for an execution that has run nothing yet",
+					"status": "skipped",
+					"title": "returns an empty step list for an execution that has run nothing yet",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["GET /api/workflow-executions/:id (integration)"],
+					"fullName": "GET /api/workflow-executions/:id (integration) returns 404 not_found for an unknown execution id even when steps are asked for",
+					"status": "skipped",
+					"title": "returns 404 not_found for an unknown execution id even when steps are asked for",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["GET /api/workflow-executions/:id (integration)"],
+					"fullName": "GET /api/workflow-executions/:id (integration) returns 400 invalid_request for a misspelled query key",
+					"status": "skipped",
+					"title": "returns 400 invalid_request for a misspelled query key",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["GET /api/workflow-executions/:id (integration)"],
+					"fullName": "GET /api/workflow-executions/:id (integration) returns 400 invalid_request for an includeSteps value that is not a boolean",
+					"status": "skipped",
+					"title": "returns 400 invalid_request for an includeSteps value that is not a boolean",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/:id/cancel (integration)"],
+					"fullName": "POST /api/workflow-executions/:id/cancel (integration) requires authentication",
+					"status": "skipped",
+					"title": "requires authentication",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/:id/cancel (integration)"],
+					"fullName": "POST /api/workflow-executions/:id/cancel (integration) rejects an id that is not a uuid",
+					"status": "skipped",
+					"title": "rejects an id that is not a uuid",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/:id/cancel (integration)"],
+					"fullName": "POST /api/workflow-executions/:id/cancel (integration) answers 404 for an unknown execution",
+					"status": "skipped",
+					"title": "answers 404 for an unknown execution",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/:id/cancel (integration)"],
+					"fullName": "POST /api/workflow-executions/:id/cancel (integration) cancels a queued execution and its pending steps, and tells the caller",
+					"status": "skipped",
+					"title": "cancels a queued execution and its pending steps, and tells the caller",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/:id/cancel (integration)"],
+					"fullName": "POST /api/workflow-executions/:id/cancel (integration) answers a repeated cancel the same way, announcing nothing more",
+					"status": "skipped",
+					"title": "answers a repeated cancel the same way, announcing nothing more",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				},
+				{
+					"ancestorTitles": ["POST /api/workflow-executions/:id/cancel (integration)"],
+					"fullName": "POST /api/workflow-executions/:id/cancel (integration) refuses to cancel an execution that has ended",
+					"status": "skipped",
+					"title": "refuses to cancel an execution that has ended",
+					"failureMessages": [],
+					"meta": {},
+					"tags": [],
+					"benchmarks": []
+				}
+			],
+			"startTime": 1792158732274,
+			"endTime": 1792158732369.212,
+			"status": "passed",
+			"message": "",
+			"name": "/Users/lorent/dev/worktree/workshop/team-socket/packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts"
+		}
+	]
+}

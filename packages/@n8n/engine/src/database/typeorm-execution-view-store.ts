@@ -47,8 +47,36 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	async listExecutionViews(query: ExecutionListQuery): Promise<ExecutionListItemView[]> {
 		assertPageableOrder(query);
 
-		const qb = this.buildListQuery(query)
-			.select('execution.id', 'id')
+		const top = query.order?.top;
+		if (!top) return await this.selectListPage(this.buildListQuery(query), query).getRawMany();
+
+		// A sort on a CASE expression reads every row. Each bucket instead reads
+		// one index-ordered page, and only the two pages are merged.
+		const topPage = this.selectListPage(
+			this.buildListQuery(query).andWhere('execution.status = :top', { top }),
+			query,
+		);
+		const restPage = this.selectListPage(
+			this.buildListQuery(query).andWhere('execution.status <> :top', { top }),
+			query,
+		);
+		return await this.executions.manager
+			.createQueryBuilder()
+			.select('page.*')
+			.from(`((${topPage.getQuery()}) UNION ALL (${restPage.getQuery()}))`, 'page')
+			.setParameters(restPage.getParameters())
+			.orderBy('(CASE WHEN page.status = :top THEN 0 ELSE 1 END)')
+			.addOrderBy('page."createdAt"', 'DESC')
+			.addOrderBy('page.id', 'DESC')
+			.limit(query.limit)
+			.getRawMany<ExecutionListItemView>();
+	}
+
+	private selectListPage(
+		qb: SelectQueryBuilder<WorkflowExecution>,
+		query: ExecutionListQuery,
+	): SelectQueryBuilder<WorkflowExecution> {
+		qb.select('execution.id', 'id')
 			.addSelect('execution.workflow_id', 'workflowId')
 			.addSelect('execution.status', 'status')
 			.addSelect('execution.mode', 'mode')
@@ -59,18 +87,18 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		if (query.before) {
 			qb.andWhere('(execution.created_at, execution.id) < (:createdAt, :id)', query.before);
 		}
-		if (query.order?.top) {
-			qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-		}
-		return await qb
-			.addOrderBy('execution.created_at', 'DESC')
+		return qb
+			.orderBy('execution.created_at', 'DESC')
 			.addOrderBy('execution.id', 'DESC')
-			.limit(query.limit)
-			.getRawMany<ExecutionListItemView>();
+			.limit(query.limit);
 	}
 
 	async countExecutionViews(query: ExecutionListQuery): Promise<number> {
-		return await this.buildListQuery(query).getCount();
+		// Not `getCount()`: its COUNT(DISTINCT id) sorts ids that a join-free query cannot repeat.
+		const row = await this.buildListQuery(query)
+			.select('COUNT(*)', 'count')
+			.getRawOne<{ count: string }>();
+		return Number(row?.count ?? 0);
 	}
 
 	private buildListQuery(query: ExecutionListQuery): SelectQueryBuilder<WorkflowExecution> {

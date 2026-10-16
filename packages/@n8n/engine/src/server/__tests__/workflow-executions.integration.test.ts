@@ -203,6 +203,39 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		}).expect(200);
 		expect((excluded.body as SearchExecutionsResponse).items).toEqual([]);
 	});
+
+	it('lists the top status first, then the rest, each newest first', async () => {
+		const workflowId = generateId();
+		const rows = [
+			{ status: 'running', createdAt: '2026-09-07T12:00:01.000Z' },
+			{ status: 'completed', createdAt: '2026-09-07T12:00:02.000Z' },
+			{ status: 'running', createdAt: '2026-09-07T12:00:03.000Z' },
+			{ status: 'failed', createdAt: '2026-09-07T12:00:04.000Z' },
+			{ status: 'completed', createdAt: '2026-09-07T12:00:05.000Z' },
+		];
+		const ids: string[] = [];
+		for (const { status, createdAt } of rows) {
+			const id = await start(workflowId);
+			await dataSource.query(
+				'UPDATE workflow_execution SET status = $1, created_at = $2 WHERE id = $3',
+				[status, createdAt, id],
+			);
+			ids.push(id);
+		}
+
+		const response = await search({
+			workflowIds: [workflowId],
+			order: { top: 'running' },
+			limit: 4,
+		}).expect(200);
+
+		expect((response.body as SearchExecutionsResponse).items.map((item) => item.id)).toEqual([
+			ids[2],
+			ids[0],
+			ids[4],
+			ids[3],
+		]);
+	});
 });
 
 /** The caller always mints the id, so every valid body carries one. */

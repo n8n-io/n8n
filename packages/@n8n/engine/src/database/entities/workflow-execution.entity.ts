@@ -18,8 +18,9 @@ import type { WorkflowGraph } from '../../graph';
 import type { ResponseExpectation } from '../../response-channel';
 
 @Entity('workflow_execution')
-@Index('idx_workflow_execution_workflow_id', ['workflowId'])
-@Index('idx_workflow_execution_status', ['status'])
+@Index('idx_workflow_execution_created_at_id', ['createdAt', 'id'])
+@Index('idx_workflow_execution_workflow_id_created_at_id', ['workflowId', 'createdAt', 'id'])
+@Index('idx_workflow_execution_status_created_at_id', ['status', 'createdAt', 'id'])
 export class WorkflowExecution {
 	@PrimaryColumn('uuid')
 	id!: string;

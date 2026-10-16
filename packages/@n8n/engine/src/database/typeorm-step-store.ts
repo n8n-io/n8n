@@ -344,19 +344,20 @@ export class TypeOrmStepStore implements StepStore {
 	): Promise<Record<string, StepSummary>> {
 		if (nodeIds.length === 0) return {};
 
-		const rows: StepSummaryRow[] = await this.repo
-			.createQueryBuilder('step')
-			.distinctOn(['step.node_id'])
-			.select('step.id', 'id')
-			.addSelect('step.node_id', 'nodeId')
-			.addSelect('step.iteration', 'iteration')
-			.addSelect('step.status', 'status')
-			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
-			.where('step.execution_id = :executionId', { executionId })
-			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
-			.orderBy('step.node_id')
-			.addOrderBy('step.iteration', 'DESC')
-			.getRawMany();
+		// One index probe per node. DISTINCT ON would sort every iteration of a
+		// loop's nodes on each call, which grows with the loop.
+		const rows: StepSummaryRow[] = await this.repo.query(
+			`SELECT step.id, step.node_id AS "nodeId", step.iteration, step.status,
+				${FILLED_OUTPUT_SLOTS} AS "filledOutputSlots"
+			FROM unnest($2::varchar[]) AS node (id)
+			CROSS JOIN LATERAL (
+				SELECT id, node_id, iteration, status, outputs FROM workflow_step_execution
+				WHERE execution_id = $1 AND node_id = node.id
+				ORDER BY iteration DESC
+				LIMIT 1
+			) step`,
+			[executionId, nodeIds],
+		);
 
 		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
 	}
