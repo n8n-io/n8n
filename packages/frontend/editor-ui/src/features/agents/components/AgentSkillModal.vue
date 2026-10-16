@@ -1431,6 +1431,12 @@ function onRemove() {
 	flex: 0 0 20rem;
 	min-height: 0;
 	border-left: var(--border);
+	/* As tall as the scrolling modal body (see AgentModal), so the version list scrolls on
+	its own and stays in view while the editor scrolls. */
+	position: sticky;
+	top: 0;
+	align-self: flex-start;
+	height: min(70dvh, calc(var(--height--5xl) * 6));
 }
 
 .viewingBanner {
