@@ -59,10 +59,6 @@ export class AppArchive {
 		let entries = 0;
 		const parser = new Parser({
 			strict: true,
-			// Include tar headers and padding in the decompression budget.
-			maxDecompressionRatio:
-				(this.config.maxArtifactUnpackedSizeBytes + this.config.maxArtifactEntries * 1024 + 1024) /
-				body.length,
 			filter: (_name, entry) => {
 				try {
 					if (!('type' in entry)) return false;
