@@ -599,8 +599,7 @@ frontend therefore tracks its reconnect cursor as the max id seen and drops
 already-seen ids on replay overlap.
 
 Ids are database-assigned sequence numbers, and only DURABLE facts carry an
-`id:` line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`,
-`filesystem-request`) are live-only: their SSE frames have no `id:` line, so
+`id:` line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`) are live-only: their SSE frames have no `id:` line, so
 the browser's replay cursor never points at them (the same mechanism as the
 `run-sync` control frames). On replay, the deltas a client missed are covered
 by coalesced `text-block` / `reasoning-block` facts, which the shared run
@@ -732,7 +731,6 @@ creating duplicate messages.
 | `thread-title-updated` | `title` | Thread title changed |
 | `preferences-applied` | `preferences`, `renderedLength`, `injectedThisTurn`, `carriedFromRunId?` | Which saved preferences the turn carried |
 | `preference-card` | `toolCallId`, `preferenceId`, `state` (`edited` or `undone`), `content?`, `scope?`, `projectId?` | A saved preference was edited or undone from the chat card |
-| `filesystem-request` | `requestId`, `toolCall` | Local gateway MCP tool request (internal) |
 | `tool-input-start` | `toolCallId`, `toolName` | Tool arguments began streaming |
 | `text-block` | `text` (`responseId` is on the event) | Completed text segment, coalesced |
 | `reasoning-block` | `text` (`responseId` is on the event) | Completed reasoning segment, coalesced |

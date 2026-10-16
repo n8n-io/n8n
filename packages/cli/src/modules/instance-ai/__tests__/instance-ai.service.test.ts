@@ -328,8 +328,8 @@ type StartRunServiceInternals = {
 			}
 		>;
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
-		setComputerUseChannels: Mock;
-		getComputerUseChannels: Mock;
+		setBrowserUseAvailable: Mock;
+		getBrowserUseAvailable: Mock;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
 		setPromptVersion: Mock;
 		setObserverThresholdTokens: Mock;
@@ -356,8 +356,8 @@ function createStartRunService(): StartRunServiceInternals {
 			messageGroupId: 'group-1',
 		})),
 		setTimeZone: vi.fn(),
-		setComputerUseChannels: vi.fn(),
-		getComputerUseChannels: vi.fn(() => undefined),
+		setBrowserUseAvailable: vi.fn(),
+		getBrowserUseAvailable: vi.fn(() => undefined),
 		setBuildMode: vi.fn(),
 		setPromptVersion: vi.fn(),
 		setObserverThresholdTokens: vi.fn(),
@@ -503,7 +503,6 @@ type ShutdownServiceInternals = {
 		getTrackedThreadIds: MockedFunction<() => string[]>;
 		clear: MockedFunction<() => void>;
 	};
-	gatewayService: { disconnectAll: MockedFunction<() => void> };
 	sandboxService: { stopSandboxExpiryTimers: MockedFunction<() => void> };
 	browserSessionService: { shutdown: MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
@@ -866,10 +865,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			settingsService: {
 				getAdminSettings: Mock;
 				getSandboxStatus: Mock;
-				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
 			};
-			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
 			adapterService: {
 				createContext: Mock;
@@ -908,7 +905,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				setObserverThresholdTokens: Mock;
-				getComputerUseChannels: Mock;
+				getBrowserUseAvailable: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -926,17 +923,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
 		service.settingsService = {
-			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
 				enabled: true,
 				provider: 'n8n-sandbox',
 				workflowBuilderAvailable: true,
 				unavailableReason: null,
 			})),
-			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
 		};
-		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
@@ -996,7 +991,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			setObserverThresholdTokens: vi.fn(),
-			getComputerUseChannels: vi.fn(() => undefined),
+			getBrowserUseAvailable: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1267,10 +1262,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			settingsService: {
 				getAdminSettings: Mock;
 				getSandboxStatus: Mock;
-				isLocalGatewayDisabledForUser: Mock;
 				getPermissions: Mock;
 			};
-			gatewayService: { findGateway: Mock; applyToolPolicy: Mock };
 			aiService: { isProxyEnabled: Mock };
 			adapterService: {
 				createContext: Mock;
@@ -1309,7 +1302,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setSetupPanelEnabled: Mock;
 				setPromptVersion: Mock;
 				setObserverThresholdTokens: Mock;
-				getComputerUseChannels: Mock;
+				getBrowserUseAvailable: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -1327,17 +1320,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
 		service.settingsService = {
-			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getAdminSettings: vi.fn(() => ({ sandboxEnabled: true })),
 			getSandboxStatus: vi.fn(() => ({
 				enabled: true,
 				provider: 'n8n-sandbox',
 				workflowBuilderAvailable: true,
 				unavailableReason: null,
 			})),
-			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
 		};
-		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
@@ -1391,7 +1382,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			setSetupPanelEnabled: vi.fn(),
 			setPromptVersion: vi.fn(),
 			setObserverThresholdTokens: vi.fn(),
-			getComputerUseChannels: vi.fn(() => undefined),
+			getBrowserUseAvailable: vi.fn(() => undefined),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1481,7 +1472,6 @@ describe('InstanceAiService — shutdown', () => {
 			getTrackedThreadIds: vi.fn(() => []),
 			clear: vi.fn(),
 		};
-		service.gatewayService = { disconnectAll: vi.fn() };
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
@@ -1674,7 +1664,7 @@ describe('InstanceAiService — run start', () => {
 		expect(service.executeRun).toHaveBeenCalled();
 	});
 
-	it('records the reported Computer Use channels so resumed runs reuse them', () => {
+	it('records whether the client reported Browser Use so resumed runs reuse it', () => {
 		const service = createStartRunService();
 		service.startRun(
 			fakeUser,
@@ -1686,15 +1676,13 @@ describe('InstanceAiService — run start', () => {
 			undefined,
 			undefined,
 			undefined,
-			['browser'],
+			true,
 		);
-		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', [
-			'browser',
-		]);
+		expect(service.runState.setBrowserUseAvailable).toHaveBeenLastCalledWith('thread-a', true);
 
 		// A client that stops reporting clears it, so nothing is advertised.
 		service.startRun(fakeUser, 'thread-a', 'continue');
-		expect(service.runState.setComputerUseChannels).toHaveBeenLastCalledWith('thread-a', undefined);
+		expect(service.runState.setBrowserUseAvailable).toHaveBeenLastCalledWith('thread-a', undefined);
 	});
 
 	it('records each request mode for later internal runs', () => {
@@ -4035,7 +4023,6 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		Object.assign(service.logger, { debug: vi.fn() });
 		Object.assign(service, {
 			inFlightExecutions: new Set<Promise<unknown>>(),
-			gatewayService: { disconnectAll: vi.fn() },
 			browserSessionService: { shutdown: vi.fn(async () => {}) },
 			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
 			domainAccessTrackersByThread: new Map(),
@@ -6596,7 +6583,7 @@ type FollowUpStreakServiceInternals = {
 		hasLiveRun: Mock;
 		startRun: Mock;
 		getTimeZone: Mock;
-		getComputerUseChannels: Mock;
+		getBrowserUseAvailable: Mock;
 	};
 	logger: { warn: Mock; debug: Mock; error: Mock };
 };
@@ -6615,7 +6602,7 @@ function createFollowUpStreakService(): FollowUpStreakServiceInternals {
 		hasLiveRun: vi.fn(() => false),
 		startRun: vi.fn(() => ({ runId: 'follow-up-run', abortController: new AbortController() })),
 		getTimeZone: vi.fn(() => undefined),
-		getComputerUseChannels: vi.fn(() => undefined),
+		getBrowserUseAvailable: vi.fn(() => undefined),
 	};
 	service.logger = { warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
 
