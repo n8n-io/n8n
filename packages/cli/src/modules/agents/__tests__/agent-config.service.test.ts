@@ -4,6 +4,7 @@ import {
 	DEFAULT_AGENT_PERSONALISATION,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
+	type AgentJsonNodeToolConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User, WorkflowRepository, TransactionRunner } from '@n8n/db';
@@ -177,7 +178,7 @@ describe('AgentConfigService', () => {
 						slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 					},
 				},
-			} as const;
+			} as unknown as AgentJsonNodeToolConfig;
 			const definition: CompleteAgentDefinition = {
 				name: baseConfig.name,
 				config: {
@@ -201,6 +202,11 @@ describe('AgentConfigService', () => {
 
 		it('rejects an inaccessible explicit node credential before gateway reconciliation', async () => {
 			const { configPreparation, nodeToolAiGatewayService } = makeService();
+			const inaccessibleCredential = {
+				id: 'missing-credential',
+				name: 'Slack',
+				__aiGatewayManaged: true,
+			};
 			const definition: CompleteAgentDefinition = {
 				name: baseConfig.name,
 				config: {
@@ -213,7 +219,7 @@ describe('AgentConfigService', () => {
 								nodeType: 'n8n-nodes-base.slackTool',
 								nodeTypeVersion: 2,
 								credentials: {
-									slackApi: { id: 'missing-credential', name: 'Slack', __aiGatewayManaged: true },
+									slackApi: inaccessibleCredential,
 								},
 							},
 						},
