@@ -275,7 +275,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
-		const thread = await chat.openDM(input.userId);
+		const thread = await this.openDirectMessageThread(chat, params.descriptor, input.userId);
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 		// Re-anchor at the sent message ts on platforms where a top-level DM
 		// starts its own thread; otherwise keep the openDM thread.
@@ -292,6 +292,21 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				target: { type: 'dm', userId: input.userId, threadId },
 			}),
 		};
+	}
+
+	/**
+	 * Opens the DM on this connection's own adapter. `chat.openDM` guesses the
+	 * adapter from the user ID format, and it has no rule for some platforms
+	 * (a WhatsApp phone number, for example).
+	 */
+	private async openDirectMessageThread(
+		chat: ChatInstance,
+		descriptor: IntegrationToolConnectionDescriptor,
+		userId: string,
+	) {
+		const adapter = chat.getAdapter(descriptor.integration.type);
+		if (!supportsOpenDM(adapter)) return await chat.openDM(userId);
+		return chat.thread(await adapter.openDM(userId));
 	}
 
 	private async editMessageInCurrentThread(
@@ -435,6 +450,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'editMessage'> {
 	return isRecord(adapter) && typeof adapter.editMessage === 'function';
+}
+
+function supportsOpenDM(adapter: unknown): adapter is Required<Pick<Adapter, 'openDM'>> {
+	return isRecord(adapter) && typeof adapter.openDM === 'function';
 }
 
 function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {

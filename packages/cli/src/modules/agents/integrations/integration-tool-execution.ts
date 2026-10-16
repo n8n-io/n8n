@@ -288,7 +288,9 @@ export async function executeActionToolOperation(params: {
 		// that task session. Chat mentions stay on their own thread.
 		// respond/edit/reaction operate on existing threads and do not bind.
 		if (
-			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
 			descriptor.agentId &&
 			messageContext.target.threadId &&
 			isTaskRunMemoryResourceId(persistence.resourceId)

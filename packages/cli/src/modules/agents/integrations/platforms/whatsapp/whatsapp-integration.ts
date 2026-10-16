@@ -223,7 +223,8 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	readonly actionToolGuidance = [
 		'For scheduled tasks without an inbound conversation, use send_dm with the known WhatsApp user ID (the customer phone number, WhatsApp "wa_id" format). This fails outside the 24-hour customer service window.',
-		'When a send fails because the 24-hour window has closed, call list_templates, choose the template that best fits what you wanted to say, and send it with send_template. Use only facts you know as placeholder values. If no template fits, do not send one.',
+		'When a send fails with an error that says the 24-hour window has closed, call list_templates, choose the template that best fits what you wanted to say, and send it with send_template. Use only facts you know as placeholder values. If no template fits, do not send one. For any other send error, do not send a template.',
+		'A template does not open the 24-hour window. Free-form messages to the customer still fail until the customer replies. Never send a template as a placeholder or to open a conversation.',
 		'WhatsApp has no group conversations — every thread is a 1:1 DM.',
 	];
 

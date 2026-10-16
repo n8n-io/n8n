@@ -400,6 +400,34 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
+		it('sends a direct message to a customer phone number', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				const result = await ctx.actionExecutor.execute({
+					descriptor: ctx.descriptor,
+					action: 'send_dm',
+					input: { userId: fixtures.contact.wa_id, message: { text: 'Your order shipped' } },
+					awaitResponse: false,
+				});
+
+				expect(result).toMatchObject({
+					ok: true,
+					messageContext: {
+						target: { type: 'dm', userId: fixtures.contact.wa_id },
+					},
+				});
+				expect(ctx.lastPost()?.body).toMatchObject({
+					to: fixtures.contact.wa_id,
+					text: { body: 'Your order shipped' },
+				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
 		it('rejects a reply after the customer service window has closed', async () => {
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures);
@@ -915,6 +943,36 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 						],
 					},
 				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('accepts an empty parameters list for a template with no placeholders', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templates: [
+					{
+						...orderUpdateTemplate,
+						name: 'hello_world',
+						components: [{ type: 'BODY', text: 'Hello World' }],
+					},
+				],
+			});
+			try {
+				const result = await sendTemplate(ctx, {
+					userId: fixtures.contact.wa_id,
+					templateName: 'hello_world',
+					language: 'en_US',
+					parameters: [],
+				});
+
+				expect(result).toMatchObject({ ok: true });
+				expect(ctx.lastPost()?.body).toMatchObject({
+					type: 'template',
+					template: { name: 'hello_world', language: { code: 'en_US' } },
+				});
+				expect(ctx.lastPost()?.body.template).not.toHaveProperty('components');
 			} finally {
 				await ctx.shutdown();
 			}

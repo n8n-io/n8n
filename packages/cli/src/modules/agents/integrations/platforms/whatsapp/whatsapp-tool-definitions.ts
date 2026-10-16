@@ -33,9 +33,12 @@ const sendTemplateActionInputSchema = z.object({
 				.string()
 				.min(1)
 				.describe('Template language code returned by list_templates, for example "en_US".'),
+			// Models often send `[]` for a template with no placeholders.
 			parameters: z
-				.record(z.string(), z.string())
-				.optional()
+				.preprocess(
+					(value) => (Array.isArray(value) && value.length === 0 ? undefined : value),
+					z.record(z.string(), z.string()).optional(),
+				)
 				.describe(
 					'One value for each placeholder that list_templates returns for the template, keyed by the placeholder name, for example { "1": "Ana" }. Omit when the template has no placeholders.',
 				),
