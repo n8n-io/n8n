@@ -391,7 +391,7 @@ describe('MigrateAgentSkillsToHub migration', () => {
 	);
 
 	// SQLite compares timestamps as text, so rows the app adds later must sort after these.
-	it.runIf(process.env.DB_TYPE === 'sqlite')(
+	it.runIf((process.env.DB_TYPE ?? 'sqlite') === 'sqlite')(
 		'writes ordering timestamps in the format the app writes on SQLite',
 		async () => {
 			const agentId = await insertAgent([ref('skill_a')], { skill_a: body('alpha') });

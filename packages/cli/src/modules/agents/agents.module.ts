@@ -12,7 +12,7 @@ export class AgentsModule implements ModuleInterface {
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
 		// The migration `MigrateAgentSkillsToHub` copied inline agent skills into the hub. Each
-		// main also copies what an older main wrote inline during a rolling upgrade.
+		// main also copies what older mains wrote inline before it started.
 		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
 		await Container.get(SkillsHubStartupCopy).runOnStartup();
 

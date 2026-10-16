@@ -57,9 +57,9 @@ type AgentCopyState = {
 /**
  * Copies the inline skills of agents (`agents.skills`, `agent_history.skills`) into the
  * skills hub. Each inline skill becomes an agent skill of its agent. The migration
- * `MigrateAgentSkillsToHub` copies them once with the same rules. This copy catches what
- * an older main writes inline during a rolling upgrade: new agents and new published
- * versions.
+ * `MigrateAgentSkillsToHub` copies them once with the same rules. During a rolling upgrade,
+ * this copy also gets the new agents and published versions that older mains wrote inline
+ * before this main started.
  *
  * Every main runs it at startup, before it serves agents. It does not wait for the
  * leader: a main promoted during startup could miss both the startup check and the
