@@ -758,6 +758,7 @@ packages/cli/src/modules/n8n-packages/entities/agent/agent-body-issues.ts
 packages/cli/src/modules/agents/agent-skills.service.ts
   s_71ad2034164515::t_c92b746b369492 420
   s_71ad2034164515::t_cebb2f6ae2ef34 423-424
+  s_71ad2034164515::t_89bf67bc270255 421-422
 packages/cli/src/modules/n8n-packages/entities/import-conflict-policy.ts
   s_71ad2034164515::t_c92b746b369492 1-21
 packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.ts
@@ -812,6 +813,7 @@ packages/cli/src/workflows/workflow-finder.service.ts
   s_71ad2034164515::t_eef10c3bcfee00 190,193
 packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
   s_71ad2034164515::t_81225120e7d7b1 4,19,47-48,55-60,191,205-206,208,215
+  s_71ad2034164515::t_89bf67bc270255 63,66-70
 packages/cli/src/modules/n8n-packages/entities/workflow/workflow-published-state.ts
   s_71ad2034164515::t_4e360f63eb4a9b 6-9
 packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
@@ -820,6 +822,7 @@ packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
   s_71ad2034164515::t_9b3bf1d3aea29b 110
   s_71ad2034164515::t_4a69e6daa749b1 253
   s_71ad2034164515::t_5dfa137d9add15 108,158-159
+  s_71ad2034164515::t_89bf67bc270255 88
 ---
 {
   "schema_version": "authorship/3.0.0",
