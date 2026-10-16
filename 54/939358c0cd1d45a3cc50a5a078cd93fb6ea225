@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-package-policy.integration.test.ts
+  s_879f276eba99a2::t_2ca7dd6f287272 144-146
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_879f276eba99a2::t_13fced4ccacd52 1,8,10,37-39,104-106,791-838,864,889
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_879f276eba99a2::t_1e414d4ce02530 2,697-709,711-731
+  s_879f276eba99a2::t_2ca7dd6f287272 163-165,710
+  s_879f276eba99a2::t_ec5aed1fb1b31f 732-733
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_879f276eba99a2::t_4c57ceab3e0668 1,8,10-11,46-48,289,296-318
+  s_879f276eba99a2::t_13fced4ccacd52 257-258
+  s_879f276eba99a2::t_24c8b6bb48b728 319-320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54939358c0cd1d45a3cc50a5a078cd93fb6ea225",
+  "prompts": {},
+  "sessions": {
+    "s_879f276eba99a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "004ead04-ad03-4b94-9e22-edfaaea7d5c0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
