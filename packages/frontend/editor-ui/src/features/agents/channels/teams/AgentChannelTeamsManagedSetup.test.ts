@@ -222,8 +222,9 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 	describe('switching the sign-in once the channel is saved', () => {
 		const PickerStub = {
+			props: ['disabled'],
 			emits: ['credential-selected', 'new-credential'],
-			template: `<div data-testid="teams-manager-credential-select">
+			template: `<div data-testid="teams-manager-credential-select" :data-disabled="String(disabled)">
 				<button data-testid="pick-sign-in" @click="$emit('credential-selected', 'cred-2')" />
 				<button data-testid="add-sign-in" @click="$emit('new-credential')" />
 			</div>`,
@@ -241,6 +242,22 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				pinia: createTestingPinia(),
 				global: { stubs: { ...stubs, CredentialsDropdown: PickerStub } },
 			});
+
+		it('locks the sign-in while a step is running', async () => {
+			const runtime = buildRuntime({
+				provisionApp: vi.fn(async () => await new Promise<boolean>(() => {})),
+			});
+			const { getByTestId } = renderSaved({ runtime, channelConnected: false });
+
+			await fireEvent.click(getByTestId('teams-create-app'));
+
+			await waitFor(() =>
+				expect(getByTestId('teams-manager-credential-select')).toHaveAttribute(
+					'data-disabled',
+					'true',
+				),
+			);
+		});
 
 		it('switches without asking while nothing is saved', async () => {
 			const { getByTestId, emitted } = renderSaved({ channelConnected: false });

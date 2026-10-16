@@ -263,7 +263,10 @@ async function selectSignIn(credentialId: string) {
 }
 
 async function addSignIn() {
-	if (!signInLocked.value) return await connect();
+	if (!signInLocked.value) {
+		await connect();
+		return;
+	}
 	if (!(await confirmRestart())) return;
 	const signedIn = await connect(undefined, { select: false });
 	if (signedIn) emit('restart', { credentialId: '', signInCredentialId: signedIn });
@@ -655,6 +658,7 @@ const downloadPackage = async () =>
 							:selected-credential-id="selectedCredentialId"
 							:permissions="credentialPermissions"
 							:loading="loading"
+							:disabled="busy !== null"
 							data-testid="teams-manager-credential-select"
 							@credential-selected="selectSignIn"
 							@new-credential="addSignIn"
@@ -678,6 +682,7 @@ const downloadPackage = async () =>
 							:selected-credential-id="selectedCredentialId"
 							:permissions="credentialPermissions"
 							:loading="loading"
+							:disabled="busy !== null"
 							data-testid="teams-manager-credential-select"
 							@credential-selected="selectSignIn"
 							@new-credential="addSignIn"
