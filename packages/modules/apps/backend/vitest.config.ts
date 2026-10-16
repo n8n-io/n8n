@@ -9,7 +9,6 @@ export default mergeConfig(
 			tscDecoratorTransform({ filePredicate: (fileName) => /\.entity\.ts$/.test(fileName) }),
 		],
 		test: {
-			setupFiles: ['./src/__tests__/setup.ts'],
 			exclude: ['**/node_modules/**', '**/dist/**'],
 		},
 	},
