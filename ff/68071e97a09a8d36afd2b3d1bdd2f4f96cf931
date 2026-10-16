@@ -38,6 +38,7 @@ packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
   s_71ad2034164515::t_6854ca48c4c91f 16,133,501-506
   s_71ad2034164515::t_2268e87da48e5c 554-557
   s_71ad2034164515::t_3e3d0801b47879 13,59,70-75,457,520-522,524,538-553,558-560,687-688,690-692,705-716
+  s_71ad2034164515::t_3a71746ecec9f5 19,487-488,689,693-704
 packages/@n8n/cli/src/__tests__/package-error.test.ts
   s_c71d8d6a27245a::t_6f2d9600ed2ade 62,70,88,95,156,249,251,342,355,361
   s_c71d8d6a27245a::t_83dcdc856b3318 145-148,329-332
@@ -766,6 +767,7 @@ packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mod
   s_71ad2034164515::t_81225120e7d7b1 10
   s_71ad2034164515::t_b11ec08bd08bc3 11-12
   s_71ad2034164515::t_9dcaf4a35bc391 3-7,69,76-77
+  s_71ad2034164515::t_3a71746ecec9f5 65-66
 packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
   s_71ad2034164515::t_a862e4a0ad1bb2 1,17,19-20,24-25
   s_71ad2034164515::t_9dcaf4a35bc391 4-5,53-58
@@ -922,6 +924,7 @@ packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
   s_71ad2034164515::t_3e3d0801b47879 4,33
 packages/cli/src/modules/n8n-packages/entities/publishing.ts
   s_71ad2034164515::t_9dcaf4a35bc391 1-9,14-31
+  s_71ad2034164515::t_3a71746ecec9f5 10-13
 packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
   s_71ad2034164515::t_9dcaf4a35bc391 24-29
 packages/cli/src/modules/n8n-packages/entities/agent/agent-publisher.ts
