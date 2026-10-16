@@ -764,19 +764,32 @@ describe('VariableModal', () => {
 		});
 
 		it.each([
-			['without a create handler', {}],
-			['with a create handler', { onCreate: vi.fn() }],
-		])('should block saving a new variable %s', async (_name, extraProps) => {
+			['without a create handler', false],
+			['with a create handler', true],
+		])('should block saving a new variable %s', async (_name, withHandler) => {
+			// Grant create permission so only the protected-instance guard can block the save.
+			mockedStore(useUsersStore).currentUser = {
+				globalScopes: ['variable:create'],
+			} as ReturnType<typeof useUsersStore>['currentUser'];
+			const onCreate = vi.fn();
 			const { getByTestId } = renderModal({
-				props: { mode: 'new', ...extraProps },
+				props: { mode: 'new', ...(withHandler ? { onCreate } : {}) },
 				global,
 				pinia,
 			});
 
 			const keyInput = getByTestId('variable-modal-key-input').querySelector('input')!;
+			const valueInput = getByTestId('variable-modal-value-input').querySelector('textarea')!;
 			await userEvent.type(keyInput, 'NEW_VAR');
+			await userEvent.type(valueInput, 'new value');
 
 			expect(getByTestId('variable-modal-save-button')).toBeDisabled();
+
+			// Enter submits the form even when the save button is disabled.
+			await userEvent.type(keyInput, '{Enter}');
+
+			expect(onCreate).not.toHaveBeenCalled();
+			expect(environmentsStore.createVariable).not.toHaveBeenCalled();
 		});
 
 		it('should lock the key and allow editing the value', async () => {
