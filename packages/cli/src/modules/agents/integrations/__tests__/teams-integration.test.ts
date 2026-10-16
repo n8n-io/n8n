@@ -91,6 +91,53 @@ describe('TeamsIntegration', () => {
 		it('runs on every main', () => {
 			expect(integration.requiresLeader()).toBe(false);
 		});
+
+		it('offers sends that need no inbound message, for scheduled tasks', () => {
+			expect(integration.actions).toEqual(
+				expect.arrayContaining(['send_dm', 'send_channel_message']),
+			);
+		});
+	});
+
+	describe('normalizeChannelId', () => {
+		it('encodes a raw conversation ID with the pinned service URL, as the adapter does', () => {
+			const raw = '19:abc@thread.tacv2';
+			const [prefix, conversationId, serviceUrl, ...rest] = integration
+				.normalizeChannelId(raw)
+				.split(':');
+
+			expect(prefix).toBe('teams');
+			expect(Buffer.from(conversationId, 'base64url').toString()).toBe(raw);
+			expect(Buffer.from(serviceUrl, 'base64url').toString()).toBe(
+				'https://smba.trafficmanager.net/teams/',
+			);
+			expect(rest).toEqual([]);
+		});
+
+		it('leaves an ID that is already encoded untouched', () => {
+			expect(integration.normalizeChannelId('teams:abc:def')).toBe('teams:abc:def');
+		});
+	});
+
+	describe('describeActionError', () => {
+		const permissionDenied = Object.assign(new Error('Permission denied'), {
+			code: 'PERMISSION_DENIED',
+		});
+
+		it.each([
+			['send_dm', 'installed'],
+			['send_channel_message', 'added to the team'],
+		] as const)('tells the agent how to unblock a refused %s', (action, hint) => {
+			expect(integration.describeActionError(action, permissionDenied)).toEqual({
+				code: 'PERMISSION_NOT_GRANTED',
+				message: expect.stringContaining(hint),
+			});
+		});
+
+		it('keeps the default error for anything else', () => {
+			expect(integration.describeActionError('send_dm', new Error('boom'))).toBeUndefined();
+			expect(integration.describeActionError('respond', permissionDenied)).toBeUndefined();
+		});
 	});
 
 	describe('createAdapter', () => {
