@@ -1169,8 +1169,8 @@ function onSelectVisibleChange(credentialType: string, isVisible: boolean) {
 	}
 }
 
-function matches(needle: string, haystack: string) {
-	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+function matches(needle: string, haystack: string | undefined) {
+	return (haystack ?? '').toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
 /**

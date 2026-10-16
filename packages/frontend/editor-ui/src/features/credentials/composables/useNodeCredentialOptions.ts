@@ -118,6 +118,38 @@ export function useNodeCredentialOptions(
 		return true;
 	}
 
+	/**
+	 * Copy credential fields via property access on toRaw(...). Spreading a Vue
+	 * reactive proxy re-tracks every key (the NDV freeze). Spreading a vitest
+	 * mock yields {} because mock fields are non-enumerable Proxy traps — so
+	 * read the fields we need instead.
+	 */
+	function toDropdownOption(
+		option: ICredentialsResponse,
+		typeDisplayName: string,
+	): CredentialDropdownOption {
+		const raw = toRaw(option);
+		return {
+			id: raw.id,
+			name: raw.name,
+			type: raw.type,
+			createdAt: raw.createdAt,
+			updatedAt: raw.updatedAt,
+			isManaged: raw.isManaged,
+			isGlobal: raw.isGlobal,
+			isResolvable: raw.isResolvable,
+			connectedByMe: raw.connectedByMe,
+			connectedAccountIdentifier: raw.connectedAccountIdentifier,
+			connectedUserCount: raw.connectedUserCount,
+			usageScope: raw.usageScope,
+			scopes: raw.scopes,
+			homeProject: raw.homeProject,
+			sharedWithProjects: raw.sharedWithProjects,
+			sharedRoute: raw.sharedRoute,
+			typeDisplayName,
+		};
+	}
+
 	function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
 		const override = getActiveOverrideCredentials();
 		const options: CredentialDropdownOption[] = [];
@@ -137,13 +169,7 @@ export function useNodeCredentialOptions(
 					continue;
 				}
 
-				// Spread toRaw(...) instead of the reactive proxy. NDV open used to
-				// `{...option}` every usable credential, which made Vue track each key
-				// and froze the main thread on large instances (thousands of credentials).
-				options.push({
-					...(toRaw(option) as ICredentialsResponse),
-					typeDisplayName,
-				});
+				options.push(toDropdownOption(option, typeDisplayName));
 			}
 		}
 
