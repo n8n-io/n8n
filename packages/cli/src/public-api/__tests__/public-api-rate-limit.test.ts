@@ -17,7 +17,6 @@ import express from 'express';
 import type { Request, RequestHandler, Response } from 'express';
 import { request as httpRequest } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { setTimeout as sleep } from 'node:timers/promises';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
@@ -33,6 +32,7 @@ const API_KEY_HEADER = 'x-test-api-key-id';
 
 describe('Public API rate limiting', () => {
 	let slowHandlerRuns = 0;
+	let finishSlowHandler: (value?: unknown) => void = () => {};
 
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const lastActiveAtService = mock<LastActiveAtService>();
@@ -100,7 +100,9 @@ describe('Public API rate limiting', () => {
 			@ApiResponse(200)
 			async slow() {
 				slowHandlerRuns++;
-				await sleep(200);
+				await new Promise((resolve) => {
+					finishSlowHandler = resolve;
+				});
 				return { ok: true };
 			}
 
@@ -139,6 +141,7 @@ describe('Public API rate limiting', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		slowHandlerRuns = 0;
+		finishSlowHandler = () => {};
 		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 			req.user = authenticatedUser;
 			const apiKeyId = req.headers[API_KEY_HEADER];
@@ -347,25 +350,28 @@ describe('Public API rate limiting', () => {
 		const app = activate({ globalWriteLimit: 1 });
 		const server = app.listen(0);
 		const { port } = server.address() as AddressInfo;
+		const serverSawClose = new Promise((resolve) =>
+			server.once('connection', (socket) => socket.once('close', resolve)),
+		);
 
 		try {
-			for (let i = 0; i < 3; i++) {
-				const req = httpRequest({
-					port,
-					method: 'POST',
-					path: '/api/v1/widgets/slow',
-					headers: { [API_KEY_HEADER]: 'key-1' },
-				});
-				req.on('error', () => {});
-				req.end();
-				await sleep(50);
-				req.destroy();
-			}
-			await sleep(300);
+			const req = httpRequest({
+				port,
+				method: 'POST',
+				path: '/api/v1/widgets/slow',
+				headers: { [API_KEY_HEADER]: 'key-1' },
+			});
+			req.on('error', () => {});
+			req.end();
 
-			expect(slowHandlerRuns).toBe(1);
+			await vi.waitFor(() => expect(slowHandlerRuns).toBe(1));
+			req.destroy();
+			await serverSawClose;
+			finishSlowHandler();
+
 			expect((await send(app, 'post', '/widgets')).status).toBe(429);
 		} finally {
+			finishSlowHandler();
 			server.close();
 		}
 	});
