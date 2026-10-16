@@ -153,7 +153,7 @@ describe('Gitlab Node - Issue Operations', () => {
 					.put('/projects/test-owner%2Ftest-repo/issues/7', {
 						title: 'New title',
 						description: 'New body',
-						state: 'closed',
+						state_event: 'close',
 						due_date: '2025-02-01',
 					})
 					.reply(200, { iid: 7 });
