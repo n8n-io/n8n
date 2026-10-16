@@ -253,6 +253,17 @@ describe('validateAuth', () => {
 				});
 			});
 
+			it('keeps the 401 without a challenge when the challenge lookup fails', async () => {
+				mockContext.getHeaderData.mockReturnValue({});
+				mockContext.validateN8nOAuth2Token.mockRejectedValue(new Error('no sources'));
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					message: 'User not authenticated!',
+					challenge: undefined,
+				});
+			});
+
 			it('should throw 401 when the resource URL cannot be resolved', async () => {
 				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'as-token' });
 				mockContext.getWebhookResourceUrl.mockReturnValue(undefined);
