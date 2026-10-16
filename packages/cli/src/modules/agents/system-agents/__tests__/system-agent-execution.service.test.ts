@@ -34,14 +34,15 @@ vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const AGENT_ID = 'test-assistant';
 const user = mock<User>({ id: 'user-1' });
-const thread = {
+// Frozen: the service changes the threads it returns, so each test gets a copy.
+const thread = Object.freeze({
 	id: 'thread-1',
 	agentId: AGENT_ID,
 	agentName: 'Test Assistant',
 	projectId: 'project-1',
 	accessScope: 'user',
 	ownerId: 'user-1',
-} as AgentExecutionThread;
+} as AgentExecutionThread);
 
 /** The checkpoint of a turn that waits for the answer to one tool call. */
 function suspendedCheckpoint(resourceId = 'system-chat:user-1') {
@@ -100,7 +101,7 @@ function setup(chunks: AgentExecutionStreamChunk[] = []) {
 	} satisfies SystemAgentProvider;
 	registry.register(provider);
 
-	threadRepository.findOwnedById.mockResolvedValue(thread);
+	threadRepository.findOwnedById.mockImplementation(async () => ({ ...thread }));
 	executionRepository.findExecution.mockResolvedValue(null);
 	// Collect the prepared request, then stream the scripted chunks.
 	const prepared: AgentTurnRequest[] = [];
@@ -687,7 +688,7 @@ describe('SystemAgentExecutionService', () => {
 		it('loads a usable thread with the floor on its working project', async () => {
 			const { service, provider } = setup();
 
-			expect(await service.getUsableThread(AGENT_ID, user, 'thread-1')).toBe(thread);
+			expect(await service.getUsableThread(AGENT_ID, user, 'thread-1')).toEqual(thread);
 			expect(userHasScopes).toHaveBeenCalledWith(user, ['project:read'], false, {
 				projectId: 'project-1',
 			});
@@ -706,8 +707,7 @@ describe('SystemAgentExecutionService', () => {
 
 	describe('prepareChatMessage', () => {
 		it('keeps the working project of an existing session', async () => {
-			const { service, threadRepository } = setup();
-			threadRepository.findOwnedById.mockResolvedValue(thread);
+			const { service } = setup();
 
 			const input = await service.prepareChatMessage({
 				agentId: AGENT_ID,
@@ -733,8 +733,7 @@ describe('SystemAgentExecutionService', () => {
 		});
 
 		it('refuses a project that does not match the existing session', async () => {
-			const { service, threadRepository } = setup();
-			threadRepository.findOwnedById.mockResolvedValue(thread);
+			const { service } = setup();
 
 			await expect(
 				service.prepareChatMessage({
@@ -987,7 +986,7 @@ describe('SystemAgentExecutionService', () => {
 			threadRepository.findOneBy.mockResolvedValue(null);
 			txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
 			threadRepository.findOrCreate.mockResolvedValue({
-				thread: { ...thread, id: 'thread-new', projectId: 'project-1' },
+				thread: { ...thread, id: 'thread-new' },
 				created: true,
 			} as never);
 			threadRepository.renameOwned.mockResolvedValue(true);
@@ -1024,7 +1023,7 @@ describe('SystemAgentExecutionService', () => {
 			threadRepository.findOneBy.mockResolvedValue(null);
 			txRunner.run.mockImplementation(async (_ctx, fn) => await fn({}));
 			threadRepository.findOrCreate.mockResolvedValue({
-				thread: { ...thread, id: 'thread-new', projectId: 'project-1' },
+				thread: { ...thread, id: 'thread-new' },
 				created: true,
 			} as never);
 
