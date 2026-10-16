@@ -6,6 +6,7 @@ import { BodyKeyedRateLimiterConfig } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
+import type { Store } from 'express-rate-limit';
 import assert from 'node:assert';
 import type { ZodTypeAny } from 'zod';
 
@@ -78,11 +79,12 @@ export class RateLimitService {
 	 * Creates a rate limit middleware keyed by API key.
 	 * Runs AFTER authentication. Requests without an API key are not counted.
 	 * The limiter only counts. It stores its numbers on the request under `requestPropertyName`
-	 * and never blocks, so a later middleware can see every limit before it sends a 429.
+	 * and never blocks, so a later middleware can see every limit before it sends a 429. That
+	 * middleware takes the count back from `store` when it blocks the request.
 	 */
 	createApiKeyRateLimitMiddleware(
 		limits: Required<RateLimiterLimits>,
-		requestPropertyName: string,
+		{ requestPropertyName, store }: { requestPropertyName: string; store: Store },
 	): RequestHandler {
 		return expressRateLimit({
 			limit: limits.limit,
@@ -90,12 +92,9 @@ export class RateLimitService {
 			legacyHeaders: false,
 			standardHeaders: false,
 			requestPropertyName,
+			store,
 			handler: (_req, _res, next) => next(),
 			passOnStoreError: true,
-			// Only a 429 is uncounted, so a request one limiter blocks uses no quota of another limiter.
-			// Other error responses still count.
-			skipFailedRequests: true,
-			requestWasSuccessful: (_req, res) => res.statusCode !== 429,
 			skip: (req: AuthenticatedRequest): boolean => req.tokenGrant?.apiKeyId === undefined,
 			keyGenerator: (req: AuthenticatedRequest) => `apiKey:${req.tokenGrant?.apiKeyId}`,
 		});

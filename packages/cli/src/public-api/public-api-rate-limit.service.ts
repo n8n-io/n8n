@@ -3,6 +3,7 @@ import { Time } from '@n8n/constants';
 import type { Method, RateLimitAccessName } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RequestHandler, Response } from 'express';
+import { MemoryStore } from 'express-rate-limit';
 import type { AugmentedRequest, RateLimitInfo } from 'express-rate-limit';
 
 import { RateLimitService } from '@/services/rate-limit.service';
@@ -10,6 +11,12 @@ import { RateLimitService } from '@/services/rate-limit.service';
 type RequestLimit = { maxRequests: number; windowSeconds: number };
 
 type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLimit };
+
+type CountingLimiter = {
+	middleware: RequestHandler;
+	store: MemoryStore;
+	requestPropertyName: string;
+};
 
 const ENDPOINT_LIMIT = 'endpointRateLimit';
 const ALL_ENDPOINTS_LIMIT = 'allEndpointsRateLimit';
@@ -36,7 +43,7 @@ const resolveAccess = (
 export class PublicApiRateLimitService {
 	private readonly allEndpointsLimiterCache = new Map<
 		RateLimitAccessName,
-		RequestHandler | undefined
+		CountingLimiter | undefined
 	>();
 
 	constructor(
@@ -60,39 +67,49 @@ export class PublicApiRateLimitService {
 		].filter((limiter) => limiter !== undefined);
 		if (limiters.length === 0) return [];
 
-		return [...limiters, this.enforceLimits];
+		return [...limiters.map((limiter) => limiter.middleware), this.enforceLimits(limiters)];
 	}
 
 	/**
 	 * Runs after the limiters, which only count. Sends a 429 when the request is over any limit.
 	 * Otherwise sets the headers from the limit with the fewest requests left.
 	 */
-	private readonly enforceLimits: RequestHandler = (req: AugmentedRequest, res, next) => {
-		const limits = [req[ENDPOINT_LIMIT], req[ALL_ENDPOINTS_LIMIT]].filter(
-			(limit?: RateLimitInfo) => limit !== undefined,
-		);
+	private enforceLimits(limiters: CountingLimiter[]): RequestHandler {
+		return async (req: AugmentedRequest, res, next) => {
+			const counted = limiters.flatMap(({ store, requestPropertyName }) => {
+				const limit: RateLimitInfo | undefined = req[requestPropertyName];
+				return limit ? [{ store, limit }] : [];
+			});
+			const limits = counted.map(({ limit }) => limit);
 
-		const exceeded = limits.filter((limit) => limit.used > limit.limit);
-		if (exceeded.length > 0) {
-			// The client can retry only when every exceeded limit has reset.
-			const [lastToReset] = exceeded.sort((a, b) => resetMs(b) - resetMs(a));
-			const retryAfterMs = resetMs(lastToReset) - Date.now();
-			setRateLimitHeaders(res, lastToReset);
-			res.setHeader(
-				'Retry-After',
-				Math.ceil(Math.max(0, retryAfterMs) / Time.seconds.toMilliseconds).toString(),
+			const exceeded = limits.filter((limit) => limit.used > limit.limit);
+			if (exceeded.length > 0) {
+				// A blocked request uses no quota. Take it back now, not when the response ends, so a
+				// parallel request never sees it.
+				await Promise.all(
+					counted.map(async ({ store, limit }) => await store.decrement(limit.key)),
+				);
+
+				// The client can retry only when every exceeded limit has reset.
+				const [lastToReset] = exceeded.sort((a, b) => resetMs(b) - resetMs(a));
+				const retryAfterMs = resetMs(lastToReset) - Date.now();
+				setRateLimitHeaders(res, lastToReset);
+				res.setHeader(
+					'Retry-After',
+					Math.ceil(Math.max(0, retryAfterMs) / Time.seconds.toMilliseconds).toString(),
+				);
+				res.status(429).json({ message: 'Too many requests' });
+				return;
+			}
+
+			// On a tie, the later reset wins, so the reset time is never too early.
+			const [fewestLeft] = limits.sort(
+				(a, b) => a.remaining - b.remaining || resetMs(b) - resetMs(a),
 			);
-			res.status(429).json({ message: 'Too many requests' });
-			return;
-		}
-
-		// On a tie, the later reset wins, so the reset time is never too early.
-		const [fewestLeft] = limits.sort(
-			(a, b) => a.remaining - b.remaining || resetMs(b) - resetMs(a),
-		);
-		if (fewestLeft) setRateLimitHeaders(res, fewestLeft);
-		next();
-	};
+			if (fewestLeft) setRateLimitHeaders(res, fewestLeft);
+			next();
+		};
+	}
 
 	private createPerEndpointLimiter(access: RateLimitAccessName) {
 		return this.createRateLimiter(this.getLimitsFromConfig(access).perEndpoint, ENDPOINT_LIMIT);
@@ -138,10 +155,15 @@ export class PublicApiRateLimitService {
 	private createRateLimiter(
 		{ maxRequests, windowSeconds }: RequestLimit,
 		requestPropertyName: string,
-	) {
+	): CountingLimiter | undefined {
 		if (maxRequests === 0) return undefined;
 
 		const limits = { limit: maxRequests, windowMs: windowSeconds * Time.seconds.toMilliseconds };
-		return this.rateLimitService.createApiKeyRateLimitMiddleware(limits, requestPropertyName);
+		const store = new MemoryStore();
+		const middleware = this.rateLimitService.createApiKeyRateLimitMiddleware(limits, {
+			requestPropertyName,
+			store,
+		});
+		return { middleware, store, requestPropertyName };
 	}
 }

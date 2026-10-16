@@ -14,6 +14,10 @@ import {
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
+import type { Request, RequestHandler, Response } from 'express';
+import { request as httpRequest } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { setTimeout as sleep } from 'node:timers/promises';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
@@ -28,6 +32,8 @@ type RateLimitConfig = GlobalConfig['publicApi']['rateLimit'];
 const API_KEY_HEADER = 'x-test-api-key-id';
 
 describe('Public API rate limiting', () => {
+	let slowHandlerRuns = 0;
+
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const lastActiveAtService = mock<LastActiveAtService>();
 	const authenticatedUser = mock<User>({ id: 'user-1' });
@@ -90,6 +96,14 @@ describe('Public API rate limiting', () => {
 				return { ok: true };
 			}
 
+			@Post('/slow')
+			@ApiResponse(200)
+			async slow() {
+				slowHandlerRuns++;
+				await sleep(200);
+				return { ok: true };
+			}
+
 			@Post('/search')
 			@ApiResponse(200)
 			@RateLimitAccess('read')
@@ -124,6 +138,7 @@ describe('Public API rate limiting', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		slowHandlerRuns = 0;
 		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
 			req.user = authenticatedUser;
 			const apiKeyId = req.headers[API_KEY_HEADER];
@@ -287,6 +302,72 @@ describe('Public API rate limiting', () => {
 		expect(response.status).toBe(200);
 		expect(response.headers['x-ratelimit-limit']).toBe('5');
 		expect(response.headers['x-ratelimit-remaining']).toBe('1');
+	});
+
+	it('takes back the count of a blocked request before its response ends', async () => {
+		// The response never ends, so this fails if the count comes back only when it does. Until
+		// then, parallel requests would see the blocked request in the all-endpoints count.
+		const service = new PublicApiRateLimitService(
+			mock<GlobalConfig>({
+				publicApi: {
+					rateLimit: {
+						enabled: true,
+						globalReadLimit: 2,
+						globalReadWindowSeconds: 60,
+						endpointReadLimit: 1,
+						endpointReadWindowSeconds: 60,
+					},
+				},
+			}),
+			new RateLimitService(),
+		);
+		const widgets = service.createRouteLimiters('get');
+		const others = service.createRouteLimiters('get');
+
+		const runRoute = async (handlers: RequestHandler[]) => {
+			const req = { tokenGrant: { apiKeyId: 'key-1' }, ip: '127.0.0.1', headers: {} };
+			const res = mock<Response>({ headersSent: false, writableEnded: false });
+			res.status.mockReturnValue(res);
+			for (const handler of handlers) {
+				let passed = false;
+				await handler(req as unknown as Request, res, () => {
+					passed = true;
+				});
+				if (!passed) return res.status.mock.calls[0]?.[0];
+			}
+			return 200;
+		};
+
+		expect(await runRoute(widgets)).toBe(200);
+		expect(await runRoute(widgets)).toBe(429);
+		expect(await runRoute(others)).toBe(200);
+	});
+
+	it('still counts a request whose client disconnects before the response', async () => {
+		const app = activate({ globalWriteLimit: 1 });
+		const server = app.listen(0);
+		const { port } = server.address() as AddressInfo;
+
+		try {
+			for (let i = 0; i < 3; i++) {
+				const req = httpRequest({
+					port,
+					method: 'POST',
+					path: '/api/v1/widgets/slow',
+					headers: { [API_KEY_HEADER]: 'key-1' },
+				});
+				req.on('error', () => {});
+				req.end();
+				await sleep(50);
+				req.destroy();
+			}
+			await sleep(300);
+
+			expect(slowHandlerRuns).toBe(1);
+			expect((await send(app, 'post', '/widgets')).status).toBe(429);
+		} finally {
+			server.close();
+		}
 	});
 
 	describe('when both limits run out at the same time', () => {
