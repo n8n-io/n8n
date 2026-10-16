@@ -11,6 +11,7 @@ import { Telemetry } from '@/telemetry';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
+import { McpToolChangeService } from '../mcp-tool-change.service';
 
 const mockAuthMiddleware = vi.fn().mockImplementation(async function (_req, _res, next) {
 	next();
@@ -54,6 +55,7 @@ vi.mock('@modelcontextprotocol/server', () => ({
 		(factory: () => Promise<unknown>, options?: { onerror?: (error: Error) => void }) => ({
 			factory,
 			onerror: options?.onerror,
+			close: vi.fn().mockResolvedValue(undefined),
 		}),
 	),
 }));
@@ -96,8 +98,10 @@ describe('McpController', () => {
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
 	const telemetry = { track: vi.fn() } as unknown as Telemetry;
+	const toolChanges = mock<McpToolChangeService>();
 	const mcpService = {
 		getServer: vi.fn(),
+		getToolListRevision: vi.fn().mockReturnValue('revision-1'),
 		resolveFeatureFlags: vi.fn(),
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
@@ -111,6 +115,10 @@ describe('McpController', () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		toolChanges.getChannel.mockReturnValue('channel-1');
+		toolChanges.getBus.mockResolvedValue({ publish: vi.fn(), subscribe: vi.fn() });
+		toolChanges.track.mockReturnValue(vi.fn());
+		Container.set(McpToolChangeService, toolChanges);
 
 		// Default mock — the controller resolves the MCP feature flags for
 		// every request, so tests that don't care about them still need a sane
@@ -160,6 +168,24 @@ describe('McpController', () => {
 		const res = createRes();
 		await controller.build(createReq(), res);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalled();
+	});
+
+	test('observes the registered tool revision and closes each request handler', async () => {
+		const { createMcpHandler } = await import('@modelcontextprotocol/server');
+		const server = {};
+		(mcpService.getServer as Mock).mockResolvedValue(server);
+		await controller.build(createReq(), createRes());
+		expect(mcpService.getToolListRevision).toHaveBeenCalledWith(server);
+		expect(toolChanges.observe).toHaveBeenCalledWith('channel-1', 'revision-1');
+		expect(createMcpHandler).toHaveBeenLastCalledWith(
+			expect.any(Function),
+			expect.objectContaining({
+				bus: await toolChanges.getBus('channel-1'),
+			}),
+		);
+		const handler = vi.mocked(createMcpHandler).mock.results.at(-1)?.value;
+		expect(handler.close).toHaveBeenCalledTimes(1);
+		expect(toolChanges.track).toHaveBeenCalledWith(handler);
 	});
 
 	test('tracks successful initialize connections with auth type and feature flags', async () => {

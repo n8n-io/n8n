@@ -41,6 +41,7 @@ export type PubSubEventName =
 	| 'reload-sso-provisioning-configuration'
 	| 'reload-source-control-config'
 	| 'reload-mcp-registry'
+	| 'mcp-tools-changed'
 	| 'reload-otel-config'
 	| 'reload-instance-ai-settings'
 	| 'reload-agents-settings'

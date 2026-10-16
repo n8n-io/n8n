@@ -40,6 +40,7 @@ export const SELF_SEND_COMMANDS = new Set<PubSub.Command['command']>([
  * multi-main setup.
  */
 export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
+	'mcp-tools-changed',
 	'add-webhooks-triggers-and-pollers',
 	'remove-triggers-and-pollers',
 	'relay-execution-lifecycle-event',
