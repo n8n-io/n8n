@@ -194,12 +194,13 @@ function getReadOnlySection(branchReadOnly?: boolean): string {
 
 This n8n instance is in **read-only mode** (protected by source control settings). Write tools for the following operations are blocked and will return errors:
 - Creating, modifying, or deleting workflows
-- Creating data tables, modifying their schema, or mutating their rows
+- Creating, renaming, or deleting data tables, and adding, renaming, or deleting their columns
 - Creating or deleting folders, moving or tagging workflows
 - Running or stopping workflow executions, and executing a single node
 
 The following operations remain available:
 - Listing, searching, and reading all resources
+- Inserting, updating, and deleting data table rows
 - Publishing/unpublishing (activating/deactivating) workflows
 - Setting up, editing, and deleting credentials
 - Restoring workflow versions
