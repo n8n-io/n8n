@@ -44,7 +44,7 @@ import {
 	type TriggerOperationAbort,
 	type TriggerTeardownFailure,
 } from '@/workflows/triggers/workflow-trigger-activator';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
 
 /** A node whose type this instance cannot load, with the loader's error. */
 type UnresolvableNode = { node: INode; error: Error };

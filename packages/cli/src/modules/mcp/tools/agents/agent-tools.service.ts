@@ -37,6 +37,10 @@ import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.s
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
+import {
+	SkillNameTakenError,
+	skillNameTakenToolMessage,
+} from '@/modules/agents/skills/skill-name-taken.error';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,
@@ -703,6 +707,17 @@ export class McpAgentToolsService {
 						try {
 							mutation = await this.applyMutation(user, input, config, projectId, configHash);
 						} catch (error) {
+							// A taken name is a conflict too, but a retry with a fresh config would fail the same way.
+							if (error instanceof SkillNameTakenError) {
+								return {
+									ok: false,
+									code: 'skill_name_taken',
+									agentId: input.agentId,
+									// The agent may have changed meanwhile, so send the hash the next call needs.
+									configHash: await this.fetchConfigHash(projectId, input.agentId),
+									message: skillNameTakenToolMessage(error.skillName),
+								};
+							}
 							if (!(error instanceof ConflictError)) throw error;
 							const latestConfigHash = await this.fetchConfigHash(projectId, input.agentId);
 							if (latestConfigHash === configHash) throw error;

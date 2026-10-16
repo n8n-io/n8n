@@ -6,7 +6,13 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
-import { N8nFormInput, N8nInputLabel, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
+import {
+	N8nFormInput,
+	N8nInputLabel,
+	N8nMarkdown,
+	N8nMarkdownEditor,
+	N8nText,
+} from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -14,17 +20,22 @@ import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
 
 const SKILL_FILE = 'SKILL.md';
+const READ_ONLY_MARKDOWN_OPTIONS = {
+	tasklists: { enabled: false, label: true, labelAfter: false },
+};
 
 const props = withDefaults(
 	defineProps<{
 		skill: AgentSkill;
 		disabled?: boolean;
+		readOnly?: boolean;
 		errors?: Partial<Record<keyof AgentSkill, string>>;
 		selectedPath?: string;
 		showValidationWarnings?: boolean;
 	}>(),
 	{
 		disabled: false,
+		readOnly: false,
 		selectedPath: SKILL_FILE,
 		showValidationWarnings: false,
 	},
@@ -257,7 +268,54 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 <template>
 	<div :class="$style.panel" data-testid="agent-skill-viewer">
-		<template v-if="isSkillFileSelected">
+		<template v-if="props.readOnly">
+			<template v-if="isSkillFileSelected">
+				<N8nInputLabel
+					:class="$style.readOnlyField"
+					:label="i18n.baseText('agents.builder.skills.description.label')"
+					size="medium"
+					color="text-light"
+				>
+					<N8nText
+						tag="p"
+						color="text-base"
+						:class="$style.readOnlyText"
+						data-testid="agent-skill-description-text"
+						>{{ props.skill.description }}</N8nText
+					>
+				</N8nInputLabel>
+				<N8nInputLabel
+					:class="$style.readOnlyField"
+					:label="i18n.baseText('agents.builder.skills.instructions.label')"
+					size="medium"
+					color="text-light"
+				>
+					<N8nMarkdown
+						:class="$style.readOnlyMarkdown"
+						:options="READ_ONLY_MARKDOWN_OPTIONS"
+						:content="props.skill.instructions"
+						data-testid="agent-skill-instructions-text"
+					/>
+				</N8nInputLabel>
+			</template>
+			<N8nInputLabel
+				v-else-if="selectedReference"
+				:class="$style.readOnlyField"
+				:label="selectedReference.path"
+				size="medium"
+				color="text-light"
+			>
+				<N8nMarkdown
+					:class="$style.readOnlyMarkdown"
+					:options="READ_ONLY_MARKDOWN_OPTIONS"
+					:content="selectedReference.content"
+					data-testid="agent-skill-reference-text"
+				/>
+			</N8nInputLabel>
+		</template>
+
+		<template v-else-if="isSkillFileSelected">
+			<slot name="fields-start" />
 			<N8nText v-if="referencesError" size="small" color="danger">{{ referencesError }}</N8nText>
 			<N8nText v-if="props.errors?.references && !referencesError" size="small" color="danger">{{
 				props.errors.references
@@ -372,6 +430,46 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	min-width: 0;
 	width: 100%;
 	box-sizing: border-box;
+}
+
+.readOnlyField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.readOnlyText {
+	margin: 0;
+	line-height: var(--line-height--xl);
+	white-space: pre-wrap;
+}
+
+.panel .readOnlyMarkdown {
+	:global(p),
+	:global(li) {
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--xl);
+	}
+
+	:global(h1),
+	:global(h2) {
+		margin: var(--spacing--sm) 0 var(--spacing--2xs);
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--lg);
+	}
+
+	:global(h3),
+	:global(h4),
+	:global(h5),
+	:global(h6) {
+		margin: var(--spacing--xs) 0 var(--spacing--3xs);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+	}
+
+	:global(:is(h1, h2, h3, h4, h5, h6):first-child) {
+		margin-top: 0;
+	}
 }
 
 .field {

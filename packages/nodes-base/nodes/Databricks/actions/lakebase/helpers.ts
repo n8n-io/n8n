@@ -20,6 +20,26 @@ export function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
 	};
 }
 
+/**
+ * Resolves the REST URL of the schema the editor currently has selected, or null
+ * when the user has not finished choosing a table. Shared by the column dropdown
+ * and the column mapper, which differ only in how they render and how they report
+ * a missing schema document.
+ */
+export async function resolveSelectedLakebaseSchema(
+	context: ILoadOptionsFunctions,
+): Promise<{ schemaUrl: string; table: string } | null> {
+	const { project, branch, database, schema, table } = getSelectedLakebaseTarget(context);
+	// An unset locator means the user has not finished choosing a table yet
+	if (!project || !branch || !database || !schema || !table) return null;
+
+	const base = await resolveLakebaseRestBase(context, project, branch);
+	return {
+		schemaUrl: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
+		table,
+	};
+}
+
 function readLocator(
 	context: IExecuteFunctions,
 	itemIndex: number,

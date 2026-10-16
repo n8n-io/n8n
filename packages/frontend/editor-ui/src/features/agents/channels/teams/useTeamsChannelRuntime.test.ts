@@ -49,10 +49,10 @@ vi.mock('@/features/credentials/credentials.store', async (importOriginal) => {
 
 const ensureAgentPersisted = vi.fn();
 
-const buildRuntime = () =>
+const buildRuntime = (agentId = ref('agent-1')) =>
 	useTeamsChannelRuntime({
 		projectId: ref('project-1'),
-		agentId: ref('agent-1'),
+		agentId,
 		selectedCredentialId: ref(''),
 		credentialModalOpen: computed(() => false),
 		fetchStatus: vi.fn(),
@@ -70,6 +70,7 @@ describe('useTeamsChannelRuntime', () => {
 			managerCredentials: [],
 			adminConsentUrl: null,
 		});
+		vi.mocked(getTeamsSetupState).mockResolvedValue({ botId: null } as never);
 	});
 
 	/**
@@ -90,6 +91,60 @@ describe('useTeamsChannelRuntime', () => {
 
 		await pending;
 		expect(runtime.loading.value).toBe(false);
+	});
+
+	it('reads the agent identity on load, before any app exists', async () => {
+		vi.mocked(getTeamsSetupState).mockResolvedValue({
+			defaultDisplayName: 'Support Agent',
+		} as never);
+		const runtime = buildRuntime();
+
+		await runtime.load();
+
+		await vi.waitFor(() =>
+			expect(runtime.botSetupState.value).toMatchObject({ defaultDisplayName: 'Support Agent' }),
+		);
+		expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'project-1', 'agent-1');
+	});
+
+	it('reads the identity again for another agent', async () => {
+		const agentId = ref('agent-1');
+		vi.mocked(getTeamsSetupState).mockResolvedValueOnce({
+			defaultDisplayName: 'First Agent',
+		} as never);
+		const runtime = buildRuntime(agentId);
+		await runtime.load();
+		await vi.waitFor(() =>
+			expect(runtime.botSetupState.value).toMatchObject({ defaultDisplayName: 'First Agent' }),
+		);
+
+		agentId.value = 'agent-2';
+		vi.mocked(getTeamsSetupState).mockResolvedValueOnce({
+			defaultDisplayName: 'Second Agent',
+		} as never);
+		await runtime.load();
+
+		await vi.waitFor(() =>
+			expect(runtime.botSetupState.value).toMatchObject({ defaultDisplayName: 'Second Agent' }),
+		);
+		expect(getTeamsSetupState).toHaveBeenLastCalledWith(expect.anything(), 'project-1', 'agent-2');
+	});
+
+	it('reads the identity again once an agent that was not saved yet is', async () => {
+		vi.mocked(getTeamsSetupState)
+			.mockRejectedValueOnce(new Error('not found'))
+			.mockResolvedValueOnce({ defaultDisplayName: 'Support Agent' } as never);
+		const runtime = buildRuntime();
+
+		await runtime.load();
+		await vi.waitFor(() => expect(getTeamsSetupState).toHaveBeenCalledTimes(1));
+		expect(runtime.botSetupState.value).toBeNull();
+
+		await runtime.load();
+
+		await vi.waitFor(() =>
+			expect(runtime.botSetupState.value).toMatchObject({ defaultDisplayName: 'Support Agent' }),
+		);
 	});
 
 	it('stops reporting loading when the setup state cannot be read', async () => {

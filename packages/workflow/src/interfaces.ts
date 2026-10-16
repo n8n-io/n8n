@@ -39,6 +39,7 @@ import type {
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
+import type { RedactionChannels } from './redaction-channels';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
@@ -2379,7 +2380,14 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
-/** Private-credential usage a sub-execution reports to its caller, so the calling node's task inherits the flags and redaction covers the embedded output. */
+/**
+ * What a sub-execution reports to its caller about credentials, so the calling node's task
+ * inherits it and redaction covers the embedded output.
+ *
+ * Despite the name, this is not only about dynamic (private) credentials: `usedCredentialIds`
+ * carries the plain ids of every credential the sub-workflow references, which credential
+ * usability redaction reads. Keep that field when changing dynamic-credential handling.
+ */
 export interface DynamicCredentialsUsage {
 	/** True when the run resolved a private credential. */
 	usedDynamicCredentials?: boolean;
@@ -2387,6 +2395,11 @@ export interface DynamicCredentialsUsage {
 	attemptedDynamicCredentials?: boolean;
 	/** The n8n user a resolved private credential belonged to; keeps the parent execution revealable to that user. */
 	dynamicCredentialsResolvedUserId?: string;
+	/**
+	 * The credentials the run's workflows reference, its own and those its sub-workflows reported.
+	 * Lets the caller's redaction cover output that a credential it does not reference produced.
+	 */
+	usedCredentialIds?: string[];
 }
 
 export interface ExecuteWorkflowData extends DynamicCredentialsUsage {
@@ -2394,6 +2407,8 @@ export interface ExecuteWorkflowData extends DynamicCredentialsUsage {
 	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
+	/** Redaction channels the sub-execution reports to its caller, so the caller's execution redacts the copy of its output. Absent when no channel is redacted. */
+	subWorkflowRedaction?: RedactionChannels;
 }
 
 /**
@@ -3539,6 +3554,9 @@ export interface ITaskMetadata {
 	 * Private-credential usage a sub-execution reported while this execution was
 	 * waiting. The waiting task is popped and the node re-runs disabled on resume,
 	 * so the usage rides on the stack entry to reach the freshly stamped task.
+	 * Also carries the plain credential ids the sub-execution reported (see
+	 * {@link DynamicCredentialsUsage}). Persisted for waiting executions, so the key
+	 * must not be renamed.
 	 */
 	dynamicCredentialsUsage?: DynamicCredentialsUsage;
 	subNodeExecutionData?: {
@@ -3648,6 +3666,11 @@ export interface ITaskData extends ITaskStartedData {
 	 * failed attempts (e.g. the running user has not connected the credential).
 	 */
 	attemptedDynamicCredentials?: boolean;
+	/**
+	 * The credentials a sub-workflow this node ran references. Its output embeds what those
+	 * credentials produced, so the redaction layer treats them as used by this execution.
+	 */
+	usedCredentialIds?: string[];
 }
 
 export interface ISourceData {
@@ -4043,6 +4066,11 @@ export interface IWorkflowExecuteAdditionalData {
 	 * Telemetry-only; the redaction layer relies on `currentNodeUsedDynamicCredentials`.
 	 */
 	currentNodeAttemptedDynamicCredentials?: boolean;
+	/**
+	 * The credentials a sub-workflow run by the current node reported. Reset by the
+	 * execution engine before each node runs.
+	 */
+	currentNodeUsedCredentialIds?: string[];
 	/**
 	 * The n8n user a dynamically-resolved private credential belongs to, set during
 	 * credential resolution when the resolver maps the execution's identity to an n8n

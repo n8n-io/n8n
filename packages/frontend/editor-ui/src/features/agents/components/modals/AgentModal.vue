@@ -66,6 +66,7 @@ const emit = defineEmits<{
 const slots = useSlots();
 const i18n = useI18n();
 const body = useTemplateRef<HTMLElement>('body');
+const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const parameterDialogs = ref(new Set<string>());
 provide(ParameterInputModalContextKey, { openDialogs: parameterDialogs, appendTo: 'body' });
 const trapFocus = computed(() => props.trapFocus && parameterDialogs.value.size === 0);
@@ -99,6 +100,13 @@ function onInteractOutside(event: Event) {
 	if (dismissalBlocked.value) event.preventDefault();
 	emit('interactOutside', event);
 }
+
+/** Puts the editable title in edit mode. */
+function focusTitle() {
+	titleEdit.value?.forceFocus();
+}
+
+defineExpose({ focusTitle });
 
 function onOpenAutoFocus(event: Event) {
 	const autofocusTarget =
@@ -153,6 +161,7 @@ function onOpenAutoFocus(event: Event) {
 					<div :class="$style.titleGroup">
 						<N8nInlineTextEdit
 							v-if="props.editableTitle"
+							ref="titleEdit"
 							:model-value="props.title"
 							:max-length="props.titleMaxLength"
 							:max-width="'100%'"

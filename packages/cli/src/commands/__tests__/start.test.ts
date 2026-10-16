@@ -32,8 +32,7 @@ import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService } from '@/services/jwt.service';
-import { RoleCacheService } from '@n8n/backend-services';
+import { JwtService, RoleCacheService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
