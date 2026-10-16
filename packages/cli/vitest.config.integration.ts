@@ -12,5 +12,7 @@ export default mergeConfig(baseConfig, {
 		hookTimeout: 30_000,
 		// Appended to the base globalSetup. It does nothing unless CI is true and DB_TYPE is sqlite.
 		globalSetup: ['./test/setup-sqlite-template.ts'],
+		// TEMP DEBUG (do not merge): log the source of the unhandled rejection.
+		setupFiles: ['./test/temp-unhandled-debug.ts'],
 	},
 });
