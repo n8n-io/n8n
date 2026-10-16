@@ -652,7 +652,6 @@ function onRemove() {
 		:editable-title="step === 'manual' || (step === 'edit' && !isReadOnly)"
 		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
 		:show-footer="step === 'manual' || step === 'edit' || step === 'preview'"
-		:body-flush="step !== 'select'"
 		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
 		data-testid="agent-skill-modal"
@@ -901,7 +900,7 @@ function onRemove() {
 }
 
 .callout {
-	margin: var(--spacing--md) var(--spacing--lg) 0;
+	margin-bottom: var(--spacing--md);
 }
 
 .footerHint {
