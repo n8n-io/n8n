@@ -118,11 +118,13 @@ describe('CommunityPackageCard', () => {
 	});
 
 	describe('restricted badge', () => {
-		const mockNodeAvailability = (unavailable: Record<string, NodeTypeAvailability['scope']>) => {
+		const mockNodeAvailability = (
+			unavailable: Record<string, Pick<NodeTypeAvailability, 'scope' | 'optInAvailable'>>,
+		) => {
 			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
 				(name: string) =>
 					name in unavailable
-						? { name, available: false, scope: unavailable[name] }
+						? { name, available: false, ...unavailable[name] }
 						: { name, available: true },
 			);
 		};
@@ -141,7 +143,7 @@ describe('CommunityPackageCard', () => {
 		}
 
 		it('shows the badge and lists instance-blocked node types in the tooltip', async () => {
-			mockNodeAvailability({ 'n8n-nodes-test.oldNode': 'instance' });
+			mockNodeAvailability({ 'n8n-nodes-test.oldNode': { scope: 'instance' } });
 
 			const { getByText } = renderComponent({ props: { communityPackage } });
 
@@ -165,7 +167,17 @@ describe('CommunityPackageCard', () => {
 		});
 
 		it('ignores a project-scoped restriction', () => {
-			mockNodeAvailability({ 'n8n-nodes-test.oldNode': 'project' });
+			mockNodeAvailability({ 'n8n-nodes-test.oldNode': { scope: 'project' } });
+
+			const { queryByText } = renderComponent({ props: { communityPackage } });
+
+			expect(queryByText('Restricted')).not.toBeInTheDocument();
+		});
+
+		it('ignores an instance restriction that projects can opt into', () => {
+			mockNodeAvailability({
+				'n8n-nodes-test.oldNode': { scope: 'instance', optInAvailable: true },
+			});
 
 			const { queryByText } = renderComponent({ props: { communityPackage } });
 

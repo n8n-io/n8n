@@ -59,14 +59,15 @@ const hasUpdateAvailable = computed(() => {
 	});
 });
 
-// Community packages are installed instance-wide, so a project-scoped restriction doesn't make
-// the package itself restricted here; only an instance-wide block does.
+// Packages are installed instance-wide, so only a hard instance block counts. A delegated
+// type (`optInAvailable`) is not blocked, because any project can allow it.
 const blockedNodes = computed<PublicInstalledNode[]>(() => {
 	if (!props.communityPackage) return [];
 
-	return props.communityPackage.installedNodes.filter(
-		(node) => getNodeTypeRestriction(node.type)?.scope === 'instance',
-	);
+	return props.communityPackage.installedNodes.filter((node) => {
+		const restriction = getNodeTypeRestriction(node.type);
+		return restriction?.scope === 'instance' && !restriction.optInAvailable;
+	});
 });
 
 const packageActions = computed<Array<UserAction<IUser>>>(() => {
