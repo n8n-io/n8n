@@ -1,22 +1,15 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import { getSelectedLakebaseTarget } from '../actions/lakebase/helpers';
+import { resolveSelectedLakebaseSchema } from '../actions/lakebase/helpers';
 import { fetchLakebaseColumns } from '../actions/lakebase/schema';
-import { explainLakebaseSchemaError, resolveLakebaseRestBase } from '../transport';
+import { explainLakebaseSchemaError } from '../transport';
 
 async function listColumns(context: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { project, branch, database, schema, table } = getSelectedLakebaseTarget(context);
-	// An unset locator means the user has not finished choosing a table yet
-	if (!project || !branch || !database || !schema || !table) return [];
-
 	try {
-		const base = await resolveLakebaseRestBase(context, project, branch);
-		const columns = await fetchLakebaseColumns(
-			context,
-			`${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
-			table,
-		);
+		const target = await resolveSelectedLakebaseSchema(context);
+		if (!target) return [];
 
+		const columns = await fetchLakebaseColumns(context, target.schemaUrl, target.table);
 		return columns.map((column) => ({ name: column.name, value: column.name }));
 	} catch (error) {
 		explainLakebaseSchemaError(

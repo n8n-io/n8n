@@ -1,4 +1,9 @@
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
@@ -174,6 +179,27 @@ describe('SkillRepository', () => {
 			).rejects.toThrow('abort');
 
 			expect(await skills.findByIds(['skill_rollback'])).toEqual([]);
+		});
+	});
+
+	describe('findLatestNamesInTarget', () => {
+		it('returns the latest name of each skill in one target only', async () => {
+			const instance = await createSkill({}, content({ name: 'Old name' }));
+			await skills.insertSavedVersion(instance, 2, content({ name: 'New name' }), null);
+			const inProject = await createSkill({ projectId: project.id }, content({ name: 'P' }));
+			const agent = await createAgent('Agent', { projectId: project.id });
+			const ofAgent = await createSkill({ agentId: agent.id }, content({ name: 'A' }));
+
+			expect(await skills.findLatestNamesInTarget({ projectId: null, agentId: null })).toEqual([
+				{ skillId: instance, name: 'New name' },
+			]);
+			// The agent skills of a project are not project skills.
+			expect(
+				await skills.findLatestNamesInTarget({ projectId: project.id, agentId: null }),
+			).toEqual([{ skillId: inProject, name: 'P' }]);
+			expect(await skills.findLatestNamesInTarget({ projectId: null, agentId: agent.id })).toEqual([
+				{ skillId: ofAgent, name: 'A' },
+			]);
 		});
 	});
 
@@ -666,14 +692,22 @@ describe('SkillRepository', () => {
 		});
 	});
 
-	describe('findProjectNames', () => {
-		it('maps project ids to names', async () => {
-			const names = await skills.findProjectNames([project.id, project.id, otherProject.id]);
+	describe('findProjects', () => {
+		it('maps project ids to names and types', async () => {
+			const personal = await getPersonalProject(user);
 
-			expect(names).toEqual(
+			const projects = await skills.findProjects([
+				project.id,
+				project.id,
+				otherProject.id,
+				personal.id,
+			]);
+
+			expect(projects).toEqual(
 				new Map([
-					[project.id, 'Team'],
-					[otherProject.id, 'Other team'],
+					[project.id, { name: 'Team', type: 'team' }],
+					[otherProject.id, { name: 'Other team', type: 'team' }],
+					[personal.id, { name: personal.name, type: 'personal' }],
 				]),
 			);
 		});

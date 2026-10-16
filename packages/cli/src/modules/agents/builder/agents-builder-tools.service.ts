@@ -95,6 +95,7 @@ import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
+import { SkillNameTakenError, skillNameTakenToolMessage } from '../skills/skill-name-taken.error';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -181,6 +182,12 @@ type EditorLockFailure = { ok: false; errors: ConfigValidationError[] };
 const STALE_SKILL_ERROR_MESSAGE =
 	'Skill changed. Call agent-context with type "skill", then retry with its skill and skillHash.';
 
+/** A taken name is a conflict too, but a retry with a fresh hash would fail the same way. */
+function updateSkillErrorMessage(error: unknown, message: string): string {
+	if (error instanceof SkillNameTakenError) return skillNameTakenToolMessage(error.skillName);
+	return error instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message;
+}
+
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	emptyInstructionsFollowUp: 'saving the config again.',
@@ -191,7 +198,10 @@ const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 
 const createSkillInputSchema = z
 	.object({
-		name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
+		name: agentSkillSchema.shape.name.describe(
+			'Human-readable skill name. It must be unique in the project: no other skill of this ' +
+				'project may have a name like it (case, spaces, hyphens and underscores do not count).',
+		),
 		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
 		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
 		references: agentSkillSchema.shape.references
@@ -1179,10 +1189,7 @@ export class AgentsBuilderToolsService {
 					};
 				} catch (e) {
 					const message = e instanceof Error ? e.message : String(e);
-					return {
-						ok: false,
-						errors: [{ message: e instanceof ConflictError ? STALE_SKILL_ERROR_MESSAGE : message }],
-					};
+					return { ok: false, errors: [{ message: updateSkillErrorMessage(e, message) }] };
 				}
 			})
 			.build();
@@ -1241,10 +1248,13 @@ export class AgentsBuilderToolsService {
 						skills: created.skills.map(({ id, skill }) => ({ id, name: skill.name })),
 					};
 				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
+					const message =
+						e instanceof SkillNameTakenError
+							? `${skillNameTakenToolMessage(e.skillName)} The batch is all-or-nothing, so send every skill again.`
+							: e instanceof Error
+								? e.message
+								: String(e);
+					return { ok: false, errors: [{ message }] };
 				}
 			})
 			.build();

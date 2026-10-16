@@ -38,7 +38,6 @@ import {
 	DEFAULT_STICKY_SIZE,
 	STICKY_PADDING,
 	STICKY_HEADER_HEIGHT,
-	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
 import {
 	collapseNodeGroups,
@@ -917,7 +916,8 @@ function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 /** Push a box down until it clears every box already placed. */
 function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 	let separated = box;
-	for (let step = 0; step < MAX_STICKY_SEPARATION_STEPS; step++) {
+	// Each move clears one box and only increases y, so each box needs at most one step.
+	for (let step = 0; step < placed.length; step++) {
 		const collision = placed.find((placedBox) => boxesOverlap(placedBox, separated));
 		if (!collision) break;
 		separated = {
@@ -942,6 +942,7 @@ function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 export function resolveStickyGeometry(
 	nodes: ReadonlyMap<string, GraphNode>,
 	positions: ReadonlyMap<string, [number, number]>,
+	knownPorts?: ReadonlyMap<string, NodePorts>,
 ): Map<string, StickyGeometry> {
 	const geometryByName = new Map<string, StickyGeometry>();
 
@@ -962,9 +963,15 @@ export function resolveStickyGeometry(
 	const boxOfNode = (name: string): BoundingBox | undefined => {
 		const graphNode = nodes.get(name);
 		if (!graphNode) return undefined;
-		const position = graphNode.instance.config?.position ?? positions.get(name);
-		if (!position) return undefined;
-		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+		const position = graphNode.instance.config?.position ??
+			positions.get(name) ?? [START_X, DEFAULT_Y];
+		const { width, height } = getNodeDimensions(
+			name,
+			aiParentNames,
+			aiConfigNames,
+			nodes,
+			knownPorts,
+		);
 		return { x: position[0], y: position[1], width, height };
 	};
 
@@ -1015,6 +1022,12 @@ export function resolveStickyGeometry(
 	};
 
 	const placed = resolved.filter((sticky) => sticky.pinned).map(({ box }) => box);
+	for (const [name, graphNode] of nodes) {
+		if (graphNode.instance.type === STICKY_NODE_TYPE) continue;
+		const box = boxOfNode(name);
+		if (box) placed.push(box);
+	}
+
 	for (const { name, box, sizedByAnchors, pinned } of resolved) {
 		if (pinned) {
 			record(name, box, sizedByAnchors);

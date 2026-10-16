@@ -83,7 +83,7 @@ describe('AgentRepository', () => {
 
 	afterEach(async () => {
 		// The rollout keeps the flag it read, so set it back off for the next test.
-		await setSkillsHubFlag(false);
+		setSkillsHubFlag(false);
 		vi.restoreAllMocks();
 		await agentHistoryRepo.delete({});
 		await agentRepo.delete({});
@@ -221,7 +221,7 @@ describe('AgentRepository', () => {
 		});
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
-			await setSkillsHubFlag(true);
+			setSkillsHubFlag(true);
 			const agent = await createAgent();
 			await Container.get(SkillRepository).createSkill(
 				{

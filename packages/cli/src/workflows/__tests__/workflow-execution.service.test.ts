@@ -1,5 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
+import type {
+	EventService,
+	InstanceWriteAccessService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -42,7 +46,6 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 const webhookNode: INode = {
 	name: 'Webhook',

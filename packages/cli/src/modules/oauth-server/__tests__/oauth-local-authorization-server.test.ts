@@ -1,9 +1,8 @@
 import type { UrlService } from '@n8n/backend-services';
+import type { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { AuthorizationServerMetadataSchema } from '@n8n/inbound-auth';
 import type { JWK } from 'jose';
 import { mock } from 'vitest-mock-extended';
-
-import type { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 import { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import type { OAuthSigningJwksProvider } from '../oauth-signing-jwks.provider';

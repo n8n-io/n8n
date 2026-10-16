@@ -10,6 +10,7 @@ import {
 	makePermissionErrorLegible,
 	type DatabricksContext,
 } from '../actions/helpers';
+import { OPENAPI_SETTING_PATH } from '../actions/lakebase/openApiDocument';
 
 // ponytail: single fixed delay; lengthen it if a real schema reload is observed
 // to take more than 1 s.
@@ -35,8 +36,7 @@ function isExpiredToken(error: unknown, body: Record<string, unknown> | undefine
 	return /expired/i.test(text) && /jwt|token/i.test(text);
 }
 
-const OPENAPI_SETTING_PATH =
-	'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.';
+const OPENAPI_SETTING_HINT = `In Databricks open the project, then turn on ${OPENAPI_SETTING_PATH}.`;
 
 /**
  * A dropdown shows only an error's message, so a raw PostgREST code leaves the user
@@ -46,7 +46,7 @@ const OPENAPI_SETTING_PATH =
 export function explainLakebaseSchemaError(error: unknown, openApiMessage: string): never {
 	if (error instanceof NodeApiError && errorBody(error)?.code === 'PGRST205') {
 		error.message = openApiMessage;
-		error.description = OPENAPI_SETTING_PATH;
+		error.description = OPENAPI_SETTING_HINT;
 		throw error;
 	}
 

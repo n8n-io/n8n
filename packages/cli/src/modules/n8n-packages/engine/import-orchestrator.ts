@@ -406,22 +406,21 @@ export class ImportOrchestrator {
 		await this.dataTableImporter.apply(context, dataTablePlan);
 
 		// Which workflows the publish phase must leave inactive. Known only now, because it depends
-		// on which credentials actually ended up stubbed.
+		// on which credentials actually ended up stubbed or incomplete.
 		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
+		// Weakest reason first, so a later, stronger reason overwrites it.
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
-			new Set([
-				...credentialResult.stubbed,
-				...credentialResult.seeded.filter(
-					(id) =>
-						!credentialRequest.requirements?.find((requirement) => requirement.id === id)
-							?.packageDataIsComplete,
-				),
-			]),
+			new Set(credentialResult.incomplete),
+		)) {
+			blockedFromPublish.set(sourceWorkflowId, 'incomplete-credential');
+		}
+		for (const sourceWorkflowId of workflowsBlockedFromPublish(
+			credentialRequest.requirements,
+			new Set(credentialResult.stubbed),
 		)) {
 			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
 		}
-		// A workflow blocked for both reasons reports missing-node-type: it physically can't run.
 		for (const sourceWorkflowId of workflowsWithMissingNodeTypes(plan.missingNodeTypes)) {
 			blockedFromPublish.set(sourceWorkflowId, 'missing-node-type');
 		}
