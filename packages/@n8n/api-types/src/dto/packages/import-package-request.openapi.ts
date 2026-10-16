@@ -88,7 +88,8 @@ export const importPackageRequestFieldDocs = {
 			'publishes the imported definition when the source publishes it. It unpublishes the target ' +
 			'when the source has no published version. Both policies leave publication unchanged when ' +
 			'the source publishes a version absent from the package. `publish-all` publishes imported ' +
-			'Agents. `unpublish-all` unpublishes them. Skipped Agents remain unchanged. ' +
+			'Agents. `unpublish-all` keeps new Agents unpublished. It unpublishes only updated Agents ' +
+			'that were published. Skipped Agents remain unchanged. ' +
 			'This setting is independent of `workflowPublishingPolicy`. Publication failures do not ' +
 			'undo saved definitions. Only the revision saved by the import can be published or unpublished.',
 	},

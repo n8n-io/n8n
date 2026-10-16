@@ -4,7 +4,23 @@ import { ForbiddenError } from '@n8n/errors';
 
 import type { CredentialUpdateCandidate } from '../../entities/credential/credential.types';
 import type { WorkflowImportPlan } from '../../entities/workflow/workflow-import.types';
-import { assertArchiveTransitionsAllowed, assertCredentialUpdatesAllowed } from '../import-gates';
+import {
+	assertArchiveTransitionsAllowed,
+	assertCredentialUpdatesAllowed,
+	packageImportScopes,
+} from '../import-gates';
+
+it('does not require workflow:import for a project-only package', () => {
+	expect(
+		packageImportScopes({
+			packageFormatVersion: '1',
+			exportedAt: '2026-10-16T00:00:00.000Z',
+			sourceN8nVersion: '2.0.0',
+			sourceId: 'source',
+			projects: [{ id: 'project-1', name: 'Project', target: 'projects/project-1' }],
+		}),
+	).toEqual([]);
+});
 
 function workflowPlan(archiveTransition: 'archive' | 'unarchive' | null): WorkflowImportPlan {
 	const workflow = { id: 'workflow-1', name: 'Workflow' } as WorkflowEntity;
