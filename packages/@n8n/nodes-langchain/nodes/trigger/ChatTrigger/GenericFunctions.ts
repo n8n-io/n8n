@@ -103,10 +103,11 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 			// so a token from it must never authenticate a webhook-mode call — e.g. a stale
 			// token replayed after the node's mode was switched from hostedChat to webhook.
 			const mode = context.getNodeParameter('mode', 'hostedChat') as 'hostedChat' | 'webhook';
+			const resourceUrl =
+				mode === 'hostedChat' ? context.getWebhookResourceUrl('default') : undefined;
 			if (mode === 'hostedChat') {
 				const chatToken = headers['x-auth-token'];
 				if (typeof chatToken === 'string' && chatToken) {
-					const resourceUrl = context.getWebhookResourceUrl('default');
 					if (resourceUrl) {
 						const validation = await context.validateN8nOAuth2Token(chatToken, resourceUrl);
 						if (validation.valid) {
@@ -123,16 +124,29 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 				}
 			}
 
+			// Without a frame token the editor session still authenticates a builder. When that
+			// fails too, the 401 names the resource metadata, as it does for a rejected token: an
+			// absent token is validated for its challenge alone.
+			const challenge = async () => {
+				if (!resourceUrl) return undefined;
+				const validation = await context.validateN8nOAuth2Token('', resourceUrl);
+				return validation.valid ? undefined : validation.challenge;
+			};
+
 			const authCookie = getCookie(headers.cookie, 'n8n-auth');
 			if (!authCookie) {
-				throw new ChatTriggerAuthorizationError(401, 'User not authenticated!');
+				throw new ChatTriggerAuthorizationError(401, 'User not authenticated!', await challenge());
 			}
 
 			try {
 				// Kept inside the `try` so a rejection still becomes a 401.
 				return await context.validateCookieAuth(authCookie);
 			} catch {
-				throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
+				throw new ChatTriggerAuthorizationError(
+					401,
+					'Invalid authentication token',
+					await challenge(),
+				);
 			}
 		}
 	}

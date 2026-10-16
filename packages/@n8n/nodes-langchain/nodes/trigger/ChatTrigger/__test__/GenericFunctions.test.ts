@@ -221,6 +221,38 @@ describe('validateAuth', () => {
 				});
 			});
 
+			it('names the resource metadata on the 401 when the frame sends no token and no session cookie', async () => {
+				mockContext.getHeaderData.mockReturnValue({});
+				mockContext.validateN8nOAuth2Token.mockResolvedValue({
+					valid: false,
+					reason: 'invalid_token',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					message: 'User not authenticated!',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+				expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('', resourceUrl);
+			});
+
+			it('names the resource metadata on the 401 when the frame sends no token and the session cookie is rejected', async () => {
+				mockContext.getHeaderData.mockReturnValue({ cookie: 'n8n-auth=anything' });
+				mockContext.validateCookieAuth.mockRejectedValue(new Error('Unauthorized'));
+				mockContext.validateN8nOAuth2Token.mockResolvedValue({
+					valid: false,
+					reason: 'invalid_token',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					message: 'Invalid authentication token',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+			});
+
 			it('should throw 401 when the resource URL cannot be resolved', async () => {
 				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'as-token' });
 				mockContext.getWebhookResourceUrl.mockReturnValue(undefined);
