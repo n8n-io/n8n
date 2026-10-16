@@ -1,9 +1,0 @@
-{
-    "type": "object",
-    "properties": {
-        "url": {
-            "type": "string"
-        }
-    },
-    "version": 1
-}

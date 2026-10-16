@@ -415,7 +415,7 @@ describe('generatePinData', () => {
 			const outputData = [{ result: 'search result' }];
 
 			const searchTool = tool({
-				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				type: 'n8n-nodes-base.httpRequestTool',
 				version: 1,
 				config: {
 					name: 'Search Tool',

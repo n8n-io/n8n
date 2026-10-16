@@ -36,7 +36,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
-	WORKFLOW_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -439,7 +438,6 @@ export function findTriggerNodeToAutoSelect(
 		// ..."Other apps"
 		[SCHEDULE_TRIGGER_NODE_TYPE]: 7,
 		[MANUAL_TRIGGER_NODE_TYPE]: 6,
-		[WORKFLOW_TRIGGER_NODE_TYPE]: 5,
 		[ERROR_TRIGGER_NODE_TYPE]: 4,
 		// Ranked below the core-node fallback: selecting this trigger runs the whole
 		// evaluation dataset, so it should never win over a trigger the user can run

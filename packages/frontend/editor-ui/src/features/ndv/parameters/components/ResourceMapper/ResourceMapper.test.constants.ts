@@ -90,7 +90,7 @@ export const EXECUTE_WORKFLOW_NODE_TYPE_TEST: INodeTypeDescription = {
 	version: [1, 1.1, 1.2],
 	subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 	description: 'Execute another workflow',
-	defaults: { name: 'Execute Workflow', color: '#ff6d5a' },
+	defaults: { name: 'Execute Workflow' },
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],
 	properties: [

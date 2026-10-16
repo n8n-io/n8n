@@ -139,7 +139,6 @@ describe('ExecutionPreviewHost', () => {
 			readOnly: true,
 			aiAssistant: false,
 			aiBuilder: false,
-			askAi: false,
 			executionSuccessToasts: false,
 			executionErrorToasts: false,
 			expandGroups: 'errored',

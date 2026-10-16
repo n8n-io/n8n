@@ -50,6 +50,7 @@
     "@eslint/js": "^9.29.0",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/ai-node-sdk": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@oclif/core": "^4.5.2",
     "change-case": "catalog:",
     "eslint": "catalog:",

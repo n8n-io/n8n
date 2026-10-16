@@ -63,6 +63,8 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		// Most tests here assert the npm-based update check, which only runs when
+		// unverified packages are enabled - opt in instead of relying on the default.
 		communityPackagesConfig.unverifiedEnabled = true;
 		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
@@ -171,6 +173,19 @@ describe('Community packages (Public API)', () => {
 				['outdated', '--json'],
 				expect.objectContaining({ doNotHandleError: true, cwd: expect.any(String) }),
 			);
+		});
+
+		it('should not run npm outdated when unverified packages are disabled', async () => {
+			communityPackagesConfig.unverifiedEnabled = false;
+			const pkg = mockPackage();
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
+			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([pkg]);
+
+			const response = await testServer.publicApiAgentFor(owner).get('/community-packages');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toHaveLength(1);
+			expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
 		});
 	});
 

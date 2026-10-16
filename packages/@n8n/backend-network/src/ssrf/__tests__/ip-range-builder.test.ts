@@ -1,3 +1,5 @@
+import { SSRF_DEFAULT_BLOCKED_IP_RANGES } from '@n8n/config';
+
 import { buildIpRangeList } from '../ip-range-builder';
 
 describe('buildIpRangeList', () => {
@@ -74,5 +76,11 @@ describe('buildIpRangeList', () => {
 
 		expect(issues).toEqual([]);
 		expect(list.check('10.0.0.1', 'ipv4')).toBe(false);
+	});
+
+	it('should build every default range without issues', () => {
+		const { issues } = buildIpRangeList(SSRF_DEFAULT_BLOCKED_IP_RANGES);
+
+		expect(issues).toEqual([]);
 	});
 });

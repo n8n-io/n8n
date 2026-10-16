@@ -460,6 +460,7 @@ describe('WorkflowService', () => {
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 		let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
+		let workflowTagMappingRepositoryMock: MockProxy<WorkflowTagMappingRepository>;
 		let licenseStateMock: MockProxy<LicenseState>;
 		let redactionEnforcementServiceMock: MockProxy<RedactionEnforcementService>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
@@ -475,6 +476,7 @@ describe('WorkflowService', () => {
 		beforeEach(() => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
 			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
+			workflowTagMappingRepositoryMock = mock<WorkflowTagMappingRepository>();
 			workflowRepositoryMock = mock();
 			licenseStateMock = mock<LicenseState>();
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
@@ -496,7 +498,7 @@ describe('WorkflowService', () => {
 				mock(), // logger
 				mock(), // sharedWorkflowRepository
 				workflowRepositoryMock as never, // workflowRepository
-				mock(), // workflowTagMappingRepository
+				workflowTagMappingRepositoryMock, // workflowTagMappingRepository
 				ownershipServiceMock, // ownershipService
 				mock(), // tagService
 				workflowHistoryServiceMock, // workflowHistoryService
@@ -603,11 +605,16 @@ describe('WorkflowService', () => {
 				user,
 				Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
 				original.id,
-				{ source: 'n8n-ai' },
+				{ source: 'n8n-ai', tagIds: ['tag-1'] },
 			);
 
 			const saved = await workflowService.savePreparedUpdate(prepared, ctx);
 
+			expect(workflowTagMappingRepositoryMock.overwriteTaggings).toHaveBeenCalledWith(
+				original.id,
+				['tag-1'],
+				ctx,
+			);
 			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
 				user,
 				prepared.changes,

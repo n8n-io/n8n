@@ -4,7 +4,6 @@ import {
 	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
-	AI_TRANSFORM_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -25,7 +24,6 @@ import type { SimplifiedNodeType } from '@/Interface';
 const getNodeType = vi.fn();
 const isNodeTypeModuleDisabled = vi.fn();
 
-const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
 	displayName: 'Message an Agent',
@@ -63,7 +61,7 @@ const otherNodes = (
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
-		allLatestNodeTypes: [aiTransformNode, ...otherNodes, messageAnAgentNode],
+		allLatestNodeTypes: [...otherNodes, messageAnAgentNode],
 		isNodeTypeModuleDisabled,
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
@@ -87,9 +85,6 @@ describe('viewsData', () => {
 			(params) => `template-repository-url.n8n.io?${params.toString()}`,
 		);
 		getNodeType.mockImplementation((nodeName: string) => {
-			if (nodeName === AI_TRANSFORM_NODE_TYPE) {
-				return aiTransformNode;
-			}
 			if (nodeName === MESSAGE_AN_AGENT_NODE_TYPE) {
 				return messageAnAgentNode;
 			}
@@ -106,12 +101,6 @@ describe('viewsData', () => {
 	describe('AIView', () => {
 		test('should return the AI view', () => {
 			expect(AIView([])).toMatchSnapshot();
-		});
-
-		test('should not include the deprecated AI Transform node', () => {
-			const result = AIView([]);
-
-			expect(result.items.some((item) => item.key === AI_TRANSFORM_NODE_TYPE)).toBe(false);
 		});
 
 		test('should list Message an Agent first among the agent nodes', () => {

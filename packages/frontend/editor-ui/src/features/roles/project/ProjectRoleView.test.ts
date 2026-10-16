@@ -729,7 +729,6 @@ describe('ProjectRoleView', () => {
 					roleBasedAccess: true,
 					forProjects: true,
 					multipleConnections: true,
-					systemRolesEnabled: false,
 				},
 			};
 			const { getByText } = renderComponent();
@@ -744,7 +743,6 @@ describe('ProjectRoleView', () => {
 					roleBasedAccess: true,
 					forProjects: true,
 					multipleConnections: true,
-					systemRolesEnabled: false,
 				},
 			};
 			const { getByTestId } = renderComponent();

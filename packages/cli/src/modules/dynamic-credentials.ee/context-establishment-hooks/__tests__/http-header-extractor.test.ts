@@ -34,7 +34,7 @@ describe('HttpHeaderExtractor', () => {
 
 		it.each([
 			'n8n-nodes-base.httpRequest',
-			'n8n-nodes-base.cron',
+			'n8n-nodes-base.manualTrigger',
 			'',
 			'WEBHOOK',
 			'n8n-nodes-base.Webhook',

@@ -98,11 +98,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "\n// mm/dd/yyyy\nif($node[\"Date & Time\"].json[\"data\"] !== \"03/03/2021\")\n{\n    throw new Error(\"Error convert date to mm/dd/yyyy\");\n}\n// yyyy/mm/dd\nif($node[\"Date & Time1\"].json[\"data\"] !== \"2021/03/03\")\n{\n    throw new Error(\"Error convert date to yyyy/mm/dd\");\n}\n// mmmm dd yyyy\nif($node[\"Date & Time2\"].json[\"data\"] !== \"March 03 2021\")\n{\n    throw new Error(\"Error convert date to mmmm dd yyyy\");\n}\n// mm-dd-yyyy\nif($node[\"Date & Time3\"].json[\"data\"] !== \"03-03-2021\")\n{\n    throw new Error(\"Error convert date to mm-dd-yyyy\");\n}\n// yyyy-mm-dd\nif($node[\"Date & Time4\"].json[\"data\"] !== \"2021-03-03\")\n{   \n    throw new Error(\"Error convert date to yyyy-mm-dd\");\n}\n// unix timestamp\nif($node[\"Date & Time5\"].json[\"data\"] !== \"1614764492\")\n{   \n    throw new Error(\"Error convert date to unix timestamp\");\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "\n// mm/dd/yyyy\nif($node[\"Date & Time\"].json[\"data\"] !== \"03/03/2021\")\n{\n    throw new Error(\"Error convert date to mm/dd/yyyy\");\n}\n// yyyy/mm/dd\nif($node[\"Date & Time1\"].json[\"data\"] !== \"2021/03/03\")\n{\n    throw new Error(\"Error convert date to yyyy/mm/dd\");\n}\n// mmmm dd yyyy\nif($node[\"Date & Time2\"].json[\"data\"] !== \"March 03 2021\")\n{\n    throw new Error(\"Error convert date to mmmm dd yyyy\");\n}\n// mm-dd-yyyy\nif($node[\"Date & Time3\"].json[\"data\"] !== \"03-03-2021\")\n{\n    throw new Error(\"Error convert date to mm-dd-yyyy\");\n}\n// yyyy-mm-dd\nif($node[\"Date & Time4\"].json[\"data\"] !== \"2021-03-03\")\n{   \n    throw new Error(\"Error convert date to yyyy-mm-dd\");\n}\n// unix timestamp\nif($node[\"Date & Time5\"].json[\"data\"] !== \"1614764492\")\n{   \n    throw new Error(\"Error convert date to unix timestamp\");\n}\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [1350, 300],
 			"id": "fe192bd8-40ce-4b2d-b467-837c1c208ee3"
 		}

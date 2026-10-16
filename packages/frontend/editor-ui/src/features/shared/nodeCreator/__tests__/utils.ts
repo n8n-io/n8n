@@ -31,9 +31,7 @@ export const mockSimplifiedNodeType = (
 		},
 		alias: ['alias1', 'alias2'],
 	},
-	defaults: {
-		color: '#ffffff',
-	},
+	defaults: {},
 	outputs: [],
 	...overrides,
 });
@@ -59,7 +57,7 @@ const mockSubcategoryItemProps = (
 	icon: 'smile',
 	title: 'Sample title',
 	subcategory: 'sampleSubcategory',
-	defaults: { color: '#ffffff' },
+	defaults: {},
 	forceIncludeNodes: ['node1', 'node2'],
 	...overrides,
 });

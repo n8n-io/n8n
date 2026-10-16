@@ -48,11 +48,9 @@ export class TaskRunnersConfig {
 	 * How long (in seconds) a task is allowed to take for completion, else the
 	 * task will be aborted. (In internal mode, the runner will also be
 	 * restarted.) Must be greater than 0.
-	 *
-	 * Kept high for backwards compatibility - n8n v3 will reduce this to `60`
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 5 * Time.minutes.toSeconds;
+	taskTimeout: number = 1 * Time.minutes.toSeconds;
 
 	/**
 	 * How long (in seconds) a task request can wait for a runner to become

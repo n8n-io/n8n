@@ -676,6 +676,17 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.container.getByTestId('node-title-container');
 	}
 
+	/** The text input the node title turns into once you click it. */
+	getNodeNameInput(): Locator {
+		return this.getNodeNameContainer().getByTestId('inline-edit-input');
+	}
+
+	/** Clicks the node title and waits for its rename input to take focus. */
+	async focusNodeNameInput(): Promise<void> {
+		await this.getNodeNameContainer().getByTestId('inline-edit-preview').click();
+		await expect(this.getNodeNameInput()).toBeFocused();
+	}
+
 	async clickFloatingNodeByPosition(
 		position: 'inputMain' | 'outputMain' | 'inputSub' | 'outputSub',
 	) {

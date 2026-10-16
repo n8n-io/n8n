@@ -1242,13 +1242,13 @@ Once configured, the trigger will activate whenever the specified event occurs.`
 			content: `**Nodes in Order**:
 
 1. **Slack Trigger** → Listens for new messages
-2. **Function Node** → Formats the data
+2. **Code Node** → Formats the data
 3. **Google Sheets** → Appends the row
 4. **Error Trigger** → Catches any errors
 5. **Slack Node** → Sends error notifications (if needed)
 
 **Connections**:
-- Main flow: Slack Trigger → Function → Google Sheets
+- Main flow: Slack Trigger → Code → Google Sheets
 - Error flow: Error Trigger → Slack notification
 
 This structure ensures data flows smoothly and errors are handled gracefully.`,

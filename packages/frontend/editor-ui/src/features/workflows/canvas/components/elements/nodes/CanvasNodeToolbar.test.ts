@@ -405,7 +405,6 @@ describe('CanvasNodeToolbar', () => {
 						[EditorEnabledFeaturesKey]: ref({
 							aiAssistant: false,
 							aiBuilder: false,
-							askAi: false,
 						}),
 					},
 				},
