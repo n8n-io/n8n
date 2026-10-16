@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migration = 'AddSelfHealingContinuation1791547698981';
+const migration = 'AddSelfHealingContinuation1792155511567';
 
 describe('Self-healing continuation migration', () => {
 	const investigatorId = randomUUID();

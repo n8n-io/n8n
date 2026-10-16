@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddSelfHealingContinuation1791547698981 implements ReversibleMigration {
+export class AddSelfHealingContinuation1792155511567 implements ReversibleMigration {
 	async up({ schemaBuilder: s, escape, isPostgres, runQuery }: MigrationContext) {
 		if (isPostgres) {
 			await runQuery(
