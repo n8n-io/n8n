@@ -103,9 +103,10 @@ export class AppVersionService {
 		this.checkLabel(label);
 		return await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
 			await this.requireApp(projectId, appId, ctx);
-			await this.requireVersion(appId, versionId, ctx);
-			await this.versions.setLabel(appId, versionId, label, ctx);
-			return await this.requireVersion(appId, versionId, ctx);
+			this.checkVersionId(versionId);
+			const version = await this.versions.setLabel(appId, versionId, label, ctx);
+			if (!version) throw new NotFoundError('App version not found.');
+			return version;
 		});
 	}
 
@@ -121,11 +122,15 @@ export class AppVersionService {
 		versionId: string,
 		ctx: OperationContext = {},
 	): Promise<AppVersion> {
-		if (!appVersionSchema.shape.id.safeParse(versionId).success)
-			throw new NotFoundError('App version not found.');
+		this.checkVersionId(versionId);
 		const version = await this.versions.findVersion(appId, versionId, ctx);
 		if (!version) throw new NotFoundError('App version not found.');
 		return version;
+	}
+
+	private checkVersionId(versionId: string) {
+		if (!appVersionSchema.shape.id.safeParse(versionId).success)
+			throw new NotFoundError('App version not found.');
 	}
 
 	private checkDraft(actual: string | null, expected: string | null) {

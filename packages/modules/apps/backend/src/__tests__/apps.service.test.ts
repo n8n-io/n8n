@@ -1,6 +1,5 @@
 import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
-import { Logger } from '@n8n/backend-common';
 import { DbLockService, type User } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -8,22 +7,14 @@ import { mock } from 'vitest-mock-extended';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppsService } from '../apps.service';
-import { AppArtifactService } from '../app-artifact.service';
 
 function createService() {
 	const appRepository = mock<AppRepository>();
 	const projectScopeService = mock<ProjectScopeService>();
 	const locks = mock<DbLockService>();
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
-	const artifacts = mock<AppArtifactService>();
-	const service = new AppsService(
-		appRepository,
-		projectScopeService,
-		locks,
-		artifacts,
-		mock<Logger>(),
-	);
-	return { service, appRepository, projectScopeService, artifacts };
+	const service = new AppsService(appRepository, projectScopeService, locks);
+	return { service, appRepository, projectScopeService };
 }
 
 describe('AppsService', () => {

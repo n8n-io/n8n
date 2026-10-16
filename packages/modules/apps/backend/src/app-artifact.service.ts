@@ -6,7 +6,7 @@ import { BadRequestError, ConflictError, NotFoundError, UnexpectedError } from '
 import type { AppArtifact, AppArtifactRef } from './app-artifact.entity';
 import { AppArtifactRepository } from './app-artifact.repository';
 import { AppsConfig } from './apps.config';
-import { AppBlobStore, type AppBlob } from './storage/app-blob-store';
+import { AppBlobStore } from './storage/app-blob-store';
 
 const UPLOAD_LIFETIME_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -40,7 +40,7 @@ export class AppArtifactService {
 				throw new ConflictError('App artifact upload expired. Save the artifact again.');
 			return artifact;
 		} catch (error) {
-			await this.deleteUnused(artifact, true, artifact);
+			await this.deleteUnused(artifact, true);
 			throw error;
 		}
 	}
@@ -69,8 +69,8 @@ export class AppArtifactService {
 	}
 
 	/** Call only after the write has settled and the caller has abandoned attachment. */
-	async discard(ref: AppArtifactRef): Promise<void> {
-		await this.deleteUnused(ref, true);
+	async discard(artifact: AppArtifact): Promise<void> {
+		await this.deleteUnused(artifact, true);
 	}
 
 	async cleanup(signal?: AbortSignal): Promise<void> {
@@ -88,16 +88,12 @@ export class AppArtifactService {
 		}
 	}
 
-	private async deleteUnused(
-		ref: AppArtifactRef,
-		writeSettled = false,
-		uploadedBlob?: AppBlob,
-	): Promise<void> {
+	private async deleteUnused(ref: AppArtifact, writeSettled = false): Promise<void> {
 		try {
 			const artifact = await this.locks.withLockContext(DbLock.APPS_STORAGE, async (ctx) => {
 				const row = await this.repository.findArtifact(ref.id, ctx);
 				// SQLite can reuse the ID after cleanup removes the original record.
-				if (!row || row.storageKey !== ref.storageKey) return uploadedBlob ?? null;
+				if (!row || row.storageKey !== ref.storageKey) return writeSettled ? ref : null;
 				if (await this.repository.isReferenced(ref.id, ctx)) return null;
 				if (
 					!writeSettled &&

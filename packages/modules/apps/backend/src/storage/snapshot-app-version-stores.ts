@@ -44,7 +44,6 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 				);
 				if (
 					!(await this.apps.advanceDraft(
-						version.projectId,
 						version.appId,
 						version.expectedDraftVersionId,
 						version.id,
@@ -74,8 +73,8 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 		return (await this.readSource(versionId)).get(filePath) ?? null;
 	}
 
-	async removeVersions(appId: string, versionIds: string[], ctx: OperationContext): Promise<void> {
-		await this.versions.removeVersions(appId, versionIds, ctx);
+	async removeVersions(versionIds: string[], ctx: OperationContext): Promise<void> {
+		await this.versions.removeVersions(versionIds, ctx);
 	}
 }
 
@@ -97,7 +96,7 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 				const version = await this.versions.findVersionById(versionId, ctx);
 				if (!version) throw new NotFoundError('App version not found.');
 				await this.artifacts.completeUpload(artifact, ctx);
-				if (!(await this.versions.attachBundle(version.appId, versionId, artifact.id, ctx))) {
+				if (!(await this.versions.attachBundle(versionId, artifact.id, ctx))) {
 					throw new ConflictError(
 						'This app version cannot accept a bundle. Check its build status.',
 					);
@@ -116,7 +115,7 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 		return await this.archives.unpack(await this.artifacts.read(version.bundleArtifactId), true);
 	}
 
-	async removeBundles(appId: string, versionIds: string[], ctx: OperationContext): Promise<void> {
-		await this.versions.clearBundles(appId, versionIds, ctx);
+	async removeBundles(versionIds: string[], ctx: OperationContext): Promise<void> {
+		await this.versions.clearBundles(versionIds, ctx);
 	}
 }
