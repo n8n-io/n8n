@@ -1,3 +1,11 @@
+## [2.43.7](https://github.com/n8n-io/n8n/compare/n8n@2.43.6...n8n@2.43.7) (2026-10-16)
+
+
+### Features
+
+* **core:** Suspend in-flight production executions at worker shutdown ([#40944](https://github.com/n8n-io/n8n/issues/40944)) ([5863179](https://github.com/n8n-io/n8n/commit/5863179f7f44ba6602e2130a133d26b891c6f6b4))
+
+
 ## [2.43.6](https://github.com/n8n-io/n8n/compare/n8n@2.43.5...n8n@2.43.6) (2026-10-15)
 
 
