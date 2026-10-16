@@ -1,7 +1,7 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
-import { mockClear } from 'vitest-mock-extended';
-
-import { mockEntityManager } from '@test/mocking';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
+import { mock, mockClear } from 'vitest-mock-extended';
 
 import { WorkflowBuilderSession } from '../workflow-builder-session.entity';
 
@@ -25,7 +25,12 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 import { WorkflowBuilderSessionRepository } from '../workflow-builder-session.repository';
 
 describe('WorkflowBuilderSessionRepository', () => {
-	const entityManager = mockEntityManager(WorkflowBuilderSession);
+	const entityManager = mockInstance(EntityManager);
+	const dataSource = mockInstance(DataSource, {
+		manager: entityManager,
+		getMetadata: () => mock<EntityMetadata>({ target: WorkflowBuilderSession }),
+	});
+	Object.assign(entityManager, { connection: dataSource });
 	let repository: WorkflowBuilderSessionRepository;
 
 	const mockExecute = vi.fn().mockResolvedValue(undefined);
@@ -46,11 +51,7 @@ describe('WorkflowBuilderSessionRepository', () => {
 		mockQueryBuilder.values.mockClear().mockReturnThis();
 		mockQueryBuilder.orUpdate.mockClear().mockReturnThis();
 
-		// Create repository with mocked data source
-		const mockDataSource = {
-			manager: entityManager,
-		};
-		repository = new WorkflowBuilderSessionRepository(mockDataSource as never);
+		repository = new WorkflowBuilderSessionRepository(dataSource);
 		vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as never);
 	});
 

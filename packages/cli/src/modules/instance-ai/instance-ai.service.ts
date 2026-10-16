@@ -57,6 +57,7 @@ import {
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
 	loadInstanceAiPromptSkills,
+	loadInstanceAiRuntimeSkillSource,
 	resolvePromptProfile,
 	describePromptProfile,
 	setTracePromptVersion,
@@ -2902,6 +2903,9 @@ export class InstanceAiService {
 				});
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
 					source: allRuntimeSkills,
+					// The sandbox stores every bundled skill, the same set the image and
+					// snapshot bake, so the prebaked skills bundle is reused.
+					bundleSource: loadInstanceAiRuntimeSkillSource(),
 					workspace: runtimeSkillWorkspace,
 					resolveVerifiedBundles: async () => (await getSandboxEntry())?.verifiedBundles,
 					logger: this.logger,

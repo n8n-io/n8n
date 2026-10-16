@@ -1,5 +1,9 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type {
+	EventService,
+	ExecutionRedactionOptions,
+	RedactableExecution,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { INode, IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
@@ -7,10 +11,7 @@ import { shouldRedactConsoleOutput } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
-import type {
-	ExecutionRedactionOptions,
-	RedactableExecution,
-} from '@/executions/execution-redaction';
+
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

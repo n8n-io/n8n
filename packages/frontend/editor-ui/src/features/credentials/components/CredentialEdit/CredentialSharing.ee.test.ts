@@ -43,6 +43,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string, string> }) => {
 	const translations: Record<string, string> = {
 		'projects.sharing.allUsers': 'All users and projects',
+		'projects.sharing.select.placeholder.project': 'Share with users or projects...',
 		'credentialEdit.credentialSharing.info.owner':
 			'Only users with credential sharing permission can change who this credential is shared with',
 		'credentialEdit.credentialSharing.info.sharee.team': 'Shared by team project',
@@ -187,9 +188,9 @@ describe('CredentialSharing.ee', () => {
 			});
 	});
 
-	it('should render ProjectSharing component when sharing is enabled', () => {
+	it('should render ProjectSharing component when sharing is enabled', async () => {
 		const credential = createCredential();
-		const { getByTestId } = renderComponent({
+		const { getByTestId, findByPlaceholderText } = renderComponent({
 			props: {
 				credentialId: credential.id,
 				credentialData: {},
@@ -200,6 +201,7 @@ describe('CredentialSharing.ee', () => {
 		});
 
 		expect(getByTestId('project-sharing-select')).toBeInTheDocument();
+		expect(await findByPlaceholderText('Share with users or projects...')).toBeInTheDocument();
 	});
 
 	describe('canShareGlobally computed property', () => {

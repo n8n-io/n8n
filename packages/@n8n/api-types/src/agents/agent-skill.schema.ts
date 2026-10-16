@@ -63,8 +63,10 @@ const agentSkillReferencesSchema = z
  * config as `{ type: 'skill', id }` refs (mirroring tasks), so it is
  * intentionally not part of the body.
  */
+export const AGENT_SKILL_NAME_MAX_LENGTH = 128;
+
 export const agentSkillShape = {
-	name: z.string().min(1).max(128),
+	name: z.string().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH),
 	description: z.string().min(1).max(512),
 	// Measured in characters like the name, description and reference limits,
 	// so the editor can show the user the same count the server enforces.

@@ -2,6 +2,7 @@ import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
 	AuthenticationPipeline,
+	ResourceAdmission,
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
@@ -12,8 +13,7 @@ import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { InboundAuthPipeline } from '../authentication-pipeline';
@@ -22,6 +22,7 @@ import { TrustedSourceIdentityService } from '../identity/trusted-source-identit
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
 import { PublicApiOAuthStrategy } from '../public-api-oauth.strategy';
 import { PublicApiProtectedResource } from '../public-api-protected-resource';
+import { InboundResourceAdmission } from '../resource-admission';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbGate } from '../trusted-source.gate';
 import { TrustedSourceDbStore } from '../trusted-source.store';
@@ -108,6 +109,10 @@ describe('InboundAuthCoreModule', () => {
 
 		it('binds the AuthenticationPipeline contract to the inbound-auth pipeline', () => {
 			expect(Container.get(AuthenticationPipeline)).toBeInstanceOf(InboundAuthPipeline);
+		});
+
+		it('binds the ResourceAdmission contract to the pipeline-backed admission', () => {
+			expect(Container.get(ResourceAdmission)).toBeInstanceOf(InboundResourceAdmission);
 		});
 
 		describe('public API surface', () => {
