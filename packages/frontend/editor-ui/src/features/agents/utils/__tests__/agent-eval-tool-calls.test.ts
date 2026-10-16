@@ -92,3 +92,47 @@ describe('toDisplayToolCalls', () => {
 		});
 	});
 });
+
+it('preserves live call identity and running state', () => {
+	const calls = toDisplayToolCalls({
+		calls: [
+			{
+				tool: 'wait_for_reply',
+				toolCallId: 'call-1',
+				status: 'running',
+				input: { channel: 'support' },
+			},
+		],
+	});
+	expect(calls[0]).toMatchObject({ toolCallId: 'call-1', state: 'running' });
+});
+
+it('preserves recorded mock requests without treating them as completed output', () => {
+	const request = {
+		url: 'https://slack.com/api/chat.postMessage',
+		method: 'POST',
+		nodeType: 'n8n-nodes-base.slack',
+		requestBody: { text: 'Mock update' },
+		mockResponse: { ok: true },
+	};
+	const [call] = toDisplayToolCalls({
+		calls: [
+			{ tool: 'send_and_wait', status: 'running', mocked: true, interceptedRequests: [request] },
+		],
+	});
+	expect(call).toMatchObject({ mocked: true, interceptedRequests: [request], state: 'running' });
+	expect(call.output).toBeUndefined();
+});
+
+it('filters malformed intercepted requests without discarding the tool call', () => {
+	const [call] = toDisplayToolCalls({
+		calls: [{ tool: 'lookup', mocked: 'yes', interceptedRequests: [null, {}, { url: 42 }] }],
+	});
+	expect(call).toMatchObject({ mocked: false, interceptedRequests: [] });
+});
+
+it('renders a recorded error status without requiring a diagnostic string', () => {
+	const [call] = toDisplayToolCalls({ calls: [{ tool: 'lookup', status: 'error' }] });
+	expect(call.state).toBe(TOOL_CALL_STATE.ERROR);
+	expect(call.output).toBeUndefined();
+});

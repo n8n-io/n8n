@@ -2933,6 +2933,9 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiEvalAgentToolCallRecord {
+	/** Present on live progress records. Older completed records omit these fields. */
+	toolCallId?: string;
+	status?: 'running' | 'completed' | 'error';
 	/** Sanitized tool name — matches what the model called. */
 	tool: string;
 	/** Where the tool executes. 'other' covers built-ins (skills, todos, environment). */

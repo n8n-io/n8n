@@ -369,6 +369,7 @@ describe('AgentEvalRunnerService', () => {
 				user,
 				{ projectId: 'proj-1' },
 				'What is 2+2?',
+				{ onProgress: expect.any(Function) },
 			);
 			expect(runRepository.markAsRunning).toHaveBeenCalledWith('run-1', 'main-1');
 			expect(resultRepository.markAsCompleted).toHaveBeenCalledTimes(2);
@@ -380,6 +381,36 @@ describe('AgentEvalRunnerService', () => {
 					usage: { inputTokens: 6, outputTokens: 14 },
 				}),
 			);
+		});
+
+		it('persists in-flight tool calls for the current attempt before completion', async () => {
+			seedFor([{ id: 'row-1', question: 'Send a message' }], { success: 1 });
+			const runAt = new Date();
+			resultRepository.markAsRunning.mockResolvedValue(runAt);
+			evalAgentExecutionService.executeWithLlmMock.mockImplementation(
+				async (_agent, _user, _options, _input, hooks) => {
+					await hooks?.onProgress?.([
+						{
+							tool: 'Slack_Tool',
+							toolCallId: 'call-1',
+							status: 'running',
+							kind: 'node',
+							mocked: false,
+							interceptedRequests: [],
+						},
+					]);
+					expect(resultRepository.markAsCompleted).not.toHaveBeenCalled();
+					return successExec() as never;
+				},
+			);
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+			expect(resultRepository.updateRunningToolCalls).toHaveBeenCalledWith(
+				expect.any(String),
+				runAt,
+				{ calls: [expect.objectContaining({ status: 'running', toolCallId: 'call-1' })] },
+			);
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledOnce();
 		});
 
 		it('snapshots input/expectedOutput/criteria onto the seeded case', async () => {
@@ -1311,6 +1342,7 @@ describe('AgentEvalRunnerService', () => {
 				user,
 				{ projectId: 'proj-1' },
 				'What is 2+2?',
+				{ onProgress: expect.any(Function) },
 			);
 			expect(resultRepository.markAsRunning).toHaveBeenCalledWith('res-1');
 			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
@@ -1376,6 +1408,7 @@ describe('AgentEvalRunnerService', () => {
 				user,
 				{ projectId: 'proj-1' },
 				'What is 2+2?',
+				{ onProgress: expect.any(Function) },
 			);
 		});
 

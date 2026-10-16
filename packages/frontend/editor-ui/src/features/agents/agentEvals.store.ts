@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import { STORES } from '@n8n/stores';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { TIME } from '@/app/constants';
@@ -78,10 +79,13 @@ const RUN_POLL_INTERVAL_MS = 5 * TIME.SECOND;
 const RUN_POLL_TIMEOUT_MS = 10 * TIME.MINUTE;
 /** One failed poll is a blip worth retrying; a sustained run of them means we've lost the run. */
 const RUN_POLL_MAX_ERRORS = 3;
+/** Briefly confirm an execution whose request failed before any attempt was observed. */
+const RESULT_CONFIRMATION_TIMEOUT_MS = 30 * TIME.SECOND;
 
 /** A run in one of these states is still doing work. */
-const isPendingStatus = (status: AgentEvalRunStatus | undefined) =>
-	status === 'new' || status === 'running';
+const isPendingStatus = (
+	status: AgentEvalRunStatus | AgentEvalResultRecord['status'] | undefined,
+) => status === 'new' || status === 'running';
 
 const emptyRunReview = (): RunReviewState => ({
 	run: null,
@@ -111,6 +115,12 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 	// Keyed by runId: a run's cases can never render under a different run.
 	const reviewByRunId = ref<Record<string, RunReviewState>>({});
+
+	// Local execution boundaries fence responses that started before a rerun or
+	// settled after its final response. The old runAt also fences pre-claim reads.
+	let resultRevision = 0;
+	const revisionByResult = new Map<string, number>();
+	const rerunningResults = new Map<string, { previousRunAt: string | null }>();
 
 	// The newest run per dataset. Lets the review view find something to show
 	// without owning a run list of its own.
@@ -611,6 +621,25 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	): AgentEvalResultRecord[] =>
 		held.length > refreshed.length ? [...refreshed, ...held.slice(refreshed.length)] : refreshed;
 
+	const mergeReadResults = (
+		held: AgentEvalResultRecord[],
+		refreshed: AgentEvalResultRecord[],
+		readRevision: number,
+	): AgentEvalResultRecord[] =>
+		refreshed.map((fresh) => {
+			const current = held.find((row) => row.id === fresh.id);
+			if (!current) return fresh;
+			if (current.runAt && fresh.runAt && fresh.runAt < current.runAt) return current;
+			if ((revisionByResult.get(fresh.id) ?? 0) > readRevision) return current;
+			const pending = rerunningResults.get(fresh.id);
+			if (
+				pending &&
+				(!fresh.runAt || (pending.previousRunAt && fresh.runAt <= pending.previousRunAt))
+			)
+				return current;
+			return fresh;
+		});
+
 	/**
 	 * Reads back a window wider than one request by walking pages.
 	 *
@@ -661,6 +690,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	 */
 	const settleRun = async (projectId: string, agentId: string, runId: string) => {
 		const target = loadedWindow(runId);
+		const readRevision = resultRevision;
 		const [window, ratings] = await Promise.all([
 			readResultsWindow(projectId, agentId, runId, target),
 			agentEvalsApi.listLatestRatingsForRun(rootStore.restApiContext, projectId, agentId, runId),
@@ -669,7 +699,10 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const current = getReview(runId);
 		patchReview(runId, {
 			...(window.run ? { run: window.run } : {}),
-			results: spliceRefreshed(current.results, window.results),
+			results: spliceRefreshed(
+				current.results,
+				mergeReadResults(current.results, window.results, readRevision),
+			),
 			resultsCount: window.total,
 			ratingsByResultId: mergeRatings(current.ratingsByResultId, ratings),
 		});
@@ -691,6 +724,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		take: number = AGENT_EVAL_RESULTS_DEFAULT_TAKE,
 	) => {
 		const key = openKeyFor(projectId, agentId, runId);
+		const readRevision = resultRevision;
 		latestOpenKey = key;
 		patchReview(runId, { loading: true });
 
@@ -714,7 +748,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			// the row already marks it unsaved.
 			patchReview(runId, {
 				run,
-				results: results.data,
+				results: mergeReadResults(current.results, results.data, readRevision),
 				resultsCount: results.count,
 				// Newest per case wins — see `mergeRatings`. Neither side can be trusted
 				// to be current: a save that landed during this read is missing from it,
@@ -948,6 +982,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	 * collapse it back to the first page.
 	 */
 	const refreshResults = async (projectId: string, agentId: string, runId: string) => {
+		const readRevision = resultRevision;
 		const detail = await agentEvalsApi.getRunDetail(
 			rootStore.restApiContext,
 			projectId,
@@ -958,7 +993,10 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const { results, ...run } = detail;
 		patchReview(runId, {
 			run,
-			results: spliceRefreshed(getReview(runId).results, results.data),
+			results: spliceRefreshed(
+				getReview(runId).results,
+				mergeReadResults(getReview(runId).results, results.data, readRevision),
+			),
 			resultsCount: results.count,
 		});
 	};
@@ -1114,6 +1152,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		runId: string,
 		resultId: string,
 	): Promise<boolean> => {
+		const readRevision = resultRevision;
 		const index = getReview(runId).results.findIndex((r) => r.id === resultId);
 		if (index < 0) return false;
 		const detail = await agentEvalsApi.getRunDetail(
@@ -1125,9 +1164,116 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		);
 		const fresh = detail.results.data[0];
 		if (fresh?.id !== resultId) return false;
+		const [merged] = mergeReadResults(getReview(runId).results, [fresh], readRevision);
+		if (merged !== fresh) return false;
 		replaceCachedResult(runId, resultId, fresh);
 		return true;
 	};
+
+	const startResultProgress = (
+		projectId: string,
+		agentId: string,
+		runId: string,
+		result: AgentEvalResultRecord,
+		recovering = false,
+	) => {
+		const pending = { previousRunAt: result.runAt };
+		rerunningResults.set(result.id, pending);
+		const ownsProgress = () => rerunningResults.get(result.id) === pending;
+		revisionByResult.set(result.id, ++resultRevision);
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		let errors = 0;
+		const deadline = Date.now() + RUN_POLL_TIMEOUT_MS;
+		const confirmationDeadline = Date.now() + RESULT_CONFIRMATION_TIMEOUT_MS;
+		const schedule = () => {
+			if (!ownsProgress()) return;
+			timer = setTimeout(async () => {
+				if (!ownsProgress()) return;
+				const current = findCachedResult(result.id)?.result;
+				const confirmationExpired =
+					recovering && current?.runAt === result.runAt && Date.now() >= confirmationDeadline;
+				if (confirmationExpired || Date.now() > deadline) {
+					stop(true);
+					return;
+				}
+				try {
+					// Confirmation is brief and must still read in a background tab.
+					if (!document.hidden || (recovering && current?.runAt === result.runAt)) {
+						await refreshCachedResult(projectId, agentId, runId, result.id);
+					}
+					errors = 0;
+				} catch {
+					if (++errors >= RUN_POLL_MAX_ERRORS) {
+						stop(true);
+						return;
+					}
+				}
+				if (recovering && !isPendingStatus(findCachedResult(result.id)?.result.status)) {
+					stop();
+					return;
+				}
+				schedule();
+			}, RUN_POLL_INTERVAL_MS);
+		};
+		const stop = (exhausted = false) => {
+			clearTimeout(timer);
+			if (!ownsProgress()) return;
+			const current = findCachedResult(result.id)?.result;
+			if (
+				recovering &&
+				exhausted &&
+				current?.runAt === result.runAt &&
+				current?.status === 'running'
+			) {
+				// Only an unconfirmed optimistic row can fall back after the retry budget.
+				replaceCachedResult(runId, result.id, result);
+			}
+			rerunningResults.delete(result.id);
+			revisionByResult.set(result.id, ++resultRevision);
+		};
+		schedule();
+		return stop;
+	};
+
+	const recoverResult = async (
+		projectId: string,
+		agentId: string,
+		cached: { runId: string; result: AgentEvalResultRecord },
+		error: unknown,
+	) => {
+		// A lost POST response is not proof that execution never started. Keep the
+		// attempt boundary through confirmation reads, including stale batch reads.
+		const stopRecovery = startResultProgress(projectId, agentId, cached.runId, cached.result, true);
+		const recovery = rerunningResults.get(cached.result.id);
+		await refreshCachedResult(projectId, agentId, cached.runId, cached.result.id).catch(
+			() => false,
+		);
+		if (rerunningResults.get(cached.result.id) !== recovery) return;
+		const current = findCachedResult(cached.result.id)?.result;
+		if (!isPendingStatus(current?.status)) {
+			stopRecovery();
+		} else if (
+			current?.runAt === cached.result.runAt &&
+			error instanceof ResponseError &&
+			(error.httpStatusCode === 401 || error.httpStatusCode === 403)
+		) {
+			// Authorization failures reject execution before the runner can claim it.
+			stopRecovery();
+			replaceCachedResult(cached.runId, cached.result.id, cached.result);
+		}
+	};
+
+	const pendingResult = (result: AgentEvalResultRecord): AgentEvalResultRecord => ({
+		...result,
+		status: 'running',
+		output: null,
+		toolCalls: null,
+		metrics: null,
+		verdict: null,
+		completedAt: null,
+		errorCode: null,
+		errorDetails: null,
+	});
 
 	// Re-executes one already-settled case in place — no new run. Patches the
 	// result to `running` in the cache before the request even lands, the same
@@ -1135,7 +1281,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// of `getReview` (the checks panel, the suite examples list) picks this up
 	// through the ordinary status → avatar mapping, with nothing rerun-specific
 	// of its own to track. The REST call is a single synchronous round trip, so
-	// this optimistic patch is the only time the UI ever sees `running` at all.
+	// a separate result poll reads tool progress until that request settles.
 	const rerunResult = async (
 		projectId: string,
 		agentId: string,
@@ -1145,7 +1291,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const cached = findCachedResult(resultId);
 		// Already showing as running from an earlier click — don't fire a second
 		// request the backend would just reject.
-		if (cached?.result.status === 'running') return cached.result;
+		if (cached?.result.status === 'running' || rerunningResults.has(resultId))
+			return cached?.result;
 
 		if (cached) {
 			// An edited rule reads instantly too, rather than waiting on the round
@@ -1156,11 +1303,13 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 					? { ...(cached.result.input ?? {}), criteria: options.whatToCheck }
 					: cached.result.input;
 			replaceCachedResult(cached.runId, resultId, {
-				...cached.result,
-				status: 'running',
+				...pendingResult(cached.result),
 				input: optimisticInput,
 			});
 		}
+		const stopProgress = cached
+			? startResultProgress(projectId, agentId, cached.runId, cached.result)
+			: () => {};
 		try {
 			const updated = await agentEvalsApi.rerunResult(
 				rootStore.restApiContext,
@@ -1172,28 +1321,11 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			replaceCachedResult(updated.runId, resultId, updated);
 			return updated;
 		} catch (error) {
-			// A poll or refresh may already have replaced the optimistic row with
-			// fresher data — only undo it while it is still the patch we made.
-			if (cached && findCachedResult(resultId)?.result.status === 'running') {
-				if (options.whatToCheck === undefined) {
-					replaceCachedResult(cached.runId, resultId, cached.result);
-				} else {
-					// The backend saves an edited rule before it executes, so a failure
-					// doesn't say whether the old or new rule is stored — read it back
-					// rather than guess. If that read fails or lands on another row, fall
-					// back to the old one so the row doesn't stay on "running".
-					const refreshed = await refreshCachedResult(
-						projectId,
-						agentId,
-						cached.runId,
-						resultId,
-					).catch(() => false);
-					if (!refreshed && findCachedResult(resultId)?.result.status === 'running') {
-						replaceCachedResult(cached.runId, resultId, cached.result);
-					}
-				}
-			}
+			stopProgress();
+			if (cached) await recoverResult(projectId, agentId, cached, error);
 			throw error;
+		} finally {
+			stopProgress();
 		}
 	};
 
@@ -1209,14 +1341,17 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const targets: Array<{ runId: string; result: AgentEvalResultRecord }> = [];
 		for (const resultId of new Set(resultIds)) {
 			const cached = findCachedResult(resultId);
-			if (cached?.result.status === 'running') continue;
+			if (cached?.result.status === 'running' || rerunningResults.has(resultId)) continue;
 			if (cached) targets.push(cached);
 		}
 		if (targets.length === 0) return null;
 
 		for (const { runId, result } of targets) {
-			replaceCachedResult(runId, result.id, { ...result, status: 'running' });
+			replaceCachedResult(runId, result.id, pendingResult(result));
 		}
+		const stopProgress = targets.map(({ runId, result }) =>
+			startResultProgress(projectId, agentId, runId, result),
+		);
 		try {
 			const applied = await agentEvalsApi.applySuggestions(
 				rootStore.restApiContext,
@@ -1229,21 +1364,13 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			}
 			return applied;
 		} catch (error) {
-			// A failure after the config was saved may still have rerun some results, so
-			// read each back before assuming it is unchanged. Only touch a row that still
-			// shows the optimistic patch: a poll may already have replaced it.
+			stopProgress.forEach((stop) => stop());
 			await Promise.all(
-				targets.map(async ({ runId, result }) => {
-					if (findCachedResult(result.id)?.result.status !== 'running') return;
-					const refreshed = await refreshCachedResult(projectId, agentId, runId, result.id).catch(
-						() => false,
-					);
-					if (!refreshed && findCachedResult(result.id)?.result.status === 'running') {
-						replaceCachedResult(runId, result.id, result);
-					}
-				}),
+				targets.map(async (cached) => await recoverResult(projectId, agentId, cached, error)),
 			);
 			throw error;
+		} finally {
+			stopProgress.forEach((stop) => stop());
 		}
 	};
 

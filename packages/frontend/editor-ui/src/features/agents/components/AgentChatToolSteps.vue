@@ -34,6 +34,7 @@ import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
+	additionalData?: Record<string, Array<{ label: string; value: unknown }>>;
 	projectId?: string;
 	canFixWithAssistant?: boolean;
 	dismissedToolCallIds?: string[];
@@ -97,6 +98,7 @@ const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
 );
 
 interface ToolStepDisplay {
+	id: string;
 	label: string;
 	details: string;
 	hasRawData: boolean;
@@ -166,15 +168,22 @@ function isEmptyToolErrorPayload(value: unknown): boolean {
 }
 
 function toolStepView(tc: ToolCall): ToolStepDisplay {
-	const isCompact = tc.state === TOOL_CALL_STATE.DONE && isCompactToolName(tc.tool, tc.output);
+	const hasAdditionalData = Boolean(props.additionalData?.[tc.toolCallId]?.length);
+	const isCompact =
+		!hasAdditionalData &&
+		tc.state === TOOL_CALL_STATE.DONE &&
+		isCompactToolName(tc.tool, tc.output);
 	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 	const metadata = toolStepMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
 	return {
+		id: tc.toolCallId,
 		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),
 		details,
 		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
-		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),
+		expandable:
+			!isCompact &&
+			(details.length > 0 || hasToolData(tc) || hasChildProgress || hasAdditionalData),
 	};
 }
 
@@ -239,7 +248,7 @@ function hasActiveToolCall(): boolean {
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"
-						:key="`${tc.toolCallId}-${view.label}`"
+						:key="view.id"
 						:label="view.label"
 						:loading="isToolStepLoading(tc)"
 						:error="toolStepError(tc)"
@@ -302,6 +311,16 @@ function hasActiveToolCall(): boolean {
 								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
 							</div>
 						</div>
+						<div v-if="additionalData?.[tc.toolCallId]?.length" :class="$style.toolDataList">
+							<div
+								v-for="entry in additionalData[tc.toolCallId]"
+								:key="entry.label"
+								:class="$style.toolDataSection"
+							>
+								<span :class="$style.toolDataLabel">{{ entry.label }}</span>
+								<pre :class="$style.toolDataContent">{{ formatToolData(entry.value) }}</pre>
+							</div>
+						</div>
 					</N8nAiActivityStep>
 				</template>
 			</N8nAiActivityStepGroup>
@@ -323,7 +342,7 @@ function hasActiveToolCall(): boolean {
 							:fallback-name="toolStepLabel(tc)"
 						/>
 					</template>
-					<template v-for="view in [toolStepView(tc)]" :key="view.label">
+					<template v-for="view in [toolStepView(tc)]" :key="view.id">
 						<div
 							v-if="tc.childProgress"
 							:class="$style.childProgress"
@@ -371,6 +390,16 @@ function hasActiveToolCall(): boolean {
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
 								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+							</div>
+						</div>
+						<div v-if="additionalData?.[tc.toolCallId]?.length" :class="$style.toolDataList">
+							<div
+								v-for="entry in additionalData[tc.toolCallId]"
+								:key="entry.label"
+								:class="$style.toolDataSection"
+							>
+								<span :class="$style.toolDataLabel">{{ entry.label }}</span>
+								<pre :class="$style.toolDataContent">{{ formatToolData(entry.value) }}</pre>
 							</div>
 						</div>
 					</template>

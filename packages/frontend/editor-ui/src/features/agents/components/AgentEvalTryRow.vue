@@ -1,13 +1,7 @@
 <script setup lang="ts">
 /**
- * One eval case as a single row: a status avatar, the request text, and —
- * once it has run, or it needs correction — a chevron. In the complete view
- * the chevron expands the full input/output sample in place. In the small view
- * it is a right chevron that emits `open` instead, so the parent can open the
- * complete view on this case. A case with no output and nothing to correct has
- * nothing to open, so the chevron is hidden; an idle (never-run) case says so
- * in its place. A "needs work" or "couldn't finish" case still opens with no
- * output, to reach the correction form.
+ * Shows one check and opens its full details, including running checks.
+ * The complete view expands in place; the small view opens the full check view.
  */
 import { computed, nextTick, ref, watch } from 'vue';
 import {
@@ -113,7 +107,8 @@ const showFixSuggestion = computed(
 );
 // A "couldn't finish" case often has no output at all — it must still expand
 // to reach the correction form, so this isn't gated on output alone.
-const canExpand = computed(() => props.output !== null || needsCorrection.value);
+const isRunning = computed(() => props.status === 'waiting' || props.runningCheck);
+const canExpand = computed(() => isRunning.value || props.output !== null || needsCorrection.value);
 
 type StatusText = { labelKey: BaseTextKey; color?: TextColor; warning?: boolean };
 
@@ -245,6 +240,8 @@ watch(
 				type="button"
 				:class="$style.expandToggle"
 				:data-test-id="testId && `${testId}-toggle`"
+				:aria-expanded="expanded"
+				:aria-label="i18n.baseText('instanceAi.testAgentPreview.conversation')"
 			>
 				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="small" />
 			</button>
@@ -261,6 +258,7 @@ watch(
 				type="button"
 				:class="$style.expandToggle"
 				:data-test-id="testId && `${testId}-toggle`"
+				:aria-label="i18n.baseText('instanceAi.testAgentPreview.conversation')"
 			>
 				<N8nIcon icon="chevron-right" size="small" />
 			</button>
@@ -282,7 +280,7 @@ watch(
 							variant="subtle"
 							size="small"
 							icon-only
-							:disabled="disabled || runningCheck"
+							:disabled="disabled || isRunning"
 							:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
 							:data-test-id="testId && `${testId}-edit-rule`"
 							@click="onStartEditWhatToCheck"
@@ -295,7 +293,7 @@ watch(
 							variant="subtle"
 							size="small"
 							icon-only
-							:disabled="disabled"
+							:disabled="disabled || isRunning"
 							:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
 							:data-test-id="testId && `${testId}-delete-check`"
 							@click="onDeleteCheck"
@@ -374,7 +372,7 @@ watch(
 					:class="$style.fixSuggestion"
 					:suggestion="fixSuggestion"
 					:applying="applyingSuggestion"
-					:disabled="disabled"
+					:disabled="disabled || isRunning"
 					:test-id="testId && `${testId}-suggestion-card`"
 					@apply="emit('apply-suggestion')"
 					@dismiss="suggestionDismissed = true"
@@ -387,7 +385,7 @@ watch(
 						v-model="suggestion"
 						type="textarea"
 						:autosize="{ minRows: 2, maxRows: 6 }"
-						:disabled="disabled"
+						:disabled="disabled || isRunning"
 						:placeholder="i18n.baseText('instanceAi.testAgentPreview.inputCorrectionPlaceholder')"
 						:data-test-id="testId && `${testId}-suggestion`"
 						@keydown.meta.enter="onSaveCheck"
@@ -422,7 +420,7 @@ watch(
 					<N8nButton
 						size="small"
 						variant="subtle"
-						:disabled="disabled"
+						:disabled="disabled || isRunning"
 						:loading="runningCheck"
 						:data-test-id="testId && `${testId}-run-check`"
 						@click="onRunCheck"

@@ -41,7 +41,12 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 
 		<AgentAnswerCard
 			data-test-id="instance-ai-test-agent-preview-output"
-			:source="previewOutput"
+			:source="
+				previewOutput ||
+				(status === 'waiting'
+					? i18n.baseText('agents.builder.agentEvals.checks.waitingForResponse')
+					: '')
+			"
 			:status="status"
 		/>
 		<div v-if="previewOutput && !hideBanner && status !== 'waiting'" :class="$style.callout">
