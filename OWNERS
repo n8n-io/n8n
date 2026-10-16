@@ -197,10 +197,12 @@ packages/@n8n/stylelint-config/                         @n8n-io/qa-dx
 packages/frontend/editor-ui/src/features/ai/gateway/    @n8n-io/relay
 packages/frontend/editor-ui/src/app/composables/useAiGatewayTopUp.ts @n8n-io/relay
 packages/frontend/editor-ui/src/app/composables/useFreeAiCredits.ts @n8n-io/relay
+
 packages/frontend/editor-ui/src/features/settings/communityNodes/ @n8n-io/nodes
 packages/frontend/editor-ui/src/features/credentials/quickConnect/ @n8n-io/nodes required
 packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.api.ts @n8n-io/nodes
 packages/frontend/editor-ui/src/features/ndv/runData/schemaPreview.store.ts @n8n-io/nodes
+packages/frontend/editor-ui/src/features/agents/channels/ @n8n-io/nodes
 
 # AI
 
@@ -243,6 +245,7 @@ packages/nodes-base/nodes/RespondToWebhook/             @n8n-io/nodes required
 packages/nodes-base/nodes/Form/                         @n8n-io/nodes required
 packages/nodes-base/nodes/Wait/                         @n8n-io/nodes required
 packages/nodes-base/utils/sendAndWait/                  @n8n-io/nodes required
+packages/nodes-base/nodes/Git/                          @n8n-io/nodes required
 packages/@n8n/decorators/                               @n8n-io/catalysts
 packages/node-dev/                                      @n8n-io/nodes
 packages/@n8n/imap/                                     @n8n-io/nodes
@@ -255,6 +258,7 @@ packages/@n8n/api-types/src/dto/quick-connect/          @n8n-io/nodes required
 packages/@n8n/api-types/src/quick-connect.ts            @n8n-io/nodes required
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
 packages/cli/src/modules/mcp-registry/                  @n8n-io/nodes required
+packages/cli/src/modules/agents/integrations/           @n8n-io/nodes
 packages/@n8n/api-types/src/schemas/mcp-registry.schema.ts @n8n-io/nodes required
 packages/cli/templates/send-and-wait-no-action-required.handlebars @n8n-io/nodes required
 packages/@n8n/ai-node-sdk/                              @n8n-io/nodes required
@@ -270,6 +274,10 @@ packages/@n8n/api-types/src/dto/ai/ai-gateway-wallet-response.dto.ts @n8n-io/rel
 packages/cli/src/modules/instance-ai/instance-ai-gateway.service.ts @n8n-io/relay
 packages/cli/src/modules/mcp/mcp-ai-gateway.helper.ts   @n8n-io/relay
 packages/cli/src/modules/agents/json-config/node-tool-ai-gateway.service.ts @n8n-io/relay
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts @n8n-io/relay
+packages/frontend/editor-ui/src/app/composables/useAiGateway.ts @n8n-io/relay
+packages/frontend/editor-ui/src/features/credentials/gatewayCreditsPromotion/ @n8n-io/relay
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/SectionHeaderCreditsTag.vue @n8n-io/relay
 
 # Community engineering
 .agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
