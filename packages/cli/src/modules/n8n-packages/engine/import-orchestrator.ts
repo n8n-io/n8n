@@ -86,6 +86,7 @@ import { ContentImportPolicyGate, contentImportTransport } from './content-impor
 import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import {
+	assertCredentialUpdatesAllowed,
 	assertCredentialWritesAllowed,
 	assertDataTableWritesAllowed,
 	assertVariableWritesAllowed,
@@ -184,8 +185,15 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
 		);
+		assertCredentialWritesAllowed(
+			options.apiKeyScopes,
+			plans.map(({ input, credentialPlan }) => ({
+				missingMode: input.credentialRequest.missingMode,
+				resolution: credentialPlan,
+			})),
+		);
 		if (plans.length > 0) {
-			assertCredentialWritesAllowed(
+			assertCredentialUpdatesAllowed(
 				options.apiKeyScopes,
 				plans[0].input.credentialRequest.conflictPolicy,
 				plans.map((plan) => plan.credentialPlan),

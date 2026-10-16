@@ -4,7 +4,7 @@ import { ForbiddenError } from '@n8n/errors';
 
 import type { CredentialUpdateCandidate } from '../../entities/credential/credential.types';
 import type { WorkflowImportPlan } from '../../entities/workflow/workflow-import.types';
-import { assertArchiveTransitionsAllowed, assertCredentialWritesAllowed } from '../import-gates';
+import { assertArchiveTransitionsAllowed, assertCredentialUpdatesAllowed } from '../import-gates';
 
 function workflowPlan(archiveTransition: 'archive' | 'unarchive' | null): WorkflowImportPlan {
 	const workflow = { id: 'workflow-1', name: 'Workflow' } as WorkflowEntity;
@@ -52,7 +52,7 @@ describe('assertArchiveTransitionsAllowed', () => {
 	});
 });
 
-describe('assertCredentialWritesAllowed', () => {
+describe('assertCredentialUpdatesAllowed', () => {
 	const update: CredentialUpdateCandidate = {
 		sourceId: 'source-1',
 		targetId: 'credential-1',
@@ -65,19 +65,19 @@ describe('assertCredentialWritesAllowed', () => {
 
 	it('requires no scope when no plan updates a credential', () => {
 		expect(() =>
-			assertCredentialWritesAllowed(['workflow:import'], 'overwrite', [{ updates: [] }]),
+			assertCredentialUpdatesAllowed(['workflow:import'], 'overwrite', [{ updates: [] }]),
 		).not.toThrow();
 	});
 
 	it('requires credential:update when a plan updates a credential under overwrite', () => {
 		expect(() =>
-			assertCredentialWritesAllowed(['workflow:import'], 'overwrite', [
+			assertCredentialUpdatesAllowed(['workflow:import'], 'overwrite', [
 				{ updates: [] },
 				{ updates: [update] },
 			]),
 		).toThrow(ForbiddenError);
 		expect(() =>
-			assertCredentialWritesAllowed(['workflow:import', 'credential:update'], 'overwrite', [
+			assertCredentialUpdatesAllowed(['workflow:import', 'credential:update'], 'overwrite', [
 				{ updates: [update] },
 			]),
 		).not.toThrow();
@@ -85,13 +85,13 @@ describe('assertCredentialWritesAllowed', () => {
 
 	it('skips the check without API key scopes', () => {
 		expect(() =>
-			assertCredentialWritesAllowed(undefined, 'overwrite', [{ updates: [update] }]),
+			assertCredentialUpdatesAllowed(undefined, 'overwrite', [{ updates: [update] }]),
 		).not.toThrow();
 	});
 
 	it.each(['fail', 'keep-existing'] as const)('requires no scope under %s', (policy) => {
 		expect(() =>
-			assertCredentialWritesAllowed(['workflow:import'], policy, [{ updates: [update] }]),
+			assertCredentialUpdatesAllowed(['workflow:import'], policy, [{ updates: [update] }]),
 		).not.toThrow();
 	});
 });

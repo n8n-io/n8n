@@ -3,11 +3,18 @@ import type { LicenseState } from '@n8n/backend-common';
 import { ForbiddenError } from '@n8n/errors';
 
 import { plannedCredentialUpdates } from '../entities/credential/credential-conflict-policy';
-import type { CredentialImportPlan } from '../entities/credential/credential.types';
+import {
+	credentialMissingModeUsesPackageData,
+	credentialsToStub,
+} from '../entities/credential/credential-missing-mode';
+import type {
+	CredentialImportPlan,
+	CredentialResolution,
+} from '../entities/credential/credential.types';
 import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
-import type { CredentialConflictPolicy } from '../n8n-packages.types';
+import type { CredentialConflictPolicy, CredentialMissingMode } from '../n8n-packages.types';
 
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
@@ -59,11 +66,23 @@ export function assertDataTableWritesAllowed(
 	}
 }
 
+export function assertCredentialWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	credentialPlans: Array<{ missingMode: CredentialMissingMode; resolution: CredentialResolution }>,
+): void {
+	const createsCredential = credentialPlans.some(
+		({ missingMode, resolution }) =>
+			credentialMissingModeUsesPackageData(missingMode) &&
+			credentialsToStub(missingMode, resolution).length > 0,
+	);
+	if (createsCredential) assertPackageImportApiKeyScopes(apiKeyScopes, ['credential:create']);
+}
+
 /**
  * Plan-derived: requires the scope only when the import writes a matched credential. `fail`
  * never writes, so it needs no scope.
  */
-export function assertCredentialWritesAllowed(
+export function assertCredentialUpdatesAllowed(
 	apiKeyScopes: string[] | undefined,
 	policy: CredentialConflictPolicy,
 	credentialPlans: Array<Pick<CredentialImportPlan, 'updates'>>,

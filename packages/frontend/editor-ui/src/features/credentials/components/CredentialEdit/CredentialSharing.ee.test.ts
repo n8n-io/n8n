@@ -1058,8 +1058,8 @@ describe('CredentialSharing.ee', () => {
 			expect(queryByTestId('project-sharing-unshared-item')).not.toBeInTheDocument();
 		});
 
-		it('does not show used-in projects when the viewer cannot share', () => {
-			getDependenciesMock.mockReturnValue({
+		describe('when the viewer cannot share', () => {
+			const usedInMarketing = {
 				dependencies: [
 					{
 						id: 'wf-1',
@@ -1069,24 +1069,86 @@ describe('CredentialSharing.ee', () => {
 					},
 				],
 				inaccessibleCount: 0,
+			};
+
+			it('keeps the used-in row and disables the Share button when sharing is disabled in personal spaces', async () => {
+				getDependenciesMock.mockReturnValue(usedInMarketing);
+
+				const credential = createCredential({
+					homeProject: ownerPersonalProject,
+					sharedWithProjects: [],
+				});
+				const { getByTestId, findAllByText } = renderComponent({
+					props: {
+						credentialId: credential.id,
+						credentialData: {},
+						credentialPermissions: { share: false },
+						credential,
+						modalBus: createEventBus(),
+					},
+				});
+
+				expect(fetchDependenciesMock).toHaveBeenCalledWith([credential.id], 'credential');
+
+				const row = getByTestId('project-sharing-unshared-item');
+				expect(row).toHaveTextContent('Marketing');
+				expect(row).toHaveTextContent('Used in "Email summary"');
+
+				const share = getByTestId('credential-used-in-project-share');
+				expect(share).toBeDisabled();
+
+				await userEvent.hover(share.parentElement as HTMLElement);
+				expect(
+					await findAllByText("You don't have permission to share personal credentials"),
+				).not.toHaveLength(0);
 			});
 
-			const credential = createCredential({
-				homeProject: ownerPersonalProject,
-				sharedWithProjects: [],
-			});
-			const { queryByTestId } = renderComponent({
-				props: {
-					credentialId: credential.id,
-					credentialData: {},
-					credentialPermissions: { share: false },
-					credential,
-					modalBus: createEventBus(),
-				},
+			it('does not share the project when the disabled Share button is clicked', async () => {
+				getDependenciesMock.mockReturnValue(usedInMarketing);
+
+				const credential = createCredential({
+					homeProject: ownerPersonalProject,
+					sharedWithProjects: [],
+				});
+				const { getByTestId, emitted } = renderComponent({
+					props: {
+						credentialId: credential.id,
+						credentialData: {},
+						credentialPermissions: { share: false },
+						credential,
+						modalBus: createEventBus(),
+					},
+				});
+
+				await userEvent.click(getByTestId('credential-used-in-project-share'));
+
+				expect(emitted()['update:modelValue']).toBeUndefined();
+				expect(getByTestId('project-sharing-unshared-item')).toBeInTheDocument();
 			});
 
-			expect(queryByTestId('project-sharing-unshared-item')).not.toBeInTheDocument();
-			expect(fetchDependenciesMock).not.toHaveBeenCalled();
+			it('shows a disabled Share button without the personal-space tooltip when the credential lives in a team project', async () => {
+				getDependenciesMock.mockReturnValue(usedInMarketing);
+
+				const credential = createCredential({ sharedWithProjects: [] });
+				const { getByTestId, queryByText } = renderComponent({
+					props: {
+						credentialId: credential.id,
+						credentialData: {},
+						credentialPermissions: { share: false },
+						credential,
+						modalBus: createEventBus(),
+					},
+				});
+
+				expect(getByTestId('project-sharing-unshared-item')).toBeInTheDocument();
+				const share = getByTestId('credential-used-in-project-share');
+				expect(share).toBeDisabled();
+
+				await userEvent.hover(share.parentElement as HTMLElement);
+				expect(
+					queryByText("You don't have permission to share personal credentials"),
+				).not.toBeInTheDocument();
+			});
 		});
 
 		it('does not fetch or show used-in projects when the flag is disabled', () => {
