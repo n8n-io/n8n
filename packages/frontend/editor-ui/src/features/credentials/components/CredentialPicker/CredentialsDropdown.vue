@@ -123,6 +123,7 @@ const onCreateNewCredential = async () => {
 			:loading="props.loading"
 			:disabled="props.disabled"
 			:teleported="props.teleported ?? false"
+			fit-input-width
 			:class="{ [$style.selectWithBalance]: isManagedSelected && managedOption?.pill }"
 			:popper-class="$style.selectPopper"
 			@update:model-value="onCredentialSelected"
@@ -268,12 +269,14 @@ const onCreateNewCredential = async () => {
 }
 
 .selectPopper {
-	// Give the menu a comfortable floor width so long credential/owner text has
-	// room; el-select pins the popper min-width inline, hence the important.
+	// Trigger width (fit-input-width) with a floor for narrow triggers; lift the
+	// global popper max-width so the menu is never narrower than the trigger.
 	min-width: calc(var(--spacing--5xl) + var(--spacing--2xl)) !important;
+	max-width: none !important;
 
+	// Inset rows with list padding: an item margin overflows and scrolls.
 	:global(.el-select-dropdown__list) {
-		padding: var(--spacing--4xs) 0;
+		padding: var(--spacing--4xs);
 	}
 
 	// Keep the footer divider full-width while the create row keeps the same
@@ -287,7 +290,6 @@ const onCreateNewCredential = async () => {
 		display: flex;
 		align-items: center;
 		height: auto;
-		margin: 0 var(--spacing--4xs);
 		padding: var(--spacing--4xs) var(--spacing--2xs);
 		line-height: var(--line-height--md);
 		border-radius: var(--radius);
