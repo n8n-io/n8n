@@ -309,8 +309,8 @@ watch(
 				{{ cardTitle }}
 			</N8nText>
 			<component
-				:is="currentPlatform.headerContent?.setupModal"
-				v-if="currentPlatform.headerContent?.setupModal && !catalogLoading"
+				:is="currentPlatform.headerContent?.setupCard"
+				v-if="currentPlatform.headerContent?.setupCard && !catalogLoading"
 				:runtime="currentRuntime"
 				:disabled="channelActionInFlight"
 			/>

@@ -762,6 +762,20 @@ describe('AgentChannelTeamsSetup', () => {
 			);
 		});
 
+		it('keeps Retry for the downloaded package only', async () => {
+			const { getByTestId, emitted, rerender } = await downloadAndConnect();
+			await rerender(props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }));
+			await waitFor(() => expect(getByTestId('teams-connect-retry')).toBeEnabled());
+			expect(getByTestId('teams-availability-step')).not.toHaveAttribute('inert');
+
+			await openAvailability(getByTestId);
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+			expect(getByTestId('teams-connect-retry')).toBeDisabled();
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(emitted().connect).toHaveLength(2));
+		});
+
 		it('asks for a new download before Done once the availability changed', async () => {
 			const { getByTestId, rerender } = await downloadAndConnect();
 			await rerender(props({ modelValue: 'cred-1', connected: true }));

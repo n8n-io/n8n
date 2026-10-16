@@ -904,11 +904,11 @@ defineExpose({
 									})
 								}}
 							</N8nText>
-							<!-- The package is already downloaded, so a retry only connects. -->
+							<!-- A retry only connects, so it needs a package that matches the form. -->
 							<N8nButton
 								variant="ghost"
 								size="small"
-								:disabled="loading"
+								:disabled="loading || downloadedFor !== credentialId"
 								data-testid="teams-connect-retry"
 								@click="emit('connect')"
 							>

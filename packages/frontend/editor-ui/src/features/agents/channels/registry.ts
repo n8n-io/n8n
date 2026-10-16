@@ -139,6 +139,7 @@ const platforms = {
 		editComponent: AgentChannelTeamsEditView,
 		headerContent: {
 			setupModal: AgentChannelTeamsSetupKindSelector,
+			setupCard: AgentChannelTeamsSetupKindSelector,
 		},
 		disconnectConfirmationComponent: AgentChannelTeamsRemoveConfirmation,
 		shouldConfirmDisconnect: () => true,

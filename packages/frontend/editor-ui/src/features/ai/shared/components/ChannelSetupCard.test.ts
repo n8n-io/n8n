@@ -352,6 +352,18 @@ describe('ChannelSetupCard', () => {
 		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(true);
 	});
 
+	it('shows no setup choice for Slack', async () => {
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="slack-setup-kind-selector"]').exists()).toBe(false);
+	});
+
 	it('does not describe a configured draft integration as connected', async () => {
 		mocks.isConfigured.mockReturnValue(true);
 		const wrapper = mountCard({ integrationType: 'linear' });
