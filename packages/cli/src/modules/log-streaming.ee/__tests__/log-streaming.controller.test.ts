@@ -121,6 +121,18 @@ describe('EventBusController', () => {
 			await expect(controller.postDestination(req)).rejects.toThrow(BadRequestError);
 		});
 
+		it('names every invalid field in the error message', async () => {
+			const req = {
+				body: {
+					__type: MessageEventBusDestinationTypeNames.syslog,
+					host: '',
+					port: 0,
+				},
+			} as unknown as AuthenticatedRequest;
+
+			await expect(controller.postDestination(req)).rejects.toThrow(/host: .+; port: .+/);
+		});
+
 		it('rejects a destination referencing a credential the user cannot access', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
