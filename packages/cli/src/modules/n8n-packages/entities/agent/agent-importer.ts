@@ -98,6 +98,10 @@ export class AgentImporter {
 				item,
 			});
 		}
+		for (const outcome of outcomes) {
+			if (outcome.status === 'skipped') continue;
+			await this.agentsService.recordSavedSetupComplete(outcome.agent, context.user);
+		}
 		return outcomes;
 	}
 

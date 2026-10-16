@@ -509,7 +509,7 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(agent.skills.skill_a).toEqual({ ...skill, instructions: 'New instructions.' });
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 			expect(result.skill.instructions).toBe('New instructions.');
 			expect(skillService.assertCanEdit).not.toHaveBeenCalled();
 			expect(skillService.save).not.toHaveBeenCalled();
@@ -608,7 +608,7 @@ describe('AgentSkillsService', () => {
 				getAgentSkillHash(skill),
 			);
 
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 			expect(skillRefs.unpinDraftRef).toHaveBeenCalledWith(agent, 'skill_a', {});
 			await expect(skillRefs.refsForDraft(agent, {})).resolves.toEqual([
 				{ type: 'skill', id: 'skill_a' },
@@ -758,7 +758,7 @@ describe('AgentSkillsService', () => {
 				[{ type: 'skill', id: 'skill_b' }],
 				{},
 			);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 			expect(skillService.deleteSkill).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
