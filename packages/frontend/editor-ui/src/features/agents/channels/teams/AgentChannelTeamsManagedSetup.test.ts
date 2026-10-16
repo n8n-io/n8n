@@ -1295,10 +1295,10 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		const renderWith = (overrides: Record<string, unknown>) =>
 			renderComponent({ props: props(overrides), pinia: createTestingPinia(), global: { stubs } });
 
-		it('leaves the step out when the agent works only in direct chats', () => {
-			const { queryByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
+		it('keeps the step when the agent works only in direct chats, to find people by email', () => {
+			const { getByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
 
-			expect(queryByText('agents.channels.teams.managed.fileAccess.title')).not.toBeInTheDocument();
+			expect(getByText('agents.channels.teams.managed.fileAccess.title')).toBeInTheDocument();
 		});
 
 		it('asks for file access in its own step, before the last one', async () => {
