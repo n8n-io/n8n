@@ -817,7 +817,7 @@ export class AwsS3V2 implements INodeType {
 							ContentDisposition = createContentDisposition(filename);
 						}
 
-						if (fileKey.substring(fileKey.length - 1) === '/') {
+						if (!fileKey || fileKey.endsWith('/')) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Presigned url for a whole directory is not supported, please provide a file key',
