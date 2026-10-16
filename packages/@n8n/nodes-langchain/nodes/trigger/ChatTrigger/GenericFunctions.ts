@@ -129,8 +129,13 @@ export async function validateAuth(context: IWebhookFunctions): Promise<IUser | 
 			// absent token is validated for its challenge alone.
 			const challenge = async () => {
 				if (!resourceUrl) return undefined;
-				const validation = await context.validateN8nOAuth2Token('', resourceUrl);
-				return validation.valid ? undefined : validation.challenge;
+				try {
+					const validation = await context.validateN8nOAuth2Token('', resourceUrl);
+					return validation.valid ? undefined : validation.challenge;
+				} catch {
+					// The challenge is an aid for the caller; the refusal stands without it.
+					return undefined;
+				}
 			};
 
 			const authCookie = getCookie(headers.cookie, 'n8n-auth');
