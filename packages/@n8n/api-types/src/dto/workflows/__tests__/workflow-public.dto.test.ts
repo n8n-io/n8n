@@ -218,18 +218,13 @@ describe('WorkflowListPublicDto', () => {
 		activeVersion: null,
 	};
 
-	test('accepts parentFolder as null or a folder summary, and rejects a missing key', () => {
+	test('accepts parentFolder as absent, null, or an id-only reference', () => {
 		const listWith = (item: Record<string, unknown>) =>
 			WorkflowListPublicDto.safeParse({ data: [item], nextCursor: null });
 
+		expect(listWith(baseListItem).success).toBe(true);
 		expect(listWith({ ...baseListItem, parentFolder: null }).success).toBe(true);
-		expect(
-			listWith({
-				...baseListItem,
-				parentFolder: { id: 'folder-1', name: 'Target Folder', parentFolderId: null },
-			}).success,
-		).toBe(true);
-		expect(listWith(baseListItem).success).toBe(false);
+		expect(listWith({ ...baseListItem, parentFolder: { id: 'folder-1' } }).success).toBe(true);
 	});
 });
 

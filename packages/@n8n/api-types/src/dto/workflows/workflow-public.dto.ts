@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
 	connectionsOpenApi,
 	workflowCreateFieldDocs,
+	listParentFolderOpenApi,
 	metaOpenApi,
 	nodeGroupsOpenApi,
 	nodesOpenApi,
@@ -119,9 +120,8 @@ export const workflowParentFolderPublicSchema = z.object({
 	updatedAt: z.string().datetime(),
 });
 
-export const workflowParentFolderSummaryPublicSchema = workflowParentFolderPublicSchema.omit({
-	createdAt: true,
-	updatedAt: true,
+export const workflowParentFolderRefPublicSchema = workflowParentFolderPublicSchema.pick({
+	id: true,
 });
 
 export const createdWorkflowPublicSchema = workflowPublicSchema.extend({
@@ -180,7 +180,10 @@ export const workflowListItemPublicSchema = workflowPublicSchema
 	.extend({
 		shared: z.array(workflowListItemSharedPublicSchema),
 		activeVersion: workflowListItemActiveVersionPublicSchema.nullable(),
-		parentFolder: workflowParentFolderSummaryPublicSchema.nullable().openapi(parentFolderOpenApi),
+		parentFolder: workflowParentFolderRefPublicSchema
+			.nullable()
+			.optional()
+			.openapi(listParentFolderOpenApi),
 	});
 
 export class WorkflowListPublicDto extends Z.class({

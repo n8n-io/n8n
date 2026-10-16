@@ -832,22 +832,32 @@ describe('GET /workflows', () => {
 		]);
 	});
 
-	test('should return the parent folder reference for each list item', async () => {
+	test('should not return parentFolder unless includeParentFolder is set', async () => {
+		const folder = await createFolder(memberPersonalProject, { name: 'List Folder' });
+		await createWorkflowWithHistory({}, member);
+		await createWorkflowWithHistory({ parentFolder: folder }, member);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		for (const item of response.body.data) {
+			expect(item).not.toHaveProperty('parentFolder');
+		}
+	});
+
+	test('should return only the parent folder id when includeParentFolder is true', async () => {
 		const folder = await createFolder(memberPersonalProject, { name: 'List Folder' });
 		const rootWorkflow = await createWorkflowWithHistory({}, member);
 		const folderWorkflow = await createWorkflowWithHistory({ parentFolder: folder }, member);
 
-		const response = await authMemberAgent.get('/workflows');
+		const response = await authMemberAgent.get('/workflows?includeParentFolder=true');
 
 		expect(response.statusCode).toBe(200);
 		const rootItem = response.body.data.find((w: { id: string }) => w.id === rootWorkflow.id);
 		const folderItem = response.body.data.find((w: { id: string }) => w.id === folderWorkflow.id);
 		expect(rootItem.parentFolder).toBeNull();
-		expect(folderItem.parentFolder).toEqual({
-			id: folder.id,
-			name: 'List Folder',
-			parentFolderId: null,
-		});
+		expect(folderItem.parentFolder).toEqual({ id: folder.id });
 	});
 
 	test('should return activeVersion when filtering by active=true', async () => {

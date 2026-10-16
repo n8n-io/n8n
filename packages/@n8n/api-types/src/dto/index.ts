@@ -265,7 +265,7 @@ export {
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
 	workflowParentFolderPublicSchema,
-	workflowParentFolderSummaryPublicSchema,
+	workflowParentFolderRefPublicSchema,
 	DeletedWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
 } from './workflows/workflow-public.dto';
