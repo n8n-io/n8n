@@ -1,0 +1,81 @@
+packages/cli/src/modules/agents/agent-plan.service.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-3,26,31-34,41-45,50,55,75-79,84-100
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/selects-foreground-execution-through-the-consolidated-tool.json
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 61-76,218-232
+packages/cli/src/modules/agents/plans/agent-plan-tools.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 231,335-337
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,96-110,288,849
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-3,38-39,84-144,459-492,535,551
+packages/cli/src/modules/agents/__tests__/agent-plan.service.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,16-17,48-49
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1091-1094,1218,1231,1260
+packages/cli/src/modules/agents/plans/agent-plan-task-context.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-13
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,803
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-2,20,30-31,77,91-95,109-114,119,122-123,467-494,529
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/selects-background-execution-through-the-consolidated-tool.json
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 61-76,214-228
+packages/cli/src/modules/agents/plans/agent-plan-work-state.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-4,18-62
+packages/cli/src/modules/agents/plans/__tests__/agent-plan-work-state.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-122
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 96-97,155-158,251-254
+packages/cli/src/modules/agents/repositories/agent-plan-work.repository.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-224
+packages/cli/test/integration/agent-plan.service.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,9,125,358-360
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,26,121,432-435,445-448,628-629
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 2,44-46,101-103,149,219-222,329-332
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,104,116,119,1317,1822-1909
+packages/cli/src/modules/agents/plans/__tests__/agent-plan-tools.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 586-597
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 24-27,148-152,169-170,175,415,427
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,506
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1151-1201
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 66-68,80
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 3,1034
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 925-928,930,957,961-962
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-2,28,95-127,137,188-190,216,219-227,229,244-258,265-269,278,288,294-296,298-305,308,316-322
+packages/cli/test/integration/database/repositories/agent-plan-work.repository.test.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1-486
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 118,121-140
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,63-64,165,368,394-447,500-515,751-752,764
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 1,93,126
+packages/@n8n/agents/src/types/runtime/delegation.ts
+  s_fbba0b32ee6f59::t_0babe63f86b4e2 68-69,71-75,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00354dc764e241757419d7a8bbe8248d694946d5",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
