@@ -8,6 +8,7 @@ import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import type { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import type { License } from '@/license';
@@ -58,6 +59,7 @@ function makeService({
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
+	credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(true) }),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -80,6 +82,7 @@ function makeService({
 		userRepository,
 		urlService,
 		outboundHttp,
+		credentialTypes,
 	);
 }
 
@@ -868,6 +871,59 @@ describe('AiGatewayService', () => {
 			requestMock.mockResolvedValueOnce(ok({ servers: [{ slug: 'firecrawl' }] }));
 
 			await expect(makeService().fetchAiGatewayMcpServers()).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('getSyntheticCredential() for an MCP server', () => {
+		const credentialType = 'n8nConnectFirecrawlMcpAiGatewayApi';
+		const mcpNode = {
+			type: '@n8n/mcp-registry.n8nConnectFirecrawl',
+			typeVersion: 1,
+			parameters: {},
+		};
+
+		it.each([
+			{ case: 'a registry MCP node', node: mcpNode },
+			{ case: 'a call without a node (agent or discovery)', node: undefined },
+		])('mints a token pinned to the AI Gateway host for $case', async ({ node }) => {
+			requestMock.mockResolvedValueOnce(ok({ token: 'mcp-jwt', expiresIn: 3600 }));
+
+			const result = await makeService().getSyntheticCredential({
+				credentialType,
+				userId: USER_ID,
+				node,
+			});
+
+			expect(result).toEqual({
+				token: 'mcp-jwt',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'gateway.test',
+			});
+			// The MCP path never reads the node-credits config.
+			expect(requestMock).toHaveBeenCalledTimes(1);
+			expect(requestMock).toHaveBeenCalledWith(
+				expect.objectContaining({ url: `${BASE_URL}/v1/gateway/credentials` }),
+			);
+		});
+
+		it.each([
+			{
+				case: 'a credential type that no listed server has',
+				credentialTypes: mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(false) }),
+				node: mcpNode,
+			},
+			{
+				case: 'a node that can request any credential type',
+				credentialTypes: undefined,
+				node: { type: 'n8n-nodes-base.httpRequest', typeVersion: 4.5, parameters: {} },
+			},
+		])('refuses $case', async ({ credentialTypes, node }) => {
+			const service = makeService(credentialTypes ? { credentialTypes } : {});
+
+			await expect(
+				service.getSyntheticCredential({ credentialType, userId: USER_ID, node }),
+			).rejects.toThrow(UserError);
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
 

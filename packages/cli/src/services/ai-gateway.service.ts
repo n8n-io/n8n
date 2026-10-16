@@ -14,12 +14,14 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication, OperationalError, UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/mcp-registry-connection';
 import {
 	AI_GATEWAY_MANAGED_AUTH_TYPE,
 	AI_GATEWAY_MCP_CAPABILITY,
@@ -112,6 +114,7 @@ export class AiGatewayService {
 		private readonly userRepository: UserRepository,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	/**
@@ -248,6 +251,17 @@ export class AiGatewayService {
 
 		const baseUrl = this.requireBaseUrl();
 
+		if (isMcpAiGatewayAuthentication(credentialType)) {
+			return await this.getAiGatewayMcpCredential({
+				credentialType,
+				userId,
+				workflowId,
+				projectId,
+				node,
+				baseUrl,
+			});
+		}
+
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
@@ -265,19 +279,11 @@ export class AiGatewayService {
 			}
 		}
 
-		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
-		const resolvedUserId = await this.resolveUserId({
+		const { jwt, resolvedProjectId } = await this.resolveAndMintToken({
 			userId,
-			projectId: resolvedProjectId,
 			workflowId,
+			projectId,
 		});
-		if (!resolvedUserId) {
-			throw new UserError('Failed to resolve user for Gateway credits attribution.');
-		}
-		const jwt = await this.getOrFetchToken(resolvedUserId);
-		if (!jwt) {
-			throw new UserError('Failed to obtain a valid Gateway credits token.');
-		}
 
 		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
 			executionId,
@@ -428,6 +434,71 @@ export class AiGatewayService {
 		if (!url)
 			throw new UserError('Gateway credits are not configured. Set the AI assistant base URL.');
 		return url;
+	}
+
+	/**
+	 * Mints the Gateway credits credential of an MCP registry server. Its checks
+	 * replace the provider config lookup and the node eligibility check of models.
+	 */
+	private async getAiGatewayMcpCredential({
+		credentialType,
+		userId,
+		workflowId,
+		projectId,
+		node,
+		baseUrl,
+	}: {
+		credentialType: string;
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+		node?: Pick<INode, 'type'>;
+		baseUrl: string;
+	}): Promise<ICredentialDataDecryptedObject> {
+		// The registry loader registers this type only for a server the AI Gateway lists.
+		if (!this.credentialTypes.recognizes(credentialType)) {
+			throw new UserError(`Gateway credits do not serve credential type "${credentialType}".`);
+		}
+		// Only a registry MCP node may hold this token. A node that can request any
+		// credential type, such as HTTP Request, must not receive it.
+		if (node && !node.type.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)) {
+			throw new UserError(
+				`Credential type "${credentialType}" can only be used by its MCP server node.`,
+			);
+		}
+		const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
+		// The token is billed and not limited to one provider, so pin it to the AI Gateway host.
+		return {
+			token: jwt,
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: new URL(baseUrl).hostname,
+		};
+	}
+
+	/** Resolves the user that a credential is attributed to, and mints a token for that user. */
+	private async resolveAndMintToken({
+		userId,
+		workflowId,
+		projectId,
+	}: {
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<{ jwt: string; resolvedProjectId?: string }> {
+		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
+		const resolvedUserId = await this.resolveUserId({
+			userId,
+			projectId: resolvedProjectId,
+			workflowId,
+		});
+		if (!resolvedUserId) {
+			throw new UserError('Failed to resolve user for Gateway credits attribution.');
+		}
+		const jwt = await this.getOrFetchToken(resolvedUserId);
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
+		}
+		return { jwt, resolvedProjectId };
 	}
 
 	private isConfigStale(): boolean {

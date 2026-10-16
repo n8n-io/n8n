@@ -20,6 +20,7 @@ import {
 	assertCredentialAllowsUrl,
 	assertUrlAllowed,
 	getMcpAuthHeaders,
+	isMcpAiGatewayAuthentication,
 	NodeOperationError,
 	shouldRefreshMcpOAuth2Token,
 } from 'n8n-workflow';
@@ -362,6 +363,14 @@ export async function getAuthHeaders(
 	credentials?: ICredentialDataDecryptedObject;
 }> {
 	if (authentication === 'none') return {};
+
+	// The token is minted for each execution, so there is nothing to refresh. A failed mint
+	// is not caught: its error (Gateway credits off, no credits left) is the real cause.
+	if (isMcpAiGatewayAuthentication(authentication)) {
+		const credentials = await ctx.getCredentials<ICredentialDataDecryptedObject>(authentication);
+		const headers = getMcpAuthHeaders(authentication, credentials);
+		return Object.keys(headers).length > 0 ? { headers, credentials } : { credentials };
+	}
 
 	let credentialType: string;
 	if (isMcpOAuth2Authentication(authentication)) {
