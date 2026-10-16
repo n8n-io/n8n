@@ -1230,10 +1230,35 @@ describe('createModel', () => {
 		});
 	});
 
-	describe('unsupported provider', () => {
-		it('should throw for ollama', () => {
-			expect(() => createModel('ollama/llama3')).toThrow(/Unsupported provider: "ollama"/);
+	describe('ollama', () => {
+		it('should create a model through the OpenAI-compatible provider', () => {
+			const model = createModel({
+				id: 'ollama/llama3.1',
+				apiKey: 'test-key',
+				baseURL: 'http://localhost:11434',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('ollama');
+			expect(model.modelId).toBe('llama3.1');
+			expect(model.apiKey).toBe('test-key');
+			expect(model.baseURL).toBe('http://localhost:11434/v1');
 		});
+
+		it('should default the baseURL to the local server when unset', () => {
+			const model = createModel({ id: 'ollama/llama3.1' }) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('http://localhost:11434/v1');
+			expect(model.apiKey).toBeUndefined();
+		});
+
+		it('should keep a baseURL that already ends in /v1', () => {
+			const model = createModel({
+				id: 'ollama/llama3.1',
+				baseURL: 'https://ollama.example.com/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://ollama.example.com/v1');
+		});
+	});
+
+	describe('unsupported provider', () => {
 
 		it('should include supported providers in the error message', () => {
 			expect(() => createModel('unknown-provider/some-model')).toThrow(/Supported providers:/);
