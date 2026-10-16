@@ -181,9 +181,9 @@ export async function getPresignedS3Url(
 	} else {
 		const c = credentials as AwsIamCredentialsType;
 		securityHeaders = {
-			accessKeyId: c.accessKeyId,
-			secretAccessKey: c.secretAccessKey,
-			sessionToken: c.temporaryCredentials ? c.sessionToken : undefined,
+			accessKeyId: `${c.accessKeyId}`.trim(),
+			secretAccessKey: `${c.secretAccessKey}`.trim(),
+			sessionToken: c.temporaryCredentials ? `${c.sessionToken}`.trim() : undefined,
 		};
 	}
 
