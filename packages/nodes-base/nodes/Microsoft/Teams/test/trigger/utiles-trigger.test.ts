@@ -852,6 +852,33 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(ctx.logger.warn).not.toHaveBeenCalled();
 		});
 
+		it('keeps a subscription renewed in this request when its listed expiry has passed', async () => {
+			const { ctx, staticData } = arrange({
+				staticData: { subscriptionIds: [], webhookSecret: 'secret' },
+				subscriptions: [subscription('sub1', '/me/chats', 1000)],
+			});
+			(microsoftApiRequest.call as Mock).mockImplementation(
+				async (_ctx: unknown, method: string) => {
+					if (method === 'PATCH') vi.setSystemTime(NOW + 2000);
+					return {};
+				},
+			);
+
+			await handleLifecycleNotifications.call(ctx, [
+				lifecycleItem('reauthorizationRequired', 'sub1'),
+				lifecycleItem('subscriptionRemoved', 'sub0'),
+			]);
+
+			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
+				ctx,
+				'PATCH',
+				'/v1.0/subscriptions/sub1',
+				{ expirationDateTime: expectedExpiry },
+			);
+			expect(calls('POST')).toHaveLength(0);
+			expect(staticData.subscriptionIds).toEqual(['sub1']);
+		});
+
 		it('drops a listed subscription that Graph reports gone and re-creates its resource', async () => {
 			const { ctx, staticData } = arrange({
 				staticData: { subscriptionIds: [], webhookSecret: 'secret' },
@@ -906,6 +933,37 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 			expect(calls('PATCH')).toHaveLength(1);
 			expect(microsoftApiRequest.call).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not renew a subscription that the same batch reported removed', async () => {
+			const { ctx } = arrange();
+
+			await handleLifecycleNotifications.call(ctx, [
+				lifecycleItem('subscriptionRemoved', 'sub1'),
+				lifecycleItem('reauthorizationRequired', 'sub1'),
+			]);
+
+			expect(calls('PATCH')).toHaveLength(0);
+			expect(calls('POST').map((call) => call[3].resource)).toEqual(['/me/chats']);
+		});
+
+		it('warns and skips the renewal when the id fails path validation', async () => {
+			const { ctx, staticData } = arrange({
+				staticData: { subscriptionIds: ['sub1/../x'], webhookSecret: 'secret' },
+			});
+
+			await handleLifecycleNotifications.call(ctx, [
+				lifecycleItem('reauthorizationRequired', 'sub1/../x'),
+			]);
+
+			expect(calls('PATCH')).toHaveLength(0);
+			expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+			expect(ctx.logger.warn).toHaveBeenCalledWith(
+				'Microsoft Teams Trigger: failed to renew subscription',
+				expect.objectContaining({ error: 'The ID is not valid' }),
+			);
+			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+			expect(staticData).toEqual({ subscriptionIds: ['sub1/../x'], webhookSecret: 'secret' });
 		});
 	});
 });
