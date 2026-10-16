@@ -10,10 +10,13 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { OauthService } from '@/oauth/oauth.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { McpConnectionDiscoveryService } from '../mcp-connection-discovery.service';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryService } from '../registry/mcp-registry.service';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
+import { firecrawlAiGatewayMockServer, firecrawlMockServer } from '../registry/mock-servers';
 
 const {
 	mcpClientCloseMock,
@@ -95,6 +98,7 @@ describe('McpConnectionDiscoveryService', () => {
 		const credentialTypes = mock<CredentialTypes>();
 		const oauthService = mock<OauthService>();
 		const outboundHttp = mock<OutboundHttp>();
+		const aiGatewayService = mock<AiGatewayService>();
 		const service = new McpConnectionDiscoveryService(
 			logger,
 			registryService,
@@ -103,6 +107,7 @@ describe('McpConnectionDiscoveryService', () => {
 			credentialTypes,
 			oauthService,
 			outboundHttp,
+			aiGatewayService,
 		);
 
 		registryService.get.mockResolvedValue(makeServer());
@@ -122,7 +127,13 @@ describe('McpConnectionDiscoveryService', () => {
 		);
 		credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
 
-		return { service, registryService, credentialsFinderService, credentialsHelper };
+		return {
+			service,
+			registryService,
+			credentialsFinderService,
+			credentialsHelper,
+			aiGatewayService,
+		};
 	}
 
 	beforeEach(() => {
@@ -354,5 +365,44 @@ describe('McpConnectionDiscoveryService', () => {
 			user,
 			['credential:connect'],
 		);
+	});
+
+	it('discovers a paired server with Gateway credits and returns an entry without a stored credential', async () => {
+		mcpClientListToolsMock.mockResolvedValue([
+			{
+				name: 'firecrawl_scrape',
+				mcpToolName: 'firecrawl_scrape',
+				mcpAnnotations: { readOnlyHint: true },
+			} as BuiltTool,
+		]);
+		const { service, registryService, credentialsFinderService, aiGatewayService } =
+			createService();
+		const [twin] = pairAiGatewayServers(
+			[firecrawlMockServer, firecrawlAiGatewayMockServer],
+			() => true,
+		);
+		registryService.get.mockResolvedValue(twin);
+		aiGatewayService.getSyntheticCredential.mockResolvedValue({ token: 'minted' });
+
+		const response = await service.discover(user, { slug: 'firecrawl', aiGateway: true });
+
+		expect(response).toStrictEqual({
+			status: 'connected',
+			connection: {
+				url: 'https://mcp.firecrawl.dev/mcp',
+				transport: 'streamableHttp',
+				authentication: 'none',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' },
+			},
+			tools: [{ name: 'firecrawl_scrape', category: 'read' }],
+		});
+		expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+			credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+			userId: 'user-1',
+		});
+		expect(mcpClientConfigs[0]?.[0]).toMatchObject({
+			url: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl',
+		});
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 	});
 });

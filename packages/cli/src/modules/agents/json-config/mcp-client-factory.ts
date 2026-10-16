@@ -8,12 +8,7 @@ import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import {
-	getMcpAuthHeaders,
-	isMcpAiGatewayAuthentication,
-	isMcpRegistryAuthentication,
-	OperationalError,
-} from 'n8n-workflow';
+import { getMcpAuthHeaders, isMcpRegistryAuthentication, OperationalError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	McpAiGatewayCredentialType,
@@ -21,6 +16,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	findAiGatewayCredentialType,
 	prepareMcpRegistryConnection,
 	toAgentMcpTransport,
 } from '@/modules/mcp-registry/mcp-registry-connection';
@@ -86,9 +82,7 @@ async function mintAiGatewayCredential(
 	connection: McpRegistryConnection,
 	credentialProvider: Partial<AiGatewayMcpCredentialResolver>,
 ) {
-	const credentialType = connection.credentialBindings
-		.map((binding) => binding.credentialType)
-		.find(isMcpAiGatewayAuthentication);
+	const credentialType = findAiGatewayCredentialType(connection);
 	if (!credentialType || !credentialProvider.resolveAiGatewayMcpCredential) {
 		throw new OperationalError('MCP registry server does not offer Gateway credits');
 	}

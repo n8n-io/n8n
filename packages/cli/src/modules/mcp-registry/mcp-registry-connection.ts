@@ -37,6 +37,15 @@ export function getMcpRegistryAiGatewayCredentialTypeName(
 	return `${camelCase(slug)}McpAiGatewayApi`;
 }
 
+/** The credential type of the connection's Gateway credits option, if it has one. */
+export function findAiGatewayCredentialType(
+	connection: McpRegistryConnection,
+): McpAiGatewayCredentialType | undefined {
+	return connection.credentialBindings
+		.map((binding) => binding.credentialType)
+		.find(isMcpAiGatewayAuthentication);
+}
+
 function getAiGatewayCredentialOption(slug: string): McpRegistryUsesCredential {
 	return {
 		credentialType: getMcpRegistryAiGatewayCredentialTypeName(slug),
