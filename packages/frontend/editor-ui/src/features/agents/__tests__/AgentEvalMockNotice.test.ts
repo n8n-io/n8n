@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
-import type { AgentJsonConfig, AgentJsonToolConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentJsonNodeToolConfig } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentEvalMockNotice from '../components/AgentEvalMockNotice.vue';
 
@@ -25,7 +25,7 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 		ensureLoaded,
 	}),
 }));
-const node = (nodeType: string): AgentJsonToolConfig => ({
+const node = (nodeType: string): AgentJsonNodeToolConfig => ({
 	type: 'node',
 	name: nodeType,
 	node: { nodeType, nodeTypeVersion: 1, nodeParameters: {} },
