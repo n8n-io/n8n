@@ -744,6 +744,7 @@ packages/cli/src/modules/agents/agents.service.ts
   s_71ad2034164515::t_164d4975e0343e 317
   s_71ad2034164515::t_fc38a38d64fbbb 71-72,84-85,167-173,184,241-249,255-258,262,268-272,274-279,282-289,297-298,315-316,318-319
   s_71ad2034164515::t_b92e8c660afc36 73,320-321
+  s_71ad2034164515::t_73eb1bad26ab5b 259-261,273,290,301
 packages/cli/src/modules/agents/agent-task.service.ts
   s_71ad2034164515::t_1eb2704e9ceed4 42-45,98-107
   s_c9a35d8cddcbb4::t_3f98b077b9ab12 108
@@ -792,6 +793,8 @@ packages/cli/src/modules/agents/agent-config.service.ts
   s_71ad2034164515::t_961dcd505c9228 44-48,117-122,127-131,137-141,147-149,153-161,163-164,168-170
   s_71ad2034164515::t_164d4975e0343e 173
   s_71ad2034164515::t_fc38a38d64fbbb 8-9,20-21,28-29,104-116,123-126,132-133,136,142-143,145-146,150-152,166,171-172,174-177,487
+  s_71ad2034164515::t_73eb1bad26ab5b 134-135,144,165,167
+  s_71ad2034164515::t_b6b82bc15a3aae 162
 packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
   s_71ad2034164515::t_81225120e7d7b1 39-40,51-55,80,150,159-162
   s_71ad2034164515::t_a28f419ffc3911 163-167
@@ -849,6 +852,7 @@ packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
 packages/cli/src/modules/agents/agent-setup-completion.service.ts
   s_71ad2034164515::t_47aafb932e8322 2-6,69,71-73,77-79
   s_71ad2034164515::t_164d4975e0343e 59,65-68,74-76,82-83
+  s_71ad2034164515::t_b6b82bc15a3aae 70,80-81
 packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
   s_71ad2034164515::t_99acd5a48e0331 114,210
 packages/cli/src/modules/n8n-packages/entities/workflow/references/__tests__/sub-workflow-node.reference.test.ts
@@ -875,6 +879,7 @@ packages/cli/src/modules/agents/agent-save-completion.service.ts
   s_71ad2034164515::t_961dcd505c9228 30-31,40-41,43-45
   s_71ad2034164515::t_164d4975e0343e 3,27
   s_71ad2034164515::t_565503843210ea 48
+  s_71ad2034164515::t_73eb1bad26ab5b 32-39
 packages/cli/src/modules/agents/agent-config-preparation.service.ts
   s_71ad2034164515::t_461ae0b23e8d4e 10-12,14,17,21,27-29,44-54,65-79,85-88,91-104,110-113,117-139,146-164,170-173,178-181,191-194,204-208
   s_71ad2034164515::t_961dcd505c9228 22-25,55-64,80-84,89-90,105-109,114-116,140-145,165-169,174-177,182-190,195-203
@@ -886,6 +891,7 @@ packages/cli/src/modules/agents/utils/agent-draft.utils.ts
   s_71ad2034164515::t_8a1db2be6bdb40 8,31,33
 packages/cli/src/modules/agents/agent-definition.service.ts
   s_71ad2034164515::t_8a1db2be6bdb40 18,71,83,89-94
+  s_71ad2034164515::t_73eb1bad26ab5b 62-64,81
 ---
 {
   "schema_version": "authorship/3.0.0",
