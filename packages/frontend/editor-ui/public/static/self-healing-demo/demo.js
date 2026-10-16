@@ -203,7 +203,9 @@ async function prepare() {
 	const demo = fixture();
 	const created = await api('/workflows', demo.workflow);
 	const workflow = await api(`/workflows/${encodeURIComponent(created.id)}`);
-	const projectId = workflow.shared.find((share) => share.role === 'workflow:owner')?.projectId;
+	const projectId =
+		workflow.homeProject?.id ??
+		workflow.shared?.find((share) => share.role === 'workflow:owner')?.projectId;
 	if (!projectId) throw new Error('Could not find the workflow project.');
 	state = {
 		workflowId: workflow.id,
