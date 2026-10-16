@@ -37,6 +37,7 @@ import {
 	AZURE_BOTS_URL,
 	ENTRA_APP_REGISTRATIONS_URL,
 	entraApiPermissionsUrl,
+	permissionUseFor,
 	TEAMS_PACKAGE_FILENAME,
 	type TeamsAvailability,
 } from './constants';
@@ -535,7 +536,9 @@ const steps = computed(() => [
 	{
 		id: 'file-access',
 		title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
-		description: i18n.baseText('agents.channels.teams.managed.fileAccess.description'),
+		description: i18n.baseText(
+			`agents.channels.teams.managed.fileAccess.description.${permissionUseFor(availability.value)}`,
+		),
 	},
 	{
 		id: 'install',

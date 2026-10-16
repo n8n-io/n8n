@@ -428,6 +428,9 @@ describe('AgentChannelTeamsSetup', () => {
 			await openAvailability(getByTestId);
 
 			await waitFor(() => expect(getByTestId('teams-file-access-step')).toBeVisible());
+			expect(
+				getByText('agents.channels.teams.managed.fileAccess.description.directOnly'),
+			).toBeVisible();
 			expect(getByTestId('teams-file-access-menu')).toBeVisible();
 			expect(
 				getByText('agents.channels.teams.setup.availability.fileAccessPermission'),
