@@ -1660,13 +1660,13 @@ describe('Slack setup services', () => {
 			});
 		}
 
-		function exportedManifest(requestUrl: string) {
+		function exportedManifest(requestUrl: string, interactivityEnabled = true) {
 			return slackResponse({
 				ok: true,
 				manifest: {
 					settings: {
 						event_subscriptions: { request_url: requestUrl },
-						interactivity: { request_url: requestUrl },
+						interactivity: { is_enabled: interactivityEnabled, request_url: requestUrl },
 					},
 				},
 			});
@@ -1716,16 +1716,22 @@ describe('Slack setup services', () => {
 			expect(credentialsService.decrypt).not.toHaveBeenCalled();
 		});
 
-		it('reads the request URL from Slack for a managed app without an Agent ID', async () => {
-			mockManagerCredential();
-			requestMock.mockResolvedValueOnce(exportedManifest(agentRequestUrl));
+		it.each([
+			{ interactivityEnabled: true, configured: true },
+			{ interactivityEnabled: false, configured: false },
+		])(
+			'checks a managed app with interactivity enabled: $interactivityEnabled',
+			async ({ interactivityEnabled, configured }) => {
+				mockManagerCredential();
+				requestMock.mockResolvedValueOnce(exportedManifest(agentRequestUrl, interactivityEnabled));
 
-			await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(true);
-			expect(requestMock.mock.calls[0]?.[0]).toMatchObject({
-				url: 'https://slack.com/api/apps.manifest.export',
-			});
-			expect(fetchParams(requestMock, 0).get('app_id')).toBe('A123');
-		});
+				await expect(service.isAppConfiguredForAgent('bot-credential')).resolves.toBe(configured);
+				expect(requestMock.mock.calls[0]?.[0]).toMatchObject({
+					url: 'https://slack.com/api/apps.manifest.export',
+				});
+				expect(fetchParams(requestMock, 0).get('app_id')).toBe('A123');
+			},
+		);
 
 		it('returns false when the managed app sends events to another Agent', async () => {
 			mockManagerCredential();

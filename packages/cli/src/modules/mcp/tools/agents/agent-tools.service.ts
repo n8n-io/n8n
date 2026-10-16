@@ -1806,6 +1806,11 @@ export class McpAgentToolsService {
 		const agent = await this.resolveAgent(user, input.agentId);
 		const projectId = agent.projectId;
 		await this.assertScope(user, projectId, 'agent:update');
+		if (input.type === 'n8n_chat') {
+			throw new UserError(
+				'n8n Chat cannot be changed through update_agent_integration. Use this tool for external channels.',
+			);
+		}
 		return input.action === 'disconnect'
 			? await this.disconnectIntegration(user, input, agent)
 			: await this.connectIntegration(user, input, agent);

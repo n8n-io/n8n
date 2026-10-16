@@ -397,14 +397,14 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	const setupCompleted = telemetry.track.mock.calls.filter(([event]) =>
 		Object.is(event, TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED),
 	);
-	expect(setupCompleted).toHaveLength(2);
-	for (const agent of [saved, child]) {
-		expect(await agents.findById(agent.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
-		expect(setupCompleted).toContainEqual([
+	expect(await agents.findById(saved.id)).toMatchObject({ setupCompletedAt: null });
+	expect(await agents.findById(child.id)).toMatchObject({ setupCompletedAt: expect.any(Date) });
+	expect(setupCompleted).toEqual([
+		[
 			TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
-			expect.objectContaining({ agent_id: agent.id, project_id: project.id, user_id: owner.id }),
-		]);
-	}
+			expect.objectContaining({ agent_id: child.id, project_id: project.id, user_id: owner.id }),
+		],
+	]);
 	expect(input).toEqual(original);
 });
 
@@ -576,10 +576,13 @@ it('retains a published connection until UI setup completes the imported channel
 		activeVersionId: initial.activeVersionId,
 		pendingChannelSetup: null,
 	});
-	expect(saved!.integrations).toEqual([
-		{ type: 'slack', credentialId: fresh.id, settings: { messagingExperience: 'agent' } },
-	]);
-	expect(disconnect).toHaveBeenCalledWith(initial.id, existing);
+	const configured = {
+		type: 'slack' as const,
+		credentialId: fresh.id,
+		settings: { messagingExperience: 'agent' },
+	};
+	expect(saved!.integrations).toEqual([configured, existing]);
+	expect(disconnect).not.toHaveBeenCalledWith(initial.id, existing);
 	connect.mockClear();
 	vi.spyOn(chat, 'syncToConfig').mockResolvedValue();
 	const reused = (
@@ -588,7 +591,7 @@ it('retains a published connection until UI setup completes the imported channel
 		})
 	).agentOutcomes[0];
 	expect(reused.channelSetupRequired).toEqual([]);
-	expect(reused.agent.integrations).toEqual(saved!.integrations);
+	expect(reused.agent.integrations).toEqual([configured]);
 	expect(connect).not.toHaveBeenCalled();
 });
 

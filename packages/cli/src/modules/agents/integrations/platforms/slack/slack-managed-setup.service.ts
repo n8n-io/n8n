@@ -444,6 +444,7 @@ export class SlackManagedSetupService {
 			const requestUrl = this.methods.webhookUrl(agent.projectId, agent.id);
 			return (
 				stringProperty(eventSubscriptions, 'request_url') === requestUrl &&
+				interactivity?.is_enabled === true &&
 				stringProperty(interactivity, 'request_url') === requestUrl &&
 				settings?.socket_mode_enabled !== true
 			);

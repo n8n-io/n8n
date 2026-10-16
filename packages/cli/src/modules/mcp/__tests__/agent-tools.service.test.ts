@@ -2252,6 +2252,24 @@ describe('McpAgentToolsService', () => {
 		const input = { agentId: 'agent-1', action: 'connect', type: 'slack', credentialId: 'cred-1' };
 		const requested = { type: 'slack', credentialId: 'cred-1' };
 
+		it('rejects n8n Chat before saving a channel request', async () => {
+			const agent = agentEntity({ activeVersionId: 'v1' });
+			agentsService.findByIdForUser.mockResolvedValue(agent);
+			integrationManagementService.requestConnection.mockResolvedValue(agent);
+			const result = await callTool('update_agent_integration', {
+				agentId: 'agent-1',
+				action: 'connect',
+				type: 'n8n_chat',
+			});
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error:
+					'n8n Chat cannot be changed through update_agent_integration. Use this tool for external channels.',
+			});
+			expect(integrationManagementService.requestConnection).not.toHaveBeenCalled();
+			expect(integrationManagementService.connect).not.toHaveBeenCalled();
+		});
+
 		it.each([null, 'v1'])(
 			'returns setup instructions with active version %s without connecting',
 			async (activeVersionId) => {

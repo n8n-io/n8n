@@ -159,6 +159,11 @@ export function completeChannelSetup(
 	const configured = (agent.integrations ?? []).filter(
 		(entry) => !replaces || !matchesIntegrationRef(entry, replaces),
 	);
+	for (const previous of configured) {
+		if (!requested.some((entry) => matchesIntegrationRef(entry.integration, previous))) {
+			requested.push({ integration: previous });
+		}
+	}
 	return projectChannelSetup({ integrations: configured }, requested);
 }
 

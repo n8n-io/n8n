@@ -142,10 +142,11 @@ unverified connections retain their settings as pending setup. Open the returned
 in that flow. Canceling pending setup keeps the existing destination connection.
 
 Pending setup blocks publication, including republication of a historical
-version. A new Agent reports `blocked` with `channel-setup-required`. An Agent
-with a published version reports `unchanged` with that skipped reason. Its
-published version and configured connections stay operational. Unpublication
-still runs. Skipped imports and publication no-ops stay unchanged.
+version. When publication is requested, a new Agent reports `blocked` with
+`channel-setup-required`. An Agent with a published version reports `unchanged`
+with that skipped reason for the publication request. Its published version and
+configured connections stay operational. Unpublication still runs. Skipped
+imports and publication no-ops stay unchanged.
 
 If several publication blockers apply, the reported reason follows this order:
 missing node types, credential stubs, then channel setup. `channelSetupRequired`

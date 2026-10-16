@@ -170,7 +170,8 @@ describe('SlackIntegration', () => {
 				integrations: [ctx.integration],
 			} as never);
 			integration = new SlackIntegration(agentRepository);
-			expect(await integration.isDestinationConfigured(ctx)).toBe(true);
+			expect(await integration.isDestinationConfigured(ctx)).toBe(false);
+			expect(await integration.isDestinationConfigured(ctx, { allowLegacy: true })).toBe(true);
 		},
 	);
 

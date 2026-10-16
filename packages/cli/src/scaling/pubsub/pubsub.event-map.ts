@@ -355,7 +355,11 @@ export type PubSubCommandMap = {
 		replyTo: string;
 		agentId: string;
 	} & (
-		| { action: 'connect'; integration: AgentIntegrationConfig; setup?: { setupId?: string } }
+		| {
+				action: 'connect';
+				integration: AgentIntegrationConfig;
+				setup?: { setupId?: string; credentialFingerprint?: string };
+		  }
 		| { action: 'disconnect'; integration: { type: string; credentialId: string } }
 	);
 

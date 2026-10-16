@@ -2,6 +2,7 @@
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { EventService, UrlService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -16,8 +17,11 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
+
+vi.mock('../integrations/chat-integration.service', () => ({ ChatIntegrationService: class {} }));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -126,6 +130,10 @@ describe('AgentIntegrationPersistenceService', () => {
 		vi.clearAllMocks();
 	});
 
+	afterEach(() => {
+		Container.reset();
+	});
+
 	it('lists public descriptor metadata from the integration registry', () => {
 		const { service, chatIntegrationRegistry } = setup();
 		chatIntegrationRegistry.list.mockReturnValue([
@@ -170,6 +178,31 @@ describe('AgentIntegrationPersistenceService', () => {
 		]);
 		expect(chatIntegrationRegistry.listPublic).toHaveBeenCalled();
 		expect(chatIntegrationRegistry.list).not.toHaveBeenCalled();
+	});
+
+	it('requires setup when the destination cannot reuse a configured channel', async () => {
+		const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'slack-1' };
+		const { service, agent, row } = setup({ integrations: [integration] });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.canReuseConnection.mockResolvedValue(false);
+		Container.set(ChatIntegrationService, chatIntegrationService);
+
+		const result = await service.applyIntegrationDelta(agent, { request: { integration } }, byUser);
+
+		expect(result.changed).toBe(true);
+		expect(row.pendingChannelSetup).toEqual({
+			requested: [{ integration, setupId: expect.any(String) }],
+		});
+		expect(row.integrations).toEqual([integration]);
+		expect(result.removedIntegrations).toEqual([]);
+		expect(chatIntegrationService.canReuseConnection).toHaveBeenCalledWith(
+			agentId,
+			integration,
+			projectId,
+		);
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+		expect(chatIntegrationService.disconnect).not.toHaveBeenCalled();
+		expect(chatIntegrationService.validateBeforeConnect).not.toHaveBeenCalled();
 	});
 
 	describe('adding a channel', () => {

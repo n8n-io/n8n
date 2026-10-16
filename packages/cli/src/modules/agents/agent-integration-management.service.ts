@@ -208,17 +208,23 @@ export class AgentIntegrationManagementService {
 		const previous = await this.loadRuntimeBeforeChange(options);
 		let connected = await this.startAddedRuntime(options, previous);
 		const result = await this.persistChange(options, remove, connected, previous);
+		const setupFailure = await this.completeChannelSetup(agent, add);
 		if (result.changed) {
 			this.agentUpdateBroadcaster.notify(
 				{ projectId: agent.projectId, agentId: agent.id, source: options.modifiedBy },
 				options.pushRef,
 			);
 		}
+		const runtimeIntegration = add ?? this.getConfiguredRequest(options.request, result);
 		// n8n Chat has no runtime to reconcile.
-		if (add && isCredentialAgentIntegration(add) && result.published !== undefined) {
+		if (
+			runtimeIntegration &&
+			isCredentialAgentIntegration(runtimeIntegration) &&
+			result.published !== undefined
+		) {
 			connected = await this.reconcileRuntimeWithPublication(
 				agent,
-				add,
+				runtimeIntegration,
 				connected,
 				result.published,
 			);
@@ -229,10 +235,40 @@ export class AgentIntegrationManagementService {
 			result,
 			previous.published,
 		);
-		if (connected && add) {
-			await this.chatService.broadcastIntegrationChange(agent.id, add, 'connect');
+		if (connected && runtimeIntegration) {
+			await this.chatService.broadcastIntegrationChange(agent.id, runtimeIntegration, 'connect');
 		}
+		if (setupFailure) throw setupFailure.error;
 		return { ...result, ...(warning ? { warning } : {}) };
+	}
+
+	private async completeChannelSetup(
+		agent: Agent,
+		integration: AgentIntegrationConfig | undefined,
+	): Promise<{ error: unknown } | undefined> {
+		if (!integration) return undefined;
+		try {
+			await this.chatService.completeChannelSetup(agent.id, integration, agent.projectId);
+		} catch (error) {
+			// The channel is durable. Finish its cleanup and notifications before reporting this error.
+			return { error };
+		}
+		return undefined;
+	}
+
+	private getConfiguredRequest(
+		request: IntegrationDelta['request'],
+		result: IntegrationDeltaResult,
+	): AgentIntegrationConfig | undefined {
+		if (!request || !result.changed) return undefined;
+		const pending = result.agent.pendingChannelSetup?.requested.some(
+			({ integration, setupId }) =>
+				setupId && matchesIntegrationRef(integration, request.integration),
+		);
+		if (pending) return undefined;
+		return result.agent.integrations?.find((integration) =>
+			matchesIntegrationRef(integration, request.integration),
+		);
 	}
 
 	private async cleanupRemovedIntegration(

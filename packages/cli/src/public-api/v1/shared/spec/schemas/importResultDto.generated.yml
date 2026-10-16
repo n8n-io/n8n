@@ -88,7 +88,7 @@ properties:
                 - unchanged
                 - blocked
                 - failed
-              description: '`blocked` means the imported version could not be published and no version is active (for example because of a credential stub, a missing node type, or pending Agent channel setup). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
+              description: '`blocked` means the imported version could not be published and no version is active (for example because of an empty or incomplete credential, a missing node type, or pending Agent channel setup). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
             error:
               type: string
               description: Present when `state` is `failed`. Explains why publish or unpublish could not be applied.
@@ -107,7 +107,7 @@ properties:
                 - incomplete-credential
                 - missing-node-type
                 - channel-setup-required
-              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with stubbed credentials or pending channel setup).'
+              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with empty or incomplete credentials, or pending channel setup).'
           required:
             - state
           description: Publication outcome. A failed publication does not undo the definition import.
@@ -176,7 +176,7 @@ properties:
                 - unchanged
                 - blocked
                 - failed
-              description: '`blocked` means the imported version could not be published and no version is active (for example because of a credential stub, a missing node type, or pending Agent channel setup). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
+              description: '`blocked` means the imported version could not be published and no version is active (for example because of an empty or incomplete credential, a missing node type, or pending Agent channel setup). When a prior published version remains active, `state` is `unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was attempted but did not succeed.'
             error:
               type: string
               description: Present when `state` is `failed`. Explains why publish or unpublish could not be applied.
@@ -195,7 +195,7 @@ properties:
                 - incomplete-credential
                 - missing-node-type
                 - channel-setup-required
-              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with stubbed credentials or pending channel setup).'
+              description: 'Present when `state` is `unchanged` but the policy wanted to publish the imported version: a prior published version is still active (for example after an update with empty or incomplete credentials, or pending channel setup).'
           required:
             - state
           description: Outcome of applying the selected publishing policy to this workflow.

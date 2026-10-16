@@ -93,6 +93,9 @@ const setupCredentials = computed(() => {
 watch(
 	pendingChannels,
 	(pending) => {
+		if (setupId.value && !pending.some((entry) => entry.setupId === setupId.value)) {
+			setupId.value = undefined;
+		}
 		if (!setupId.value && pending.length === 1) setupId.value = pending[0].setupId;
 	},
 	{ immediate: true },

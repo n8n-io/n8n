@@ -1,10 +1,14 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { AgentIntegrationStatusResponse, ChatIntegrationDescriptor } from '@n8n/api-types';
+import type {
+	AgentIntegrationStatusResponse,
+	AgentSlackIntegrationSettings,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 
 /**
  * `ChannelSetupCard` owns the body + orchestration for the `configure_channel`
@@ -141,12 +145,18 @@ vi.mock('@/features/agents/channels/slack/api', () => ({
 
 vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 	default: {
-		props: ['modelValue', 'setupMode', 'setupSlackApp', 'connected'],
+		props: ['modelValue', 'setupMode', 'setupSlackApp', 'connected', 'savedSettings'],
 		emits: ['update:modelValue', 'connect'],
 		// `setupSlackApp` can reject (e.g. popup blocked) — mirror the real
 		// component catching that itself, so the test doesn't see an unhandled
 		// rejection when asserting the resulting no-op.
-		setup(props: { setupSlackApp?: (appConfigurationToken: string) => Promise<boolean> }) {
+		setup(props: {
+			savedSettings?: AgentSlackIntegrationSettings;
+			setupSlackApp?: (appConfigurationToken: string) => Promise<boolean>;
+		}) {
+			const currentSettings = computed<AgentSlackIntegrationSettings>(
+				() => props.savedSettings ?? { messagingExperience: 'agent' },
+			);
 			async function runSlackAppSetup() {
 				try {
 					await props.setupSlackApp?.('app-token');
@@ -154,7 +164,7 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 					// swallowed, matching the real AgentChannelSlackSetup component
 				}
 			}
-			return { runSlackAppSetup };
+			return { currentSettings, runSlackAppSetup };
 		},
 		template: `
 			<div
@@ -407,11 +417,18 @@ describe('ChannelSetupCard', () => {
 		).toBe('');
 	});
 
-	it.each([undefined, 'pending'])(
-		'completes setup with a new credential and pending ID %s',
-		async (setupId) => {
-			if (setupId) mocks.setPending([pendingChannel(setupId)]);
+	it.each([
+		{ initialSetupId: undefined, setupId: undefined },
+		{ initialSetupId: 'pending', setupId: 'pending' },
+		{ initialSetupId: 'removed', setupId: undefined },
+		{ initialSetupId: 'removed', setupId: 'replacement' },
+	])(
+		'completes setup after pending ID $initialSetupId changes to $setupId',
+		async ({ initialSetupId, setupId }) => {
+			if (initialSetupId) mocks.setPending([pendingChannel(initialSetupId)]);
 			const wrapper = mountCard();
+			await flushPromises();
+			mocks.setPending(setupId ? [pendingChannel(setupId)] : []);
 			await flushPromises();
 
 			await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
@@ -420,7 +437,7 @@ describe('ChannelSetupCard', () => {
 			expect(mocks.connect).toHaveBeenCalledWith(
 				'slack',
 				'cred-1',
-				setupId ? { messagingExperience: 'assistant' } : undefined,
+				{ messagingExperience: setupId ? 'assistant' : 'agent' },
 				setupId ? { setupId } : {},
 			);
 			expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
@@ -462,12 +479,16 @@ describe('ChannelSetupCard', () => {
 	});
 
 	it('cancels only the selected pending channel when several use the same platform', async () => {
-		mocks.setPending([pendingChannel('first'), pendingChannel('second')]);
+		mocks.setPending([pendingChannel('removed')]);
 		mocks.isConfigured.mockReturnValue(true);
 		const wrapper = mountCard();
 		await flushPromises();
+		mocks.setPending([pendingChannel('first'), pendingChannel('second'), pendingChannel('third')]);
+		await flushPromises();
 		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
 		await wrapper.findAll('[data-testid="channel-setup-card-pending"]')[1].trigger('click');
+		await flushPromises();
+		mocks.setPending([pendingChannel('first'), pendingChannel('second')]);
 		await flushPromises();
 		expect(wrapper.find('[data-testid="mock-slack-setup"]').attributes('data-connected')).toBe(
 			'false',

@@ -2,7 +2,7 @@ import type { Mock, MockInstance } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -16,6 +16,9 @@ import type { UrlService } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentIntegrationManagementService } from '../../agent-integration-management.service';
+import type { AgentIntegrationPersistenceService } from '../../agent-integration-persistence.service';
+import type { AgentUpdateBroadcaster } from '../../agent-update-broadcaster';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
 import type { AgentRepository } from '../../repositories/agent.repository';
@@ -48,6 +51,7 @@ const shutdownHandlersAtLowestPriority = [
  */
 interface PrivateChannelMethods {
 	connectLocal: ChatIntegrationService['connect'];
+	runConnectLocal: ChatIntegrationService['connect'];
 	disconnectLocal: (
 		agentId: string,
 		integration: { credentialId: string; type: string },
@@ -155,7 +159,10 @@ function buildServiceWith(
 	const statusReporter = opts.statusReporter ?? mock<AgentChannelStatusReporter>();
 	const leaderChannelRelay = opts.leaderChannelRelay ?? mock<LeaderChannelRelayService>();
 	const logger = mockLogger();
-	const instanceSettings = mock<InstanceSettings>({ isLeader: opts.isLeader ?? true });
+	const instanceSettings = mock<InstanceSettings>({
+		isLeader: opts.isLeader ?? true,
+		encryptionKey: 'test-encryption-key',
+	});
 	const globalConfig = mock<GlobalConfig>({
 		multiMainSetup: { enabled: opts.multiMainEnabled ?? false },
 	} as Partial<GlobalConfig>);
@@ -294,6 +301,133 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 
 describe('ChatIntegrationService', () => {
 	const logger = mock<Logger>();
+
+	it('records setup only for a durably configured destination', async () => {
+		const registry = new ChatIntegrationRegistry();
+		const integration = new FakeIntegration('telegram', false);
+		integration.onBeforeConnect = vi.fn().mockResolvedValue(undefined);
+		integration.onSetupComplete = vi.fn().mockResolvedValue(undefined);
+		registry.register(integration);
+		const { service, agentRepository, credentialsService } = buildServiceWith({ registry });
+		mockProjectCredential(credentialsService, {
+			id: telegramIntegration.credentialId,
+		} as CredentialsEntity);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		await expect(
+			service.completeChannelSetup('agent-1', telegramIntegration, 'project-1'),
+		).rejects.toThrow('Complete channel setup');
+		expect(integration.onSetupComplete).not.toHaveBeenCalled();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ integrations: [telegramIntegration] }),
+		);
+		await service.validateBeforeConnect('agent-1', telegramIntegration, 'project-1', {});
+		await service.completeChannelSetup('agent-1', telegramIntegration, 'project-1');
+		expect(integration.onSetupComplete).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				setupAuthorized: true,
+			}),
+		);
+	});
+
+	it.each(['draft', 'runtime', 'leader'])(
+		'completes %s setup with the credential captured for UI setup',
+		async (source) => {
+			const registry = new ChatIntegrationRegistry();
+			const integration = new FakeIntegration('telegram', source === 'leader');
+			integration.onBeforeConnect = vi.fn().mockResolvedValue(undefined);
+			integration.onSetupComplete = vi.fn().mockResolvedValue(undefined);
+			registry.register(integration);
+			const { service, agentRepository, credentialsService } = buildServiceWith({
+				registry,
+				isLeader: source !== 'leader',
+				multiMainEnabled: source === 'leader',
+			});
+			mockProjectCredential(credentialsService, {
+				id: telegramIntegration.credentialId,
+			} as CredentialsEntity);
+			credentialsService.decrypt.mockResolvedValue({ accessToken: 'setup-token' });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					integrations: [telegramIntegration],
+					activeVersionId: source === 'draft' ? null : 'published',
+				}),
+			);
+			if (source === 'leader') {
+				await service.connect('agent-1', telegramIntegration, 'project-1', { setup: {} });
+			} else if (source === 'draft') {
+				await service.validateBeforeConnect('agent-1', telegramIntegration, 'project-1', {});
+			} else {
+				const internal = service as unknown as {
+					connections: Map<string, { context: AgentChatIntegrationContext }>;
+				};
+				internal.connections.set('agent-1:telegram:cred-3', {
+					context: {
+						agentId: 'agent-1',
+						projectId: 'project-1',
+						integration: telegramIntegration,
+						credentialId: 'cred-3',
+						credential: { accessToken: 'setup-token' },
+						ingressEnabled: true,
+						setupAuthorized: true,
+						webhookUrlFor: () => 'https://example.test/telegram',
+					},
+				});
+			}
+			credentialsService.decrypt.mockResolvedValue({ accessToken: 'changed-token' });
+
+			await service.completeChannelSetup('agent-1', telegramIntegration, 'project-1');
+
+			expect(integration.onSetupComplete).toHaveBeenCalledWith(
+				expect.objectContaining({ credential: { accessToken: 'setup-token' } }),
+			);
+		},
+	);
+
+	it('rejects a changed setup credential before the leader starts its runtime', async () => {
+		const registry = new ChatIntegrationRegistry();
+		const integration = new FakeIntegration('telegram', true);
+		registry.register(integration);
+		const follower = buildServiceWith({ registry, isLeader: false, multiMainEnabled: true });
+		const leader = buildServiceWith({ registry, isLeader: true, multiMainEnabled: true });
+		for (const credentialsService of [follower.credentialsService, leader.credentialsService]) {
+			mockProjectCredential(credentialsService, {
+				id: telegramIntegration.credentialId,
+			} as CredentialsEntity);
+		}
+		follower.credentialsService.decrypt.mockResolvedValue({ accessToken: 'setup-token' });
+		leader.credentialsService.decrypt.mockResolvedValue({ accessToken: 'changed-token' });
+		follower.leaderChannelRelay.requestWithoutAck.mockResolvedValue();
+		follower.leaderChannelRelay.request.mockImplementation(async (request) => {
+			if (request.action !== 'connect') throw new Error('Unexpected leader request');
+			await leader.service.connect('agent-1', request.integration, 'project-1', {
+				setup: request.setup,
+			});
+		});
+
+		await expect(
+			follower.service.connect('agent-1', telegramIntegration, 'project-1', { setup: {} }),
+		).rejects.toThrow('changed during channel setup');
+		expect(leader.service.getChatInstance('agent-1', telegramIntegration)).toBeUndefined();
+	});
+
+	it('restores legacy channels without verifying incoming requests for the same credential', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('linear', false));
+		const { service, agentRepository } = buildServiceWith({ registry });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		expect(await service.canReuseConnection('agent-1', linearIntegration, 'project-1')).toBe(false);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ integrations: [linearIntegration] }),
+		);
+		expect(await service.canReuseConnection('agent-1', linearIntegration, 'project-1')).toBe(false);
+		expect(
+			await service.canReuseConnection('agent-1', linearIntegration, 'project-1', {
+				allowLegacy: true,
+			}),
+		).toBe(true);
+	});
 
 	it('checks destination routing when peer or outbound startup skips external hooks', async () => {
 		const registry = new ChatIntegrationRegistry();
@@ -1669,6 +1803,10 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 		it('joins a duplicate request for the action already running', async () => {
 			const { service, leaderChannelRelay } = buildLeader();
+			const setupRequest = {
+				...request,
+				setup: { setupId: 'pending', credentialFingerprint: 'setup-fingerprint' },
+			};
 			let finishConnect: () => void = () => {};
 			const connectLocal = spyOnPrivate(service, 'connectLocal').mockImplementation(
 				async () =>
@@ -1677,9 +1815,13 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 					}),
 			);
 
-			const first = service.handleLeaderChannelRequest(request);
+			const first = service.handleLeaderChannelRequest(setupRequest);
 			await vi.waitFor(() => expect(connectLocal).toHaveBeenCalled());
-			const retry = service.handleLeaderChannelRequest({ ...request, requestId: 'lch_2' });
+			const retry = service.handleLeaderChannelRequest({
+				...setupRequest,
+				requestId: 'lch_2',
+				setup: { ...setupRequest.setup },
+			});
 			finishConnect();
 			await Promise.all([first, retry]);
 
@@ -1688,6 +1830,46 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			expect(connectLocal).toHaveBeenCalledTimes(1);
 			expect(leaderChannelRelay.respond).toHaveBeenCalledTimes(2);
 		});
+
+		it.each([undefined, { credentialFingerprint: 'first-fingerprint' }])(
+			'validates different setup fingerprints after the running connect finishes',
+			async (setup) => {
+				const { service, leaderChannelRelay, credentialsService } = buildLeader();
+				mockProjectCredential(credentialsService, {
+					id: telegram.credentialId,
+				} as CredentialsEntity);
+				credentialsService.decrypt.mockResolvedValue({ accessToken: 'current-token' });
+				let finishConnect: () => void = () => {};
+				const connectLocal = spyOnPrivate(service, 'connectLocal').mockImplementationOnce(
+					async () =>
+						await new Promise<void>((resolve) => {
+							finishConnect = resolve;
+						}),
+				);
+				const firstRequest = { ...request, setup };
+				const nextRequest = {
+					...request,
+					requestId: 'lch_2',
+					setup: { credentialFingerprint: 'next-fingerprint' },
+				};
+
+				const first = service.handleLeaderChannelRequest(firstRequest);
+				await vi.waitFor(() => expect(connectLocal).toHaveBeenCalled());
+				const next = service.handleLeaderChannelRequest(nextRequest);
+				expect(connectLocal).toHaveBeenCalledTimes(1);
+				finishConnect();
+				await Promise.all([first, next]);
+
+				expect(connectLocal).toHaveBeenCalledTimes(2);
+				expect(leaderChannelRelay.respond).toHaveBeenCalledWith(firstRequest);
+				expect(leaderChannelRelay.respond).toHaveBeenCalledWith(
+					nextRequest,
+					expect.objectContaining({
+						message: expect.stringContaining('changed during channel setup'),
+					}),
+				);
+			},
+		);
 
 		it('rebuilds a live channel, so a settings-only save reaches the runtime', async () => {
 			const { service, leaderChannelRelay } = buildLeader();
@@ -1830,7 +2012,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			const { service } = buildServiceWith({ isLeader: false, registry });
 
-			const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+			const connectSpy = spyOnPrivate(service, 'runConnectLocal').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
@@ -1846,7 +2028,14 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			registry.register(new FakeIntegration('linear', false));
 
 			const agentRepository = mock<AgentRepository>();
-			agentRepository.findOne.mockResolvedValue(makeAgent({ id: 'a1', projectId: 'p1' }));
+			agentRepository.findOne.mockResolvedValue(
+				makeAgent({
+					id: 'a1',
+					projectId: 'p1',
+					activeVersionId: 'published',
+					integrations: [{ type: 'linear', credentialId: 'c1' }],
+				}),
+			);
 
 			const { service } = buildServiceWith({
 				isLeader: false,
@@ -1854,7 +2043,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				agentRepository,
 			});
 
-			const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+			const connectSpy = spyOnPrivate(service, 'runConnectLocal').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
@@ -1874,14 +2063,21 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			registry.register(new FakeIntegration('linear', false));
 
 			const agentRepository = mock<AgentRepository>();
-			agentRepository.findOne.mockResolvedValue(makeAgent({ id: 'a1', projectId: 'p1' }));
+			agentRepository.findOne.mockResolvedValue(
+				makeAgent({
+					id: 'a1',
+					projectId: 'p1',
+					activeVersionId: 'published',
+					integrations: [{ type: 'linear', credentialId: 'c1' }],
+				}),
+			);
 
 			const { service } = buildServiceWith({
 				registry,
 				agentRepository,
 			});
 
-			spyOnPrivate(service, 'connectLocal').mockRejectedValue(
+			spyOnPrivate(service, 'runConnectLocal').mockRejectedValue(
 				new Error('not accessible to project'),
 			);
 
@@ -1903,31 +2099,10 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			const { service } = buildServiceWith({ registry, agentRepository });
 
-			const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+			const connectSpy = spyOnPrivate(service, 'runConnectLocal').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'gone',
-				integration: { type: 'linear', credentialId: 'c1' },
-				action: 'connect',
-			});
-
-			expect(connectSpy).not.toHaveBeenCalled();
-		});
-
-		it('skips connect when the integration is already connected', async () => {
-			const registry = new ChatIntegrationRegistry();
-			registry.register(new FakeIntegration('linear', false));
-
-			const { service } = buildServiceWith({ registry });
-
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const internal = service as any;
-			internal.connections.set('a1:linear:c1', {});
-
-			const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
-
-			await service.handleIntegrationChanged({
-				agentId: 'a1',
 				integration: { type: 'linear', credentialId: 'c1' },
 				action: 'connect',
 			});
@@ -2067,7 +2242,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 	});
 });
 
-describe('ChatIntegrationService — channel status recording', () => {
+describe('ChatIntegrationService — connected channels', () => {
 	const slackRef = {
 		agentId: 'agent-1',
 		integrationType: 'slack',
@@ -2117,12 +2292,15 @@ describe('ChatIntegrationService — channel status recording', () => {
 			}),
 		} as never);
 
-		return buildServiceWith({
-			registry,
-			credentialsService,
-			urlService,
-			chatSubscriptionStateService,
-		});
+		return {
+			...buildServiceWith({
+				registry,
+				credentialsService,
+				urlService,
+				chatSubscriptionStateService,
+			}),
+			integration,
+		};
 	}
 
 	beforeEach(() => {
@@ -2132,6 +2310,157 @@ describe('ChatIntegrationService — channel status recording', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('refreshes an existing peer from the saved settings and skips external hooks', async () => {
+		const { service, integration, agentRepository } = buildForConnect();
+		const createAdapter = vi.spyOn(integration, 'createAdapter');
+		const onBeforeConnect = vi.fn().mockResolvedValue(undefined);
+		const onAfterConnect = vi.fn().mockResolvedValue(undefined);
+		const onBeforeDisconnect = vi.fn().mockResolvedValue(undefined);
+		integration.onBeforeConnect = onBeforeConnect;
+		integration.onAfterConnect = onAfterConnect;
+		integration.onBeforeDisconnect = onBeforeDisconnect;
+		const agent = makeAgent({
+			activeVersionId: 'published',
+			integrations: [slackIntegration],
+		});
+		agentRepository.findOne.mockResolvedValue(agent);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		await service.connect(agent.id, slackIntegration, agent.projectId);
+		const original = service.getChatInstance(agent.id, slackIntegration);
+		onBeforeConnect.mockClear();
+		onAfterConnect.mockClear();
+		const updatedIntegration = {
+			...slackIntegration,
+			settings: { messagingExperience: 'agent' },
+		} satisfies AgentIntegrationConfig;
+		agent.integrations = [updatedIntegration];
+
+		await service.handleIntegrationChanged({
+			agentId: agent.id,
+			integration: slackIntegration,
+			action: 'connect',
+		});
+
+		const refreshed = service.getChatInstance(agent.id, slackIntegration);
+		expect(refreshed).toBeDefined();
+		expect(refreshed).not.toBe(original);
+		expect(original?.shutdown).toHaveBeenCalledOnce();
+		expect(createAdapter).toHaveBeenLastCalledWith(
+			expect.objectContaining({ integration: updatedIntegration }),
+		);
+		expect(onBeforeConnect).not.toHaveBeenCalled();
+		expect(onAfterConnect).not.toHaveBeenCalled();
+		expect(onBeforeDisconnect).not.toHaveBeenCalled();
+
+		await service.handleIntegrationChanged({
+			agentId: agent.id,
+			integration: slackIntegration,
+			action: 'connect',
+		});
+		expect(service.getChatInstance(agent.id, slackIntegration)).toBe(refreshed);
+		expect(refreshed?.shutdown).not.toHaveBeenCalled();
+	});
+
+	it('returns a channel settings request before its own queue lease ends and applies the latest save', async () => {
+		const { service, integration, agentRepository, credentialsService, registry, logger } =
+			buildForConnect();
+		integration.isDestinationConfigured = vi.fn().mockResolvedValue(true);
+		const createAdapter = vi.spyOn(integration, 'createAdapter');
+		const agent = makeAgent({
+			activeVersionId: 'published',
+			integrations: [slackIntegration],
+		});
+		agentRepository.findOne.mockResolvedValue(agent);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'cred-1', type: 'slackApi' },
+		] as never);
+		const persistence = mock<AgentIntegrationPersistenceService>();
+		persistence.applyIntegrationDelta.mockImplementation(async (_agent, delta) => {
+			if (delta.request) agent.integrations = [delta.request.integration];
+			return { agent, changed: true, published: true };
+		});
+		const management = new AgentIntegrationManagementService(
+			persistence,
+			credentialsService,
+			service,
+			registry,
+			logger,
+			agentRepository,
+			mock<AgentUpdateBroadcaster>(),
+		);
+		await service.connect(agent.id, slackIntegration, agent.projectId);
+		const original = service.getChatInstance(agent.id, slackIntegration);
+		const lease = service.acquireQueueBridge(agent.id, 'slack', 'cred-1');
+		expect(lease).toBeDefined();
+		const updatedIntegration = {
+			...slackIntegration,
+			settings: { messagingExperience: 'agent', sessionIdleTimeoutMinutes: 5 },
+		} satisfies AgentIntegrationConfig;
+		const latestIntegration = {
+			...updatedIntegration,
+			settings: { ...updatedIntegration.settings, sessionIdleTimeoutMinutes: 30 },
+		};
+		try {
+			for (const requested of [updatedIntegration, latestIntegration]) {
+				await management.requestConnection({
+					agent,
+					user: mock<User>(),
+					integration: requested,
+					modifiedBy: 'mcp',
+				});
+			}
+			expect(service.getChatInstance(agent.id, slackIntegration)).toBe(original);
+			expect(original?.shutdown).not.toHaveBeenCalled();
+			expect(service.acquireQueueBridge(agent.id, 'slack', 'cred-1')).toBeUndefined();
+		} finally {
+			lease?.release();
+		}
+
+		await vi.waitFor(() => {
+			const refreshed = service.getChatInstance(agent.id, slackIntegration);
+			expect(refreshed).toBeDefined();
+			expect(refreshed).not.toBe(original);
+		});
+		expect(createAdapter).toHaveBeenLastCalledWith(
+			expect.objectContaining({ integration: latestIntegration }),
+		);
+		expect(original?.shutdown).toHaveBeenCalledOnce();
+		const nextLease = service.acquireQueueBridge(agent.id, 'slack', 'cred-1');
+		expect(nextLease).toBeDefined();
+		nextLease?.release();
+	});
+
+	it('cancels a deferred refresh when the connection is released', async () => {
+		const { service, integration, agentRepository } = buildForConnect();
+		const createAdapter = vi.spyOn(integration, 'createAdapter');
+		const agent = makeAgent({
+			activeVersionId: 'published',
+			integrations: [slackIntegration],
+		});
+		agentRepository.findOne.mockResolvedValue(agent);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		await service.connect(agent.id, slackIntegration, agent.projectId);
+		const lease = service.acquireQueueBridge(agent.id, 'slack', 'cred-1');
+		const updatedIntegration = {
+			...slackIntegration,
+			settings: { messagingExperience: 'agent' },
+		} satisfies AgentIntegrationConfig;
+		agent.integrations = [updatedIntegration];
+		await service.connect(agent.id, updatedIntegration, agent.projectId);
+		const { connections } = service as unknown as {
+			connections: Map<string, { refresh?: Promise<void> }>;
+		};
+		const refresh = connections.get('agent-1:slack:cred-1')?.refresh;
+		expect(refresh).toBeDefined();
+		const releasing = service.releaseChannelLocally(agent.id, slackIntegration);
+		lease?.release();
+		await Promise.all([releasing, refresh]);
+
+		expect(service.getChatInstance(agent.id, slackIntegration)).toBeUndefined();
+		expect(createAdapter).toHaveBeenCalledOnce();
 	});
 
 	it('records a channel that started', async () => {

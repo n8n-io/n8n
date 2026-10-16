@@ -1072,7 +1072,9 @@ describe('AgentConfigService', () => {
 				'known-cred',
 			);
 			expect(saved.integrations).toEqual([]);
-			expect(composeJsonConfig(saved)?.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+			expect(composeStoredJsonConfig(saved)?.integrations).toEqual([
+				{ type: 'slack', credentialId: '' },
+			]);
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
 			expect(savedConfig.vectorStores?.[0].credential).toBe('');
 			expect(savedConfig.vectorStores?.[0].embedding.credential).toBe('');

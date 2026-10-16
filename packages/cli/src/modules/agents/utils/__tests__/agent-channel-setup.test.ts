@@ -37,13 +37,13 @@ describe('pending destination channels', () => {
 		);
 	});
 
-	it('completes the selected replacement and cancels another without removing working channels', () => {
+	it.each([false, true])('keeps other channels (pending: %s)', (otherSetupPending) => {
 		const old = channel('existing');
 		const other = channel('other');
 		const incoming = channel('incoming');
 		const pending = prepareChannelSetup(
 			{ integrations: [old, other] },
-			[incoming, channel('second')],
+			otherSetupPending ? [incoming, channel('second')] : [incoming],
 			{ requested: incoming, replaces: old },
 		);
 		const [first, second] = pending.pendingChannelSetup!.requested;
@@ -56,6 +56,10 @@ describe('pending destination channels', () => {
 			first.replaces,
 		);
 		expect(completed.integrations).toEqual([channel('fresh'), other]);
+		if (!otherSetupPending) {
+			expect(completed.pendingChannelSetup).toBeNull();
+			return;
+		}
 		expect(completed.pendingChannelSetup!.requested[1].setupId).toBe(second.setupId);
 		expect(() =>
 			completeChannelSetup(completed, second.setupId!, {
@@ -63,6 +67,14 @@ describe('pending destination channels', () => {
 				credentialId: 'fresh',
 			}),
 		).toThrow('Channel setup changed');
+
+		const fullyCompleted = completeChannelSetup(
+			completed,
+			second.setupId!,
+			channel('second-fresh'),
+		);
+		expect(fullyCompleted.integrations).toEqual([channel('fresh'), channel('second-fresh'), other]);
+		expect(fullyCompleted.pendingChannelSetup).toBeNull();
 
 		const canceled = cancelChannelSetup(completed, second.setupId!, 'slack');
 		expect(canceled.integrations).toEqual([channel('fresh'), other]);

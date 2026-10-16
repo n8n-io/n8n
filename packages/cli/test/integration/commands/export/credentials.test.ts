@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import fs from 'fs';
+import { Credentials } from 'n8n-core';
 import os from 'os';
 import path from 'path';
 
@@ -11,7 +12,11 @@ import { ExportCredentialsCommand } from '@/commands/export/credentials';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { createCredentials, encryptCredentialData } from '../../shared/db/credentials';
+import {
+	createCredentials,
+	decryptCredentialData,
+	encryptCredentialData,
+} from '../../shared/db/credentials';
 
 mockInstance(LoadNodesAndCredentials);
 
@@ -32,6 +37,32 @@ afterEach(() => {
 });
 
 describe.each([true, false])('credential exports with decrypted=%s', (decrypted) => {
+	test('keeps Agent channel setup evidence local', async () => {
+		const data = { accessToken: 'bot-token', agentSetupDestination: 'local-setup-proof' };
+		const credential = await createCredentials(
+			await encryptCredentialData(
+				Object.assign(new CredentialsEntity(), { name: 'Telegram bot', type: 'telegramApi', data }),
+			),
+		);
+		const outputFile = path.join(testOutputDir, 'output.json');
+		await command.run(['--all', `--output=${outputFile}`, ...(decrypted ? ['--decrypted'] : [])]);
+		const [exported]: Array<{
+			id: string;
+			name: string;
+			type: string;
+			data: string | Record<string, unknown>;
+		}> = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
+		const exportedData =
+			typeof exported.data === 'string'
+				? await new Credentials(exported, exported.type, exported.data).getData()
+				: exported.data;
+		expect(exportedData).toEqual({ accessToken: data.accessToken });
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(await decryptCredentialData(stored)).toEqual(data);
+	});
+
 	test.each([true, false, undefined])('gates descriptions when the flag is %s', async (enabled) => {
 		if (enabled !== undefined) {
 			Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = enabled;

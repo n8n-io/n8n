@@ -143,6 +143,7 @@ describe('AgentIntegrationManagementService', () => {
 			});
 			await vi.waitFor(() => expect(persistenceService.applyIntegrationDelta).toHaveBeenCalled());
 			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+			expect(chatService.completeChannelSetup).not.toHaveBeenCalled();
 			persisted.resolve();
 			await connecting;
 
@@ -157,6 +158,14 @@ describe('AgentIntegrationManagementService', () => {
 			);
 			expect(order(chatService.connect)).toBeLessThan(
 				order(persistenceService.applyIntegrationDelta),
+			);
+			expect(chatService.completeChannelSetup).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				agent.projectId,
+			);
+			expect(order(chatService.completeChannelSetup)).toBeLessThan(
+				order(chatService.broadcastIntegrationChange),
 			);
 			expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
 				agent.id,
@@ -185,6 +194,7 @@ describe('AgentIntegrationManagementService', () => {
 			).rejects.toBe(startupError);
 
 			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+			expect(chatService.completeChannelSetup).not.toHaveBeenCalled();
 			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
@@ -200,12 +210,38 @@ describe('AgentIntegrationManagementService', () => {
 			);
 
 			expect(chatService.connect).toHaveBeenCalled();
+			expect(chatService.completeChannelSetup).not.toHaveBeenCalled();
 			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 			// Local teardown only: nothing durable changed, so a broadcast would have
 			// peers tear down runtimes that are still persisted and still healthy.
 			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, integration);
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+
+		it('finishes a durable channel change before reporting a setup evidence error', async () => {
+			const { service, persistenceService, chatService, agentUpdateBroadcaster } = makeService();
+			const agent = makeAgent();
+			const setupError = new Error('setup write failed');
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				removed: replaced,
+			});
+			chatService.completeChannelSetup.mockRejectedValue(setupError);
+
+			await expect(
+				service.connect({ agent, user: user as never, integration, replaces: replaced }),
+			).rejects.toBe(setupError);
+
+			expect(agentUpdateBroadcaster.notify).toHaveBeenCalled();
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, replaced);
+			expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				'connect',
+			);
+			expect(chatService.disconnect).not.toHaveBeenCalled();
 		});
 
 		it('puts a restarted channel back on its persisted entry when the write fails', async () => {
@@ -282,6 +318,11 @@ describe('AgentIntegrationManagementService', () => {
 				{ setupId: undefined },
 			);
 			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.completeChannelSetup).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				agent.projectId,
+			);
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
 				agent,
@@ -449,6 +490,104 @@ describe('AgentIntegrationManagementService', () => {
 			);
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, n8nChat);
 		});
+	});
+
+	describe('requesting a channel', () => {
+		const updatedIntegration = {
+			...integration,
+			settings: { messagingExperience: 'agent' },
+		} satisfies AgentIntegrationConfig;
+		const pendingChannelSetup = {
+			requested: [{ integration: updatedIntegration, setupId: 'setup-1' }],
+		};
+
+		it('refreshes local and peer runtimes with the settings the published row accepted', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ activeVersionId: null, integrations: [integration] });
+			persistenceService.applyIntegrationDelta.mockImplementation(async () => {
+				agent.integrations = [updatedIntegration];
+				return deltaResult(agent, true);
+			});
+
+			await service.requestConnection({
+				agent,
+				user: user as never,
+				integration: updatedIntegration,
+				modifiedBy: 'mcp',
+			});
+
+			expect(chatService.completeChannelSetup).not.toHaveBeenCalled();
+			expect(chatService.connect).toHaveBeenCalledWith(
+				agent.id,
+				updatedIntegration,
+				agent.projectId,
+				{ setup: undefined },
+			);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(chatService.connect),
+			);
+			expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
+				agent.id,
+				updatedIntegration,
+				'connect',
+			);
+			expect(order(chatService.connect)).toBeLessThan(
+				order(chatService.broadcastIntegrationChange),
+			);
+		});
+
+		it.each([
+			{
+				name: 'a new pending channel',
+				integrations: [],
+				pendingChannelSetup,
+				changed: true,
+				published: true,
+			},
+			{
+				name: 'an unverified configured channel',
+				integrations: [integration],
+				pendingChannelSetup,
+				changed: true,
+				published: true,
+			},
+			{
+				name: 'an unchanged channel',
+				integrations: [updatedIntegration],
+				pendingChannelSetup: null,
+				changed: false,
+				published: true,
+			},
+			{
+				name: 'an unpublished channel',
+				integrations: [updatedIntegration],
+				pendingChannelSetup: null,
+				changed: true,
+				published: false,
+			},
+		])(
+			'leaves runtime connections alone for $name',
+			async ({ integrations, pendingChannelSetup, changed, published }) => {
+				const { service, persistenceService, chatService } = makeService();
+				const agent = makeAgent({ integrations, pendingChannelSetup });
+				persistenceService.applyIntegrationDelta.mockImplementation(async () =>
+					deltaResult(agent, published, { changed }),
+				);
+
+				await service.requestConnection({
+					agent,
+					user: user as never,
+					integration: updatedIntegration,
+					modifiedBy: 'mcp',
+				});
+
+				expect(chatService.connect).not.toHaveBeenCalled();
+				expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+				expect(chatService.disconnect).not.toHaveBeenCalled();
+				expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+				expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('publication state changing mid-request', () => {

@@ -22,6 +22,7 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import {
 	createCredentials,
+	decryptCredentialData,
 	encryptCredentialData,
 	getAllCredentials,
 	getAllSharedCredentials,
@@ -92,6 +93,34 @@ test('import:credentials should import a credential', async () => {
 		],
 	});
 });
+
+test.each([false, true])(
+	'import:credentials omits channel setup evidence with encrypted=%s',
+	async (encrypted) => {
+		const owner = await createOwner();
+		const project = await getPersonalProject(owner);
+		const data = { accessToken: 'bot-token', agentSetupDestination: 'local-setup-proof' };
+		const credential = await createCredentials(
+			await encryptCredentialData(
+				Object.assign(new CredentialsEntity(), { name: 'Telegram bot', type: 'telegramApi', data }),
+			),
+			project,
+		);
+		const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+		const input = path.join(temporaryDirectory, 'credentials.json');
+		try {
+			fs.writeFileSync(
+				input,
+				JSON.stringify([{ ...credential, data: encrypted ? credential.data : data }]),
+			);
+			await command.run([`--input=${input}`, '--exclude=type']);
+			const [imported] = await getAllCredentials();
+			expect(await decryptCredentialData(imported)).toEqual({ accessToken: data.accessToken });
+		} finally {
+			fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+		}
+	},
+);
 
 test('import:credentials should import a credential from separated files', async () => {
 	//

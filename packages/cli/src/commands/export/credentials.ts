@@ -10,6 +10,7 @@ import z from 'zod';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { ICredentialsDecryptedDb } from '@/interfaces';
+import { stripAgentChannelSetupEvidence } from '@/modules/agents/integrations/agent-channel-setup-evidence';
 
 import { BaseCommand } from '../base-command';
 import '../../zod-alias-support';
@@ -124,6 +125,10 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		});
 
 		await Container.get(CredentialDescriptionsService).stripIfDisabled(credentials);
+
+		for (const credential of credentials) {
+			credential.data = await stripAgentChannelSetupEvidence(credential.type, credential.data);
+		}
 
 		if (flags.decrypted) {
 			for (let i = 0; i < credentials.length; i++) {

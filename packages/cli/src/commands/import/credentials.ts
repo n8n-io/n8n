@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { stripAgentChannelSetupEvidence } from '@/modules/agents/integrations/agent-channel-setup-evidence';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
@@ -295,6 +296,9 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			};
 		}
 
+		if (credential.data !== undefined) {
+			credential.data = await stripAgentChannelSetupEvidence(type, credential.data);
+		}
 		return { credential: { ...credential, type }, existing, cleared };
 	}
 

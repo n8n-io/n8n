@@ -31,8 +31,15 @@ import {
 	type Role,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
-import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
+import {
+	CREDENTIAL_ERRORS,
+	Cipher,
+	CredentialDataError,
+	Credentials,
+	type ErrorReporter,
+} from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import {
 	CREDENTIAL_BLANKING_VALUE,
@@ -566,6 +573,7 @@ describe('CredentialsService', () => {
 				accessToken: '',
 				oauthTokenData: 'super-secret',
 				csrfSecret: 'super-secret',
+				agentSetupDestination: 'local-setup-proof',
 			};
 
 			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
@@ -4032,6 +4040,20 @@ describe('CredentialsService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 		});
 
+		it('keeps supplied channel setup evidence out of a new credential', async () => {
+			mockTransactionManager();
+			const credential = await service.createUnmanagedCredential(
+				{
+					...credentialData,
+					type: 'telegramApi',
+					data: { accessToken: 'bot-token', agentSetupDestination: 'incoming-setup-proof' },
+				},
+				ownerUser,
+			);
+			const data = jsonParse(await Container.get(Cipher).decryptV2(credential.data));
+			expect(data).toEqual({ accessToken: 'bot-token' });
+		});
+
 		it('should allow owner to create global credential', async () => {
 			// ARRANGE
 			const payload = { ...credentialData, isGlobal: true };
@@ -4666,6 +4688,31 @@ describe('CredentialsService', () => {
 				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as never);
 				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			});
+
+			it.each([undefined, 'local-setup-proof'])(
+				'keeps only locally stored channel setup evidence (%s)',
+				async (proof) => {
+					vi.spyOn(service, 'decrypt').mockResolvedValue({
+						accessToken: 'bot-token',
+						...(proof ? { agentSetupDestination: proof } : {}),
+					});
+					const existing = mockExistingCredential({ name: 'Telegram bot', type: 'telegramApi' });
+					const prepared = await service.prepareUpdateData(
+						ownerUser,
+						{
+							name: 'Telegram bot',
+							type: 'telegramApi',
+							data: { accessToken: 'bot-token', agentSetupDestination: 'incoming-setup-proof' },
+						},
+						existing,
+						{ dataMerge: 'replace' },
+					);
+					expect(prepared.data).toEqual({
+						accessToken: 'bot-token',
+						...(proof ? { agentSetupDestination: proof } : {}),
+					});
+				},
+			);
 
 			it('keeps incoming data as-is when dataMerge is replace', async () => {
 				vi.spyOn(service, 'decrypt').mockResolvedValue({

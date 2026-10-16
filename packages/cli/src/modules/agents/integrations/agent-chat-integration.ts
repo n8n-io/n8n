@@ -433,8 +433,17 @@ export abstract class AgentChatIntegration {
 	 */
 	assertStartupPreconditions?(ctx: AgentChannelPreconditionContext): Promise<void>;
 
-	/** Check destination setup from local state. Do not contact the platform. */
-	isDestinationConfigured?(ctx: AgentChatIntegrationContext): Promise<boolean>;
+	/**
+	 * Check destination setup from local state. Do not contact the platform.
+	 * Allow legacy state only when restoring an existing channel runtime.
+	 */
+	isDestinationConfigured?(
+		ctx: AgentChatIntegrationContext,
+		options?: { allowLegacy?: boolean },
+	): Promise<boolean>;
+
+	/** Record local setup only after the UI completion is durable. */
+	onSetupComplete?(ctx: AgentChatIntegrationContext): Promise<void>;
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;

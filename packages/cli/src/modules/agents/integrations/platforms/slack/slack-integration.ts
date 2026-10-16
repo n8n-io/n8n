@@ -118,12 +118,15 @@ export class SlackIntegration extends AgentChatIntegration {
 		await this.assertStartupPreconditions(ctx);
 		// The manual UI flow confirms the supplied manifest. Persistence records that setup.
 		if (ctx.setupAuthorized && !stringProperty(ctx.credential, 'agentWebhookUrl')) return;
-		if (!(await this.isDestinationConfigured(ctx))) {
+		if (!(await this.isDestinationConfigured(ctx, { allowLegacy: true }))) {
 			throw new UserError('Complete Slack setup for this Agent in the editor.');
 		}
 	}
 
-	async isDestinationConfigured(ctx: AgentChatIntegrationContext): Promise<boolean> {
+	async isDestinationConfigured(
+		ctx: AgentChatIntegrationContext,
+		options: { allowLegacy?: boolean } = {},
+	): Promise<boolean> {
 		const { credential, agentId, projectId } = ctx;
 		const requestUrl = stringProperty(credential, 'agentWebhookUrl');
 		if (requestUrl) {
@@ -133,7 +136,7 @@ export class SlackIntegration extends AgentChatIntegration {
 				requestUrl === ctx.webhookUrlFor(this.type)
 			);
 		}
-		// Keep legacy destination connections. An Agent ID inside a credential is not setup evidence.
+		if (!options.allowLegacy) return false;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		return !!agent && isConfiguredIntegration(agent, ctx.integration);
 	}

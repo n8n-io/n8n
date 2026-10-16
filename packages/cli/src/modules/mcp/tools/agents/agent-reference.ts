@@ -52,7 +52,9 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
    the Agent uses workflows that are not published, name those workflows to the user. Publish them
    with publish_workflow only when the user asks, then call publish_agent again.
 9. Use update_agent_integration to configure chat integrations. Configuration never publishes the
-   Agent. A configured channel stays inactive until explicit publication unless the Agent already has an active version.
+   Agent. Reuse only existing verified destination connections. New or unverified requests save pending
+   intent and return channelSetupRequired with a setupUrl. Give the setup links to the user.
+   The user must complete setup in the UI before publication.
 
 ## Draft test runs
 
@@ -68,8 +70,9 @@ decision must come from the human; resume each returned approval individually.
 Building, editing, validating, or configuring an Agent never implies permission to publish or
 republish it. Leave the Agent as a draft by default. An explicit request to publish, activate,
 deploy, or make live counts as approval; otherwise ask after validation and wait for the answer
-before calling publish_agent. Configuring a channel on an already published Agent connects it
-immediately, so confirm that external connection before calling update_agent_integration.
+before calling publish_agent. Updating a verified destination connection on a published Agent can
+affect the live connection. Ensure the user has authorized that external action before calling
+update_agent_integration. Pending requests do not connect.
 
 ## Version history
 
