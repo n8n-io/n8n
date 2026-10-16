@@ -33,6 +33,7 @@ export const FINISH_REASONS = [
 	'error',
 	'other',
 	'paused',
+	'cancelled',
 ] as const;
 
 export type FinishReason = (typeof FINISH_REASONS)[number];

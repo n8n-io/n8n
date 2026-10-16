@@ -231,7 +231,7 @@ export class AgentTurnExecutionService {
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const attributionTracker = createAttributionTracker(config.mcpServerAttributions);
 
-		for await (const chunk of streamAgentChunks(stream)) {
+		for await (let chunk of streamAgentChunks(stream)) {
 			if (chunk.type === 'input-boundary') {
 				chunk.acknowledge();
 				continue;
@@ -244,8 +244,14 @@ export class AgentTurnExecutionService {
 				}
 				continue;
 			}
-			// The runtime also emits an error chunk for a requested stop.
-			if (chunk.type === 'error' && (await this.isStoppedChatTurn(turn, config))) continue;
+			// The runtime reports requested stops as errors. Keep chat outcomes consistent.
+			if (
+				(chunk.type === 'error' || (chunk.type === 'finish' && chunk.finishReason === 'error')) &&
+				(await this.isStoppedChatTurn(turn, config))
+			) {
+				if (chunk.type === 'error') continue;
+				chunk = { ...chunk, finishReason: 'cancelled' };
+			}
 			recorder.record(chunk);
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
