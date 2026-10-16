@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/ERPNext/ERPNext.node.ts
+  s_2e1fa95fc44f8f::t_fa51d208b9fb15 14,24-25,70,76-79,98-101,131,149-153,171,237,253-257,285-289
+packages/nodes-base/nodes/ERPNext/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_a4fad0818a9baa 12-15
+packages/nodes-base/nodes/ERPNext/test/ERPNext.node.test.ts
+  s_2e1fa95fc44f8f::t_ae08173b770c57 2,6-11,14-21,23-25,34-72,74-82
+packages/nodes-base/nodes/ERPNext/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_bed22eb58c373f 5,9-11,33-42
+packages/nodes-base/nodes/ERPNext/test/workflow/selfHosted.workflow.json
+  s_2e1fa95fc44f8f::t_de50bcdba8764f 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3800bd7eb43d948be93c6a794e0cece669d41bd1",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
