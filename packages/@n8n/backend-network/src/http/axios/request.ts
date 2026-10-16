@@ -24,10 +24,12 @@ import {
 	validateUrlSsrf,
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
+import type { NodeAgents } from '../node-agents';
 
 export function convertN8nRequestToAxios(
 	n8nRequest: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
+	agents?: NodeAgents,
 ): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -60,6 +62,11 @@ export function convertN8nRequestToAxios(
 
 	if (n8nRequest.encoding !== undefined) {
 		axiosRequest.responseType = n8nRequest.encoding;
+	}
+
+	if (agents) {
+		axiosRequest.httpAgent = agents.httpAgent;
+		axiosRequest.httpsAgent = agents.httpsAgent;
 	}
 
 	const agentOptions = buildAgentOptions(n8nRequest);
@@ -172,18 +179,22 @@ export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOp
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions & { returnFullResponse: true },
 	ssrfBridge?: SsrfBridge,
+	agents?: NodeAgents,
 ): Promise<IN8nHttpFullResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
 	ssrfBridge?: SsrfBridge,
+	agents?: NodeAgents,
 ): Promise<IN8nHttpResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
+	agents?: NodeAgents,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
+	agents?: NodeAgents,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
@@ -191,7 +202,7 @@ export async function httpRequest(
 	await validateUrlSsrf(url, ssrfBridge);
 	await validateProxySsrf(requestOptions.proxy, ssrfBridge);
 
-	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
+	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge, agents);
 	if (axiosRequest.data === undefined || axiosRequest.method?.toUpperCase() === 'GET') {
 		delete axiosRequest.data;
 	}
