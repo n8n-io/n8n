@@ -583,6 +583,7 @@ packages/@n8n/cli/src/__tests__/package-export.test.ts
 packages/@n8n/db/src/migrations/common/1792151677084-AddAgentImportSourceIds.ts
   s_2397c9db9d923f::t_f82bb84ac0374d 1-2,22-23,31-32
   s_2397c9db9d923f::t_38309df1c931e2 3-7,9-21,24-30
+  s_71ad2034164515::t_38d4279b155ffb 8
 packages/cli/src/modules/agents/repositories/agent-task.repository.ts
   s_2397c9db9d923f::t_38309df1c931e2 2,4,10-11,29-54
   s_2397c9db9d923f::t_00dcabe3b50a37 55
@@ -608,6 +609,7 @@ packages/cli/src/modules/n8n-packages/__tests__/agent-import-identities.integrat
 packages/cli/test/migration/1792151677084-add-agent-import-source-ids.test.ts
   s_2397c9db9d923f::t_23ace2afb12cd0 1-11,13-33,43-47,60-70,85-90,95-100
   s_2397c9db9d923f::t_2a22037e7e9406 34-42,48-59,71-84,91-94
+  s_71ad2034164515::t_4e580a5322531a 12
 docs/generated/postgres-schema/README.md
   s_2397c9db9d923f::t_c6ed8dc6682fec 33,720,773
 docs/generated/postgres-schema/public.agent_background_job.md
