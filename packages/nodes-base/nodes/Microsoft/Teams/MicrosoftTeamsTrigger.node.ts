@@ -6,26 +6,21 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 	IDataObject,
-	ILoadOptionsFunctions,
 	JsonObject,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
+import type { WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscription,
 	generateClientState,
 	getResourcePath,
+	listOwnSubscriptions,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
-import {
-	microsoftApiRequest,
-	microsoftApiRequestAllItems,
-	SERVICE_PRINCIPAL_AUTH,
-	SP_HIDE,
-} from './v2/transport';
+import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH, SP_HIDE } from './v2/transport';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -358,16 +353,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				try {
-					const subscriptions = (await microsoftApiRequestAllItems.call(
-						this as unknown as ILoadOptionsFunctions,
-						'value',
-						'GET',
-						'/v1.0/subscriptions',
-					)) as SubscriptionResponse[];
-
-					const matchingSubscriptions = subscriptions.filter(
-						(subscription) => subscription.notificationUrl === webhookUrl,
-					);
+					const matchingSubscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 
 					const now = new Date();
 					const thresholdMs = 5 * 60 * 1000;

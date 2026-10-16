@@ -6,6 +6,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 	IHookFunctions,
+	IWebhookFunctions,
 	INode,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, UnexpectedError } from 'n8n-workflow';
@@ -127,7 +128,7 @@ export type MicrosoftGraphPathSegment = string | { id: string };
  * validation (not encoding) is the guard.
  */
 export function buildMicrosoftGraphPath(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	segments: MicrosoftGraphPathSegment[],
 ): string {
 	const node = this.getNode();
@@ -149,7 +150,7 @@ export function buildMicrosoftGraphPath(
  * a generic message instead of surfacing "0 not found".
  */
 function nodeResourceName(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 ): string | undefined {
 	try {
 		const resource = this.getNodeParameter('resource', 0);
@@ -225,7 +226,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	 * webhook hooks, since all of them authenticate through `microsoftApiRequest`.
 	 */
 	function getCredentialType(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	): MicrosoftGraphCredentialType<TDefault> {
 		// `0` is the execute item index; in load-options/hook contexts getNodeParameter
 		// treats the 2nd arg as the FALLBACK value, so don't switch this to the 3-arg form.
@@ -250,7 +251,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	 * Graph URL (e.g. `user@odata.bind`) drift from the host the request goes to.
 	 */
 	async function getGraphBaseUrl(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	): Promise<string> {
 		const credentials = await this.getCredentials(getCredentialType.call(this));
 		const baseUrl = (
@@ -281,7 +282,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	}
 
 	async function microsoftApiRequest(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 		method: IHttpRequestMethods,
 		resource: string,
 		body: any = {},
@@ -408,7 +409,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	}
 
 	async function microsoftApiRequestAllItems(
-		this: IExecuteFunctions | ILoadOptionsFunctions,
+		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 		propertyName: string,
 		method: IHttpRequestMethods,
 		endpoint: string,

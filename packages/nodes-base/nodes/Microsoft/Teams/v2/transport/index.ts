@@ -1,4 +1,9 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import {
@@ -51,7 +56,7 @@ export {
  * Shared by `getTeams` (listSearch) and `fetchAllTeams` (trigger).
  */
 export function joinedTeamsEndpoint(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 ): string {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
 		? '/v1.0/teams'

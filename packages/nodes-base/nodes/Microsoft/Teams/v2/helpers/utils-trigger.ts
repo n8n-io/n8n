@@ -9,6 +9,7 @@ import {
 	getTeamsCredentialType,
 	joinedTeamsEndpoint,
 	microsoftApiRequest,
+	microsoftApiRequestAllItems,
 	SERVICE_PRINCIPAL_AUTH,
 } from '../transport';
 
@@ -16,7 +17,16 @@ export function generateClientState(): string {
 	return randomBytes(32).toString('hex');
 }
 
-export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[]> {
+// Graph caps Teams subscriptions at 4320 minutes.
+const SUBSCRIPTION_TTL_MINUTES = 4318;
+
+export function newSubscriptionExpiry(): string {
+	return new Date(Date.now() + SUBSCRIPTION_TTL_MINUTES * 60 * 1000).toISOString();
+}
+
+export async function fetchAllTeams(
+	this: IHookFunctions | IWebhookFunctions,
+): Promise<TeamResponse[]> {
 	const { value: teams } = (await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -26,7 +36,7 @@ export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[
 }
 
 export async function fetchAllChannels(
-	this: IHookFunctions,
+	this: IHookFunctions | IWebhookFunctions,
 	teamId: string,
 ): Promise<ChannelResponse[]> {
 	// Route through buildTeamsPath so `teamId` is validated before interpolation
@@ -40,12 +50,12 @@ export async function fetchAllChannels(
 }
 
 export async function createSubscription(
-	this: IHookFunctions,
+	this: IHookFunctions | IWebhookFunctions,
 	webhookUrl: string,
 	resourcePath: string,
 	clientState?: string,
 ): Promise<SubscriptionResponse> {
-	const expirationTime = new Date(Date.now() + 4318 * 60 * 1000).toISOString();
+	const expirationTime = newSubscriptionExpiry();
 	const body: IDataObject = {
 		changeType: 'created',
 		notificationUrl: webhookUrl,
@@ -67,6 +77,19 @@ export async function createSubscription(
 	)) as SubscriptionResponse;
 
 	return response;
+}
+
+export async function listOwnSubscriptions(
+	this: IHookFunctions | IWebhookFunctions,
+	webhookUrl: string | undefined,
+): Promise<SubscriptionResponse[]> {
+	const subscriptions = (await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		'/v1.0/subscriptions',
+	)) as SubscriptionResponse[];
+	return subscriptions.filter((subscription) => subscription.notificationUrl === webhookUrl);
 }
 
 export function verifyWebhook(this: IWebhookFunctions): boolean {
@@ -96,7 +119,7 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 }
 
 export async function getResourcePath(
-	this: IHookFunctions,
+	this: IHookFunctions | IWebhookFunctions,
 	event: string,
 ): Promise<string | string[]> {
 	// Path-interpolated ids are validated + interpolated via buildTeamsPath under
@@ -219,7 +242,7 @@ export async function getResourcePath(
  * Throws a static `NodeOperationError` before composing any `/me` path under the
  * Service Principal credential.
  */
-function throwChatTriggerUnsupported(this: IHookFunctions): never {
+function throwChatTriggerUnsupported(this: IHookFunctions | IWebhookFunctions): never {
 	throw new NodeOperationError(
 		this.getNode(),
 		'Chat triggers are not available with the Service Principal credential',
@@ -236,7 +259,7 @@ function throwChatTriggerUnsupported(this: IHookFunctions): never {
  * (option b). The UI hides the toggles; this guard backs that at runtime for
  * hand-edited workflows, throwing a static error before any fan-out request.
  */
-function throwWatchAllUnsupported(this: IHookFunctions): never {
+function throwWatchAllUnsupported(this: IHookFunctions | IWebhookFunctions): never {
 	throw new NodeOperationError(
 		this.getNode(),
 		'Watching all teams/channels is not available with the Service Principal credential',
@@ -252,7 +275,7 @@ function throwWatchAllUnsupported(this: IHookFunctions): never {
  * validated and interpolated. A malformed `%` sequence makes `decodeURIComponent`
  * throw a raw `URIError`; convert it to a static `NodeOperationError`.
  */
-function decodeSelectedId(this: IHookFunctions, id: string): string {
+function decodeSelectedId(this: IHookFunctions | IWebhookFunctions, id: string): string {
 	try {
 		// A missing selection arrives as a non-string — keep it empty (not the
 		// string "undefined") so validation raises the required-ID error
