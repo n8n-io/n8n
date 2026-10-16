@@ -1,4 +1,4 @@
-import { DbLock, DbLockService } from '@n8n/db';
+import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -73,6 +73,10 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 	async readSourceFile(versionId: string, filePath: string): Promise<Buffer | null> {
 		return (await this.readSource(versionId)).get(filePath) ?? null;
 	}
+
+	async removeVersions(appId: string, versionIds: string[], ctx: OperationContext): Promise<void> {
+		await this.versions.removeVersions(appId, versionIds, ctx);
+	}
 }
 
 @Service()
@@ -110,5 +114,9 @@ export class SnapshotAppBuildResultStore extends AppBuildResultStore {
 		if (!version) throw new NotFoundError('App version not found.');
 		if (version.bundleArtifactId === null) throw new NotFoundError('App bundle not found.');
 		return await this.archives.unpack(await this.artifacts.read(version.bundleArtifactId), true);
+	}
+
+	async removeBundles(appId: string, versionIds: string[], ctx: OperationContext): Promise<void> {
+		await this.versions.clearBundles(appId, versionIds, ctx);
 	}
 }

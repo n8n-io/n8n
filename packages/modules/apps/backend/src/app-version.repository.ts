@@ -55,6 +55,19 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 		});
 	}
 
+	async listForRetention(appId: string, ctx: OperationContext) {
+		const versions = await this.managerFor(ctx).find(AppVersion, {
+			select: { id: true, buildStatus: true, bundleArtifactId: true },
+			where: { appId },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+		return versions.map(({ id, buildStatus, bundleArtifactId }) => ({
+			id,
+			buildStatus,
+			hasBundle: bundleArtifactId !== null,
+		}));
+	}
+
 	async attachBundle(
 		appId: string,
 		versionId: string,
