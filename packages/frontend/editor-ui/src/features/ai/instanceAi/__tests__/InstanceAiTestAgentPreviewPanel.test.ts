@@ -249,6 +249,24 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(container.querySelector('a[href="https://example.com"]')).toBeInTheDocument();
 	});
 
+	it('omits the seed example when the mocked preview returns no answer', async () => {
+		const store = useAgentEvalsStore();
+		mockPreviewRun(store, { response: '' });
+		const generateDraftCases = vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			cases: [{ input: 'Another request', whatToCheck: 'names the ticket', scenario: 'Vague' }],
+		});
+		const user = userEvent.setup();
+		const { findByTestId } = renderComponent();
+
+		await user.click(await findByTestId('instance-ai-test-agent-preview-check-harder'));
+
+		expect(await findByTestId('instance-ai-test-agent-examples-check-agent')).toBeInTheDocument();
+		expect(generateDraftCases).toHaveBeenCalledWith('project-1', 'agent-1', {
+			count: 10,
+			save: false,
+		});
+	});
+
 	it('renders the answer inside a fixed-height scrollable container regardless of length', async () => {
 		const store = useAgentEvalsStore();
 		mockPreviewRun(store, {

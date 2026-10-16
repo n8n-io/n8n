@@ -130,3 +130,9 @@ it('filters malformed intercepted requests without discarding the tool call', ()
 	});
 	expect(call).toMatchObject({ mocked: false, interceptedRequests: [] });
 });
+
+it('renders a recorded error status without requiring a diagnostic string', () => {
+	const [call] = toDisplayToolCalls({ calls: [{ tool: 'lookup', status: 'error' }] });
+	expect(call.state).toBe(TOOL_CALL_STATE.ERROR);
+	expect(call.output).toBeUndefined();
+});

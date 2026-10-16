@@ -1722,6 +1722,79 @@ describe('useAgentEvalsStore', () => {
 	});
 
 	describe('rerunResult', () => {
+		it('ignores a timer task already queued when a rerun finishes', async () => {
+			vi.useFakeTimers();
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			let finish!: (value: AgentEvalResultRecord) => void;
+			rerunResult.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finish = resolve;
+					}),
+			);
+			const timer = vi.spyOn(globalThis, 'setTimeout');
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
+			const queued = timer.mock.calls.find(([, delay]) => delay === 5000)?.[0];
+			expect(typeof queued).toBe('function');
+			finish(result('c1'));
+			await pending;
+			getRunDetail.mockClear();
+			if (typeof queued !== 'function') throw new Error('Missing progress timer');
+			await queued();
+			expect(getRunDetail).not.toHaveBeenCalled();
+			expect(store.getReview(RUN_ID).results[0]).toEqual(result('c1'));
+			expect(vi.getTimerCount()).toBe(0);
+			timer.mockRestore();
+		});
+
+		it.each([false, true])('handles an uncached rerun (request fails: %s)', async (fails) => {
+			const store = useAgentEvalsStore();
+			if (fails) rerunResult.mockRejectedValueOnce(new Error('Unavailable'));
+			else rerunResult.mockResolvedValueOnce(result('uncached'));
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'uncached');
+			if (fails) await expect(pending).rejects.toThrow('Unavailable');
+			else expect(await pending).toEqual(result('uncached'));
+			expect(getRunDetail).not.toHaveBeenCalled();
+		});
+
+		it('preserves a newer attempt when a later refresh returns an older runAt', async () => {
+			const newer = { ...result('c1'), runAt: '2026-01-01T01:00:00.000Z' };
+			mockRun({ results: [newer], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			getRunDetail.mockResolvedValueOnce(runDetail([result('c1')], 1));
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results[0]).toEqual(newer);
+		});
+
+		it('pauses normal progress reads while the document is hidden', async () => {
+			vi.useFakeTimers();
+			const visibility = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			let finish!: (value: AgentEvalResultRecord) => void;
+			rerunResult.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finish = resolve;
+					}),
+			);
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
+			getRunDetail.mockClear();
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(getRunDetail).not.toHaveBeenCalled();
+			visibility.mockReturnValue(false);
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(getRunDetail).toHaveBeenCalledOnce();
+			finish(result('c1'));
+			await pending;
+			expect(vi.getTimerCount()).toBe(0);
+			visibility.mockRestore();
+		});
+
 		it('patches the cached result to running before the request lands, then to the real response', async () => {
 			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
 			const store = useAgentEvalsStore();

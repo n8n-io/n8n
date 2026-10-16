@@ -56,8 +56,8 @@ const phase = ref<Phase>('generating-preview');
 // from `previewRun`'s response, which already ran the agent and returned the
 // final text. No run id, no polling: unlike the suite below, this never
 // touches a Data Table, dataset, or eval-run row at all.
-const previewRequest = ref<string | null>(null);
-const previewAnswer = ref<string | null>(null);
+const previewInput = ref('');
+const previewOutput = ref('');
 // Generated with `save: false` — a preview, not yet persisted. Nothing backs
 // these rows until "Check your agent" commits them, so dismissing or
 // refreshing mid-preview leaves no orphaned dataset behind.
@@ -86,9 +86,6 @@ const previewWhatToCheck = ref('');
 const previewVerdict = ref<AgentEvalVerdict | null>(null);
 // Whether the full example conversation is shown under "What we found".
 const conversationExpanded = ref(false);
-
-const previewInput = computed(() => previewRequest.value ?? '');
-const previewOutput = computed(() => previewAnswer.value ?? '');
 
 // Nothing failed when the judge passed the answer, or when the case had no rule to
 // grade it against (`skipped`) — the card still shows, as a pass. A judge error is
@@ -189,8 +186,8 @@ async function runGeneratedPreview() {
 		previewScenario.value = result.scenario || null;
 		previewWhatToCheck.value = result.whatToCheck;
 		previewVerdict.value = result.verdict;
-		previewRequest.value = result.input;
-		previewAnswer.value = result.response;
+		previewInput.value = result.input;
+		previewOutput.value = result.response;
 		conversationExpanded.value = false;
 		phase.value = 'awaiting-confirmation';
 	} catch (error) {
@@ -443,8 +440,8 @@ async function onApplySuggestion() {
 		);
 		return;
 	}
-	previewRequest.value = preview.input;
-	previewAnswer.value = preview.response;
+	previewInput.value = preview.input;
+	previewOutput.value = preview.response;
 	previewVerdict.value = preview.verdict;
 	conversationExpanded.value = false;
 }
@@ -538,7 +535,7 @@ function onDontCreateEvals() {
 					<EvalInitialSample
 						v-if="conversationExpanded"
 						:preview-input="previewInput"
-						:preview-output="previewOutput ?? ''"
+						:preview-output="previewOutput"
 						hide-banner
 					/>
 				</div>
@@ -610,7 +607,7 @@ function onDontCreateEvals() {
 		<template v-else-if="phase === 'suite-ready'">
 			<InstanceAiTestAgentExamplesPanel
 				:preview-input="previewInput"
-				:preview-output="previewOutput ?? ''"
+				:preview-output="previewOutput"
 				:preview-scenario="previewScenario"
 				:preview-status="previewStatus"
 				:preview-reasoning="previewReasoning"
