@@ -714,6 +714,9 @@ it('plans an authorized pending project without creating its shell and still che
 	const plan = await planner.plan(request);
 	expect(plan.blockingIssues).toEqual([]);
 	await expect(
+		planner.assertNotBlocked([plan], { apiKeyScopes: ['agent:read', 'agent:create'] }),
+	).rejects.toBeInstanceOf(ForbiddenError);
+	await expect(
 		planner.assertNotBlocked([plan], { apiKeyScopes: ['agent:import', 'agent:read'] }),
 	).rejects.toBeInstanceOf(ForbiddenError);
 	await expect(
