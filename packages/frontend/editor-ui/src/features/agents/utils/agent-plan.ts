@@ -23,10 +23,20 @@ const groupSchema = z.object({
 	tasks: z.array(taskSchema),
 });
 const planSchema = z.object({
+	workState: z
+		.object({
+			stoppedTaskIds: z.array(z.string().uuid()),
+			stoppingTaskIds: z.array(z.string().uuid()),
+			fullyStopped: z.boolean(),
+			stoppedAt: z.string().datetime().nullable(),
+			taskStateAvailable: z.boolean(),
+		})
+		.optional(),
 	planId: z.string().uuid(),
 	revision: z.number().int().positive(),
 	closed: z.boolean(),
 	startedAt: z.string().datetime().nullable().optional(),
+	finishedAt: z.string().datetime().nullable().optional(),
 	closedAt: z.string().datetime().nullable().optional(),
 	document: z.object({
 		title: z.string().min(1),
@@ -73,10 +83,37 @@ const comparisonDocumentSchema = planSchema.shape.document.passthrough().extend(
 	),
 });
 const comparisonPlanSchema = planSchema.extend({ document: comparisonDocumentSchema });
+const taskProgressUpdateSchema = taskSchema
+	.omit({ description: true })
+	.partial()
+	.required({ id: true })
+	.extend({ resultSummary: taskSchema.shape.resultSummary.nullable() })
+	.strict();
+const progressDocumentUpdateSchema = z
+	.object({
+		presentation: planSchema.shape.document.shape.presentation
+			.unwrap()
+			.partial()
+			.extend({
+				detail: z.string().trim().min(1).nullable().optional(),
+			})
+			.nullable()
+			.optional(),
+		items: z
+			.array(
+				taskProgressUpdateSchema.extend({
+					kind: z.enum(['task', 'group']).optional(),
+					tasks: z.array(taskProgressUpdateSchema).optional(),
+				}),
+			)
+			.optional(),
+	})
+	.strict();
 const updateInputSchema = z.object({
 	planId: z.string().uuid(),
 	expectedRevision: z.number().int().positive(),
-	document: comparisonDocumentSchema,
+	document: z.union([comparisonDocumentSchema, progressDocumentUpdateSchema]),
+	removeItemIds: z.array(z.string().uuid()).optional(),
 });
 const progressFields = ['title', 'status', 'resultSummary', 'startedAt', 'endedAt'];
 
@@ -90,6 +127,26 @@ function planSubstance(document: z.infer<typeof comparisonDocumentSchema>) {
 				: {}),
 		})),
 	};
+}
+
+function isProgressUpdate(
+	previous: z.infer<typeof comparisonDocumentSchema>,
+	update: z.infer<typeof updateInputSchema>,
+) {
+	if (update.removeItemIds?.length) return false;
+	const { document } = update;
+	if ('title' in document) {
+		return isEqual(planSubstance(previous), planSubstance(document));
+	}
+	return (document.items ?? []).every((change) => {
+		const item = previous.items.find((candidate) => candidate.id === change.id);
+		if (!item || (change.kind !== undefined && change.kind !== item.kind)) return false;
+		if (change.tasks === undefined) return true;
+		return (
+			item.kind === 'group' &&
+			change.tasks.every((child) => item.tasks.some((task) => task.id === child.id))
+		);
+	});
 }
 
 export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
@@ -136,11 +193,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 
 				const previous = plans.get(input.data.planId)?.get(input.data.expectedRevision);
 
-				if (
-					previous &&
-					!previous.closed &&
-					isEqual(planSubstance(previous.document), planSubstance(input.data.document))
-				) {
+				if (previous && !previous.closed && isProgressUpdate(previous.document, input.data)) {
 					hiddenCalls.add(call.toolCallId);
 				}
 			}

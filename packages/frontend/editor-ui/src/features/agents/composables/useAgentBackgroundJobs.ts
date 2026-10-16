@@ -44,6 +44,11 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		}));
 		if (current.some((job) => job.status === 'running' || job.status === 'suspended'))
 			return current;
+		if (
+			toValue(target.channel) !== 'n8n-chat' &&
+			current.some((job) => job.status === 'paused' || job.pauseRequested)
+		)
+			return current;
 		return group.value.pendingTaskIds?.some((id) => !received.has(id)) ? current : [];
 	});
 	const active = computed(() => toValue(target.active) && visibility.value === 'visible');

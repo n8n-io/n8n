@@ -1,3 +1,4 @@
+import type { AgentPlanWorkState } from '@n8n/api-types';
 import { N8nAiActivityStepGroup, N8nIcon } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
@@ -17,6 +18,84 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+describe('AgentChatPlan task continuation', () => {
+	const stoppedIds = [planTask(1).id, planTask(2).id, planTask(3).id];
+	const workState: AgentPlanWorkState = {
+		stoppedTaskIds: stoppedIds,
+		stoppingTaskIds: [],
+		fullyStopped: false,
+		stoppedAt: null,
+		taskStateAvailable: true,
+	};
+	it('shows only Groove as active and restores only Crisp after selective continuation', async () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				expanded: true,
+				workState,
+				plan: planView({
+					document: {
+						title: 'Research',
+						presentation: { label: 'Researching Groove' },
+						items: [1, 2, 3, 4].map((id) => planTask(id, 'in_progress')),
+					},
+				}),
+			},
+		});
+		expect(wrapper.findAll('[data-status="stopped"]')).toHaveLength(3);
+		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(1);
+		expect(wrapper.get('button').text()).toContain('Researching Groove');
+		await wrapper.setProps({
+			workState: { ...workState, stoppedTaskIds: [stoppedIds[0], stoppedIds[2]] },
+		});
+		expect(wrapper.findAll('[data-status="stopped"]')).toHaveLength(2);
+		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(2);
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		wrapper.unmount();
+	});
+
+	it('derives a group from its children and preserves terminal rows', () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				expanded: true,
+				workState,
+				plan: planView({
+					document: {
+						title: 'Research',
+						items: [
+							{
+								...planTask(10, 'in_progress'),
+								kind: 'group',
+								tasks: [planTask(1, 'in_progress'), planTask(2, 'done'), planTask(3, 'failed')],
+							},
+							planTask(4, 'cancelled'),
+						],
+					},
+				}),
+			},
+		});
+		expect(wrapper.findAll('[data-status="stopped"]')).toHaveLength(2);
+		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(0);
+		for (const status of ['done', 'failed', 'cancelled'])
+			expect(wrapper.findAll(`[data-status="${status}"]`)).toHaveLength(1);
+		wrapper.unmount();
+	});
+
+	it('shows unknown state for old plans without task history', () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				expanded: true,
+				stopped: true,
+				workState: { ...workState, stoppedTaskIds: [], taskStateAvailable: false },
+				plan: planView(),
+			},
+		});
+		expect(wrapper.findAll('[data-status="stopped"]')).toHaveLength(0);
+		expect(wrapper.findAll('[data-status="in_progress"]')).toHaveLength(0);
+		expect(wrapper.text()).toContain('agents.chat.plan.taskStateUnavailable');
+		wrapper.unmount();
+	});
+});
+
 describe('AgentChatPlan timer', () => {
 	const startedAt = '2026-10-01T10:00:00.000Z';
 	beforeEach(() => {
@@ -28,7 +107,41 @@ describe('AgentChatPlan timer', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('starts only with stored timing and keeps counting while the parent reviews completed work', async () => {
+	it('freezes the stopped timer across reloads and shows a failed report notice', async () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				plan: planView({ startedAt }),
+				stopped: true,
+				stoppedAt: '2026-10-01T10:00:30.000Z',
+				reportFailed: true,
+			},
+		});
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		await vi.advanceTimersByTimeAsync(20_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.text()).toContain('agents.chat.tasks.reportFailed');
+		wrapper.unmount();
+	});
+
+	it('includes stopped intervals in elapsed time after selected work resumes', async () => {
+		const workState: AgentPlanWorkState = {
+			stoppedTaskIds: [planTask(1).id],
+			stoppingTaskIds: [],
+			fullyStopped: true,
+			stoppedAt: '2026-10-01T10:00:30.000Z',
+			taskStateAvailable: true,
+		};
+		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt }), workState } });
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		await vi.advanceTimersByTimeAsync(90_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		await wrapper.setProps({ workState: { ...workState, fullyStopped: false, stoppedAt: null } });
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('1:30');
+		wrapper.unmount();
+	});
+
+	it('starts with stored timing and freezes when the last task finishes', async () => {
 		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt: null }) } });
 		try {
 			expect(wrapper.find('[data-testid="agent-chat-plan-timer"]').exists()).toBe(false);
@@ -41,12 +154,14 @@ describe('AgentChatPlan timer', () => {
 			await wrapper.setProps({
 				plan: planView({
 					startedAt,
+					finishedAt: '2026-10-01T10:00:30.000Z',
 					revision: 3,
 					document: { title: 'Plan', items: [planTask(1, 'done')] },
 				}),
 			});
 			await vi.advanceTimersByTimeAsync(5_000);
-			expect(timer().text()).toBe('0:36');
+			expect(timer().text()).toBe('0:30');
+			expect(vi.getTimerCount()).toBe(0);
 			await wrapper.setProps({
 				plan: planView({
 					startedAt,
@@ -61,6 +176,57 @@ describe('AgentChatPlan timer', () => {
 		} finally {
 			wrapper.unmount();
 		}
+	});
+
+	it('restores a finished open plan and resumes the timer when new work is added', async () => {
+		vi.setSystemTime(new Date('2026-10-02T10:00:00.000Z'));
+		const plan = planView({
+			startedAt,
+			finishedAt: '2026-10-01T10:00:30.000Z',
+			document: {
+				title: 'Finished, with gaps',
+				items: [
+					{
+						...planTask(10, 'in_progress'),
+						kind: 'group',
+						tasks: [planTask(1, 'done'), planTask(2, 'failed')],
+					},
+					{ ...planTask(11, 'cancelled'), kind: 'group', tasks: [] },
+				],
+			},
+		});
+		const wrapper = mount(AgentChatPlan, { props: { plan } });
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		expect(wrapper.findComponent(N8nIcon).props('spin')).toBe(false);
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
+		expect(vi.getTimerCount()).toBe(0);
+
+		await wrapper.setProps({
+			plan: {
+				...plan,
+				finishedAt: null,
+				document: {
+					...plan.document,
+					items: [...plan.document.items, planTask(3, 'pending')],
+				},
+			},
+		});
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('24:00:05');
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('24:00:06');
+		wrapper.unmount();
+	});
+
+	it('freezes older completed snapshots without a saved finish time', async () => {
+		const wrapper = mount(AgentChatPlan, { props: { plan: planView({ startedAt }) } });
+		await vi.advanceTimersByTimeAsync(10_000);
+		await wrapper.setProps({
+			plan: planView({ startedAt, document: { title: 'Done', items: [planTask(1, 'done')] } }),
+		});
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:10');
+		wrapper.unmount();
 	});
 
 	it('restores elapsed time on remount and rolls over into hours', async () => {
@@ -136,6 +302,38 @@ describe('AgentChatPlan timer', () => {
 });
 
 describe('AgentChatPlan', () => {
+	it.each([
+		{ status: 'pending', summary: '0 of 2 tasks done' },
+		{ status: 'done', summary: '1 of 2 tasks done' },
+	] as const)(
+		'counts an empty $status group once until it has subtasks',
+		async ({ status, summary }) => {
+			const group = { ...planTask(10, status), kind: 'group' as const, tasks: [] };
+			const plan = planView({
+				document: { title: 'Research options', items: [planTask(1), group] },
+			});
+			const wrapper = mount(AgentChatPlan, { props: { plan, expanded: true } });
+			try {
+				expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe(summary);
+				await wrapper.setProps({
+					plan: {
+						...plan,
+						revision: 2,
+						document: {
+							...plan.document,
+							items: [planTask(1), { ...group, tasks: [planTask(2, 'done'), planTask(3)] }],
+						},
+					},
+				});
+				expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe(
+					'1 of 3 tasks done',
+				);
+			} finally {
+				wrapper.unmount();
+			}
+		},
+	);
+
 	it('starts collapsed and supports keyboard expansion without changing focus', async () => {
 		const user = userEvent.setup();
 		const wrapper = mount(AgentChatPlan, { props: { plan: planView() }, attachTo: document.body });
@@ -358,6 +556,92 @@ describe('AgentChatPlan', () => {
 		await wrapper.get('button').trigger('click');
 		expect(wrapper.text()).toContain('0 of 0 tasks done');
 		expect(wrapper.findAll('li')).toHaveLength(0);
+		wrapper.unmount();
+	});
+});
+
+describe('Background task stop display', () => {
+	it('keeps saved task states and results through Stop and Continue', async () => {
+		const plan = planView({
+			document: {
+				title: 'Research leads',
+				presentation: { label: 'Researching leads', detail: 'Checking sources' },
+				items: [
+					{ ...planTask(1, 'done'), resultSummary: 'Found three leads' },
+					planTask(2, 'failed'),
+					planTask(3, 'cancelled'),
+					planTask(4, 'in_progress'),
+					{
+						...planTask(5, 'in_progress'),
+						kind: 'group',
+						tasks: [planTask(6), planTask(7, 'done')],
+					},
+				],
+			},
+		});
+		const saved = structuredClone(plan);
+		const wrapper = mount(AgentChatPlan, { props: { plan, canStop: true } });
+		await wrapper.get('button').trigger('click');
+		await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+		expect(wrapper.emitted('stop')).toHaveLength(1);
+		await wrapper.setProps({ stopping: true });
+		expect(
+			wrapper.get('[data-testid="agent-chat-plan-stop"]').attributes('disabled'),
+		).toBeDefined();
+		expect(wrapper.get('button').text()).toContain('agents.chat.tasks.stopping');
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		expect(wrapper.text()).not.toContain('Checking sources');
+		await wrapper.setProps({ stopping: false, stopped: true, canStop: false });
+		expect(wrapper.get('button').text()).toContain('agents.chat.tasks.stopped');
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
+			'done',
+			'failed',
+			'cancelled',
+			'stopped',
+			'stopped',
+			'stopped',
+			'done',
+		]);
+		for (const row of wrapper.findAll('[data-status="stopped"]')) {
+			expect(row.attributes('aria-label')).toBe('agents.chat.tasks.stopped');
+			expect(row.getComponent(N8nIcon).props('icon')).toBe('circle-pause');
+			expect(row.getComponent(N8nIcon).props('spin')).toBe(false);
+		}
+		expect(wrapper.findAllComponents(N8nIcon)[0].props('spin')).toBe(false);
+		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('2 of 6 tasks done');
+		expect(wrapper.find('[data-testid="agent-chat-plan-stop"]').exists()).toBe(false);
+		expect(plan).toEqual(saved);
+
+		await wrapper.setProps({ stopped: false, canStop: true });
+		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
+			'done',
+			'failed',
+			'cancelled',
+			'in_progress',
+			'in_progress',
+			'pending',
+			'done',
+		]);
+		expect(wrapper.get('button').text()).toContain('Researching leads');
+		expect(wrapper.text()).toContain('Checking sources');
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('true');
+		expect(plan).toEqual(saved);
+		wrapper.unmount();
+	});
+
+	it('offers a retry after a failed stop', async () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: { plan: planView(), canStop: true, stopFailed: true },
+		});
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.get('button').text()).toContain('agents.chat.tasks.stopFailedTitle');
+		expect(wrapper.get('[data-testid="agent-chat-plan-stop"]').text()).toBe(
+			'agents.chat.tasks.retry',
+		);
+		expect(wrapper.find('[data-status="stopped"]').exists()).toBe(false);
+		await wrapper.get('[data-testid="agent-chat-plan-stop"]').trigger('click');
+		expect(wrapper.emitted('stop')).toHaveLength(1);
 		wrapper.unmount();
 	});
 });

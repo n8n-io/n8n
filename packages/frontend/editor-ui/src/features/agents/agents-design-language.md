@@ -292,6 +292,42 @@ and output in the collapsed details and the trace. Keep earlier failed calls
 visible after a successful retry. Unexpected failures keep the existing error
 treatment.
 
+## Plan progress
+
+Count each standalone task and empty group as one task. Use the empty group's
+status to count completion. When a group has subtasks, count those subtasks
+instead of the group.
+
+## Stop tasks in Agent Preview
+
+Place **Stop all tasks** beside **View trace** in the expanded plan card.
+Use the same action in the background task card when there is no plan.
+Disable the action during the request and show **Stopping tasks…**.
+Keep the user's expansion choice. Restore focus when the action disappears.
+Keep the action available while the plan has unfinished work. This includes
+planning and result review between tasks. Hide it after the plan stops or ends.
+
+Stop the current plan work. Show **Stopping tasks…** until that work settles.
+Then show **Stopped** on the card and on unfinished task rows. Keep completed,
+failed, and canceled task states. Keep saved results and the trace. Do not
+change the saved plan states. Restore a task's display only after its continuation succeeds.
+A new message does not resume stopped tasks. New tasks can run beside stopped tasks.
+For selective continuation, the user names the tasks in a message. Do not add row controls.
+Derive a nonempty group's indicator from its children. A saved group status must
+not make stopped children look active. Keep the normal activity label for a mixed plan.
+Show **Stopped** and freeze the timer only when all unfinished work is stopped.
+Count elapsed time from the original start when work continues. Include stopped intervals.
+Use server work state after reloads. If an older plan has no reliable task state,
+show **Status unavailable** instead of guessing which tasks stopped.
+Treat a requested stop as cancellation. Do not show its abort event as an error.
+
+Finish with one brief acknowledgement. Do not show a background results entry
+for this reply. Hide empty results entries in saved chats. Disable tools for this
+reply. Keep Continue available. Composer Stop controls only the current response,
+including the acknowledgement. If a stop request fails, keep the action available
+for a retry. Do not show **Stopped** while the plan work is active.
+Discard queued messages when the user stops the plan.
+
 ## Extend this document
 
 Add a section when an Agent-specific pattern applies to two or more Agent
