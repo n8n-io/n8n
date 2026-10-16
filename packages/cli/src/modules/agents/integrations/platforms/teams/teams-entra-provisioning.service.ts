@@ -11,7 +11,7 @@ import { BadRequestError } from '@n8n/errors';
 
 import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
 import { GRAPH_APP_ROLES } from './teams-graph-permissions';
-import { graphErrorCode, TeamsGraphService } from './teams-graph.service';
+import { graphErrorCode, odataLiteral, TeamsGraphService } from './teams-graph.service';
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
 import { GRAPH_RESOURCE, TeamsManagerTokenService } from './teams-manager-token.service';
 import { sanitiseAppName, stringProperty } from '../../integration-helpers';
@@ -64,9 +64,6 @@ const SECRET_LIFETIMES_MONTHS = [24, 12, 6, 3] as const;
  * Entra rejects a tag containing any, and the same string is used for both.
  */
 const UNIQUE_NAME_PREFIX = 'n8n-agent-';
-
-/** OData closes a string literal on a quote, and escapes one by doubling it. */
-const odataLiteral = (value: string) => value.replace(/'/g, "''");
 
 /** Entra refuses a display name longer than this. */
 const APP_NAME_MAX = 120;

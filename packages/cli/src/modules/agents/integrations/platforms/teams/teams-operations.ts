@@ -5,7 +5,8 @@ import type { ChatInstance } from '../../chat-integration.service';
 import { INTEGRATION_ERROR_CODES } from '../../integration-error-codes';
 import { integrationError, stringProperty, unsupportedQuery } from '../../integration-helpers';
 import type { IntegrationContextQuery } from '../../integration-tool-types';
-import { graphHttpOf, type GraphHttp } from './teams-message-files';
+import { odataLiteral } from './teams-graph.service';
+import { graphHttpOf, statusOf, type GraphHttp } from './teams-message-files';
 
 const PLATFORM = 'teams';
 const GRAPH_V1 = 'https://graph.microsoft.com/v1.0';
@@ -119,13 +120,15 @@ async function searchGraphUsers(
 	const email =
 		input.email?.trim() ?? (input.query?.includes('@') ? input.query.trim() : undefined);
 	if (email) {
-		// Accepts a user principal name; a mail address that differs from it needs the filter.
-		const direct = await getGraphUser(http, email);
-		if (direct) return [direct];
-		return await listUsers(http, `mail eq ${odataLiteral(email)}`, input.limit);
+		const address = odataString(email);
+		return await listUsers(
+			http,
+			`userPrincipalName eq ${address} or mail eq ${address}`,
+			input.limit,
+		);
 	}
 
-	const term = odataLiteral(input.query ?? '');
+	const term = odataString(input.query ?? '');
 	return await listUsers(
 		http,
 		`startswith(displayName,${term}) or startswith(mail,${term}) or startswith(userPrincipalName,${term})`,
@@ -155,7 +158,7 @@ async function searchGraphChannels(
 		return id ? [{ id, name: stringProperty(team, 'displayName') ?? id }] : [];
 	});
 
-	const term = normalize(input.query);
+	const words = normalize(input.query).split(' ');
 	const matches: TeamsChannelResult[] = [];
 	for (
 		let start = 0;
@@ -178,7 +181,7 @@ async function searchGraphChannels(
 		);
 		for (const channel of channelLists.flat()) {
 			const haystack = normalize(`${channel.teamName} ${channel.name}`);
-			if (term.split(' ').every((word) => haystack.includes(word))) matches.push(channel);
+			if (words.every((word) => haystack.includes(word))) matches.push(channel);
 		}
 	}
 	return matches.slice(0, input.limit);
@@ -201,13 +204,8 @@ function valuesOf(data: unknown): unknown[] {
 	return isRecord(data) && Array.isArray(data.value) ? data.value : [];
 }
 
-function statusOf(error: unknown): unknown {
-	return isRecord(error) && isRecord(error.response) ? error.response.status : undefined;
-}
-
-/** OData closes a string literal on a quote, and escapes one by doubling it. */
-function odataLiteral(value: string): string {
-	return `'${value.replace(/'/g, "''")}'`;
+function odataString(value: string): string {
+	return `'${odataLiteral(value)}'`;
 }
 
 function normalize(value: string): string {

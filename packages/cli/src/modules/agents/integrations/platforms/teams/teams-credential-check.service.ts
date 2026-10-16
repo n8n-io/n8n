@@ -103,10 +103,8 @@ export class TeamsCredentialCheckService {
 			const { token } = await this.requestToken(secret, GRAPH_SCOPE);
 			if (!token) return { status: 'unknown' };
 			const granted = rolesOf(token);
-			const missing = GRAPH_APP_ROLES.map(({ permission }) => permission).filter(
-				(permission) => !granted.includes(permission),
-			);
-			return missing.length === 0 ? { status: 'approved' } : { status: 'notApproved', missing };
+			const approved = GRAPH_APP_ROLES.every(({ permission }) => granted.includes(permission));
+			return { status: approved ? 'approved' : 'notApproved' };
 		} catch (error) {
 			this.logger.debug('[TeamsCredentialCheck] Could not read the file access grant', { error });
 			return { status: 'unknown' };

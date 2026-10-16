@@ -32,8 +32,8 @@ const alice = {
 
 describe('executeTeamsContextQuery', () => {
 	describe('search_users', () => {
-		it('finds a person by email and returns an ID that send_dm accepts', async () => {
-			const { run } = setup({ [`${GRAPH}/users/alice%40contoso.com`]: alice });
+		it('finds a person by sign-in name or mail address in one request', async () => {
+			const { run, get } = setup({ [`${GRAPH}/users?`]: { value: [alice] } });
 
 			await expect(run('search_users', { email: 'alice@contoso.com' })).resolves.toEqual({
 				ok: true,
@@ -48,16 +48,18 @@ describe('executeTeamsContextQuery', () => {
 				],
 				resultCount: 1,
 			});
+			expect(get).toHaveBeenCalledTimes(1);
+			expect(new URL(get.mock.calls[0][0]).searchParams.get('$filter')).toBe(
+				"userPrincipalName eq 'alice@contoso.com' or mail eq 'alice@contoso.com'",
+			);
 		});
 
-		it('falls back to the mail address when it differs from the sign-in name', async () => {
+		it('treats a query with an @ as an email address', async () => {
 			const { run, get } = setup({ [`${GRAPH}/users?`]: { value: [alice] } });
 
-			const result = await run('search_users', { query: 'alice@contoso.com' });
+			await run('search_users', { query: 'alice@contoso.com' });
 
-			expect(result).toMatchObject({ ok: true, resultCount: 1 });
-			const listUrl = new URL(get.mock.calls[1][0]);
-			expect(listUrl.searchParams.get('$filter')).toBe("mail eq 'alice@contoso.com'");
+			expect(new URL(get.mock.calls[0][0]).searchParams.get('$filter')).toContain('mail eq');
 		});
 
 		it('escapes a quote in a name search', async () => {

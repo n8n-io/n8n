@@ -85,6 +85,19 @@ function isFromBot(activity: unknown): boolean {
 	return role === 'bot' || (typeof id === 'string' && id.startsWith('28:'));
 }
 
+const SEND_DENIED: Partial<Record<IntegrationAction, string>> = {
+	send_dm:
+		'Teams did not allow this direct message. The person must have the app installed in Teams first. Ask them, or a Teams admin, to add the app, then try again.',
+	send_channel_message:
+		'Teams did not allow this post. The app must be added to the team or group chat first. Ask a team owner to add the app, then try again.',
+};
+
+function canEncodeThreadId(adapter: unknown): adapter is {
+	encodeThreadId(data: { conversationId: string; serviceUrl: string }): string;
+} {
+	return isRecord(adapter) && typeof adapter.encodeThreadId === 'function';
+}
+
 /** Interval picked to match Discord's; Teams does not document the expiry. */
 const TEAMS_TYPING_REFRESH_MS = 8000;
 
@@ -273,30 +286,16 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 * People copy a raw `19:` conversation ID out of Teams, but the adapter only
 	 * reads its own encoded form, which also carries the service URL.
 	 */
-	normalizeChannelId(channelId: string): string {
-		if (!channelId.startsWith('19:')) return channelId;
-		const encode = (value: string) => Buffer.from(value).toString('base64url');
-		return `teams:${encode(channelId)}:${encode(`${TEAMS_API_URL}/`)}`;
+	normalizeChannelId(channelId: string, adapter: unknown): string {
+		if (!channelId.startsWith('19:') || !canEncodeThreadId(adapter)) return channelId;
+		return adapter.encodeThreadId({ conversationId: channelId, serviceUrl: `${TEAMS_API_URL}/` });
 	}
 
 	/** Teams refuses a proactive send until the app is added where it posts. */
 	describeActionError(action: IntegrationAction, error: unknown) {
-		if (!isRecord(error) || error.code !== 'PERMISSION_DENIED') return undefined;
-		if (action === 'send_dm') {
-			return {
-				code: INTEGRATION_ERROR_CODES.PERMISSION_NOT_GRANTED,
-				message:
-					'Teams did not allow this direct message. The person must have the app installed in Teams first. Ask them, or a Teams admin, to add the app, then try again.',
-			};
-		}
-		if (action === 'send_channel_message') {
-			return {
-				code: INTEGRATION_ERROR_CODES.PERMISSION_NOT_GRANTED,
-				message:
-					'Teams did not allow this post. The app must be added to the team or group chat first. Ask a team owner to add the app, then try again.',
-			};
-		}
-		return undefined;
+		const message = SEND_DENIED[action];
+		if (!message || !isRecord(error) || error.code !== 'PERMISSION_DENIED') return undefined;
+		return { code: INTEGRATION_ERROR_CODES.PERMISSION_NOT_GRANTED, message };
 	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {

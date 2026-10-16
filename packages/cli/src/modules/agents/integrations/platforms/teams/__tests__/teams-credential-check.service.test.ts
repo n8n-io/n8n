@@ -236,7 +236,7 @@ describe('TeamsCredentialCheckService', () => {
 			expect(options.body).toContain('scope=https%3A%2F%2Fgraph.microsoft.com%2F.default');
 		});
 
-		it('names the permissions the token still lacks', async () => {
+		it('reports not approved while the token lacks any permission', async () => {
 			withCredential(workingCredential);
 			request.mockResolvedValue({
 				statusCode: 200,
@@ -245,7 +245,6 @@ describe('TeamsCredentialCheckService', () => {
 
 			expect(await service.checkFileAccess(user, PROJECT_ID, CREDENTIAL_ID)).toEqual({
 				status: 'notApproved',
-				missing: ['User.ReadBasic.All', 'Team.ReadBasic.All', 'Channel.ReadBasic.All'],
 			});
 		});
 

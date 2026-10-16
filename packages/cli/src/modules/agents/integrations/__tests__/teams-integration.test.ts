@@ -100,22 +100,18 @@ describe('TeamsIntegration', () => {
 	});
 
 	describe('normalizeChannelId', () => {
-		it('encodes a raw conversation ID with the pinned service URL, as the adapter does', () => {
-			const raw = '19:abc@thread.tacv2';
-			const [prefix, conversationId, serviceUrl, ...rest] = integration
-				.normalizeChannelId(raw)
-				.split(':');
+		const adapter = { encodeThreadId: vi.fn(() => 'teams:encoded') };
 
-			expect(prefix).toBe('teams');
-			expect(Buffer.from(conversationId, 'base64url').toString()).toBe(raw);
-			expect(Buffer.from(serviceUrl, 'base64url').toString()).toBe(
-				'https://smba.trafficmanager.net/teams/',
-			);
-			expect(rest).toEqual([]);
+		it('has the adapter encode a raw conversation ID with the pinned service URL', () => {
+			expect(integration.normalizeChannelId('19:abc@thread.tacv2', adapter)).toBe('teams:encoded');
+			expect(adapter.encodeThreadId).toHaveBeenCalledWith({
+				conversationId: '19:abc@thread.tacv2',
+				serviceUrl: 'https://smba.trafficmanager.net/teams/',
+			});
 		});
 
 		it('leaves an ID that is already encoded untouched', () => {
-			expect(integration.normalizeChannelId('teams:abc:def')).toBe('teams:abc:def');
+			expect(integration.normalizeChannelId('teams:abc:def', adapter)).toBe('teams:abc:def');
 		});
 	});
 

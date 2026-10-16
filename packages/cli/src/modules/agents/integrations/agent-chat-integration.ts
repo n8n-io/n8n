@@ -11,6 +11,7 @@ import { UserError, type Logger } from 'n8n-workflow';
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
 import type { IntegrationErrorCode } from './integration-error-codes';
+import { normalizePlatformId } from './integration-helpers';
 import type { SlackThreadContext } from './platforms/slack/slack-bridge-behavior';
 import {
 	resolveIntegrationActionDefinitions,
@@ -467,9 +468,11 @@ export abstract class AgentChatIntegration {
 
 	/**
 	 * Converts a channel ID the model passes to `send_channel_message` into a
-	 * Chat SDK channel ID. Without it, a bare ID gets the `<platform>:` prefix.
+	 * Chat SDK channel ID. By default a bare ID gets the `<platform>:` prefix.
 	 */
-	normalizeChannelId?(channelId: string): string;
+	normalizeChannelId(channelId: string, _adapter: unknown): string {
+		return normalizePlatformId(this.type, channelId);
+	}
 
 	/**
 	 * Explains a failed send in words the agent can act on, for errors where the

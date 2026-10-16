@@ -346,7 +346,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const input = sendChannelMessageInputSchema.parse(params.input);
 		const platform = params.descriptor.integration.type;
 		const channelId =
-			this.integrationRegistry.get(platform)?.normalizeChannelId?.(input.channelId) ??
+			this.integrationRegistry
+				.get(platform)
+				?.normalizeChannelId(input.channelId, chat.getAdapter(platform)) ??
 			normalizePlatformId(platform, input.channelId);
 		const channel = chat.channel(channelId);
 		const sent = await channel.post(

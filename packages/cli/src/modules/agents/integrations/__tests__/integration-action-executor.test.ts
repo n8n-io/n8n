@@ -1666,7 +1666,8 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 
 	it('posts to a raw Teams conversation ID', async () => {
 		const channel = { post: vi.fn().mockResolvedValue({ id: 'msg-1' }) };
-		const { chat, executor, descriptor } = setup();
+		const encodeThreadId = vi.fn(() => 'teams:encoded');
+		const { chat, executor, descriptor } = setup({ encodeThreadId });
 		chat.channel.mockReturnValue(channel as never);
 
 		const result = await executor.execute({
@@ -1676,11 +1677,10 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			awaitResponse: false,
 		});
 
-		const channelId = chat.channel.mock.calls[0][0];
-		expect(channelId.startsWith('teams:')).toBe(true);
-		expect(Buffer.from(channelId.split(':')[1], 'base64url').toString()).toBe(
-			'19:abc@thread.tacv2',
+		expect(encodeThreadId).toHaveBeenCalledWith(
+			expect.objectContaining({ conversationId: '19:abc@thread.tacv2' }),
 		);
+		expect(chat.channel).toHaveBeenCalledWith('teams:encoded');
 		expect(channel.post).toHaveBeenCalledWith('Morning brief');
 		expect(result).toMatchObject({ ok: true });
 	});
