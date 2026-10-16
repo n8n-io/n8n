@@ -17,7 +17,7 @@ const runTypes = ['git'];
  * gate on that push. The run points at the review, so one review can collect
  * several runs. A direct push has a run and no review.
  */
-export class CreatePromotionRunAndReviewTables1792072949221 implements ReversibleMigration {
+export class CreatePromotionRunAndReviewTables1792139680417 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { createTable, column, createIndex },
 		tablePrefix,
