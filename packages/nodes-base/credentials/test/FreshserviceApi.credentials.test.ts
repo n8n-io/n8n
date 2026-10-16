@@ -19,7 +19,7 @@ describe('FreshserviceApi Credential', () => {
 		expect(freshserviceApi.test.request.baseURL).toBe(
 			'=https://{{$credentials.domain}}.freshservice.com/api/v2',
 		);
-		expect(freshserviceApi.test.request.url).toBe('/departments');
+		expect(freshserviceApi.test.request.url).toBe('/agents/me');
 	});
 
 	describe('authenticate', () => {

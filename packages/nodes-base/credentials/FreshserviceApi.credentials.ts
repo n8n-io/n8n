@@ -45,7 +45,7 @@ export class FreshserviceApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials.domain}}.freshservice.com/api/v2',
-			url: '/departments',
+			url: '/agents/me',
 		},
 	};
 }
