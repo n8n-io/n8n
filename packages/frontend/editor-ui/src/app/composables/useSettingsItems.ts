@@ -108,11 +108,12 @@ export function useSettingsItems() {
 				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
 				route: { to: { name: VIEWS.LDAP_SETTINGS } },
 			},
-			// AI (modules add MCP at 10, Assistant at 20, Agents at 30 and Chat at 50).
-			// Features come first; the cross-cutting usage and billing pages close the section.
+			// AI (modules add MCP at 10, Assistant at 20, Agents at 30 and Chat at 70).
+			// Features come first, then the cross-cutting usage and billing pages. Chat is last
+			// because it is on its way out.
 			{
 				id: 'settings-ai',
-				order: 60,
+				order: 50,
 				section: 'ai',
 				icon: 'sparkles',
 				label: i18n.baseText('settings.ai'),
@@ -123,7 +124,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-n8n-connect',
-				order: 70,
+				order: 60,
 				section: 'ai',
 				icon: 'plug-zap',
 				label: i18n.baseText(

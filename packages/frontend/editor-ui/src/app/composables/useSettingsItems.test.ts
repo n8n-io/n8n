@@ -93,7 +93,7 @@ describe('useSettingsItems', () => {
 	const realModuleItems = () => [
 		{ id: 'settings-log-streaming', available: true, order: 40, section: 'operations' as const },
 		{ id: 'settings-mcp', available: true, order: 10, section: 'ai' as const },
-		{ id: 'settings-chat-hub', available: true, order: 50, section: 'ai' as const },
+		{ id: 'settings-chat-hub', available: true, order: 70, section: 'ai' as const },
 		{ id: 'settings-instance-ai', available: true, order: 20, section: 'ai' as const },
 		{ id: 'settings-agents', available: true, order: 30, section: 'ai' as const },
 		{ id: 'settings-opentelemetry', available: true, order: 50, section: 'operations' as const },
@@ -126,9 +126,9 @@ describe('useSettingsItems', () => {
 				'settings-instance-ai',
 				'settings-agents',
 				'settings-context',
-				'settings-chat-hub',
 				'settings-ai',
 				'settings-n8n-connect',
+				'settings-chat-hub',
 				'settings-api',
 				'settings-community-nodes',
 				'settings-security',
@@ -176,9 +176,9 @@ describe('useSettingsItems', () => {
 						'settings-instance-ai',
 						'settings-agents',
 						'settings-context',
-						'settings-chat-hub',
 						'settings-ai',
 						'settings-n8n-connect',
+						'settings-chat-hub',
 					],
 				},
 				{
@@ -299,19 +299,20 @@ describe('useSettingsItems', () => {
 	describe('the Context item', () => {
 		const idsOf = () => useSettingsItems().settingsItems.value.map(({ id }) => id);
 
-		it('follows Agents and precedes Chat, the last AI feature link', () => {
+		it('follows Agents and precedes AI usage; Chat stays the last AI link', () => {
 			isAiAssistantEnabled.value = true;
 			settingsSidebarItems.value = [
 				{ id: 'settings-mcp', available: true, order: 10, section: 'ai' },
 				{ id: 'settings-agents', available: true, order: 30, section: 'ai' },
-				{ id: 'settings-chat-hub', available: true, order: 50, section: 'ai' },
+				{ id: 'settings-chat-hub', available: true, order: 70, section: 'ai' },
 			];
 
 			const ids = idsOf();
 
 			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-agents') + 1);
-			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-chat-hub') - 1);
-			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-ai') - 1);
+			expect(ids.indexOf('settings-context')).toBe(ids.indexOf('settings-ai') - 1);
+			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-n8n-connect') + 1);
+			expect(ids.indexOf('settings-chat-hub')).toBe(ids.indexOf('settings-community-nodes') - 1);
 		});
 
 		it('is hidden when the flag is off, because the route guard does not run here', () => {
