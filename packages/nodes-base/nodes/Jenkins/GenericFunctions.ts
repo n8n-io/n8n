@@ -25,6 +25,7 @@ export async function getJenkinsCrumb(
 			username: credentials.username as string,
 			password: credentials.apiKey as string,
 		},
+		sendCredentialsOnCrossOriginRedirect: false,
 		uri: `${removeTrailingSlash(baseUrl)}/crumbIssuer/api/json`,
 		json: true,
 		resolveWithFullResponse: true,
@@ -41,7 +42,9 @@ export async function getJenkinsCrumb(
 			};
 			const setCookie = response.headers?.['set-cookie'];
 			if (setCookie) {
-				crumbHeaders.Cookie = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
+				crumbHeaders.Cookie = (Array.isArray(setCookie) ? setCookie : [setCookie])
+					.map((cookie) => cookie.split(';', 1)[0])
+					.join('; ');
 			}
 			return crumbHeaders;
 		}
@@ -83,6 +86,7 @@ export async function jenkinsApiRequest(
 			username: credentials.username as string,
 			password: credentials.apiKey as string,
 		},
+		sendCredentialsOnCrossOriginRedirect: false,
 		uri: `${removeTrailingSlash(baseUrl)}${uri}`,
 		json: true,
 		qs,
@@ -103,7 +107,7 @@ export async function jenkinsApiRequest(
 
 		if (
 			statusCode !== undefined &&
-			[201, 302, 303].includes(statusCode) &&
+			[302, 303].includes(statusCode) &&
 			typeof location === 'string' &&
 			/\/queue\/item\/\d+/i.test(location) &&
 			!location.includes('/login')

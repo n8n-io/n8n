@@ -49,7 +49,10 @@ describe('jenkinsApiRequest', () => {
 						crumb: 'test-crumb-value-123',
 					},
 					headers: {
-						'set-cookie': ['JSESSIONID=test-session-cookie; Path=/'],
+						'set-cookie': [
+							'JSESSIONID=test-session-cookie; Path=/; HttpOnly',
+							'remember-me=test-token; Path=/; Max-Age=1209600',
+						],
 					},
 				};
 			}
@@ -62,9 +65,10 @@ describe('jenkinsApiRequest', () => {
 			expect.objectContaining({
 				method: 'POST',
 				uri: 'https://jenkins.example.com/job/my-job/build',
+				sendCredentialsOnCrossOriginRedirect: false,
 				headers: expect.objectContaining({
 					'Jenkins-Crumb': 'test-crumb-value-123',
-					Cookie: 'JSESSIONID=test-session-cookie; Path=/',
+					Cookie: 'JSESSIONID=test-session-cookie; remember-me=test-token',
 				}),
 			}),
 		);
@@ -235,7 +239,7 @@ describe('jenkinsApiRequest', () => {
 		});
 	});
 
-	it('treats 302 and 201 queue item redirects as successful build scheduling', async () => {
+	it('treats 302 queue item redirect as successful build scheduling', async () => {
 		const executeFunctions = mockDeep<IExecuteFunctions>();
 		executeFunctions.getCredentials.mockResolvedValue({
 			username: 'user',
@@ -267,31 +271,29 @@ describe('jenkinsApiRequest', () => {
 			success: true,
 			queueUrl: 'https://jenkins.example.com/queue/item/99/',
 		});
+	});
+
+	it('returns resolved response when job trigger resolves successfully', async () => {
+		const executeFunctions = mockDeep<IExecuteFunctions>();
+		executeFunctions.getCredentials.mockResolvedValue({
+			username: 'user',
+			apiKey: 'key',
+			baseUrl: 'https://jenkins.example.com',
+		});
 
 		executeFunctions.helpers.request.mockImplementation(async (options: any) => {
 			if (options.uri.endsWith('/crumbIssuer/api/json')) {
 				return null;
 			}
-			const error: any = new Error('201 - Created');
-			error.statusCode = 201;
-			error.response = {
-				status: 201,
-				headers: {
-					location: 'https://jenkins.example.com/queue/item/100/',
-				},
-			};
-			throw error;
+			return { success: true };
 		});
 
-		const result201 = await jenkinsApiRequest.call(
+		const result = await jenkinsApiRequest.call(
 			executeFunctions,
 			'POST',
 			'/job/my-job/build',
 		);
-		expect(result201).toEqual({
-			success: true,
-			queueUrl: 'https://jenkins.example.com/queue/item/100/',
-		});
+		expect(result).toEqual({ success: true });
 	});
 
 	it('handles string status codes in redirect responses', async () => {
