@@ -2009,6 +2009,11 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedToolFromList: builderTelemetry.trackOpenedToolFromList,
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
+		trackSavedSkill: ({ agentId: savedAgentId, skillId }) =>
+			telemetry.track(TELEMETRY_EVENT.AGENTS.USER_SAVED_AGENT_SKILL, {
+				agent_id: savedAgentId,
+				skill_id: skillId,
+			}),
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
 	},
 });
@@ -3332,6 +3337,7 @@ useKeybindings({
 					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="caps.onRemoveTool"
 					@remove-skill="caps.onRemoveSkill"
+					@set-skill-version="caps.onSetSkillVersion"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"

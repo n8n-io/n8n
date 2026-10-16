@@ -2,6 +2,7 @@ import type {
 	AgentJsonSkillConfig,
 	AgentSkill,
 	AgentSkillAvailability,
+	AgentSkillVersionInfo,
 	StoredAgentConfig,
 } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
@@ -154,6 +155,53 @@ export class AgentSkillRefsService {
 	}
 
 	/**
+	 * The version numbers of each draft ref, keyed by skill id: the one the draft runs,
+	 * the one the current published version runs, and the latest. Empty with the hub off.
+	 */
+	async findSkillVersions(
+		agent: Pick<Agent, 'activeVersionId'>,
+		skillRefs: AgentJsonSkillConfig[],
+		ctx: OperationContext,
+	): Promise<Record<string, AgentSkillVersionInfo>> {
+		if (!this.usesSkillsHub || skillRefs.length === 0) return {};
+		const [latest, pins, live, skills] = await Promise.all([
+			this.skillRepository.findLatestSummaries(
+				skillRefs.map((ref) => ref.id),
+				ctx,
+			),
+			this.skillRepository.findVersionNumbers(
+				skillRefs.flatMap((ref) => ref.versionId ?? []),
+				ctx,
+			),
+			agent.activeVersionId
+				? this.skillRepository.findPinnedVersionNumbers(agent.activeVersionId, ctx)
+				: Promise.resolve(new Map<string, number>()),
+			this.skillRepository.findByIds(
+				skillRefs.map((ref) => ref.id),
+				ctx,
+			),
+		]);
+		const skillById = new Map(skills.map((skill) => [skill.id, skill]));
+		const result: Record<string, AgentSkillVersionInfo> = {};
+		for (const ref of skillRefs) {
+			const newest = latest.get(ref.id);
+			const skill = skillById.get(ref.id);
+			if (!newest || !skill) continue;
+			// The runtime ignores a pin to a version of another skill, see `resolveForAgentDraft`.
+			const pin = ref.versionId ? pins.get(ref.versionId) : undefined;
+			const pinned = pin?.skillId === ref.id;
+			result[ref.id] = {
+				draft: pin && pinned ? pin.version : newest.version,
+				live: live.get(ref.id) ?? null,
+				latest: newest.version,
+				pinned,
+				scope: skill.agentId ? 'agent' : skill.projectId ? 'project' : 'instance',
+			};
+		}
+		return result;
+	}
+
+	/**
 	 * The refs that `replaceDraftRefs` would keep, without writing them: unknown ids
 	 * are dropped, and a new ref that the agent may not attach throws. Callers use it
 	 * to validate and report the refs that are saved, not the submitted ones.
@@ -181,7 +229,7 @@ export class AgentSkillRefsService {
 	 * Replace the skill refs of the agent draft. Call it in the same transaction
 	 * as `saveAgentDraftFenced`, with the same `ctx`, after the fenced save.
 	 * A new ref must be attachable to the agent and must not clash by name. A ref
-	 * keeps its pin only when the draft already has that pin.
+	 * keeps its pin when the pin is a saved version of that skill.
 	 */
 	async replaceDraftRefs(
 		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,

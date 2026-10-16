@@ -15,6 +15,7 @@ import {
 import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
@@ -225,6 +226,53 @@ describe('Agent skills in the skills hub', () => {
 		expect(await instructionsOf(draft.skills)).toEqual({ [skill]: 'Published text.' });
 		const latestAfter = (await Container.get(SkillRepository).findLatestSaved([skill])).get(skill);
 		expect(latestAfter?.version.id).toBe(latestBefore?.version.id);
+	});
+
+	it('lets a config save pin a saved version of the skill, and reports the versions', async () => {
+		const skill = await createSkill(body('Skill', 'Version one.'));
+		const other = await createSkill(body('Other', 'Other text.'));
+		const agent = (await publish(await createAgent([skill])))!;
+		await saveInstructions(skill, 'Version two.');
+		await saveInstructions(skill, 'Version three.');
+		const repository = Container.get(SkillRepository);
+		const v1 = (await repository.findVersionByNumber(skill, 1))!.version.id;
+		const otherV1 = (await repository.findVersionByNumber(other, 1))!.version.id;
+		const writeRefs = async (refs: Array<{ id: string; versionId?: string }>) => {
+			const stored = await reload(agent);
+			markAgentDraftDirty(stored);
+			await Container.get(TransactionRunner).run({}, async (ctx) => {
+				await saveAgentDraftFenced(agentRepository, stored, ctx);
+				await skillRefs.replaceDraftRefs(
+					stored,
+					refs.map((ref) => ({ type: 'skill' as const, ...ref })),
+					ctx,
+				);
+			});
+		};
+
+		await writeRefs([{ id: skill, versionId: v1 }]);
+
+		const refs = await skillRefs.refsForDraft(agent, {});
+		expect(refs).toEqual([{ type: 'skill', id: skill, versionId: v1 }]);
+		const draft = await skillRefs.readDraft(agent, {});
+		expect(await instructionsOf(draft.skills)).toEqual({ [skill]: 'Version one.' });
+		expect(await skillRefs.findSkillVersions(await reload(agent), refs, {})).toEqual({
+			[skill]: { draft: 1, live: 1, latest: 3, pinned: true, scope: expect.any(String) },
+		});
+
+		await expect(writeRefs([{ id: skill, versionId: otherV1 }])).rejects.toThrow(
+			'belongs to another skill',
+		);
+		await expect(writeRefs([{ id: skill, versionId: randomUUID() }])).rejects.toThrow(
+			'has no saved version',
+		);
+		expect(await skillRefs.refsForDraft(agent, {})).toEqual(refs);
+
+		await writeRefs([{ id: skill }]);
+		const unpinned = await skillRefs.refsForDraft(agent, {});
+		expect(await skillRefs.findSkillVersions(await reload(agent), unpinned, {})).toEqual({
+			[skill]: { draft: 3, live: 1, latest: 3, pinned: false, scope: expect.any(String) },
+		});
 	});
 
 	it('reverts an agent that pins an instance skill the user cannot edit', async () => {

@@ -62,7 +62,22 @@ export type SkillListFilter = {
 export type { SkillUsage } from '@n8n/api-types';
 
 /** Latest version of a skill without its content. */
-export type SkillSummary = { name: string; description: string; version: number };
+export type SkillSummary = {
+	name: string;
+	description: string;
+	version: number;
+	label: string | null;
+	createdById: string | null;
+};
+
+/** One saved version without its content, for the version list. */
+export type SkillVersionRow = Pick<
+	SkillVersion,
+	'id' | 'version' | 'label' | 'createdById' | 'createdAt'
+>;
+
+/** Options of a saved version. `label` names it ("Save with a name"). */
+export type SavedVersionOptions = { label?: string | null };
 
 /** Persistence for skills, their versions and files, and the agent rows that use them. */
 @Service()
@@ -193,13 +208,26 @@ export class SkillRepository extends BaseRepository<Skill> {
 			skillIds,
 			async (chunk) =>
 				await latestVersionsQuery(manager, chunk)
-					.select(['version.skillId', 'version.name', 'version.description', 'version.version'])
+					.select([
+						'version.skillId',
+						'version.name',
+						'version.description',
+						'version.version',
+						'version.label',
+						'version.createdById',
+					])
 					.getMany(),
 		);
 		return new Map(
 			versions.map((v) => [
 				v.skillId,
-				{ name: v.name, description: v.description, version: v.version },
+				{
+					name: v.name,
+					description: v.description,
+					version: v.version,
+					label: v.label,
+					createdById: v.createdById,
+				},
 			]),
 		);
 	}
@@ -239,6 +267,82 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 		const rows = await this.resolve(versions, ctx);
 		return new Map(rows.map((row) => [row.version.id, row]));
+	}
+
+	/** Every saved version of one skill without its content, newest first. */
+	async findVersionList(skillId: string, ctx: OperationContext = {}): Promise<SkillVersionRow[]> {
+		return await this.managerFor(ctx).find(SkillVersion, {
+			select: ['id', 'version', 'label', 'createdById', 'createdAt'],
+			where: { skillId },
+			order: { version: 'DESC' },
+		});
+	}
+
+	/** One saved version of a skill by its number, with its files. */
+	async findVersionByNumber(
+		skillId: string,
+		version: number,
+		ctx: OperationContext = {},
+	): Promise<ResolvedSkillRow | undefined> {
+		const row = await this.managerFor(ctx).findOne(SkillVersion, { where: { skillId, version } });
+		if (!row) return undefined;
+		const [resolved] = await this.resolve([row], ctx);
+		return resolved;
+	}
+
+	/**
+	 * Sets the name of one saved version. The content and the skill's `updatedAt` stay as
+	 * they are, because a name is not a change agents can see. Returns the updated row,
+	 * or undefined when the version does not exist.
+	 */
+	async updateVersionLabel(
+		skillId: string,
+		version: number,
+		label: string | null,
+		ctx: OperationContext = {},
+	): Promise<SkillVersionRow | undefined> {
+		return await this.runInTransaction(ctx, async (manager) => {
+			const result = await manager.update(SkillVersion, { skillId, version }, { label });
+			if (!result.affected) return undefined;
+			return (
+				(await manager.findOne(SkillVersion, {
+					select: ['id', 'version', 'label', 'createdById', 'createdAt'],
+					where: { skillId, version },
+				})) ?? undefined
+			);
+		});
+	}
+
+	/** Skill id and number of these versions, keyed by version id. Reads no content. */
+	async findVersionNumbers(
+		versionIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, { skillId: string; version: number }>> {
+		const manager = this.managerFor(ctx);
+		const rows = await inChunks(
+			versionIds,
+			async (chunk) =>
+				await manager.find(SkillVersion, {
+					select: ['id', 'skillId', 'version'],
+					where: { id: In(chunk) },
+				}),
+		);
+		return new Map(rows.map((row) => [row.id, { skillId: row.skillId, version: row.version }]));
+	}
+
+	/** The version number each skill of one published agent version pins, keyed by skill id. */
+	async findPinnedVersionNumbers(
+		agentVersionId: string,
+		ctx: OperationContext = {},
+	): Promise<Map<string, number>> {
+		const rows = await this.managerFor(ctx)
+			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
+			.innerJoin(SkillVersion, 'version', 'version.id = pin.skillVersionId')
+			.where('pin.agentVersionId = :agentVersionId', { agentVersionId })
+			.select('pin.skillId', 'skillId')
+			.addSelect('version.version', 'version')
+			.getRawMany<{ skillId: string; version: number | string }>();
+		return new Map(rows.map((row) => [row.skillId, Number(row.version)]));
 	}
 
 	/**
@@ -302,7 +406,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 				source: skill.source,
 				createdById: skill.createdById,
 			});
-			return await insertVersion(manager, skill.id, 1, content, skill.createdById);
+			return await insertVersion(manager, skill.id, 1, content, skill.createdById, null);
 		});
 	}
 
@@ -313,9 +417,10 @@ export class SkillRepository extends BaseRepository<Skill> {
 		content: SkillContent,
 		createdById: string | null,
 		ctx: OperationContext = {},
+		{ label = null }: SavedVersionOptions = {},
 	): Promise<string> {
 		return await this.runInTransaction(ctx, async (manager) => {
-			const id = await insertVersion(manager, skillId, version, content, createdById);
+			const id = await insertVersion(manager, skillId, version, content, createdById, label);
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});
@@ -447,8 +552,16 @@ export class SkillRepository extends BaseRepository<Skill> {
 			.createQueryBuilder(Agent, 'agent')
 			.innerJoin(AgentSkillDependency, 'dep', 'dep.agentId = agent.id')
 			.where('dep.skillId = :skillId', { skillId })
-			.select(['agent.id', 'agent.name', 'agent.projectId'])
-			.getMany();
+			.select('agent.id', 'id')
+			.addSelect('agent.name', 'name')
+			.addSelect('agent.projectId', 'projectId')
+			.addSelect('dep.skillVersionId', 'skillVersionId')
+			.getRawMany<{
+				id: string;
+				name: string;
+				projectId: string;
+				skillVersionId: string | null;
+			}>();
 		const published = await manager
 			.createQueryBuilder(Agent, 'agent')
 			.where((qb) => {
@@ -476,12 +589,25 @@ export class SkillRepository extends BaseRepository<Skill> {
 			visiblePublished.flatMap((agent) => (agent.activeVersionId ? [agent.activeVersionId] : [])),
 			manager,
 		);
+		const visibleDrafts = drafted.filter(isVisible);
+		const pinnedNumbers = await this.findVersionNumbers(
+			visibleDrafts.flatMap((agent) => agent.skillVersionId ?? []),
+			ctx,
+		);
+		const latest = (await this.findLatestSummaries([skillId], ctx)).get(skillId);
 		return {
-			drafts: drafted.filter(isVisible).map((agent) => ({
-				agentId: agent.id,
-				agentName: agent.name,
-				projectId: agent.projectId,
-			})),
+			drafts: visibleDrafts.map((agent) => {
+				// The runtime ignores a pin to a version of another skill and runs the latest.
+				const pin = agent.skillVersionId ? pinnedNumbers.get(agent.skillVersionId) : undefined;
+				const pinned = pin?.skillId === skillId;
+				return {
+					agentId: agent.id,
+					agentName: agent.name,
+					projectId: agent.projectId,
+					version: pinned ? pin.version : (latest?.version ?? 0),
+					pinned,
+				};
+			}),
 			pins: visiblePublished.map((agent) => ({
 				agentId: agent.id,
 				agentName: agent.name,
@@ -840,6 +966,7 @@ async function insertVersion(
 	version: number,
 	content: SkillContent,
 	createdById: string | null,
+	label: string | null,
 ): Promise<string> {
 	const id = randomUUID();
 	// `save`, not `insert`: the partial-entity type of `insert` rejects free-form JSON.
@@ -853,6 +980,7 @@ async function insertVersion(
 			instructions: content.instructions,
 			frontmatter: content.frontmatter,
 			contentHash: skillContentHash(content),
+			label,
 			createdById,
 		}),
 	);

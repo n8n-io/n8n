@@ -3,6 +3,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useEventListener } from '@vueuse/core';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -11,24 +12,29 @@ import {
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillVersionSummary,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
+	N8nActionDropdown,
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
+	N8nIconButton,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system';
+import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
 	SkillConnectionItem,
@@ -43,6 +49,11 @@ import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
 import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
+import SkillVersionCompare, {
+	type SkillCompareTarget,
+} from './skillVersions/SkillVersionCompare.vue';
+import SkillVersionNameDialog from './skillVersions/SkillVersionNameDialog.vue';
+import SkillVersionTimeline from './skillVersions/SkillVersionTimeline.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
@@ -51,8 +62,14 @@ export type AgentSkillModalScopeOption = { value: string; label: string; icon: I
 /** What a failed `onConfirm` returns. The modal stays open and shows `nameError` on the name. */
 export type AgentSkillConfirmFailure = { saved: false; nameError?: string };
 
+/** A save that worked. `created: false` tells a versioned modal that no new version was made. */
+export type AgentSkillConfirmSuccess = { saved: true; created?: boolean };
+
 /** `undefined` closes the modal. A callback without a `return` gives it. */
-export type AgentSkillConfirmResult = AgentSkillConfirmFailure | undefined;
+export type AgentSkillConfirmResult =
+	| AgentSkillConfirmFailure
+	| AgentSkillConfirmSuccess
+	| undefined;
 
 export type AgentSkillModalData = {
 	/** Set when opened from an agent. Absent when opened from Settings > Context > Skills. */
@@ -87,6 +104,14 @@ export type AgentSkillModalData = {
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
 	/**
+	 * Shows the versions of a saved hub skill: Save in the header, the timeline and compare.
+	 * A save then keeps the modal open and reloads the skill, so `onConfirm` must settle
+	 * after the save lands. Needs `skillId`.
+	 */
+	versioned?: boolean;
+	/** With `versioned`: opens the timeline, or compares the two newest versions. */
+	initialVersionView?: 'timeline' | 'compare';
+	/**
 	 * Called on Save. A promise keeps the modal open until it settles. It closes unless the
 	 * result is an `AgentSkillConfirmFailure`, so a refused save keeps what the user typed.
 	 */
@@ -97,8 +122,16 @@ export type AgentSkillModalData = {
 		scope?: string;
 		/** Set on create only: whether the user typed the skill or uploaded it. */
 		method?: SkillCreateMethod;
+		/** With `versioned`: names the new version ("Save with a name", or a restore). */
+		label?: string;
+		/** With `versioned`: the hash of the latest version that the modal shows. */
+		baseSkillHash?: string;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
+	/** The draft is pinned to a version older than the latest one. The modal is read-only. */
 	outdated?: boolean;
+	/** With `versioned` and `outdated`: the version the draft runs, which the editor shows. */
+	pinnedVersion?: number;
+	/** Makes the agent follow the latest version again ("Follow latest"). */
 	onUseLatestVersion?: (id: string) => void;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (id: string) => void;
@@ -113,7 +146,8 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const router = useRouter();
 const rootStore = useRootStore();
-const { showError } = useToast();
+const skillsStore = useSkillsStore();
+const { showError, showMessage } = useToast();
 const agentTelemetry = useAgentTelemetry();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const agentModal = useTemplateRef<InstanceType<typeof AgentModalMultiStep>>('agentModal');
@@ -134,13 +168,19 @@ function getDefaultSkillName(): string {
 	return `${baseName} ${suffix}`;
 }
 
-const initialSkill = normalizeSkill({
-	name: props.data.skill?.name ?? getDefaultSkillName(),
-	description: props.data.skill?.description ?? '',
-	instructions: props.data.skill?.instructions ?? '',
-	...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
-});
-const skill = ref<AgentSkill>(cloneDeep(initialSkill));
+/** The skill as the editor holds it, so a saved skill and the edits compare equal. */
+function toEditorSkill(source: AgentSkill | undefined): AgentSkill {
+	return normalizeSkill({
+		name: source?.name ?? getDefaultSkillName(),
+		description: source?.description ?? '',
+		instructions: source?.instructions ?? '',
+		...(source?.references ? { references: source.references } : {}),
+	});
+}
+
+/** What the last save left. Edits compare with it, and a versioned save moves it on. */
+const savedSkill = ref<AgentSkill>(toEditorSkill(props.data.skill));
+const skill = ref<AgentSkill>(cloneDeep(savedSkill.value));
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
@@ -156,6 +196,7 @@ const isSaving = ref(false);
 /** A name error from the server, such as a taken name. Typing a new name clears it. */
 const serverNameError = ref('');
 const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
+const savedScope = ref(props.data.initialScope);
 
 /** The last default name the server gave. A name the user typed is never replaced. */
 const serverDefaultName = ref<string | null>(null);
@@ -250,13 +291,15 @@ const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>((
 	if (step.value === 'select') return undefined;
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
 	if (isOutdated.value) return props.data.onUseLatestVersion ? 'useLatest' : undefined;
+	// A versioned skill saves from the header.
+	if (showVersions.value) return undefined;
 	return isReadOnly.value ? undefined : 'save';
 });
 const modalTitle = computed(() => {
 	if (step.value === 'select') return i18n.baseText('agents.builder.skills.title');
 	if (step.value === 'upload') return i18n.baseText('agents.builder.skills.add');
 	if (step.value === 'preview') return previewSkill.value?.name ?? '';
-	return skill.value.name;
+	return displayedSkill.value.name;
 });
 
 const skillAccess = ref<SkillDetail | null>(null);
@@ -275,7 +318,7 @@ const cannotEdit = computed(
 	() => props.data.readOnly === true || skillAccess.value?.canEdit === false || isOutdated.value,
 );
 /** Save sends a snapshot, so the editor is locked until the answer comes back. */
-const editorLocked = computed(() => isReadOnly.value || isSaving.value);
+const editorLocked = computed(() => isReadOnly.value || isSaving.value || !!viewing.value);
 const savedTarget = computed<AgentSkillAvailability | undefined>(() => {
 	if (!skillAccess.value) return undefined;
 	if (skillAccess.value.agentId) return 'agent';
@@ -327,6 +370,8 @@ const footerHint = computed(() => {
 		return i18n.baseText('agents.builder.skills.hint.outdated');
 	}
 	if (!shownSkill || (step.value !== 'preview' && step.value !== 'edit')) return '';
+	// The read-only callout already says it.
+	if (step.value === 'edit' && props.data.readOnly) return '';
 	if (!shownSkill.canEdit) {
 		return shownSkill.scope === 'instance'
 			? i18n.baseText('agents.builder.skills.hint.readOnly.instance')
@@ -391,12 +436,13 @@ const visibleNameError = computed(
 const canSave = computed(
 	() => formIsValid.value && !validationErrors.value.name && !isReadOnly.value,
 );
+const hasContentChanges = computed(() => !isEqual(skill.value, savedSkill.value));
 const hasChanges = computed(
 	() =>
 		!isEditing.value ||
-		!isEqual(skill.value, initialSkill) ||
+		hasContentChanges.value ||
 		(showAvailabilitySelect.value && availableTo.value !== savedTarget.value) ||
-		(canChangeScope.value && scope.value !== props.data.initialScope),
+		(canChangeScope.value && scope.value !== savedScope.value),
 );
 
 function getSimilarNameReason(name: string): string | undefined {
@@ -501,9 +547,12 @@ function onPreviewAdd() {
 	step.value = 'select';
 }
 
-onMounted(() => {
+onMounted(async () => {
 	if (hasPicker) void loadLibrarySkills();
-	if (props.data.skillId && props.data.hubSkillsEnabled) void loadSkillAccess(props.data.skillId);
+	if (props.data.skillId && (props.data.hubSkillsEnabled || props.data.versioned)) {
+		void loadSkillAccess(props.data.skillId);
+	}
+	if (showVersions.value) await openInitialVersionView();
 });
 
 function onSkillUploaded(importedSkill: AgentSkill) {
@@ -529,7 +578,7 @@ function onBack() {
 }
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
-	if (isReadOnly.value) return;
+	if (isReadOnly.value || viewing.value) return;
 	if (updates.name !== undefined && updates.name !== skill.value.name) serverNameError.value = '';
 	skill.value = normalizeSkill({ ...skill.value, ...updates });
 	if (
@@ -598,19 +647,27 @@ function closeModal() {
 	uiStore.closeModal(props.modalName);
 }
 
-async function onSave() {
+/**
+ * Saves the edits. A restore passes the content of an older version instead, which was
+ * valid when it was saved, so it skips the form checks.
+ */
+async function onSave(options: { label?: string; restored?: AgentSkill } = {}) {
 	if (defaultNameLoading.value || isSaving.value) return;
-	submitted.value = true;
-	if (!canSave.value) return;
+	if (!options.restored) {
+		submitted.value = true;
+		if (!canSave.value) return;
+	}
 
+	const source = options.restored ?? skill.value;
 	const payload = normalizeSkill({
-		name: skill.value.name.trim(),
-		description: skill.value.description.trim(),
-		instructions: skill.value.instructions,
-		...(skill.value.references ? { references: skill.value.references } : {}),
+		name: source.name.trim(),
+		description: source.description.trim(),
+		instructions: source.instructions,
+		...(source.references ? { references: source.references } : {}),
 	});
 
 	const targetChanged = !isEditing.value || availableTo.value !== savedTarget.value;
+	const baseSkillHash = skillAccess.value?.skillHash;
 	isSaving.value = true;
 	let result: AgentSkillConfirmResult;
 	try {
@@ -620,6 +677,8 @@ async function onSave() {
 			...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
 			...(canChangeScope.value ? { scope: scope.value } : {}),
 			...(isEditing.value ? {} : { method: createMethod.value }),
+			...(showVersions.value && options.label ? { label: options.label } : {}),
+			...(showVersions.value && baseSkillHash ? { baseSkillHash } : {}),
 		});
 	} catch {
 		// The caller reports its own errors. Keep the modal open with the user's edits.
@@ -634,8 +693,274 @@ async function onSave() {
 		}
 		return;
 	}
+	if (showVersions.value) {
+		await afterVersionSave(payload, result?.created !== false);
+		return;
+	}
 	closeModal();
 }
+
+// ---- Versions of a saved hub skill ----
+
+const showVersions = computed(
+	() => !!props.data.versioned && isEditing.value && step.value === 'edit',
+);
+/** Save, name and restore. Read-only users still see the timeline and compare. */
+const canWriteVersions = computed(() => showVersions.value && !cannotEdit.value);
+
+const versions = ref<SkillVersionSummary[]>([]);
+const versionsLoading = ref(false);
+const timelineOpen = ref(false);
+const viewing = ref<{ version: number; skill: AgentSkill } | null>(null);
+const compare = ref<{ from: SkillCompareTarget; to: SkillCompareTarget } | null>(null);
+const nameDialog = ref<'name' | 'saveWithName' | null>(null);
+const namingVersion = ref(false);
+/** Saved versions never change, so their content loads once. */
+const versionContents = new Map<number, AgentSkill>();
+
+const latestVersion = computed(
+	() => versions.value[0]?.version ?? skillAccess.value?.latestVersion ?? 0,
+);
+const latestVersionLabel = computed(() =>
+	versions.value.length > 0
+		? versions.value[0].label
+		: (skillAccess.value?.latestVersionLabel ?? null),
+);
+/** The version the edits start from. A pinned draft shows its pinned version. */
+const baseVersion = computed(() =>
+	isOutdated.value && props.data.pinnedVersion ? props.data.pinnedVersion : latestVersion.value,
+);
+/** What the file list and the editor show: an older version, or the edits. */
+const displayedSkill = computed(() => viewing.value?.skill ?? skill.value);
+const versionStatus = computed(() => {
+	// A pinned older version shows what this agent runs, not only the latest.
+	if (baseVersion.value !== latestVersion.value) {
+		return i18n.baseText('settings.context.skills.versions.statusPinned', {
+			interpolate: { version: String(baseVersion.value), latest: String(latestVersion.value) },
+		});
+	}
+	const status = i18n.baseText('settings.context.skills.versions.status', {
+		interpolate: { version: String(latestVersion.value) },
+	});
+	return latestVersionLabel.value ? `${status} · ${latestVersionLabel.value}` : status;
+});
+const unsavedSkill = computed(() => (hasContentChanges.value ? skill.value : null));
+
+function versionName(version: number): string {
+	const short = i18n.baseText('settings.context.skills.versions.number', {
+		interpolate: { version: String(version) },
+	});
+	const label = versions.value.find((summary) => summary.version === version)?.label;
+	return label ? `${short} · ${label}` : short;
+}
+
+async function loadVersions() {
+	if (!props.data.skillId) return;
+	versionsLoading.value = true;
+	try {
+		versions.value = await skillsStore.fetchSkillVersions(props.data.skillId);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.versions.timeline.error'));
+	} finally {
+		versionsLoading.value = false;
+	}
+}
+
+async function loadVersion(version: number): Promise<AgentSkill> {
+	const cached = versionContents.get(version);
+	if (cached) return cached;
+	if (!props.data.skillId) throw new UnexpectedError('A versioned skill needs an id');
+	const { skill: content } = await skillsStore.fetchSkillVersion(props.data.skillId, version);
+	const editorSkill = toEditorSkill(content);
+	versionContents.set(version, editorSkill);
+	return editorSkill;
+}
+
+async function openInitialVersionView() {
+	await loadVersions();
+	if (props.data.initialVersionView === 'timeline') {
+		timelineOpen.value = true;
+	} else if (props.data.initialVersionView === 'compare') {
+		const [newest, previous] = versions.value;
+		if (newest) compare.value = { from: (previous ?? newest).version, to: newest.version };
+	}
+}
+
+function toggleTimeline() {
+	timelineOpen.value = !timelineOpen.value;
+	if (timelineOpen.value && versions.value.length === 0) void loadVersions();
+}
+
+function closeTimeline() {
+	timelineOpen.value = false;
+	viewing.value = null;
+}
+
+async function onSelectVersion(version: number) {
+	compare.value = null;
+	if (version === baseVersion.value) {
+		viewing.value = null;
+		return;
+	}
+	try {
+		viewing.value = { version, skill: await loadVersion(version) };
+		selectedPath.value = SKILL_FILE;
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.versions.loadError'));
+	}
+}
+
+function openCompare(from: SkillCompareTarget, to: SkillCompareTarget) {
+	viewing.value = null;
+	compare.value = { from, to };
+}
+
+/** Saves the content of the version on screen as the next version. */
+async function onRestore() {
+	if (!viewing.value || !canWriteVersions.value) return;
+	const { version, skill: content } = viewing.value;
+	await onSave({
+		restored: content,
+		label: i18n.baseText('settings.context.skills.versions.restore.label', {
+			interpolate: { version: String(version) },
+		}),
+	});
+}
+
+async function afterVersionSave(saved: AgentSkill, created: boolean) {
+	viewing.value = null;
+	compare.value = null;
+	submitted.value = false;
+	savedScope.value = scope.value;
+	savedSkill.value = cloneDeep(saved);
+	skill.value = cloneDeep(saved);
+	await Promise.all([refreshSkillAccess(), loadVersions()]);
+	if (!created) return;
+	showMessage({
+		title: i18n.baseText('settings.context.skills.versions.saved.toast', {
+			interpolate: { version: String(latestVersion.value) },
+		}),
+		message: i18n.baseText('settings.context.skills.versions.saved.toastDescription'),
+		type: 'success',
+	});
+}
+
+/** Reads the saved skill again without locking the editor, for the next save's hash. */
+async function refreshSkillAccess() {
+	if (!props.data.skillId) return;
+	try {
+		const detail = await getHubSkill(rootStore.restApiContext, props.data.skillId);
+		skillAccess.value = detail;
+		// The server can store the content in another form. The edits start from it.
+		const stored = toEditorSkill(detail.skill);
+		if (isEqual(skill.value, savedSkill.value)) skill.value = cloneDeep(stored);
+		savedSkill.value = stored;
+	} catch {
+		// The next save answers with a conflict if the hash is out of date.
+	}
+}
+
+async function onNameVersion(label: string | null) {
+	if (nameDialog.value === 'saveWithName') {
+		nameDialog.value = null;
+		await onSave({ label: label ?? undefined });
+		return;
+	}
+	if (!props.data.skillId || latestVersion.value === 0) return;
+	const version = latestVersion.value;
+	namingVersion.value = true;
+	try {
+		const updated = await skillsStore.updateSkillVersionLabel(props.data.skillId, version, label);
+		versions.value = versions.value.map((summary) =>
+			summary.version === updated.version ? updated : summary,
+		);
+		nameDialog.value = null;
+		showMessage({
+			title: i18n.baseText(
+				label
+					? 'settings.context.skills.versions.nameDialog.success'
+					: 'settings.context.skills.versions.nameDialog.removed',
+				{ interpolate: { version: String(version) } },
+			),
+			type: 'success',
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.versions.nameDialog.error'));
+	} finally {
+		namingVersion.value = false;
+	}
+}
+
+const canSaveVersion = computed(
+	() =>
+		canWriteVersions.value &&
+		hasChanges.value &&
+		!isReadOnly.value &&
+		!isSaving.value &&
+		!defaultNameLoading.value,
+);
+
+type VersionAction = 'save' | 'review' | 'name' | 'timeline';
+
+const versionMenuItems = computed<Array<ActionDropdownItem<VersionAction>>>(() => [
+	{
+		id: 'save',
+		label: i18n.baseText('settings.context.skills.versions.menu.save'),
+		shortcut: { metaKey: true, keys: ['S'] },
+		disabled: !canSaveVersion.value,
+	},
+	{
+		id: 'review',
+		label: i18n.baseText('settings.context.skills.versions.menu.review'),
+		disabled: !hasContentChanges.value || latestVersion.value === 0,
+	},
+	{
+		id: 'name',
+		label: i18n.baseText(
+			hasChanges.value
+				? 'settings.context.skills.versions.menu.saveWithName'
+				: 'settings.context.skills.versions.menu.name',
+		),
+		disabled: hasChanges.value ? !canSaveVersion.value : latestVersion.value === 0,
+	},
+	{
+		id: 'timeline',
+		label: i18n.baseText('settings.context.skills.versions.menu.timeline'),
+		divided: true,
+	},
+]);
+
+function onVersionMenuSelect(action: VersionAction) {
+	switch (action) {
+		case 'save':
+			void onSave();
+			break;
+		case 'review':
+			openCompare(latestVersion.value, 'unsaved');
+			break;
+		case 'name':
+			nameDialog.value = hasChanges.value ? 'saveWithName' : 'name';
+			break;
+		case 'timeline':
+			timelineOpen.value = true;
+			if (versions.value.length === 0) void loadVersions();
+			break;
+	}
+}
+
+// Cmd+S or Ctrl+S saves a new version, also from inside the editor. The capture phase runs
+// before inputs that stop the event.
+useEventListener(
+	document,
+	'keydown',
+	(event: KeyboardEvent) => {
+		if (!modalOpen.value || !canWriteVersions.value || nameDialog.value) return;
+		if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return;
+		event.preventDefault();
+		if (canSaveVersion.value) void onSave();
+	},
+	{ capture: true },
+);
 
 async function focusName() {
 	await nextTick();
@@ -677,7 +1002,7 @@ function onRemove() {
 		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
 		:title-max-length="128"
 		:title-error="visibleNameError"
-		:editable-title="step === 'manual' || (step === 'edit' && !isReadOnly)"
+		:editable-title="step === 'manual' || (step === 'edit' && !isReadOnly && !viewing && !compare)"
 		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
 		:show-footer="step === 'select' || step === 'manual' || step === 'edit' || step === 'preview'"
 		:show-cancel="step !== 'select'"
@@ -689,6 +1014,70 @@ function onRemove() {
 		@update:title="onSkillUpdate({ name: $event })"
 		@back="onBack"
 	>
+		<template v-if="showVersions" #headerActions>
+			<div :class="$style.versionHeader">
+				<N8nText
+					v-if="latestVersion > 0"
+					size="small"
+					color="text-light"
+					:class="$style.versionStatus"
+					data-testid="skill-version-status"
+				>
+					{{ versionStatus }}
+				</N8nText>
+				<div v-if="canWriteVersions" :class="$style.buttonGroup">
+					<N8nButton
+						:class="$style.groupButtonLeft"
+						variant="ghost"
+						:disabled="!canSaveVersion"
+						:loading="isSaving"
+						data-testid="skill-version-save"
+						@click="onSave()"
+					>
+						<span :class="$style.saveLabel">
+							<span
+								v-if="hasChanges"
+								:class="$style.unsavedDot"
+								data-testid="skill-version-dirty"
+							/>
+							{{
+								i18n.baseText(
+									hasChanges
+										? 'settings.context.skills.versions.save'
+										: 'settings.context.skills.versions.saved',
+								)
+							}}
+						</span>
+					</N8nButton>
+					<N8nActionDropdown
+						:items="versionMenuItems"
+						placement="bottom-end"
+						:teleported="false"
+						data-testid="skill-version-menu"
+						@select="onVersionMenuSelect"
+					>
+						<template #activator>
+							<N8nIconButton
+								:class="$style.groupButtonRight"
+								variant="ghost"
+								icon="chevron-down"
+								:aria-label="i18n.baseText('settings.context.skills.versions.menu.label')"
+								data-testid="skill-version-menu-button"
+							/>
+						</template>
+					</N8nActionDropdown>
+				</div>
+				<N8nIconButton
+					v-else
+					variant="ghost"
+					icon="history"
+					:aria-label="i18n.baseText('settings.context.skills.versions.timeline.open')"
+					:aria-pressed="timelineOpen"
+					data-testid="skill-version-timeline-toggle"
+					@click="toggleTimeline"
+				/>
+			</div>
+		</template>
 		<div v-if="hasPicker" v-show="step === 'select'" :class="$style.picker">
 			<ToolsConnectionModal
 				:open="modalOpen && step === 'select'"
@@ -753,9 +1142,66 @@ function onRemove() {
 			>
 				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
 			</N8nCallout>
-			<div :class="$style.content">
+			<div
+				v-if="showVersions && viewing && !compare"
+				:class="$style.viewingBanner"
+				data-testid="skill-version-viewing"
+			>
+				<N8nIcon icon="eye" :size="16" />
+				<N8nText size="small" color="text-dark" :class="$style.viewingText">
+					{{
+						i18n.baseText('settings.context.skills.versions.viewing', {
+							interpolate: { version: versionName(viewing.version) },
+						})
+					}}
+				</N8nText>
+				<N8nButton
+					variant="outline"
+					size="small"
+					data-testid="skill-version-viewing-compare"
+					@click="openCompare(viewing.version, latestVersion)"
+				>
+					{{ i18n.baseText('settings.context.skills.versions.viewing.compare') }}
+				</N8nButton>
+				<N8nButton
+					variant="outline"
+					size="small"
+					data-testid="skill-version-viewing-back"
+					@click="viewing = null"
+				>
+					{{
+						baseVersion === latestVersion
+							? i18n.baseText('settings.context.skills.versions.viewing.back')
+							: i18n.baseText('agents.builder.skills.version.viewing.backToPinned', {
+									interpolate: { version: String(baseVersion) },
+								})
+					}}
+				</N8nButton>
+				<N8nButton
+					v-if="canWriteVersions"
+					variant="solid"
+					size="small"
+					:loading="isSaving"
+					:disabled="isReadOnly"
+					data-testid="skill-version-restore"
+					@click="onRestore"
+				>
+					{{ i18n.baseText('settings.context.skills.versions.viewing.restore') }}
+				</N8nButton>
+			</div>
+			<div :class="[$style.content, showVersions && timelineOpen && $style.withTimeline]">
+				<SkillVersionCompare
+					v-if="showVersions && compare"
+					v-model:from="compare.from"
+					v-model:to="compare.to"
+					:versions="versions"
+					:latest-version="latestVersion"
+					:load-version="loadVersion"
+					:unsaved-skill="unsavedSkill"
+					@close="compare = null"
+				/>
 				<AgentSkillUpload
-					v-if="step === 'upload'"
+					v-else-if="step === 'upload'"
 					v-model:busy="isImporting"
 					@uploaded="onSkillUploaded"
 					@add-manually="onAddManually"
@@ -763,7 +1209,7 @@ function onRemove() {
 				/>
 				<template v-else>
 					<AgentSkillFileNav
-						:skill="skill"
+						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:add-reference-disabled="!canAddReference"
 						:read-only="editorLocked"
@@ -772,10 +1218,10 @@ function onRemove() {
 						@select="selectedPath = $event"
 					/>
 					<AgentSkillViewer
-						:skill="skill"
+						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
-						:read-only="cannotEdit"
+						:read-only="cannotEdit || !!viewing"
 						:errors="visibleErrors"
 						:show-validation-warnings="submitted || openedWithMissingContent"
 						@select:path="selectedPath = $event"
@@ -799,7 +1245,7 @@ function onRemove() {
 										<N8nSelect
 											v-model="scope"
 											size="large"
-											:disabled="!canChangeScope || isSaving"
+											:disabled="!canChangeScope || isSaving || !!viewing"
 											:teleported="false"
 											data-testid="agent-skill-scope-select"
 										>
@@ -837,7 +1283,7 @@ function onRemove() {
 									<N8nSelect
 										v-model="availableTo"
 										:teleported="false"
-										:disabled="usedByOtherAgents"
+										:disabled="usedByOtherAgents || !!viewing"
 										data-testid="agent-skill-availability-select"
 									>
 										<template #prefix>
@@ -864,7 +1310,29 @@ function onRemove() {
 						</template>
 					</AgentSkillViewer>
 				</template>
+				<div v-if="showVersions && timelineOpen" :class="$style.timelineColumn">
+					<SkillVersionTimeline
+						:versions="versions"
+						:latest-version="latestVersion"
+						:used-by="skillAccess?.usedBy"
+						:selected-version="viewing?.version ?? baseVersion"
+						:loading="versionsLoading"
+						@select="onSelectVersion"
+						@compare="openCompare($event, latestVersion)"
+						@close="closeTimeline"
+					/>
+				</div>
 			</div>
+			<SkillVersionNameDialog
+				v-if="showVersions"
+				:open="nameDialog !== null"
+				:mode="nameDialog ?? 'name'"
+				:latest-version="latestVersion"
+				:initial-label="latestVersionLabel"
+				:loading="namingVersion || isSaving"
+				@cancel="nameDialog = null"
+				@submit="onNameVersion"
+			/>
 		</template>
 
 		<template v-if="showRemove" #footerLeft>
@@ -906,7 +1374,7 @@ function onRemove() {
 				data-testid="agent-skill-use-latest"
 				@click="onUseLatestVersion"
 			>
-				{{ i18n.baseText('agents.builder.skills.useLatest') }}
+				{{ i18n.baseText('agents.builder.skills.version.followLatest') }}
 			</N8nButton>
 			<N8nButton
 				v-else
@@ -950,6 +1418,79 @@ function onRemove() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+/* The timeline takes its room next to the editor, not over it. */
+.withTimeline {
+	width: min(72rem, calc(100dvw - var(--spacing--lg) * 3));
+}
+
+.timelineColumn {
+	flex: 0 0 20rem;
+	min-height: 0;
+	border-left: var(--border);
+}
+
+.viewingBanner {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin: var(--spacing--md) var(--spacing--lg) 0;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border);
+	border-color: var(--color--secondary);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--secondary--tint-2);
+}
+
+.viewingText {
+	flex: 1;
+	min-width: 0;
+}
+
+.versionHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.versionStatus {
+	white-space: nowrap;
+}
+
+/* The split button of the workflow header: Save, then the version menu. */
+.buttonGroup {
+	display: inline-flex;
+	border: var(--border);
+	border-radius: var(--radius--full);
+}
+
+.groupButtonLeft,
+.groupButtonLeft:disabled,
+.groupButtonLeft:hover:disabled {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+	border-right-color: transparent;
+}
+
+.groupButtonRight {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+	border-left: var(--border);
+}
+
+.saveLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.unsavedDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--yellow-500);
 }
 
 @media (max-width: 480px) {

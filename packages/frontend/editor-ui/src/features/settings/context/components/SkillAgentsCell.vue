@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { SkillListItem, SkillUsage } from '@n8n/api-types';
-import { N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -12,6 +12,17 @@ import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import { useSkillsStore } from '../skills.store';
 
 const HIDDEN_AGENTS_ITEM = 'hidden-agents';
+const TITLE_ITEM = 'title';
+
+/** The version an agent uses, as a badge next to its name. */
+type VersionBadge = { label: string; variant: 'success' | 'warning' | 'info' | 'subtle' };
+
+type AgentUsage = {
+	agentName: string;
+	projectId: string;
+	draft?: SkillUsage['drafts'][number];
+	pin?: SkillUsage['pins'][number];
+};
 
 const props = defineProps<{
 	skill: Pick<SkillListItem, 'id' | 'usedByAgents'>;
@@ -27,21 +38,72 @@ const loading = ref(false);
 
 /** A draft and a published version of the same agent count once, as `usedByAgents` does. */
 const agents = computed(() => {
-	const byId = new Map<string, { agentName: string; projectId: string }>();
-	for (const agent of [...(usage.value?.drafts ?? []), ...(usage.value?.pins ?? [])]) {
-		if (!byId.has(agent.agentId)) byId.set(agent.agentId, agent);
-	}
+	const byId = new Map<string, AgentUsage>();
+	const entry = (agent: { agentId: string; agentName: string; projectId: string }) => {
+		const existing = byId.get(agent.agentId);
+		if (existing) return existing;
+		const created: AgentUsage = { agentName: agent.agentName, projectId: agent.projectId };
+		byId.set(agent.agentId, created);
+		return created;
+	};
+	for (const draft of usage.value?.drafts ?? []) entry(draft).draft = draft;
+	for (const pin of usage.value?.pins ?? []) entry(pin).pin ??= pin;
 	return byId;
 });
 
-const items = computed<Array<DropdownMenuItemProps<string>>>(() => {
-	const list = [...agents.value].map(
-		([id, agent]): DropdownMenuItemProps<string> => ({
+function versionText(key: 'latest' | 'pinned' | 'live', version: number) {
+	return i18n.baseText(`settings.context.skills.versions.agents.${key}`, {
+		interpolate: { version: String(version) },
+	});
+}
+
+/**
+ * The draft decides the badge: pinned, or following the latest. A live version that is
+ * behind the draft shows too, because the agent runs it until its next publish.
+ */
+function versionBadge({ draft, pin }: AgentUsage): VersionBadge {
+	if (draft?.pinned) return { label: versionText('pinned', draft.version), variant: 'warning' };
+	if (
+		draft &&
+		pin?.version !== undefined &&
+		pin.version !== null &&
+		pin.version !== draft.version
+	) {
+		return {
+			label: i18n.baseText('settings.context.skills.versions.agents.liveRuns', {
+				interpolate: { version: String(draft.version), live: String(pin.version) },
+			}),
+			variant: 'info',
+		};
+	}
+	if (draft) return { label: versionText('latest', draft.version), variant: 'success' };
+	if (pin?.version !== undefined && pin.version !== null) {
+		return { label: versionText('live', pin.version), variant: 'info' };
+	}
+	return {
+		label: i18n.baseText('settings.context.skills.versions.agents.olderPublished'),
+		variant: 'subtle',
+	};
+}
+
+const items = computed<Array<DropdownMenuItemProps<string, VersionBadge>>>(() => {
+	const list: Array<DropdownMenuItemProps<string, VersionBadge>> = [];
+	if (agents.value.size > 0) {
+		list.push({
+			id: TITLE_ITEM,
+			label: i18n.baseText('settings.context.skills.versions.agents.title'),
+			header: true,
+		});
+	}
+	for (const [id, agent] of agents.value) {
+		list.push({
 			id,
 			label: agent.agentName,
 			icon: { type: 'icon', value: 'bot' },
-		}),
-	);
+			data: versionBadge(agent),
+			testId: 'skill-agents-item',
+		});
+	}
 	const hidden = usage.value?.hiddenAgents ?? 0;
 	if (hidden > 0) {
 		list.push({
@@ -100,6 +162,17 @@ async function onSelect(agentId: string) {
 			@update:model-value="onOpenChange"
 			@select="onSelect"
 		>
+			<template #item-trailing="{ item }">
+				<N8nBadge
+					v-if="item.data"
+					:variant="item.data.variant"
+					size="xsmall"
+					:class="$style.badge"
+					data-test-id="skill-agents-version"
+				>
+					{{ item.data.label }}
+				</N8nBadge>
+			</template>
 			<template #trigger>
 				<button
 					type="button"
@@ -116,6 +189,11 @@ async function onSelect(agentId: string) {
 </template>
 
 <style lang="scss" module>
+.badge {
+	margin-left: var(--spacing--xs);
+	white-space: nowrap;
+}
+
 .trigger {
 	display: inline-flex;
 	align-items: center;

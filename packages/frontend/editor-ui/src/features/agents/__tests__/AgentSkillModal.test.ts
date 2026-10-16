@@ -1057,7 +1057,15 @@ describe('AgentSkillModal', () => {
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 						usedBy: {
-							drafts: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1' }],
+							drafts: [
+								{
+									agentId: 'a1',
+									agentName: 'This agent',
+									projectId: 'p1',
+									version: 1,
+									pinned: false,
+								},
+							],
 							pins: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1', version: 1 }],
 							hiddenAgents: 0,
 						},
@@ -1093,7 +1101,9 @@ describe('AgentSkillModal', () => {
 				[
 					'a draft of another agent',
 					{
-						drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+						drafts: [
+							{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1, pinned: false },
+						],
 						pins: [],
 						hiddenAgents: 0,
 					},
@@ -1343,6 +1353,8 @@ function makeListItem(
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		latestVersionLabel: null,
+		latestVersionSavedBy: null,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,

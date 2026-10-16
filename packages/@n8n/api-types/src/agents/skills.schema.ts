@@ -57,6 +57,10 @@ export type SkillListItem = {
 	createdBy: SkillUserDto | null;
 	/** Number of the latest version, the one following agents run. */
 	latestVersion: number;
+	/** Name of the latest version, if someone named it. */
+	latestVersionLabel: string | null;
+	/** The user who saved the latest version. Null when unknown or deleted. */
+	latestVersionSavedBy: SkillUserDto | null;
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
 	canEdit: boolean;
@@ -73,7 +77,15 @@ export type SkillListResponse = {
 /** The agents that use a skill, limited to the agents the caller may read. */
 export type SkillUsage = {
 	/** Agents whose draft references the skill. */
-	drafts: Array<{ agentId: string; agentName: string; projectId: string }>;
+	drafts: Array<{
+		agentId: string;
+		agentName: string;
+		projectId: string;
+		/** The version the draft runs: the pinned one, else the latest. */
+		version: number;
+		/** True when the draft ref is pinned to a version, by a user or a restore. */
+		pinned: boolean;
+	}>;
 	/** Agents with a published version that pins the skill, one row each. */
 	pins: Array<{
 		agentId: string;
@@ -104,6 +116,36 @@ export type SkillSaveResponse = {
 	skill: AgentSkill;
 	skillHash: string;
 };
+
+/** One saved version of a skill, without its content. */
+export type SkillVersionSummary = {
+	id: string;
+	version: number;
+	/** Set with "Name version". Null for an unnamed version. */
+	label: string | null;
+	/** Null when the user is unknown or no longer exists. */
+	createdBy: SkillUserDto | null;
+	createdAt: string;
+};
+
+/** Every version of a skill, newest first. */
+export type SkillVersionListResponse = { data: SkillVersionSummary[] };
+
+/** One saved version with its content. */
+export type SkillVersionDetail = SkillVersionSummary & { skill: AgentSkill };
+
+/** A version name. Trimmed. Empty or null removes the name. */
+const skillVersionLabelSchema = z
+	.string()
+	.trim()
+	.max(AGENT_SKILL_NAME_MAX_LENGTH)
+	.nullable()
+	.transform((value) => (value === '' ? null : value));
+
+/** Names or renames one saved version. Needs the same permission as Save. */
+export class UpdateSkillVersionDto extends Z.class({
+	label: skillVersionLabelSchema,
+}) {}
 
 export class ListSkillsQueryDto extends Z.class({
 	skip: paginationSchema.skip,
@@ -164,6 +206,8 @@ export class SaveSkillDto extends Z.class({
 	instructions: agentSkillShape.instructions.optional(),
 	references: agentSkillShape.references.optional(),
 	baseSkillHash: z.string().min(1),
+	/** Names the new version ("Save with a name"). Ignored when nothing is saved. */
+	label: skillVersionLabelSchema.optional(),
 	/**
 	 * Moves the skill to the instance or to a project. Refused with 409 while an agent
 	 * uses it. An agent skill is made from inside its agent, so `agent` is not a choice.

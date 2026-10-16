@@ -4,6 +4,8 @@ import type {
 	SkillDetail,
 	SkillListItem,
 	SkillSaveResponse,
+	SkillVersionDetail,
+	SkillVersionSummary,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -65,6 +67,22 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.deleteSkill(rootStore.restApiContext, id);
 	}
 
+	async function fetchSkillVersions(id: string): Promise<SkillVersionSummary[]> {
+		return await api.getSkillVersions(rootStore.restApiContext, id);
+	}
+
+	async function fetchSkillVersion(id: string, version: number): Promise<SkillVersionDetail> {
+		return await api.getSkillVersion(rootStore.restApiContext, id, version);
+	}
+
+	async function updateSkillVersionLabel(
+		id: string,
+		version: number,
+		label: string | null,
+	): Promise<SkillVersionSummary> {
+		return await api.updateSkillVersionLabel(rootStore.restApiContext, id, version, label);
+	}
+
 	return {
 		skills,
 		count,
@@ -76,5 +94,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		createSkill,
 		saveSkill,
 		deleteSkill,
+		fetchSkillVersions,
+		fetchSkillVersion,
+		updateSkillVersionLabel,
 	};
 });

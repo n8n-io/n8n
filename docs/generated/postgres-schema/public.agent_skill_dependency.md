@@ -77,6 +77,7 @@ erDiagram
   json frontmatter
   uuid id
   text instructions
+  varchar_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
   timestamp_3__with_time_zone updatedAt

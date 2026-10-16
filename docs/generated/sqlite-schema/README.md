@@ -137,7 +137,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 7 |  | table |
 | [skill_file](skill_file.md) | 5 |  | table |
-| [skill_version](skill_version.md) | 11 |  | table |
+| [skill_version](skill_version.md) | 12 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
 | [test_case_execution](test_case_execution.md) | 16 |  | table |
 | [test_run](test_run.md) | 16 |  | table |
@@ -1721,6 +1721,7 @@ erDiagram
   TEXT frontmatter
   varchar id PK
   TEXT instructions
+  VARCHAR_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
   datetime_3_ updatedAt

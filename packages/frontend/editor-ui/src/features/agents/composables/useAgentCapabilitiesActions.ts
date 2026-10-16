@@ -12,11 +12,14 @@ import {
 	type SkillDetail,
 	type SkillListItem,
 	type SkillNewNameQueryDto,
+	type SkillSaveResponse,
 } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createAgentSkill, getHubSkill, getNewSkillName } from './useAgentApi';
+import { createAgentSkill, getHubSkill, getNewSkillName, updateAgentSkill } from './useAgentApi';
 import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
@@ -25,8 +28,13 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
 import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { isPinnedBehindLatest } from '../components/skillVersions/skillVersionState';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
-import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
+import type {
+	AgentSkillConfirmFailure,
+	AgentSkillConfirmResult,
+	AgentSkillConfirmSuccess,
+} from '../components/AgentSkillModal.vue';
 import type {
 	AgentResource,
 	AgentJsonConfig,
@@ -42,6 +50,8 @@ export interface AgentCapabilitiesTelemetry {
 	trackOpenedToolFromList?: (toolType: string) => void;
 	trackOpenedSkillFromList?: (skillId: string) => void;
 	trackOpenedAddSkillModal?: () => void;
+	/** A save of a hub skill from the versioned skill modal, which skips `scheduleSkillSave`. */
+	trackSavedSkill?: (payload: { agentId: string; skillId: string }) => void;
 	trackTriggerAdded?: (payload: { triggerType: string; triggers: string[] }) => void;
 }
 
@@ -147,6 +157,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const nodeTypesStore = useNodeTypesStore();
 	const rbacStore = useRBACStore();
 	const settingsStore = useSettingsStore();
+	const skillsStore = useSkillsStore();
 	const { showError, showMessage } = useToast();
 	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
 
@@ -342,18 +353,25 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		// Self-address the modal to the agent it was opened for (like the add
 		// modals above): a confirm or remove landing after an agent switch must
 		// not write onto the newly active agent.
+		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
+		// Every attached skill is a hub skill when the hub is on, agent skills too.
+		const versioned = hubSkillsEnabled.value;
+		const outdated = versioned && isSkillBehindLatest(id);
+		const pinnedVersion = outdated ? agent.value?.skillVersions?.[id]?.draft : undefined;
 
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
-				projectId: projectId.value,
+				projectId: targetProjectId,
 				agentId: targetAgentId,
 				skill,
 				skillId: id,
 				existingSkillNames: appliedSkillNames(id),
 				hubSkillsEnabled: hubSkillsEnabled.value,
-				outdated: hubSkillsEnabled.value && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				versioned,
+				outdated,
+				...(pinnedVersion !== undefined ? { pinnedVersion } : {}),
 				projectLabel: projectName.value ?? undefined,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
 				onUseLatestVersion: (skillId: string) => {
@@ -364,18 +382,32 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
 				},
-				onConfirm: ({
+				onConfirm: async ({
 					id: skillId,
 					skill: updatedSkill,
 					availableTo,
+					label,
+					baseSkillHash,
 				}: {
 					id?: string;
 					skill: AgentSkill;
 					availableTo?: AgentSkillAvailability;
-				}) => {
+					label?: string;
+					baseSkillHash?: string;
+				}): Promise<AgentSkillConfirmResult> => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
 					const sanitizedSkill = normalizeAgentSkillForSave(updatedSkill);
+
+					// The versioned modal stays open after Save, so it waits for the saved version.
+					if (versioned) {
+						return await saveHubSkillVersion(targetProjectId, targetAgentId, skillId, {
+							skill: sanitizedSkill,
+							availableTo,
+							label,
+							baseSkillHash,
+						});
+					}
 
 					if (localSkills) {
 						if (hasDuplicateSkillName(sanitizedSkill.name, skillId)) {
@@ -399,9 +431,111 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						skill: sanitizedSkill,
 						...(availableTo && hubSkillsEnabled.value ? { availableTo } : {}),
 					});
+					return undefined;
 				},
 			},
 		});
+	}
+
+	/**
+	 * Saves the next version of a hub skill through the skills API, as Settings does, so
+	 * the save can name the version and tells whether it made one. A ref of this agent
+	 * that pins the version the save started from follows the latest version again, as
+	 * a save through the agent does. A changed "available to" moves the skill after the
+	 * save. Then the agent reloads, so the body and the version badge match.
+	 */
+	async function saveHubSkillVersion(
+		targetProjectId: string,
+		targetAgentId: string,
+		skillId: string,
+		options: {
+			skill: AgentSkill;
+			availableTo?: AgentSkillAvailability;
+			label?: string;
+			baseSkillHash?: string;
+		},
+	): Promise<AgentSkillConfirmFailure | AgentSkillConfirmSuccess> {
+		const { skill, availableTo, label } = options;
+		const isCurrentTarget = () =>
+			projectId.value === targetProjectId && agentId.value === targetAgentId;
+
+		try {
+			await beforeAgentMutation?.();
+		} catch {
+			// The host owns the autosave error message.
+			return { saved: false };
+		}
+
+		let saved: SkillSaveResponse;
+		try {
+			const baseSkillHash = options.baseSkillHash ?? agent.value?.skillHashes?.[skillId];
+			if (!baseSkillHash) throw new UnexpectedError('A skill save needs the hash it started from');
+			saved = await skillsStore.saveSkill(skillId, {
+				name: skill.name,
+				description: skill.description,
+				instructions: skill.instructions,
+				// An empty list clears the references, where an absent one would keep them.
+				references: skill.references ?? [],
+				baseSkillHash,
+				...(label ? { label } : {}),
+			});
+		} catch (error) {
+			if (isSkillNameTakenError(error)) {
+				return {
+					saved: false,
+					nameError: locale.baseText('settings.context.skills.error.nameTaken'),
+				};
+			}
+			showError(error, locale.baseText('agents.builder.skills.saveError'));
+			return { saved: false };
+		}
+		if (saved.created) telemetry?.trackSavedSkill?.({ agentId: targetAgentId, skillId });
+		if (!isCurrentTarget()) return { saved: true, created: saved.created };
+
+		const pinned = (localConfig.value?.skills ?? []).some(
+			(ref) => ref.id === skillId && ref.versionId,
+		);
+		if (saved.created && pinned) await writeSkillRef(skillId, null);
+
+		if (availableTo && isCurrentTarget()) {
+			try {
+				await updateAgentSkill(
+					rootStore.restApiContext,
+					targetProjectId,
+					targetAgentId,
+					skillId,
+					{},
+					undefined,
+					availableTo,
+				);
+			} catch (error) {
+				showError(error, locale.baseText('agents.builder.skills.saveError'));
+			}
+		} else if (!saved.created) {
+			showMessage({
+				title: locale.baseText('settings.context.skills.save.noChanges'),
+				type: 'info',
+			});
+		}
+
+		if (isCurrentTarget()) {
+			try {
+				await refreshAgentAfterMutation?.(targetProjectId, targetAgentId);
+			} catch (error) {
+				showError(error, locale.baseText('agents.builder.loadError'));
+			}
+		}
+		return { saved: true, created: saved.created };
+	}
+
+	/**
+	 * True when the draft runs an older version than the latest one. Agents without
+	 * `skillVersions` (an older server) still send `outdatedSkillIds`.
+	 */
+	function isSkillBehindLatest(skillId: string): boolean {
+		const info = agent.value?.skillVersions?.[skillId];
+		if (info) return isPinnedBehindLatest(info);
+		return (agent.value?.outdatedSkillIds ?? []).includes(skillId);
 	}
 
 	/** Names the skill modal validates against: every applied skill except the one being edited. */
@@ -675,11 +809,18 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		}
 		if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
 		if (!localConfig.value) return;
+		const versionInfo = agent.value.skillVersions?.[skillId];
 		agent.value = {
 			...agent.value,
 			skills: { ...(agent.value.skills ?? {}), [skillId]: hubSkill.skill },
 			skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: hubSkill.skillHash },
 			outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
+			...(versionInfo && {
+				skillVersions: {
+					...agent.value.skillVersions,
+					[skillId]: { ...versionInfo, pinned: false, draft: versionInfo.latest },
+				},
+			}),
 		};
 		scheduleConfigUpdate({
 			skills: (localConfig.value.skills ?? []).map((ref) =>
@@ -693,6 +834,59 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		}
 		if (agentId.value !== targetAgentId) return;
 		onOpenSkillFromList(skillId);
+	}
+
+	/**
+	 * Pins a hub skill ref to one version (`versionId` is the version's uuid), or makes
+	 * it follow the latest version again (null). Saves the draft like an attach does,
+	 * then reloads the agent so the body and the version state match the new ref.
+	 */
+	async function onSetSkillVersion(skillId: string, versionId: string | null) {
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		if (!(await writeSkillRef(skillId, versionId))) return;
+		if (projectId.value !== targetProjectId || agentId.value !== targetAgentId) return;
+		try {
+			await refreshAgentAfterMutation?.(targetProjectId, targetAgentId);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.loadError'));
+		}
+	}
+
+	/**
+	 * Points the draft ref of a skill at one version, or at the latest one (null), and
+	 * saves the draft. Returns false when nothing changed or the save failed.
+	 */
+	async function writeSkillRef(skillId: string, versionId: string | null): Promise<boolean> {
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		const isCurrentTarget = () =>
+			projectId.value === targetProjectId && agentId.value === targetAgentId;
+		const previousRefs = localConfig.value?.skills ?? [];
+		const previousRef = previousRefs.find((ref) => ref.id === skillId);
+		if (!previousRef || (previousRef.versionId ?? null) === versionId) return false;
+
+		scheduleConfigUpdate({
+			skills: previousRefs.map((ref) =>
+				ref.id === skillId
+					? { type: 'skill', id: skillId, ...(versionId ? { versionId } : {}) }
+					: ref,
+			),
+		});
+		try {
+			await flushConfigSave?.();
+		} catch {
+			// The host reports the save error. Put the ref back so the draft matches the server.
+			if (isCurrentTarget() && localConfig.value) {
+				scheduleConfigUpdate({
+					skills: (localConfig.value.skills ?? []).map((ref) =>
+						ref.id === skillId ? previousRef : ref,
+					),
+				});
+			}
+			return false;
+		}
+		return true;
 	}
 
 	function onConnectedTriggersUpdate(triggers: string[]) {
@@ -712,6 +906,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		onOpenAddSkillModal,
 		onOpenSkillFromList,
 		onRemoveSkill,
+		onSetSkillVersion,
 		onToggleTask,
 		onConnectedTriggersUpdate,
 		onTriggerAdded,

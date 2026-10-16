@@ -176,7 +176,15 @@ describe('SkillsController', () => {
 
 			expect(asOutsider.body.data.usedBy).toEqual({ drafts: [], pins: [], hiddenAgents: 1 });
 			expect(asEditor.body.data.usedBy).toEqual({
-				drafts: [{ agentId: agent.id, agentName: 'Support bot', projectId: project.id }],
+				drafts: [
+					{
+						agentId: agent.id,
+						agentName: 'Support bot',
+						projectId: project.id,
+						version: 1,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 0,
 			});
@@ -731,6 +739,90 @@ describe('SkillsController', () => {
 
 			expect(response.body.message).toBe(
 				'Skill "Brand voice" is used by Support bot (draft) and cannot be deleted.',
+			);
+		});
+	});
+
+	describe('versions', () => {
+		async function createSaved() {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			const saved = await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash, label: ' Launch copy ' })
+				.expect(200);
+			expect(saved.body.data).toMatchObject({ version: 2, created: true });
+			return id;
+		}
+
+		it('lists the versions newest first, with the name and the user who saved each one', async () => {
+			const id = await createSaved();
+
+			const response = await viewer.get(`/skills/${id}/versions`).expect(200);
+
+			expect(response.body.data.data).toMatchObject([
+				{ version: 2, label: 'Launch copy', createdBy: { id: expect.any(String) } },
+				{ version: 1, label: null },
+			]);
+			const read = await viewer.get(`/skills/${id}`).expect(200);
+			expect(read.body.data).toMatchObject({
+				latestVersion: 2,
+				latestVersionLabel: 'Launch copy',
+				latestVersionSavedBy: { id: expect.any(String) },
+			});
+		});
+
+		it('returns one version with its content, and 404 for a missing one', async () => {
+			const id = await createSaved();
+
+			const response = await viewer.get(`/skills/${id}/versions/1`).expect(200);
+
+			expect(response.body.data).toMatchObject({
+				version: 1,
+				label: null,
+				skill: { name: 'Brand voice', instructions: 'Be brief.' },
+			});
+			await viewer.get(`/skills/${id}/versions/9`).expect(404);
+			await viewer.get(`/skills/${id}/versions/zero`).expect(400);
+			await outsider.get(`/skills/${id}/versions`).expect(404);
+			await outsider.get(`/skills/${id}/versions/1`).expect(404);
+		});
+
+		it('lets an editor name a version, and refuses a viewer', async () => {
+			const id = await createSaved();
+
+			const named = await editor
+				.patch(`/skills/${id}/versions/1`)
+				.send({ label: 'First draft' })
+				.expect(200);
+			await viewer.patch(`/skills/${id}/versions/1`).send({ label: 'Mine' }).expect(403);
+			await outsider.patch(`/skills/${id}/versions/1`).send({ label: 'Mine' }).expect(404);
+			await editor.patch(`/skills/${id}/versions/9`).send({ label: 'Nope' }).expect(404);
+			const cleared = await editor
+				.patch(`/skills/${id}/versions/2`)
+				.send({ label: '' })
+				.expect(200);
+
+			expect(named.body.data).toMatchObject({ version: 1, label: 'First draft' });
+			expect(cleared.body.data).toMatchObject({ version: 2, label: null });
+		});
+
+		it('shows the version each draft runs in the usage', async () => {
+			const id = await createSaved();
+			const v1 = (await Container.get(SkillRepository).findVersionByNumber(id, 1))?.version.id;
+			await attachToNewAgent(id, 'Following bot', project.id);
+			await attachToNewAgent(id, 'Pinned bot', project.id, { pinnedVersionId: v1 });
+
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(read.body.data.usedBy.drafts).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ agentName: 'Following bot', version: 2, pinned: false }),
+					expect.objectContaining({ agentName: 'Pinned bot', version: 1, pinned: true }),
+				]),
 			);
 		});
 	});

@@ -10,6 +10,10 @@ import type {
 	SkillUserDto,
 	SkillNewNameQueryDto,
 	SkillNewNameResponse,
+	SkillVersionDetail,
+	SkillVersionListResponse,
+	SkillVersionSummary,
+	UpdateSkillVersionDto,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, UserRepository, type User } from '@n8n/db';
@@ -20,7 +24,11 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { Skill } from '../entities/skill.entity';
-import { SkillRepository, type SkillTarget } from '../repositories/skill.repository';
+import {
+	SkillRepository,
+	type SkillTarget,
+	type SkillVersionRow,
+} from '../repositories/skill.repository';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { SkillService, toAgentSkill } from './skill.service';
 import { SkillsTelemetry } from './skills-telemetry';
@@ -146,6 +154,40 @@ export class SkillsApiService {
 		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 	}
 
+	/** Every saved version of the skill, newest first. Needs read access. */
+	async listVersions(user: User, skillId: string): Promise<SkillVersionListResponse> {
+		await this.requireAccess(user, skillId, 'read');
+		const versions = await this.skillRepository.findVersionList(skillId);
+		const users = await this.findUsers(versions.map((version) => version.createdById));
+		return { data: versions.map((version) => toVersionSummary(version, users)) };
+	}
+
+	/** One saved version with its content. Needs read access. */
+	async getVersion(user: User, skillId: string, version: number): Promise<SkillVersionDetail> {
+		await this.requireAccess(user, skillId, 'read');
+		const row = await this.skillRepository.findVersionByNumber(skillId, version);
+		if (!row) throw new NotFoundError('Skill version not found');
+		const users = await this.findUsers([row.version.createdById]);
+		return { ...toVersionSummary(row.version, users), skill: toAgentSkill(row) };
+	}
+
+	/**
+	 * Names or renames one saved version. Needs the same permission as Save. The content
+	 * does not change, so agents and their published versions are not affected.
+	 */
+	async updateVersion(
+		user: User,
+		skillId: string,
+		version: number,
+		payload: UpdateSkillVersionDto,
+	): Promise<SkillVersionSummary> {
+		await this.requireAccess(user, skillId, 'update');
+		const updated = await this.skillRepository.updateVersionLabel(skillId, version, payload.label);
+		if (!updated) throw new NotFoundError('Skill version not found');
+		const users = await this.findUsers([updated.createdById]);
+		return toVersionSummary(updated, users);
+	}
+
 	async delete(user: User, skillId: string): Promise<void> {
 		const skill = await this.requireAccess(user, skillId, 'delete');
 		// The conflict message names only the agents the user may read, as the detail does.
@@ -168,6 +210,7 @@ export class SkillsApiService {
 			name: latest.version.name,
 			description: latest.version.description,
 			latestVersion: latest.version.version,
+			latestVersionLabel: latest.version.label,
 			skill: content,
 			skillHash: getAgentSkillHash(content),
 			usedBy: await this.skillRepository.findUsage(skill.id, agentProjectIds ?? 'all'),
@@ -257,13 +300,17 @@ export class SkillsApiService {
 		);
 		const projectOf = (skill: Skill) =>
 			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
-		const [latest, usage, projects, creators, canEdit, canDelete] = await Promise.all([
+		const [latest, usage, projects, canEdit, canDelete] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillRepository.countUsingAgents(ids),
 			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
-			this.findCreators(skills),
 			this.skillService.accessCheck(user, 'update'),
 			this.skillService.accessCheck(user, 'delete'),
+		]);
+		// Creators and the users who saved the latest versions, in one query.
+		const users = await this.findUsers([
+			...skills.map((skill) => skill.createdById),
+			...[...latest.values()].map((summary) => summary.createdById),
 		]);
 		const items: SkillListItem[] = [];
 		for (const skill of skills) {
@@ -281,8 +328,10 @@ export class SkillsApiService {
 				agentId: skill.agentId,
 				agentName: skill.agentId ? (agents.get(skill.agentId)?.name ?? null) : null,
 				source: skill.source,
-				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
+				createdBy: skill.createdById ? (users.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
+				latestVersionLabel: summary.label,
+				latestVersionSavedBy: summary.createdById ? (users.get(summary.createdById) ?? null) : null,
 				usedByAgents: usage.get(skill.id) ?? 0,
 				canEdit: canEdit(skill, projectId),
 				canDelete: canDelete(skill, projectId),
@@ -293,9 +342,9 @@ export class SkillsApiService {
 		return items;
 	}
 
-	/** The creators of a page of skills, in one query. */
-	private async findCreators(skills: Skill[]): Promise<Map<string, SkillUserDto>> {
-		const ids = [...new Set(skills.flatMap((skill) => skill.createdById ?? []))];
+	/** The users with these ids, in one query. Null ids and unknown users are skipped. */
+	private async findUsers(userIds: Array<string | null>): Promise<Map<string, SkillUserDto>> {
+		const ids = [...new Set(userIds.flatMap((id) => id ?? []))];
 		if (ids.length === 0) return new Map();
 		const users = await this.userRepository.findManyByIds(ids);
 		return new Map(
@@ -310,4 +359,17 @@ export class SkillsApiService {
 			]),
 		);
 	}
+}
+
+function toVersionSummary(
+	version: SkillVersionRow,
+	users: Map<string, SkillUserDto>,
+): SkillVersionSummary {
+	return {
+		id: version.id,
+		version: version.version,
+		label: version.label,
+		createdBy: version.createdById ? (users.get(version.createdById) ?? null) : null,
+		createdAt: version.createdAt.toISOString(),
+	};
 }

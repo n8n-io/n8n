@@ -11,6 +11,7 @@
 | frontmatter | json |  | true |  |  | SKILL.md frontmatter fields other than name and description, e.g. allowed-tools |
 | id | uuid |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.skill_file](public.skill_file.md) |  |  |
 | instructions | text |  | false |  |  |  |
+| label | varchar(128) |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  | Free-text skill name, as it was when this version was saved |
 | skillId | varchar(36) |  | false |  | [public.skill](public.skill.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -61,6 +62,7 @@ erDiagram
   json frontmatter
   uuid id
   text instructions
+  varchar_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
   timestamp_3__with_time_zone updatedAt

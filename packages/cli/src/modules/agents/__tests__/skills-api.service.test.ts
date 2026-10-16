@@ -110,7 +110,10 @@ describe('SkillsApiService', () => {
 						.filter((s) => ids.includes(s.id))
 						.map(({ id }) => {
 							const { name, description } = row(skill(id), 2).version;
-							return [id, { name, description, version: 2 }] as const;
+							return [
+								id,
+								{ name, description, version: 2, label: null, createdById: null },
+							] as const;
 						}),
 				),
 		);
@@ -160,6 +163,41 @@ describe('SkillsApiService', () => {
 				{ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
 				null,
 			]);
+		});
+
+		it('names the latest version and the user who saved it, in the same user query', async () => {
+			visible = [skill('skill_a', { createdById: 'user-2' })];
+			repository.findLatestSummaries.mockResolvedValue(
+				new Map([
+					[
+						'skill_a',
+						{
+							name: 'Brand voice',
+							description: 'd',
+							version: 4,
+							label: 'Launch copy',
+							createdById: 'user-3',
+						},
+					],
+				]),
+			);
+			userRepository.findManyByIds.mockResolvedValue([
+				mock<User>({ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'L' }),
+				mock<User>({ id: 'user-3', email: 'bo@example.com', firstName: 'Bo', lastName: 'K' }),
+			]);
+
+			const [item] = (await service.list(user, query())).data;
+
+			expect(userRepository.findManyByIds).toHaveBeenCalledTimes(1);
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith(['user-2', 'user-3']);
+			expect(item.latestVersionLabel).toBe('Launch copy');
+			expect(item.latestVersionSavedBy).toEqual({
+				id: 'user-3',
+				email: 'bo@example.com',
+				firstName: 'Bo',
+				lastName: 'K',
+			});
+			expect(item.createdBy?.id).toBe('user-2');
 		});
 
 		it('skips the user query when no skill has a creator', async () => {
@@ -263,6 +301,8 @@ describe('SkillsApiService', () => {
 				source: 'ui',
 				createdBy: null,
 				latestVersion: 2,
+				latestVersionLabel: null,
+				latestVersionSavedBy: null,
 				usedByAgents: 2,
 				canEdit: true,
 				canDelete: false,
@@ -305,7 +345,15 @@ describe('SkillsApiService', () => {
 	describe('get', () => {
 		it('returns the latest version, its hash and the usage', async () => {
 			const usage = {
-				drafts: [{ agentId: 'agent-1', agentName: 'Support', projectId: 'project-1' }],
+				drafts: [
+					{
+						agentId: 'agent-1',
+						agentName: 'Support',
+						projectId: 'project-1',
+						version: 3,
+						pinned: true,
+					},
+				],
 				pins: [],
 				hiddenAgents: 1,
 			};
@@ -316,7 +364,13 @@ describe('SkillsApiService', () => {
 				new Map([
 					[
 						'skill_a',
-						{ name: latest.version.name, description: latest.version.description, version: 3 },
+						{
+							name: latest.version.name,
+							description: latest.version.description,
+							version: 3,
+							label: null,
+							createdById: null,
+						},
 					],
 				]),
 			);
@@ -526,6 +580,22 @@ describe('SkillsApiService', () => {
 			});
 		});
 
+		it('passes the version name to the save', async () => {
+			skillService.save.mockResolvedValue(saved);
+
+			await service.update(
+				user,
+				'skill_a',
+				update({ instructions: 'New.', baseSkillHash: 'base', label: 'Launch copy' }),
+			);
+
+			expect(skillService.save).toHaveBeenCalledWith(
+				'skill_a',
+				{ instructions: 'New.', baseSkillHash: 'base', label: 'Launch copy' },
+				user.id,
+			);
+		});
+
 		it('refuses a user who may not edit the skill', async () => {
 			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'read');
 
@@ -648,6 +718,119 @@ describe('SkillsApiService', () => {
 			await expect(service.delete(user, 'skill_a')).rejects.toThrow(ForbiddenError);
 			expect(skillService.deleteSkill).not.toHaveBeenCalled();
 			expect(skillsTelemetry.deleted).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('versions', () => {
+		const versionRow = (version: number, fields: Partial<SkillVersion> = {}) =>
+			({
+				id: `skill_a-v${version}`,
+				version,
+				label: null,
+				createdById: null,
+				createdAt: DATE,
+				...fields,
+			}) as SkillVersion;
+
+		it('lists the versions newest first, with the user who saved each one', async () => {
+			repository.findVersionList.mockResolvedValue([
+				versionRow(2, { label: 'Launch copy', createdById: 'user-2' }),
+				versionRow(1, { createdById: 'user-gone' }),
+			]);
+			userRepository.findManyByIds.mockResolvedValue([
+				mock<User>({ id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'L' }),
+			]);
+
+			const result = await service.listVersions(user, 'skill_a');
+
+			expect(repository.findVersionList).toHaveBeenCalledWith('skill_a');
+			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'read');
+			expect(result).toEqual({
+				data: [
+					{
+						id: 'skill_a-v2',
+						version: 2,
+						label: 'Launch copy',
+						createdBy: { id: 'user-2', email: 'ada@example.com', firstName: 'Ada', lastName: 'L' },
+						createdAt: DATE.toISOString(),
+					},
+					{
+						id: 'skill_a-v1',
+						version: 1,
+						label: null,
+						createdBy: null,
+						createdAt: DATE.toISOString(),
+					},
+				],
+			});
+		});
+
+		it('answers a skill the user cannot see like a missing one', async () => {
+			skillService.canAccess.mockResolvedValue(false);
+
+			await expect(service.listVersions(user, 'skill_a')).rejects.toThrow(NotFoundError);
+			await expect(service.getVersion(user, 'skill_a', 1)).rejects.toThrow(NotFoundError);
+			await expect(service.updateVersion(user, 'skill_a', 1, { label: 'x' })).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(repository.findVersionList).not.toHaveBeenCalled();
+			expect(repository.findVersionByNumber).not.toHaveBeenCalled();
+			expect(repository.updateVersionLabel).not.toHaveBeenCalled();
+		});
+
+		it('returns one version with its content', async () => {
+			const version = row(visible[0], 1, { instructions: 'Old.' });
+			version.version.label = 'First';
+			version.version.createdById = null;
+			version.version.createdAt = DATE;
+			repository.findVersionByNumber.mockResolvedValue(version);
+
+			const detail = await service.getVersion(user, 'skill_a', 1);
+
+			expect(repository.findVersionByNumber).toHaveBeenCalledWith('skill_a', 1);
+			expect(detail).toEqual({
+				id: 'skill_a-v1',
+				version: 1,
+				label: 'First',
+				createdBy: null,
+				createdAt: DATE.toISOString(),
+				skill: { name: 'Brand voice', description: 'Brand voice desc', instructions: 'Old.' },
+			});
+		});
+
+		it('answers a missing version with 404', async () => {
+			repository.findVersionByNumber.mockResolvedValue(undefined);
+
+			await expect(service.getVersion(user, 'skill_a', 9)).rejects.toThrow(
+				'Skill version not found',
+			);
+		});
+
+		it('names a version for a user who may edit the skill', async () => {
+			repository.updateVersionLabel.mockResolvedValue(versionRow(2, { label: 'Launch copy' }));
+
+			const result = await service.updateVersion(user, 'skill_a', 2, { label: 'Launch copy' });
+
+			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'update');
+			expect(repository.updateVersionLabel).toHaveBeenCalledWith('skill_a', 2, 'Launch copy');
+			expect(result.label).toBe('Launch copy');
+		});
+
+		it('refuses to name a version for a user who may only read the skill', async () => {
+			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'read');
+
+			await expect(
+				service.updateVersion(user, 'skill_a', 2, { label: 'Launch copy' }),
+			).rejects.toThrow(ForbiddenError);
+			expect(repository.updateVersionLabel).not.toHaveBeenCalled();
+		});
+
+		it('answers a name for a missing version with 404', async () => {
+			repository.updateVersionLabel.mockResolvedValue(undefined);
+
+			await expect(service.updateVersion(user, 'skill_a', 9, { label: null })).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 });
