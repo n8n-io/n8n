@@ -4,6 +4,8 @@ tags:
 summary: Push local source control changes
 description: Commits and pushes the selected files to the connected Git branch. Each entry in `fileNames` is resolved against a fresh preview of the pending changes.
 x-required-scope: sourceControl:push
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 requestBody:
   required: true
   content:
@@ -375,3 +377,5 @@ responses:
             - conflicts
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
