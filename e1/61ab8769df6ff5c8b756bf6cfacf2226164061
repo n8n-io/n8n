@@ -1,0 +1,35 @@
+packages/@n8n/instance-ai/src/skills/materialize-runtime-skills.ts
+  s_8661479fcacbbd::t_57787adf8956d4 552
+packages/@n8n/instance-ai/src/workspace/__tests__/prebaked-workspace-bundle.test.ts
+  s_8661479fcacbbd::t_d0e6581a25833e 316
+  s_8661479fcacbbd::t_fa3553fb96e5ea 317-320,326-374
+  s_8661479fcacbbd::t_f92b8b379ca1f2 321-325
+packages/@n8n/instance-ai/src/workspace/prebaked-workspace-bundle.ts
+  s_8661479fcacbbd::t_facc44e8c125a5 42,47,54-56,83-84,90,93-100,145,163-175
+  s_8661479fcacbbd::t_d0e6581a25833e 48
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_8661479fcacbbd::t_d0e6581a25833e 138
+  s_8661479fcacbbd::t_004e65e143af43 139-147
+packages/@n8n/instance-ai/src/workspace/workspace-files.ts
+  s_8661479fcacbbd::t_27d3023e629260 72-86,88,90-124,126-145,162-181,183-197,199-212,214-215,218-225,232
+  s_8661479fcacbbd::t_1c62affeb30dd2 226-231,235,241,244,246,252-257
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-files.test.ts
+  s_8661479fcacbbd::t_fa3553fb96e5ea 197-279
+  s_8661479fcacbbd::t_3d891817bd0c92 468-471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e161ab8769df6ff5c8b756bf6cfacf2226164061",
+  "prompts": {},
+  "sessions": {
+    "s_8661479fcacbbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfa2039-345b-4ff7-9ade-5eebd300fbec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

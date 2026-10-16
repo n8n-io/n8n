@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/helpers/workbookSearch.test.ts
+  s_2e1fa95fc44f8f::t_58eed1086352e7 1-9
+packages/nodes-base/nodes/Microsoft/Teams/test/v1/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_5790645d2ceda0 7-14,17,31-50,52-53,55-66
+  s_2e1fa95fc44f8f::t_1f2c7eae07d368 1,51,54,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97ead01fd9c8c776aeea5a3331872521eee72a84",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

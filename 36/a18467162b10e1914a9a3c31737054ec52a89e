@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Facebook/FacebookGraphApi.node.ts
+  s_2e1fa95fc44f8f::t_26445b060516a5 478-481
+packages/nodes-base/nodes/Facebook/__tests__/FacebookGraphApi.node.test.ts
+  s_2e1fa95fc44f8f::t_51ea9113f50d15 131-135,137,139-143,145-151,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36a18467162b10e1914a9a3c31737054ec52a89e",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

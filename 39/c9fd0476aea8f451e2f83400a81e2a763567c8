@@ -1,0 +1,62 @@
+packages/cli/src/modules/agents/repositories/agent-task-cancellation.repository.ts
+  s_fbba0b32ee6f59::t_d2254ac41fe77f 215-223
+  s_fbba0b32ee6f59::t_00500144d95070 74,91,102,117-125,194,207,229,248,261,282
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_fbba0b32ee6f59::t_d2254ac41fe77f 1223
+  s_fbba0b32ee6f59::t_183e5787793a06 1229-1243,1245
+  s_fbba0b32ee6f59::t_490a05e11e7a25 1244
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_fbba0b32ee6f59::t_183e5787793a06 596
+  s_fbba0b32ee6f59::t_7a15973672d2b1 201,209,390
+  s_fbba0b32ee6f59::t_02ec6d0e9fad88 219-223
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_fbba0b32ee6f59::t_00500144d95070 179,253
+packages/cli/test/integration/database/repositories/agent-task-cancellation.repository.test.ts
+  s_fbba0b32ee6f59::t_d2254ac41fe77f 69,105-106,119,125,128,132,159,167,169,278,285,301,312,335,338,353-354,422,426,442,445,447
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_fbba0b32ee6f59::t_8aae0de97a1bb3 488,499
+packages/cli/test/migration/1791294522338-create-agent-task-cancellation.test.ts
+  s_fbba0b32ee6f59::t_183e5787793a06 87-89,91-93,102-106,110-119,124-126
+  s_fbba0b32ee6f59::t_86c76ac1a90360 1-86,90,94-101,107-109,120-123,127-129
+docs/generated/sqlite-schema/README.md
+  ai_agent 12,29
+docs/generated/sqlite-schema/agent_message_queue.md
+  ai_agent 9
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_fbba0b32ee6f59::t_7a15973672d2b1 94,104,131,336,526-527
+docs/generated/postgres-schema/README.md
+  ai_agent 12,29
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_fbba0b32ee6f59::t_7a15973672d2b1 119,132
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_fbba0b32ee6f59::t_00500144d95070 52,111,129,168,175
+  s_fbba0b32ee6f59::t_183e5787793a06 92-98,160
+packages/cli/src/modules/agents/repositories/agent-plan.repository.ts
+  s_fbba0b32ee6f59::t_7a15973672d2b1 190
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 9
+packages/@n8n/db/src/migrations/common/1791294522338-CreateAgentTaskCancellation.ts
+  s_fbba0b32ee6f59::t_0c2dde74df016d 7,20
+packages/cli/src/modules/agents/types/agent-task-stop.ts
+  s_fbba0b32ee6f59::t_0c2dde74df016d 3,10
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_fbba0b32ee6f59::t_02ec6d0e9fad88 89,160
+  s_fbba0b32ee6f59::t_183e5787793a06 212-231
+  s_fbba0b32ee6f59::t_d2254ac41fe77f 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39c9fd0476aea8f451e2f83400a81e2a763567c8",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

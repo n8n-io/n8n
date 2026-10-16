@@ -1,0 +1,23 @@
+packages/cli/src/telemetry/cluster-footprint.ts
+  s_86b834392d23cd::t_7e4c3ea49a0f3e 3-12,14-15,18-20,23-30,33
+packages/cli/src/telemetry/__tests__/cluster-footprint.test.ts
+  s_86b834392d23cd::t_c2fd625031802a 9,16,28,30-34,37-42,45-46,48-51,54-55,57-59
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_86b834392d23cd::t_05cb6bc2afb06b 1506-1509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4583f5eb52c5ae709383789b0b89f2ab6958642f",
+  "prompts": {},
+  "sessions": {
+    "s_86b834392d23cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0f3963e-ef06-4c95-96df-251da96845e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
