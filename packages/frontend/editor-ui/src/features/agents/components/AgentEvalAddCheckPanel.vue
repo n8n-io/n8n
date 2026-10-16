@@ -5,7 +5,7 @@
  * Either way the case is written to the run's dataset, and the parent is told
  * so it can run the checks again — a run only holds the cases it started with.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
@@ -22,14 +22,16 @@ const props = defineProps<{
 	caseSource: AgentEvalCaseSource | null;
 	/** No `agent:update` — nothing can be added. */
 	disabled?: boolean;
-	/** The checks are starting or running, so another add would start a second run. */
+	/** A replacement run is starting, so its dataset is not ready for another write. */
 	busy?: boolean;
+	/** Save new cases for the next run while this run keeps its original cases. */
+	deferRun?: boolean;
 }>();
 
 const emit = defineEmits<{
 	close: [];
 	/** A case was written to the dataset. */
-	added: [];
+	added: [deferRun: boolean];
 }>();
 
 const i18n = useI18n();
@@ -47,6 +49,16 @@ const loadingPrepared = ref(false);
 const expanded = ref(false);
 // 'rule' for the typed rule, or the key of the prepared case being added.
 const adding = ref<'rule' | number | null>(null);
+let deferAddedCheck = false;
+
+// A run can start and finish before drafting or saving the new check completes.
+watch(
+	() => props.deferRun || props.busy,
+	(busy) => {
+		if (adding.value !== null && busy) deferAddedCheck = true;
+	},
+	{ flush: 'sync' },
+);
 
 const canAdd = computed(
 	() => !props.disabled && props.caseSource !== null && !props.busy && adding.value === null,
@@ -85,7 +97,7 @@ onBeforeUnmount(() => {
 	isMounted = false;
 });
 
-/** Writes the case to the dataset, then tells the parent to run the checks again. */
+/** Reports the saved case and whether it must wait for the next run. */
 async function writeCase(value: { input: string; whatToCheck: string }): Promise<boolean> {
 	const source = props.caseSource;
 	if (!source) return false;
@@ -97,7 +109,7 @@ async function writeCase(value: { input: string; whatToCheck: string }): Promise
 		if (isMounted) toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.addError'));
 		return false;
 	}
-	emit('added');
+	emit('added', deferAddedCheck || Boolean(props.deferRun || props.busy));
 	return true;
 }
 
@@ -105,6 +117,7 @@ async function onAddRule() {
 	const rule = ruleInput.value.trim();
 	if (!rule || !canAdd.value) return;
 
+	deferAddedCheck = Boolean(props.deferRun || props.busy);
 	adding.value = 'rule';
 	try {
 		let input: string;
@@ -133,6 +146,7 @@ async function onAddRule() {
 async function onAddPrepared(row: PreparedCase) {
 	if (!canAdd.value) return;
 
+	deferAddedCheck = Boolean(props.deferRun || props.busy);
 	adding.value = row.key;
 	try {
 		const written = await writeCase({ input: row.input, whatToCheck: row.whatToCheck });

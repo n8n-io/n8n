@@ -3013,6 +3013,8 @@ export interface InstanceAiEvalAgentExecutionResult {
 	llmUsage?: InstanceAiEvalLlmUsage[];
 }
 
+export const INSTANCE_AI_EVAL_AGENT_MAX_TIMEOUT_MS = 3_600_000;
+
 export class InstanceAiEvalAgentExecutionRequest extends Z.class({
 	/** Project the agent lives in (agent routes are project-scoped). */
 	projectId: z.string().min(1),
@@ -3021,7 +3023,7 @@ export class InstanceAiEvalAgentExecutionRequest extends Z.class({
 	 * Overall run budget. Server default applies when omitted. Shares the workflow
 	 * variant's ceiling — the old 900_000 cap truncated a `complex` case's budget.
 	 */
-	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
+	timeoutMs: z.number().int().min(30_000).max(INSTANCE_AI_EVAL_AGENT_MAX_TIMEOUT_MS).optional(),
 }) {}
 
 export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({

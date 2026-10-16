@@ -1,12 +1,17 @@
 import { Container } from '@n8n/di';
+import { TransactionRunner } from '../../services/transaction';
 import type { Mock } from 'vitest';
 
+import { AgentEvalRun } from '../../entities/agent-eval-run.ee';
 import { AgentEvalResult } from '../../entities/agent-eval-result.ee';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { AgentEvalResultRepository } from '../agent-eval-result.repository.ee';
 
 describe('AgentEvalResultRepository', () => {
 	const entityManager = mockEntityManager(AgentEvalResult);
+	Container.set(TransactionRunner, {
+		run: async (ctx, fn) => await fn(ctx),
+	} satisfies TransactionRunner);
 	const repo = Container.get(AgentEvalResultRepository);
 
 	beforeEach(() => {
@@ -185,21 +190,70 @@ describe('AgentEvalResultRepository', () => {
 	});
 
 	describe('claimForRerun', () => {
+		it('locks the parent run before claiming a result', async () => {
+			entityManager.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: [] });
+			await repo.claimForRerun('res-1', 'run-1');
+			expect(entityManager.update.mock.calls[0]).toEqual([
+				AgentEvalRun,
+				{ id: 'run-1' },
+				{ id: 'run-1' },
+			]);
+			expect(entityManager.update.mock.calls[1]?.[1]).toMatchObject({
+				id: 'res-1',
+				runId: 'run-1',
+			});
+		});
+
 		it('claims only a settled row, clearing the previous attempt', async () => {
-			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+			entityManager.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: [] });
 
-			await expect(repo.claimForRerun('res-1')).resolves.toBe(true);
+			await expect(repo.claimForRerun('res-1', 'run-1')).resolves.toBe(true);
 
-			const [, where, patch] = entityManager.update.mock.calls[0] ?? [];
+			const [, where, patch] = entityManager.update.mock.calls[1] ?? [];
 			expect(where).toMatchObject({ id: 'res-1' });
 			expect(patch).toMatchObject({ status: 'running', output: null, errorCode: null });
 		});
 
 		it('reports false when no row matched, because it was already running or claimed', async () => {
-			entityManager.update.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: [] });
+			entityManager.update.mockResolvedValue({ affected: 0, generatedMaps: [], raw: [] });
 
-			await expect(repo.claimForRerun('res-1')).resolves.toBe(false);
+			await expect(repo.claimForRerun('res-1', 'run-1')).resolves.toBe(false);
 		});
+
+		it('does not claim a rerun when the driver omits the affected row count', async () => {
+			entityManager.update.mockResolvedValue({ generatedMaps: [], raw: [] });
+
+			await expect(repo.claimForRerun('res-1', 'run-1')).resolves.toBe(false);
+		});
+	});
+
+	describe('markUnfinishedAsError', () => {
+		it.each([undefined, new Date('2026-10-15T00:00:00Z')])(
+			'repairs only an unstarted row or the original attempt at %s',
+			async (runAt) => {
+				const qb = {
+					update: vi.fn().mockReturnThis(),
+					set: vi.fn().mockReturnThis(),
+					where: vi.fn().mockReturnThis(),
+					execute: vi.fn().mockResolvedValue({ affected: 1 }),
+				};
+				(entityManager.createQueryBuilder as Mock).mockReturnValue(qb);
+
+				await repo.markUnfinishedAsError('res-1', runAt, 'Original write failed');
+
+				expect(qb.set).toHaveBeenCalledWith({
+					status: 'error',
+					completedAt: expect.any(Date),
+					errorCode: 'case_dispatch_failed',
+					errorDetails: { message: 'Original write failed' },
+				});
+				type UnfinishedRow = { id: string; status: string; runAt?: Date };
+				const expectedRows: UnfinishedRow[] = [{ id: 'res-1', status: 'new' }];
+				if (runAt) expectedRows.push({ id: 'res-1', status: 'running', runAt });
+				expect(qb.where).toHaveBeenCalledWith(expectedRows);
+				expect(qb.execute).toHaveBeenCalledOnce();
+			},
+		);
 	});
 
 	describe('markAsCancelled', () => {

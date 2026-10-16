@@ -1,16 +1,76 @@
 import { Container } from '@n8n/di';
+import { TransactionRunner } from '../../services/transaction';
 import type { Mock } from 'vitest';
 
 import { AgentEvalRun } from '../../entities/agent-eval-run.ee';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { AgentEvalRunRepository } from '../agent-eval-run.repository.ee';
+import type { AgentEvalResultStatusCounts } from '../agent-eval-result.repository.ee';
 
 describe('AgentEvalRunRepository', () => {
 	const entityManager = mockEntityManager(AgentEvalRun);
+	Container.set(TransactionRunner, {
+		run: async (ctx, fn) => await fn(ctx),
+	} satisfies TransactionRunner);
 	const repo = Container.get(AgentEvalRunRepository);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+	});
+
+	describe.each([
+		[
+			'completed',
+			async (counts?: AgentEvalResultStatusCounts) =>
+				await repo.markAsCompleted('run-1', {}, counts),
+		],
+		[
+			'error',
+			async (counts?: AgentEvalResultStatusCounts) =>
+				await repo.markAsError('run-1', 'failed', null, null, counts),
+		],
+		[
+			'cancelled',
+			async (counts?: AgentEvalResultStatusCounts) =>
+				await repo.markAsCancelled('run-1', null, counts),
+		],
+	] as const)('%s settlement', (_status, settle) => {
+		it.each([
+			{ affected: 1, expected: true },
+			{ affected: 0, expected: false },
+			{ affected: undefined, expected: false },
+		])(
+			'returns $expected for an update affecting $affected rows',
+			async ({ affected, expected }) => {
+				entityManager.update.mockResolvedValueOnce({ affected, generatedMaps: [], raw: [] });
+
+				expect(await settle()).toBe(expected);
+			},
+		);
+
+		it.each([
+			{ affected: 1, expected: true },
+			{ affected: 0, expected: false },
+			{ affected: undefined, expected: false },
+		])(
+			'returns $expected for a count-guarded update affecting $affected rows',
+			async ({ affected, expected }) => {
+				const query = {
+					update: vi.fn().mockReturnThis(),
+					set: vi.fn().mockReturnThis(),
+					select: vi.fn().mockReturnThis(),
+					where: vi.fn().mockReturnThis(),
+					andWhere: vi.fn().mockReturnThis(),
+					getQuery: vi.fn().mockReturnValue('SELECT COUNT(*)'),
+					execute: vi.fn().mockResolvedValue({ affected, generatedMaps: [], raw: [] }),
+				};
+				(entityManager.createQueryBuilder as Mock).mockReturnValue(query);
+
+				expect(await settle({ new: 0, running: 0, success: 1, error: 0, cancelled: 0 })).toBe(
+					expected,
+				);
+			},
+		);
 	});
 
 	describe('createRun', () => {
