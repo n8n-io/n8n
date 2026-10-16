@@ -1473,12 +1473,14 @@ describe('AgentEvalChecksPanel', () => {
 		const row = getByTestId('agent-eval-check-fail-1');
 		await user.click(within(row).getByText('actually fine'));
 
-		// The needs-work pill is gone (nothing needs work anymore) and every row
-		// shows again — "all" is active, not a stale "needs-work" with no pill lit.
+		// Nothing needs work anymore, so every check passes: the filter becomes the
+		// selected summary option, not a stale "needs-work", and every row shows again.
 		await vi.waitFor(() =>
 			expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument(),
 		);
-		expect(getByTestId('agent-eval-checks-filter-all').closest('[role="radio"]')).toHaveAttribute(
+		expect(queryByTestId('agent-eval-checks-filter-all')).not.toBeInTheDocument();
+		expect(getByTestId('agent-eval-checks-filter-pass')).toHaveTextContent('All 2 passed');
+		expect(getByTestId('agent-eval-checks-filter-pass').closest('[role="radio"]')).toHaveAttribute(
 			'aria-checked',
 			'true',
 		);
