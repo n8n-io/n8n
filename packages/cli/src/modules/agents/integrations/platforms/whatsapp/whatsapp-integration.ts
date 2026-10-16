@@ -407,6 +407,14 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 				return response;
 			}
 
+			// Inbound threads use the digits-only `wa_id`. A model often sends
+			// "+43…", which would open a different thread and break reply binding.
+			override async openDM(userId: string): Promise<string> {
+				const waId = userId.replace(/\D/g, '');
+				if (!waId) throw new UserError('The WhatsApp user ID must be a phone number.');
+				return await super.openDM(waId);
+			}
+
 			override async postMessage(
 				threadId: string,
 				message: AdapterPostableMessage,

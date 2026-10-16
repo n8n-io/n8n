@@ -428,6 +428,47 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
+		it('sends a direct message to a phone number written with a leading plus', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				const result = await ctx.actionExecutor.execute({
+					descriptor: ctx.descriptor,
+					action: 'send_dm',
+					input: { userId: `+${fixtures.contact.wa_id}`, message: { text: 'Your order shipped' } },
+					awaitResponse: false,
+				});
+
+				expect(result).toMatchObject({ ok: true });
+				expect(ctx.lastPost()?.body).toMatchObject({ to: fixtures.contact.wa_id });
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('rejects a direct message to a user ID without digits', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+				const postsBefore = ctx.lastPost();
+
+				const result = await ctx.actionExecutor.execute({
+					descriptor: ctx.descriptor,
+					action: 'send_dm',
+					input: { userId: 'not-a-number', message: { text: 'Hello' } },
+					awaitResponse: false,
+				});
+
+				expect(result).toMatchObject({ ok: false });
+				expect(ctx.lastPost()).toBe(postsBefore);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
 		it('rejects a reply after the customer service window has closed', async () => {
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures);

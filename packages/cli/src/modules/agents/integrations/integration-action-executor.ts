@@ -276,6 +276,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
 		const thread = await this.openDirectMessageThread(chat, params.descriptor, input.userId);
+		if (!thread) return unsupportedAction(params.descriptor.integration.type, 'send_dm');
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 		// Re-anchor at the sent message ts on platforms where a top-level DM
 		// starts its own thread; otherwise keep the openDM thread.
@@ -295,17 +296,18 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	}
 
 	/**
-	 * Opens the DM on this connection's own adapter. `chat.openDM` guesses the
-	 * adapter from the user ID format, and it has no rule for some platforms
-	 * (a WhatsApp phone number, for example).
+	 * `chat.openDM` guesses the adapter from the user ID format, and it has no
+	 * rule for a WhatsApp phone number. Only WhatsApp opens the DM on its own
+	 * adapter. Other platforms keep the inference.
 	 */
 	private async openDirectMessageThread(
 		chat: ChatInstance,
 		descriptor: IntegrationToolConnectionDescriptor,
 		userId: string,
 	) {
-		const adapter = chat.getAdapter(descriptor.integration.type);
-		if (!supportsOpenDM(adapter)) return await chat.openDM(userId);
+		if (descriptor.integration.type !== 'whatsapp') return await chat.openDM(userId);
+		const adapter = chat.getAdapter('whatsapp');
+		if (!supportsOpenDM(adapter)) return undefined;
 		return chat.thread(await adapter.openDM(userId));
 	}
 
