@@ -43,7 +43,7 @@ const client = mock<OAuthDiscoveryClient>();
 const localServer = mock<LocalAuthorizationServer>({
 	getMetadata: async () => ({ issuer: baseUrl, jwks_uri: `${baseUrl}/.well-known/jwks.json` }),
 	getJwks: async () => ({ keys: [jwk] }),
-	isAccessTokenActive: async () => true,
+	isAccessTokenActive: vi.fn(async () => true),
 });
 
 type Row = { id: string; issuer: string };
@@ -222,5 +222,15 @@ describe('AuthenticationService (integration)', () => {
 		expect(client.fetchOpenIdConfiguration).not.toHaveBeenCalled();
 		expect(client.fetchOAuth2ServerMetadata).not.toHaveBeenCalled();
 		expect(client.fetchJwks).not.toHaveBeenCalled();
+	});
+
+	it('rejects a token the internal server revoked, although its signature still verifies', async () => {
+		const token = await sign(baseUrl, { sub: randomUUID(), client_id: 'mcp-client', scope: 'mcp' });
+		localServer.isAccessTokenActive.mockResolvedValueOnce(false);
+
+		const result = await service.authenticate(extracted(token));
+
+		expect(result).toEqual({ ok: false, reason: 'revoked' });
+		expect(localServer.isAccessTokenActive).toHaveBeenCalledWith(token);
 	});
 });

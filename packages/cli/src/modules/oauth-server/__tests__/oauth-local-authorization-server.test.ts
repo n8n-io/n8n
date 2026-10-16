@@ -84,7 +84,8 @@ describe('OAuthServerLocalAuthorizationServer', () => {
 
 			await expect(server.isAccessTokenActive('live')).resolves.toBe(true);
 			await expect(server.isAccessTokenActive('revoked')).resolves.toBe(false);
-			expect(accessTokens.isActive).toHaveBeenCalledWith('revoked');
+			expect(accessTokens.isActive).toHaveBeenNthCalledWith(1, 'live');
+			expect(accessTokens.isActive).toHaveBeenNthCalledWith(2, 'revoked');
 		});
 	});
 });
