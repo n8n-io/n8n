@@ -140,6 +140,7 @@ describe('AppVersionService', () => {
 			});
 
 			expect(await service.attachBundle('project', appId, versionId, files)).toEqual(completed);
+			expect(buildResults.recordSuccess).toHaveBeenCalledWith(versionId, files);
 		},
 	);
 
