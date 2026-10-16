@@ -1,0 +1,21 @@
+packages/@n8n/workflow-sdk/src/mock-data/ai-root-shapes.ts
+  s_3fb02ceb0c8884::t_47337a6d8d0aea 109
+packages/@n8n/workflow-sdk/src/mock-data/mock-data.test.ts
+  s_3fb02ceb0c8884::t_178438b58e1101 733-735,897-899
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a69f46130fdfd55a615684442b55372be34be38",
+  "prompts": {},
+  "sessions": {
+    "s_3fb02ceb0c8884": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b223eef3-0258-4eaf-b965-fa8fac274976",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

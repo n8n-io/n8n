@@ -1,0 +1,169 @@
+packages/nodes-base/nodes/Databricks/actions/files/downloadFile.operation.ts
+  s_2e1fa95fc44f8f::t_db80040d1fee06 31
+  s_2e1fa95fc44f8f::t_449b58b0b84709 2
+  s_2e1fa95fc44f8f::t_ce572d96a0f484 29-30
+  s_2e1fa95fc44f8f::t_3676ab01356fed 32-34
+  s_24dbac2e9c1d82::t_dfb1eb74c290da 10,17,35-38,40
+packages/nodes-base/nodes/Databricks/actions/files/listDirectory.operation.ts
+  s_2e1fa95fc44f8f::t_c537db2217c0e7 31
+  s_2e1fa95fc44f8f::t_751e8eef6e82d5 1
+  s_2e1fa95fc44f8f::t_aabad3a3ffa17b 29-30
+  s_2e1fa95fc44f8f::t_eed8ddace9cdce 32-34
+  s_24dbac2e9c1d82::t_512e30031994ff 4,35-38
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_2e1fa95fc44f8f::t_6574a0ab8e71ff 94-97
+  s_2e1fa95fc44f8f::t_600178dc293229 39,41-42,44-48
+  s_2e1fa95fc44f8f::t_63febd620f798b 3,10-12,21-23
+  s_2e1fa95fc44f8f::t_8734f2a22a9960 419
+  s_2e1fa95fc44f8f::t_f455b155da7b22 38,43
+  s_2e1fa95fc44f8f::t_2bae1995562a83 24
+  s_25d84bacfad08a::t_4ce32c831c4e17 423
+packages/nodes-base/nodes/Databricks/test/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_e771556865ce33 1-81
+packages/nodes-base/nodes/Databricks/test/helpers.test.ts
+  s_2e1fa95fc44f8f::t_212788e1409fc8 2,19,41-49,58-65,71-79,85-96,100,115-122,176-177,198,215,225,234,244,261,276,306,314
+packages/nodes-base/nodes/Databricks/actions/databricksSql/executeQuery.operation.ts
+  s_24dbac2e9c1d82::t_944c62513df9de 1,34-48,50,68-77,117-126
+packages/nodes-base/nodes/Databricks/actions/files/createDirectory.operation.ts
+  s_24dbac2e9c1d82::t_500031e3ff9568 1,4,21-29
+packages/nodes-base/nodes/Databricks/actions/files/deleteDirectory.operation.ts
+  s_24dbac2e9c1d82::t_37ef876bd5bd6e 1,4,21-29
+packages/nodes-base/nodes/Databricks/actions/files/deleteFile.operation.ts
+  s_24dbac2e9c1d82::t_58a921f41f4020 1,4,10,21-29
+packages/nodes-base/nodes/Databricks/actions/files/getFileInfo.operation.ts
+  s_24dbac2e9c1d82::t_dd57959cd6d910 1,4,10,21-29
+packages/nodes-base/nodes/Databricks/actions/files/uploadFile.operation.ts
+  s_24dbac2e9c1d82::t_e9cc9349f8b6f3 1,4,11,25-35,37
+packages/nodes-base/nodes/Databricks/actions/genie/createMessage.operation.ts
+  s_24dbac2e9c1d82::t_58bb94dad55326 1,12-22
+packages/nodes-base/nodes/Databricks/actions/genie/executeMessageQuery.operation.ts
+  s_24dbac2e9c1d82::t_0c67b364ad99d7 1,14-23
+packages/nodes-base/nodes/Databricks/actions/genie/getMessage.operation.ts
+  s_24dbac2e9c1d82::t_f03cfa12505bf7 1,13-22
+packages/nodes-base/nodes/Databricks/actions/genie/getQueryResults.operation.ts
+  s_24dbac2e9c1d82::t_356064d6889f61 1,14-23
+packages/nodes-base/nodes/Databricks/actions/genie/getSpace.operation.ts
+  s_24dbac2e9c1d82::t_1c60444ea632ea 1,11-20
+packages/nodes-base/nodes/Databricks/actions/genie/startConversation.operation.ts
+  s_24dbac2e9c1d82::t_9f1783c2ad92b7 1,11-21
+packages/nodes-base/nodes/Databricks/actions/job/getJob.operation.ts
+  s_6406784e7959d8::t_3c518c16cbd8aa 1,35
+packages/nodes-base/nodes/Databricks/actions/job/getRun.operation.ts
+  s_24dbac2e9c1d82::t_150d4435a62c04 1,20-30
+packages/nodes-base/nodes/Databricks/actions/job/getRunOutput.operation.ts
+  s_24dbac2e9c1d82::t_ea0220d6ffae55 1,28,74-84
+packages/nodes-base/nodes/Databricks/actions/job/run.operation.ts
+  s_24dbac2e9c1d82::t_14f53a3f2ef640 2,54-65,67,76
+packages/nodes-base/nodes/Databricks/actions/modelServing/queryEndpoint.operation.ts
+  s_24dbac2e9c1d82::t_704c5146118716 1,28,32-41,65,85,95,106-110
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createCatalog.operation.ts
+  s_24dbac2e9c1d82::t_30ad3e4950fc94 1,20-30
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createFunction.operation.ts
+  s_24dbac2e9c1d82::t_f991393f39c384 1-6,34-56,58-59,61
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createTable.operation.ts
+  s_24dbac2e9c1d82::t_a5774c23437184 1-6,42-52
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/createVolume.operation.ts
+  s_24dbac2e9c1d82::t_99f56839275296 1,40-50
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteCatalog.operation.ts
+  s_24dbac2e9c1d82::t_8019ba8c5404c2 1,16-24
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteFunction.operation.ts
+  s_24dbac2e9c1d82::t_53ac8f02e1404f 1,16-24
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteTable.operation.ts
+  s_24dbac2e9c1d82::t_0c2cb612dddbe1 1,16-24
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/deleteVolume.operation.ts
+  s_24dbac2e9c1d82::t_977e1e2d6601b7 1,19-27
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getCatalog.operation.ts
+  s_24dbac2e9c1d82::t_90a925f8c5abb8 1,16-24
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getFunction.operation.ts
+  s_24dbac2e9c1d82::t_e152a8f9562d3c 1,16-24
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getTable.operation.ts
+  s_24dbac2e9c1d82::t_6eaea11455fa1c 1,16-24
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/getVolume.operation.ts
+  s_24dbac2e9c1d82::t_4b957904d998dd 1,19-27
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listCatalogs.operation.ts
+  s_24dbac2e9c1d82::t_56f0e61a8e7980 1,10-18
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listFunctions.operation.ts
+  s_24dbac2e9c1d82::t_e36e9f24e2dd9c 1,21-30
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listTables.operation.ts
+  s_24dbac2e9c1d82::t_de2ba0fbe92335 1,21-30
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/listVolumes.operation.ts
+  s_24dbac2e9c1d82::t_7c86344649d7ba 1,21-30
+packages/nodes-base/nodes/Databricks/actions/unityCatalog/updateCatalog.operation.ts
+  s_24dbac2e9c1d82::t_48c4afa129999b 1,17-27
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/createIndex.operation.ts
+  s_24dbac2e9c1d82::t_d80185f17a161e 1-6,33-42
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/getIndex.operation.ts
+  s_24dbac2e9c1d82::t_354f9cba713da9 1,11-19
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/listIndexes.operation.ts
+  s_24dbac2e9c1d82::t_6b20765bbae30e 1,11-20
+packages/nodes-base/nodes/Databricks/actions/vectorSearch/queryIndex.operation.ts
+  s_24dbac2e9c1d82::t_543e24c96b1c19 1-6,63-73
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_24dbac2e9c1d82::t_7de82c260fd3af 1,5-6,19,29-30,34,50,89,135,183,186,220,225-235,278,339,400,451,482,544
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_24dbac2e9c1d82::t_764d753c543c6e 3,1137,1147,1151,1231,1293,1500
+packages/nodes-base/nodes/Databricks/test/getJob.test.ts
+  s_24dbac2e9c1d82::t_dbee50270d74cf 1,61
+packages/nodes-base/nodes/Databricks/test/getRun.test.ts
+  s_24dbac2e9c1d82::t_01e89d8b97ae33 1,61
+packages/nodes-base/nodes/Databricks/test/getRunOutput.test.ts
+  s_25d84bacfad08a::t_f1352efb1fa51d 1,66-70,198,316
+packages/nodes-base/nodes/Databricks/test/pipelines.test.ts
+  s_24dbac2e9c1d82::t_29cc1d3f51136c 2,52
+packages/nodes-base/nodes/Databricks/test/transport.test.ts
+  s_24dbac2e9c1d82::t_89725c1b0930ae 2,72,300
+packages/nodes-base/nodes/Databricks/transport/jobRuns.ts
+  s_24dbac2e9c1d82::t_67fe10faaeb500 3,55-65
+packages/nodes-base/nodes/Databricks/transport/pipelineEvents.ts
+  s_24dbac2e9c1d82::t_4e444daa7e8949 3,135-145
+packages/nodes-base/nodes/Databricks/trigger/pipelines.ts
+  s_de2c00e6233f17::t_9825a4ff128836 2,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22d5b3745b65f1d1ff0cb6c9b6819e0549ecbfdc",
+  "prompts": {},
+  "sessions": {
+    "s_24dbac2e9c1d82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8dcc9e1b96250fc1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_25d84bacfad08a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a95235111de196db4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6406784e7959d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6aa1765febe5f156",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_de2c00e6233f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a77576dbb68b5b9b9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
