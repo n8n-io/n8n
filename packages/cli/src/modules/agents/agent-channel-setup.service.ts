@@ -26,7 +26,7 @@ export class AgentChannelSetupService {
 		);
 		const unverified: IntegrationRef[] = [];
 		if (reusable.length > 0) {
-			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+			const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
 			for (const integration of reusable) {
 				const configured = await Container.get(ChatIntegrationService).canReuseConnection(
 					agent.id,

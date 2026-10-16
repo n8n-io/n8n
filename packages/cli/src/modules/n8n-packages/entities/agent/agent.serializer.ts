@@ -18,6 +18,7 @@ type AgentPackageKeyHandling = {
 	name: 'copy';
 	schema: 'transform';
 	integrations: 'transform';
+	pendingChannelSetup: 'exclude';
 	tools: 'transform';
 	skills: 'transform';
 	availableInMCP: 'copy';
