@@ -9,8 +9,12 @@ import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../create-engine-runtime';
 
-/** Enough of a `DataSource` for the stores: they only hold on to a repository. */
-const fakeDataSource = () => ({ getRepository: vi.fn(() => ({})) }) as unknown as DataSource;
+/** Enough of a `DataSource` for the stores: they only hold on to a pool and a repository. */
+const fakeDataSource = () =>
+	({
+		driver: { options: { type: 'postgres' }, master: {} },
+		getRepository: vi.fn(() => ({})),
+	}) as unknown as DataSource;
 
 const secret = 'a'.repeat(32);
 const identityVerifier = new SharedSecretIdentityVerifier(secret);

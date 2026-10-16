@@ -14,7 +14,10 @@ const secret = 'a'.repeat(32);
 const token = mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' });
 const logger: EngineLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 const options = () => ({
-	dataSource: { getRepository: vi.fn(() => ({})) } as unknown as DataSource,
+	dataSource: {
+		driver: { options: { type: 'postgres' }, master: {} },
+		getRepository: vi.fn(() => ({})),
+	} as unknown as DataSource,
 	admittance: new AllowAllAdmittance(),
 	identityVerifier: new SharedSecretIdentityVerifier(secret),
 	responseSender: noopExecutionResponseSender,

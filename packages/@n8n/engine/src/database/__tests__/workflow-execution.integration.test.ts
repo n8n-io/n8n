@@ -5,11 +5,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ExecutionNotFoundError } from '../../execution/execution-store';
 import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
-import { createDataSource } from '../data-source';
+import { createDataSource, poolOf } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
-import { TypeOrmExecutionStore } from '../typeorm-execution-store';
+import { PgExecutionStore } from '../pg-execution-store';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 
 /** Opaque to the engine: stored and reported, never read into. */
@@ -102,7 +102,7 @@ describe('workflow_execution table (integration)', () => {
 		});
 	});
 
-	it('TypeOrmExecutionStore.loadExecution leaves the workflow document behind', async () => {
+	it('PgExecutionStore.loadExecution leaves the workflow document behind', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const created = repo.create({
 			id: generateId(),
@@ -118,7 +118,7 @@ describe('workflow_execution table (integration)', () => {
 		});
 		await repo.save(created);
 
-		const record = await new TypeOrmExecutionStore(repo).loadExecution(created.id);
+		const record = await new PgExecutionStore(poolOf(dataSource)).loadExecution(created.id);
 
 		// The execution path never reads the document, so the query never ships it.
 		expect(record).toEqual({
@@ -187,7 +187,7 @@ describe('workflow_execution table (integration)', () => {
 		expect(runningForWf2).toBe(1);
 	});
 
-	it('TypeOrmExecutionStore.finishExecution ends a waiting execution', async () => {
+	it('PgExecutionStore.finishExecution ends a waiting execution', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const created = await repo.save(
 			repo.create({
@@ -204,7 +204,10 @@ describe('workflow_execution table (integration)', () => {
 			}),
 		);
 
-		const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+		const finished = await new PgExecutionStore(poolOf(dataSource)).finishExecution(
+			created.id,
+			'failed',
+		);
 
 		const row = await repo.findOneOrFail({ where: { id: created.id } });
 		expect(row.status).toBe('failed');
@@ -213,7 +216,7 @@ describe('workflow_execution table (integration)', () => {
 	});
 
 	it.each<ExecutionStatus>(['completed', 'queued'])(
-		'TypeOrmExecutionStore.finishExecution leaves a %j execution alone',
+		'PgExecutionStore.finishExecution leaves a %j execution alone',
 		async (status) => {
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const finishedAt = status === 'completed' ? new Date('2099-01-01T00:00:00.000Z') : null;
@@ -232,7 +235,10 @@ describe('workflow_execution table (integration)', () => {
 				}),
 			);
 
-			const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+			const finished = await new PgExecutionStore(poolOf(dataSource)).finishExecution(
+				created.id,
+				'failed',
+			);
 
 			expect(finished).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id: created.id } });
@@ -242,12 +248,12 @@ describe('workflow_execution table (integration)', () => {
 	);
 
 	it.each<ExecutionStatus>(['queued', 'running', 'waiting'])(
-		'TypeOrmExecutionStore.cancelExecution ends a %j execution',
+		'PgExecutionStore.cancelExecution ends a %j execution',
 		async (status) => {
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const { id } = await saveExecution(repo, { status, finishedAt: null });
 
-			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+			const cancelled = await new PgExecutionStore(poolOf(dataSource)).cancelExecution(id);
 
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe('cancelled');
@@ -258,13 +264,13 @@ describe('workflow_execution table (integration)', () => {
 	);
 
 	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
-		'TypeOrmExecutionStore.cancelExecution leaves a %j execution alone',
+		'PgExecutionStore.cancelExecution leaves a %j execution alone',
 		async (status) => {
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const finishedAt = new Date('2099-01-01T00:00:00.000Z');
 			const { id } = await saveExecution(repo, { status, finishedAt });
 
-			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+			const cancelled = await new PgExecutionStore(poolOf(dataSource)).cancelExecution(id);
 
 			expect(cancelled).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id } });
@@ -273,7 +279,7 @@ describe('workflow_execution table (integration)', () => {
 		},
 	);
 
-	describe('TypeOrmExecutionStore.refreshLiveStatus', () => {
+	describe('PgExecutionStore.refreshLiveStatus', () => {
 		/** One execution with one step for each status given. */
 		async function seed(status: ExecutionStatus, stepStatuses: StepStatus[]): Promise<string> {
 			const repo = dataSource.getRepository(WorkflowExecution);
@@ -333,7 +339,7 @@ describe('workflow_execution table (integration)', () => {
 			const repo = dataSource.getRepository(WorkflowExecution);
 			const id = await seed(from, stepStatuses);
 
-			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+			await new PgExecutionStore(poolOf(dataSource)).refreshLiveStatus(id);
 
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe(expected);
@@ -344,7 +350,7 @@ describe('workflow_execution table (integration)', () => {
 			const id = await seed('running', ['running']);
 			const before = await repo.findOneOrFail({ where: { id } });
 
-			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+			await new PgExecutionStore(poolOf(dataSource)).refreshLiveStatus(id);
 
 			// The timestamp is the only trace of the write: the status is the same.
 			const after = await repo.findOneOrFail({ where: { id } });

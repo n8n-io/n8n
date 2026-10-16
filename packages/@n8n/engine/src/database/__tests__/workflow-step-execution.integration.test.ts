@@ -10,12 +10,12 @@ import type {
 	WaitDeclaration,
 } from '../../execution/execution.types';
 import { StepNotFoundError, type NewStepRecord } from '../../execution/step-store';
-import { createDataSource } from '../data-source';
+import { createDataSource, poolOf } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
-import { TypeOrmStepStore } from '../typeorm-step-store';
+import { PgStepStore } from '../pg-step-store';
 
 describe('workflow_step_execution table (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -62,7 +62,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	/** Most cases need one step; the store's API is the batch `createSteps`. */
 	async function createStep(
-		store: TypeOrmStepStore,
+		store: PgStepStore,
 		executionId: string,
 		record: NewStepRecord,
 	): Promise<{ id: string }> {
@@ -100,9 +100,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.createdAt).toBeInstanceOf(Date);
 	});
 
-	it('TypeOrmStepStore.createSteps persists a queued step and returns its id', async () => {
+	it('PgStepStore.createSteps persists a queued step and returns its id', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'x',
@@ -117,9 +117,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.status).toBe('queued');
 	});
 
-	it('TypeOrmStepStore.createSteps persists a batch and returns ids in input order', async () => {
+	it('PgStepStore.createSteps persists a batch and returns ids in input order', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 
 		const ids = await store.createSteps(executionId, [
 			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
@@ -141,8 +141,8 @@ describe('workflow_step_execution table (integration)', () => {
 		]);
 	});
 
-	it('TypeOrmStepStore.createSteps is a no-op for an empty batch', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+	it('PgStepStore.createSteps is a no-op for an empty batch', async () => {
+		const store = new PgStepStore(poolOf(dataSource));
 		expect(await store.createSteps('00000000-0000-7000-8000-000000000000', [])).toEqual([]);
 	});
 
@@ -167,10 +167,10 @@ describe('workflow_step_execution table (integration)', () => {
 			record: { nodeId: 'x', iteration: 0, status: 'completed', outputs: null },
 			message: 'without a slot list',
 		},
-	])('TypeOrmStepStore.createSteps rejects $violation at runtime', async ({ record, message }) => {
+	])('PgStepStore.createSteps rejects $violation at runtime', async ({ record, message }) => {
 		// the casts simulate a caller outside the type system
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 
 		await expect(
 			store.createSteps(executionId, [record as unknown as NewStepRecord]),
@@ -193,7 +193,7 @@ describe('workflow_step_execution table (integration)', () => {
 	});
 
 	it('rejects a step referencing a non-existent execution (foreign key)', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		await expect(
 			createStep(store, '00000000-0000-7000-8000-000000000000', {
 				nodeId: 'a',
@@ -203,9 +203,9 @@ describe('workflow_step_execution table (integration)', () => {
 		).rejects.toThrow();
 	});
 
-	it('TypeOrmStepStore.loadStep returns the step, or throws when absent', async () => {
+	it('PgStepStore.loadStep returns the step, or throws when absent', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'node-a',
 			iteration: 0,
@@ -230,9 +230,9 @@ describe('workflow_step_execution table (integration)', () => {
 		);
 	});
 
-	it('TypeOrmStepStore.claimStep only claims a queued step', async () => {
+	it('PgStepStore.claimStep only claims a queued step', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'a',
 			iteration: 0,
@@ -253,9 +253,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(id)).status).toBe('running');
 	});
 
-	it('TypeOrmStepStore.claimStep refuses once any step in the execution failed', async () => {
+	it('PgStepStore.claimStep refuses once any step in the execution failed', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		// b is planned first, then a's failure lands before b's step:ready is claimed
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'b',
@@ -277,9 +277,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.claimStep(other.id)).not.toBeNull();
 	});
 
-	it('TypeOrmStepStore.createSteps creates nothing once any step in the execution failed', async () => {
+	it('PgStepStore.createSteps creates nothing once any step in the execution failed', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'failed' });
 
 		// rows planned after the cancellation sweep would be stuck queued forever
@@ -292,9 +292,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await stepRepo.count({ where: { executionId } })).toBe(1);
 	});
 
-	it('TypeOrmStepStore.createSteps waits out a concurrently committing failure and creates nothing', async () => {
+	it('PgStepStore.createSteps waits out a concurrently committing failure and creates nothing', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const failing = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
 		const failure = dataSource.createQueryRunner();
@@ -318,9 +318,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await create).toEqual([]);
 	});
 
-	it('TypeOrmStepStore.claimStep waits out a concurrently committing failure and refuses', async () => {
+	it('PgStepStore.claimStep waits out a concurrently committing failure and refuses', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const failing = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'b',
@@ -350,9 +350,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(id)).status).toBe('queued');
 	});
 
-	it('TypeOrmStepStore.completeStep persists outputs and marks the step completed', async () => {
+	it('PgStepStore.completeStep persists outputs and marks the step completed', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
 		expect(await store.completeStep(id, [[{ json: { ok: true } }]])).toBe(true);
@@ -362,9 +362,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(step.outputs).toEqual([[{ json: { ok: true } }]]);
 	});
 
-	it('TypeOrmStepStore.completeStep and failStep only record a step that is running', async () => {
+	it('PgStepStore.completeStep and failStep only record a step that is running', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'a',
 			iteration: 0,
@@ -383,9 +383,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toBeNull();
 	});
 
-	it('TypeOrmStepStore.suspendStep records the declaration and its deadline, marking the step waiting', async () => {
+	it('PgStepStore.suspendStep records the declaration and its deadline, marking the step waiting', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 		const wait = {
 			resumeAt: '2099-01-01T00:00:00.000Z',
@@ -406,9 +406,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toBeNull();
 	});
 
-	it('TypeOrmStepStore.suspendStep leaves the deadline null for a wait that has none', async () => {
+	it('PgStepStore.suspendStep leaves the deadline null for a wait that has none', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
 		expect(await store.suspendStep(id, { acceptsResumeRequest: true })).toBe(true);
@@ -421,9 +421,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.waitTill).toBeNull();
 	});
 
-	it('TypeOrmStepStore.suspendStep only suspends a step that is running', async () => {
+	it('PgStepStore.suspendStep only suspends a step that is running', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'a',
 			iteration: 0,
@@ -439,9 +439,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.waitDeclaration).toBeNull();
 	});
 
-	it('TypeOrmStepStore.countSettledSteps does not count a waiting step', async () => {
+	it('PgStepStore.countSettledSteps does not count a waiting step', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 		await store.suspendStep(id, { acceptsResumeRequest: true });
 
@@ -449,9 +449,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.countSettledSteps(executionId)).toBe(0);
 	});
 
-	it('TypeOrmStepStore.resumeStep queues a waiting step and records what resumed it', async () => {
+	it('PgStepStore.resumeStep queues a waiting step and records what resumed it', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const wait: WaitDeclaration = { acceptsResumeRequest: true };
 		const { id } = await seedStep({
 			executionId,
@@ -473,9 +473,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.waitDeclaration).toEqual(wait);
 	});
 
-	it('TypeOrmStepStore.resumeStep only resumes a waiting step', async () => {
+	it('PgStepStore.resumeStep only resumes a waiting step', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const resume: ResumeCause = { kind: 'deadline' };
 
 		for (const status of ['queued', 'running', 'completed', 'cancelled'] as const) {
@@ -491,9 +491,9 @@ describe('workflow_step_execution table (integration)', () => {
 		}
 	});
 
-	it('TypeOrmStepStore.claimStep hands back the declaration and the resume of a resumed step', async () => {
+	it('PgStepStore.claimStep hands back the declaration and the resume of a resumed step', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const wait: WaitDeclaration = {
 			resumeAt: '2099-01-01T00:00:00.000Z',
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
@@ -538,9 +538,9 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	}
 
-	it('TypeOrmStepStore.resumeDueSteps queues the waits that are due and leaves the rest', async () => {
+	it('PgStepStore.resumeDueSteps queues the waits that are due and leaves the rest', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await seedWaitingStep(executionId, 'a', new Date('2020-01-01T00:00:00.000Z'));
 		// a second wait, still in the future at the instant the sweep asks about
 		const { id: laterId } = await seedWaitingStep(
@@ -565,9 +565,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(later.resumeCause).toBeNull();
 	});
 
-	it('TypeOrmStepStore.resumeDueSteps ignores a wait that only a resume request ends', async () => {
+	it('PgStepStore.resumeDueSteps ignores a wait that only a resume request ends', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await seedWaitingStep(executionId, 'a', null);
 
 		// no deadline, so no instant makes it due. The sweep is instance-wide and
@@ -582,9 +582,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.status).toBe('waiting');
 	});
 
-	it('TypeOrmStepStore.resumeDueSteps ignores a step that is not waiting', async () => {
+	it('PgStepStore.resumeDueSteps ignores a step that is not waiting', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		// a resumed step keeps its declaration and its past deadline, so only the
 		// status keeps the sweep from resuming it twice
 		const { id } = await seedWaitingStep(executionId, 'a', new Date('2020-01-01T00:00:00.000Z'));
@@ -593,9 +593,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.resumeDueSteps(new Date('2020-01-02T00:00:00.000Z'), 10)).toEqual([]);
 	});
 
-	it('TypeOrmStepStore.resumeDueSteps caps the batch at the limit, oldest deadline first', async () => {
+	it('PgStepStore.resumeDueSteps caps the batch at the limit, oldest deadline first', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id: oldest } = await seedWaitingStep(
 			executionId,
 			'oldest',
@@ -634,9 +634,9 @@ describe('workflow_step_execution table (integration)', () => {
 
 	// These two pin the concurrency contract that makes `resumeDueSteps` one
 	// statement rather than a scan and a transition per row.
-	it('TypeOrmStepStore.resumeDueSteps skips the rows another sweeper holds, taking the rest of the backlog', async () => {
+	it('PgStepStore.resumeDueSteps skips the rows another sweeper holds, taking the rest of the backlog', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const [first, second, third, fourth] = await seedBacklog(executionId, 4);
 
 		// stand in for a concurrent sweeper mid-claim: hold the two oldest locked
@@ -663,9 +663,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(resumed.map(({ id }) => id).sort()).toEqual([third, fourth].sort());
 	});
 
-	it('TypeOrmStepStore.resumeDueSteps hands no step to two concurrent sweeps', async () => {
+	it('PgStepStore.resumeDueSteps hands no step to two concurrent sweeps', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const backlog = await seedBacklog(executionId, 4);
 
 		// both ask for more than the whole backlog at once
@@ -689,9 +689,9 @@ describe('workflow_step_execution table (integration)', () => {
 	 * share a database. Deadlines sit in 2018, earlier than every other case's,
 	 * so the minimum is always a row seeded here.
 	 */
-	it('TypeOrmStepStore.nextWaitDeadline returns the earliest waiting deadline', async () => {
+	it('PgStepStore.nextWaitDeadline returns the earliest waiting deadline', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const earliest = new Date('2018-01-01T00:00:00.000Z');
 		await seedWaitingStep(executionId, 'later', new Date('2018-06-01T00:00:00.000Z'));
 		await seedWaitingStep(executionId, 'earliest', earliest);
@@ -699,9 +699,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.nextWaitDeadline()).toEqual(earliest);
 	});
 
-	it('TypeOrmStepStore.nextWaitDeadline ignores rows the sweep cannot fire', async () => {
+	it('PgStepStore.nextWaitDeadline ignores rows the sweep cannot fire', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const waiting = new Date('2018-01-01T00:00:00.000Z');
 		await seedWaitingStep(executionId, 'waiting', waiting);
 		// a wait that only a request ends carries no deadline at all
@@ -717,10 +717,10 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.nextWaitDeadline()).toEqual(waiting);
 	});
 
-	it('TypeOrmStepStore.cancelPendingSteps cancels queued and waiting steps and nothing else', async () => {
+	it('PgStepStore.cancelPendingSteps cancels queued and waiting steps and nothing else', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id: queuedId } = await createStep(store, executionId, {
 			nodeId: 'a',
 			iteration: 0,
@@ -762,9 +762,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(otherId)).status).toBe('queued');
 	});
 
-	it('TypeOrmStepStore.resumeDueSteps ignores a wait that cancelPendingSteps cancelled', async () => {
+	it('PgStepStore.resumeDueSteps ignores a wait that cancelPendingSteps cancelled', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		// due long ago, so only the status can keep the sweep away from it
 		const { id } = await seedWaitingStep(executionId, 'a', new Date('2019-02-01T00:00:00.000Z'));
 
@@ -775,9 +775,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(id)).status).toBe('cancelled');
 	});
 
-	it('TypeOrmStepStore.cancelStep settles a running step and nothing else', async () => {
+	it('PgStepStore.cancelStep settles a running step and nothing else', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const running = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 		const queued = await createStep(store, executionId, {
 			nodeId: 'b',
@@ -792,9 +792,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(queued.id)).status).toBe('queued');
 	});
 
-	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {
+	it('PgStepStore.failStep persists the error and marks the step failed', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
 		const error = {
@@ -812,9 +812,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toEqual(error);
 	});
 
-	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
+	it('PgStepStore.createSteps persists a skipped step (settled at birth)', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 
 		const { id } = await createStep(store, executionId, {
 			nodeId: 'x',
@@ -827,9 +827,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(step.outputs).toBeNull();
 	});
 
-	it('TypeOrmStepStore.loadStepsByKeys returns rows keyed by step key, omitting absent keys', async () => {
+	it('PgStepStore.loadStepsByKeys returns rows keyed by step key, omitting absent keys', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id: aId } = await seedStep({
 			executionId,
 			nodeId: 'a',
@@ -865,9 +865,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(steps['c@0']).toMatchObject({ status: 'queued', outputs: null });
 	});
 
-	it('TypeOrmStepStore.loadStepSummariesByKeys reports per-slot liveness without payloads', async () => {
+	it('PgStepStore.loadStepSummariesByKeys reports per-slot liveness without payloads', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const { id: aId } = await seedStep({
 			executionId,
 			nodeId: 'a',
@@ -910,21 +910,21 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(summaries['c@0']).toMatchObject({ status: 'queued', filledOutputSlots: [] });
 	});
 
-	it('TypeOrmStepStore.loadStepSummariesByKeys is a no-op for no keys', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+	it('PgStepStore.loadStepSummariesByKeys is a no-op for no keys', async () => {
+		const store = new PgStepStore(poolOf(dataSource));
 		expect(await store.loadStepSummariesByKeys('00000000-0000-7000-8000-000000000000', [])).toEqual(
 			{},
 		);
 	});
 
-	it('TypeOrmStepStore.loadStepsByKeys is a no-op for no keys', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+	it('PgStepStore.loadStepsByKeys is a no-op for no keys', async () => {
+		const store = new PgStepStore(poolOf(dataSource));
 		expect(await store.loadStepsByKeys('00000000-0000-7000-8000-000000000000', [])).toEqual({});
 	});
 
-	it('TypeOrmStepStore.countSettledSteps counts terminal rows only, per execution', async () => {
+	it('PgStepStore.countSettledSteps counts terminal rows only, per execution', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		await store.createSteps(executionId, [
 			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [{}] },
 			{ nodeId: 'a', iteration: 0, status: 'skipped' },
@@ -964,10 +964,10 @@ describe('workflow_step_execution table (integration)', () => {
 
 	// Planning leans on this: two workers that concurrently decide the same step is
 	// ready both insert, and the loser is skipped rather than duplicating the node.
-	it('TypeOrmStepStore.createSteps skips a node already planned, keeping the rest', async () => {
+	it('PgStepStore.createSteps skips a node already planned, keeping the rest', async () => {
 		const executionId = await createExecution();
 		const repo = dataSource.getRepository(WorkflowStepExecution);
-		const store = new TypeOrmStepStore(repo);
+		const store = new PgStepStore(poolOf(dataSource));
 		await createStep(store, executionId, { nodeId: 'a', iteration: 0, status: 'queued' });
 
 		// 'a' is taken; 'b' is not, and must still land — the whole point of skipping
@@ -984,7 +984,7 @@ describe('workflow_step_execution table (integration)', () => {
 	});
 
 	it('scopes the one-step-per-node key to a single execution', async () => {
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
 		await createStep(store, executionId, { nodeId: 'a', iteration: 0, status: 'queued' });
@@ -998,9 +998,9 @@ describe('workflow_step_execution table (integration)', () => {
 
 	// The run dimension (CAT-2875): a loop member runs once per pass, one row
 	// per run, so uniqueness holds per (execution, node, iteration).
-	it('TypeOrmStepStore.createSteps accepts the same node at a new iteration and dedups within one', async () => {
+	it('PgStepStore.createSteps accepts the same node at a new iteration and dedups within one', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		await createStep(store, executionId, { nodeId: 'b', iteration: 0, status: 'queued' });
 
 		const created = await store.createSteps(executionId, [
@@ -1012,9 +1012,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(created).toEqual([{ id: expect.any(String) as string, nodeId: 'b', iteration: 1 }]);
 	});
 
-	it('TypeOrmStepStore.createSteps rejects a negative or fractional iteration at runtime', async () => {
+	it('PgStepStore.createSteps rejects a negative or fractional iteration at runtime', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 
 		for (const iteration of [-1, 0.5]) {
 			await expect(
@@ -1026,9 +1026,9 @@ describe('workflow_step_execution table (integration)', () => {
 		}
 	});
 
-	it('TypeOrmStepStore.loadStepsByKeys and loadStepSummariesByKeys distinguish iterations of one node', async () => {
+	it('PgStepStore.loadStepsByKeys and loadStepSummariesByKeys distinguish iterations of one node', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		await store.createSteps(executionId, [
 			{ nodeId: 'b', iteration: 0, status: 'completed', outputs: [null, [{ json: { n: 0 } }]] },
 			{ nodeId: 'b', iteration: 1, status: 'queued' },
@@ -1052,9 +1052,9 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(summaries['b@1']).toMatchObject({ iteration: 1, filledOutputSlots: [] });
 	});
 
-	it('TypeOrmStepStore.claimStep hands back the claimed iteration', async () => {
+	it('PgStepStore.claimStep hands back the claimed iteration', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		const [step] = await store.createSteps(executionId, [
 			{ nodeId: 'b', iteration: 3, status: 'queued' },
 		]);
@@ -1067,9 +1067,9 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	});
 
-	it("TypeOrmStepStore.loadLatestStepSummaries returns each node's highest-iteration row", async () => {
+	it("PgStepStore.loadLatestStepSummaries returns each node's highest-iteration row", async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		await store.createSteps(executionId, [
 			{ nodeId: 'b', iteration: 0, status: 'completed', outputs: [null, [{ json: {} }]] },
 			{ nodeId: 'b', iteration: 1, status: 'completed', outputs: [[{ json: {} }], null] },
@@ -1127,7 +1127,7 @@ describe('workflow_step_execution table (integration)', () => {
 	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView returns every row of the execution, none of another', async () => {
 		const executionId = await createExecution();
 		const otherExecutionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		await store.createSteps(executionId, [
 			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { ok: true } }]] },
 			{ nodeId: 'b', iteration: 0, status: 'queued' },
@@ -1152,7 +1152,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView reports the steps oldest first', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		// Separate calls, so the rows do not share a created_at and the order is
 		// decided by time rather than by the tie-breakers.
 		await store.createSteps(executionId, [{ nodeId: 'a', iteration: 0, status: 'queued' }]);
@@ -1166,7 +1166,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView carries outputs, error and timestamps', async () => {
 		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const store = new PgStepStore(poolOf(dataSource));
 		await store.createSteps(executionId, [
 			{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { ok: true } }]] },
 		]);

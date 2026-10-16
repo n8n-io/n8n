@@ -15,7 +15,7 @@ export type ExecutionStatus =
 
 /**
  * Started and not ended. `queued` is not live: it has no step rows yet. The SQL
- * in `TypeOrmExecutionStore.refreshLiveStatus` repeats this list.
+ * in `PgExecutionStore.refreshLiveStatus` repeats this list.
  */
 export const LIVE_EXECUTION_STATUSES = ['running', 'waiting'] as const;
 
