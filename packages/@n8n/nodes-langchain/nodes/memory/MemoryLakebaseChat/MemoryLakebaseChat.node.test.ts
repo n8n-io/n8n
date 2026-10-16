@@ -126,6 +126,10 @@ describe('MemoryLakebaseChat', () => {
 			});
 		});
 
+		it('should stay out of the node picker until Lakebase ships', () => {
+			expect(description.hidden).toBe(true);
+		});
+
 		it('should pin the authentication to OAuth2 through a hidden parameter', () => {
 			expect(byName('authentication')).toMatchObject({ type: 'hidden', default: 'oAuth2' });
 			// The nodes-base helper reads the parameter by name, so the default must be the value it compares against
