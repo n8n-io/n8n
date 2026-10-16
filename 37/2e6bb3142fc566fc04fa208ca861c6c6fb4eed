@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectVariables.test.ts
+  s_51377107c6724f::t_f58323353747c2 430-469
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.test.ts
+  s_51377107c6724f::t_cf7894aaf16c00 16,754-803
+  s_51377107c6724f::t_6c410c221d66ec 804
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectVariables.vue
+  s_51377107c6724f::t_8d6e689e71d428 14,42,115-130,404,416-421,466-467,474
+packages/frontend/editor-ui/src/features/settings/environments.ee/components/VariableModal.vue
+  s_51377107c6724f::t_a3652cb7ea998f 188-192,194,290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "372e6bb3142fc566fc04fa208ca861c6c6fb4eed",
+  "prompts": {},
+  "sessions": {
+    "s_51377107c6724f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b6f764b-f4cc-4a2e-84e0-e78a10703b30",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
