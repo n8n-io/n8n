@@ -1,18 +1,29 @@
 import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import { Logger } from '@n8n/backend-common';
+import { DbLockService, type User } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppsService } from '../apps.service';
+import { AppArtifactService } from '../app-artifact.service';
 
 function createService() {
 	const appRepository = mock<AppRepository>();
 	const projectScopeService = mock<ProjectScopeService>();
-	const service = new AppsService(appRepository, projectScopeService);
-	return { service, appRepository, projectScopeService };
+	const locks = mock<DbLockService>();
+	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
+	const artifacts = mock<AppArtifactService>();
+	const service = new AppsService(
+		appRepository,
+		projectScopeService,
+		locks,
+		artifacts,
+		mock<Logger>(),
+	);
+	return { service, appRepository, projectScopeService, artifacts };
 }
 
 describe('AppsService', () => {
@@ -124,10 +135,10 @@ describe('AppsService', () => {
 	it('returns not found when an app is not in the requested project', async () => {
 		const { service, appRepository } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
-		appRepository.findOneBy.mockResolvedValue(null);
+		appRepository.findInProject.mockResolvedValue(null);
 
 		await expect(service.getApp('project-1', appId)).rejects.toThrow(NotFoundError);
-		expect(appRepository.findOneBy).toHaveBeenCalledWith({ id: appId, projectId: 'project-1' });
+		expect(appRepository.findInProject).toHaveBeenCalledWith('project-1', appId);
 	});
 
 	it.each(['getApp', 'updateApp', 'deleteApp'] as const)(
@@ -138,16 +149,16 @@ describe('AppsService', () => {
 			await expect(service[method]('project-1', 'app-1', { name: 'Updated app' })).rejects.toThrow(
 				NotFoundError,
 			);
-			expect(appRepository.findOneBy).not.toHaveBeenCalled();
+			expect(appRepository.findInProject).not.toHaveBeenCalled();
 			expect(appRepository.updateApp).not.toHaveBeenCalled();
-			expect(appRepository.delete).not.toHaveBeenCalled();
+			expect(appRepository.deleteInProject).not.toHaveBeenCalled();
 		},
 	);
 
 	it.each([1, 0])('handles app deletion when %i rows match', async (affected) => {
 		const { service, appRepository } = createService();
 		const appId = '11111111-1111-4111-8111-111111111111';
-		appRepository.delete.mockResolvedValue({ affected, raw: [] });
+		appRepository.deleteInProject.mockResolvedValue(affected === 1);
 
 		const deletion = service.deleteApp('project-1', appId);
 		if (affected) {
@@ -155,6 +166,6 @@ describe('AppsService', () => {
 		} else {
 			await expect(deletion).rejects.toThrow(NotFoundError);
 		}
-		expect(appRepository.delete).toHaveBeenCalledWith({ id: appId, projectId: 'project-1' });
+		expect(appRepository.deleteInProject).toHaveBeenCalledWith('project-1', appId, {});
 	});
 });
