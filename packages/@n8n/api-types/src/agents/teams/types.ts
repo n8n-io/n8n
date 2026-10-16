@@ -107,14 +107,24 @@ export type TeamsCredentialCheck =
 			reason: 'certificate' | 'incomplete' | 'rejected' | 'unreachable' | 'cloud';
 	  };
 
+/** The Microsoft Graph app permissions an administrator approves for the channel. */
+export type TeamsGraphPermission =
+	| 'Files.Read.All'
+	| 'User.ReadBasic.All'
+	| 'Team.ReadBasic.All'
+	| 'Channel.ReadBasic.All';
+
 /**
- * Whether the app may read files attached in channels and group chats. Read
+ * Whether an administrator approved the app's Graph permissions: reading files
+ * attached in channels and group chats, and finding people and channels. Read
  * from a fresh token, so it shows an approval at once, while a running agent
  * keeps its older token for up to an hour. `unknown` when Microsoft gave no
  * token to read it from.
  */
 export interface TeamsFileAccessCheck {
 	status: 'approved' | 'notApproved' | 'unknown';
+	/** The permissions still waiting for approval, when the status is `notApproved`. */
+	missing?: TeamsGraphPermission[];
 }
 
 /**
