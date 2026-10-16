@@ -7,7 +7,7 @@
 | connectionId | varchar(36) |  | false |  | [public.promotion_connection](public.promotion_connection.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | direction | varchar(16) |  | false |  |  | PromotionDirection enum: "apply", "promote". Cannot change after creation. |
-| id | varchar(36) |  | false |  |  | Also the name of the local checkout directory. |
+| id | varchar(36) |  | false | [public.promotion_run](public.promotion_run.md) |  | Also the name of the local checkout directory. |
 | name | varchar(128) |  | false |  |  |  |
 | settings | json |  | false |  |  | Branch settings for this direction, with their own schemaVersion. Validated in code. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -40,6 +40,7 @@
 erDiagram
 
 "public.promotion_config" }o--|| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE CASCADE"
+"public.promotion_run" }o--o| "public.promotion_config" : "FOREIGN KEY (#quot;configId#quot;) REFERENCES promotion_config(id) ON DELETE SET NULL"
 
 "public.promotion_config" {
   varchar_36_ connectionId FK
@@ -58,6 +59,16 @@ erDiagram
   varchar_16_ scope
   json target
   timestamp_3__with_time_zone updatedAt
+}
+"public.promotion_run" {
+  varchar_36_ configId FK
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  json details
+  varchar_16_ direction
+  uuid id
+  uuid reviewId FK
+  varchar_16_ type
 }
 ```
 
