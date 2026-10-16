@@ -18,7 +18,7 @@ const MANIFEST_VERSION = '1.16';
 const MANIFEST_SCHEMA = `https://developer.microsoft.com/json-schemas/teams/v${MANIFEST_VERSION}/MicrosoftTeams.schema.json`;
 
 /** Matches the colour of the bundled icons, which are used when the agent's are not. */
-const ACCENT_COLOR = '#EA4B71';
+const ACCENT_COLOR = '#FF91AC';
 
 const DEFAULT_APP_NAME = 'n8n Agent';
 

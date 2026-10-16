@@ -561,7 +561,7 @@ describe('TeamsSetupService', () => {
 
 				expect(Buffer.from(entries['color.png']).equals(bundled('color.png'))).toBe(true);
 				expect(Buffer.from(entries['outline.png']).equals(bundled('outline.png'))).toBe(true);
-				expect(manifest.accentColor).toBe('#EA4B71');
+				expect(manifest.accentColor).toBe('#FF91AC');
 			});
 		});
 
