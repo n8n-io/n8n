@@ -171,7 +171,10 @@ defineExpose({ onSetupTaskAction });
 		data-testid="agent-builder-editor-column"
 	>
 		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
-			<div v-if="props.skillEditor" :class="$style.panelAreaContainer">
+			<div
+				v-if="props.skillEditor"
+				:class="[$style.panelAreaContainer, $style.skillEditorContainer]"
+			>
 				<AgentSkillEditor
 					:key="props.skillEditor.key"
 					layout="page"
@@ -532,6 +535,10 @@ defineExpose({ onSetupTaskAction });
 
 	align-items: stretch;
 	background-color: var(--background--surface);
+}
+
+.skillEditorContainer {
+	padding-top: var(--spacing--2xl);
 }
 
 .identityHeaderRow {

@@ -192,7 +192,6 @@ defineExpose({ focusTitle });
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	flex: 1;
-	min-height: 0;
 }
 
 .footer {
@@ -204,7 +203,7 @@ defineExpose({ focusTitle });
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm) 0;
 	border-top: var(--border);
-	background-color: light-dark(var(--background--surface), var(--background));
+	background-color: var(--color--background--light-2);
 }
 
 .footerLeft,
