@@ -99,11 +99,7 @@ export class SkillsApiService {
 			target !== undefined &&
 			(target.projectId !== skill.projectId || target.agentId !== skill.agentId);
 
-		// A move takes the skill out of its scope, as a delete does, so it needs both rights
-		// there. A custom role can grant update without delete.
-		if (moves && !(await this.skillService.canAccess(user, skill, 'delete'))) {
-			throw new ForbiddenError('You are not allowed to move this skill out of its scope.');
-		}
+		const checkedSource = moves ? await this.skillService.assertCanMove(user, skillId) : undefined;
 
 		if (!moves) {
 			const { followingAgentIds: _following, ...saved } = await this.skillService.save(
@@ -118,7 +114,10 @@ export class SkillsApiService {
 		// first and checks the final name in the new scope only: a name that only the old
 		// scope holds does not block it. The save then checks a rename in the new scope too.
 		const { followingAgentIds, ...saved } = await this.txRunner.run({}, async (ctx) => {
-			await this.skillService.changeTarget(skillId, target, undefined, ctx, update.name);
+			await this.skillService.changeTarget(skillId, target, undefined, ctx, {
+				nameAfterMove: update.name,
+				checkedSource,
+			});
 			return await this.skillService.save(skillId, update, user.id, ctx);
 		});
 		// `save` leaves the refresh to the caller when it joins a transaction.

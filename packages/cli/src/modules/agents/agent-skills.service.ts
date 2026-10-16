@@ -27,6 +27,7 @@ import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
 import { findIntroducedNameClashes, findNameClashGroups } from './skills/skill-names';
+import type { SkillTarget } from './repositories/skill.repository';
 import { SkillService, withTrimmedName } from './skills/skill.service';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
@@ -242,14 +243,24 @@ export class AgentSkillsService {
 		this.validateSkill(updated);
 
 		const nextAvailability = await this.availabilityChange(skillId, availableTo);
+		let checkedSource: SkillTarget | undefined;
 		if (nextAvailability) {
 			await this.skillService.assertCanEdit(context.user, [skillId]);
+			checkedSource = await this.skillService.assertCanMove(context.user, skillId);
 			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
 		}
 
 		if (isEqual(existing, updated)) {
 			if (nextAvailability) {
-				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, {});
+				await this.agentSkillRefs.setAvailability(
+					entity,
+					skillId,
+					nextAvailability,
+					{},
+					{
+						checkedSource,
+					},
+				);
 			}
 			return {
 				id: skillId,
@@ -281,13 +292,10 @@ export class AgentSkillsService {
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			if (nextAvailability) {
 				// The move checks the name the skill has after the save, not the old one.
-				await this.agentSkillRefs.setAvailability(
-					entity,
-					skillId,
-					nextAvailability,
-					ctx,
-					updated.name,
-				);
+				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx, {
+					nameAfterMove: updated.name,
+					checkedSource,
+				});
 			}
 			if (pinned) {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);

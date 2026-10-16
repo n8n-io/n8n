@@ -513,6 +513,7 @@ describe('SkillsApiService', () => {
 				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
 			);
 			skillService.save.mockResolvedValue(saved);
+			skillService.assertCanMove.mockResolvedValue({ projectId: null, agentId: null });
 
 			await service.update(
 				user,
@@ -525,7 +526,8 @@ describe('SkillsApiService', () => {
 				{ projectId: 'project-1', agentId: null },
 				undefined,
 				TX_CTX,
-				undefined,
+				// The move is refused under its lock if the skill left the scope checked here.
+				{ nameAfterMove: undefined, checkedSource: { projectId: null, agentId: null } },
 			);
 			expect(skillService.save).toHaveBeenCalledWith(
 				'skill_a',
