@@ -1,3 +1,5 @@
+import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
+
 /**
  * UI a module renders but does not own.
  *
@@ -9,8 +11,9 @@
  * decide between local and remote search, and the search itself all live in
  * `features/collaboration/projects`, which sits above the module layer. A module
  * that needs to filter by project renders this instead of importing any of it.
+ * `workflow-diff` renders plain workflow snapshots with the editor canvas.
  */
-export type ModuleComponentSlot = 'project-filter';
+export type ModuleComponentSlot = 'project-filter' | 'workflow-diff';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".
@@ -20,3 +23,14 @@ export type ModuleComponentSlot = 'project-filter';
  * originates in the host.
  */
 export type SlotProjectSelection = { id: string } | null;
+
+/** Plain snapshots keep the editor canvas types inside the shell. */
+export type SlotWorkflowDiffProps = {
+	workflowId: string;
+	workflowName: string;
+	sourceSnapshot?: WorkflowReviewVersionSnapshot;
+	targetSnapshot?: WorkflowReviewVersionSnapshot;
+	sourceLabel?: string;
+	targetLabel?: string;
+	showFullscreenButton?: boolean;
+};

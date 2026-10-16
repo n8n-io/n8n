@@ -261,7 +261,7 @@ const submit = async () => {
 							v-if="workflowReviewRequestId"
 							:to="{
 								name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-								params: { reviewRequestId: workflowReviewRequestId },
+								params: { reviewId: workflowReviewRequestId },
 							}"
 						>
 							{{ i18n.baseText('workflowReviews.updateReview.description.review') }}

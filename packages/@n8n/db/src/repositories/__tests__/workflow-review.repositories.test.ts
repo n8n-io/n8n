@@ -614,7 +614,7 @@ describe('workflow review repositories', () => {
 			await inboxRepository.findRequests({
 				visibility: involvedVisibility(),
 				limit: 10,
-				cursor: { createdAt, id: 'req-cursor' },
+				boundary: { mode: 'afterItem', createdAt, id: 'req-cursor' },
 			});
 
 			expect(findOneSpy).not.toHaveBeenCalled();
@@ -624,6 +624,17 @@ describe('workflow review repositories', () => {
 			);
 		});
 
+		it('uses older timestamps for a boundary from another source', async () => {
+			const createdAt = new Date('2026-10-07T00:00:00.000Z');
+			await inboxRepository.findRequests({
+				visibility: allVisibility,
+				limit: 10,
+				boundary: { mode: 'beforeTime', createdAt },
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.createdAt < :createdAt', {
+				createdAt,
+			});
+		});
 		describe('category filter', () => {
 			it('leaves the query untouched when no category is requested', async () => {
 				await inboxRepository.findRequests({
@@ -704,7 +715,7 @@ describe('workflow review repositories', () => {
 					category: { userId: 'user-1', category: 'authored' },
 					state: 'open',
 					limit: 15,
-					cursor: { createdAt, id: 'req-cursor' },
+					boundary: { mode: 'afterItem', createdAt, id: 'req-cursor' },
 				});
 
 				const categoryCall = queryBuilder.andWhere.mock.invocationCallOrder[0];
