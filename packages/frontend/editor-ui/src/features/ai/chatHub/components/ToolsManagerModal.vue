@@ -37,7 +37,7 @@ import {
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 
 const props = defineProps<{
@@ -78,19 +78,12 @@ const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { installNode: installCommunityNode } = useInstallNode();
 const { warnIfRestricted } = useRestrictedNodeWarning();
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 // Chat tools run as workflows in the personal project, so that project's policy applies.
-watch(
-	() => projectsStore.personalProject?.id,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
+useTypeAvailability(() => projectsStore.personalProject?.id);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
