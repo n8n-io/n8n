@@ -687,7 +687,7 @@ describe('GlobalConfig', () => {
 			bridgeTimeout: 5000,
 			bridgeMemoryLimit: 128,
 			observabilityEnabled: true,
-			tracesEnabled: true,
+			tracesEnabled: false,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
 			allowWebhookIsolateSkip: true,
