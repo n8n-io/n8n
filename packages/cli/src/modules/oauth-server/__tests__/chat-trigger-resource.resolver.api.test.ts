@@ -57,6 +57,7 @@ const chatTriggerNode = ({
 	authentication = 'n8nUserAuth',
 	disabled = false,
 	requireExecuteAccess,
+	trustedSource,
 }: {
 	name?: string;
 	// `null` drops the key entirely, so the "parameter stripped at its default" shape the
@@ -66,6 +67,7 @@ const chatTriggerNode = ({
 	authentication?: string | null;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	trustedSource?: string;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -79,6 +81,7 @@ const chatTriggerNode = ({
 		...(mode === null ? {} : { mode }),
 		...(authentication === null ? {} : { authentication }),
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(trustedSource === undefined ? {} : { trustedSource }),
 	},
 });
 
@@ -301,6 +304,24 @@ describe('protected resource metadata for chat triggers', () => {
 });
 
 describe('authorize gate (workflow:execute)', () => {
+	test("accepts only the instance's own OAuth2 server when the node has no trustedSource", async () => {
+		const path = chatPath();
+		await createPublishedChatWorkflow(path, chatTriggerNode());
+
+		const resource = await resolveResource(path);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['n8n-internal']);
+	});
+
+	test('accepts only the trusted source the node selected', async () => {
+		const path = chatPath();
+		await createPublishedChatWorkflow(path, chatTriggerNode({ trustedSource: 'customer-idp' }));
+
+		const resource = await resolveResource(path);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['customer-idp']);
+	});
+
 	test('authorizes the owner but denies a visitor without execute access', async () => {
 		const path = chatPath();
 		await createPublishedChatWorkflow(path, chatTriggerNode({ requireExecuteAccess: true }));

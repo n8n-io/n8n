@@ -23,6 +23,7 @@ import { InboundAuthCoreModule } from '../inbound-auth-core.module';
 import { PublicApiOAuthStrategy } from '../public-api-oauth.strategy';
 import { PublicApiProtectedResource } from '../public-api-protected-resource';
 import { InboundResourceAdmission } from '../resource-admission';
+import { TrustedSourceDbDirectory } from '../trusted-source-directory.service';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbGate } from '../trusted-source.gate';
 import { LocalAuthorizationServerProxy } from '../local-authorization-server.proxy';
@@ -168,6 +169,14 @@ describe('InboundAuthCoreModule', () => {
 		expect(entry).toBeDefined();
 		expect(entry?.instanceTypes).toEqual(['main', 'webhook', 'worker']);
 		expect(entry?.licenseFlag).toBeUndefined();
+	});
+
+	it('hands the trusted source directory to nodes as its module context', async () => {
+		const directory = mock<TrustedSourceDbDirectory>();
+		Container.set(TrustedSourceDbDirectory, directory);
+		const module: ModuleInterface = new InboundAuthCoreModule();
+
+		expect(await module.context?.()).toEqual({ trustedSourceDirectory: directory });
 	});
 
 	it('exposes the discovery task as its only system task', async () => {

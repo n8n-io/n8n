@@ -49,7 +49,7 @@ export class InboundAuthCoreModule implements ModuleInterface {
 			// gate refuses such a source. Discover it as soon as the server is bound, or a fresh
 			// main rejects its own tokens until the first run of the discovery task.
 			// Failure-tolerant: the task retries, and boot must go on.
-			const { SYSTEM_TRUSTED_SOURCE_ID } = await import('./system-trusted-source.seeder.js');
+			const { SYSTEM_TRUSTED_SOURCE_ID } = await import('./constants.js');
 			await localServer.onProviderRegistered(async () => {
 				try {
 					const { TrustedSourceDiscoveryService } = await import(
@@ -93,6 +93,12 @@ export class InboundAuthCoreModule implements ModuleInterface {
 			Container.get(ProtectedResourceRegistry).register(Container.get(PublicApiProtectedResource));
 			Container.get(AuthStrategyRegistry).register(Container.get(PublicApiOAuthStrategy));
 		}
+	}
+
+	/** Lets trigger nodes fill their `trustedSource` dropdown through `ILoadOptionsFunctions`. */
+	async context() {
+		const { TrustedSourceDbDirectory } = await import('./trusted-source-directory.service.js');
+		return { trustedSourceDirectory: Container.get(TrustedSourceDbDirectory) };
 	}
 
 	// Ungated: the runner skips a cluster-scoped task on webhook and worker instances itself.
