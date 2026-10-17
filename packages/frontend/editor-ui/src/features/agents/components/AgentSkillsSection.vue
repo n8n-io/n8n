@@ -106,18 +106,18 @@ function skillName(row: Pick<SkillRow, 'id' | 'skill'>): string {
  * One line under the row when the user can act on it: the draft runs other content than
  * the published agent, or only the draft uses the skill.
  */
-type VersionHint = { text: string; changes?: SkillVersionRange };
+type VersionHint = { text: string };
 
 function versionHint(info: AgentSkillVersionInfo | undefined): VersionHint | undefined {
-	if (!info) return undefined;
-	if (info.live === null) {
-		return { text: i18n.baseText('agents.builder.skills.version.hint.notLive') };
-	}
-	if (draftMatchesPublished(info)) return undefined;
-	return {
-		text: i18n.baseText('agents.builder.skills.version.hint.differs'),
-		changes: { from: info.live, to: info.draft },
-	};
+	if (info?.live !== null) return undefined;
+	return { text: i18n.baseText('agents.builder.skills.version.hint.notLive') };
+}
+
+/** The draft runs other content than the published agent, so a diff between them helps. */
+function canCompareWithPublished(info: AgentSkillVersionInfo): info is AgentSkillVersionInfo & {
+	live: number;
+} {
+	return info.live !== null && !draftMatchesPublished(info);
 }
 
 /** A pinned draft behind the latest version, which "Update to vN" moves forward. */
@@ -159,10 +159,6 @@ function alertReasons(row: SkillRow): string[] {
 
 function openDiff(skillId: string, range: SkillVersionRange) {
 	diff.value = { skillId, range };
-}
-
-function seeChanges(row: SkillRow) {
-	if (row.hint?.changes) openDiff(row.id, row.hint.changes);
 }
 
 function followLatest(row: SkillRow) {
@@ -292,17 +288,6 @@ function rowSubtitle(row: {
 										<N8nText size="small" color="text-base" :class="$style.hintText">
 											{{ row.hint.text }}
 										</N8nText>
-										<N8nLink
-											v-if="row.hint.changes"
-											size="small"
-											role="button"
-											tabindex="0"
-											data-testid="agent-skill-see-changes"
-											@click="seeChanges(row)"
-											@keydown="onLinkKeydown($event, () => seeChanges(row))"
-										>
-											{{ i18n.baseText('agents.builder.skills.version.seeChanges') }}
-										</N8nLink>
 									</div>
 								</div>
 
@@ -341,6 +326,23 @@ function rowSubtitle(row: {
 												})
 											}}
 										</N8nLink>
+									</div>
+
+									<div :class="$style.compareCell">
+										<N8nTooltip
+											v-if="canCompareWithPublished(row.info)"
+											:content="i18n.baseText('agents.builder.skills.version.seeChanges')"
+											placement="top"
+										>
+											<N8nIconButton
+												icon="file-diff"
+												variant="outline"
+												size="small"
+												:aria-label="i18n.baseText('agents.builder.skills.version.seeChanges')"
+												data-testid="agent-skill-see-changes"
+												@click="openDiff(row.id, { from: row.info.live, to: row.info.draft })"
+											/>
+										</N8nTooltip>
 									</div>
 
 									<div :class="[$style.versionCell, $style.publishedCell]">
@@ -472,7 +474,8 @@ function rowSubtitle(row: {
 }
 
 .versioned {
-	grid-template-columns: minmax(0, 1fr) auto auto auto;
+	/* Skill, draft, compare, published agent, remove. */
+	grid-template-columns: minmax(0, 1fr) auto auto auto auto;
 }
 
 .header,
@@ -498,10 +501,11 @@ function rowSubtitle(row: {
 .headerDraft {
 	grid-column: 2;
 	grid-row: 1;
+	justify-self: end;
 }
 
 .headerPublished {
-	grid-column: 3;
+	grid-column: 4;
 	grid-row: 1;
 }
 
@@ -530,12 +534,22 @@ function rowSubtitle(row: {
 	grid-column: 2;
 	grid-row: 1;
 	flex-direction: column;
-	align-items: flex-start;
+	/* The draft tag and its caption line up toward the compare button. */
+	align-items: flex-end;
 	gap: var(--spacing--5xs);
 }
 
 .publishedCell {
+	grid-column: 4;
+	align-items: flex-start;
+}
+
+.compareCell {
+	display: flex;
 	grid-column: 3;
+	grid-row: 1;
+	/* Keeps the column the same width when a row has no compare button. */
+	min-width: var(--spacing--xl);
 }
 
 .remove {
@@ -652,11 +666,11 @@ function rowSubtitle(row: {
  */
 @container skills-table (max-width: 480px) {
 	.versioned {
-		grid-template-columns: auto auto minmax(0, 1fr) auto;
+		grid-template-columns: auto auto auto minmax(0, 1fr) auto;
 
 		.headerSkill,
 		.main {
-			grid-column: 1 / 4;
+			grid-column: 1 / 5;
 		}
 
 		.headerDraft,
@@ -665,9 +679,14 @@ function rowSubtitle(row: {
 			grid-row: 2;
 		}
 
+		.compareCell {
+			grid-column: 2;
+			grid-row: 2;
+		}
+
 		.headerPublished,
 		.publishedCell {
-			grid-column: 2;
+			grid-column: 3;
 			grid-row: 2;
 		}
 	}
