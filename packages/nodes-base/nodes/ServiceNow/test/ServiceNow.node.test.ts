@@ -1,7 +1,15 @@
 import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
-import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ServiceNow } from '../ServiceNow.node';
 import * as genericFunctions from '../GenericFunctions';
@@ -51,6 +59,109 @@ describe('ServiceNow Node', () => {
 
 	// `.call(this, ...)` on a vi.fn records only the arguments, so qs is the 4th.
 	const sentQuerystring = () => mockedApiRequest.mock.calls[0][3] as IDataObject;
+
+	describe('basic credential test', () => {
+		const context = mock<ICredentialTestFunctions>({
+			helpers: mock<ICredentialTestFunctions['helpers']>({
+				request: vi.fn().mockResolvedValue({ statusCode: 200 }),
+			}),
+		});
+		const data = { user: 'jane.doe', password: 'test-password', subdomain: 'test-instance' };
+		const testCredentials = async (values: ICredentialsDecrypted['data']) =>
+			await new ServiceNow().methods.credentialTest.serviceNowBasicApiTest.call(context, {
+				id: 'service-now-credential',
+				name: 'ServiceNow integration',
+				data: values,
+			});
+
+		// PR 41119: Credential checks require one instance subdomain.
+		describe('subdomain validation', () => {
+			it.each(
+				[
+					'',
+					'example.com/',
+					'example.com\\',
+					'example.com#',
+					'example.com?',
+					'instance@example.com/',
+					'example.com:443/',
+					'test.instance',
+					'https://test-instance.service-now.com',
+					'%65xample.com%2f',
+					' test-instance',
+					'test-instance\n',
+					'-test-instance',
+					'test-instance-',
+					'test_instance',
+					'ｔest-instance',
+					'a'.repeat(64),
+					null,
+					42,
+					['test-instance'],
+					{ value: 'test-instance' },
+				].map((subdomain) => ({ subdomain })),
+			)(
+				'rejects an invalid subdomain $subdomain before making a request',
+				async ({ subdomain }) => {
+					const result = await testCredentials({ ...data, subdomain });
+
+					expect(result.status).toBe('Error');
+					expect(context.helpers.request).not.toHaveBeenCalled();
+				},
+			);
+
+			it.each(['test-instance', 'DEV12345', 'a', 'a'.repeat(63)])(
+				'checks credentials for the instance subdomain %s',
+				async (subdomain) => {
+					const result = await testCredentials({ ...data, subdomain });
+
+					expect(result.status).toBe('OK');
+					expect(context.helpers.request).toHaveBeenCalledOnce();
+					expect(context.helpers.request).toHaveBeenCalledWith(
+						expect.objectContaining({
+							uri: `https://${subdomain.toLowerCase()}.service-now.com/api/now/table/sys_user`,
+							allowedDomains: `${subdomain.toLowerCase()}.service-now.com`,
+							followRedirect: false,
+							auth: { user: data.user, pass: data.password },
+						}),
+					);
+				},
+			);
+		});
+
+		// PR 41119: Credential checks must preserve the exact username filter.
+		describe('username validation', () => {
+			it.each(
+				['a^b', 'a^ORuser_name=b', 'a^NQuser_name=b', null, 42, ['jane.doe']].map((user) => ({
+					user,
+				})),
+			)('rejects an invalid username $user before making a request', async ({ user }) => {
+				const result = await testCredentials({ ...data, user });
+
+				expect(result.status).toBe('Error');
+				expect(context.helpers.request).not.toHaveBeenCalled();
+			});
+
+			it.each(['jane.doe', 'jane+doe@example.com', 'jane&doe', 'jane=doe'])(
+				'uses the exact username %s in the credential check',
+				async (user) => {
+					const result = await testCredentials({ ...data, user });
+
+					expect(result.status).toBe('OK');
+					expect(context.helpers.request).toHaveBeenCalledWith(
+						expect.objectContaining({
+							auth: { user, pass: data.password },
+							qs: {
+								sysparm_query: `user_name=${user}`,
+								sysparm_limit: '1',
+								sysparm_fields: 'sys_id',
+							},
+						}),
+					);
+				},
+			);
+		});
+	});
 
 	describe('user: get by username', () => {
 		const parameters = (userName: string) => ({
