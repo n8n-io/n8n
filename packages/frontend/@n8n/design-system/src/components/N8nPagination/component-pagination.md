@@ -27,6 +27,7 @@ Extends Reka UI [`PaginationRootProps`](https://reka-ui.com/docs/components/pagi
 
 - `defaultItemsPerPage?: number` - Initial items-per-page in uncontrolled mode. Default: `10`
 - `pageSizes?: number[]` - Options for the page size selector. Default: `[10, 20, 30, 40, 50, 100]`
+- `showAll?: boolean` - Show an All option in the page size selector. Selecting it emits `PAGINATION_ALL_ITEMS_PER_PAGE` (`-1`) and shows every item on one page. Default: `false`
 - `showTotal?: boolean` - Show the total item count. Default: `true`
 - `showSizes?: boolean` - Show the page size selector. Default: `true`
 - `showJumper?: boolean` - Show the go-to-page jumper. Default: `false`
@@ -36,7 +37,7 @@ Extends Reka UI [`PaginationRootProps`](https://reka-ui.com/docs/components/pagi
 **Events**
 
 - `@update:page` - Emitted when the current page changes. Payload: `(value: number) => void`
-- `@update:items-per-page` - Emitted when the page size changes. Payload: `(value: number) => void`
+- `@update:items-per-page` - Emitted when the page size changes. Payload: `(value: number) => void`. All emits `PAGINATION_ALL_ITEMS_PER_PAGE` (`-1`).
 
 **Slots**
 
