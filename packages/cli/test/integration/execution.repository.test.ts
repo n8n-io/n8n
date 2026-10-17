@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
-import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+import { createEmptyRunExecutionData, createRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { createExecution } from '@test-integration/db/executions';
 import { createOwner } from '@test-integration/db/users';
@@ -235,6 +235,77 @@ describe('UserRepository', () => {
 
 			const rowCount = await executionRepository.count();
 			expect(rowCount).toBe(0);
+		});
+
+		test.each([
+			{
+				statusInDB: 'running' as ExecutionStatus,
+				conditions: { requireStatuses: ['new', 'running', 'unknown'] as ExecutionStatus[] },
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				conditions: { requireStatuses: ['new', 'running', 'unknown'] as ExecutionStatus[] },
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'error' as ExecutionStatus,
+				conditions: { requireStatuses: ['new', 'running', 'unknown'] as ExecutionStatus[] },
+				updateExpected: false,
+			},
+			{
+				statusInDB: 'crashed' as ExecutionStatus,
+				conditions: { requireStatuses: ['new', 'running', 'unknown'] as ExecutionStatus[] },
+				updateExpected: false,
+			},
+		])(
+			'requireStatuses should return $updateExpected when status is "$statusInDB"',
+			async ({ statusInDB, conditions, updateExpected }) => {
+				const workflow = await createWorkflow({}, owner);
+				const executionData = createEmptyRunExecutionData();
+				const execution = await createExecution(
+					{ status: statusInDB, data: stringify(executionData) },
+					workflow,
+				);
+
+				const result = await executionRepository.updateExistingExecution(
+					execution.id,
+					{ status: 'crashed' },
+					conditions,
+				);
+
+				expect(result).toBe(updateExpected);
+				const row = await executionRepository.findOneBy({ id: execution.id });
+				expect(row?.status).toBe(updateExpected ? 'crashed' : statusInDB);
+			},
+		);
+
+		test.each([
+			{
+				requireStatus: 'running' as ExecutionStatus,
+				requireStatuses: ['new'] as ExecutionStatus[],
+			},
+			{ requireStatuses: ['new'] as ExecutionStatus[], requireNotCanceled: true },
+			{ requireStatus: 'running' as ExecutionStatus, requireNotCanceled: true },
+		])('should reject combined status constraints: $0', async (conditions) => {
+			await expect(
+				executionRepository.updateExistingExecution('1', { status: 'crashed' }, conditions),
+			).rejects.toThrow(UnexpectedError);
+		});
+
+		test('ignores requireNotCanceled: false when counting status constraints', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'error' }, workflow);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'crashed' },
+				{ requireStatus: 'error', requireNotCanceled: false },
+			);
+
+			expect(result).toBe(true);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('crashed');
 		});
 
 		test('requireNotFinished: should update when finished is false', async () => {
