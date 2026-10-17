@@ -2,6 +2,7 @@
 import type { AgentSkillVersionInfo, SkillVersionSummary } from '@n8n/api-types';
 import {
 	N8nBadge,
+	N8nIcon,
 	N8nDropdownMenu,
 	N8nText,
 	N8nTooltip,
@@ -53,7 +54,8 @@ const versions = ref<SkillVersionSummary[]>([]);
  */
 const kind = computed(() => (props.info.pinned ? 'pinned' : 'latest'));
 const unpublished = computed(() => !draftMatchesPublished(props.info));
-const style = computed(() => skillVersionStyle(unpublished.value ? 'unpublished' : 'latest'));
+// The draft tag keeps one colour; the Published agent column shows how they differ.
+const style = computed(() => skillVersionStyle('unpublished'));
 
 const badgeText = computed(() =>
 	i18n.baseText('agents.builder.skills.version.number', {
@@ -167,6 +169,9 @@ function onSelect(id: string) {
 					:data-unpublished="unpublished"
 					data-testid="agent-skill-version-badge"
 				>
+					<template v-if="props.info.pinned" #leading>
+						<N8nIcon icon="pin" size="xsmall" />
+					</template>
 					{{ badgeText }}
 				</N8nBadge>
 			</N8nTooltip>

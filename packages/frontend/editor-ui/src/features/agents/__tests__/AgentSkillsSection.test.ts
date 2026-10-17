@@ -221,31 +221,55 @@ describe('AgentSkillsSection', () => {
 
 		it.each<[string, AgentSkillVersionInfo, string]>([
 			['follows the latest version', versionInfo(), 'caption.followsLatest'],
-			['is pinned to the latest version', versionInfo({ pinned: true }), 'caption.pinned'],
+			['is pinned to the latest version', versionInfo({ pinned: true }), 'caption.pinnedLatest'],
 			[
 				'is pinned behind the latest version',
 				versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
-				'caption.pinned',
+				'caption.pinnedBehind',
 			],
 		])('captions a draft that %s', (_, info, caption) => {
 			expect(cells(info).draftCaption).toBe(`agents.builder.skills.version.${caption}`);
 		});
 
-		it.each<[string, AgentSkillVersionInfo, string]>([
-			['runs the draft version', versionInfo(), 'caption.sameAsDraft'],
+		it.each<[string, AgentSkillVersionInfo]>([
+			['runs the draft version', versionInfo()],
 			[
 				'runs the same content',
 				versionInfo({ draft: 10, live: 7, latest: 10, liveHasSameContent: true }),
-				'caption.sameAsDraft',
 			],
-			['runs an older version', versionInfo({ draft: 5, live: 4, latest: 5 }), 'caption.live'],
-		])('shows the published version when the published agent %s', (_, info, caption) => {
+			['runs an older version', versionInfo({ draft: 5, live: 4, latest: 5 })],
+		])('shows the published version as live when the published agent %s', (_, info) => {
 			const { published, publishedCaption } = cells(info);
 
 			expect(published.text()).toBe('agents.builder.skills.version.number');
 			expect(published.attributes('data-state')).toBeUndefined();
 			expect(published.element.tagName).toBe('SPAN');
-			expect(publishedCaption).toBe(`agents.builder.skills.version.${caption}`);
+			expect(publishedCaption).toBe('agents.builder.skills.version.caption.live');
+		});
+
+		it('offers "Update to" under the caption of a draft pinned behind the latest version', async () => {
+			const { wrapper } = cells(versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }));
+
+			const link = wrapper
+				.get('[data-testid="agent-skill-draft-version"]')
+				.get('[data-testid="agent-skill-follow-latest"]');
+			expect(link.text()).toBe('agents.builder.skills.version.updateTo');
+			await link.trigger('click');
+
+			expect(wrapper.emitted('set-skill-version')).toEqual([['tone', null]]);
+		});
+
+		it.each<[string, AgentSkillVersionInfo]>([
+			['follows the latest version', versionInfo()],
+			['is pinned to the latest version', versionInfo({ pinned: true })],
+			[
+				'is pinned to the latest version ahead of the published one',
+				versionInfo({ draft: 3, live: 2, latest: 3, pinned: true }),
+			],
+		])('offers no "Update to" when the draft %s', (_, info) => {
+			const { wrapper } = cells(info);
+
+			expect(wrapper.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
 		});
 
 		it('says "Not added" without a caption when the published agent does not use the skill', () => {
@@ -257,12 +281,16 @@ describe('AgentSkillsSection', () => {
 		});
 	});
 
-	it('says the draft is ahead when a pin on the latest version is newer than the published one', () => {
+	it('says the draft differs when a pin on the latest version is newer than the published one', async () => {
 		const wrapper = mountWithVersion(versionInfo({ draft: 3, live: 2, latest: 3, pinned: true }));
 
 		const hint = wrapper.get('[data-testid="agent-skill-version-hint"]');
-		expect(hint.text()).toContain('agents.builder.skills.version.hint.liveBehind');
-		expect(hint.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
+		expect(hint.text()).toContain('agents.builder.skills.version.hint.differs');
+		await hint.get('[data-testid="agent-skill-see-changes"]').trigger('click');
+		expect(wrapper.findComponent(AgentSkillVersionDiffDialog).props('range')).toEqual({
+			from: 2,
+			to: 3,
+		});
 	});
 
 	it('shows a version badge instead of the outdated warning when the server sends version state', () => {
@@ -315,33 +343,6 @@ describe('AgentSkillsSection', () => {
 		]);
 	});
 
-	it('offers follow latest under a skill pinned behind the latest version', async () => {
-		const wrapper = mount(AgentSkillsSection, {
-			props: {
-				skills: [{ id: 'tone', skill }],
-				skillVersions: {
-					tone: {
-						draft: 2,
-						live: 2,
-						latest: 4,
-						pinned: true,
-						liveHasSameContent: false,
-						scope: 'project',
-					},
-				},
-			},
-			global: { stubs: versionStubs },
-		});
-
-		const hint = wrapper.get(
-			'[data-testid="agent-skill-row"] [data-testid="agent-skill-version-hint"]',
-		);
-		expect(hint.text()).toContain('agents.builder.skills.version.hint.pinned');
-		await hint.get('[data-testid="agent-skill-follow-latest"]').trigger('click');
-
-		expect(wrapper.emitted('set-skill-version')).toEqual([['tone', null]]);
-	});
-
 	it('shows each hint in the row of its skill', () => {
 		const wrapper = mount(AgentSkillsSection, {
 			props: {
@@ -360,7 +361,7 @@ describe('AgentSkillsSection', () => {
 					},
 					sql: {
 						draft: 2,
-						live: 2,
+						live: 1,
 						latest: 4,
 						pinned: true,
 						liveHasSameContent: false,
@@ -378,14 +379,14 @@ describe('AgentSkillsSection', () => {
 		expect(sql.find('[data-testid="agent-skill-version-badge"]').exists()).toBe(true);
 	});
 
-	it('says the draft is ahead when the published agent runs an older version', () => {
+	it('says the draft differs when the published agent runs an older version', () => {
 		const wrapper = mountWithVersion(versionInfo({ draft: 5, live: 4, latest: 5 }));
 
 		const hint = wrapper.get('[data-testid="agent-skill-version-hint"]');
-		expect(hint.text()).toContain('agents.builder.skills.version.hint.liveBehind');
+		expect(hint.text()).toContain('agents.builder.skills.version.hint.differs');
 		expect(hint.text()).toContain('agents.builder.skills.version.seeChanges');
 		expect(hint.find('[data-testid="agent-skill-see-changes"]').exists()).toBe(true);
-		expect(hint.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
 	});
 
 	it('says a skill is not published yet when no published version uses it', () => {
@@ -401,36 +402,55 @@ describe('AgentSkillsSection', () => {
 			'the published agent runs the same content',
 			versionInfo({ draft: 10, live: 7, latest: 10, liveHasSameContent: true }),
 		],
+		['the draft follows the latest version and the published agent runs it', versionInfo()],
 		['the draft is pinned to the latest version', versionInfo({ pinned: true })],
+		[
+			'the draft is pinned behind the latest version on the published one',
+			versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
+		],
 	])('shows no hint when %s', (_, info) => {
 		const wrapper = mountWithVersion(info);
 
 		expect(wrapper.find('[data-testid="agent-skill-version-hint"]').exists()).toBe(false);
 	});
 
-	it('offers the changes and the latest version under a pin behind the latest version', () => {
-		const wrapper = mountWithVersion(versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }));
+	it('offers the changes from the published version to the draft under a pin behind the latest version', async () => {
+		const wrapper = mountWithVersion(versionInfo({ draft: 2, live: 1, latest: 4, pinned: true }));
 
 		const hint = wrapper.get('[data-testid="agent-skill-version-hint"]');
-		expect(hint.find('[data-testid="agent-skill-see-changes"]').exists()).toBe(true);
-		expect(hint.get('[data-testid="agent-skill-follow-latest"]').text()).toBe(
-			'agents.builder.skills.version.useLatest',
-		);
+		expect(hint.text()).toContain('agents.builder.skills.version.hint.differs');
+		expect(hint.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(false);
+		expect(
+			wrapper
+				.get('[data-testid="agent-skill-draft-version"]')
+				.find('[data-testid="agent-skill-follow-latest"]')
+				.exists(),
+		).toBe(true);
+		await hint.get('[data-testid="agent-skill-see-changes"]').trigger('click');
+		expect(wrapper.findComponent(AgentSkillVersionDiffDialog).props('range')).toEqual({
+			from: 1,
+			to: 2,
+		});
 	});
 
-	it('runs the hint links from the keyboard', async () => {
-		const wrapper = mountWithVersion(versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }));
+	it('runs the version links from the keyboard', async () => {
+		const wrapper = mountWithVersion(versionInfo({ draft: 2, live: 1, latest: 4, pinned: true }));
 
 		const seeChanges = wrapper.get('[data-testid="agent-skill-see-changes"]');
 		expect(seeChanges.attributes('tabindex')).toBe('0');
 		expect(seeChanges.attributes('role')).toBe('button');
 		await seeChanges.trigger('keydown', { key: 'Enter' });
 		expect(wrapper.findComponent(AgentSkillVersionDiffDialog).props('range')).toEqual({
-			from: 2,
-			to: 4,
+			from: 1,
+			to: 2,
 		});
 
-		await wrapper.get('[data-testid="agent-skill-follow-latest"]').trigger('keydown', { key: ' ' });
+		const followLatest = wrapper.get('[data-testid="agent-skill-follow-latest"]');
+		expect(followLatest.attributes('tabindex')).toBe('0');
+		expect(followLatest.attributes('role')).toBe('button');
+		await followLatest.trigger('keydown', { key: 'Tab' });
+		expect(wrapper.emitted('set-skill-version')).toBeUndefined();
+		await followLatest.trigger('keydown', { key: ' ' });
 		expect(wrapper.emitted('set-skill-version')).toEqual([['tone', null]]);
 	});
 
@@ -524,7 +544,7 @@ describe('AgentSkillsSection', () => {
 				skillVersions: {
 					tone: {
 						draft: 2,
-						live: 2,
+						live: 1,
 						latest: 4,
 						pinned: true,
 						liveHasSameContent: false,

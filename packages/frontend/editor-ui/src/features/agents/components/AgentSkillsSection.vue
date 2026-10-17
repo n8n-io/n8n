@@ -85,7 +85,7 @@ const rows = computed<SkillRow[]>(() =>
 			skill,
 			info,
 			state,
-			hint: versionHint(state),
+			hint: versionHint(info),
 			outdated: !info && outdatedSkillIds.value.has(id),
 			invalidReasons: skillIssueMessages.value.get(id) ?? [],
 		};
@@ -103,46 +103,41 @@ function skillName(row: Pick<SkillRow, 'id' | 'skill'>): string {
 }
 
 /**
- * One line under the row when the user can act on the versions: a newer version
- * waits for a pinned draft, or the draft differs from the published agent.
+ * One line under the row when the user can act on it: the draft runs other content than
+ * the published agent, or only the draft uses the skill.
  */
 type VersionHint = { text: string; changes?: SkillVersionRange };
 
-function versionHint(state: SkillVersionState | undefined): VersionHint | undefined {
-	if (!state) return undefined;
-	switch (state.kind) {
-		case 'pinned':
-			return {
-				text: i18n.baseText('agents.builder.skills.version.hint.pinned', {
-					interpolate: { latest: String(state.latest) },
-				}),
-				changes: state.changes,
-			};
-		case 'notLive':
-			return { text: i18n.baseText('agents.builder.skills.version.hint.notLive') };
-		case 'liveBehind':
-			return {
-				text: i18n.baseText('agents.builder.skills.version.hint.liveBehind'),
-				changes: state.changes,
-			};
-		default:
-			return undefined;
+function versionHint(info: AgentSkillVersionInfo | undefined): VersionHint | undefined {
+	if (!info) return undefined;
+	if (info.live === null) {
+		return { text: i18n.baseText('agents.builder.skills.version.hint.notLive') };
 	}
+	if (draftMatchesPublished(info)) return undefined;
+	return {
+		text: i18n.baseText('agents.builder.skills.version.hint.differs'),
+		changes: { from: info.live, to: info.draft },
+	};
 }
 
-/** The row hint says when a newer version waits for a pin, so the caption stays short. */
+/** A pinned draft behind the latest version, which "Update to vN" moves forward. */
+function isPinnedBehind(info: AgentSkillVersionInfo): boolean {
+	return info.pinned && info.draft < info.latest;
+}
+
 function draftCaption(info: AgentSkillVersionInfo): string {
-	return info.pinned
-		? i18n.baseText('agents.builder.skills.version.caption.pinned')
-		: i18n.baseText('agents.builder.skills.version.caption.followsLatest');
+	if (!info.pinned) return i18n.baseText('agents.builder.skills.version.caption.followsLatest');
+	return isPinnedBehind(info)
+		? i18n.baseText('agents.builder.skills.version.caption.pinnedBehind', {
+				interpolate: { latest: String(info.latest) },
+			})
+		: i18n.baseText('agents.builder.skills.version.caption.pinnedLatest');
 }
 
 /** No caption when the published agent does not use the skill: the "Not added" tag says it. */
 function publishedCaption(info: AgentSkillVersionInfo): string | undefined {
 	if (info.live === null) return undefined;
-	return draftMatchesPublished(info)
-		? i18n.baseText('agents.builder.skills.version.caption.sameAsDraft')
-		: i18n.baseText('agents.builder.skills.version.caption.live');
+	return i18n.baseText('agents.builder.skills.version.caption.live');
 }
 
 function versionNumber(version: number): string {
@@ -290,6 +285,27 @@ function rowSubtitle(row: {
 									>
 										{{ rowSubtitle(row) }}
 									</N8nText>
+									<div
+										v-if="row.hint"
+										:class="$style.hint"
+										:data-kind="row.state?.kind"
+										data-testid="agent-skill-version-hint"
+									>
+										<N8nText size="small" color="text-base" :class="$style.hintText">
+											{{ row.hint.text }}
+										</N8nText>
+										<N8nLink
+											v-if="row.hint.changes"
+											size="small"
+											role="button"
+											tabindex="0"
+											data-testid="agent-skill-see-changes"
+											@click="seeChanges(row)"
+											@keydown="onLinkKeydown($event, () => seeChanges(row))"
+										>
+											{{ i18n.baseText('agents.builder.skills.version.seeChanges') }}
+										</N8nLink>
+									</div>
 								</div>
 
 								<template v-if="hasVersionColumns && row.info">
@@ -309,9 +325,23 @@ function rowSubtitle(row: {
 											:class="$style.caption"
 											data-testid="agent-skill-draft-caption"
 										>
-											<N8nIcon v-if="row.info.pinned" icon="pin" size="xsmall" />
 											{{ draftCaption(row.info) }}
 										</N8nText>
+										<N8nLink
+											v-if="isPinnedBehind(row.info)"
+											size="small"
+											role="button"
+											tabindex="0"
+											data-testid="agent-skill-follow-latest"
+											@click="followLatest(row)"
+											@keydown="onLinkKeydown($event, () => followLatest(row))"
+										>
+											{{
+												i18n.baseText('agents.builder.skills.version.updateTo', {
+													interpolate: { latest: String(row.info.latest) },
+												})
+											}}
+										</N8nLink>
 									</div>
 
 									<div :class="[$style.versionCell, $style.publishedCell]">
@@ -360,39 +390,6 @@ function rowSubtitle(row: {
 											@click="emit('remove-skill', row.id)"
 										/>
 									</N8nTooltip>
-								</div>
-
-								<div
-									v-if="row.hint"
-									:class="$style.hint"
-									:data-kind="row.state?.kind"
-									data-testid="agent-skill-version-hint"
-								>
-									<N8nText size="small" color="text-base" :class="$style.hintText">
-										{{ row.hint.text }}
-									</N8nText>
-									<N8nLink
-										v-if="row.hint.changes"
-										size="small"
-										role="button"
-										tabindex="0"
-										data-testid="agent-skill-see-changes"
-										@click="seeChanges(row)"
-										@keydown="onLinkKeydown($event, () => seeChanges(row))"
-									>
-										{{ i18n.baseText('agents.builder.skills.version.seeChanges') }}
-									</N8nLink>
-									<N8nLink
-										v-if="row.state?.kind === 'pinned'"
-										size="small"
-										role="button"
-										tabindex="0"
-										data-testid="agent-skill-follow-latest"
-										@click="followLatest(row)"
-										@keydown="onLinkKeydown($event, () => followLatest(row))"
-									>
-										{{ i18n.baseText('agents.builder.skills.version.useLatest') }}
-									</N8nLink>
 								</div>
 							</div>
 						</AgentItemContextMenu>
@@ -546,7 +543,8 @@ function rowSubtitle(row: {
 	display: flex;
 	grid-column: -2;
 	grid-row: 1;
-	align-self: center;
+	/* Level with the version tags at the top of the row. */
+	align-self: start;
 }
 
 .caption {
@@ -627,9 +625,8 @@ function rowSubtitle(row: {
 
 .hint {
 	display: flex;
-	grid-column: 1 / -1;
-	grid-row: 2;
 	align-items: center;
+	margin-top: var(--spacing--4xs);
 	gap: var(--spacing--2xs);
 	min-width: 0;
 	white-space: nowrap;
@@ -673,10 +670,6 @@ function rowSubtitle(row: {
 		.publishedCell {
 			grid-column: 2;
 			grid-row: 2;
-		}
-
-		.hint {
-			grid-row: 3;
 		}
 	}
 }

@@ -21,7 +21,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 // The real menu needs pointer events jsdom lacks. The stub keeps the slot and select contract.
 vi.mock('@n8n/design-system', () => ({
-	N8nBadge: { template: '<button v-bind="$attrs"><slot /></button>' },
+	N8nBadge: { template: '<button v-bind="$attrs"><slot name="leading" /><slot /></button>' },
+	N8nIcon: { props: ['icon'], template: '<i :data-icon="icon" data-testid="badge-icon" />' },
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { props: ['content'], template: '<div :data-tooltip="content"><slot /></div>' },
 	N8nDropdownMenu: {
@@ -70,12 +71,12 @@ async function openMenu(wrapper: ReturnType<typeof mountBadge>['wrapper']) {
 }
 
 describe('AgentSkillVersionBadge', () => {
-	it.each<[string, AgentSkillVersionInfo, string, string]>([
+	it.each<[string, AgentSkillVersionInfo, string, boolean]>([
 		[
 			'follows the latest version and the published agent runs it',
 			{ draft: 3, live: 3, latest: 3, pinned: false, liveHasSameContent: false, scope: 'project' },
 			'latest',
-			'outline',
+			false,
 		],
 		[
 			'follows the latest version before a publish',
@@ -88,38 +89,65 @@ describe('AgentSkillVersionBadge', () => {
 				scope: 'project',
 			},
 			'latest',
-			'warning',
+			true,
 		],
 		[
 			'follows the latest version with the published agent behind',
 			{ draft: 3, live: 2, latest: 3, pinned: false, liveHasSameContent: false, scope: 'project' },
 			'latest',
-			'warning',
+			true,
 		],
 		[
 			'follows the latest version and the published agent runs the same content',
 			{ draft: 3, live: 2, latest: 3, pinned: false, liveHasSameContent: true, scope: 'project' },
 			'latest',
-			'outline',
+			false,
 		],
 		[
 			'is pinned to the published version',
 			{ draft: 2, live: 2, latest: 3, pinned: true, liveHasSameContent: false, scope: 'project' },
 			'pinned',
-			'outline',
+			false,
 		],
-	])('shows only the draft version when it %s', (_, info, kind, variant) => {
+		[
+			'is pinned ahead of the published version',
+			{ draft: 3, live: 2, latest: 3, pinned: true, liveHasSameContent: false, scope: 'project' },
+			'pinned',
+			true,
+		],
+	])('shows only the draft version when it %s', (_, info, kind, unpublished) => {
 		const { wrapper } = mountBadge(info);
 
 		const badge = wrapper.get('[data-testid="agent-skill-version-badge"]');
 		expect(badge.attributes('data-state')).toBe(kind);
-		expect(badge.attributes('variant')).toBe(variant);
-		expect(badge.attributes('data-unpublished')).toBe(String(variant === 'warning'));
+		// One colour for every state: the published column shows how they differ.
+		expect(badge.attributes('variant')).toBe('warning');
+		expect(badge.attributes('data-unpublished')).toBe(String(unpublished));
 		expect(badge.attributes('leading-icon')).toBeUndefined();
 		expect(badge.text()).toBe(`agents.builder.skills.version.number {"version":"${info.draft}"}`);
 		expect(wrapper.get('[data-tooltip]').attributes('data-tooltip')).toBe(
 			`agents.builder.skills.version.tooltip.${kind} {"version":"${info.draft}"}`,
 		);
+	});
+
+	it.each<[string, boolean]>([
+		['shows a pin icon before the version of a pinned draft', true],
+		['shows no pin icon when the draft follows the latest version', false],
+	])('%s', (_, pinned) => {
+		const { wrapper } = mountBadge({
+			draft: 3,
+			live: 3,
+			latest: 3,
+			pinned,
+			liveHasSameContent: false,
+			scope: 'project',
+		});
+
+		const icon = wrapper
+			.get('[data-testid="agent-skill-version-badge"]')
+			.find('[data-testid="badge-icon"]');
+		expect(icon.exists()).toBe(pinned);
+		if (pinned) expect(icon.attributes('data-icon')).toBe('pin');
 	});
 
 	it('lists every version on open and checks follow latest when the ref is not pinned', async () => {
