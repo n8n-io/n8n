@@ -6,6 +6,7 @@ import {
 	findObjectProperty,
 	getPropertyKeyName,
 	isNodeTypeClass,
+	resolveIdentifier,
 	WEBHOOK_LIFECYCLE_METHODS,
 	type WebhookLifecycleMethod,
 } from '../utils/index.js';
@@ -60,6 +61,21 @@ export const WebhookLifecycleCompleteRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
+		/**
+		 * Reads a value as an object literal, following a name to its declaration
+		 * when the object was written once and referred to by that name.
+		 */
+		function asObjectExpression(
+			node: TSESTree.Node | null | undefined,
+		): TSESTree.ObjectExpression | null {
+			if (!node) return null;
+			if (node.type === AST_NODE_TYPES.ObjectExpression) return node;
+			if (node.type !== AST_NODE_TYPES.Identifier) return null;
+
+			const declared = resolveIdentifier(context.sourceCode.getScope(node), node);
+			return declared?.type === AST_NODE_TYPES.ObjectExpression ? declared : null;
+		}
+
 		return {
 			ClassDeclaration(node) {
 				if (!isNodeTypeClass(node)) return;
@@ -67,8 +83,8 @@ export const WebhookLifecycleCompleteRule = createRule({
 				const descriptionProperty = findClassProperty(node, 'description');
 				if (!descriptionProperty) return;
 
-				const descriptionValue = descriptionProperty.value;
-				if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) return;
+				const descriptionValue = asObjectExpression(descriptionProperty.value);
+				if (!descriptionValue) return;
 
 				const webhookMethodsProperty = findClassProperty(node, 'webhookMethods');
 
@@ -84,11 +100,10 @@ export const WebhookLifecycleCompleteRule = createRule({
 					return;
 				}
 
-				if (webhookMethodsProperty.value.type !== AST_NODE_TYPES.ObjectExpression) {
-					return;
-				}
+				const webhookMethods = asObjectExpression(webhookMethodsProperty.value);
+				if (!webhookMethods) return;
 
-				if (webhookMethodsProperty.value.properties.length === 0) {
+				if (webhookMethods.properties.length === 0) {
 					context.report({
 						node: webhookMethodsProperty.key,
 						messageId: 'emptyWebhookMethods',
@@ -96,13 +111,15 @@ export const WebhookLifecycleCompleteRule = createRule({
 					return;
 				}
 
-				for (const groupProperty of webhookMethodsProperty.value.properties) {
+				for (const groupProperty of webhookMethods.properties) {
 					if (groupProperty.type !== AST_NODE_TYPES.Property) continue;
-					if (groupProperty.value.type !== AST_NODE_TYPES.ObjectExpression) continue;
+
+					const group = asObjectExpression(groupProperty.value);
+					if (!group) continue;
 
 					const groupName = getPropertyKeyName(groupProperty) ?? 'default';
 
-					const missing = findMissingMethods(groupProperty.value);
+					const missing = findMissingMethods(group);
 					if (missing.length === 0) continue;
 
 					context.report({
