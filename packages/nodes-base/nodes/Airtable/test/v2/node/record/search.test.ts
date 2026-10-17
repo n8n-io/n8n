@@ -19,6 +19,7 @@ vi.mock('../../../../v2/transport', async () => {
 							},
 						},
 					],
+					offset: 'itrNextPage/recYYY',
 				};
 			}
 		}),
@@ -165,6 +166,236 @@ describe('Test AirtableV2, search operation', () => {
 				},
 			],
 		});
+	});
+
+	it('should send pagination options and return the next offset for v2.3', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 100,
+			options: {
+				pageSize: 50,
+				offset: 'itrPreviousPage/recXXX',
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		// maxRecords must not be sent, it suppresses the next-page offset in the response
+		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ pageSize: 50, offset: 'itrPreviousPage/recXXX' },
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toEqual({
+			json: {
+				id: 'recYYY',
+				fields: { foo: 'foo 2', bar: 'bar 2' },
+				offset: 'itrNextPage/recYYY',
+			},
+			pairedItem: [
+				{
+					item: 0,
+				},
+			],
+		});
+	});
+
+	it('should cap the page size to the limit for v2.3', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 1,
+			options: {
+				pageSize: 50,
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ pageSize: 1 },
+		);
+	});
+
+	it('should pass the page size when returning all records for v2.3', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: true,
+			options: {
+				pageSize: 25,
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.apiRequestAllItems).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequestAllItems).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ pageSize: 25 },
+		);
+	});
+
+	it('should not include an offset in the output on the last page for v2.3', async () => {
+		vi.mocked(transport.apiRequest).mockResolvedValueOnce({
+			records: [
+				{
+					id: 'recYYY',
+					fields: { foo: 'foo 2', bar: 'bar 2' },
+				},
+			],
+		});
+
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 100,
+			options: {},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toEqual({ id: 'recYYY', fields: { foo: 'foo 2', bar: 'bar 2' } });
+		expect(result[0].json).not.toHaveProperty('offset');
+	});
+
+	it('should keep the offset in the output on the downloadFields path for v2.3', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 100,
+			options: {
+				downloadFields: ['attachment'],
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.downloadRecordAttachments).toHaveBeenCalledTimes(1);
+		expect(result[0].json).toEqual({
+			id: 'recYYY',
+			fields: {
+				foo: 'foo 2',
+				bar: 'bar 2',
+				attachment: [{ url: 'http://example.com/file.png' }],
+			},
+			offset: 'itrNextPage/recYYY',
+		});
+	});
+
+	it('should not forward the response offset for v2.2', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 1,
+			options: {},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.2),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		// v2.2 uses maxRecords and must not forward the response offset to the output
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ maxRecords: 1 },
+		);
+		expect(result[0].json).not.toHaveProperty('offset');
+	});
+
+	it('should not send the pageSize and offset options for v2.2', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 1,
+			options: {
+				pageSize: 50,
+				offset: 'itrPreviousPage/recXXX',
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.2),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		// v2.2 keeps its old request shape: pageSize and offset must not be sent
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ maxRecords: 1 },
+		);
 	});
 
 	afterEach(() => vi.clearAllMocks());

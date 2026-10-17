@@ -66,7 +66,7 @@ export async function apiRequestAllItems(
 	if (query === undefined) {
 		query = {};
 	}
-	query.pageSize = 100;
+	query.pageSize = query.pageSize ?? 100;
 
 	const returnData: IDataObject[] = [];
 
