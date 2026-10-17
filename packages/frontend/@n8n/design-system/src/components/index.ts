@@ -173,6 +173,8 @@ export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';
 export { default as N8nSwitch } from './N8nSwitch';
+export { default as N8nSlider } from './N8nSlider';
+export type * from './N8nSlider/Slider.types';
 export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
