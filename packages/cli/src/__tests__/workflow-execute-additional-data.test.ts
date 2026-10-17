@@ -2166,6 +2166,30 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 		});
 
+		it('forwards invocationContext.runtimeMetadata in the run options', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const runtimeMetadata = { tenant_id: 'acme' };
+
+			await executeAgent(
+				{ agentId: AGENT_ID },
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'trigger',
+				undefined,
+				undefined,
+				{ runtimeMetadata } as never,
+			);
+
+			const args = agentWorkflowExecutionService.executeForWorkflow.mock.calls[0];
+			expect(args[10]).toEqual(expect.objectContaining({ runtimeMetadata }));
+		});
+
 		it('forwards the outputSchema to executeForWorkflow', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				userId: 'user-1',

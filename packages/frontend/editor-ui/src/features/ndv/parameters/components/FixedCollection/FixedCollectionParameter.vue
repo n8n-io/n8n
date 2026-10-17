@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import AgentVariablesParameter from '../AgentVariablesParameter/AgentVariablesParameter.vue';
 import FixedCollectionParameterLegacy from './FixedCollectionParameterLegacy.vue';
 import FixedCollectionParameterNew from './FixedCollectionParameterNew.vue';
 
@@ -33,8 +34,17 @@ const emit = defineEmits<{
 </script>
 
 <template>
+	<AgentVariablesParameter
+		v-if="parameter.typeOptions?.agentVariables"
+		:parameter="parameter"
+		:path="path"
+		:values="values"
+		:node-values="nodeValues"
+		:is-read-only="isReadOnly"
+		@value-changed="emit('valueChanged', $event)"
+	/>
 	<FixedCollectionParameterLegacy
-		v-if="!isCollectionOverhaulEnabled"
+		v-else-if="!isCollectionOverhaulEnabled"
 		v-bind="$props"
 		@value-changed="emit('valueChanged', $event)"
 	/>

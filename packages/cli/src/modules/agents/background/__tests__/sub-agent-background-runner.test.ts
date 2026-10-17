@@ -323,6 +323,18 @@ describe('spawn', () => {
 		expect(runner.run.mock.calls[0][1].selfDelegationDifficulty).toBe('high');
 	});
 
+	it('forwards the caller runtimeMetadata to the background run and omits it when absent', async () => {
+		const { backgroundRunner, runner, context } = setup();
+
+		await backgroundRunner.spawn({ ...request, runtimeMetadata: { tenant_id: 'acme' } }, context);
+		await flushDetachedRun();
+		expect(runner.run.mock.calls[0][1].runtimeMetadata).toEqual({ tenant_id: 'acme' });
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+		expect(runner.run.mock.calls[1][1]).not.toHaveProperty('runtimeMetadata');
+	});
+
 	it('forwards a parent workspace handle to the run and omits the key when none is supplied', async () => {
 		const { backgroundRunner, runner, context } = setup();
 		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();

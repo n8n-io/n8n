@@ -1,6 +1,7 @@
 import type { BuiltTool, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
+import { extractNodeToolVariables } from '@n8n/api-types';
 import type { AgentJsonToolConfig, NodeToolTrustedMetadata } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -11,7 +12,7 @@ import type {
 	INodeParameters,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { nodeNameToToolName, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
+import { nodeNameToToolName, UserError, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
@@ -125,6 +126,14 @@ export async function resolveNodeToolMetadata(
 	return { ...getFixedNodeToolMetadata(metadata), ...resolved };
 }
 
+function withoutEmpty(values: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(Object.entries(values).filter(([, value]) => hasValue(value)));
+}
+
+function hasValue(value: unknown): boolean {
+	return value !== undefined && value !== null && value !== '';
+}
+
 /**
  * Select caller-mapped runtime values for the tool's declared trusted keys.
  * The declared set (the tool config's `trustedMetadata` names) stays the only
@@ -139,7 +148,10 @@ function pickRuntimeTrustedValues(
 	if (!runtime || trustedKeys.size === 0) return {};
 	const picked: Record<string, unknown> = {};
 	for (const key of trustedKeys) {
-		if (Object.prototype.hasOwnProperty.call(runtime, key)) picked[key] = runtime[key];
+		// An empty mapping counts as "not provided", so the tool's default applies.
+		if (Object.prototype.hasOwnProperty.call(runtime, key) && hasValue(runtime[key])) {
+			picked[key] = runtime[key];
+		}
 	}
 	return picked;
 }
@@ -147,16 +159,22 @@ function pickRuntimeTrustedValues(
 /**
  * Remove trusted keys from a model-facing schema so the model is never told it
  * can choose a trusted value — the runtime resolves those keys and always wins
- * over a same-named model argument. Handles the two schema shapes this factory
- * produces; an unrecognized shape is returned unchanged, where invocation-time
- * precedence remains the guarantee.
+ * over a same-named model argument. Objects are sanitized directly; unions,
+ * intersections and optional/nullable wrappers (Zod) and `anyOf`/`oneOf`/`allOf`
+ * (JSON schema) are sanitized in every variant. An unrecognized shape is
+ * returned unchanged, where invocation-time precedence remains the guarantee.
  */
 function withoutTrustedKeys(
 	schema: NodeToolInputSchema,
 	trustedKeys: ReadonlySet<string>,
 ): NodeToolInputSchema {
 	if (trustedKeys.size === 0) return schema;
+	if (schema instanceof z.ZodType) return sanitizeZodSchema(schema, trustedKeys);
+	if (isRecord(schema)) return sanitizeJsonSchema(schema, trustedKeys);
+	return schema;
+}
 
+function sanitizeZodSchema(schema: z.ZodTypeAny, trustedKeys: ReadonlySet<string>): z.ZodTypeAny {
 	if (schema instanceof z.ZodObject) {
 		const shape = { ...schema.shape };
 		for (const key of trustedKeys) delete shape[key];
@@ -166,22 +184,79 @@ function withoutTrustedKeys(
 		}
 		return z.object(shape);
 	}
+	if (schema instanceof z.ZodOptional) {
+		return sanitizeZodSchema(schema.unwrap(), trustedKeys).optional();
+	}
+	if (schema instanceof z.ZodNullable) {
+		return sanitizeZodSchema(schema.unwrap(), trustedKeys).nullable();
+	}
+	if (schema instanceof z.ZodDiscriminatedUnion) {
+		// A discriminator that is itself trusted cannot stay; fall back to a plain
+		// union of the sanitized variants so no variant advertises a trusted key.
+		const variants = [...(schema.options as z.ZodTypeAny[])].map((option) =>
+			sanitizeZodSchema(option, trustedKeys),
+		);
+		return variants.length >= 2
+			? z.union(variants as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]])
+			: (variants[0] ?? schema);
+	}
+	if (schema instanceof z.ZodUnion) {
+		const variants = (schema.options as z.ZodTypeAny[]).map((option) =>
+			sanitizeZodSchema(option, trustedKeys),
+		);
+		return z.union(variants as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+	}
+	if (schema instanceof z.ZodIntersection) {
+		return z.intersection(
+			sanitizeZodSchema(schema._def.left as z.ZodTypeAny, trustedKeys),
+			sanitizeZodSchema(schema._def.right as z.ZodTypeAny, trustedKeys),
+		);
+	}
+	return schema;
+}
 
-	if (isRecord(schema)) {
-		const jsonSchema = schema as JSONSchema7;
-		if (isRecord(jsonSchema.properties) && Object.keys(jsonSchema.properties).length > 0) {
-			const properties = Object.fromEntries(
-				Object.entries(jsonSchema.properties).filter(([key]) => !trustedKeys.has(key)),
-			);
-			return {
-				...jsonSchema,
-				properties,
-				required: (jsonSchema.required ?? []).filter((key) => !trustedKeys.has(key)),
+function sanitizeJsonSchema(schema: JSONSchema7, trustedKeys: ReadonlySet<string>): JSONSchema7 {
+	let out: JSONSchema7 = schema;
+	if (isRecord(schema.properties) && Object.keys(schema.properties).length > 0) {
+		out = {
+			...out,
+			properties: Object.fromEntries(
+				Object.entries(schema.properties).filter(([key]) => !trustedKeys.has(key)),
+			),
+			required: (schema.required ?? []).filter((key) => !trustedKeys.has(key)),
+		};
+	}
+	for (const keyword of ['anyOf', 'oneOf', 'allOf'] as const) {
+		const variants = schema[keyword];
+		if (Array.isArray(variants)) {
+			out = {
+				...out,
+				[keyword]: variants.map((variant) =>
+					isRecord(variant) ? sanitizeJsonSchema(variant as JSONSchema7, trustedKeys) : variant,
+				),
 			};
 		}
 	}
+	return out;
+}
 
-	return schema;
+/** Shorter trusted values are left alone to avoid mangling unrelated text. */
+const MIN_REDACTED_LENGTH = 8;
+
+/**
+ * Replace trusted string values echoed in a node result, so a node that
+ * returns its input cannot hand a trusted value back to the model. Returns a
+ * copy; the original result is not mutated.
+ */
+function redactTrustedValues(value: unknown, secrets: ReadonlySet<string>): unknown {
+	if (typeof value === 'string') return secrets.has(value) ? '[redacted]' : value;
+	if (Array.isArray(value)) return value.map((item) => redactTrustedValues(item, secrets));
+	if (isRecord(value)) {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, item]) => [key, redactTrustedValues(item, secrets)]),
+		);
+	}
+	return value;
 }
 
 /**
@@ -271,7 +346,10 @@ export async function resolveNodeTool(
 	const sanitizedName = nodeNameToToolName(toolSchema.name);
 	const nodeType = resolveToolNodeType(toolSchema.node.nodeType, toolSchema.node.nodeTypeVersion);
 	const trustedMetadata = toolSchema.trustedMetadata;
-	const trustedKeys = new Set(Object.keys(trustedMetadata ?? {}));
+	// Variables are the names the tool reads from `$json` plus any it declares a
+	// default for. The model never supplies them.
+	const variableNames = extractNodeToolVariables(toolSchema.node.nodeParameters);
+	const trustedKeys = new Set([...Object.keys(trustedMetadata ?? {}), ...variableNames]);
 
 	// When instrumented (eval runs), the ephemeral node is named after the tool
 	// so hint lookup and request attribution key on the same identifier the
@@ -296,16 +374,27 @@ export async function resolveNodeTool(
 			// that key for this invocation, so their value replaces the tool's
 			// own binding. Only keys the tool config declares are picked (see
 			// `pickRuntimeTrustedValues`). The merge result is the runtime's
-			// execution input; telemetry records the pre-merge arguments, so
-			// trusted values stay out of model-facing surfaces.
+			// execution input; telemetry records the pre-merge arguments, and the
+			// node result is redacted of exact trusted values before it returns to
+			// the model.
 			const trusted = await resolveNodeToolMetadata(trustedMetadata, ctx, sanitizedName);
 			const runtime = pickRuntimeTrustedValues(toolCtx.runtimeMetadata, trustedKeys);
+			// Caller value wins, then the tool default. A variable with neither fails
+			// loudly instead of running the tool with a blank value.
+			const missing = variableNames.filter(
+				(name) => !hasValue(runtime[name]) && !hasValue(trusted[name]),
+			);
+			if (missing.length > 0) {
+				throw new UserError(
+					`Tool "${sanitizedName}" needs a value for ${missing.map((name) => `"${name}"`).join(', ')}. Map it in the Message an Agent node or set a default in the tool configuration.`,
+				);
+			}
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-				inputData: [{ json: { ...input, ...trusted, ...runtime } as IDataObject }],
+				inputData: [{ json: { ...input, ...withoutEmpty(trusted), ...runtime } as IDataObject }],
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});
@@ -323,7 +412,13 @@ export async function resolveNodeTool(
 			if (result.status === 'error') {
 				throw new Error(result.error ?? `Node "${toolSchema.node.nodeType}" failed to execute`);
 			}
-			return result;
+			const secrets = new Set(
+				Object.values({ ...withoutEmpty(trusted), ...runtime }).filter(
+					(value): value is string =>
+						typeof value === 'string' && value.length >= MIN_REDACTED_LENGTH,
+				),
+			);
+			return secrets.size > 0 ? redactTrustedValues(result, secrets) : result;
 		})
 		.build();
 

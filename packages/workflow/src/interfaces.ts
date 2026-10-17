@@ -2039,6 +2039,7 @@ export interface INodePropertyTypeOptions {
 	minValue?: number; // Supported by: number
 	multipleValues?: boolean; // Supported by: <All>
 	multipleValueButtonText?: string; // Supported when "multipleValues" set to true
+	agentVariables?: boolean; // Supported by: fixedCollection. Renders the selected agent's variables as inputs
 	numberPrecision?: number; // Supported by: number
 	fixedCollection?: {
 		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}

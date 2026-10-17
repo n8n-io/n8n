@@ -247,6 +247,7 @@ export class ToolCallRunner {
 			toolName: params.toolName,
 			runId: params.runId,
 			persistence: params.persistence,
+			runtimeMetadata: params.runtimeMetadata,
 			parentTelemetry: params.resolvedTelemetry,
 			emitEvent: (event) => this.eventBus.emit(event),
 			abortSignal: params.abortSignal,

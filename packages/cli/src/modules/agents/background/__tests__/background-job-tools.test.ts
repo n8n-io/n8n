@@ -113,6 +113,21 @@ describe('delegate_subagent background mode', () => {
 		},
 	);
 
+	it('forwards ctx.runtimeMetadata to the spawn request', async () => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createBackgroundDelegateTool(options);
+
+		await tool.handler!(
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ persistence, runtimeMetadata: { tenant_id: 'acme' } },
+		);
+
+		expect(backgroundRunner.spawn.mock.calls[0][0]).toMatchObject({
+			runtimeMetadata: { tenant_id: 'acme' },
+		});
+	});
+
 	it('reads the parent thread from ctx.persistence at call time', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });

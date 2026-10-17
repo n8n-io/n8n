@@ -412,8 +412,9 @@ export const TrustedMetadataValueSchema = z.discriminatedUnion('mode', [
 ]);
 
 /**
- * Key charset mirrors the `$fromAI` placeholder-key rules (same length cap and
- * character set), so a metadata key is a valid `$fromAI('key')` lookup.
+ * Key charset mirrors the `$fromAI` placeholder-key rules (the editor truncates
+ * `$fromAI` names to 63 characters, so keys stay within 63), so a metadata key
+ * is a valid `$fromAI('key')` lookup.
  * Reserved keys are rejected explicitly: the runtime merges trusted values
  * over the model's arguments, and a reserved key would target the prototype
  * chain instead of an own property.
@@ -423,7 +424,7 @@ export const TRUSTED_METADATA_RESERVED_KEYS = ['__proto__', 'constructor', 'prot
 export const TrustedMetadataKeySchema = z
 	.string()
 	.min(1)
-	.max(64)
+	.max(63)
 	.regex(
 		/^[A-Za-z0-9_-]+$/,
 		'Metadata names can only contain letters, numbers, underscores, and hyphens',

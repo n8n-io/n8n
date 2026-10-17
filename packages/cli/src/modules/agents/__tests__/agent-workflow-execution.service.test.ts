@@ -600,6 +600,30 @@ describe('AgentWorkflowExecutionService', () => {
 		});
 	});
 
+	it('passes runtimeMetadata from the run options to the agent stream options', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			projectId,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{ runtimeMetadata: { tenant_id: 'acme' } },
+		);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as ExecutionOptions;
+		expect(options.runtimeMetadata).toEqual({ tenant_id: 'acme' });
+	});
+
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
 		const { service, agentRepository, reconstructionService, agentRunTracingService } =
 			makeService();

@@ -104,6 +104,7 @@ export function createBackgroundSubAgentHandler(
 				parentResourceId,
 				parentSandboxPrincipalHash: sandboxScope.principalHash,
 				parentMessageContext: readIntegrationMessageContext(ctx.persistence) ?? null,
+				...(ctx.runtimeMetadata !== undefined ? { runtimeMetadata: ctx.runtimeMetadata } : {}),
 			},
 			{
 				projectId: options.projectId,

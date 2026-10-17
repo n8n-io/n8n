@@ -411,6 +411,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				v-if="initialNode && !isMcpTool && !isWorkflowTool"
 				v-model="trustedMetadata"
 				:tool-name="nodeName"
+				:node-parameters="currentNode?.parameters"
 				:submitted="submitCount > 0"
 				:disabled="isRestricted"
 				@update:valid="trustedMetadataValid = $event"

@@ -1293,6 +1293,30 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	it('passes runtimeMetadata to the child execution options and omits it when absent', async () => {
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			runtimeMetadata: { tenant_id: 'acme' },
+		});
+		expect(childAgent.stream).toHaveBeenCalledWith(
+			expect.any(Array),
+			expect.objectContaining({ runtimeMetadata: { tenant_id: 'acme' } }),
+		);
+
+		childAgent.stream.mockClear();
+		childAgent.stream.mockResolvedValue(makeStreamResult([]));
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		expect(childAgent.stream.mock.calls[0]?.[1]).not.toHaveProperty('runtimeMetadata');
+	});
+
 	it('omits telemetry from the child stream call when the parent context has none', async () => {
 		await runner.run(spawnRequest, {
 			parentAgentId,

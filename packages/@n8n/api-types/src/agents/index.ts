@@ -5,6 +5,7 @@ export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
 export * from './agent-node-tool-operations';
+export * from './node-tool-variables';
 export * from './agent-personalisation';
 export * from './agent-skill.schema';
 export * from './skills.schema';

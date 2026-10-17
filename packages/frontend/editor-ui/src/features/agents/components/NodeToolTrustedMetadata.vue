@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, provide, ref, useId, watch } from 'vue';
-import { N8nButton, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { NodeToolTrustedMetadata } from '@n8n/api-types';
+import { extractNodeToolVariables, type NodeToolTrustedMetadata } from '@n8n/api-types';
 import { WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE, type INodeProperties } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import { ExpressionLocalResolveContextSymbol, WorkflowDocumentStoreKey } from '@/app/constants';
@@ -19,8 +19,8 @@ import {
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
 import {
+	deriveTrustedMetadataRows,
 	formatTrustedMetadataFixedValue,
-	trustedMetadataNameError,
 	trustedMetadataRowsToRecord,
 	trustedMetadataValueError,
 	type TrustedMetadataRow,
@@ -28,6 +28,8 @@ import {
 
 const props = defineProps<{
 	toolName: string;
+	/** Current node parameters of the tool. Variable names are read from them. */
+	nodeParameters?: unknown;
 	submitted?: boolean;
 	disabled?: boolean;
 }>();
@@ -37,107 +39,78 @@ const emit = defineEmits<{ 'update:valid': [valid: boolean] }>();
 const i18n = useI18n();
 const id = useId();
 
-interface RowEntry {
-	/** Stable local key so renaming a row never remounts its inputs. */
-	key: string;
-	row: TrustedMetadataRow;
+const variableNames = computed(() => extractNodeToolVariables(props.nodeParameters));
+
+/** Rows the user edited in this session. Other rows come from the stored defaults. */
+const edited = ref<Record<string, TrustedMetadataRow>>({});
+
+const rows = computed<TrustedMetadataRow[]>(() =>
+	deriveTrustedMetadataRows(variableNames.value, metadata.value).map(
+		(row) => edited.value[row.name] ?? row,
+	),
+);
+
+function sameRecord(
+	a: NodeToolTrustedMetadata | undefined,
+	b: NodeToolTrustedMetadata | undefined,
+) {
+	return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 }
 
-const rowIndex = ref(0);
-
-const rowEntries = ref<RowEntry[]>([]);
-
-// The component mounts per tool-modal open, so rows are read once from the
-// persisted bindings; every later edit re-emits the full record.
-function rowsFromMetadata(value: NodeToolTrustedMetadata | undefined): RowEntry[] {
-	return Object.entries(value ?? {}).map(([name, binding]) => ({
-		key: `${id}-row-${rowIndex.value++}`,
-		row:
-			binding.mode === 'fixed'
-				? { name, mode: 'fixed', value: formatTrustedMetadataFixedValue(binding.value) }
-				: { name, mode: 'expression', value: binding.value },
-	}));
-}
-rowEntries.value = rowsFromMetadata(metadata.value);
-
-function emitMetadata() {
-	metadata.value = trustedMetadataRowsToRecord(rowEntries.value.map((entry) => entry.row));
+function emitRows(next: TrustedMetadataRow[]) {
+	const record = trustedMetadataRowsToRecord(next);
+	if (!sameRecord(record, metadata.value)) metadata.value = record;
 }
 
-function addRow() {
+// Drop defaults of variables that the tool no longer reads.
+watch(
+	variableNames,
+	() => {
+		if (props.disabled) return;
+		emitRows(rows.value);
+	},
+	{ immediate: true },
+);
+
+function commit(row: TrustedMetadataRow) {
 	if (props.disabled) return;
-	rowEntries.value = [
-		...rowEntries.value,
-		{ key: `${id}-row-${rowIndex.value++}`, row: { name: '', mode: 'fixed', value: '' } },
-	];
-	emitMetadata();
+	edited.value = { ...edited.value, [row.name]: row };
+	emitRows(rows.value.map((r) => (r.name === row.name ? row : r)));
 }
 
-function removeRow(key: string) {
-	if (props.disabled) return;
-	rowEntries.value = rowEntries.value.filter((entry) => entry.key !== key);
-	emitMetadata();
+function updateValue(row: TrustedMetadataRow, update: IUpdateInformation) {
+	const value =
+		row.mode === 'fixed'
+			? formatTrustedMetadataFixedValue(update.value)
+			: String(update.value ?? '=');
+	commit({ name: row.name, mode: row.mode, value });
 }
 
-function updateName(entry: RowEntry, name: string) {
-	entry.row.name = name;
-	emitMetadata();
-}
-
-function updateValue(entry: RowEntry, update: IUpdateInformation) {
-	const raw = formatTrustedMetadataFixedValue(update.value);
-	entry.row.value = entry.row.mode === 'fixed' ? raw : String(update.value ?? '=');
-	emitMetadata();
-}
-
-function setMode(entry: RowEntry, mode: 'fixed' | 'expression' | 'ai') {
-	if (entry.row.mode === mode || mode === 'ai') return;
-	entry.row.mode = mode;
-	entry.row.value = mode === 'expression' ? '=' : '';
-	emitMetadata();
+function setMode(row: TrustedMetadataRow, mode: 'fixed' | 'expression' | 'ai') {
+	if (row.mode === mode || mode === 'ai') return;
+	commit({ name: row.name, mode, value: mode === 'expression' ? '=' : '' });
 }
 
 function parameterFor(row: TrustedMetadataRow): INodeProperties {
 	return {
-		displayName: row.name || 'value',
+		displayName: row.name,
 		name: 'value',
-		type: 'json',
+		type: 'string',
 		default: '',
 		typeOptions: { rows: 2 },
 	};
 }
 
-function rowNameError(entry: RowEntry): string | undefined {
-	const base = trustedMetadataNameError(entry.row);
-	if (base) return base;
-	// Flag every row after the first with the same name: the record keeps one.
-	const name = entry.row.name.trim();
-	const firstAt = rowEntries.value.findIndex((entry2) => entry2.row.name.trim() === name);
-	return firstAt < rowEntries.value.indexOf(entry) ? 'duplicate' : undefined;
-}
-
-function rowValueError(entry: RowEntry): string | undefined {
-	return trustedMetadataValueError(entry.row);
+function valueErrorText(row: TrustedMetadataRow): string {
+	return i18n.baseText(
+		`agents.toolConfig.metadata.value.${trustedMetadataValueError(row) ?? ''}` as BaseTextKey,
+	);
 }
 
 const hasError = computed(() =>
-	rowEntries.value.some(
-		(entry) => rowNameError(entry) !== undefined || rowValueError(entry) !== undefined,
-	),
+	rows.value.some((row) => trustedMetadataValueError(row) !== undefined),
 );
 watch(hasError, (invalid) => emit('update:valid', !invalid), { immediate: true });
-
-const errorBase = 'agents.toolConfig.metadata';
-
-function nameErrorText(entry: RowEntry): string {
-	const code = rowNameError(entry) ?? '';
-	return i18n.baseText(`${errorBase}.name.${code}` as BaseTextKey);
-}
-
-function valueErrorText(entry: RowEntry): string {
-	const code = rowValueError(entry) ?? '';
-	return i18n.baseText(`${errorBase}.value.${code}` as BaseTextKey);
-}
 
 const documentId = createWorkflowDocumentId(`node-tool-trusted-metadata-${id}`);
 const documentStore = useWorkflowDocumentStore(documentId);
@@ -180,75 +153,54 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.metadata" data-test-id="agent-node-tool-trusted-metadata">
-		<div :class="$style.header">
-			<div :class="$style.heading">
-				<N8nText size="small" bold>{{ i18n.baseText('agents.toolConfig.metadata.title') }}</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.toolConfig.metadata.hint') }}
-				</N8nText>
-			</div>
-			<N8nButton
-				variant="ghost"
-				size="small"
-				:label="i18n.baseText('agents.toolConfig.metadata.add')"
-				data-test-id="agent-trusted-metadata-add"
-				:disabled="props.disabled"
-				@click="addRow"
-			/>
+	<div
+		v-if="rows.length > 0"
+		:class="$style.metadata"
+		data-test-id="agent-node-tool-trusted-metadata"
+	>
+		<div :class="$style.heading">
+			<N8nText size="small" bold>{{ i18n.baseText('agents.toolConfig.metadata.title') }}</N8nText>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('agents.toolConfig.metadata.hint') }}
+			</N8nText>
 		</div>
-		<N8nText v-if="rowEntries.length === 0" size="xsmall" color="text-light">
-			{{ i18n.baseText('agents.toolConfig.metadata.empty') }}
-		</N8nText>
 		<div
-			v-for="(entry, index) in rowEntries"
-			:key="entry.key"
+			v-for="row in rows"
+			:key="row.name"
 			:class="$style.row"
 			role="group"
-			:aria-label="entry.row.name || i18n.baseText('agents.toolConfig.metadata.add')"
+			:aria-label="row.name"
+			data-test-id="agent-trusted-metadata-row"
 		>
-			<div :class="$style.nameCell">
-				<N8nInput
-					:model-value="entry.row.name"
-					name="trustedMetadataName"
-					:placeholder="i18n.baseText('agents.toolConfig.metadata.key.placeholder')"
-					:disabled="props.disabled"
-					@update:model-value="updateName(entry, String($event))"
-				/>
-				<N8nText
-					v-if="props.submitted && rowNameError(entry)"
-					size="xsmall"
-					color="danger"
-					role="alert"
-				>
-					{{ nameErrorText(entry) }}
+			<div :class="$style.name">
+				<N8nText size="small" bold data-test-id="agent-trusted-metadata-name">
+					{{ row.name }}
+				</N8nText>
+				<N8nText size="xsmall" color="text-light">
+					{{ i18n.baseText('agents.toolConfig.metadata.default.label') }}
 				</N8nText>
 			</div>
 			<div :class="$style.valueCell">
 				<ParameterInputFull
-					:parameter="parameterFor(entry.row)"
-					:value="entry.row.value"
-					:input-mode="entry.row.mode"
-					:path="`trustedMetadata.${index}`"
+					:parameter="parameterFor(row)"
+					:value="row.value"
+					:input-mode="row.mode"
+					:path="`trustedMetadata.${row.name}`"
 					:rows="2"
+					:is-read-only="props.disabled"
+					hide-label
+					options-position="top-absolute"
 					:display-options="true"
 					:options-overrides="{ hideFocusPanelButton: true }"
 					:disable-from-ai="true"
-					:external-issues="props.submitted && rowValueError(entry) ? [valueErrorText(entry)] : []"
-					@update="updateValue(entry, $event)"
-					@text-input="updateValue(entry, $event)"
-					@update:input-mode="setMode(entry, $event)"
+					:external-issues="
+						props.submitted && trustedMetadataValueError(row) ? [valueErrorText(row)] : []
+					"
+					@update="updateValue(row, $event)"
+					@text-input="updateValue(row, $event)"
+					@update:input-mode="setMode(row, $event)"
 				/>
 			</div>
-			<N8nIconButton
-				icon="trash-2"
-				variant="ghost"
-				size="small"
-				:aria-label="i18n.baseText('agents.toolConfig.metadata.remove')"
-				data-test-id="agent-trusted-metadata-remove"
-				:disabled="props.disabled"
-				@click="removeRow(entry.key)"
-			/>
 		</div>
 	</div>
 </template>
@@ -260,13 +212,6 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--sm);
 }
 
-.header {
-	display: flex;
-	gap: var(--spacing--sm);
-	align-items: baseline;
-	justify-content: space-between;
-}
-
 .heading {
 	display: flex;
 	flex-direction: column;
@@ -275,13 +220,20 @@ onBeforeUnmount(() => {
 
 .row {
 	display: grid;
-	grid-template-columns: minmax(140px, 220px) 1fr auto;
+	grid-template-columns: minmax(140px, 220px) 1fr;
 	gap: var(--spacing--2xs);
 	align-items: start;
 	min-width: 0;
 }
 
-.nameCell,
+.name {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding-top: var(--spacing--2xs);
+	overflow-wrap: anywhere;
+}
+
 .valueCell {
 	display: flex;
 	flex-direction: column;

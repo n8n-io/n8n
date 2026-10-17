@@ -74,7 +74,7 @@ const defaultJsonSchemaExample = `{
 
 /** Character rules mirror `TrustedMetadataKeySchema` on the agent tool config side. */
 const TRUSTED_VALUE_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
-const TRUSTED_VALUE_MAX_LENGTH = 64;
+const TRUSTED_VALUE_MAX_LENGTH = 63;
 const TRUSTED_VALUE_RESERVED_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
@@ -86,7 +86,7 @@ function validateTrustedValueName(ctx: IExecuteFunctions, name: string, itemInde
 	if (!TRUSTED_VALUE_NAME_PATTERN.test(name) || name.length > TRUSTED_VALUE_MAX_LENGTH) {
 		throw new NodeOperationError(
 			ctx.getNode(),
-			`"${name}" is not a valid trusted value name. Use up to 64 letters, numbers, underscores, or hyphens, and no spaces.`,
+			`"${name}" is not a valid trusted value name. Use up to 63 letters, numbers, underscores, or hyphens, and no spaces.`,
 			{ itemIndex },
 		);
 	}
@@ -122,6 +122,7 @@ export function getTrustedValues(
 	if (entries.length === 0) return undefined;
 
 	const record: Record<string, unknown> = Object.create(null);
+	const seen = new Set<string>();
 	for (const entry of entries) {
 		const name = typeof entry?.name === 'string' ? entry.name.trim() : '';
 		if (!name) {
@@ -132,11 +133,21 @@ export function getTrustedValues(
 			);
 		}
 		validateTrustedValueName(ctx, name, itemIndex);
+		if (seen.has(name)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`"${name}" is mapped more than once in "Trusted Tool Values". Keep one entry for each name.`,
+				{ itemIndex },
+			);
+		}
+		seen.add(name);
+		// An empty value means "not provided": the agent tool falls back to its default.
+		if (entry?.value === undefined || entry.value === null || entry.value === '') continue;
 		if (isSafeObjectProperty(name)) {
-			setSafeObjectProperty(record, name, entry?.value);
+			setSafeObjectProperty(record, name, entry.value);
 		}
 	}
-	return record;
+	return Object.keys(record).length > 0 ? record : undefined;
 }
 
 export const commonProperties: INodeProperties[] = [
@@ -255,18 +266,19 @@ export const commonProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Trusted Tool Values',
+		displayName: 'Agent Variables',
 		name: 'trustedValues',
-		placeholder: 'Add Trusted Value',
+		placeholder: 'Add Variable',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
-			multipleValueButtonText: 'Add Trusted Value',
+			// The editor lists the variables the agent's tools read and renders one input for each.
+			agentVariables: true,
 		},
 		default: {},
 		description:
-			"Values the agent's node tools always receive. Each name maps onto a trusted metadata key that tool already declares in the agent; the model never sees or changes these values.",
-		hint: 'Names must match trusted metadata keys declared in the agent tool configuration',
+			"Values for the variables the agent's tools read. The model never sees or changes these values.",
+		hint: 'Leave a variable empty to use the default set on the agent tool',
 		options: [
 			{
 				displayName: 'Values',

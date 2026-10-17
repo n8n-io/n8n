@@ -1140,6 +1140,62 @@ describe('MessageAnAgent Node', () => {
 
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow('is a reserved name');
 		});
+
+		it('throws when the same trusted value name is mapped twice', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				trustedValues: {
+					values: [
+						{ name: 'tenant_id', value: 'a' },
+						{ name: 'tenant_id', value: 'b' },
+					],
+				},
+			});
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'"tenant_id" is mapped more than once',
+			);
+		});
+
+		it('throws when a trusted value name is longer than 63 characters', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ trustedValues: { values: [{ name: 'a'.repeat(64), value: 'x' }] } });
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'is not a valid trusted value name',
+			);
+		});
+
+		it('leaves empty values out so the tool default applies', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({
+				trustedValues: {
+					values: [
+						{ name: 'tenant_id', value: 'tenant-42' },
+						{ name: 'region', value: '' },
+					],
+				},
+			});
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await node.execute.call(executeFunctions);
+
+			const [agentInfo] = executeFunctions.executeAgent.mock.calls[0];
+			expect(agentInfo.trustedValues).toEqual({ tenant_id: 'tenant-42' });
+		});
+
+		it('omits trustedValues when every mapped value is empty', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ trustedValues: { values: [{ name: 'region', value: '' }] } });
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await node.execute.call(executeFunctions);
+
+			const [agentInfo] = executeFunctions.executeAgent.mock.calls[0];
+			expect('trustedValues' in agentInfo).toBe(false);
+		});
 	});
 });
 

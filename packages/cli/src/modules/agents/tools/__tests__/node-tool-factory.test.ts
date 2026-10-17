@@ -1,7 +1,7 @@
 import type { AgentJsonToolConfig } from '@n8n/api-types';
 import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { hasPolicyRefusalMarker, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
+import { hasPolicyRefusalMarker, UserError, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -656,5 +656,218 @@ describe('resolveNodeTool → trusted metadata', () => {
 				inputData: [{ json: { order_id: 'ORD-123' } }],
 			}),
 		);
+	});
+});
+
+describe('resolveNodeTool → variables', () => {
+	const makeTool = async (
+		executeInline: ReturnType<typeof vi.fn>,
+		extra: Partial<AgentJsonToolConfig & { type: 'node' }> = {},
+	) =>
+		await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: {
+					...baseToolSchema.node,
+					nodeParameters: { filter: '={{ $json.tenant_id }}' },
+				},
+				...extra,
+			} as never,
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+	const ok = () => vi.fn().mockResolvedValue({ status: 'success', data: [] });
+	const inputOf = (fn: ReturnType<typeof vi.fn>) =>
+		(fn.mock.calls[0][0] as { inputData: Array<{ json: unknown }> }).inputData[0].json;
+
+	it('uses the caller value for a detected $json variable', async () => {
+		const executeInline = ok();
+		const tool = await makeTool(executeInline);
+		await tool.handler!({ q: 'x' } as never, { runtimeMetadata: { tenant_id: 'acme' } } as never);
+		expect(inputOf(executeInline)).toEqual({ q: 'x', tenant_id: 'acme' });
+	});
+
+	it('uses the tool default when the caller sends nothing', async () => {
+		const executeInline = ok();
+		const tool = await makeTool(executeInline, {
+			trustedMetadata: { tenant_id: { mode: 'fixed', value: 'default-t' } },
+		});
+		await tool.handler!({ q: 'x' } as never, {} as never);
+		expect(inputOf(executeInline)).toEqual({ q: 'x', tenant_id: 'default-t' });
+	});
+
+	it('lets the caller win over the default', async () => {
+		const executeInline = ok();
+		const tool = await makeTool(executeInline, {
+			trustedMetadata: { tenant_id: { mode: 'fixed', value: 'default-t' } },
+		});
+		await tool.handler!({} as never, { runtimeMetadata: { tenant_id: 'caller-t' } } as never);
+		expect(inputOf(executeInline)).toEqual({ tenant_id: 'caller-t' });
+	});
+
+	it('falls back to the default when the caller value is empty', async () => {
+		const executeInline = ok();
+		const tool = await makeTool(executeInline, {
+			trustedMetadata: { tenant_id: { mode: 'fixed', value: 'default-t' } },
+		});
+		await tool.handler!({} as never, { runtimeMetadata: { tenant_id: '' } } as never);
+		expect(inputOf(executeInline)).toEqual({ tenant_id: 'default-t' });
+	});
+
+	it('throws a UserError naming the variable when no value exists', async () => {
+		const executeInline = ok();
+		const tool = await makeTool(executeInline);
+		const promise = tool.handler!({} as never, { runtimeMetadata: { tenant_id: null } } as never);
+		await expect(promise).rejects.toBeInstanceOf(UserError);
+		await expect(promise).rejects.toThrow('"tenant_id"');
+		expect(executeInline).not.toHaveBeenCalled();
+	});
+
+	it('does not treat $fromAI keys as variables', async () => {
+		const executeInline = ok();
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: {
+					...baseToolSchema.node,
+					nodeParameters: {
+						a: "={{ $fromAI('order_id', 'The order', 'string') }}",
+						b: '={{ $json.order_id }}',
+					},
+				},
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+		await tool.handler!({ order_id: 'ORD-1' } as never, {} as never);
+		expect(inputOf(executeInline)).toEqual({ order_id: 'ORD-1' });
+	});
+
+	it('does not let a model-supplied same-named argument win', async () => {
+		const executeInline = ok();
+		const tool = await makeTool(executeInline);
+		await tool.handler!(
+			{ tenant_id: 'invented' } as never,
+			{ runtimeMetadata: { tenant_id: 'caller-t' } } as never,
+		);
+		expect(inputOf(executeInline)).toEqual({ tenant_id: 'caller-t' });
+	});
+});
+
+describe('resolveNodeTool → schema sanitizing of non-object shapes', () => {
+	const build = async (introspected: unknown) => {
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'x' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+		return await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: { tenant_id: { mode: 'fixed', value: 'tenant_789' } },
+			},
+			{
+				executor: {
+					introspectSupplyDataToolSchema: vi.fn().mockResolvedValue(introspected),
+				} as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+	};
+
+	it('removes trusted keys from every zod discriminated-union variant', async () => {
+		const tool = await build(
+			z.discriminatedUnion('kind', [
+				z.object({ kind: z.literal('a'), tenant_id: z.string(), q: z.string() }),
+				z.object({ kind: z.literal('b'), tenant_id: z.string(), r: z.string() }),
+			]),
+		);
+		const schema = tool.inputSchema as z.ZodTypeAny;
+		expect(schema.safeParse({ kind: 'a', q: '1' }).success).toBe(true);
+		expect(schema.safeParse({ kind: 'b', r: '1' }).success).toBe(true);
+		const json = JSON.stringify(
+			(await import('zod-to-json-schema')).zodToJsonSchema(schema as never),
+		);
+		expect(json).not.toContain('tenant_id');
+	});
+
+	it('removes trusted keys through optional, nullable, union and intersection wrappers', async () => {
+		const tool = await build(
+			z
+				.intersection(
+					z.object({ tenant_id: z.string(), q: z.string() }),
+					z.union([
+						z.object({ tenant_id: z.string(), a: z.string() }),
+						z.object({ b: z.string() }),
+					]),
+				)
+				.optional(),
+		);
+		const schema = tool.inputSchema as z.ZodTypeAny;
+		expect(schema.safeParse({ q: 'x', a: 'y' }).success).toBe(true);
+		expect(schema.safeParse(undefined).success).toBe(true);
+		const json = JSON.stringify(
+			(await import('zod-to-json-schema')).zodToJsonSchema(schema as never),
+		);
+		expect(json).not.toContain('tenant_id');
+	});
+
+	it('removes trusted keys from JSON-schema anyOf/oneOf/allOf variants', async () => {
+		const variant = {
+			type: 'object',
+			properties: { tenant_id: { type: 'string' }, q: { type: 'string' } },
+			required: ['tenant_id', 'q'],
+		};
+		const tool = await build({ anyOf: [variant], oneOf: [variant], allOf: [variant] });
+		const json = JSON.stringify(tool.inputSchema);
+		expect(json).not.toContain('tenant_id');
+		expect(json).toContain('"q"');
+	});
+});
+
+describe('resolveNodeTool → result redaction', () => {
+	it('redacts echoed trusted values without mutating the original result', async () => {
+		const original = {
+			status: 'success',
+			data: [{ json: { echoed: 'tenant_789_secret', nested: ['tenant_789_secret', 'other'] } }],
+		};
+		const executeInline = vi.fn().mockResolvedValue(original);
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: { tenant_id: { mode: 'fixed', value: 'tenant_789_secret' } },
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+		const result = await tool.handler!({} as never, {} as never);
+		expect(result).toEqual({
+			status: 'success',
+			data: [{ json: { echoed: '[redacted]', nested: ['[redacted]', 'other'] } }],
+		});
+		expect(original.data[0].json.echoed).toBe('tenant_789_secret');
+	});
+
+	it('redacts caller-mapped values and leaves short values alone', async () => {
+		const executeInline = vi.fn().mockResolvedValue({
+			status: 'success',
+			data: [{ json: { a: 'caller-secret-value', b: 'short' } }],
+		});
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: { ...baseToolSchema.node, nodeParameters: {} },
+				trustedMetadata: { tenant_id: { mode: 'fixed', value: 'short' } },
+			},
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+		const result = await tool.handler!(
+			{} as never,
+			{ runtimeMetadata: { tenant_id: 'caller-secret-value' } } as never,
+		);
+		expect(result).toEqual({
+			status: 'success',
+			data: [{ json: { a: '[redacted]', b: 'short' } }],
+		});
 	});
 });

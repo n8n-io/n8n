@@ -848,7 +848,14 @@ describe('NodeToolJsonConfigSchema — trustedMetadata', () => {
 		expect(AgentJsonConfigSchema.safeParse(toolWithMetadata(trustedMetadata)).success).toBe(false);
 	});
 
-	it.each(['', 'a'.repeat(65), 'tenant id', 'tenant/id'])(
+	it('accepts a 63-character metadata name', () => {
+		const result = AgentJsonConfigSchema.safeParse(
+			toolWithMetadata({ ['a'.repeat(63)]: { mode: 'fixed', value: 'x' } }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it.each(['', 'a'.repeat(64), 'tenant id', 'tenant/id'])(
 		'rejects the invalid metadata name %s',
 		(name) => {
 			const result = AgentJsonConfigSchema.safeParse(

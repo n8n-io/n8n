@@ -52,6 +52,11 @@ export interface BackgroundSpawnRequest {
 	parentResourceId: string;
 	parentSandboxPrincipalHash: string;
 	parentMessageContext?: IntegrationMessageContext | null;
+	/**
+	 * Caller-mapped trusted tool metadata of the parent run. Not persisted: a
+	 * child resumed later (approval or pause) continues without these values.
+	 */
+	runtimeMetadata?: Record<string, unknown>;
 }
 
 /**
@@ -140,6 +145,9 @@ export class SubAgentBackgroundRunner {
 					backgroundJobId: jobId,
 					shouldPause: async () => await this.jobService.shouldPause(jobId),
 					parentMessageContext: request.parentMessageContext,
+					...(request.runtimeMetadata !== undefined
+						? { runtimeMetadata: request.runtimeMetadata }
+						: {}),
 					// The parent thread is the root session: the child debits it, not
 					// its own thread id, and its descendants keep the same bucket.
 					rootSessionId: request.parentThreadId,

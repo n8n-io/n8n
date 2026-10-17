@@ -227,6 +227,37 @@ describe('useAgentToolRefAdapter', () => {
 			});
 		});
 
+		describe('trustedMetadata', () => {
+			const base: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Http',
+				trustedMetadata: { old: { mode: 'fixed', value: 'stale' } },
+				node: { nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 1, nodeParameters: {} },
+			};
+			const node: INode = {
+				id: 'n-1',
+				name: 'Http',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			};
+
+			it('replaces stored metadata with the new record', () => {
+				const updated = updateToolRefFromNode(base, node, {
+					fresh: { mode: 'expression', value: '={{ 1 }}' },
+				});
+				expect((updated as { trustedMetadata?: unknown }).trustedMetadata).toEqual({
+					fresh: { mode: 'expression', value: '={{ 1 }}' },
+				});
+			});
+
+			it('removes metadata when undefined is passed', () => {
+				const updated = updateToolRefFromNode(base, node, undefined);
+				expect('trustedMetadata' in updated).toBe(false);
+			});
+		});
+
 		it('drops credentials whose id is not yet persisted (null id)', () => {
 			const original: AgentJsonToolRef = {
 				type: 'node',

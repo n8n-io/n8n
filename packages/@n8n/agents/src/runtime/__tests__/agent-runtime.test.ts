@@ -4453,6 +4453,36 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		);
 	});
 
+	it('passes runtimeMetadata to the onCancellation context', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' }, { continuation: { key: 'k' } });
+		});
+		const onCancellation = makeCancellationSpy();
+		const suspendTool = makeSuspendingTool('suspend_tool', handler, onCancellation);
+
+		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		streamText.mockReturnValueOnce(makeStreamSuccess('Cancelled'));
+
+		const resumed = await runtime.resume('stream', createCancellation('Stop'), {
+			runId,
+			toolCallId,
+			runtimeMetadata: { tenant_id: 'acme' },
+		});
+		await collectChunks(resumed.stream as ReadableStream<unknown>);
+
+		expect(onCancellation).toHaveBeenCalledTimes(1);
+		expect(onCancellation.mock.calls[0][1].runtimeMetadata).toEqual({ tenant_id: 'acme' });
+	});
+
 	it('streams skipped sibling tool results when cancelling one of multiple suspensions', async () => {
 		const handler = vi.fn(async (input, ctx: InterruptibleToolContext) => {
 			if (ctx.resumeData) return { approved: true };

@@ -160,3 +160,69 @@ describe('AgentToolConfigForm MCP configuration', () => {
 		expect(wrapper.emitted('credential-deleted')).toEqual([[]]);
 	});
 });
+
+describe('AgentToolConfigForm variable defaults', () => {
+	const ParameterInputStub = defineComponent({
+		props: ['value', 'inputMode'],
+		emits: ['update', 'text-input', 'update:input-mode'],
+		template: '<div data-test-id="param-stub" />',
+	});
+
+	function renderNodeToolForm(onConfirm: ReturnType<typeof vi.fn>) {
+		return mount(AgentToolConfigForm, {
+			props: {
+				data: {
+					toolRef: {
+						type: 'node',
+						name: 'Dashboard',
+						trustedMetadata: { dashboard_url: { mode: 'fixed', value: 'https://old.test' } },
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequestTool',
+							nodeTypeVersion: 1,
+							nodeParameters: { url: '={{ $json.dashboard_url }}/trpc' },
+						},
+					},
+					supportsToolApproval: false,
+					onConfirm,
+				},
+			},
+			global: {
+				plugins: [createTestingPinia({ stubActions: false })],
+				stubs: {
+					AgentToolConfigNodeContent: NodeContentStub,
+					ParameterInputFull: ParameterInputStub,
+				},
+			},
+		});
+	}
+
+	it('persists an edited default on save', async () => {
+		const onConfirm = vi.fn();
+		const wrapper = renderNodeToolForm(onConfirm);
+		await flushPromises();
+
+		const input = wrapper.findComponent(ParameterInputStub);
+		expect(input.props('value')).toBe('https://old.test');
+		input.vm.$emit('update', { value: 'https://new.test' });
+		await flushPromises();
+
+		expect(confirm(wrapper)).toBe(true);
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				trustedMetadata: { dashboard_url: { mode: 'fixed', value: 'https://new.test' } },
+			}),
+		);
+	});
+
+	it('removes the default from the saved tool when it is cleared', async () => {
+		const onConfirm = vi.fn();
+		const wrapper = renderNodeToolForm(onConfirm);
+		await flushPromises();
+
+		wrapper.findComponent(ParameterInputStub).vm.$emit('update', { value: '' });
+		await flushPromises();
+
+		expect(confirm(wrapper)).toBe(true);
+		expect(onConfirm.mock.calls[0][0]).not.toHaveProperty('trustedMetadata');
+	});
+});
