@@ -14,7 +14,12 @@ vi.mock('../resumable-stream-executor', async () => {
 	};
 });
 
-const emptyWorkSummary: WorkSummary = { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 };
+const emptyWorkSummary: WorkSummary = {
+	toolCalls: [],
+	totalToolCalls: 0,
+	totalToolErrors: 0,
+	askedClarifyingQuestion: false,
+};
 
 function createLogger() {
 	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };

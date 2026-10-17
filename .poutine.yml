@@ -52,8 +52,8 @@ skip:
       # Uses merge commit SHA from GitHub - the code has already been reviewed
       # and merged, not arbitrary PR code.
       - .github/workflows/test-unit-reusable.yml
-      # Permission-gated: only maintainers (admin/write/maintain) can trigger
-      # via /test-workflows comment. Verified in test-workflows-pr-comment.yml.
+      # Reachable only from test-workflows-nightly.yml, which is
+      # workflow_dispatch-only, so the ref comes from a maintainer, not a PR.
       - .github/workflows/test-workflows-callable.yml
       # Reusable workflow reachable only via workflow_dispatch (manual) or from
       # ci-mcp-evals.yml, which is itself workflow_dispatch-only — never from a

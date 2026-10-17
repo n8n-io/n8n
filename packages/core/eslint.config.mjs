@@ -9,16 +9,41 @@ export default defineConfig(
 			// TODO: Lower the complexity threshold
 			complexity: ['error', 27],
 			'n8n-local-rules/no-dynamic-regexp': 'error',
-
-			// TODO: Remove these
-			'no-prototype-builtins': 'warn',
-			'no-ex-assign': 'warn',
-			'no-useless-escape': 'warn',
-			'@typescript-eslint/no-require-imports': 'warn',
-			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/prefer-optional-chain': 'warn',
-			'@typescript-eslint/no-array-delete': 'warn',
 		},
+	},
+	{
+		files: [
+			'src/execution-engine/node-execution-context/execute-context.ts',
+			'src/execution-engine/node-execution-context/execute-single-context.ts',
+			'src/execution-engine/node-execution-context/supply-data-context.ts',
+			'src/execution-engine/node-execution-context/utils/get-input-connection-data.ts',
+			'src/nodes-loader/directory-loader.ts',
+		],
+		rules: { 'no-prototype-builtins': 'warn' },
+	},
+	{
+		files: ['src/execution-engine/node-execution-context/utils/get-input-connection-data.ts'],
+		rules: { 'no-ex-assign': 'warn' },
+	},
+	{
+		files: [
+			'src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts',
+			'src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts',
+			'src/execution-engine/routing-node.ts',
+		],
+		rules: { '@typescript-eslint/no-base-to-string': 'warn' },
+	},
+	{
+		files: ['src/nodes-loader/load-class-in-isolation.ts', 'test/helpers/index.ts'],
+		rules: { '@typescript-eslint/no-require-imports': 'warn' },
+	},
+	{
+		files: ['src/execution-engine/node-execution-context/__tests__/execute-single-context.test.ts'],
+		rules: { '@typescript-eslint/no-array-delete': 'warn' },
+	},
+	{
+		files: ['src/execution-engine/__tests__/routing-node.test.ts'],
+		rules: { '@typescript-eslint/prefer-optional-chain': 'warn' },
 	},
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__test__/**/*.ts', '**/__tests__/**/*.ts'],

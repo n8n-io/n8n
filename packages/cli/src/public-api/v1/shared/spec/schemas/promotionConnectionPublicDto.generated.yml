@@ -21,6 +21,9 @@ properties:
       remoteUrl:
         type: string
         minLength: 1
+      repositoryPath:
+        type: string
+        description: The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.
     required:
       - schemaVersion
       - remoteUrl
@@ -38,6 +41,7 @@ properties:
         type: string
         enum:
           - git
+          - gitlab
       authType:
         type: string
         enum:
@@ -74,6 +78,16 @@ properties:
           updatedAt:
             type: string
             format: date-time
+          checkout:
+            type: object
+            properties:
+              hasCheckout:
+                type: boolean
+              matchesConfig:
+                type: boolean
+            required:
+              - hasCheckout
+              - matchesConfig
           settings:
             type: object
             properties:
@@ -94,6 +108,7 @@ properties:
           - name
           - createdAt
           - updatedAt
+          - checkout
           - settings
       promote:
         type: object
@@ -110,6 +125,16 @@ properties:
           updatedAt:
             type: string
             format: date-time
+          checkout:
+            type: object
+            properties:
+              hasCheckout:
+                type: boolean
+              matchesConfig:
+                type: boolean
+            required:
+              - hasCheckout
+              - matchesConfig
           settings:
             type: object
             properties:
@@ -133,6 +158,7 @@ properties:
           - name
           - createdAt
           - updatedAt
+          - checkout
           - settings
   createdAt:
     type: string

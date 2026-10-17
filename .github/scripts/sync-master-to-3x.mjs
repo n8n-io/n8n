@@ -24,20 +24,16 @@
  *      the human's fix commit is in the queue and does the real work. Stalls the strategy
  *      option cannot settle (modify/delete — `-X` never resolves those) are resolved in
  *      place toward the queue commit's side. Tree is then proven.
- *   3. master conflicts with 3.x, but ONLY on mechanical files — tool-generated content
- *      with a deterministic resolution (the pnpm lockfile, bot-maintained data files).
- *      These are resolved in place while the replay is stopped, exactly as a human
- *      resolver would (regenerate the lockfile, take master's blob), and folded into the
- *      stalled commit — still no commit of its own and no PR. When the `-X theirs` route
- *      resolves lockfile hunks without stalling, the lockfile is reconciled at the tip
- *      instead (folded into the tip commit by amending — never a commit of its own).
- *   4. The content does NOT reconcile on a real code path → a genuinely new conflict. 3.x
- *      is left UNTOUCHED and a draft PR is opened on the sync branch carrying the conflict
- *      markers — with the mechanical files pre-resolved, so the resolver only deals with
- *      real code — naming both ends of the clash: the authors of the breaking commits and
- *      the master commits that touched the same files. Delete/modify conflicts leave no
- *      markers, so they are resolved toward 3.x and reported as an explicit decision
- *      instead. Syncs pause until it is merged.
+ *   3. master conflicts with 3.x, but ONLY on non-lockfile mechanical files — bot-maintained
+ *      data with a deterministic resolution. These are resolved in place while the replay
+ *      is stopped and folded into the stalled commit — still no commit of its own and no PR.
+ *   4. The content does NOT reconcile on a real code path, or `pnpm-lock.yaml` conflicts →
+ *      a genuinely new conflict. 3.x is left UNTOUCHED and a draft PR is opened on the sync
+ *      branch carrying the conflict markers. Other mechanical files are pre-resolved. The
+ *      lockfile is left for the resolver because pnpm validation is not reliable while the
+ *      merge index is unresolved. Delete/modify conflicts leave no markers, so they are
+ *      resolved toward 3.x and reported as an explicit decision instead. Syncs pause until
+ *      the PR is merged.
  *
  * The conflict branch carries the conflict markers, so the resolver sees exactly what clashed
  * and the required checks stay red until they fix it in a commit of their own. A conflict git
@@ -64,6 +60,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
 	attempt,
@@ -88,7 +87,8 @@ export const LOCKFILE = 'pnpm-lock.yaml';
 
 /**
  * Paths whose conflicts are MECHANICAL: tool-generated files with a deterministic
- * resolution, so no human judgement is lost by resolving them automatically.
+ * resolution during replay. Conflict PRs defer the lockfile but still pre-resolve the
+ * other paths.
  * Keys are exact repo-relative paths; values pick the resolution strategy:
  *   - 'pnpm-regen':  pnpm natively merges a conflicted lockfile when regenerating
  *                    (`pnpm install --lockfile-only`).
@@ -131,12 +131,18 @@ export function classifyPaths(paths) {
 	return { mechanical, code };
 }
 
-// A conflicted manifest makes lockfile regeneration meaningless until it is resolved
-// (catalogs live in pnpm-workspace.yaml, so it counts as a manifest too).
-export function blocksLockfileRegen(codePaths) {
-	return codePaths.some(
-		(p) => p === 'package.json' || p.endsWith('/package.json') || p === 'pnpm-workspace.yaml',
-	);
+/** Run the trusted frozen install without using a store restored by the sync job. */
+export function validateLockfile(pnpm, env = process.env) {
+	const validationDir = join(env.RUNNER_TEMP || tmpdir(), `n8n-sync-lockfile-${randomUUID()}`);
+	pnpm([
+		'install',
+		'--frozen-lockfile',
+		'--trust-lockfile',
+		'--store-dir',
+		join(validationDir, 'store'),
+		'--virtual-store-dir',
+		join(validationDir, 'virtual-store'),
+	]);
 }
 
 /**
@@ -150,6 +156,12 @@ export function resolveMechanicalPath({ git, pnpm, path, masterSha, log = consol
 		// is required: pnpm flips `--frozen-lockfile` on by default when CI=true.
 		log(`Regenerating ${path} with pnpm...`);
 		pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
+		try {
+			validateLockfile(pnpm);
+		} catch (error) {
+			git(['checkout', '--conflict=merge', '--', path]);
+			throw error;
+		}
 		git(['add', '--', path]);
 		return;
 	}
@@ -305,6 +317,7 @@ export function reconcileWithMergeTreeAtTip({
  */
 export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log }) {
 	pnpm(['install', '--lockfile-only', '--no-frozen-lockfile']);
+	validateLockfile(pnpm);
 	if (attempt(git, ['diff', '--quiet', '--', LOCKFILE]).ok) return;
 	if (git(['rev-parse', 'HEAD']) === masterSha) {
 		throw new Error('Lockfile reconciliation would amend a master commit; refusing.');
@@ -316,28 +329,28 @@ export function reconcileLockfileAtTip({ git, pnpm, masterSha, log = console.log
 
 /**
  * Build the conflict branch: master merged into 3.x with the conflict markers committed as
- * they are — except mechanical files, which are pre-resolved so the resolver only deals
- * with real code conflicts. The remaining markers are the review surface: the resolver sees
- * exactly what clashed, and the required checks stay red until they fix it, so the PR
- * cannot be merged half-resolved (an auto-resolved branch would be green with master's
- * change silently dropped).
+ * they are — except non-lockfile mechanical files, which are pre-resolved so the resolver
+ * only deals with code and lockfile conflicts. The remaining markers are the review surface:
+ * the resolver sees exactly what clashed, and the required checks stay red until they fix it,
+ * so the PR cannot be merged half-resolved (an auto-resolved branch would be green with
+ * master's change silently dropped).
  *
  * Delete/modify conflicts have no markers to leave, so they are resolved toward 3.x's side
  * — the same side the replay favours — and reported separately. Left to `add -A` they would
  * commit master's surviving blob instead, re-adding a file 3.x deleted on purpose with
  * nothing in the diff to suggest a decision was made.
  *
- * The lockfile is left with its markers when a manifest is among the code conflicts
- * (regenerating is meaningless until the manifests are resolved) or when the regen fails
- * transiently — flagged via `lockfileDeferred` so the PR body carries the instruction.
+ * The lockfile is always left with its markers. pnpm install validation can give different
+ * results while the merge index is unresolved, even with isolated stores. `lockfileDeferred`
+ * makes the PR body carry the resolver instruction.
  *
  * 3.x never carries the markers at its tip, and not for long in its history either: this
  * merge commit is dropped by the next replay, which takes the queue's commits only.
  *
  * @returns {{ files: string[], deleteConflicts: Array<{path: string, deletedBy: string}>,
  *   preResolved: string[], lockfileDeferred: boolean }}
- *   `files` is the marker-carrying list the PR reports, or every conflict when none are
- *   code (a fallback after a failed auto-resolution); owners are attributed for both lists.
+ *   `files` is the code-conflict list, or the unresolved mechanical list when there are no
+ *   code conflicts. Owners are attributed for both lists.
  */
 export function buildConflictBranch({
 	git,
@@ -361,8 +374,7 @@ export function buildConflictBranch({
 	const preResolved = [];
 	let lockfileDeferred = false;
 	for (const path of mechanical) {
-		const needsManifests = MECHANICAL_PATHS[path] === 'pnpm-regen' && blocksLockfileRegen(code);
-		if (needsManifests) {
+		if (path === LOCKFILE) {
 			lockfileDeferred = true;
 			continue;
 		}
@@ -373,7 +385,6 @@ export function buildConflictBranch({
 			// Degrade gracefully (e.g. a transient registry failure): leave the markers
 			// for the resolver rather than failing the PR-opening path.
 			log(`warning: could not pre-resolve ${path}: ${error.message}`);
-			if (MECHANICAL_PATHS[path] === 'pnpm-regen') lockfileDeferred = true;
 		}
 	}
 
@@ -393,8 +404,13 @@ export function buildConflictBranch({
 
 	git(['add', '-A']);
 	git(['commit', '--no-edit', '--no-verify']);
+	const preResolvedSet = new Set(preResolved);
+	const unresolvedMechanical = mechanical.filter((path) => !preResolvedSet.has(path));
 	return {
-		files: code.length > 0 ? code.filter((p) => !deleted.has(p)) : all,
+		files:
+			code.length > 0
+				? code.filter((path) => !deleted.has(path))
+				: unresolvedMechanical.filter((path) => !deleted.has(path)),
 		deleteConflicts,
 		preResolved,
 		lockfileDeferred,
@@ -543,7 +559,7 @@ export async function sync({
 	if (!merged.ok) {
 		const { mechanical, code } = classifyPaths(merged.conflictedPaths);
 
-		if (code.length === 0 && mechanical.length > 0) {
+		if (code.length === 0 && mechanical.length > 0 && !mechanical.includes(LOCKFILE)) {
 			log(
 				`master conflicts with ${target} only on mechanical files (${mechanical.join(', ')}); auto-resolving.`,
 			);
@@ -584,7 +600,9 @@ export async function sync({
 			log('Mechanical auto-resolution did not complete; falling back to a conflict PR.');
 		} else {
 			log(
-				`master conflicts with ${target} — leaving ${target} untouched and opening a conflict PR.`,
+				mechanical.includes(LOCKFILE)
+					? `master conflicts with ${target} on ${LOCKFILE} — deferring the lockfile and opening a conflict PR.`
+					: `master conflicts with ${target} — leaving ${target} untouched and opening a conflict PR.`,
 			);
 		}
 

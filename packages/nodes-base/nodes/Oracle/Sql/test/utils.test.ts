@@ -3,7 +3,7 @@ import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from '
 import * as oracleDBTypes from 'oracledb';
 import { mock } from 'vitest-mock-extended';
 
-import type { ColumnMap, ExecuteOpBindParam } from '../helpers/interfaces';
+import type { ExecuteOpBindParam, OracleDBNodeCredentials, ColumnMap } from '../helpers/interfaces';
 import {
 	addSortRules,
 	addWhereClauses,
@@ -14,6 +14,35 @@ import {
 	getOutBindDefsForExecute,
 	quoteSqlIdentifier,
 } from '../helpers/utils';
+import { getOracleDBConfig } from '../transport';
+
+describe('getOracleDBConfig', () => {
+	it('should convert numeric credential values to numbers', () => {
+		const credentials = {
+			useThickMode: false,
+			useSSL: false,
+			poolMin: '0',
+			poolMax: '4',
+			poolIncrement: '1',
+			maxLifetimeSession: '120',
+			poolTimeout: '60',
+			connectTimeout: '10',
+			transportConnectTimeout: '20',
+			expireTime: '30',
+		} as unknown as OracleDBNodeCredentials;
+
+		expect(getOracleDBConfig(credentials)).toMatchObject({
+			poolMin: 0,
+			poolMax: 4,
+			poolIncrement: 1,
+			maxLifetimeSession: 120,
+			poolTimeout: 60,
+			connectTimeout: 10,
+			transportConnectTimeout: 20,
+			expireTime: 30,
+		});
+	});
+});
 
 describe('Test addWhereClauses', () => {
 	const schema: ColumnMap = { ID: { type: 'NUMBER', nullable: true, maxSize: 0 } };

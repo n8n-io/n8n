@@ -6,13 +6,13 @@
  * committed baseline — new code stays clean, the backlog burns down over time.
  *
  * Mirrors the incremental-cleanup approach already used by the Playwright
- * janitor (`.janitor-baseline.json`). Baseline is updated manually after real
- * fixes, never automatically.
+ * janitor (`.janitor-baseline.json`). The nightly workflow
+ * `util-update-boundaries-baseline.yml` lowers the baseline when master has
+ * fewer issues. Nothing raises it automatically: a count above the baseline
+ * fails the nightly instead.
  *
- * The baseline is the POST-BUILD count: CI's lint job builds dependencies before
- * this check runs, and built dist trees surface ~8 extra issues that a cold
- * checkout doesn't. Run `pnpm build` before `pnpm boundaries:baseline`, or CI
- * will read a higher count than you saw locally.
+ * Turbo 2.11 skips gitignored files, so built dist trees no longer change the
+ * count. It also checks dynamic `import()` calls, which 2.9 did not.
  *
  * ponytail: parses turbo's "N issues found" line — the ratchet is a single
  * number, not a per-issue snapshot, so it can't tell a fixed issue from a new
@@ -24,7 +24,11 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const write = process.argv.includes('--write');
-const baselineFile = join(dirname(fileURLToPath(import.meta.url)), '..', '.boundaries-baseline.json');
+const baselineFile = join(
+	dirname(fileURLToPath(import.meta.url)),
+	'..',
+	'.boundaries-baseline.json',
+);
 const baseline = JSON.parse(readFileSync(baselineFile, 'utf8')).issues;
 
 // turbo exits non-zero when issues exist; we read the output regardless.
@@ -43,6 +47,11 @@ if (!match) {
 // `implicitDependencies` only covers undeclared-package issues, not path leaves.
 const exemptedHarness = (output.match(/import `@nodes-testing\/[^`]+` leaves the package/g) ?? [])
 	.length;
+
+// Container tests use this path to share the test-only stack implementation.
+const exemptedContainerHarness = (
+	output.match(/import `\.\.\/\.\.\/\.\.\/containers\/[^`]+` leaves the package/g) ?? []
+).length;
 
 // The editor's browser shim for `@n8n/expression-runtime` re-exports that package's
 // source directly: the barrel reaches IsolatedVmBridge, which requires isolated-vm, a
@@ -67,7 +76,7 @@ const exemptedBrowserShim = (
 	) ?? []
 ).length;
 
-const exempted = exemptedHarness + exemptedBrowserShim;
+const exempted = exemptedHarness + exemptedContainerHarness + exemptedBrowserShim;
 const current = Number(match[1]) - exempted;
 
 if (write) {
@@ -77,7 +86,7 @@ if (write) {
 }
 
 console.log(
-	`turbo boundaries: ${current} issues (baseline ${baseline}, ${exemptedHarness} node-test-harness + ${exemptedBrowserShim} browser-shim imports exempted)`,
+	`turbo boundaries: ${current} issues (baseline ${baseline}, ${exemptedHarness} node-test-harness + ${exemptedContainerHarness} container-harness + ${exemptedBrowserShim} browser-shim imports exempted)`,
 );
 
 if (current > baseline) {

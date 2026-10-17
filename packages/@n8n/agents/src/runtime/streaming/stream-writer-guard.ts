@@ -11,15 +11,20 @@ import type { TokenUsage } from '../../types/sdk/agent';
  */
 export class StreamWriterGuard {
 	private closed = false;
+	private readonly closure = new AbortController();
 
 	private errorWritten = false;
 
 	constructor(private readonly writer: WritableStreamDefaultWriter<StreamChunk>) {
-		writer.closed
-			.then(() => {
-				this.closed = true;
-			})
-			.catch(() => {});
+		const close = () => {
+			this.closed = true;
+			this.closure.abort(new Error('Agent stream closed'));
+		};
+		void writer.closed.then(close, close);
+	}
+
+	get closedSignal(): AbortSignal {
+		return this.closure.signal;
 	}
 
 	get isClosed(): boolean {

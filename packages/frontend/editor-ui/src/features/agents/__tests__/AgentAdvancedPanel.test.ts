@@ -44,6 +44,18 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+// The web-search section pulls in the gateway composable; keep it disabled here
+// so no managed option renders and the real gateway store stays out of the mount.
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		balance: { value: undefined },
+		fetchConfig: vi.fn().mockResolvedValue(undefined),
+		fetchWallet: vi.fn().mockResolvedValue(undefined),
+		canServeCredentialType: () => false,
+	}),
+}));
+
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		allCredentials: [
@@ -60,6 +72,15 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
+}));
+
+vi.mock('../components/AgentMemoryModelSetting.vue', () => ({
+	default: {
+		name: 'AgentMemoryModelSetting',
+		template: '<div data-testid="agent-memory-model-setting" />',
+		props: ['config', 'disabled', 'projectId'],
+		emits: ['update:config'],
+	},
 }));
 
 // Numeric/reasoning sub-controls debounce — execute synchronously in the test.
@@ -209,6 +230,7 @@ describe('AgentAdvancedPanel', () => {
 		});
 
 		expect(wrapper.text()).toContain('agents.builder.advanced.title');
+		expect(wrapper.find('[data-testid="agent-memory-model-setting"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-advanced-trigger"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-advanced-chevron"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-behavior-panel"]').isVisible()).toBe(true);
@@ -542,7 +564,7 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 		const input = wrapper.find('[data-testid="agent-max-iterations-input"]');
-		expect(Number(input.element.getAttribute('value'))).toBe(30);
+		expect(Number(input.element.getAttribute('value'))).toBe(100);
 	});
 
 	it('initialises max-iterations input from config', () => {

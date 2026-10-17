@@ -1,10 +1,10 @@
 import type { Plugin } from 'vite';
 
-export const DEFAULT_BACKEND_PORT = 5678;
-export const DEFAULT_EDITOR_PORT = 8080;
+const DEFAULT_BACKEND_PORT = 5678;
+const DEFAULT_EDITOR_PORT = 8080;
 
 // `||` not `??`: an explicitly empty env var must fall back like an unset one.
-export const readDevPort = (env: NodeJS.ProcessEnv, name: string, fallback: number): number =>
+const readDevPort = (env: NodeJS.ProcessEnv, name: string, fallback: number): number =>
 	Number(env[name] || fallback);
 
 const assertDevPort = (env: NodeJS.ProcessEnv, name: string, fallback: number): number => {
@@ -18,9 +18,8 @@ const assertDevPort = (env: NodeJS.ProcessEnv, name: string, fallback: number): 
 };
 
 /**
- * N8N_PORT is the backend's own listen-port var. It moves both the injected
- * BASE_PATH and the REST base URL, so the pair relocates a whole dev instance
- * next to the default one.
+ * N8N_PORT is the backend's own listen-port var. It moves the proxy target, so
+ * the pair relocates a whole dev instance next to the default one.
  */
 export const resolveDevPorts = (env: NodeJS.ProcessEnv) => ({
 	backendPort: assertDevPort(env, 'N8N_PORT', DEFAULT_BACKEND_PORT),
@@ -28,12 +27,22 @@ export const resolveDevPorts = (env: NodeJS.ProcessEnv) => ({
 });
 
 /**
+ * Backend route prefixes the dev server forwards. The trailing `(/|$)` stops a
+ * prefix from also matching editor routes such as `/restore` or `/formatting`.
+ */
+export const BACKEND_PROXY_PATTERN =
+	'^/(rest|api|types|icons|schemas|webhook|webhook-test|form|form-test|mcp|mcp-test|healthz)(/|$)';
+
+/**
  * Dev-server topology, kept out of the `serve` script so the env vars work on
  * Windows too (`cross-env` cannot expand `${N8N_PORT:-5678}`).
  *
+ * The editor and the backend share one origin through the proxy. The Host
+ * header stays the editor's (no `changeOrigin`), so the push origin check
+ * matches the browser's Origin.
+ *
  * `apply: 'serve'` skips builds; the mode/isPreview check skips `vite preview`
- * (serve/production) and vitest (serve/test). Builds must leave
- * VUE_APP_URL_BASE_API unset so the app falls back to window.BASE_PATH.
+ * (serve/production) and vitest (serve/test).
  */
 export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 	name: 'n8n-dev-server-topology',
@@ -43,13 +52,15 @@ export const devServerPlugin = (env: NodeJS.ProcessEnv): Plugin => ({
 
 		const { backendPort, editorPort } = resolveDevPorts(env);
 
-		// Vite's loadEnv reads VUE_* straight out of process.env and runs after
-		// this hook, so the assignment still reaches import.meta.env.
-		// Truthiness, not ??=: an explicitly empty value counts as unset.
-		if (!env.VUE_APP_URL_BASE_API) {
-			env.VUE_APP_URL_BASE_API = `http://localhost:${backendPort}/`;
-		}
-
-		return { server: { host: '0.0.0.0', port: editorPort, strictPort: true } };
+		return {
+			server: {
+				host: '0.0.0.0',
+				port: editorPort,
+				strictPort: true,
+				proxy: {
+					[BACKEND_PROXY_PATTERN]: { target: `http://localhost:${backendPort}`, ws: true },
+				},
+			},
+		};
 	},
 });

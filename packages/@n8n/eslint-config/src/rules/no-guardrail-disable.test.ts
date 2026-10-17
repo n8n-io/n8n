@@ -1,6 +1,6 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
 import { NoGuardrailDisableRule } from './no-guardrail-disable.js';
-import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
+import { NoUnsealedCredentialsEntityWriteRule } from './no-unsealed-credentials-entity-write.js';
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 
 // Register the guarded rules so ESLint can resolve the disable directives under test (an
@@ -11,7 +11,7 @@ const ruleTester = new RuleTester({
 	plugins: {
 		'n8n-local-rules': {
 			rules: {
-				'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
+				'no-unsealed-credentials-entity-write': NoUnsealedCredentialsEntityWriteRule,
 				'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
 				'no-unsealed-workflow-entity-write-audit': NoUnsealedWorkflowEntityWriteRule,
 				'no-guardrail-disable': NoGuardrailDisableRule,
@@ -23,15 +23,18 @@ const ruleTester = new RuleTester({
 const options: [{ guarded: Array<{ rule: string; message: string }> }] = [
 	{
 		guarded: [
-			{ rule: 'misplaced-n8n-typeorm-import', message: 'Add the file to the allowlist.' },
+			{ rule: 'no-unsealed-credentials-entity-write', message: 'Use `updateCredentials`.' },
 			{ rule: 'no-unsealed-workflow-entity-write', message: 'Use `updateContent`.' },
 		],
 	},
 ];
 
-const typeormHit = {
+const credentialsHit = {
 	messageId: 'noDisable' as const,
-	data: { rule: 'misplaced-n8n-typeorm-import', message: 'Add the file to the allowlist.' },
+	data: {
+		rule: 'no-unsealed-credentials-entity-write',
+		message: 'Use `updateCredentials`.',
+	},
 };
 const sealHit = {
 	messageId: 'noDisable' as const,
@@ -39,7 +42,7 @@ const sealHit = {
 };
 const blanket = {
 	messageId: 'noBlanketDisable' as const,
-	data: { rules: 'misplaced-n8n-typeorm-import`, `no-unsealed-workflow-entity-write' },
+	data: { rules: 'no-unsealed-credentials-entity-write`, `no-unsealed-workflow-entity-write' },
 };
 
 ruleTester.run('no-guardrail-disable', NoGuardrailDisableRule, {
@@ -48,8 +51,8 @@ ruleTester.run('no-guardrail-disable', NoGuardrailDisableRule, {
 		{ code: '// eslint-disable-next-line no-console\nconsole.log("x");', options },
 		{ code: '/* eslint-disable no-console, no-debugger */', options },
 		// A plain comment mentioning the rule name is not a disable directive.
-		{ code: '// see misplaced-n8n-typeorm-import for context', options },
-		{ code: '// eslint-disable-next-line-ish misplaced-n8n-typeorm-import', options },
+		{ code: '// see no-unsealed-credentials-entity-write for context', options },
+		{ code: '// eslint-disable-next-line-ish no-unsealed-credentials-entity-write', options },
 		// A guarded name inside the justification or inside another rule ID is not a match.
 		{
 			code: '// eslint-disable-next-line no-console -- mirrors no-unsealed-workflow-entity-write\nconsole.log("x");',
@@ -61,7 +64,7 @@ ruleTester.run('no-guardrail-disable', NoGuardrailDisableRule, {
 		},
 		// With no guarded rules configured, nothing is reported.
 		{
-			code: '// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import\nexport const x = 1;',
+			code: '// eslint-disable-next-line n8n-local-rules/no-unsealed-credentials-entity-write\nexport const x = 1;',
 		},
 		{ code: '// eslint-disable-next-line\nexport const x = 1;' },
 		// Ceiling: a blanket directive on the first line of the file leaves no position outside its
@@ -71,9 +74,14 @@ ruleTester.run('no-guardrail-disable', NoGuardrailDisableRule, {
 	],
 	invalid: [
 		{
-			code: '// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import\nexport const x = 1;',
+			code: '// eslint-disable-next-line n8n-local-rules/no-unsealed-credentials-entity-write\nexport const x = 1;',
 			options,
-			errors: [typeormHit],
+			errors: [credentialsHit],
+		},
+		{
+			code: '// oxlint-disable-next-line n8n-local-rules/no-unsealed-workflow-entity-write\nexport const x = 1;',
+			options,
+			errors: [sealHit],
 		},
 		{
 			code: '/* eslint-disable n8n-local-rules/no-unsealed-workflow-entity-write */',
@@ -93,9 +101,9 @@ ruleTester.run('no-guardrail-disable', NoGuardrailDisableRule, {
 			errors: [sealHit],
 		},
 		{
-			code: '/* eslint-disable no-console,\n   n8n-local-rules/misplaced-n8n-typeorm-import, n8n-local-rules/no-unsealed-workflow-entity-write */',
+			code: '/* eslint-disable no-console,\n   n8n-local-rules/no-unsealed-credentials-entity-write, n8n-local-rules/no-unsealed-workflow-entity-write */',
 			options,
-			errors: [typeormHit, sealHit],
+			errors: [credentialsHit, sealHit],
 		},
 		// A directive with no rule list, or one that names this rule, disables the guarded rules too.
 		{ code: '// eslint-disable-next-line\nexport const x = 1;', options, errors: [blanket] },
@@ -115,7 +123,7 @@ ruleTester.run('no-guardrail-disable', NoGuardrailDisableRule, {
 			errors: [blanket],
 		},
 		{
-			code: 'export const y = 1;\n/* eslint-disable n8n-local-rules/no-guardrail-disable, n8n-local-rules/misplaced-n8n-typeorm-import */',
+			code: 'export const y = 1;\n/* eslint-disable n8n-local-rules/no-guardrail-disable, n8n-local-rules/no-unsealed-credentials-entity-write */',
 			options,
 			errors: [blanket],
 		},

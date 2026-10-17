@@ -8,7 +8,6 @@ export type AgentArtifactContextChip = ContextChipBase & {
 	type: 'agent-artifact';
 	agentId: string;
 	projectId: string;
-	isNewAgent: boolean;
 };
 
 export type AgentPreviewSessionContextChip = ContextChipBase & {
@@ -18,4 +17,12 @@ export type AgentPreviewSessionContextChip = ContextChipBase & {
 	executionId?: string;
 };
 
-export type ContextChip = AgentArtifactContextChip | AgentPreviewSessionContextChip;
+export type WorkflowArtifactContextChip = ContextChipBase & {
+	type: 'workflow-artifact';
+	workflowId: string;
+};
+
+export type ContextChip =
+	| AgentArtifactContextChip
+	| AgentPreviewSessionContextChip
+	| WorkflowArtifactContextChip;

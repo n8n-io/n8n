@@ -1,6 +1,11 @@
 import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema } from '@n8n/api-types';
+import { classifyMcpTool } from '@n8n/ai-utilities/agent-config';
+import {
+	type AgentJsonConfig,
+	McpAuthenticationSchemaTypes,
+	McpOAuth2CredentialTypeSchema,
+} from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { z } from 'zod';
 
@@ -12,6 +17,10 @@ import {
 	buildMcpClientForServer,
 } from '../json-config/mcp-client-factory';
 
+export type McpCredentialApplyResult =
+	| { applied: false }
+	| { applied: true; config: AgentJsonConfig; configHash: string };
+
 export interface VerifyMcpServerDeps {
 	agentId?: string;
 	credentialProvider: CredentialProvider;
@@ -20,11 +29,11 @@ export interface VerifyMcpServerDeps {
 	proxyFetch: CustomFetch;
 	resolveRegistryConnection?: BuildMcpClientDeps['resolveRegistryConnection'];
 	/** When verification succeeds with a credential, writes it into the matching
-	 *  mcpServers entry so the builder can skip read_config → patch_config. */
+	 *  mcpServers entry so the builder can skip agent-context → patch_config. */
 	applyCredentialToMcpServer?: (
 		serverName: string,
 		credentialId: string,
-	) => Promise<{ applied: boolean }>;
+	) => Promise<McpCredentialApplyResult>;
 }
 
 /** Default deadline for the whole verify operation (connect + listTools) when the
@@ -73,9 +82,9 @@ async function listToolsWithinDeadline(
  * builder can have in hand before writing the config. The credential field is
  * optional here so the tool can also be used to test unauthenticated servers.
  *
- * `toolFilter` and `approval` are intentionally excluded — they have no bearing
- * on whether the underlying transport connects, and simplifying the input keeps
- * the LLM context small.
+ * Tool permissions are intentionally excluded. They have no bearing on whether
+ * the underlying transport connects, and simplifying the input keeps the LLM
+ * context small.
  */
 const verifyMcpServerInputSchema = z.object({
 	name: z
@@ -118,12 +127,14 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 		.description(
 			'Test connectivity to an MCP server before adding it to the agent config. ' +
 				'Establishes a temporary connection, lists the available tools, then closes the connection. ' +
-				'Returns { ok: true, tools: [{ name, description }] } on success, or ' +
+				'Returns { ok: true, tools: [{ name, description, category }] } on success, or ' +
 				'{ ok: false, error: string } on failure. ' +
 				'Tool names are the original MCP names without the model-facing server prefix. ' +
 				'When a credential is provided and a matching mcpServers entry already exists, ' +
 				'a successful verify also writes the credential into that entry ' +
-				'({ credentialApplied: true, configMutated: true, agentId }) — no read_config/patch_config follow-up. ' +
+				'({ credentialApplied: true, configMutated: true, agentId, config, configHash }) — no ' +
+				'agent-context/patch_config follow-up. Treat the returned config as the current state and use ' +
+				'its configHash as baseConfigHash for your next config write. ' +
 				'Call this after ask_credential when authentication is not "none".',
 		)
 		.input(verifyMcpServerInputSchema)
@@ -139,26 +150,46 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 						authentication: input.authentication,
 						credential: input.credential,
 						metadata: input.metadata,
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'always_allow' },
+						},
 						connectionTimeoutMs: timeoutMs,
 					},
 					deps,
 				);
 				const tools = await listToolsWithinDeadline(client, timeoutMs, ctx.abortSignal);
+				const failures = client.getConnectionFailures();
+				if (failures.length > 0) {
+					return {
+						ok: false,
+						error: failures
+							.map(
+								(failure) => `MCP server "${failure.server}" connection failed: ${failure.error}`,
+							)
+							.join('; '),
+					};
+				}
 				const mappedTools = tools.map((t) => ({
 					name: t.mcpToolName ?? t.name,
 					description: t.description ?? '',
+					category: classifyMcpTool({
+						name: t.mcpToolName ?? t.name,
+						annotations: t.mcpAnnotations,
+					}),
 				}));
 
 				if (input.credential && deps.applyCredentialToMcpServer) {
 					try {
-						const { applied } = await deps.applyCredentialToMcpServer(input.name, input.credential);
-						if (applied && deps.agentId) {
+						const applyResult = await deps.applyCredentialToMcpServer(input.name, input.credential);
+						if (applyResult.applied && deps.agentId) {
 							return {
 								ok: true,
 								tools: mappedTools,
 								credentialApplied: true,
 								configMutated: true,
 								agentId: deps.agentId,
+								config: applyResult.config,
+								configHash: applyResult.configHash,
 							};
 						}
 					} catch {

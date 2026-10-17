@@ -671,6 +671,33 @@ describe('BackgroundTaskManager', () => {
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
 		});
 
+		it('aborts running tasks with the supplied reason and leaves other threads running', () => {
+			const started = manager.spawn(
+				makeSpawnOptions({
+					taskId: 't1',
+					threadId: 'thread-1',
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 't2',
+					threadId: 'thread-2',
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+			const reason = new Error('quota');
+
+			manager.cancelThread('thread-1', reason);
+
+			expect(started.status).toBe('started');
+			if (started.status === 'started') {
+				expect(started.task.abortController.signal.reason).toBe(reason);
+				expect(started.task.abortController.signal.aborted).toBe(true);
+			}
+			expect(manager.getRunningTasks('thread-2')).toHaveLength(1);
+		});
+
 		it('does not cancel tasks for other threads', () => {
 			manager.spawn(
 				makeSpawnOptions({

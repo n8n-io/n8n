@@ -20,12 +20,13 @@ describe('useAgentThreadsApi', () => {
 		vi.clearAllMocks();
 	});
 
-	it('lists threads from the agent-scoped collection', async () => {
+	it.each([false, true])('lists threads with previewOnly=%s', async (previewOnly) => {
 		const response = { threads: [], nextCursor: null };
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(response);
 
 		const result = await listThreads(restApiContext, 'project-1', 'agent-1', {
 			limit: 20,
+			previewOnly,
 			cursor: 'cursor-1',
 			filters: defaultAgentSessionFilters(),
 		});
@@ -33,7 +34,8 @@ describe('useAgentThreadsApi', () => {
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'GET',
-			'/projects/project-1/agents/v2/agent-1/threads?limit=20&cursor=cursor-1',
+			'/projects/project-1/agents/v2/agent-1/threads?limit=20&cursor=cursor-1' +
+				(previewOnly ? '&previewOnly=true' : ''),
 		);
 		expect(result).toBe(response);
 	});

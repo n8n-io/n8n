@@ -13,6 +13,7 @@ export * from './html-sandbox';
 export * from './instance-settings';
 export * from './nodes-loader';
 export * from './utils';
+export * from './webhook-response';
 export { WorkflowHasIssuesError } from './errors/workflow-has-issues.error';
 export * from './observability';
 

@@ -5,3 +5,10 @@ export const DATABRICKS_TRIGGER_NODE_VERSION = 1;
 export const DATABRICKS_PARTNER_USER_AGENT = 'n8n_DatabricksNode';
 
 export const JOB_RUN_DEFAULT_TIMEOUT_SECONDS = 600;
+
+export const JOBS_ARRAY_PAGE_SIZE = 100;
+export const JOBS_PAGES_MAX = 20;
+
+/** The Data API caps a page server-side, so Return All reads pages rather than one large request. */
+export const LAKEBASE_PAGE_SIZE = 1000;
+export const LAKEBASE_MAX_PAGES = 100;

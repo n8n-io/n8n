@@ -7,6 +7,7 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { WORKFLOW_ACTIVE_MODAL_KEY } from '@/app/constants';
 import type { PushHandlerOptions } from './types';
 
 const {
@@ -15,6 +16,7 @@ const {
 	mockBannersStore,
 	mockUIStore,
 	mockSettingsStore,
+	mockConsumePendingActivationModal,
 } = vi.hoisted(() => ({
 	mockWorkflowsListStore: {
 		fetchWorkflow: vi.fn(),
@@ -27,10 +29,12 @@ const {
 	},
 	mockUIStore: {
 		stateIsDirty: false,
+		openModal: vi.fn(),
 	},
 	mockSettingsStore: {
 		isWorkflowPublicationServiceEnabled: true,
 	},
+	mockConsumePendingActivationModal: vi.fn(),
 }));
 
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -53,6 +57,10 @@ vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => mockSettingsStore,
 }));
 
+vi.mock('@/app/composables/workflowPublicationConfirmation', () => ({
+	consumePendingActivationModal: mockConsumePendingActivationModal,
+}));
+
 describe('workflowActivated', () => {
 	const documentId = createWorkflowDocumentId('wf-123');
 	let options: PushHandlerOptions;
@@ -70,6 +78,7 @@ describe('workflowActivated', () => {
 		vi.clearAllMocks();
 		mockUIStore.stateIsDirty = false;
 		mockSettingsStore.isWorkflowPublicationServiceEnabled = true;
+		mockConsumePendingActivationModal.mockReturnValue(false);
 		options = { router: mock<Router>(), documentId };
 		workflowDocumentStore = useWorkflowDocumentStore(documentId);
 	});
@@ -118,6 +127,60 @@ describe('workflowActivated', () => {
 
 		expect(workflowDocumentStore.publicationStatus).toBe('idle');
 		expect(mockBannersStore.removeBannerFromStack).not.toHaveBeenCalled();
+	});
+
+	// ADO-4969: the publish flow defers the one-time success modal until this
+	// confirming push, so a failure push arriving instead can never contradict
+	// an already-shown success dialog.
+	describe('deferred activation success modal (ADO-4969)', () => {
+		it('opens the success modal when this tab published the confirmed version', async () => {
+			mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
+			mockConsumePendingActivationModal.mockReturnValue(true);
+
+			await workflowActivated(makeEvent('wf-123', 'v1'), options);
+
+			expect(mockConsumePendingActivationModal).toHaveBeenCalledWith('wf-123', 'v1');
+			expect(mockUIStore.openModal).toHaveBeenCalledWith(WORKFLOW_ACTIVE_MODAL_KEY);
+		});
+
+		it('does not open the modal when no publish is pending in this tab', async () => {
+			mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
+			mockConsumePendingActivationModal.mockReturnValue(false);
+
+			await workflowActivated(makeEvent('wf-123', 'v1'), options);
+
+			expect(mockUIStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('resolves the intent but keeps the modal closed when viewing another workflow', async () => {
+			mockConsumePendingActivationModal.mockReturnValue(true);
+
+			await workflowActivated(makeEvent('wf-other', 'v1'), options);
+
+			expect(mockConsumePendingActivationModal).toHaveBeenCalledWith('wf-other', 'v1');
+			expect(mockUIStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('opens the modal before the workspace refresh, so navigating away mid-refresh cannot misplace it', async () => {
+			mockConsumePendingActivationModal.mockReturnValue(true);
+
+			// Push beats the publish response: the stored active version is stale,
+			// so the handler refreshes the workspace (awaits).
+			let resolveFetch!: (workflow: { id: string; checksum: string }) => void;
+			mockWorkflowsListStore.fetchWorkflow.mockReturnValue(
+				new Promise((resolve) => {
+					resolveFetch = resolve;
+				}),
+			);
+
+			const handlerDone = workflowActivated(makeEvent('wf-123', 'v1'), options);
+
+			// The modal is already open while the refresh is still in flight.
+			expect(mockUIStore.openModal).toHaveBeenCalledWith(WORKFLOW_ACTIVE_MODAL_KEY);
+
+			resolveFetch({ id: 'wf-123', checksum: 'abc' });
+			await handlerDone;
+		});
 	});
 
 	// Regression: INS-859 — "Workflow was changed by someone else" on dragging a node.

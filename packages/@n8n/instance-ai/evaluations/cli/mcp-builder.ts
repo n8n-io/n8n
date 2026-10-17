@@ -187,6 +187,7 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	buildMode: 'orchestrator-only',
 	promptVersion: 'orchestrator-only',
 	allowUserExecution: 'orchestrator-only',
+	requiresMemoryCompaction: 'orchestrator-only',
 	// Judged by the harness after the build (processExpectations are skipped for
 	// transcript-less MCP builds there); declaring them needs no build-side setup.
 	processExpectations: 'supported',

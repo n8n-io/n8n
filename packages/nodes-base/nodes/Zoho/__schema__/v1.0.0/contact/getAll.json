@@ -93,6 +93,23 @@
                 }
             }
         },
+        "Created_By": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Created_Time": {
+            "type": "string"
+        },
         "Email_Opt_Out": {
             "type": "boolean"
         },
@@ -107,6 +124,23 @@
         },
         "Locked__s": {
             "type": "boolean"
+        },
+        "Modified_By": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "Modified_Time": {
+            "type": "string"
         },
         "Owner": {
             "type": "object",
@@ -143,5 +177,5 @@
             "type": "null"
         }
     },
-    "version": 8
+    "version": 9
 }

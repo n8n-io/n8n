@@ -31,6 +31,20 @@ import {
 	type McpTool,
 } from './types';
 
+import { ContentBlockSchema, type ContentBlock } from '@modelcontextprotocol/sdk/types.js';
+
+export type { ContentBlock as McpContentBlock };
+
+/**
+ * Strict MCP content array detection. Returns false for empty arrays so callers
+ * fall back to default formatting.
+ */
+export function isMcpContentArray(data: unknown): data is ContentBlock[] {
+	if (!Array.isArray(data) || data.length === 0) return false;
+	return Array.from(data).every((item) => ContentBlockSchema.safeParse(item).success);
+}
+const MCP_SESSION_TERMINATION_TIMEOUT_MS = 1_000;
+
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
 	const { tools, nextCursor } = await client.listTools({ cursor });
 
@@ -214,6 +228,26 @@ export async function connectMcpClient({
 				fetch: authFetch,
 				...(signal ? { requestInit: { signal } } : {}),
 			});
+			const originalClose = client.close.bind(client);
+			let closePromise: Promise<void> | undefined;
+			client.close = async () => {
+				closePromise ??= (async () => {
+					let timeout: ReturnType<typeof setTimeout> | undefined;
+					try {
+						await Promise.race([
+							Promise.resolve(transport.terminateSession()).catch(() => {}),
+							new Promise<void>((resolve) => {
+								timeout = setTimeout(resolve, MCP_SESSION_TERMINATION_TIMEOUT_MS);
+							}),
+						]);
+					} finally {
+						if (timeout !== undefined) clearTimeout(timeout);
+						await originalClose();
+					}
+				})();
+
+				await closePromise;
+			};
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {

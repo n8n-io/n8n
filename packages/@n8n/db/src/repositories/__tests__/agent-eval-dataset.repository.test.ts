@@ -163,4 +163,39 @@ describe('AgentEvalDatasetRepository', () => {
 			await expect(repo.deleteDataset('ds-1', 'other-agent')).resolves.toBe(false);
 		});
 	});
+
+	describe('isDataTableReadByOtherDataset', () => {
+		const dataset = (id: string, datasetRef: AgentEvalDataset['datasetRef']) =>
+			({ id, datasetRef }) as AgentEvalDataset;
+
+		it('reports another dataset reading the table, whichever agent owns it', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				dataset('ds-1', { dataTableId: 'dt-1' }),
+				dataset('ds-2', { dataTableId: 'dt-1' }),
+			]);
+
+			await expect(repo.isDataTableReadByOtherDataset('dt-1', 'ds-1')).resolves.toBe(true);
+		});
+
+		it('does not count the dataset itself, nor datasets on other tables', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				dataset('ds-1', { dataTableId: 'dt-1' }),
+				dataset('ds-2', { dataTableId: 'dt-2' }),
+				dataset('ds-3', { credentialId: 'c', spreadsheetId: 's', sheetName: 'n' }),
+			]);
+
+			await expect(repo.isDataTableReadByOtherDataset('dt-1', 'ds-1')).resolves.toBe(false);
+		});
+
+		it('looks only at Data Table datasets, without agent scoping', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await repo.isDataTableReadByOtherDataset('dt-1', 'ds-1');
+
+			expect(entityManager.find.mock.calls[0]?.[1]).toMatchObject({
+				where: { datasetSource: 'data_table' },
+			});
+			expect(entityManager.find.mock.calls[0]?.[1]).not.toHaveProperty('where.agentId');
+		});
+	});
 });

@@ -1,9 +1,12 @@
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
-import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
+import type { NodeIconSource, ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
@@ -14,11 +17,10 @@ import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.tele
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
 import { useMcpServerConnect } from './useMcpServerConnect';
-import { iconForTool } from '../toolIcons';
 
 type InputMenuItemData = {
 	status?: ToolConnectionStatus;
-	toolIcon?: ToolIconSource;
+	toolIcon?: NodeIconSource;
 	action?: () => void | Promise<void>;
 };
 
@@ -27,20 +29,23 @@ export type InputMenuItem = DropdownMenuItemProps<string, InputMenuItemData>;
 export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const i18n = useI18n();
 	const uiStore = useUIStore();
+	const router = useRouter();
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
 	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
-	const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 
 	void settingsStore.fetch();
-	if (isMcpFeatureEnabled.value) void mcpStore.fetchConnectionsLazy();
-
-	const isMcpAvailable = computed(
-		() => isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled === true,
+	watch(
+		() => settingsStore.isMcpAvailable,
+		(isAvailable) => {
+			if (isAvailable) void mcpStore.fetchConnectionsLazy();
+		},
+		{ immediate: true },
 	);
+
 	// The store owns this, so the + menu and the message payload cannot disagree.
 	const isComputerUseAvailable = computed(() => settingsStore.isComputerUseAvailable);
 	const isBrowserUseAvailable = computed(() => settingsStore.isBrowserUseAvailable);
@@ -56,6 +61,11 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	function openToolsModal() {
 		mcpTelemetry.trackToolsListOpened('input_menu');
 		uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
+	}
+
+	function openPreferenceSettings() {
+		// A new tab keeps the chat and its unsent draft.
+		window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }).href, '_blank');
 	}
 
 	function createConnectionItem({
@@ -125,7 +135,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 
 	const disconnectedConnectionCount = computed(() => {
 		let count = 0;
-		if (isMcpAvailable.value) {
+		if (settingsStore.isMcpAvailable) {
 			count += mcpStore.connections.filter(({ status }) => status === 'disconnected').length;
 		}
 		if (
@@ -153,13 +163,13 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			},
 		];
 
-		if (isMcpAvailable.value) {
+		if (settingsStore.isMcpAvailable) {
 			const tools: InputMenuItem[] = mcpStore.connections.map((connection) => ({
 				id: `mcp-${connection.id}`,
 				label: connection.serverTitle,
 				data: {
 					status: connection.status,
-					toolIcon: iconForTool(connection.serverIcons, uiStore.appliedTheme),
+					toolIcon: iconForMcpRegistryServer(connection.serverIcons, uiStore.appliedTheme),
 				},
 				children: [
 					{
@@ -269,6 +279,16 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 					disconnect: settingsStore.disconnectBrowserUse,
 				}),
 			);
+		}
+
+		if (isContextPreferencesEnabled()) {
+			items.push({
+				id: 'preferences',
+				label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
+				icon: { type: 'icon', value: 'brain' },
+				divided: true,
+				data: { action: openPreferenceSettings },
+			});
 		}
 
 		return items;

@@ -1,11 +1,21 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
+import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
+import { projectIconSchema } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
 
 const sourceId = z.string().min(1);
 
 export const promotionBindingProjectSchema = z.object({ id: sourceId, name: z.string() });
+// Report package values unchanged. The create API validates them when used.
+export const promotionMissingProjectSchema = promotionBindingProjectSchema.extend({
+	icon: z.object({ type: projectIconSchema.shape.type, value: z.string() }).optional(),
+	description: z.string().optional(),
+	customTelemetryTags: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+});
 const workflowSchema = z.object({ id: sourceId, name: z.string() });
 
 export const promotionBindingConsumerSchema = z.object({
@@ -25,17 +35,32 @@ export type PromotionCredentialExpressionValue =
 	| PromotionCredentialExpressionValue[]
 	| { [key: string]: PromotionCredentialExpressionValue };
 
-const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExpressionValue> =
-	z.lazy(() =>
-		z.union([
-			z.string(),
-			z.array(promotionCredentialExpressionValueSchema),
-			z.record(promotionCredentialExpressionValueSchema),
-		]),
-	);
-export const promotionCredentialExpressionDataSchema = z.record(
-	promotionCredentialExpressionValueSchema,
-);
+const expressionValueComponentName = 'PromotionCredentialExpressionValue';
+const expressionValueRef = { $ref: `#/components/schemas/${expressionValueComponentName}` };
+
+// Describe recursive branches explicitly because the OpenAPI generator cannot inspect z.lazy.
+const promotionCredentialExpressionValueSchema: z.ZodType<PromotionCredentialExpressionValue> = z
+	.union([
+		z.string(),
+		z.array(z.lazy(() => promotionCredentialExpressionValueSchema)).openapi({
+			type: 'array',
+			items: expressionValueRef,
+		}),
+		z.record(z.lazy(() => promotionCredentialExpressionValueSchema)).openapi({
+			type: 'object',
+			additionalProperties: expressionValueRef,
+		}),
+	])
+	.openapi(expressionValueComponentName, {
+		description:
+			'Values can be strings, arrays, or nested objects. Every leaf is an expression string.',
+	});
+
+export const promotionCredentialExpressionDataSchema = z
+	.record(promotionCredentialExpressionValueSchema)
+	.openapi({
+		description: 'Credential expressions.',
+	});
 
 const credentialSchema = z.object({
 	kind: z.literal('credential'),
@@ -74,7 +99,45 @@ const credentialConflictSchema = z.object({
 	consumers: consumersSchema,
 });
 
-/** Conflicts need a package or target correction before creation can proceed. */
+const dataTableChangeSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('add-column'),
+		column: z.string(),
+		type: dataTableColumnTypeSchema,
+		destructive: z.literal(false),
+	}),
+	z.object({
+		kind: z.literal('remove-column'),
+		column: z.string(),
+		type: dataTableColumnTypeSchema,
+		destructive: z.literal(true),
+	}),
+	z.object({
+		kind: z.literal('change-column-type'),
+		column: z.string(),
+		from: dataTableColumnTypeSchema,
+		to: dataTableColumnTypeSchema,
+		destructive: z.literal(true),
+	}),
+	z.object({
+		kind: z.literal('rename-column'),
+		from: z.string(),
+		to: z.string(),
+		destructive: z.literal(false),
+	}),
+	z.object({ kind: z.literal('reorder-columns'), destructive: z.literal(false) }),
+	z.object({
+		kind: z.literal('rename-table'),
+		from: z.string(),
+		to: z.string(),
+		destructive: z.literal(false),
+	}),
+]);
+
+/**
+ * Continue can confirm a `destructive-change` or `project-deletion` conflict.
+ * The other conflicts need a package or target correction before creation can proceed.
+ */
 export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
@@ -102,6 +165,21 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		filePath: z.string(),
 		workflows: z.array(workflowSchema),
 	}),
+	/** A full apply deletes each team project that the package does not hold. */
+	z.object({
+		kind: z.literal('project'),
+		code: z.literal('project-deletion'),
+		project: promotionBindingProjectSchema,
+	}),
+	z.object({
+		kind: z.literal('data-table'),
+		code: z.literal('destructive-change'),
+		id: sourceId,
+		name: z.string(),
+		consumers: consumersSchema,
+		/** Every change that the import would make, destructive or not. */
+		changes: z.array(dataTableChangeSchema).min(1),
+	}),
 ]);
 
 export const promotionBindingWarningSchema = z.object({
@@ -115,9 +193,15 @@ export const promotionBindingWarningSchema = z.object({
 /**
  * Read-only check of package references. Source IDs define creation scope.
  * This result does not certify a complete mirror or authorize later writes.
- * Callers must enforce inspection permissions, including variable list permissions.
+ * Callers must enforce the permissions for their endpoint.
  */
 export const promotionBindingPreflightResultSchema = z.object({
+	missingProjects: z.array(promotionMissingProjectSchema).openapi({
+		description:
+			'Projects in the package that do not exist on this instance. ' +
+			'Preflight preserves their metadata without checking project creation rules. ' +
+			'The project creation API can reject invalid values.',
+	}),
 	missingBindings: z.array(
 		z.discriminatedUnion('kind', [
 			promotionMissingCredentialBindingSchema,

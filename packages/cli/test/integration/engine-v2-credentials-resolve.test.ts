@@ -25,7 +25,7 @@ import { initCredentialsTypes } from './shared/utils';
  * The data plane side (`RemoteCredentialsHelper` and `EngineCredentialsClient`)
  * against the real control plane server, `CredentialsHelper` and test database.
  */
-describe('Engine 2.0 credential resolve (integration)', () => {
+describe('Engine v2 credential resolve (integration)', () => {
 	const authSecret = 'a'.repeat(64);
 	const decrypted = { name: 'X-Api-Key', value: 'secret' };
 

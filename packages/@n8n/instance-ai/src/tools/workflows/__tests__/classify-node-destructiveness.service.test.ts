@@ -6,6 +6,11 @@ vi.mock('../../../utils/eval-agents', async () => {
 	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
 });
 
+import {
+	agentToolNode,
+	agentToolWorkflow,
+	mcpToolWorkflow,
+} from '../../../__tests__/agent-tool-workflow';
 import { createEvalAgent, extractText } from '../../../utils/eval-agents';
 import { classifyNodesForSimulation } from '../classify-node-destructiveness.service';
 
@@ -379,5 +384,106 @@ describe('classifyNodesForSimulation', () => {
 			verdict: 'simulate',
 			source: 'deterministic',
 		});
+	});
+});
+
+describe('attached tool classification', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it('classifies direct reads and nested writes and keeps Agents executable', async () => {
+		const workflow = agentToolWorkflow(3.1, 3);
+		workflow.nodes.push(
+			agentToolNode('Read', 'n8n-nodes-base.slackTool', { parameters: { operation: 'get' } }),
+		);
+		workflow.connections.Read = { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] };
+		const plan = await classifyNodesForSimulation({ workflow });
+		expect(Object.fromEntries(plan.map(({ nodeName, verdict }) => [nodeName, verdict]))).toEqual({
+			Agent: 'execute',
+			Nested: 'execute',
+			Read: 'execute',
+			Write: 'simulate',
+		});
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['n8n-nodes-base.httpRequestTool', { method: 'GET' }, 'execute'],
+		['n8n-nodes-base.emailSendTool', {}, 'simulate'],
+		['n8n-nodes-base.executeWorkflowTool', {}, 'simulate'],
+		['@n8n/n8n-nodes-langchain.toolWorkflow', {}, 'simulate'],
+		['@n8n/n8n-nodes-langchain.mcpClientTool', {}, 'simulate'],
+		['@n8n/n8n-nodes-langchain.mcpRegistryClientTool', {}, 'simulate'],
+	] as const)('uses the existing rules for %s', async (type, parameters, expected) => {
+		const workflow = agentToolWorkflow();
+		workflow.nodes[2] = agentToolNode('Write', type, { parameters });
+		const plan = await classifyNodesForSimulation({ workflow });
+		expect(verdictOf(plan, 'Write')).toMatchObject({ verdict: expected, source: 'deterministic' });
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
+	it('classifies MCP tools without main connections', async () => {
+		const workflow = mcpToolWorkflow();
+		workflow.nodes.push(
+			agentToolNode('Read', 'n8n-nodes-base.slackTool', { parameters: { operation: 'get' } }),
+		);
+		workflow.connections.Read = { ai_tool: [[{ node: 'MCP Server', type: 'ai_tool', index: 0 }]] };
+
+		const plan = await classifyNodesForSimulation({ workflow });
+
+		expect(plan.map(({ nodeName, verdict }) => ({ nodeName, verdict }))).toEqual([
+			{ nodeName: 'Write', verdict: 'simulate' },
+			{ nodeName: 'Read', verdict: 'execute' },
+		]);
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
+	it('uses conservative fallback for an unknown tool operation', async () => {
+		setupAgentFailure();
+		const workflow = agentToolWorkflow();
+		workflow.nodes[2].parameters = { operation: 'customAction' };
+		expect(verdictOf(await classifyNodesForSimulation({ workflow }), 'Write')).toMatchObject({
+			verdict: 'simulate',
+			source: 'fallback',
+		});
+	});
+
+	it('classifies a shared tool once when the graph has a cycle', async () => {
+		const workflow = agentToolWorkflow(3.1, 3);
+		workflow.connections.Write = {
+			ai_tool: [
+				[
+					{ node: 'Agent', type: 'ai_tool', index: 0 },
+					{ node: 'Nested', type: 'ai_tool', index: 0 },
+				],
+			],
+		};
+		workflow.connections.Agent = { ai_tool: [[{ node: 'Nested', type: 'ai_tool', index: 0 }]] };
+		const plan = await classifyNodesForSimulation({ workflow });
+		expect(plan.map((node) => node.nodeName).sort()).toEqual(['Agent', 'Nested', 'Write']);
+	});
+
+	it('excludes disabled and disconnected tools and other AI sub-nodes', async () => {
+		const workflow = agentToolWorkflow();
+		workflow.nodes[2].disabled = true;
+		workflow.nodes.push(
+			agentToolNode('Disconnected', 'n8n-nodes-base.slackTool'),
+			agentToolNode('Memory', '@n8n/n8n-nodes-langchain.memoryBufferWindow'),
+			agentToolNode('Parser', '@n8n/n8n-nodes-langchain.outputParserStructured'),
+		);
+		workflow.connections.Memory = { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] };
+		workflow.connections.Parser = {
+			ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+		};
+		expect((await classifyNodesForSimulation({ workflow })).map((node) => node.nodeName)).toEqual([
+			'Agent',
+		]);
+	});
+
+	it('excludes tools attached only to a disabled container', async () => {
+		const workflow = agentToolWorkflow(3.1, 3);
+		workflow.nodes.find((node) => node.name === 'Nested')!.disabled = true;
+		expect((await classifyNodesForSimulation({ workflow })).map((node) => node.nodeName)).toEqual([
+			'Agent',
+		]);
 	});
 });

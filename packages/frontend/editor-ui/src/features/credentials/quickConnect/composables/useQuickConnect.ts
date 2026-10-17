@@ -1,3 +1,4 @@
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import type { QuickConnectOption, QuickConnectPineconeOption } from '@n8n/api-types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -6,7 +7,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { computed, onBeforeUnmount, ref, h } from 'vue';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 
-import type { ICredentialsResponse } from '../../credentials.types';
+import type { CredentialFetchScope, ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
 import { useToast } from '@n8n/composables/useToast';
@@ -17,6 +18,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 export function useQuickConnect() {
+	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 	const message = useMessage();
@@ -143,6 +145,10 @@ export function useQuickConnect() {
 		nodeType: string;
 		source: 'node_type' | 'credential_type';
 		serviceName: string;
+		projectId?: string;
+		workflowId?: string;
+		credentialFetchScope?: CredentialFetchScope;
+		description?: string | null;
 	}): Promise<ICredentialsResponse | null> {
 		cleanUpDanglingHandlers();
 		const { credentialTypeName, nodeType, source } = connectParams;
@@ -154,7 +160,19 @@ export function useQuickConnect() {
 		});
 
 		if (isOAuthCredentialType(credentialTypeName)) {
-			const credential = await createAndAuthorize(credentialTypeName, nodeType);
+			const credential =
+				connectParams.projectId ||
+				connectParams.workflowId ||
+				(credentialDescriptionsEnabled.value && connectParams.description !== undefined)
+					? await createAndAuthorize(credentialTypeName, nodeType, {
+							projectId: connectParams.projectId,
+							workflowId: connectParams.workflowId,
+							credentialFetchScope: connectParams.credentialFetchScope,
+							...(credentialDescriptionsEnabled.value && connectParams.description !== undefined
+								? { description: connectParams.description }
+								: {}),
+						})
+					: await createAndAuthorize(credentialTypeName, nodeType);
 			return credential;
 		}
 
@@ -195,13 +213,16 @@ export function useQuickConnect() {
 					{
 						id: '',
 						name: credentialType.displayName,
+						...(credentialDescriptionsEnabled.value && connectParams.description !== undefined
+							? { description: connectParams.description }
+							: {}),
 						type: credentialTypeName,
 						data: {
 							...credentialData,
 							allowedHttpRequestDomains: 'none',
 						},
 					},
-					projectsStore.currentProject?.id,
+					connectParams.projectId ?? projectsStore.currentProject?.id,
 				);
 
 				return credential;

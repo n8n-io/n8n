@@ -35,4 +35,10 @@ describe('InMemoryBinaryDataRule', () => {
 			expect(result.recommendations).toHaveLength(1);
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report a behaviorChanges impact because the storage mode is migrated automatically', () => {
+			expect(rule.getMetadata().impact).toBe('behaviorChanges');
+		});
+	});
 });

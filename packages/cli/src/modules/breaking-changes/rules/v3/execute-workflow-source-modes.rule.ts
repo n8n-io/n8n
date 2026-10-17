@@ -30,7 +30,7 @@ export class ExecuteWorkflowSourceModesRule implements IBreakingChangeWorkflowRu
 			description:
 				'The "Local File" and "URL" sources of the Execute Sub-workflow node are being removed. Sub-workflows must be loaded from the database or defined in the node parameters.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
 		};
 	}
 

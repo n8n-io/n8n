@@ -3,18 +3,12 @@ import type { Lock, QueueEntry, StateAdapter } from 'chat';
 
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 
-import {
-	type AgentChatSubscriptionRepository,
-	type AgentChatSubscriptionScope,
-} from '../repositories/agent-chat-subscription.repository';
+import type { AgentChatSubscriptionRepository } from '../repositories/agent-chat-subscription.repository';
+import { agentChannelKey, type AgentChannelRef } from '../utils/agent-channel';
 
 export type SubscriptionAction = PubSubCommandMap['agent-chat-subscription-changed']['action'];
 
 const NEGATIVE_SUBSCRIPTION_CACHE_TTL_MS = 30_000;
-
-export function scopeKey(scope: AgentChatSubscriptionScope): string {
-	return `${scope.agentId}:${scope.integrationType}:${scope.credentialId}`;
-}
 
 export class AgentChatSubscriptionStateAdapter implements StateAdapter {
 	private connected = false;
@@ -22,7 +16,7 @@ export class AgentChatSubscriptionStateAdapter implements StateAdapter {
 	private readonly negativeSubscriptionCache = new Map<string, number>();
 
 	constructor(
-		private readonly scope: AgentChatSubscriptionScope,
+		private readonly scope: AgentChannelRef,
 		private readonly integration: AgentIntegrationConfig,
 		private readonly delegate: StateAdapter,
 		private readonly repository: AgentChatSubscriptionRepository,
@@ -35,7 +29,7 @@ export class AgentChatSubscriptionStateAdapter implements StateAdapter {
 	) {}
 
 	get key(): string {
-		return scopeKey(this.scope);
+		return agentChannelKey(this.scope);
 	}
 
 	async connect(): Promise<void> {

@@ -258,4 +258,46 @@ describe('Microsoft Teams V2, create per item', () => {
 			'<at id="0">Engineering (Team C)</at> hi',
 		]);
 	});
+
+	it('chat create resolves a separate participant per item and binds it on the credential host', async () => {
+		const CALLER = '00000000-1111-2222-3333-444444444444';
+		const CHAT_USERS: Record<string, IDataObject> = {
+			'/v1.0/users/jane%40contoso.com': { id: '714c1202-cbac-40ff-9160-53ab5c4df9b8' },
+			'/v1.0/users/bob%40contoso.com': { id: '22222222-3333-4444-5555-666666666666' },
+		};
+		ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
+		const participantPerItem = ['jane@contoso.com', 'bob@contoso.com'];
+		const params: Record<string, unknown> = {
+			authentication: 'microsoftTeamsOAuth2Api',
+			resource: 'chat',
+			operation: 'create',
+			chatType: 'oneOnOne',
+			'members.member': [{ role: 'owner' }],
+		};
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, itemIndex?: number, fallback?: unknown): NodeParameterValueType => {
+				if (name === 'members.member[0].userId') {
+					return participantPerItem[itemIndex as number];
+				}
+				return (name in params ? params[name] : fallback) as NodeParameterValueType;
+			},
+		);
+		apiRequest.mockImplementation(async (_method: string, resourcePath: string) => {
+			if (resourcePath === '/v1.0/me') return { id: CALLER, userPrincipalName: 'me@contoso.com' };
+			return resourcePath in CHAT_USERS ? CHAT_USERS[resourcePath] : { id: 'created' };
+		});
+
+		await node.execute.call(ctx);
+
+		const bound = apiRequest.mock.calls
+			.filter((call) => call[0] === 'POST')
+			.map(
+				(call) =>
+					(call[2] as { members: Array<Record<string, string>> }).members[1]['user@odata.bind'],
+			);
+		expect(bound).toEqual([
+			"https://graph.microsoft.us/v1.0/users('714c1202-cbac-40ff-9160-53ab5c4df9b8')",
+			"https://graph.microsoft.us/v1.0/users('22222222-3333-4444-5555-666666666666')",
+		]);
+	});
 });

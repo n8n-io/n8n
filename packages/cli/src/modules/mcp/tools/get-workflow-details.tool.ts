@@ -4,7 +4,7 @@ import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -21,6 +21,7 @@ import {
 	toTagSummary,
 	workflowDetailsOutputSchema,
 } from './schemas';
+import { trackAndRethrowToolError } from './tool-error.utils';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
@@ -154,13 +155,7 @@ export const createWorkflowDetailsTool = (
 					structuredContent: payload,
 				};
 			} catch (error) {
-				// Track failed execution
-				telemetryPayload.results = {
-					success: false,
-					error: error instanceof Error ? error.message : String(error),
-				};
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				throw error;
+				trackAndRethrowToolError(telemetry, telemetryPayload, error);
 			}
 		},
 	};
@@ -187,7 +182,12 @@ export async function getWorkflowDetails(
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true, includeTags: true, includeParentFolder: true },
+		{
+			includeActiveVersion: true,
+			includeTags: true,
+			includeParentFolder: true,
+			publishHistory: 'none',
+		},
 	);
 
 	// Compute user scopes for this workflow

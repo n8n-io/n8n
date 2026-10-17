@@ -4,13 +4,13 @@ import { Container, Service } from '@n8n/di';
 import { threadAuthorizesAgentAdoption } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { isAgentsAccessEnabled } from './agents-access';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 
 /**
@@ -40,7 +40,7 @@ export class InstanceAiPendingAgentService {
 	 *  whether or not the agents module is active, and injecting would construct
 	 *  its services (and their repositories) regardless. */
 	private agentsModule() {
-		if (!this.moduleRegistry.isActive('agents')) {
+		if (!isAgentsAccessEnabled(this.moduleRegistry)) {
 			throw new NotFoundError('Agents are not enabled on this instance');
 		}
 		return {
@@ -114,6 +114,7 @@ export class InstanceAiPendingAgentService {
 		const { agents, defaultModelResolver } = this.agentsModule();
 		const defaultModel = await defaultModelResolver.resolve(user, projectId);
 		return await agents.create(projectId, name, {
+			actor: { kind: 'user', user },
 			id: agentId,
 			adoptOnCollision,
 			...(defaultModel ? { defaultModel } : {}),

@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { buildTargetUrl } from '@n8n/backend-network';
 import { sleep } from '@n8n/utils/sleep';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
@@ -39,7 +40,6 @@ import type {
 	INodeCredentialDescription,
 	IExecutePaginationFunctions,
 } from 'n8n-workflow';
-import url from 'node:url';
 
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
@@ -186,30 +186,36 @@ export class RoutingNode {
 				}
 
 				if (proxy) {
-					const proxyParsed = url.parse(proxy);
-					const proxyProperties = ['host', 'port'];
+					const proxyParsed = URL.parse(proxy);
+					if (!proxyParsed) {
+						throw new NodeOperationError(node, 'The proxy is not valid', { runIndex, itemIndex });
+					}
 
-					for (const property of proxyProperties) {
-						if (
-							!(property in proxyParsed) ||
-							proxyParsed[property as keyof typeof proxyParsed] === null
-						) {
-							throw new NodeOperationError(node, 'The proxy is not valid', {
-								runIndex,
-								itemIndex,
-								description: `The proxy URL does not contain a valid value for "${property}"`,
-							});
-						}
+					const proxyPort = getExplicitPort(proxy);
+					if (!proxyParsed.hostname) {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
+							runIndex,
+							itemIndex,
+							description: 'The proxy URL does not contain a valid value for "host"',
+						});
+					}
+					if (proxyPort === null) {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
+							runIndex,
+							itemIndex,
+							description: 'The proxy URL does not contain a valid value for "port"',
+						});
 					}
 
 					itemContext[itemIndex].requestData.options.proxy = {
-						host: proxyParsed.hostname as string,
-						port: parseInt(proxyParsed.port!),
+						host: proxyParsed.hostname,
+						port: proxyPort,
 						protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
 					};
 
-					if (proxyParsed.auth) {
-						const [username, password] = proxyParsed.auth.split(':');
+					const auth = getAuth(proxyParsed);
+					if (auth) {
+						const [username, password] = auth.split(':');
 						itemContext[itemIndex].requestData.options.proxy!.auth = {
 							username,
 							password,
@@ -229,31 +235,33 @@ export class RoutingNode {
 					itemContext[itemIndex].requestData.options.timeout = 300_000;
 				}
 
-				// A node parameter can drive the effective `baseURL`, making the host the caller's
-				// choice rather than the node's. Detect that by comparing the already-resolved
-				// `baseURL`'s host against the host `baseURL` would resolve to with
-				// `$parameter`/`$rawParameter` cleared (see `resolveBaseUrl`) - only the host matters,
-				// since that's all the domain allowlist checks.
+				// A node parameter can drive the effective `baseURL`, or an absolute `url` can replace
+				// its host, making the host the caller's choice rather than the node's. Detect that by
+				// comparing the host the request targets against the host `baseURL` would resolve to
+				// with `$parameter`/`$rawParameter` cleared (see `resolveBaseUrl`) - only the host
+				// matters, since that's all the domain allowlist checks. Without a node-owned
+				// `baseURL` there is nothing to compare `url` against.
 				const baseUrlOwnershipKeys: IWorkflowDataProxyAdditionalKeys = {
 					...additionalKeys,
 					$credentials: credentials,
 					$version: node.typeVersion,
 				};
-				const baseUrlIsNodeOwned =
-					toHostname(itemContext[itemIndex].requestData.options.baseURL) ===
-					toHostname(
-						this.resolveBaseUrl(itemIndex, runIndex, executeData, itemContext[itemIndex].thisArgs, {
-							...baseUrlOwnershipKeys,
-							$parameter: {},
-							$rawParameter: {},
-						}),
-					);
+				const { baseURL, url } = itemContext[itemIndex].requestData.options;
+				const ownHost = toHostname(
+					this.resolveBaseUrl(itemIndex, runIndex, executeData, itemContext[itemIndex].thisArgs, {
+						...baseUrlOwnershipKeys,
+						$parameter: {},
+						$rawParameter: {},
+					}),
+				);
+				const targetUrl = ownHost ? buildTargetUrl(url, baseURL) : baseURL;
+				const baseUrlIsNodeOwned = toHostname(targetUrl) === ownHost;
 				const allowedDomains = credentials
 					? getCredentialAllowedDomains({
 							node,
 							credentialData: credentials,
 							credentialOwnedSurface: baseUrlIsNodeOwned,
-							nodeEndpointUrl: itemContext[itemIndex].requestData.options.baseURL,
+							nodeEndpointUrl: targetUrl,
 						})
 					: undefined;
 				if (allowedDomains) {
@@ -306,24 +314,27 @@ export class RoutingNode {
 
 				const error = responseData.reason;
 
+				const nodeError =
+					error instanceof NodeApiError || error instanceof NodeOperationError
+						? error
+						: new NodeApiError(node, error as JsonObject, {
+								runIndex,
+								itemIndex,
+								message: error?.message,
+								description: error?.description,
+								httpCode:
+									error.isAxiosError && error.response ? String(error.response?.status) : 'none',
+							});
+
+				set(nodeError, 'context.itemIndex', itemIndex);
+				set(nodeError, 'context.runIndex', runIndex);
+
 				if (itemContext[itemIndex].thisArgs?.continueOnFail()) {
-					returnData.push({ json: {}, error: error as NodeApiError });
+					returnData.push({ json: {}, error: nodeError });
 					continue;
 				}
 
-				if (error instanceof NodeApiError) {
-					set(error, 'context.itemIndex', itemIndex);
-					set(error, 'context.runIndex', runIndex);
-					throw error;
-				}
-
-				throw new NodeApiError(node, error as JsonObject, {
-					runIndex,
-					itemIndex,
-					message: error?.message,
-					description: error?.description,
-					httpCode: error.isAxiosError && error.response ? String(error.response?.status) : 'none',
-				});
+				throw nodeError;
 			}
 
 			if (itemContext[itemIndex].requestData.maxResults) {
@@ -886,6 +897,7 @@ export class RoutingNode {
 				runIndex,
 				'',
 				{ ...parameterKeys, $value: value },
+				true,
 			);
 
 			this.mergeOptions(scratch, tempOptions);
@@ -902,6 +914,7 @@ export class RoutingNode {
 		runIndex: number,
 		path: string,
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+		baseUrlOnly = false,
 	): DeclarativeRestApiSettings.ResultOptions | undefined {
 		const returnData: DeclarativeRestApiSettings.ResultOptions = {
 			options: {
@@ -942,11 +955,13 @@ export class RoutingNode {
 				) as string;
 			}
 
-			if (nodeProperties.routing.operations) {
+			if (!baseUrlOnly && nodeProperties.routing.operations) {
 				returnData.requestOperations = { ...nodeProperties.routing.operations };
 			}
 			if (nodeProperties.routing.request) {
 				for (const key of Object.keys(nodeProperties.routing.request)) {
+					if (baseUrlOnly && key !== 'baseURL') continue;
+
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					let propertyValue = (nodeProperties.routing.request as Record<string, any>)[key];
 					// If the value is an expression resolve it
@@ -964,7 +979,7 @@ export class RoutingNode {
 				}
 			}
 
-			if (nodeProperties.routing.send) {
+			if (!baseUrlOnly && nodeProperties.routing.send) {
 				let propertyName = nodeProperties.routing.send.property;
 				if (propertyName !== undefined) {
 					// If the propertyName is an expression resolve it
@@ -1034,7 +1049,7 @@ export class RoutingNode {
 					returnData.preSend.push(...nodeProperties.routing.send.preSend);
 				}
 			}
-			if (nodeProperties.routing.output) {
+			if (!baseUrlOnly && nodeProperties.routing.output) {
 				if (nodeProperties.routing.output.maxResults !== undefined) {
 					let maxResultsValue = nodeProperties.routing.output.maxResults;
 					if (typeof maxResultsValue === 'string' && maxResultsValue.charAt(0) === '=') {
@@ -1118,6 +1133,7 @@ export class RoutingNode {
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
 					{ ...additionalKeys, $value: optionValue, $version: node.typeVersion },
+					baseUrlOnly,
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -1142,6 +1158,7 @@ export class RoutingNode {
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
 						{ ...additionalKeys, $version: node.typeVersion },
+						baseUrlOnly,
 					);
 
 					this.mergeOptions(returnData, tempOptions);
@@ -1190,6 +1207,7 @@ export class RoutingNode {
 								$index: i,
 								$parent: value[i],
 							},
+							baseUrlOnly,
 						);
 
 						this.mergeOptions(returnData, tempOptions);
@@ -1247,4 +1265,26 @@ export class RoutingNode {
 
 		return { credentials, credentialDescription };
 	}
+}
+
+function getAuth(url: URL) {
+	if (!url.username && !url.password) {
+		return null;
+	}
+
+	const user = decodeURIComponent(url.username);
+	return url.password ? `${user}:${decodeURIComponent(url.password)}` : user;
+}
+
+function getExplicitPort(value: string): number | null {
+	const authorityStart = value.indexOf('//');
+	if (authorityStart < 0) return null;
+
+	const authority = value.slice(authorityStart + 2).split(/[/?#]/, 1)[0];
+	const hostAndPort = authority.slice(authority.lastIndexOf('@') + 1);
+	const match = /:(\d+)$/.exec(hostAndPort);
+	if (!match) return null;
+
+	const port = Number(match[1]);
+	return Number.isInteger(port) && port <= 65_535 ? port : null;
 }

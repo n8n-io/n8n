@@ -116,9 +116,8 @@ ${renderRulesLines()}
 
 /**
  * Grouping judgement guidance: *when* to group — the rules that make a group
- * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list
- * only when the canvas-groups flag is on; Instance AI always materializes it
- * into the knowledge base.
+ * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list;
+ * Instance AI materializes it into the knowledge base.
  */
 export const GROUPING_GUIDANCE = `## Grouping
 
@@ -152,14 +151,8 @@ Examples:
 
 Read the node groups reference for the exact rules before creating groups.`;
 
-/**
- * Render the full language reference. The node-groups section is included by
- * default (Instance AI's knowledge base); the MCP SDK reference passes its
- * `canvasGroupsEnabled` flag state as `includeGroups`.
- */
-export function buildSdkLanguageReference(options: { includeGroups?: boolean } = {}): string {
-	const { includeGroups = true } = options;
-
+/** Render the full language reference, node-groups section included. */
+export function buildSdkLanguageReference(): string {
 	return `# Workflow SDK language reference
 
 SDK builder code is a **restricted subset of TypeScript**, not a Code node and
@@ -173,7 +166,9 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-${includeGroups ? `${NODE_GROUPS_REFERENCE}\n\n` : ''}## Forbidden constructs
+${NODE_GROUPS_REFERENCE}
+
+## Forbidden constructs
 
 ${renderForbiddenLines()}
 
@@ -214,7 +209,6 @@ node access, or a step that would otherwise need three or more native nodes.
 
 /**
  * Full reference including groups docs. Materialized into Instance AI's
- * knowledge base for on-demand reading; the MCP SDK reference embeds the
- * groups-gated variant via `buildSdkLanguageReference` instead.
+ * knowledge base for on-demand reading and embedded in the MCP SDK reference.
  */
 export const SDK_LANGUAGE_REFERENCE = buildSdkLanguageReference();

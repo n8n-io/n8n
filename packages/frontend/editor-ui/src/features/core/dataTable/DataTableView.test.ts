@@ -1,10 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import DataTableView from '@/features/core/dataTable/DataTableView.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createWebHistory } from 'vue-router';
@@ -189,6 +190,18 @@ describe('DataTableView', () => {
 			await waitAllPromises();
 
 			expect(mockToast.showError).toHaveBeenCalledWith(error, 'Error loading data tables');
+		});
+
+		it('should reload the data tables after a package was applied', async () => {
+			renderComponent({ pinia });
+			await waitAllPromises();
+			const fetches = dataTableStore.fetchDataTables.mock.calls.length;
+
+			promotionEventBus.emit('applied', { projectId: 'test-project' });
+
+			await waitFor(() =>
+				expect(dataTableStore.fetchDataTables.mock.calls.length).toBeGreaterThan(fetches),
+			);
 		});
 	});
 

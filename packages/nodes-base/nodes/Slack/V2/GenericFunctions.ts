@@ -251,6 +251,9 @@ export async function slackApiRequestAllItemsWithRateLimit<TResponseData>(
 				JSON.stringify(response.body?.error ?? response.statusMessage ?? 'Unknown error');
 
 			if (response.statusCode === 200) {
+				if (response.body?.ok === false) {
+					throwOnSlackApiError.call(context, response.body);
+				}
 				retryCount = 0;
 				responseData = response.body;
 				requestSuccessful = true;

@@ -1,6 +1,6 @@
 import { Post, RestController } from '@n8n/decorators';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 import { McpRegistryServerEntity } from './registry/mcp-registry-server.entity';
 import { McpRegistryServerRepository } from './registry/mcp-registry-server.repository';

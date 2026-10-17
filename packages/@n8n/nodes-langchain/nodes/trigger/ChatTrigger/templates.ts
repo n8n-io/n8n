@@ -58,11 +58,31 @@ export function getSanitizedI18nConfig(config: Record<string, string>): Record<s
 
 	return sanitized;
 }
-export function getSanitizedCustomCss(customCss: string): string {
-	// Strip any sequence that could close the <style> context.
-	// Browsers treat </style followed by /, space, tab, or > as a closing tag,
-	// so we remove all </style variants (case-insensitive) to prevent breakout.
-	return customCss.replace(/<\/style/gi, '');
+
+/** Ties the empty element the page ships to the script that fills it. */
+const CUSTOM_CSS_ELEMENT_ID = 'n8n-chat-custom-css';
+
+/**
+ * Applies the user's custom CSS without ever placing it in an HTML context.
+ *
+ * Interpolating it into `<style>...</style>` put it one `</style` away from the HTML
+ * parser, and no amount of stripping closes that: removing an inner `</style` splices
+ * the text around it into a real closing tag, so the filter builds the sequence it is
+ * meant to remove. Assigning `textContent` parses no markup at all, so the CSS reaches
+ * the CSS parser byte for byte and cannot reach the HTML one.
+ *
+ * Escaping is the same `escapeForScriptContext` the rest of this page's values use. A
+ * classic script, so it runs before the body is parsed and the styles are never applied
+ * late. The element stays where the old `<style>` was, which keeps the cascade order.
+ */
+function buildCustomCssScript(customCss: string): string {
+	if (!customCss) return '';
+
+	return `
+			<script>
+				document.getElementById(${escapeForScriptContext(CUSTOM_CSS_ELEMENT_ID)}).textContent =
+					${escapeForScriptContext(customCss)};
+			</script>`;
 }
 
 /**
@@ -365,7 +385,7 @@ export function createPage({
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
 	const sanitizedAllowFileUploads = !!allowFileUploads;
 	const sanitizedAllowedFilesMimeTypes = sanitizeUserInput(allowedFilesMimeTypes?.toString() ?? '');
-	const sanitizedCustomCss = getSanitizedCustomCss(customCss?.toString() ?? '');
+	const customCssScript = buildCustomCssScript(customCss?.toString() ?? '');
 
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
 		loadPreviousSession as LoadPreviousSessionChatOption,
@@ -459,7 +479,7 @@ export function createPage({
 					height: 100%;
 				}
 			</style>
-			<style>${sanitizedCustomCss}</style>
+			<style id="${CUSTOM_CSS_ELEMENT_ID}"></style>${customCssScript}
 		</head>
 		<body>${shellInner ? innerBootstrapScript + buildCredentialGateScript(!!enableStreaming) : ''}
 			<script type="module">

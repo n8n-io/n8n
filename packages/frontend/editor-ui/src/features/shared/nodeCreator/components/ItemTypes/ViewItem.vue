@@ -4,9 +4,12 @@ import type { ViewItemProps } from '@/Interface';
 import { N8nNodeCreatorNode, N8nNodeIcon } from '@n8n/design-system';
 export interface Props {
 	view: ViewItemProps;
+	showActionArrow?: boolean;
 }
 
-defineProps<Props>();
+withDefaults(defineProps<Props>(), {
+	showActionArrow: true,
+});
 </script>
 
 <template>
@@ -16,7 +19,7 @@ defineProps<Props>();
 		:tag="view.tag"
 		:is-trigger="false"
 		:description="view.description"
-		:show-action-arrow="true"
+		:show-action-arrow="showActionArrow"
 	>
 		<template #icon>
 			<N8nNodeIcon type="icon" :name="view.icon" :circle="false" :show-tooltip="false" />

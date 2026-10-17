@@ -67,6 +67,7 @@ import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { makeBuilderTemplatesTarGz } from '../../knowledge-base/__tests__/builder-templates-archive.fixtures';
+import { buildKnowledgeBaseWorkspaceBundle } from '../../knowledge-base/materialize-knowledge-base';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
@@ -264,6 +265,7 @@ describe('PACKAGE_JSON', () => {
 
 		expect(packageJson.dependencies['@n8n/workflow-sdk']).toBeDefined();
 		expect(packageJson.dependencies.tsx).toBeDefined();
+		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 
 	it('should omit the registry SDK dependency when workspace SDK linking is enabled', async () => {
@@ -271,6 +273,7 @@ describe('PACKAGE_JSON', () => {
 
 		expect(packageJson.dependencies).not.toHaveProperty('@n8n/workflow-sdk');
 		expect(packageJson.dependencies.tsx).toBeDefined();
+		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 });
 /** npm install commands issued, ignoring how cwd/options were passed. */
@@ -308,6 +311,11 @@ describe('setupSandboxWorkspace', () => {
 		>(async () => await Promise.resolve());
 
 		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext());
+		expect(writeFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/workflow-diagnostics.mts',
+			expect.any(String),
+			{ recursive: true },
+		);
 
 		const markerCallIndex = writeFile.mock.calls.findIndex(
 			([path]) => path === '/home/daytona/workspace/.sandbox-initialized',
@@ -391,7 +399,55 @@ describe('setupSandboxWorkspace', () => {
 		expect(initialized).toBe(false);
 		expect(installCommandsFrom(runInSandbox)).toEqual([]);
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
+		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
+	});
+
+	it('reads only the knowledge base manifest when the prebaked bundle matches', async () => {
+		const runInSandbox: RunInSandboxMock =
+			vi.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock =
+			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const context = createSetupContext();
+		const knowledgeBase = await buildKnowledgeBaseWorkspaceBundle({
+			root: '/sandbox',
+			logger: context.logger,
+		});
+		const files = new Map(knowledgeBase.files);
+		files.set('/sandbox/.sandbox-initialized', '2024-01-01T00:00:00.000Z');
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => await Promise.resolve());
+		const readFile = vi.fn(async (path: string) => {
+			const content = files.get(path);
+			if (content === undefined) return await Promise.reject(new Error(`ENOENT: ${path}`));
+			return await Promise.resolve(content);
+		});
+		const verifiedBundles = new Map<string, string>();
+
+		const initialized = await setupSandboxWorkspace(
+			createLocalWorkspace(writeFile, undefined, readFile),
+			context,
+			{ verifiedBundles },
+		);
+
+		expect(initialized).toBe(false);
+		expect(readFile.mock.calls.map(([path]) => path)).toEqual([
+			'/sandbox/.sandbox-initialized',
+			knowledgeBase.manifestPath,
+		]);
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(verifiedBundles.get(knowledgeBase.manifestPath)).toBe(knowledgeBase.contentHash);
 	});
 
 	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {
@@ -838,6 +894,87 @@ describe('setupSandboxWorkspace', () => {
 			),
 			'/workspace',
 		);
+	});
+
+	it('reports the install output when the tarball install fails', async () => {
+		const packSandboxLinkedWorkspacePackages = vi.fn().mockResolvedValue([
+			{
+				filename: 'workflow-sdk.tgz',
+				tarball: Buffer.from('sdk'),
+				version: '1.0.0',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/host/sdk',
+			},
+		]);
+		const npmError = 'npm error notarget No matching version found for nanoid@3.3.18.';
+		const runInSandbox: RunInSandboxMock = vi
+			.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>()
+			// Daytona returns all command output in stdout.
+			.mockResolvedValue({ exitCode: 1, stdout: npmError, stderr: '' });
+		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
+			packSandboxLinkedWorkspacePackages,
+			runInSandbox,
+		);
+		const workspace = {
+			filesystem: { provider: 'daytona', writeFile: vi.fn(async () => {}) },
+			sandbox: {},
+		} as unknown as SandboxWorkspace;
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+
+		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
+			`Failed to install workspace package tarballs (exit code 1): ${npmError}`,
+		);
+		expect(logger.error).toHaveBeenCalledWith(
+			'Failed to link workspace packages into sandbox',
+			expect.objectContaining({
+				exitCode: 1,
+				command: expect.stringContaining(
+					"npm install '/workspace/workflow-sdk.tgz' --no-save --force",
+				),
+				output: npmError,
+			}),
+		);
+	});
+
+	it('keeps the end of long install output with stderr last', async () => {
+		const packSandboxLinkedWorkspacePackages = vi.fn().mockResolvedValue([
+			{
+				filename: 'workflow-sdk.tgz',
+				tarball: Buffer.from('sdk'),
+				version: '1.0.0',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/host/sdk',
+			},
+		]);
+		const stdout = 'npm http fetch GET 200 https://registry.npmjs.org/pkg\n'.repeat(200);
+		const stderr = 'npm error notarget No matching version found for nanoid@3.3.18.';
+		const runInSandbox: RunInSandboxMock = vi
+			.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>()
+			.mockResolvedValue({ exitCode: 1, stdout, stderr });
+		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
+			packSandboxLinkedWorkspacePackages,
+			runInSandbox,
+		);
+		const workspace = {
+			filesystem: { provider: 'local', writeFile: vi.fn(async () => {}) },
+			sandbox: {},
+		} as unknown as SandboxWorkspace;
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+
+		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
+			stderr,
+		);
+		const { output } = logger.error.mock.calls[0][1] as { output: string };
+		const expectedTail = `${stdout}\n${stderr}`.trim().slice(-4000);
+		expect(output).toBe(`…${expectedTail}`);
 	});
 });
 describe('formatNodeCatalogLine', () => {

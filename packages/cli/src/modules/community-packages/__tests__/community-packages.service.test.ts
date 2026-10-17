@@ -3,7 +3,11 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
-import { N8N_NODES_API_VERSION, type PublicInstalledPackage } from 'n8n-workflow';
+import {
+	N8N_NODES_API_VERSION,
+	parseNodesApiLevel,
+	type PublicInstalledPackage,
+} from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
@@ -52,6 +56,9 @@ const execMock: typeof execFile = ((...args) => {
 
 vi.mocked(execFile).mockImplementation(execMock);
 
+const { major: supportedMajor, minor: supportedMinor } = parseNodesApiLevel(N8N_NODES_API_VERSION)!;
+const oneMinorAboveSupported = `${supportedMajor}.${supportedMinor + 1}`;
+
 describe('CommunityPackagesService', () => {
 	const license = mock<License>();
 	const configDefaults = {
@@ -61,6 +68,8 @@ describe('CommunityPackagesService', () => {
 		registry: 'some.random.host',
 		unverifiedEnabled: true,
 		authToken: '',
+		aiNodeSdkVersion: 1,
+		nodesApiVersion: N8N_NODES_API_VERSION,
 	};
 	const config = mock<CommunityPackagesConfig>({ ...configDefaults });
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
@@ -129,6 +138,20 @@ describe('CommunityPackagesService', () => {
 				).toThrow(`Invalid version: ${version}`);
 			},
 		);
+
+		test.each([
+			['n8n-nodes-test', 'n8n-nodes-test', undefined, undefined],
+			['n8n-nodes-test@1.2.3', 'n8n-nodes-test', undefined, '1.2.3'],
+			['@scope/n8n-nodes-test', '@scope/n8n-nodes-test', '@scope', undefined],
+			['@scope/n8n-nodes-test@1.2.3', '@scope/n8n-nodes-test', '@scope', '1.2.3'],
+		])('should parse "%s"', (rawString, packageName, scope, version) => {
+			expect(communityPackagesService.parseNpmPackageName(rawString)).toEqual({
+				rawString,
+				packageName,
+				scope,
+				version,
+			});
+		});
 
 		test.each(['n8n-nodes-base', '@n8n/n8n-nodes-langchain'])(
 			'should reject reserved package name %s',
@@ -466,6 +489,7 @@ describe('CommunityPackagesService', () => {
 					devDependencies: { 'a-dev-dep': '1.0.0' },
 					peerDependencies: { 'a-peer-dep': '2.0.0' },
 					optionalDependencies: { 'an-optional-dep': '3.0.0' },
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 				}),
 			);
 			vi.mocked(writeFile).mockResolvedValue(undefined);
@@ -520,6 +544,7 @@ describe('CommunityPackagesService', () => {
 						dependencies: { [PACKAGE_NAME]: COMMUNITY_PACKAGE_VERSION.CURRENT },
 					}),
 				)
+				// The extracted package.json, which the download strips and writes back.
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -528,6 +553,7 @@ describe('CommunityPackagesService', () => {
 						devDependencies: {},
 						peerDependencies: {},
 						optionalDependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -535,6 +561,15 @@ describe('CommunityPackagesService', () => {
 						name: 'installed-nodes',
 						private: true,
 						dependencies: { [PACKAGE_NAME]: '2.0.0' },
+					}),
+				)
+				// The compatibility guard reads the same extracted package.json, now stripped.
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: PACKAGE_NAME,
+						version: '2.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -628,6 +663,63 @@ describe('CommunityPackagesService', () => {
 			expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
 		});
 
+		describe('node API version guard', () => {
+			const updateToIncompatible = async (n8nNodesApiVersion: unknown) => {
+				vi.mocked(readFile).mockResolvedValue(
+					JSON.stringify({
+						name: PACKAGE_NAME,
+						version: '2.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+						n8n: { n8nNodesApiVersion },
+					}),
+				);
+				return await communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				);
+			};
+
+			test('should reject the update when the package requires a newer node API version', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(oneMinorAboveSupported)).rejects.toThrow(
+					"This community node isn't compatible with your version of n8n. Update n8n to use it.",
+				);
+
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			});
+
+			test('should reject the update when the declared node API version is malformed', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(3.1)).rejects.toThrow('invalid n8n node API version');
+
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+			});
+
+			test('should update to a package that declares the supported node API version', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(N8N_NODES_API_VERSION)).resolves.toBe(packageAfterUpdate);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalled();
+			});
+
+			test('should update to a package that declares the supported level with an explicit minor', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(`${supportedMajor}.${supportedMinor}`)).resolves.toBe(
+					packageAfterUpdate,
+				);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+			});
+		});
+
 		test('should remove the package.json dependency when a fresh install fails', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 			// No pre-existing directory here, unlike the shared beforeEach's update scenario.
@@ -639,6 +731,7 @@ describe('CommunityPackagesService', () => {
 				.mockResolvedValueOnce(
 					JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
 				)
+				// The extracted package.json, which the download strips and writes back.
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -647,6 +740,7 @@ describe('CommunityPackagesService', () => {
 						devDependencies: {},
 						peerDependencies: {},
 						optionalDependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -654,6 +748,15 @@ describe('CommunityPackagesService', () => {
 						name: 'installed-nodes',
 						private: true,
 						dependencies: { [PACKAGE_NAME]: '1.0.0' },
+					}),
+				)
+				// The compatibility guard reads the same extracted package.json, now stripped.
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: PACKAGE_NAME,
+						version: '1.0.0',
+						dependencies: {},
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					}),
 				)
 				.mockResolvedValueOnce(
@@ -853,6 +956,9 @@ describe('CommunityPackagesService', () => {
 						name: PACKAGE_NAME,
 						version: '1.0.0',
 						dependencies: { 'some-actual-dep': '1.2.3' },
+						// The dependency-stripping rewrite must keep the `n8n` section: the
+						// compatibility guard reads it from the rewritten file.
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					},
 					null,
 					2,
@@ -1329,7 +1435,7 @@ describe('CommunityPackagesService', () => {
 				JSON.stringify({
 					name: 'package-1',
 					version: '1.0.0',
-					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+					n8n: { n8nNodesApiVersion: oneMinorAboveSupported },
 				}),
 			);
 
@@ -1349,7 +1455,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 			vi.mocked(readFile).mockResolvedValue(
-				JSON.stringify({ name: 'package-1', version: '1.0.0', n8n: { n8nNodesApiVersion: '3' } }),
+				JSON.stringify({ name: 'package-1', version: '1.0.0', n8n: { n8nNodesApiVersion: 3.1 } }),
 			);
 
 			await communityPackagesService.checkForMissingPackages();
@@ -1605,6 +1711,7 @@ describe('CommunityPackagesService', () => {
 					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 				},
 				config.aiNodeSdkVersion,
+				config.nodesApiVersion,
 			);
 		});
 
@@ -1630,6 +1737,7 @@ describe('CommunityPackagesService', () => {
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
 					config.aiNodeSdkVersion,
+					config.nodesApiVersion,
 				);
 			} finally {
 				// Restore original environment
