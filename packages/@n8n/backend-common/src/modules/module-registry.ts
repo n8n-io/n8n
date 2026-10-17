@@ -50,6 +50,8 @@ export class ModuleRegistry {
 		// initialize in this order, and an unbound abstract constructor parameter resolves to
 		// `undefined` in the container, so it has to run before every consumer.
 		'inbound-auth-core',
+		// Does nothing unless N8N_CODE_EXECUTION_BACKEND=sandbox (spike).
+		'code-sandbox',
 		'insights',
 		'external-secrets',
 		'community-packages',

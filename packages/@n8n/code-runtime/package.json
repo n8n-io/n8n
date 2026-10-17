@@ -1,0 +1,43 @@
+{
+  "name": "@n8n/code-runtime",
+  "version": "0.1.0",
+  "description": "JS runtime for Code node tasks in a code sandbox (spike). Runs one task per worker process. No language guards.",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p ./tsconfig.build.json && pnpm build:snapshot-bundle",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
+    "build:snapshot-bundle": "esbuild dist/snapshot.js --bundle --platform=node --format=iife --target=node22 --alias:http=./snapshot/lazy-http.cjs --alias:https=./snapshot/lazy-https.cjs --outfile=dist/snapshot-bundle.js --log-level=error"
+  },
+  "main": "dist/entry.js",
+  "types": "dist/run-task.d.ts",
+  "files": [
+    "dist/**/*",
+    "snapshot/**/*"
+  ],
+  "dependencies": {
+    "iconv-lite": "catalog:",
+    "lodash": "catalog:",
+    "luxon": "catalog:",
+    "moment": "2.30.1",
+    "n8n-workflow": "workspace:*"
+  },
+  "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/task-runner": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/lodash": "catalog:",
+    "@types/luxon": "catalog:",
+    "esbuild": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

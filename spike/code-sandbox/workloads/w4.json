@@ -1,0 +1,447 @@
+{
+	"id": "spikeW4000000001",
+	"name": "W4 staged data of ten nodes",
+	"active": false,
+	"nodes": [
+		{
+			"id": "a1000000-0000-4000-8000-000000000016",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"webhookId": "b1000000-0000-4000-8000-000000000017",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "spike-w4",
+				"responseMode": "lastNode",
+				"responseData": "allEntries",
+				"options": {}
+			}
+		},
+		{
+			"id": "d0000000-0000-4000-8000-000000000018",
+			"name": "Generate",
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"category": "randomData",
+				"randomDataType": "user",
+				"randomDataCount": 1000
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000019",
+			"name": "Set 1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000020",
+							"name": "field1",
+							"value": "value-1-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000021",
+			"name": "Set 2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000022",
+							"name": "field2",
+							"value": "value-2-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000023",
+			"name": "Set 3",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				800,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000024",
+							"name": "field3",
+							"value": "value-3-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000025",
+			"name": "Set 4",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1000,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000026",
+							"name": "field4",
+							"value": "value-4-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000027",
+			"name": "Set 5",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1200,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000028",
+							"name": "field5",
+							"value": "value-5-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000029",
+			"name": "Set 6",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1400,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000030",
+							"name": "field6",
+							"value": "value-6-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000031",
+			"name": "Set 7",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1600,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000032",
+							"name": "field7",
+							"value": "value-7-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000033",
+			"name": "Set 8",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1800,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000034",
+							"name": "field8",
+							"value": "value-8-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000035",
+			"name": "Set 9",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				2000,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000036",
+							"name": "field9",
+							"value": "value-9-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "f0000000-0000-4000-8000-000000000037",
+			"name": "Set 10",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				2200,
+				0
+			],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "aa000000-0000-4000-8000-000000000038",
+							"name": "field10",
+							"value": "value-10-{{ $json.uid ?? $itemIndex }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000039",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				2400,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const total = $('Set 1').all().length + $('Set 2').all().length + $('Set 3').all().length + $('Set 4').all().length + $('Set 5').all().length + $('Set 6').all().length + $('Set 7').all().length + $('Set 8').all().length + $('Set 9').all().length + $('Set 10').all().length;\nreturn [{ json: { total } }];"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Generate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate": {
+			"main": [
+				[
+					{
+						"node": "Set 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 1": {
+			"main": [
+				[
+					{
+						"node": "Set 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 2": {
+			"main": [
+				[
+					{
+						"node": "Set 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 3": {
+			"main": [
+				[
+					{
+						"node": "Set 4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 4": {
+			"main": [
+				[
+					{
+						"node": "Set 5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 5": {
+			"main": [
+				[
+					{
+						"node": "Set 6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 6": {
+			"main": [
+				[
+					{
+						"node": "Set 7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 7": {
+			"main": [
+				[
+					{
+						"node": "Set 8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 8": {
+			"main": [
+				[
+					{
+						"node": "Set 9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 9": {
+			"main": [
+				[
+					{
+						"node": "Set 10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set 10": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}

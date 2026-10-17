@@ -140,6 +140,7 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
 			'inbound-auth-core',
+			'code-sandbox',
 			'external-secrets',
 			'community-packages',
 			'data-table',
@@ -189,6 +190,7 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
 			'inbound-auth-core',
+			'code-sandbox',
 			'insights',
 			'external-secrets',
 			'community-packages',
