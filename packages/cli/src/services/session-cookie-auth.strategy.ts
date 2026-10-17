@@ -5,9 +5,9 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthError } from '@n8n/errors';
 
-import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
+import type { AuthStrategy, AuthStrategyOptions } from '@n8n/backend-services/auth';
 
 /**
  * Lets the public API accept the browser's `n8n-auth` session cookie as an

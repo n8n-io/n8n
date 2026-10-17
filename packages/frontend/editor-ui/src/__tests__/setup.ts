@@ -3,7 +3,8 @@ import 'fake-indexeddb/auto';
 import 'core-js/proposals/set-methods-v2';
 import englishBaseText from '@n8n/i18n/locales/en.json';
 import { loadLanguage, type LocaleMessages } from '@n8n/i18n';
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
+// Not the `@/app/constants` barrel: it pulls the full `@n8n/api-types` graph into every test file.
+import { APP_MODALS_ELEMENT_ID } from '@/app/constants/selectors';
 
 // Global stub for Reka UI Popover components used by N8nPopover.
 // Unlike Element+ popover which always renders content regardless of visibility,

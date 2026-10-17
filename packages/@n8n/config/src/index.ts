@@ -60,7 +60,7 @@ import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
-export { DatabaseConfig, SqliteConfig } from './configs/database.config';
+export { DatabaseConfig, SqliteConfig, statementTimeoutSeconds } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
@@ -82,6 +82,7 @@ export {
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
+export type { EngineMode } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
 export { LOG_SCOPES } from './configs/logging.config';

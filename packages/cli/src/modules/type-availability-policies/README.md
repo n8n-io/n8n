@@ -1,29 +1,29 @@
-# Node type availability policies
+# Type availability policies
 
-Rules that say which node types a project may use. An admin writes the rules. The policy
-infrastructure enforces them at the points that handle a workflow — save, publish, start,
-transfer and import — and at the point where a node asks for a credential.
+Rules that say which node types and which credential types a project may use. An admin writes
+the rules. The policy infrastructure enforces them at the points that handle a workflow — save,
+publish, start, transfer and import — and at the points that handle a credential.
 
-This module is the first tenant of that infrastructure. It adds a check and a store, and
+Most of this document describes the node type check, which came first. "The credential type
+check" below covers the second one and only the ways it differs.
+
+This module is the first tenant of that infrastructure. It adds two checks and one store, and
 nothing else: no enforcement path of its own, no error shape, no audit line. Read
 `../policy-infrastructure/README.md` for the substrate, and the policy infrastructure RFC in
 Notion for why the substrate looks the way it does.
 
 ## Turn it on
 
-Two gates, both required:
+This is a default module. The license feature `feat:typeAvailabilityPolicies` is the only gate.
+Without it, `init()` never runs, so the controllers are not mounted and no check is registered.
 
-1. The license feature `feat:nodeTypePolicies`. Without it, `init()` never runs, so the
-   controllers are not mounted and no check is registered.
-2. `N8N_ENABLED_MODULES=type-availability-policies`. This module is not a default module yet.
+**Do not disable the module on only some instance types.** Each process reads its own
+configuration. An instance that disables it only on its queue workers enforces saves and
+publishes on main, and enforces nothing at all on the workers — every execution there is
+admitted.
 
-**Set the environment variable on every instance type.** The module has no instance-type
-restriction, but each process reads its own configuration. An instance that enables it only on
-main enforces saves and publishes, and enforces nothing at all on its queue workers — every
-execution there is admitted.
-
-The break-glass levers stay the ones the substrate documents: remove this module from
-`N8N_ENABLED_MODULES`, or disable `policy-infrastructure` to stop every policy feature.
+The break-glass levers stay the ones the substrate documents: add this module to
+`N8N_DISABLED_MODULES`, or disable `policy-infrastructure` to stop every policy feature.
 
 ## What each point decides
 
@@ -87,6 +87,70 @@ A refusal fails the decryption with the same `node-type-unavailable` violation t
 points report, naming the **node type** as `subject`. The audit line carries the credential's
 id and type from the context.
 
+## The credential type check
+
+`CredentialTypePolicyCheck` is the second check in this module. It reads the same store under
+the `credential-types` kind, where a type name is bare (`slackApi`) rather than
+package-qualified. The two checks stack: either veto blocks, so a rule on the Slack node and a
+rule on `slackApi` are independent decisions.
+
+A rule of this kind is written on `/credential-type-policies` and
+`/projects/:projectId/credential-type-policies`, behind `credentialTypePolicy:manage` — its
+own permission, because blocking `oAuth2Api` is a wider lever than blocking one node.
+
+It implements all eight points:
+
+| Point                    | What it reads                                         |
+| ------------------------ | ----------------------------------------------------- |
+| the five workflow points | the keys of every node's `credentials` map, the type HTTP Request names by parameter, and `extendsCredential` |
+| `credentialSave`         | the type of the credential being written              |
+| `credentialTransfer`     | the credential's type, against the **target** project |
+| `credentialDecrypt`      | `credentialType` — the credential's own type          |
+
+Two differences from the node check are the point of the whole thing:
+
+- **`credentialDecrypt` ignores the asking node.** A blocked `slackApi` is refused to the Slack
+  node and to an HTTP Request node alike, which is the hole a node rule alone leaves. A null
+  `consumer` changes nothing either: an OAuth flow or a credential test has no node to police,
+  but it does have a credential type.
+- **`credentialSave` refuses creating a credential of a blocked type.** That is a build
+  experience guard, not a boundary — decryption already makes such a credential inert. An edit
+  that keeps the stored type is grandfathered, so a type blocked after the fact stays openable
+  and renameable.
+
+A violation is `credential-type-unavailable` with `subjectType: 'credentialType'`; everything
+else about the shape matches the node check.
+
+Workflow-point grandfathering works the same way, one level down: the save diff compares
+credential **types**, so swapping which `slackApi` credential a node uses, or copying the node,
+adds nothing to police.
+
+### Credential-only nodes
+
+The VirusTotal, Sysdig and Zabbix nodes, and every other node the editor generates from a
+credential type with `httpRequestNode`, are HTTP Request with one credential type attached. The
+editor names them `n8n-creds-base.<credentialType>` and stores them as
+`n8n-nodes-base.httpRequest` with `extendsCredential: '<credentialType>'`. No package registers
+the generated name, so the backend never sees it.
+
+Both kinds agree on such a node: it is available when `n8n-nodes-base.httpRequest` is available
+under the node kind **and** its credential type is available under the credential kind. The node
+check judges the stored `httpRequest` node; this check judges `extendsCredential` (and the
+parameter and `credentials` sources, which name the same type once configured). The frontend
+module composes the same two verdicts for the nodes panel, so a credential type rule on
+`virusTotalApi` hides the VirusTotal node and leaves HTTP Request and Sysdig in place.
+
+A node type rule on `n8n-creds-base.*` would match nothing, so the service refuses it at every
+write and names the credential type rule to write instead. Blocking HTTP Request itself still
+hides every credential-only node, as before.
+
+### What the second kind costs
+
+The cache is keyed per kind, so the two kinds share nothing. A cold decision on a project with
+both scopes configured and attached costs 12 queries where one kind cost 6, and a warm one
+costs none — pinned in `node-type-policy.store-reads.test.ts`. The decision service runs the
+checks together, so the second kind costs queries rather than latency.
+
 ## What a violation looks like
 
 One violation per blocked type, deduplicated, in the order the types first appear:
@@ -99,12 +163,23 @@ One violation per blocked type, deduplicated, in the order the types first appea
 	"subject": "n8n-nodes-base.slack",
 	"subjectType": "nodeType",
 	"scope": "instance",
-	"matchedRuleId": "rule-7"
+	"matchedRuleId": "rule-7",
+	"projectId": "project-1",
+	"optInAvailable": false
 }
 ```
 
 `matchedRuleId` is absent when the scope's default action decided and no rule matched. `scope`
 names the scope whose verdict decided, which is what a user needs to know who to ask.
+
+`projectId` names the project whose policy was evaluated, also for an instance denial. A
+sub-workflow is checked against its own project, so its refusal names that project, not the
+caller's. It is absent when no project applied. A project denial's message says "a project
+policy" and never names the project: the client resolves the name, and only for a project the
+user can see.
+
+`optInAvailable` is `true` when the instance delegated the type, so the project can lift the
+block with its own allow rule. It is always `false` when no project applied.
 
 The violations reach the caller as HTTP 403 with `meta.violations`, and a blocked run stores
 them on the execution's error. Today that error is the whole story a user gets: the builder
@@ -121,12 +196,39 @@ A policy lives in three tables:
 - **attachments**, which bind a document to a scope with a priority and a floor flag.
 
 `projectId: null` is the instance scope. An unwritten scope has no row: it allows everything and
-reports version `0`, so a first write sends `expectedVersion: 0`.
+reports version `0`, so a first write sends `expectedVersion: 0`. One accepted write moves the
+version by exactly one, whatever it changed.
 
 Evaluation is `instance ∩ project`, and a project can only restrict further. `delegate` is the
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,
 never by a project's bare default. `policy-evaluator.ts` owns that law and is pure, so it is
 the place to read it.
+
+A `name` rule for a node also covers the `Tool` and `HitlTool` variants the registry generates
+from it at startup: a rule for `n8n-nodes-base.gmail` denies `n8n-nodes-base.gmailTool` and
+`n8n-nodes-base.gmailHitlTool` too. A real node whose name ends in `Tool` is not a variant of
+anything, and only its own name matches it. When one rule names the base and another names the
+variant, the first match in rule order decides, as it does when a `name` and a `package` rule
+overlap; a variant rule placed after its base rule can never match, and the write-time shadow
+lint warns about it. The verdict names the variant the user placed and the rule that decided.
+Grandfathering compares literal type names, so adding `gmailTool` to a workflow that already
+stores `gmail` is a new type and is judged.
+
+A credential type policy has a third selector, `extends`. It matches the named type and every
+type built on it through the credential's `extends` list, at any depth: `extends oAuth2Api`
+covers `googleOAuth2Api` and `googleSheetsOAuth2Api`. A `name` rule stays exact, so
+`name oAuth2Api` blocks only the generic OAuth2 credential. Rule order decides as usual: an
+`allow name googleSheetsOAuth2Api` placed before `deny extends oAuth2Api` keeps Sheets usable,
+and placed after it, the shadow lint warns that it can never match. A write rejects an `extends`
+rule in a node type policy.
+
+A rule can name a package or type that this instance has not loaded. The write saves it and
+returns a `notLoaded` warning for it, next to the `shadowed` warnings. This applies to all
+three selectors. Thus, when you uninstall a package, its rules do not block later writes to the
+policy. An installed node that `NODES_EXCLUDE` or `NODES_INCLUDE` filters out is not loaded
+either. The policy still enforces its rule, because evaluation matches type names, but a policy
+cannot make a filtered-out node available. One exception: a write rejects a `package` rule on `n8n-creds-base`, because no package
+can ever provide it.
 
 ### Reading it on the execution path
 
@@ -177,8 +279,6 @@ through a sealed repository method, and the lint rule that guards that has no al
 
 ## Known limits
 
-- **Sibling tool types are separate names.** A rule that denies `n8n-nodes-base.gmail` does not
-  deny `n8n-nodes-base.gmailTool`. The registry holds them as two types.
 - **A workflow carried inside a node's parameters is not read.** The check reads
   `workflow.nodes`. Node types inside an inline sub-workflow definition are invisible to it.
   The credential lock still catches such a node once it asks for a credential.
@@ -228,12 +328,16 @@ through a sealed repository method, and the lint rule that guards that has no al
 
 | File                                              | Role                                                                            |
 | ------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `node-type-policy.check.ts`                       | The `@PolicyCheck()` class: the six points, the save diff, the violations       |
+| `node-type-policy.check.ts`                       | Node types: the six points, the save diff, the violations                       |
+| `credential-type-policy.check.ts`                 | Credential types: all eight points, including `credentialSave`                  |
 | `policy-evaluator.ts`                             | Pure evaluation: first match per scope, then the instance ∩ project composition |
 | `policy-shadow-lint.ts`                           | Warns at write time about rules an earlier rule already covers                  |
+| `policy-rule-lint.ts`                             | Adds `notLoaded` warnings and merges all write-time warnings in rule order      |
 | `package-resolver.ts`                             | Resolves a type's package per `kind`, for the `package` selector                |
 | `type-availability-policy.service.ts`             | Reads and writes the store, with versioning and row locks                       |
-| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments                                       |
-| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins                                       |
+| `type-availability-policy-instance.controller.ts` | Instance scope, documents and attachments, `node-types`                         |
+| `type-availability-policy-project.controller.ts`  | A project's own scope, for project admins, `node-types`                         |
+| `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |
+| `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `database/`                                       | The scope, document and attachment entities and repositories                    |

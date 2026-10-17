@@ -18,9 +18,14 @@ describe('selectMany utils', () => {
 	} as unknown as IDataTableProjectService);
 	const dataTableId = 2345;
 	let filters: FieldEntry[];
+	let returnAll: boolean;
+	let rowLimit: number;
 	const node = { id: 1 } as unknown as INode;
 
 	beforeEach(() => {
+		getManyRowsAndCount.mockReset();
+		returnAll = true;
+		rowLimit = 50;
 		filters = [
 			{
 				condition: 'eq',
@@ -39,6 +44,7 @@ describe('selectMany utils', () => {
 
 		mockExecuteFunctions = {
 			getNode: vi.fn().mockReturnValue(node),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(undefined),
 			getNodeParameter: vi.fn().mockImplementation((field) => {
 				switch (field) {
 					case DATA_TABLE_ID_FIELD:
@@ -47,6 +53,10 @@ describe('selectMany utils', () => {
 						return filters;
 					case 'matchType':
 						return ANY_CONDITION;
+					case 'returnAll':
+						return returnAll;
+					case 'limit':
+						return rowLimit;
 				}
 			}),
 			helpers: {
@@ -107,25 +117,238 @@ describe('selectMany utils', () => {
 			expect(result).toEqual([{ json: { id: 1, colA: null } }]);
 		});
 
-		it('should panic if pagination gets out of sync', async () => {
-			// ARRANGE
+		it.each([2344, 2346])(
+			'should continue when the matching count changes from 2345 to %i',
+			async (count) => {
+				filters = [{ condition: 'eq', keyName: 'status', keyValue: 'active' }];
+				const rows = Array.from({ length: count }, (_, id) => ({ id, status: 'active' }));
+				getManyRowsAndCount
+					.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 2345 })
+					.mockResolvedValueOnce({ data: rows.slice(1000, 2000), count })
+					.mockResolvedValueOnce({ data: rows.slice(2000), count });
+
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+				expect(result).toEqual(rows.map((json) => ({ json })));
+				expect(getManyRowsAndCount).toHaveBeenCalledTimes(3);
+				const filter = {
+					type: 'or',
+					filters: [{ columnName: 'status', condition: 'eq', value: 'active' }],
+				};
+				expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({ skip: 0, take: 1000, filter }),
+				);
+				expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+					2,
+					expect.objectContaining({ skip: 1000, take: 1000, filter }),
+				);
+				expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+					3,
+					expect.objectContaining({ skip: 2000, take: count - 2000, filter }),
+				);
+			},
+		);
+
+		it('should finish when repeated count increases stop', async () => {
+			const rows = Array.from({ length: 1003 }, (_, id) => ({ id }));
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 1001 })
+				.mockResolvedValueOnce({ data: rows.slice(1000, 1001), count: 1002 })
+				.mockResolvedValueOnce({ data: rows.slice(1001, 1002), count: 1003 })
+				.mockResolvedValueOnce({ data: rows.slice(1002), count: 1003 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(4);
+			for (const [index, skip] of [0, 1000, 1001, 1002].entries()) {
+				expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+					index + 1,
+					expect.objectContaining({ skip, take: index === 0 ? 1000 : 1 }),
+				);
+			}
+		});
+
+		it('should stop requesting pages after cancellation while the count keeps increasing', async () => {
+			const controller = new AbortController();
+			vi.mocked(mockExecuteFunctions.getExecutionCancelSignal).mockReturnValue(controller.signal);
+			const rows = Array.from({ length: 1002 }, (_, id) => ({ id }));
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 1001 })
+				.mockResolvedValueOnce({ data: rows.slice(1000, 1001), count: 1002 })
+				.mockImplementationOnce(async () => {
+					controller.abort();
+					return { data: rows.slice(1001), count: 1003 };
+				});
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(3);
+		});
+
+		it('should not request rows when execution is already cancelled', async () => {
+			const controller = new AbortController();
+			controller.abort();
+			vi.mocked(mockExecuteFunctions.getExecutionCancelSignal).mockReturnValue(controller.signal);
+			getManyRowsAndCount.mockRejectedValue(new Error('Unexpected page request'));
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual([]);
+			expect(getManyRowsAndCount).not.toHaveBeenCalled();
+		});
+
+		it('should stop when the count falls below the number of collected rows', async () => {
+			const rows = Array.from({ length: 2000 }, (_, id) => ({ id }));
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 2345 })
+				.mockResolvedValueOnce({ data: rows.slice(1000), count: 1500 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(2);
+		});
+
+		it('should continue when a short first page reports more matching rows', async () => {
+			const rows = [{ id: 1 }, { id: 2 }, { id: 3 }];
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: rows.slice(0, 2), count: 3 })
+				.mockResolvedValueOnce({ data: rows.slice(2), count: 3 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(2);
+			expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ skip: 2, take: 1 }),
+			);
+		});
+
+		it('should return a nonempty final page when the count decreases', async () => {
+			const rows = Array.from({ length: 1499 }, (_, id) => ({ id }));
+			getManyRowsAndCount
+				.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 1500 })
+				.mockResolvedValueOnce({ data: rows.slice(1000), count: 1499 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(2);
+			expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ skip: 1000, take: 500 }),
+			);
+		});
+
+		it.each([1000, 1001])(
+			'should return the collected rows when an empty page reports a count of %i',
+			async (count) => {
+				const rows = Array.from({ length: 1000 }, (_, id) => ({ id }));
+				getManyRowsAndCount
+					.mockRejectedValue(new Error('Unexpected additional page'))
+					.mockResolvedValueOnce({ data: rows, count: 1001 })
+					.mockResolvedValueOnce({ data: [], count });
+				filters = [];
+
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+				expect(result).toEqual(rows.map((json) => ({ json })));
+				expect(getManyRowsAndCount).toHaveBeenCalledTimes(2);
+				expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+					2,
+					expect.objectContaining({ skip: 1000, take: 1 }),
+				);
+			},
+		);
+
+		it('should stop when the first page is empty but its count is positive', async () => {
+			getManyRowsAndCount
+				.mockRejectedValue(new Error('Unexpected additional page'))
+				.mockResolvedValueOnce({ data: [], count: 1 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual([]);
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(1);
+		});
+
+		it('should respect the configured limit when the count changes', async () => {
+			returnAll = false;
+			rowLimit = 1500;
+			const rows = Array.from({ length: 1500 }, (_, id) => ({ id }));
+			getManyRowsAndCount
+				.mockResolvedValueOnce({ data: rows.slice(0, 1000), count: 2345 })
+				.mockResolvedValueOnce({ data: rows.slice(1000), count: 2346 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+			expect(result).toEqual(rows.map((json) => ({ json })));
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(2);
+			expect(getManyRowsAndCount).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ skip: 1000, take: 500 }),
+			);
+		});
+
+		it('should respect an explicit limit of one when returnAll is enabled', async () => {
+			getManyRowsAndCount.mockResolvedValueOnce({ data: [{ id: 1 }], count: 2345 });
+			filters = [];
+
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy, false, 1);
+
+			expect(result).toEqual([{ json: { id: 1 } }]);
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(1);
+			expect(getManyRowsAndCount).toHaveBeenCalledWith(
+				expect.objectContaining({ skip: 0, take: 1 }),
+			);
+		});
+
+		it.each([1000, 2000])(
+			'should finish a stable read of %i rows without an extra request',
+			async (count) => {
+				const rows = Array.from({ length: count }, (_, id) => ({ id }));
+				getManyRowsAndCount
+					.mockRejectedValue(new Error('Unexpected additional page'))
+					.mockResolvedValueOnce({ data: rows.slice(0, 1000), count });
+				if (count > 1000) {
+					getManyRowsAndCount.mockResolvedValueOnce({ data: rows.slice(1000), count });
+				}
+				filters = [];
+
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
+
+				expect(result).toEqual(rows.map((json) => ({ json })));
+				expect(getManyRowsAndCount).toHaveBeenCalledTimes(count / 1000);
+			},
+		);
+
+		it('should propagate a database error from a later page', async () => {
+			const error = new Error('Database connection failed');
 			getManyRowsAndCount.mockReturnValueOnce({
 				data: Array.from({ length: 1000 }, (_, k) => ({ id: k })),
 				count: 2345,
 			});
-			getManyRowsAndCount.mockReturnValueOnce({
-				data: Array.from({ length: 1000 }, (_, k) => ({ id: k + 1000 })),
-				count: 2344,
-			});
-
+			getManyRowsAndCount.mockRejectedValueOnce(error);
 			filters = [];
 
-			// ACT ASSERT
-			const execution = executeSelectMany(mockExecuteFunctions, 0, dataTableProxy);
-			await expect(execution).rejects.toThrow(NodeOperationError);
-			await expect(execution).rejects.toThrow(
-				'synchronization error: result count changed during pagination',
-			);
+			await expect(executeSelectMany(mockExecuteFunctions, 0, dataTableProxy)).rejects.toBe(error);
+			expect(getManyRowsAndCount).toHaveBeenCalledTimes(2);
 		});
 
 		describe('filter conditions', () => {

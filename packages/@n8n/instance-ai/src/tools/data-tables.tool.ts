@@ -381,6 +381,40 @@ async function resolveDataTableReference(
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
+/**
+ * Tell the host that the agent worked on a table, so it shows the table's tab.
+ * Reads count too, because the frontend also previews a table the agent reads.
+ */
+async function reportDataTableAction(
+	context: InstanceAiContext,
+	table: { id: string; name?: string; projectId?: string },
+) {
+	await context.onArtifactChanged?.({
+		type: 'data-table',
+		id: table.id,
+		...(table.name ? { name: table.name } : {}),
+		...(table.projectId ? { projectId: table.projectId } : {}),
+	});
+}
+
+/**
+ * Report a table that a column action changed. The action accepts a table name
+ * as `dataTableId`, so resolve it to the table's ID. A failed lookup must not
+ * fail the change that already happened.
+ */
+async function reportChangedDataTable(context: InstanceAiContext, input: DataTableReferenceInput) {
+	const table = await resolveDataTableReference(context, input, 'read').catch(() => ({
+		dataTableId: input.dataTableId,
+		dataTableName: input.dataTableName,
+		projectId: input.projectId,
+	}));
+	await reportDataTableAction(context, {
+		id: table.dataTableId,
+		name: table.dataTableName,
+		projectId: table.projectId,
+	});
+}
+
 async function handleList(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'list' }>,
@@ -396,6 +430,11 @@ async function handleSchema(
 	const table = await resolveDataTableReference(context, input, 'read');
 	const columns = await context.dataTableService.getSchema(input.dataTableId, {
 		projectId: input.projectId,
+	});
+	await reportDataTableAction(context, {
+		id: table.dataTableId,
+		name: table.dataTableName,
+		projectId: table.projectId,
 	});
 	return { ...table, columns };
 }
@@ -463,6 +502,11 @@ async function handleQuery(
 		);
 	}
 
+	await reportDataTableAction(context, {
+		id: table.dataTableId,
+		name: table.dataTableName,
+		projectId: table.projectId,
+	});
 	const response = { ...table, count: result.count, data };
 	return hints.length > 0 ? { ...response, hint: hints.join(' ') } : response;
 }
@@ -509,6 +553,7 @@ async function handleCreate(
 		const table = await context.dataTableService.create(input.name, input.columns, {
 			projectId: input.projectId,
 		});
+		await reportDataTableAction(context, table);
 		return { table };
 	} catch (error) {
 		// If table already exists, guide the agent to use the existing one
@@ -603,6 +648,7 @@ async function handleAddColumn(
 		{ name: input.columnName, type: input.type },
 		{ projectId: input.projectId },
 	);
+	await reportChangedDataTable(context, input);
 	return { column };
 }
 
@@ -646,6 +692,7 @@ async function handleDeleteColumn(
 	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
 		projectId: input.projectId,
 	});
+	await reportChangedDataTable(context, input);
 	return { success: true };
 }
 
@@ -690,6 +737,7 @@ async function handleRenameColumn(
 	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
 		projectId: input.projectId,
 	});
+	await reportChangedDataTable(context, input);
 	return { success: true };
 }
 
@@ -739,9 +787,15 @@ async function handleInsertRows(
 	await persistSessionGrantIfRequested(context, 'insert-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
-	return await context.dataTableService.insertRows(input.dataTableId, input.rows, {
+	const result = await context.dataTableService.insertRows(input.dataTableId, input.rows, {
 		projectId: input.projectId,
 	});
+	await reportDataTableAction(context, {
+		id: result.dataTableId,
+		name: result.tableName,
+		projectId: result.projectId,
+	});
+	return result;
 }
 
 async function handleUpdateRows(
@@ -785,9 +839,18 @@ async function handleUpdateRows(
 	await persistSessionGrantIfRequested(context, 'update-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
-	return await context.dataTableService.updateRows(input.dataTableId, input.filter, input.data, {
-		projectId: input.projectId,
+	const result = await context.dataTableService.updateRows(
+		input.dataTableId,
+		input.filter,
+		input.data,
+		{ projectId: input.projectId },
+	);
+	await reportDataTableAction(context, {
+		id: result.dataTableId,
+		name: result.tableName,
+		projectId: result.projectId,
 	});
+	return result;
 }
 
 async function handleDeleteRows(
@@ -829,6 +892,11 @@ async function handleDeleteRows(
 	// State 3: Approved or always_allow — execute
 	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter, {
 		projectId: input.projectId,
+	});
+	await reportDataTableAction(context, {
+		id: result.dataTableId,
+		name: result.tableName,
+		projectId: result.projectId,
 	});
 	return {
 		success: true,

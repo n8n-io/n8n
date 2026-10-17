@@ -11,6 +11,7 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -32,7 +33,8 @@ import {
 	describeSavedPublishState,
 	type SavedWorkflowState,
 } from './workflows/saved-workflow-state';
-import { isSetupPanelEnabled } from './workflows/setup-items';
+import { filterSatisfiedSetupCredentialTypes } from './workflows/setup-credential-selections';
+import { isSetupPanelEnabled, requestsCredentialReplacement } from './workflows/setup-items';
 import {
 	describeSetupItem,
 	rememberWorkflowSetupState,
@@ -550,6 +552,18 @@ function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOpti
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
+
+/** A successful setup or restore changes the workflow, so report it to the host. */
+async function reportWorkflowChange<T>(
+	context: InstanceAiContext,
+	workflowId: string,
+	result: T,
+): Promise<T> {
+	if (isRecord(result) && result.success === true) {
+		await context.onArtifactChanged?.({ type: 'workflow', id: workflowId });
+	}
+	return result;
+}
 
 async function resolveWorkflowName(
 	context: InstanceAiContext,
@@ -1175,11 +1189,11 @@ async function handleSetupTestTrigger(
 			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, preTestApply.applied),
 		},
 	);
-	// Re-derived from scratch, so it has to be partitioned again: this is the second path that
-	// builds the panel, and without it a trigger test mid-session puts back the cards state 1
-	// left out.
+	// Re-derived from scratch, so it has to be scoped and partitioned again: this is the second
+	// path that builds the panel, and without it a trigger test mid-session puts back the cards
+	// state 1 left out. The destination check below still sees every node.
 	const { pending: refreshedPending } = partitionSkippedSetupRequests(
-		refreshedRequests,
+		await filterToSetupScope(context, input, refreshedRequests),
 		input.workflowId,
 		getSkippedSetupSubjects(context),
 	);
@@ -1278,6 +1292,13 @@ async function handleSetupApply(
 			resumeData.nodeParameters,
 		);
 
+		// Nothing was saved, so there is nothing to re-analyze. A failed result shows
+		// the reason to the user and the agent; a "partial" success would hide it
+		// (e.g. a credential the workflow's project cannot use).
+		if (applyResult.saveError) {
+			return { success: false, error: applyResult.saveError };
+		}
+
 		const failedNodes = applyResult.failed.length > 0 ? applyResult.failed : undefined;
 
 		// Fetch updated workflow to include in response so the frontend can refresh the canvas
@@ -1298,12 +1319,17 @@ async function handleSetupApply(
 		// Filter by needsAction to distinguish "render this card" from
 		// "this still requires user intervention". Settled requests are kept so
 		// a just-applied credential whose test failed stays reportable below —
-		// a bound credential is settled for routing even when its test fails.
-		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
-			includeSettled: true,
-			...preferNewCredentialOptions(input, resumeData.credentials),
-			appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
-		});
+		// a bound credential is settled for routing even when its test fails. Scoped like the
+		// card: a node it left out is neither still pending nor skipped by the user.
+		const remainingRequests = await filterToSetupScope(
+			context,
+			input,
+			await analyzeWorkflow(context, input.workflowId, undefined, {
+				includeSettled: true,
+				...preferNewCredentialOptions(input, resumeData.credentials),
+				appliedCredentialIds: appliedCredentialIdList(resumeData.credentials, applyResult.applied),
+			}),
+		);
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
 			resumeData.nodeParameters,
@@ -1421,6 +1447,23 @@ async function resolveSetupScopeNodeNames(
 		});
 		return undefined;
 	}
+}
+
+/**
+ * Narrow requests to the build-bound setup scope. Every path that builds or reports the setup
+ * card goes through here, so a node the card left out cannot come back through a trigger test,
+ * the apply report, or a skip the user never made.
+ */
+async function filterToSetupScope(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'setup' }>,
+	requests: SetupRequest[],
+): Promise<SetupRequest[]> {
+	if (input.includeAllNodes) return requests;
+	const scopeNodeNames = await resolveSetupScopeNodeNames(context, input.workflowId);
+	return scopeNodeNames
+		? requests.filter((request) => scopeNodeNames.includes(request.node.name))
+		: requests;
 }
 
 /**
@@ -1586,8 +1629,13 @@ async function handleSetup(
 		// The setup panel lists bound slots too (rendered as done), so its snapshot
 		// needs the settled requests the card logic below must not see.
 		const setupPanelEnabled = isSetupPanelEnabled(context);
+		const preferNewCredentialTypes = await filterSatisfiedSetupCredentialTypes(
+			context,
+			input.workflowId,
+			input.preferNewCredentials,
+		);
 		const analyzedRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
-			...preferNewCredentialOptions(input),
+			...(preferNewCredentialTypes?.length ? { preferNewCredentialTypes } : {}),
 			...(setupPanelEnabled ? { includeSettled: true } : {}),
 		});
 		const allSetupRequests = setupPanelEnabled
@@ -1663,12 +1711,7 @@ async function handleSetup(
 
 		// Setup after a build covers only the nodes that build changed —
 		// pre-existing, unrelated nodes must not surface in the setup card.
-		const scopeNodeNames = input.includeAllNodes
-			? undefined
-			: await resolveSetupScopeNodeNames(context, input.workflowId);
-		const scopedRequests = scopeNodeNames
-			? allSetupRequests.filter((request) => scopeNodeNames.includes(request.node.name))
-			: allSetupRequests;
+		const scopedRequests = await filterToSetupScope(context, input, allSetupRequests);
 
 		// Two reasons a card stays out, applied in order: this build never touched the node, or
 		// the user declined it. Partitioning the scoped list keeps them apart in the report —
@@ -1735,8 +1778,11 @@ async function handleSetup(
 
 		// Setup panel v2: announce the final checklist and return. The user
 		// completes it in the panel; the turn ends with the agent's summary.
-		// Replacement needs an explicit selection. A saved binding already appears done in the panel.
-		if (isSetupPanelEnabled(context) && !input.preferNewCredentials?.length) {
+		// Only a bound account needs the explicit replacement card.
+		if (
+			isSetupPanelEnabled(context) &&
+			!requestsCredentialReplacement(analyzedRequests, preferNewCredentialTypes)
+		) {
 			return await announceWorkflowSetup(context, input.workflowId, analyzedRequests);
 		}
 
@@ -1745,11 +1791,9 @@ async function handleSetup(
 			// the user declined, and pre-existing nodes this build never touched. Both can hold at
 			// once, so neither branch may swallow the other. Named "out of scope" rather than
 			// "skipped" because in this file a skip is specifically a user decision.
-			const outOfScopeNodeNames = scopeNodeNames
-				? allSetupRequests
-						.map((request) => request.node.name)
-						.filter((name) => !scopeNodeNames.includes(name))
-				: [];
+			const outOfScopeNodeNames = allSetupRequests
+				.filter((request) => !scopedRequests.includes(request))
+				.map((request) => request.node.name);
 			const outOfScopeReason =
 				outOfScopeNodeNames.length > 0
 					? `Pre-existing node(s) ${outOfScopeNodeNames
@@ -1808,10 +1852,11 @@ async function handleSetup(
 		}
 		// Re-analyze rather than remembering what was suspended: the closure state doesn't
 		// survive a resume in another process, and a skip that silently fails to persist is
-		// the whole bug. Everything still needing setup is what the user just dismissed.
-		const dismissed = (await analyzeWorkflow(context, input.workflowId)).filter(
-			(request) => request.needsAction,
-		);
+		// the whole bug. Everything in scope still needing setup is what the user just
+		// dismissed; a node the card left out was never offered, so it is not a skip.
+		const dismissed = (
+			await filterToSetupScope(context, input, await analyzeWorkflow(context, input.workflowId))
+		).filter((request) => request.needsAction);
 		await rememberSkippedSetup(context, dismissed, input.workflowId);
 		return {
 			success: true,
@@ -2294,8 +2339,10 @@ export function createWorkflowsTool(
 					return await handleDelete(context, workflowInput, ctx);
 				case 'unarchive':
 					return await handleUnarchive(context, workflowInput, ctx);
-				case 'setup':
-					return await handleSetup(context, workflowInput, ctx, setupState);
+				case 'setup': {
+					const result = await handleSetup(context, workflowInput, ctx, setupState);
+					return await reportWorkflowChange(context, workflowInput.workflowId, result);
+				}
 				case 'validate':
 					return await handleValidate(context, workflowInput);
 				case 'publish':
@@ -2304,8 +2351,10 @@ export function createWorkflowsTool(
 					return await handleUnpublish(context, workflowInput, ctx);
 				case 'list-versions':
 					return await handleListVersions(context, workflowInput);
-				case 'restore-version':
-					return await handleRestoreVersion(context, workflowInput, ctx);
+				case 'restore-version': {
+					const result = await handleRestoreVersion(context, workflowInput, ctx);
+					return await reportWorkflowChange(context, workflowInput.workflowId, result);
+				}
 				case 'update-version':
 					return await handleUpdateVersion(context, workflowInput, ctx);
 				default:

@@ -6,14 +6,15 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '@/app/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
+import { LOG_STREAM_MODAL_KEY } from '../modals';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '../components/EventDestinationCard.vue';
+import LogStreamingPaywall from '@/features/integrations/logStreaming.ee/components/LogStreamingPaywall.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -27,8 +28,6 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const documentTitle = useDocumentTitle();
 const i18n = useI18n();
-
-const pageRedirectHelper = usePageRedirectionHelper();
 
 const eventBus = createEventBus();
 const disableLicense = ref(false);
@@ -124,10 +123,6 @@ async function getDestinationDataFromBackend(): Promise<void> {
 		}
 	}
 	forceUpdateInstance();
-}
-
-function goToUpgrade() {
-	void pageRedirectHelper.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 }
 
 function storeHasItems(): boolean {
@@ -233,24 +228,7 @@ async function onEdit(destinationId?: string) {
 				</N8nEmptyState>
 			</div>
 		</template>
-		<template v-else>
-			<div v-if="i18n.baseText('settings.log-streaming.infoText')" class="mb-l">
-				<N8nInfoTip theme="info" type="note">
-					<span v-n8n-html="i18n.baseText('settings.log-streaming.infoText')"></span>
-				</N8nInfoTip>
-			</div>
-			<div data-test-id="action-box-unlicensed">
-				<N8nEmptyState
-					:description="i18n.baseText('settings.log-streaming.actionBox.description')"
-					:button-text="i18n.baseText('settings.log-streaming.actionBox.button')"
-					@click:button="goToUpgrade"
-				>
-					<template #heading>
-						<span v-n8n-html="i18n.baseText('settings.log-streaming.actionBox.title')" />
-					</template>
-				</N8nEmptyState>
-			</div>
-		</template>
+		<LogStreamingPaywall v-else />
 	</div>
 </template>
 

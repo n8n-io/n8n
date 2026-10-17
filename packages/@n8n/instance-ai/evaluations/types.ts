@@ -6,6 +6,7 @@ import type {
 	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
 	InstanceAiPromptConfiguration,
@@ -39,6 +40,24 @@ export interface ChecklistResult {
 	strategy: VerificationStrategy;
 	failureCategory?: string;
 	rootCause?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Build conversation timeouts
+// ---------------------------------------------------------------------------
+
+/** Which budget ended a build conversation. `turn`: one user turn overran its
+ *  budget. `conversation`: the whole conversation overran its budget.
+ *  `inactivity`: a run in flight emitted no event for the inactivity bound (a
+ *  stalled model stream). */
+export type RunTimeoutKind = 'turn' | 'conversation' | 'inactivity';
+
+export interface BuildTimeout {
+	kind: RunTimeoutKind;
+	/** User turn (1-based) in flight, or about to start, when the budget fired. */
+	turn: number;
+	/** Time measured by the budget that fired. */
+	elapsedMs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,6 +203,8 @@ export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 export interface ArtifactRef {
 	type: ArtifactType;
 	id: string;
+	/** The project the build ran in. Absent means the owner's personal project. */
+	projectId?: string;
 }
 
 /** Structured agent preview. Capture redacts it; persistence validates and caps it. */
@@ -233,6 +254,8 @@ export interface WorkflowTestCase {
 	promptVersion?: string;
 	/** Enable the user-run action for credential-free execution cases. */
 	allowUserExecution?: boolean;
+	/** Harness drives compaction, and reports the case not judged if it never ran. */
+	requiresMemoryCompaction?: boolean;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
 	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
@@ -341,6 +364,9 @@ export interface WorkflowTestCaseResult {
 	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
+	/** Set when a budget ended the conversation. The build fields describe what
+	 *  was saved before it fired; the scenarios ran against that. */
+	buildTimeout?: BuildTimeout;
 	executionScenarioResults: ExecutionScenarioResult[];
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
 	workflowJson?: WorkflowResponse;
@@ -362,6 +388,8 @@ export interface WorkflowTestCaseResult {
 	n8nBaseUrl?: string;
 	/** Per-run LLM step debug captured from the instance-ai debug API after build. */
 	runDebug?: InstanceAiRunDebugResponse[];
+	/** Usage of the eval's own model calls in this iteration: judges, simulated user, mocks. */
+	harnessUsage?: InstanceAiEvalLlmUsage[];
 }
 
 // ---------------------------------------------------------------------------
@@ -375,6 +403,8 @@ export interface TranscriptTurn {
 	/** True for turns restored from a conversation seed — context that predates
 	 *  the evaluated run, as opposed to behaviour captured live. */
 	seeded?: boolean;
+	/** Main run plus any resumes — the join key for this turn's token usage. */
+	runIds?: string[];
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */

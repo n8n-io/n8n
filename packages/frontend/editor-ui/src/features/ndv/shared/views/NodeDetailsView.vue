@@ -45,6 +45,7 @@ import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButton from '../../panel/components/PanelDragButton.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
 import { useCanvasOnlyExternalLinks } from '@/app/composables/useCanvasOnlyExternalLinks';
+import { useNodeTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
@@ -56,6 +57,7 @@ const emit = defineEmits<{
 	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
 	renameNode: [nodeName: string];
 	stopExecution: [];
+	replaceNode: [nodeId: string];
 }>();
 
 const props = withDefaults(
@@ -73,6 +75,7 @@ const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const activeNode = computed(() => ndvStore.value.activeNode);
+const { isRestricted } = useNodeTypeRestriction(() => activeNode.value?.type);
 const pinnedData = usePinnedData(activeNode);
 
 // The AI Agent node's NDV data facade (referenced summary + inline editing).
@@ -218,7 +221,10 @@ const showTriggerPanel = computed(() => {
 	const isPollingNode = activeNodeType.value?.polling;
 
 	return (
-		!props.readOnly && isTriggerNode.value && (isWebhookBasedNode || isPollingNode || override)
+		!props.readOnly &&
+		!isRestricted.value &&
+		isTriggerNode.value &&
+		(isWebhookBasedNode || isPollingNode || override)
 	);
 });
 
@@ -468,6 +474,11 @@ const onNodeExecute = () => {
 
 const openSettings = () => {
 	settingsEventBus.emit('openSettings');
+};
+
+const onReplaceNode = async (nodeId: string) => {
+	await close();
+	emit('replaceNode', nodeId);
 };
 
 const trackLinking = (pane: string) => {
@@ -802,7 +813,7 @@ onBeforeUnmount(() => {
 							:active-node-name="activeNode.name"
 							:current-node-name="inputNodeName"
 							:push-ref="pushRef"
-							:read-only="readOnly || hasForeignCredential"
+							:read-only="readOnly || hasForeignCredential || isRestricted"
 							:is-production-execution-preview="isProductionExecutionPreview"
 							:search-shortcut="isInputPaneActive ? '/' : undefined"
 							:display-mode="inputPanelDisplayMode"
@@ -854,6 +865,7 @@ onBeforeUnmount(() => {
 								@activate="onWorkflowActivate"
 								@switch-selected-node="onSwitchSelectedNode"
 								@open-connection-node-creator="onOpenConnectionNodeCreator"
+								@replace-node="onReplaceNode"
 							/>
 						</div>
 					</N8nResizeWrapper>
@@ -868,7 +880,7 @@ onBeforeUnmount(() => {
 							:run-index="outputRun"
 							:linked-runs="linked"
 							:push-ref="pushRef"
-							:is-read-only="readOnly || hasForeignCredential"
+							:is-read-only="readOnly || hasForeignCredential || isRestricted"
 							:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
 							:is-production-execution-preview="isProductionExecutionPreview"
 							:is-pane-active="isOutputPaneActive"

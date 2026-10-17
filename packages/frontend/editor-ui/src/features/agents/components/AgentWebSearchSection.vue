@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nDropdownMenu,
@@ -10,9 +10,12 @@ import {
 	N8nIcon,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -28,7 +31,11 @@ import {
 	type WebSearchMethod,
 	withWebSearchConfig,
 } from '../utils/nativeWebSearch';
-import AgentCredentialSelect, { type AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentCredentialSelect, {
+	type AgentCredentialOption,
+	type ManagedCredentialOption,
+} from './AgentCredentialSelect.vue';
+import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
 	defineProps<{
@@ -41,9 +48,18 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
+const aiGateway = useAiGateway();
+
+onMounted(() => {
+	// Load the gateway config so the managed option can be gated, and the wallet
+	// for its balance subtitle. Both self-guard when n8n Connect is disabled.
+	void aiGateway.fetchConfig();
+	if (aiGateway.isEnabled.value) void aiGateway.fetchWallet();
+});
 const DEFAULT_CAPABILITIES = { webSearch: false } as const;
 const ANTHROPIC_WEB_SEARCH_DEFAULT_MAX_USES = 5;
 const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
@@ -159,15 +175,46 @@ watch(
 const fallbackCredentialType = computed(() =>
 	webSearchMethod.value === 'searxng' ? 'searXngApi' : 'braveSearchApi',
 );
+
+// Balance pill for the managed row, matching NodeCredentials.
+const balancePill = computed<{ text: string; type: 'default' | 'danger' } | undefined>(() => {
+	const balance = aiGateway.balance.value;
+	if (balance === undefined) return undefined;
+	const depleted = balance <= 0;
+	return {
+		text: depleted
+			? i18n.baseText('aiGateway.wallet.noCredits')
+			: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+					interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+				}),
+		type: depleted ? 'danger' : 'default',
+	};
+});
+
+// n8n Connect (Gateway credits) is offered as a credential option only when the
+// gateway can actually serve the selected provider's credential type. SearXNG is
+// self-hosted, so this stays hidden for it.
+const managedCredentialOption = computed<ManagedCredentialOption | null>(() => {
+	if (
+		!aiGateway.isEnabled.value ||
+		!aiGateway.canServeCredentialType(fallbackCredentialType.value)
+	) {
+		return null;
+	}
+	return {
+		value: AI_GATEWAY_MANAGED_TAG,
+		label: i18n.baseText('aiGateway.credentialMode.n8nConnect.title'),
+		...(balancePill.value && { pill: balancePill.value }),
+	};
+});
+
 const fallbackCredentials = computed<AgentCredentialOption[]>(() =>
-	credentialsStore.allCredentials
-		.filter((credential) => credential.type === fallbackCredentialType.value)
-		.map((credential) => ({
-			id: credential.id,
-			name: credential.name,
-			typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
-			homeProject: credential.homeProject,
-		})),
+	credentialsStore.getUsableCredentialByType(fallbackCredentialType.value).map((credential) => ({
+		id: credential.id,
+		name: credential.name,
+		typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
+		homeProject: credential.homeProject,
+	})),
 );
 
 const projectForPermissions = computed(() => {
@@ -278,7 +325,21 @@ function onCreateFallbackCredential() {
 		undefined,
 		{
 			hideAskAssistant: true,
-			onCredentialCreated: (credential) => onFallbackCredentialChange(credential.id),
+			onCredentialCreated: async (credential) => {
+				// The picker reads the scoped usable list, which only a fetch writes.
+				// Refetch so the new credential is in the list before it is selected.
+				try {
+					await (props.projectId
+						? credentialsStore.fetchUsableCredentials({
+								projectId: props.projectId,
+								forAgent: true,
+							})
+						: credentialsStore.refreshUsableCredentials());
+				} catch (error) {
+					toast.showError(error, i18n.baseText('agents.builder.credentials.refreshError'));
+				}
+				onFallbackCredentialChange(credential.id);
+			},
 		},
 	);
 }
@@ -287,8 +348,8 @@ function onCreateFallbackCredential() {
 <template>
 	<div :class="$style.content" data-testid="agent-web-search-content">
 		<div :class="$style.settingGroup">
-			<div :class="$style.row">
-				<div :class="$style.rowLabel">
+			<div :class="shared.settingRow">
+				<div :class="shared.settingLabel">
 					<N8nText step="sm" bold>{{
 						i18n.baseText('agents.builder.advanced.webSearch.label')
 					}}</N8nText>
@@ -297,20 +358,23 @@ function onCreateFallbackCredential() {
 					}}</N8nText>
 				</div>
 
-				<N8nDropdownMenu
-					:items="webSearchMenuItems"
-					:disabled="props.disabled"
-					placement="bottom-end"
-					data-testid="agent-web-search-method"
-					@select="onWebSearchMethodChange"
-				>
-					<template #trigger>
-						<N8nButton variant="outline" :disabled="props.disabled" :class="$style.shortInput">
-							<span :class="$style.dropdownTriggerLabel">{{ selectedWebSearchLabel }}</span>
-							<N8nIcon icon="chevron-down" size="small" color="text-light" />
-						</N8nButton>
-					</template>
-				</N8nDropdownMenu>
+				<div :class="shared.settingControlShort">
+					<N8nDropdownMenu
+						:class="$style.methodMenu"
+						:items="webSearchMenuItems"
+						:disabled="props.disabled"
+						placement="bottom-end"
+						data-testid="agent-web-search-method"
+						@select="onWebSearchMethodChange"
+					>
+						<template #trigger>
+							<N8nButton variant="outline" :disabled="props.disabled" :class="$style.methodTrigger">
+								<span :class="$style.dropdownTriggerLabel">{{ selectedWebSearchLabel }}</span>
+								<N8nIcon icon="chevron-down" size="small" color="text-light" />
+							</N8nButton>
+						</template>
+					</N8nDropdownMenu>
+				</div>
 			</div>
 
 			<div
@@ -320,9 +384,9 @@ function onCreateFallbackCredential() {
 			>
 				<div
 					v-if="webSearchMethod === 'native' && capabilities.webSearch === 'anthropic.web_search'"
-					:class="$style.row"
+					:class="shared.settingRow"
 				>
-					<div :class="$style.rowLabel">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold>{{
 							i18n.baseText('agents.builder.advanced.webSearch.maxUses.label')
 						}}</N8nText>
@@ -336,7 +400,7 @@ function onCreateFallbackCredential() {
 						:precision="0"
 						:controls="false"
 						:disabled="props.disabled"
-						:class="$style.shortInput"
+						:class="shared.settingControlShort"
 						data-testid="agent-web-search-max-uses"
 						@update:model-value="
 							(v) => {
@@ -349,9 +413,9 @@ function onCreateFallbackCredential() {
 
 				<div
 					v-if="webSearchMethod === 'native' && capabilities.webSearch === 'openai.web_search'"
-					:class="$style.row"
+					:class="shared.settingRow"
 				>
-					<div :class="$style.rowLabel">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold>{{
 							i18n.baseText('agents.builder.advanced.webSearch.externalAccess.label')
 						}}</N8nText>
@@ -362,7 +426,7 @@ function onCreateFallbackCredential() {
 					<N8nSwitch2
 						:model-value="webSearchExternalAccess"
 						:disabled="props.disabled"
-						:class="$style.switchControl"
+						:class="[$style.switchControl, shared.settingControl]"
 						data-testid="agent-web-search-external-access"
 						@update:model-value="
 							(v) => {
@@ -375,9 +439,9 @@ function onCreateFallbackCredential() {
 
 				<div
 					v-if="webSearchMethod === 'native' && capabilities.webSearch === 'openai.web_search'"
-					:class="$style.row"
+					:class="shared.settingRow"
 				>
-					<div :class="$style.rowLabel">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold>{{
 							i18n.baseText('agents.builder.advanced.webSearch.contextSize.label')
 						}}</N8nText>
@@ -390,13 +454,14 @@ function onCreateFallbackCredential() {
 						:options="searchContextSizeSegments"
 						size="default"
 						:disabled="props.disabled"
+						:class="shared.settingControl"
 						data-testid="agent-web-search-context-size"
 						@update:model-value="onWebSearchContextSizeChange"
 					/>
 				</div>
 
-				<div v-if="webSearchMethod !== 'native'" :class="$style.row">
-					<div :class="$style.rowLabel">
+				<div v-if="webSearchMethod !== 'native'" :class="shared.settingRow">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold>{{
 							i18n.baseText('agents.builder.advanced.webSearch.credential.label')
 						}}</N8nText>
@@ -404,17 +469,21 @@ function onCreateFallbackCredential() {
 							{{ i18n.baseText('agents.builder.advanced.webSearch.credential.hint') }}
 						</N8nText>
 					</div>
-					<AgentCredentialSelect
-						:model-value="fallbackWebSearchCredential"
-						:credentials="fallbackCredentials"
-						:placeholder="i18n.baseText('agents.builder.advanced.webSearch.credential.placeholder')"
-						:credential-permissions="credentialPermissions"
-						:disabled="props.disabled"
-						:class="$style.credentialSelect"
-						data-test-id="agent-web-search-fallback-credential"
-						@update:model-value="onFallbackCredentialChange"
-						@create="onCreateFallbackCredential"
-					/>
+					<div :class="shared.settingControlWide">
+						<AgentCredentialSelect
+							:model-value="fallbackWebSearchCredential"
+							:credentials="fallbackCredentials"
+							:managed-option="managedCredentialOption"
+							:placeholder="
+								i18n.baseText('agents.builder.advanced.webSearch.credential.placeholder')
+							"
+							:credential-permissions="credentialPermissions"
+							:disabled="props.disabled"
+							data-test-id="agent-web-search-fallback-credential"
+							@update:model-value="onFallbackCredentialChange"
+							@create="onCreateFallbackCredential"
+						/>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -435,22 +504,6 @@ function onCreateFallbackCredential() {
 	gap: var(--spacing--sm);
 }
 
-.row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	min-height: var(--spacing--xl);
-}
-
-.rowLabel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .subSettings {
 	display: flex;
 	flex-direction: column;
@@ -460,21 +513,20 @@ function onCreateFallbackCredential() {
 	border-radius: var(--radius);
 }
 
-.shortInput {
-	max-width: 140px;
-	width: fit-content;
-	flex-shrink: 0;
+.methodMenu {
+	width: 100%;
+	max-width: 100%;
+}
+
+.methodTrigger {
+	width: 100%;
+	max-width: 100%;
 }
 
 .dropdownTriggerLabel {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.credentialSelect {
-	max-width: 220px;
-	flex-shrink: 0;
 }
 
 .switchControl:not([data-disabled]) {

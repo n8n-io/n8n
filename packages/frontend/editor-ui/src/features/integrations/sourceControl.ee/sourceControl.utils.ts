@@ -28,6 +28,14 @@ export const getStatusTheme = (status: SourceControlledFileStatus) => {
 	return statusToBadgeThemeMap[status];
 };
 
+/** A content-import policy blocks this file, so the pull skips it. */
+export const isBlockedByPolicy = (file: SourceControlledFile) =>
+	(file.contentImportPolicy?.violations.length ?? 0) > 0;
+
+/** A policy check failed on this file, so the pull is likely to fail as a whole. */
+export const isPolicyCheckFailed = (file: SourceControlledFile) =>
+	!isBlockedByPolicy(file) && (file.contentImportPolicy?.checkErrors.length ?? 0) > 0;
+
 type StatusPriority = Partial<Record<SourceControlledFileStatus, number>>;
 const pullStatusPriority: StatusPriority = {
 	[SOURCE_CONTROL_FILE_STATUS.modified]: 2,
@@ -265,19 +273,24 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
+	// The pull dialog already showed what a policy blocks, so only what landed is reported.
+	const pulled = files.filter((file) => !isBlockedByPolicy(file));
+
 	const { credential, tags, variables, datatable, workflow, folders, project } = groupBy(
-		files,
+		pulled,
 		'type',
 	);
+
+	const successToast = {
+		title: i18n.baseText('settings.sourceControl.pull.success.title'),
+		message: pullMessage({ credential, tags, variables, datatable, workflow, folders, project }),
+		type: 'success' as const,
+	};
 
 	const toastMessages = [
 		...(variables?.length ? [createVariablesToast(router)] : []),
 		...(credential?.length ? [createCredentialsToast(router)] : []),
-		{
-			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, datatable, workflow, folders, project }),
-			type: 'success' as const,
-		},
+		...(pulled.length ? [successToast] : []),
 	];
 
 	for (const message of toastMessages) {

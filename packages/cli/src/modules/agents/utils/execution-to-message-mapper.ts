@@ -3,10 +3,19 @@ import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
+import { isFatalSessionOutcomeError } from './fatal-session-outcome';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
-	'id' | 'userMessage' | 'author' | 'timeline' | 'attachments' | 'status' | 'error' | 'createdAt'
+	| 'id'
+	| 'userMessage'
+	| 'author'
+	| 'timeline'
+	| 'attachments'
+	| 'status'
+	| 'error'
+	| 'createdAt'
+	| 'inputMessages'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -140,14 +149,56 @@ function assistantContentFromExecution(
 }
 
 export function executionToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
+	if (!execution.timeline?.some((event) => event.type === 'input')) {
+		return executionSegmentToMessagesDto(execution);
+	}
+	const messages: AgentPersistedMessageDto[] = [];
+	const steeredIds = new Set(
+		execution.timeline.filter((event) => event.type === 'input').map((event) => event.messageId),
+	);
+	let segment: ExecutionTranscript = {
+		...execution,
+		inputMessages: execution.inputMessages?.filter(({ id }) => !steeredIds.has(id)),
+		timeline: [],
+	};
+	let suffix = '';
+	const appendSegment = (value: ExecutionTranscript) => {
+		for (const message of executionSegmentToMessagesDto(value)) {
+			if (message.role === 'assistant') message.id += suffix;
+			messages.push(message);
+		}
+	};
+	for (const event of execution.timeline) {
+		if (event.type !== 'input') {
+			segment.timeline?.push(event);
+			continue;
+		}
+		appendSegment({ ...segment, status: 'success', error: null });
+		const input = execution.inputMessages?.find(({ id }) => id === event.messageId);
+		if (input) messages.push({ ...input, executionId: execution.id });
+		suffix = `:${event.messageId}`;
+		segment = {
+			...execution,
+			userMessage: null,
+			attachments: null,
+			author: null,
+			inputMessages: [],
+			timeline: [],
+			createdAt: new Date(event.timestamp),
+		};
+	}
+	appendSegment(segment);
+	return messages;
+}
+
+function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
 	const messages: AgentPersistedMessageDto[] = [];
 
-	// Message `id` stays `${execution.id}:role` for stable client keys. Turn
-	// scope for handoff/history is the explicit `executionId` field — do not
-	// make consumers parse it back out of `id`.
+	// Canonical inputs keep their message IDs. Trace messages and legacy inputs
+	// keep execution-based IDs. Use executionId to identify the turn.
 	const userContent: AgentPersistedMessageContentPart[] = [];
 	const userText = execution.userMessage === null ? null : textPart(execution.userMessage);
-	// One execution row is one turn, so both of its messages share its timestamp.
+	// Trace messages and legacy inputs use the execution timestamp.
 	const createdAt = execution.createdAt.toISOString();
 
 	if (userText) userContent.push(userText);
@@ -160,7 +211,9 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			sizeBytes: attachment.sizeBytes,
 		});
 	}
-	if (userContent.length > 0) {
+	if (execution.inputMessages !== undefined) {
+		messages.push(...execution.inputMessages);
+	} else if (userContent.length > 0) {
 		messages.push({
 			id: `${execution.id}:user`,
 			role: 'user',
@@ -181,7 +234,9 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 	// It stays a separate field, not a text part, so the client does not show it
 	// as model output.
 	const executionError =
-		(execution.status === 'error' || execution.status === 'interrupted') && execution.error
+		(execution.status === 'error' || execution.status === 'interrupted') &&
+		execution.error &&
+		!isFatalSessionOutcomeError(execution.error, execution.timeline)
 			? execution.error
 			: undefined;
 	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {

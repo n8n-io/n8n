@@ -10,6 +10,28 @@ import { createComponentRenderer } from '../../__tests__/render';
 const renderComponent = createComponentRenderer(N8nChatInput);
 
 describe('N8nChatInput', () => {
+	describe('canvas shortcut protection', function () {
+		it('blocks canvas shortcuts by default', function () {
+			const { getByRole } = renderComponent({});
+
+			expect(getByRole('textbox')).toHaveClass('ignore-key-press-canvas');
+		});
+
+		it('can disable canvas protection without changing node creator protection', async function () {
+			const { getByRole, rerender } = renderComponent({
+				props: { blockCanvasShortcuts: false },
+			});
+			const textarea = getByRole('textbox');
+
+			expect(textarea).not.toHaveClass('ignore-key-press-canvas');
+			expect(textarea).toHaveClass('ignore-key-press-node-creator');
+
+			await rerender({ blockCanvasShortcuts: true });
+
+			expect(textarea).toHaveClass('ignore-key-press-canvas');
+		});
+	});
+
 	describe('rendering', () => {
 		it('should render correctly with default props', () => {
 			const { container } = renderComponent({
@@ -801,7 +823,7 @@ describe('N8nChatInput', () => {
 	});
 
 	describe('exposed methods', () => {
-		it('should expose focusInput method and focus the textarea', async () => {
+		it('should expose the textarea and focus it', async () => {
 			const wrapper = mount(N8nChatInput, {
 				props: {
 					modelValue: 'test',
@@ -817,6 +839,7 @@ describe('N8nChatInput', () => {
 
 			// Get the textarea element
 			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+			expect(wrapper.vm.getInputElement()).toBe(textarea);
 
 			// Spy on the focus method
 			const focusSpy = vi.spyOn(textarea, 'focus');

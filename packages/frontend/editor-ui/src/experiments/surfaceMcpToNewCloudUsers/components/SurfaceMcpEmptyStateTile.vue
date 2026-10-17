@@ -4,7 +4,7 @@ import { N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT } from '@/app/constants/experiments';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMCPStore } from '@n8n/frontend-module-mcp';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '../constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '../stores/surfaceMcpToNewCloudUsers.store';
 import SurfaceMcpTileLogos from './SurfaceMcpTileLogos.vue';
@@ -92,7 +92,7 @@ function openOnboarding() {
 	background: var(--color--orange-100);
 	color: var(--color--orange-800);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: var(--letter-spacing--wider);
 	text-transform: uppercase;
 	line-height: 1;

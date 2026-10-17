@@ -9,12 +9,9 @@ import { UserConsentRepository } from './database/repositories/oauth-user-consen
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import {
-	ProtectedResourceRegistry,
-	type ProtectedResource,
-} from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { ForbiddenError } from '@n8n/errors';
+import { UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 
 type ConsentDetailsResult =
 	| {

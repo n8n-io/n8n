@@ -22,4 +22,14 @@ export class AgentConversationStateService {
 		]);
 		return { running, suspendedCheckpoint };
 	}
+
+	/**
+	 * A click on a card whose run expired or was already resolved must not resume
+	 * it. The inner state matters too: `active` only says the row is present and
+	 * within its TTL, while the runtime rejects anything it has already claimed.
+	 */
+	async isResumable(agentId: string, runId: string): Promise<boolean> {
+		const result = await this.checkpointStorage.getStatus(runId, agentId);
+		return result.status === 'active' && result.checkpoint.status === 'suspended';
+	}
 }

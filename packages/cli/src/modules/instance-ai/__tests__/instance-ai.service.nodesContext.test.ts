@@ -1,10 +1,9 @@
 import type {
+	InstanceAiAgentAttachment,
 	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
-import type { User } from '@n8n/db';
-import type { Mock } from 'vitest';
 
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -21,56 +20,51 @@ function nodesAttachment(
 
 describe('InstanceAiService — resolveContextAttachments gating', () => {
 	type GatedService = {
-		canvasNodeContextFlagGate: { isEnabled: Mock };
 		resolveContextAttachments: (
 			attachments: InstanceAiResourceAttachment[] | undefined,
-			user: User,
-		) => Promise<InstanceAiResourceAttachment[]>;
+			nodeContextEnabled: boolean,
+		) => InstanceAiResourceAttachment[];
 	};
 
-	function createService(isEnabled: Mock): GatedService {
-		const service = Object.create(InstanceAiService.prototype) as GatedService;
-		service.canvasNodeContextFlagGate = { isEnabled };
-		return service;
+	function createService(): GatedService {
+		return Object.create(InstanceAiService.prototype) as GatedService;
 	}
 
-	const user = { id: 'user-1' } as User;
+	it('includes the nodes attachment when the flag is on', () => {
+		const service = createService();
 
-	it('includes the nodes attachment when the flag is on', async () => {
-		const service = createService(vi.fn().mockResolvedValue(true));
-
-		const result = await service.resolveContextAttachments([nodesAttachment()], user);
+		const result = service.resolveContextAttachments([nodesAttachment()], true);
 
 		expect(result).toEqual([nodesAttachment()]);
 	});
 
-	it('drops the nodes attachment when the flag is off, without throwing', async () => {
-		const service = createService(vi.fn().mockResolvedValue(false));
+	it('drops the nodes attachment when the flag is off, without throwing', () => {
+		const service = createService();
 
-		const result = await service.resolveContextAttachments([nodesAttachment()], user);
+		const result = service.resolveContextAttachments([nodesAttachment()], false);
 
 		expect(result).toEqual([]);
 	});
 
-	it('never asks the gate when there are no nodes attachments', async () => {
-		const isEnabled = vi.fn().mockResolvedValue(true);
-		const service = createService(isEnabled);
+	it('keeps workflow and agent attachments when node context is off', () => {
+		const service = createService();
 		const workflowAttachment: InstanceAiWorkflowAttachment = { type: 'workflow', id: 'wf-1' };
+		const agentAttachment: InstanceAiAgentAttachment = {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'project-1',
+		};
 
-		const result = await service.resolveContextAttachments([workflowAttachment], user);
+		const result = service.resolveContextAttachments([workflowAttachment, agentAttachment], false);
 
-		expect(result).toEqual([workflowAttachment]);
-		expect(isEnabled).not.toHaveBeenCalled();
+		expect(result).toEqual([workflowAttachment, agentAttachment]);
 	});
 
-	it('keeps a workflow attachment alongside an enabled nodes attachment', async () => {
-		const service = createService(vi.fn().mockResolvedValue(true));
+	it('keeps a workflow attachment alongside an enabled nodes attachment', () => {
+		const service = createService();
 		const workflowAttachment: InstanceAiWorkflowAttachment = { type: 'workflow', id: 'wf-1' };
 
-		const result = await service.resolveContextAttachments(
-			[workflowAttachment, nodesAttachment()],
-			user,
-		);
+		const result = service.resolveContextAttachments([workflowAttachment, nodesAttachment()], true);
 
 		expect(result).toEqual([workflowAttachment, nodesAttachment()]);
 	});

@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { SERVICE_PRINCIPAL_AUTH } from '../../v2/transport';
+import { ACTIVITY_NOTIFICATION_SETUP_URL } from '../../v2/transport/forbiddenHints';
 
 const actionProps = versionDescription.properties;
 const triggerProps = new MicrosoftTeamsTrigger().description.properties;
@@ -144,6 +145,24 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			for (const field of gated) {
 				expect(isSpHidden(field)).toBe(false);
 			}
+		});
+
+		// The loop above walks top-level fields only, so the two nested copies need their own pin.
+		it.each<[string, string | undefined]>([
+			['create', undefined],
+			['createOrGet', 'options'],
+			['update', 'updateFields'],
+		])('%s has an attendees field that is not hidden under SP', (operation, container) => {
+			const operationFields = fields.filter((p) =>
+				p.displayOptions?.show?.operation?.includes(operation),
+			);
+			const pool = container
+				? ((operationFields.find((p) => p.name === container)?.options ?? []) as INodeProperties[])
+				: operationFields;
+			const found = pool.find((p) => p.name === 'attendees');
+
+			expect(found).toBeDefined();
+			expect(isSpHidden(found)).toBe(false);
 		});
 
 		it('an SP-shown required organizer picker exists with list and By-ID modes', () => {
@@ -396,6 +415,48 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		it('the channelId picker gates watchAllChannels with _cnd:{not:true} (renders under SP)', () => {
 			const channel = triggerProps.find((p) => p.name === 'channelId');
 			expect(channel?.displayOptions?.show?.watchAllChannels).toEqual([{ _cnd: { not: true } }]);
+		});
+	});
+
+	describe('activityNotification - available under SP with a recipient picker', () => {
+		const fields = actionProps.filter((p) =>
+			p.displayOptions?.show?.resource?.includes('activityNotification'),
+		);
+
+		it('operation selector is not hidden under SP', () => {
+			const op = fields.find((p) => p.name === 'operation');
+			expect(op).toBeDefined();
+			expect(isSpHidden(op)).toBe(false);
+		});
+
+		it('no operation field is hidden under SP', () => {
+			const gated = fields.filter((p) => p.type !== 'notice' && p.name !== 'operation');
+			expect(gated.map((p) => p.name)).toEqual([
+				'recipientId',
+				'headline',
+				'previewText',
+				'topic',
+				'topicLink',
+				'options',
+			]);
+			for (const field of gated) expect(isSpHidden(field)).toBe(false);
+		});
+
+		it('the recipient picker is required with list and By-ID modes and no extractValue', () => {
+			const recipient = fields.find((p) => p.name === 'recipientId');
+			expect(recipient?.required).toBe(true);
+			expect(recipient?.displayOptions?.show?.['/authentication']).toBeUndefined();
+			expect(recipient?.modes?.map((m) => m.name)).toEqual(['list', 'id']);
+			expect(recipient?.modes?.every((m) => m.extractValue === undefined)).toBe(true);
+		});
+
+		it('shows the setup notice under every credential and links the setup guide', () => {
+			const notice = fields.find((p) => p.name === 'activityNotificationSetupNotice');
+			expect(notice?.type).toBe('notice');
+			expect(notice?.displayOptions?.show?.authentication).toBeUndefined();
+			expect(notice?.displayOptions?.show?.['/authentication']).toBeUndefined();
+			expect(isSpHidden(notice)).toBe(false);
+			expect(notice?.displayName).toContain(`href="${ACTIVITY_NOTIFICATION_SETUP_URL}"`);
 		});
 	});
 });

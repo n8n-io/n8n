@@ -1,4 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import {
 	assertUniqueRouteNames,
 	modalRegistry,
@@ -14,13 +15,44 @@ import { modules } from '@/app/modules.manifest';
 import {
 	registerModuleModals,
 	registerModulePushHandlers,
+	registerModuleRoutes,
 } from '@/app/moduleInitializer/moduleInitializer';
+import { AGENTS_LIST_VIEW, AGENTS_SETTINGS_VIEW } from '@/features/agents/constants';
 import {
 	ADD_DATA_TABLE_MODAL_KEY,
 	DOWNLOAD_DATA_TABLE_MODAL_KEY,
 	IMPORT_CSV_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
 import { defaultSettings } from '@n8n/frontend-test-utils';
+
+it('keeps Agents settings reachable while the Agents routes are disabled', () => {
+	setActivePinia(createPinia());
+	const settings = useSettingsStore();
+	settings.setSettings(merge({}, defaultSettings, { activeModules: ['agents'] }));
+	settings.moduleSettings.agents = {
+		enabled: false,
+		modules: [],
+		knowledgeBaseEnabled: false,
+		proxyEnabled: false,
+	};
+	const stub = { render: () => null };
+	const testRouter = createRouter({
+		history: createMemoryHistory(),
+		routes: [
+			{ path: '/settings', name: VIEWS.SETTINGS, component: stub },
+			{ path: '/projects/:projectId', name: VIEWS.PROJECT_DETAILS, component: stub },
+		],
+	});
+	registerModuleRoutes(testRouter);
+	const settingsRoute = testRouter.resolve({ name: AGENTS_SETTINGS_VIEW });
+	const agentsRoute = testRouter.resolve({ name: AGENTS_LIST_VIEW });
+	const check = settingsRoute.meta.middlewareOptions?.custom;
+	expect(settingsRoute.path).toBe('/settings/agents');
+	const from = testRouter.currentRoute.value;
+	const next = vi.fn();
+	expect(check?.({ to: { ...settingsRoute, name: AGENTS_SETTINGS_VIEW }, from, next })).toBe(true);
+	expect(check?.({ to: { ...agentsRoute, name: AGENTS_LIST_VIEW }, from, next })).toBe(false);
+});
 
 describe('registerModuleModals', () => {
 	beforeEach(() => {

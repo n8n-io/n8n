@@ -6,6 +6,7 @@
  * assert what reaches the data plane.
  */
 
+import { Logger } from '@n8n/backend-common';
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { UUID_V7_PATTERN } from '@n8n/constants';
@@ -16,8 +17,12 @@ import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { agent as testAgent } from 'supertest';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
+import { InMemoryExecutionResponseChannel } from '@/modules/engine-v2/response-channel/in-memory-execution-response-channel';
+import { InMemoryExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/in-memory-execution-response-receiver';
+import { InMemoryExecutionResponseSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { Telemetry } from '@/telemetry';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
@@ -38,6 +43,7 @@ const getExecution = vi.fn();
 let builder: User;
 let webhookAgent: SuperAgentTest;
 let webhookTestEndpoint: string;
+let responseSender: InMemoryExecutionResponseSender;
 
 const webhookNode = (webhookId: string): INode => ({
 	id: randomUUID(),
@@ -72,7 +78,16 @@ beforeAll(async () => {
 		startExecution,
 		getExecution,
 		searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+		cancelExecution: vi.fn(),
 	});
+	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).
+	// This test drives the webhook route directly, without the module, so it
+	// wires the same receiver by hand.
+	const responseChannel = new InMemoryExecutionResponseChannel();
+	Container.get(EngineV2WebhookResponseRegistry).useReceiver(
+		new InMemoryExecutionResponseReceiver(responseChannel, Container.get(Logger)),
+	);
+	responseSender = new InMemoryExecutionResponseSender(responseChannel, Container.get(Logger));
 
 	// `/webhook-test/*` is mounted only when a server opts into test webhooks.
 	class EditorFacingWebhookServer extends WebhookServer {
@@ -99,7 +114,7 @@ beforeEach(async () => {
 	builder = await createOwner();
 });
 
-describe('webhook runs on engine 2.0', () => {
+describe('webhook runs on engine v2', () => {
 	test('hands the webhook payload to the data plane and persists no execution', async () => {
 		const webhookId = randomUUID();
 		const workflow = await createV2Workflow(webhookNode(webhookId));
@@ -131,11 +146,40 @@ describe('webhook runs on engine 2.0', () => {
 		expect(executions.filter((e) => e.workflowId === workflow.id)).toHaveLength(0);
 	});
 
-	test('answers 400 with the reason when the response mode is unsupported', async () => {
+	test('streams the response from the data plane', async () => {
 		const webhookId = randomUUID();
 		const trigger = webhookNode(webhookId);
-		trigger.parameters.responseMode = 'lastNode';
+		trigger.parameters.responseMode = 'streaming';
 		const workflow = await createV2Workflow(trigger);
+		const chunk = {
+			type: 'item',
+			content: 'hello',
+			metadata: {
+				nodeId: trigger.id,
+				nodeName: trigger.name,
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: Date.now(),
+			},
+		};
+
+		startExecution.mockImplementationOnce(async (request) => {
+			responseSender.send({ type: 'chunk', executionId: request.executionId, payload: chunk });
+			responseSender.send({
+				type: 'ended',
+				executionId: request.executionId,
+				workflowId: workflow.id,
+				status: 'completed',
+				lastStep: {
+					nodeId: trigger.id,
+					nodeName: trigger.name,
+					status: 'completed',
+					outputs: [],
+				},
+			});
+
+			return { executionId: request.executionId };
+		});
 
 		await startListening(workflow.id);
 
@@ -143,8 +187,60 @@ describe('webhook runs on engine 2.0', () => {
 			.post(`/${webhookTestEndpoint}/${webhookId}`)
 			.send({ order: 42 });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain("does not support the 'lastNode' response mode yet");
-		expect(startExecution).not.toHaveBeenCalled();
+		expect(response.statusCode).toBe(200);
+		expect(response.text).toBe(`${JSON.stringify(chunk)}\n`);
+		expect(startExecution).toHaveBeenCalledWith(
+			expect.objectContaining({ responseExpectation: { kind: 'stream' } }),
+		);
+	});
+
+	test('closes a failed stream without duplicating its error chunk', async () => {
+		const webhookId = randomUUID();
+		const trigger = webhookNode(webhookId);
+		trigger.parameters.responseMode = 'streaming';
+		const workflow = await createV2Workflow(trigger);
+		const errorChunk = {
+			type: 'error' as const,
+			content: 'it broke',
+			metadata: {
+				nodeId: trigger.id,
+				nodeName: trigger.name,
+				runIndex: 0,
+				itemIndex: 0,
+				timestamp: Date.now(),
+			},
+		};
+
+		startExecution.mockImplementationOnce(async (request) => {
+			responseSender.send({
+				type: 'chunk',
+				executionId: request.executionId,
+				payload: errorChunk,
+			});
+			responseSender.send({
+				type: 'ended',
+				executionId: request.executionId,
+				workflowId: workflow.id,
+				status: 'failed',
+				lastStep: {
+					nodeId: trigger.id,
+					nodeName: trigger.name,
+					status: 'failed',
+					outputs: null,
+					error: { name: 'NodeOperationError', message: 'it broke' },
+				},
+			});
+
+			return { executionId: request.executionId };
+		});
+
+		await startListening(workflow.id);
+
+		const response = await webhookAgent
+			.post(`/${webhookTestEndpoint}/${webhookId}`)
+			.send({ order: 42 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.text).toBe(`${JSON.stringify(errorChunk)}\n`);
 	});
 });

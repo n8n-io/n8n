@@ -5,7 +5,7 @@ import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const DISPLAY_NAME_MIN_LENGTH = 2;
@@ -80,6 +80,38 @@ export function useRoleEditorForm({
 
 	const initialState = ref<Role | undefined>();
 
+	const formFromRole = (role: Role): RoleEditorForm => ({
+		displayName: role.displayName,
+		description: role.description,
+		scopes: formScopes(role.scopes),
+	});
+
+	// Snapshot is stripped only. Required scopes go on the form so a stored
+	// role missing them stays unsaved until the next save.
+	const snapshotRole = (role: Role) => {
+		initialState.value = structuredClone({
+			...toRaw(role),
+			scopes: sanitizeScopes(role.scopes),
+		});
+	};
+
+	// The roles list already fetched every role with its scopes and usage count.
+	// A role opened from there is in the store, so the editor can show its name,
+	// description and scopes at once instead of an empty form; the fetch by slug
+	// then refreshes it.
+	const cachedRole = (slug: string): Role | undefined =>
+		Object.values(rolesStore.roles)
+			.flat()
+			.find((role) => role.slug === slug);
+
+	const initialForm = (): RoleEditorForm => {
+		const slug = roleSlug();
+		const role = slug ? cachedRole(slug) : undefined;
+		if (!role) return defaultForm();
+		snapshotRole(role);
+		return formFromRole(role);
+	};
+
 	const { state: form, isLoading } = useAsyncState(
 		async () => {
 			const slug = roleSlug();
@@ -89,21 +121,16 @@ export function useRoleEditorForm({
 
 			try {
 				const role = await rolesStore.fetchRoleBySlug({ slug });
-				// Snapshot is stripped only. Required scopes go on the form so a stored
-				// role missing them stays unsaved until the next save.
-				const persistedScopes = sanitizeScopes(role.scopes);
-				initialState.value = structuredClone({ ...role, scopes: persistedScopes });
-				return {
-					displayName: role.displayName,
-					description: role.description,
-					scopes: formScopes(role.scopes),
-				};
+				snapshotRole(role);
+				return formFromRole(role);
 			} catch (error) {
 				showError(error, fetchError);
+				// Drop the cached snapshot too: an error leaves the editor empty, as before.
+				initialState.value = undefined;
 				return defaultForm();
 			}
 		},
-		defaultForm(),
+		initialForm(),
 		{ shallow: false },
 	);
 
@@ -158,13 +185,7 @@ export function useRoleEditorForm({
 
 	function resetForm(payload: Role | undefined): void {
 		submitted.value = false;
-		form.value = payload
-			? {
-					displayName: payload.displayName,
-					description: payload.description,
-					scopes: formScopes(payload.scopes),
-				}
-			: defaultForm();
+		form.value = payload ? formFromRole(payload) : defaultForm();
 	}
 
 	return {

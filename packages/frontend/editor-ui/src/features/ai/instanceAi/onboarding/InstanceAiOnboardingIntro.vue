@@ -3,7 +3,7 @@ import {
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
-	N8nPreviewTag,
+	N8nPreviewBadge,
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
@@ -40,7 +40,7 @@ const i18n = useI18n();
 			<N8nHeading tag="h1" size="2xlarge" bold :class="$style.title">
 				{{ i18n.baseText('instanceAi.onboarding.title') }}
 			</N8nHeading>
-			<N8nPreviewTag v-if="!incomplete" :class="$style.preview" size="medium" />
+			<N8nPreviewBadge v-if="!incomplete" :class="$style.preview" size="medium" />
 
 			<N8nText v-if="incomplete" tag="p" color="text-base" size="large" :class="$style.lede">
 				{{ i18n.baseText('instanceAi.onboarding.incomplete.lede') }}

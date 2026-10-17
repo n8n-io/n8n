@@ -9,8 +9,8 @@ import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UrlService } from '@/services/url.service';
+import { BadRequestError } from '@n8n/errors';
+import { UrlService } from '@n8n/backend-services';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {
@@ -265,6 +265,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
+		// No `context` param: Telegram only ever expands selects into buttons,
+		// never folds buttons the other way, so it never needs to wrap a
+		// resume value or build a `resume:` id itself (see
+		// `NormalizeComponentsContext`).
 		const normalized: SuspendComponent[] = [];
 		for (const c of components) {
 			switch (c.type) {

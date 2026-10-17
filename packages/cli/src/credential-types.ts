@@ -16,6 +16,10 @@ export class CredentialTypes implements ICredentialTypes {
 		return this.loadNodesAndCredentials.getCredential(credentialType).type;
 	}
 
+	getKnownTypes() {
+		return this.loadNodesAndCredentials.knownCredentials;
+	}
+
 	getSupportedNodes(type: string): string[] {
 		return this.loadNodesAndCredentials.knownCredentials[type]?.supportedNodes ?? [];
 	}

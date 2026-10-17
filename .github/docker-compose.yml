@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: ${TEST_IMAGE_POSTGRES:?set it from packages/testing/containers/postgres-versions.json}
+    image: ${TEST_IMAGE_POSTGRES:?set it from packages/quality/environments/containers/postgres-versions.json}
     restart: always
     environment:
       - POSTGRES_DB=n8n

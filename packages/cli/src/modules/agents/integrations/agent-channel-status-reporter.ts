@@ -4,11 +4,9 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
+import type { AgentChannelRef } from '../utils/agent-channel';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
-import {
-	AgentChannelStatusRepository,
-	type AgentChannelRef,
-} from '../repositories/agent-channel-status.repository';
+import { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 
 /**
  * How long a row counts for, as a multiple of the reconcile interval. Three

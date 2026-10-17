@@ -31,7 +31,7 @@ import type {
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
 
@@ -136,11 +136,11 @@ function labelForKey(key: string): string {
 
 const STATUS_FILTER_OPTIONS = [
 	{ key: 'approved', badgeTheme: 'success' },
-	{ key: 'declined', badgeTheme: 'default' },
+	{ key: 'declined', badgeTheme: 'outline' },
 	{ key: 'error', badgeTheme: 'danger' },
 ] satisfies Array<{
 	key: TimelineStatusFilterKey;
-	badgeTheme: 'default' | 'success' | 'danger';
+	badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 }>;
 
 const filterOptions = computed<FilterOption[]>(() => {

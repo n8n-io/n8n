@@ -74,7 +74,14 @@ const nodeTypeStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
-const { isRedacted, canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const {
+	isRedacted,
+	canReveal,
+	isDynamicCredentials,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 
 const nodeEntry = computed(() => (isNodeLog(logEntry) ? logEntry : undefined));
 const groupEntry = computed(() => (isGroupLog(logEntry) ? logEntry : undefined));
@@ -164,7 +171,7 @@ function handleResizeEnd() {
 				<div v-if="isOpen && !isTriggerNode && !isPlaceholderLog(logEntry)" :class="$style.actions">
 					<N8nButton
 						v-if="messageAgentSessionLink"
-						variant="subtle"
+						variant="outline"
 						size="xsmall"
 						data-test-id="log-details-view-agent-session"
 						@click.stop="messageAgentSessionLink.open()"
@@ -177,7 +184,7 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['i'] }"
 					>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.OUTPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleInputOpen')"
@@ -190,7 +197,7 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['o'] }"
 					>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.INPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleOutputOpen')"
@@ -254,6 +261,8 @@ function handleResizeEnd() {
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
 						:can-reveal="canReveal"
+						:credential-to-share="credentialToShare"
+						@share-credential="openCredentialSharing"
 						wide
 						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
 						@reveal="revealData"
@@ -341,6 +350,8 @@ function handleResizeEnd() {
 						:title="locale.baseText('ndv.output.redacted.title')"
 						:is-dynamic-credentials="isDynamicCredentials"
 						:can-reveal="canReveal"
+						:credential-to-share="credentialToShare"
+						@share-credential="openCredentialSharing"
 						wide
 						@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
 						@reveal="revealData"

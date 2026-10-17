@@ -6,6 +6,7 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	getProxyAgent,
 	proxyFetch,
+	aiClientFetch,
 } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
@@ -22,6 +23,7 @@ const MockedChatAnthropic = vi.mocked(ChatAnthropic);
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 describe('LmChatAnthropic', () => {
 	let lmChatAnthropic: LmChatAnthropic;
@@ -116,6 +118,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -150,6 +153,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -184,6 +188,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -219,6 +224,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -260,6 +266,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -303,6 +310,7 @@ describe('LmChatAnthropic', () => {
 						temperature: undefined,
 					},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -368,6 +376,7 @@ describe('LmChatAnthropic', () => {
 			expect(MockedChatAnthropic).toHaveBeenCalledWith(
 				expect.objectContaining({
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -409,6 +418,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},

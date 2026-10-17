@@ -12,9 +12,11 @@ const props = withDefaults(
 		skill: AgentSkill;
 		selectedPath: string;
 		addReferenceDisabled?: boolean;
+		readOnly?: boolean;
 	}>(),
 	{
 		addReferenceDisabled: false,
+		readOnly: false,
 	},
 );
 
@@ -59,6 +61,7 @@ function testIdForPath(path: string) {
 					{{ i18n.baseText('agents.builder.skills.references.title') }}
 				</N8nText>
 				<N8nButton
+					v-if="!props.readOnly"
 					:class="$style.addReference"
 					variant="ghost"
 					size="xsmall"
@@ -95,6 +98,7 @@ function testIdForPath(path: string) {
 					<N8nText size="small" :class="$style.path">{{ reference.path }}</N8nText>
 				</button>
 				<N8nButton
+					v-if="!props.readOnly"
 					:class="$style.removeReference"
 					variant="ghost"
 					size="xsmall"
@@ -215,5 +219,15 @@ function testIdForPath(path: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+	.nav {
+		width: 100%;
+		max-height: calc(var(--height--5xl) * 2);
+		border-right: 0;
+		border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+		overflow-y: auto;
+	}
 }
 </style>

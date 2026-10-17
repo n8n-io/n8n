@@ -20,7 +20,7 @@ vi.mock('../../../v2/transport', async () => {
 	};
 });
 
-const SP_UNSUPPORTED = /is not available with the Service Principal credential|are not available/;
+const SP_UNSUPPORTED = /(is|are) not available with the Service Principal credential/;
 
 /**
  * `Workflow` drops a hidden parameter before execution, so a parameter behind `SP_HIDE` is

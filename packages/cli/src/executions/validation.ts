@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import type { ExecutionRequest } from '@/executions/execution.types';
 
 const executionUpdateSchema = z.object({

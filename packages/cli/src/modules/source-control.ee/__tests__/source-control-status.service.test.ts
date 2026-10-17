@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_ADMIN_ROLE,
@@ -16,8 +17,7 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
@@ -376,6 +376,7 @@ describe('getStatus', () => {
 		).rejects.toThrowError(ForbiddenError);
 
 		expect(gitService.resetBranch).not.toHaveBeenCalled();
+		expect(gitService.pull).not.toHaveBeenCalled();
 	});
 
 	it('should allow push status for a user with project source control push access', async () => {

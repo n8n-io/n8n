@@ -2,7 +2,7 @@ import { Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { CsvParserService } from './csv-parser.service';
 import { MulterUploadMiddleware } from './multer-upload-middleware';

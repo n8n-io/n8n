@@ -52,6 +52,8 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useDependencyMenu } from '@/app/composables/useDependencyMenu';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
+import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
 
 // Dependency submenu ids (`<type>:<id>`) share the menu with the fixed actions.
 type WorkflowMenuItem = DropdownMenuItemProps<WORKFLOW_MENU_ACTIONS | string>;
@@ -91,6 +93,7 @@ const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
 const { getDependencies, fetchDependencies, fetchDependencyCounts, hasDependencies } =
 	useDependencies();
 const { buildDependencyMenuItems, resolveDependencyMenuId, openDependency } = useDependencyMenu();
+const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 // Prefetch the lightweight counts so the menu knows whether to show the entry.
 watch(
@@ -200,6 +203,8 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 			label: locale.baseText('generic.rename'),
 			icon: { type: 'icon', value: 'pencil' },
 			disabled: props.workflowPermissions.update !== true,
+			// Focus moves to the name input; returning it to the trigger blurs and ends the edit.
+			suppressCloseAutoFocus: true,
 		});
 	}
 
@@ -321,6 +326,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 			id: WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST,
 			label: locale.baseText('menuActions.productionChecklist'),
 			icon: { type: 'icon', value: 'list-checks' },
+			suppressCloseAutoFocus: true,
 		});
 	}
 
@@ -344,7 +350,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 				label: locale.baseText('menuActions.delete'),
 				icon: { type: 'icon', value: 'trash-2' },
 				disabled: props.isNewWorkflow,
-				class: $style.destructiveItem,
+				destructive: true,
 			});
 		} else {
 			lifecycle.push({
@@ -352,7 +358,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 				label: locale.baseText('menuActions.archive'),
 				icon: { type: 'icon', value: 'archive' },
 				disabled: props.isNewWorkflow,
-				class: $style.destructiveItem,
+				destructive: true,
 			});
 		}
 	}
@@ -431,10 +437,8 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Pro
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST: {
-			// Defer until the dropdown has closed and restored focus to its trigger;
-			// opening in the same tick lets that focus restore land "outside" the
-			// popover, which would immediately dismiss it.
-			setTimeout(() => productionChecklistRef.value?.open(), 0);
+			// Open after the dropdown unmounts so the floating layers do not overlap.
+			requestAnimationFrame(() => productionChecklistRef.value?.open());
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.VERSION_HISTORY: {
@@ -462,6 +466,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Pro
 					return tag;
 				}),
 			};
+			if (!emptyCanvasGroupsEnabled.value) {
+				removeEmptyCanvasGroupsFromWorkflowData(exportData);
+			}
 
 			const blob = new Blob([JSON.stringify(exportData, null, 2)], {
 				type: 'application/json;charset=utf-8',
@@ -634,10 +641,6 @@ defineExpose({
 	</div>
 </template>
 <style lang="scss" module>
-.destructiveItem,
-.destructiveItem * {
-	color: var(--text-color--danger) !important;
-}
 .group {
 	display: flex;
 }

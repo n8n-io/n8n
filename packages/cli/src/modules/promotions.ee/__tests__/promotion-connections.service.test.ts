@@ -8,9 +8,7 @@ import path from 'node:path';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { PromotionConnection } from '../database/entities/promotion-connection.entity';
@@ -208,6 +206,44 @@ describe('PromotionConnectionsService', () => {
 			expect(result.configs.promote?.checkout).toEqual({
 				hasCheckout: true,
 				matchesConfig: true,
+			});
+		});
+
+		it('marks a path-based checkout as stale after a provider host change', async () => {
+			const config = promoteConfig();
+			const gitlabConnection = {
+				...connection(),
+				target: { schemaVersion: 1, repositoryPath: 'platform/workflows' },
+				provider: {
+					...provider(),
+					type: 'gitlab',
+					authType: 'token',
+					config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+				},
+			} as PromotionConnection;
+			connectionRepository.findByIdWithProvider.mockResolvedValue(gitlabConnection);
+			configRepository.findByConnectionIds.mockResolvedValue([config]);
+			gitService.hasCheckout.mockResolvedValue(true);
+			await mkdir(workingDirectory.paths(config.id).repositoryFolder, { recursive: true });
+			await workingDirectory.writeDescriptor({
+				schemaVersion: 1,
+				connectionId: 'conn1',
+				configId: config.id,
+				remoteUrl: 'https://gitlab.example.com/platform/workflows.git',
+				checkoutBranchName: 'main',
+			});
+			expect((await service.findOne('conn1')).configs.promote?.checkout.matchesConfig).toBe(true);
+			gitlabConnection.provider.config = {
+				schemaVersion: 1,
+				baseUrl: 'https://other.example.com/installation',
+			};
+			const after = await service.findOne('conn1');
+			expect(after.target.remoteUrl).toBe(
+				'https://other.example.com/installation/platform/workflows.git',
+			);
+			expect(after.configs.promote?.checkout).toEqual({
+				hasCheckout: true,
+				matchesConfig: false,
 			});
 		});
 

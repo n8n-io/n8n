@@ -1,5 +1,6 @@
 import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -8,17 +9,15 @@ import { Request, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import {
 	SSO_ACCESS_DENIED_REDIRECT_PATH,
 	SSO_LOGIN_FAILED_REDIRECT_PATH,
 } from '@/modules/provisioning.ee/constants';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import { AuthlessRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import {
 	OIDC_CLIENT_SECRET_REDACTED_VALUE,
@@ -94,8 +93,10 @@ export class OidcController {
 
 	@Get('/login', { skipAuth: true })
 	@Licensed('feat:oidc')
-	async redirectToAuthProvider(_req: Request, res: Response) {
-		const authorization = await this.oidcService.generateLoginUrl();
+	async redirectToAuthProvider(req: Request<{}, {}, {}, { redirect?: string }>, res: Response) {
+		// Same in-app destination the sign-in page received; the callback redirects there.
+		const redirectUrl = validateRedirectUrl(req.query.redirect ?? '');
+		const authorization = await this.oidcService.generateLoginUrl(redirectUrl);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 
 		res.cookie(OIDC_STATE_COOKIE_NAME, authorization.state, {
@@ -188,7 +189,7 @@ export class OidcController {
 				authenticationMethod: 'oidc',
 			});
 
-			return res.redirect('/');
+			return res.redirect(validateRedirectUrl(stateInfo.redirectUrl ?? ''));
 		} catch (error) {
 			if (error instanceof SsoAccessDeniedError) {
 				this.eventService.emit('user-login-failed', {

@@ -1,4 +1,9 @@
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import {
+	CONTEXT_PREFERENCES_CONTROL_VARIANT,
+	CONTEXT_PREFERENCES_ENABLED_VARIANT,
+	CONTEXT_PREFERENCES_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+} from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
@@ -15,7 +20,7 @@ const hasGlobalScope = vi.mocked(permissions.hasGlobalScope);
 
 import type { McpConfig } from '../mcp.config';
 import type { McpSettingsService } from '../mcp.settings.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { Container } from '@n8n/di';
 
@@ -39,7 +44,7 @@ describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpConfig = mock<McpConfig>();
-	const moduleRegistry = mock<ModuleRegistry>();
+	const moduleRegistry = mock<ModuleRegistry>({ settings: mock<ModuleRegistry['settings']>() });
 	const licenseState = mock<LicenseState>();
 	const postHogClient = mock<PostHogClient>();
 	const resource = new McpProtectedResource(
@@ -55,8 +60,12 @@ describe('McpProtectedResource', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+		postHogClient.getFeatureFlags.mockResolvedValue({
+			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
+		});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
+		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
 		licenseState.isFoldersLicensed.mockReturnValue(true);
 		Container.set(
 			CommunityPackagesConfig,
@@ -65,6 +74,14 @@ describe('McpProtectedResource', () => {
 	});
 
 	describe('getScopeTools', () => {
+		it('withholds Agent scopes and tools when Agents is disabled', async () => {
+			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			const scopeTools = await resource.getScopeTools();
+			expect(resource.scopes).not.toContain('agent:read');
+			expect(resource.scopes).not.toContain('agent:write');
+			expect(scopeTools['agent:read']).toBeUndefined();
+		});
+
 		it('should expose the full tool mapping when all features are enabled', async () => {
 			const scopeTools = await resource.getScopeTools();
 
@@ -172,6 +189,15 @@ describe('McpProtectedResource', () => {
 			expect(resource.scopes).toContain('aiPreference:read');
 			expect((await resource.getScopeTools())['aiPreference:read']).toEqual([
 				'get_user_preferences',
+			]);
+		});
+
+		it('advertises the preferences write scope with its three tools', async () => {
+			expect(resource.scopes).toContain('aiPreference:write');
+			expect((await resource.getScopeTools())['aiPreference:write']).toEqual([
+				'save_user_preference',
+				'update_user_preference',
+				'undo_user_preference',
 			]);
 		});
 
@@ -382,5 +408,79 @@ describe('McpProtectedResource', () => {
 			// screen narrows to the caller.
 			expect(resource.scopes).toContain('communityPackage:install');
 		});
+
+		describe('preference scopes', () => {
+			beforeEach(() => {
+				hasGlobalScope.mockReturnValue(true);
+			});
+
+			it('offers both preference scopes to a user in the experiment arm', async () => {
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).toContain('aiPreference:read');
+				expect(scopes).toContain('aiPreference:write');
+				expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith(user);
+			});
+
+			it('withholds both preference scopes from a user in the control arm', async () => {
+				// The control arm must not learn the feature exists from the consent
+				// screen, and the tools never register for them, so a tick here would
+				// only record a dead grant.
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
+				});
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).not.toContain('aiPreference:read');
+				expect(scopes).not.toContain('aiPreference:write');
+				expect(scopes).toEqual(resource.scopes.filter((s) => !s.startsWith('aiPreference:')));
+			});
+
+			it('withholds the preference scopes when the flag is not the variant string', async () => {
+				postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).not.toContain('aiPreference:read');
+				expect(scopes).not.toContain('aiPreference:write');
+			});
+
+			it('withholds the preference scopes when the flags cannot be read', async () => {
+				// Registration treats an unreadable flag as off; consent must not
+				// offer a scope the server will then refuse to honour.
+				postHogClient.getFeatureFlags.mockRejectedValue(new Error('Flags unavailable'));
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).not.toContain('aiPreference:read');
+				expect(scopes).not.toContain('aiPreference:write');
+				expect(scopes).toContain('workflow:read');
+			});
+
+			it('narrows the preference and install scopes independently', async () => {
+				hasGlobalScope.mockReturnValue(false);
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_CONTROL_VARIANT,
+				});
+
+				const scopes = await resource.getGrantableScopes(user);
+
+				expect(scopes).toEqual(
+					resource.scopes.filter(
+						(s) => s !== 'communityPackage:install' && !s.startsWith('aiPreference:'),
+					),
+				);
+			});
+
+			it('still advertises the preference scopes in discovery, which is unauthenticated', () => {
+				expect(resource.scopes).toContain('aiPreference:read');
+				expect(resource.scopes).toContain('aiPreference:write');
+			});
+		});
+	});
+
+	it('is served on the instance-mcp surface', () => {
+		expect(resource.surface).toBe('instance-mcp');
 	});
 });

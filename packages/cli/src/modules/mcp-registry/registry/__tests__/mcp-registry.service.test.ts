@@ -19,6 +19,8 @@ import type { McpRegistryServer } from '../mcp-registry.types';
 import { toEntity } from '../mcp-registry.types';
 import { linearMockServer, notionMockServer } from '../mock-servers';
 
+const DB_NOW = new Date('2026-05-01T00:00:00.000Z');
+
 function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 	const now = new Date();
 	return { ...toEntity(server), createdAt: now, updatedAt: now } as McpRegistryServerEntity;
@@ -72,7 +74,8 @@ function createService(options: CreateServiceOptions = {}) {
 	apiClient.fetchServersMetadata.mockResolvedValue([]);
 	apiClient.fetchServersBySlugs.mockResolvedValue([]);
 	apiClient.fetchAllServers.mockResolvedValue([notionMockServer, linearMockServer]);
-	repository.upsert.mockResolvedValue({} as never);
+	repository.upsertFetchedServers.mockResolvedValue();
+	repository.readDbNow.mockResolvedValue(DB_NOW);
 
 	const service = new McpRegistryService(
 		logger,
@@ -235,7 +238,7 @@ describe('McpRegistryService', () => {
 			await service.refreshFromApi();
 
 			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
-			expect(repository.upsert).not.toHaveBeenCalled();
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
@@ -256,8 +259,8 @@ describe('McpRegistryService', () => {
 			await service.refreshFromApi();
 
 			expect(apiClient.fetchServersBySlugs).not.toHaveBeenCalled();
-			expect(repository.upsert).toHaveBeenCalledTimes(1);
-			const upsertEntities = repository.upsert.mock.calls[0][0];
+			expect(repository.upsertFetchedServers).toHaveBeenCalledTimes(1);
+			const upsertEntities = repository.upsertFetchedServers.mock.calls[0][0];
 			expect(upsertEntities).toEqual([
 				{
 					...toEntity({
@@ -267,7 +270,7 @@ describe('McpRegistryService', () => {
 					registryUpdatedAt: expect.any(Date),
 				},
 			]);
-			expect(repository.upsert.mock.calls[0][1]).toEqual(['slug']);
+			expect(repository.upsertFetchedServers.mock.calls[0][1]).toBe(DB_NOW);
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
 		});
@@ -303,8 +306,8 @@ describe('McpRegistryService', () => {
 				[notionMockServer.slug],
 				undefined,
 			);
-			expect(repository.upsert).toHaveBeenCalledTimes(1);
-			const upsertEntities = repository.upsert.mock.calls[0][0];
+			expect(repository.upsertFetchedServers).toHaveBeenCalledTimes(1);
+			const upsertEntities = repository.upsertFetchedServers.mock.calls[0][0];
 			expect(upsertEntities).toEqual([notionMockServer].map(toEntity));
 			expect(push.broadcast).toHaveBeenCalledWith({ type: 'nodeDescriptionUpdated', data: {} });
 			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
@@ -322,7 +325,10 @@ describe('McpRegistryService', () => {
 
 			expect(apiClient.fetchAllServers).toHaveBeenCalledTimes(1);
 			expect(apiClient.fetchServersMetadata).not.toHaveBeenCalled();
-			expect(repository.upsert).toHaveBeenCalledWith([toEntity(unsupportedServer)], ['slug']);
+			expect(repository.upsertFetchedServers).toHaveBeenCalledWith(
+				[toEntity(unsupportedServer)],
+				DB_NOW,
+			);
 		});
 
 		it('refreshFromApi stops before the write when the signal aborts during the fetch', async () => {
@@ -336,7 +342,7 @@ describe('McpRegistryService', () => {
 			await expect(service.refreshFromApi(controller.signal)).rejects.toThrow();
 
 			expect(apiClient.fetchAllServers).toHaveBeenCalledWith(controller.signal);
-			expect(repository.upsert).not.toHaveBeenCalled();
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 		});
 
@@ -346,7 +352,7 @@ describe('McpRegistryService', () => {
 
 			await expect(service.refreshFromApi()).rejects.toThrow('api down');
 
-			expect(repository.upsert).not.toHaveBeenCalled();
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
 			expect(push.broadcast).not.toHaveBeenCalled();
 		});
 	});

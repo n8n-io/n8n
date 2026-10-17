@@ -11,7 +11,9 @@ description: >-
   or shared cross-task data tables require a dependency-aware task graph.
   Don't use this skill for explicit one-off tasks that can be done by a single
   node execution: load one-off-operations and run the node with
-  nodes(action="execute").
+  nodes(action="execute"). Also load for a workflow's evaluations, model
+  choices, credential setup, and post-build verification: this skill lists the
+  references for those steps.
 recommended_tools:
   - read_file
   - write_file
@@ -59,6 +61,20 @@ first action turn (each extra sequential turn resends the whole context). When
 unsure which nodes to use, load this skill first and follow its research
 process below.
 
+## Early service connections
+
+When the `credentials(action="setup")` schema offers `filePath`, announce
+known service credentials immediately after the first node definitions or
+credential type search. Do this before detailed planning, SDK research, or
+source generation. Do not wait for every service to be resolved.
+
+Pick the source `filePath` and call credential setup with the complete list
+of types known so far. Make it the only tool call in that response. Wait for
+its successful `preBuild: true` result before continuing. Add later discoveries
+with another complete list. Do not batch setup with source writing.
+
+When early setup is unavailable, keep the post-build setup flow below.
+
 ## Repair Strategy
 
 When the edit is to fix a node the user reports as erroring or showing a red
@@ -97,10 +113,12 @@ resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 for a capability the user did not name,
 discover coverage first and use a Gateway credits–covered node instead of asking
 when the user has no credential for a comparable tool (see Gateway credits
-Preference). Setup details — recipients, accounts,
-resources, channels, credentials, timezone — belong in placeholders or
-unresolved `newCredential()` calls until post-build setup. After the first
-build, use `ask-user` when stuck or genuinely ambiguous; do not retry the same
+Preference). Setup details such as recipients, accounts, resources,
+channels, credentials, and timezone belong in placeholders or
+unresolved `newCredential()` calls. Announce known credentials through early
+setup when available, then continue building without waiting for the user.
+After the first build, resolve remaining setup and use `ask-user` when stuck
+or when choices are ambiguous; do not retry the same
 failing approach more than twice. Never re-ask an answered, deferred, or skipped
 question. A skip grants no additional permission. Choose defaults only for
 unspecified details within the requested task. If a skipped question seeks
@@ -179,8 +197,8 @@ Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
 n8n has no global error workflow setting; mention that only if the user asks
 about global behavior. Do not offer or build an error workflow before the
 primary workflow is published. Before building or attaching an error
-workflow, load this skill's `references/error-workflows.md` linked file and
-follow its build → publish → assign steps.
+workflow, load the `error-workflows` reference and follow its build → publish
+→ assign steps.
 
 ## Mandatory Process
 
@@ -555,9 +573,8 @@ explicit input schema, built with `isSupportingWorkflow: true`) referenced from
 the main workflow's `executeWorkflow` node (`source: 'database'`, real returned
 `workflowId`), main workflow saved last. This is part of the approved build
 task — not a reason to create a new plan, and simple
-workflows stay in one workflow. Before writing multi-workflow code, load this
-skill's `references/compositional-workflows.md` linked file for the required
-steps and SDK examples.
+workflows stay in one workflow. Before writing multi-workflow code, load the
+`compositional-workflows` reference for the required steps and SDK examples.
 
 ## Data Tables
 
@@ -978,7 +995,7 @@ For AI Agent workflows:
 
 After building a workflow that uses a trigger with an HTTP endpoint, share the
 full production URL with the user. Use the Webhook base URL and Form base URL
-from Instance Info in the system prompt. Each trigger type has a distinct
+from the `<instance-urls>` block in the user's turn. Each trigger type has a distinct
 pattern:
 
 - **Webhook Trigger**: `{webhookBaseUrl}/{path}` (where `{path}` is the node's
