@@ -8656,7 +8656,7 @@
 	"agents.toolConfig.workflow.inputs.value.invalid": "Enter a valid {type} value",
 	"agents.toolConfig.metadata.title": "Variables",
 	"agents.toolConfig.metadata.default.label": "Default value (optional)",
-	"agents.toolConfig.metadata.hint": "Values this tool reads with $json. The caller supplies them. Set an optional default for when the caller supplies none.",
+	"agents.toolConfig.metadata.hint": "Values this tool reads with $json. A Message an Agent node supplies them. Runs without one (chat, schedule, channels, test runs and sub-agents) use the default value, so set one for any variable those runs need.",
 	"agents.toolConfig.metadata.value.invalid-json": "Enter valid JSON, or plain text without braces.",
 	"agents.toolConfig.validation.fixFields": "Fix the highlighted fields before saving.",
 	"agents.toolConfig.name.validation.required": "Enter a name.",

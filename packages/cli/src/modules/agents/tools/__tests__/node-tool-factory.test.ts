@@ -722,6 +722,38 @@ describe('resolveNodeTool → variables', () => {
 		expect(executeInline).not.toHaveBeenCalled();
 	});
 
+	it('uses an expression default for a run with no calling workflow (chat, schedule, sub-agent)', async () => {
+		const executeInline = ok();
+		const evaluateExpressions = vi.fn().mockResolvedValue({ tenant_id: 'from-vars' });
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: {
+					...baseToolSchema.node,
+					nodeParameters: { filter: '={{ $json.tenant_id }}' },
+				},
+				trustedMetadata: { tenant_id: { mode: 'expression', value: '={{ $vars.tenant }}' } },
+			} as never,
+			{
+				executor: { executeInline, evaluateExpressions } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+
+		// No `runtimeMetadata` at all: nothing maps a value outside a workflow run.
+		await tool.handler!({} as never, {} as never);
+
+		expect(inputOf(executeInline)).toEqual({ tenant_id: 'from-vars' });
+	});
+
+	it('tells the user to set a default when a run without a calling workflow has none', async () => {
+		const tool = await makeTool(ok());
+
+		await expect(tool.handler!({} as never, {} as never)).rejects.toThrow(
+			/chat, schedule, channels, tests\) use the default value/,
+		);
+	});
+
 	it('does not treat $fromAI keys as variables', async () => {
 		const executeInline = ok();
 		const tool = await resolveNodeTool(

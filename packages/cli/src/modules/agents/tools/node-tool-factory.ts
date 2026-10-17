@@ -386,7 +386,7 @@ export async function resolveNodeTool(
 			);
 			if (missing.length > 0) {
 				throw new UserError(
-					`Tool "${sanitizedName}" needs a value for ${missing.map((name) => `"${name}"`).join(', ')}. Map it in the Message an Agent node or set a default in the tool configuration.`,
+					`Tool "${sanitizedName}" needs a value for ${missing.map((name) => `"${name}"`).join(', ')}. Map it in the Message an Agent node. Runs without a calling workflow (chat, schedule, channels, tests) use the default value from the tool configuration, so set one there.`,
 				);
 			}
 			const result = await ctx.executor.executeInline({
