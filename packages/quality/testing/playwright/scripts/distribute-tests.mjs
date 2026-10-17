@@ -44,7 +44,35 @@ const SELECT_AFFECTED_E2E = path.resolve(__dirname, 'select-affected-e2e.mjs');
 const DISTRIBUTION_REPORTER = path.resolve(__dirname, 'distribution-counter-reporter.ts');
 const PLAYWRIGHT_CLI = createRequire(import.meta.url).resolve('@playwright/test/cli');
 const PLAYWRIGHT_PREFIX = path.relative(REPO_ROOT, PLAYWRIGHT_DIR) + path.sep;
+const METRICS_PATH = path.join(REPO_ROOT, '.github', 'test-metrics', 'playwright.json');
+const MAX_METRICS_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
+
+function warnIfMetricsAreStale() {
+	try {
+		const metrics = JSON.parse(readFileSync(METRICS_PATH, 'utf8'));
+		const updatedAt = Date.parse(metrics.updatedAt);
+		if (!Number.isFinite(updatedAt)) throw new Error('updatedAt is missing or invalid');
+
+		const ageMs = Date.now() - updatedAt;
+		if (ageMs <= MAX_METRICS_AGE_MS) return;
+
+		const ageDays = Math.floor(ageMs / (24 * 60 * 60 * 1000));
+		const message = `E2E duration metrics are ${ageDays} days old. Shard estimates can be inaccurate.`;
+		console.error(
+			process.env.GITHUB_ACTIONS
+				? `::warning file=.github/test-metrics/playwright.json::${message}`
+				: `⚠ ${message}`,
+		);
+	} catch (error) {
+		const message = `Could not check E2E duration metrics freshness: ${String(error)}`;
+		console.error(
+			process.env.GITHUB_ACTIONS
+				? `::warning file=.github/test-metrics/playwright.json::${message}`
+				: `⚠ ${message}`,
+		);
+	}
+}
 
 // Specs excluded from orchestrated distribution. Under coverage instrumentation
 // (no container reuse + slower execution), high-flake specs balloon into
@@ -290,6 +318,7 @@ if (impactMode && filesArg) {
 
 let groupsFile;
 if (orchestrateMode || !matrixMode) {
+	warnIfMetricsAreStale();
 	const generated = generateDistributionGroups(project, grepInvert);
 	groupsFile = generated.groupsPath;
 	const candidates = includeSpecsFile
