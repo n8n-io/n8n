@@ -125,13 +125,11 @@ function isPinnedBehind(info: AgentSkillVersionInfo): boolean {
 	return info.pinned && info.draft < info.latest;
 }
 
-function draftCaption(info: AgentSkillVersionInfo): string {
+/** A pinned draft behind the latest version has no caption: its "Update to latest" link says it. */
+function draftCaption(info: AgentSkillVersionInfo): string | undefined {
 	if (!info.pinned) return i18n.baseText('agents.builder.skills.version.caption.followsLatest');
-	return isPinnedBehind(info)
-		? i18n.baseText('agents.builder.skills.version.caption.pinnedBehind', {
-				interpolate: { latest: String(info.latest) },
-			})
-		: i18n.baseText('agents.builder.skills.version.caption.pinnedLatest');
+	if (isPinnedBehind(info)) return undefined;
+	return i18n.baseText('agents.builder.skills.version.caption.pinnedLatest');
 }
 
 /** No caption when the published agent does not use the skill: the "Not added" tag says it. */
@@ -320,6 +318,7 @@ function rowSubtitle(row: {
 											@compare="(from, to) => openDiff(row.id, { from, to })"
 										/>
 										<N8nText
+											v-if="draftCaption(row.info)"
 											size="small"
 											color="text-light"
 											:class="$style.caption"

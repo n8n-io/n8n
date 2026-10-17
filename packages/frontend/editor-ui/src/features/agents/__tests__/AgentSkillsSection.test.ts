@@ -202,7 +202,9 @@ describe('AgentSkillsSection', () => {
 			const publishedCaption = wrapper.find('[data-testid="agent-skill-published-caption"]');
 			return {
 				wrapper,
-				draftCaption: wrapper.get('[data-testid="agent-skill-draft-caption"]').text(),
+				draftCaption: wrapper.find('[data-testid="agent-skill-draft-caption"]').exists()
+					? wrapper.get('[data-testid="agent-skill-draft-caption"]').text()
+					: undefined,
 				published,
 				publishedCaption: publishedCaption.exists() ? publishedCaption.text() : undefined,
 			};
@@ -222,13 +224,17 @@ describe('AgentSkillsSection', () => {
 		it.each<[string, AgentSkillVersionInfo, string]>([
 			['follows the latest version', versionInfo(), 'caption.followsLatest'],
 			['is pinned to the latest version', versionInfo({ pinned: true }), 'caption.pinnedLatest'],
-			[
-				'is pinned behind the latest version',
-				versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
-				'caption.pinnedBehind',
-			],
 		])('captions a draft that %s', (_, info, caption) => {
 			expect(cells(info).draftCaption).toBe(`agents.builder.skills.version.${caption}`);
+		});
+
+		it('shows no caption, only the update link, for a draft pinned behind the latest version', () => {
+			const { wrapper, draftCaption } = cells(
+				versionInfo({ draft: 2, live: 2, latest: 4, pinned: true }),
+			);
+
+			expect(draftCaption).toBeUndefined();
+			expect(wrapper.find('[data-testid="agent-skill-follow-latest"]').exists()).toBe(true);
 		});
 
 		it.each<[string, AgentSkillVersionInfo]>([
