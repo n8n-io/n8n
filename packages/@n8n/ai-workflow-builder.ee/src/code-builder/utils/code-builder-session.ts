@@ -62,24 +62,41 @@ export interface CodeBuilderSession {
 
 /**
  * Internal checkpoint structure for session storage.
- * Accepts both new (conversationEntries) and legacy (userMessages) formats.
+ * Writers use conversationEntries. The reader accepts older checkpoints.
  */
 interface SessionCheckpoint {
-	conversationEntries?: ConversationEntry[];
+	conversationEntries: ConversationEntry[];
 	sdkSessionId?: string;
-	/** @deprecated Legacy format — migrated on load */
-	userMessages?: string[];
 	previousSummary?: string;
 }
 
-function isSessionCheckpoint(value: unknown): value is SessionCheckpoint {
-	if (typeof value !== 'object' || value === null) return false;
-	const obj = value as SessionCheckpoint;
-	// New format
-	if ('conversationEntries' in obj && Array.isArray(obj.conversationEntries)) return true;
-	// oxlint-disable-next-line typescript/no-deprecated - Legacy Format
-	if ('userMessages' in obj && Array.isArray(obj.userMessages)) return true;
-	return false;
+function decodeSessionCheckpoint(value: unknown): SessionCheckpoint | undefined {
+	if (typeof value !== 'object' || value === null) return undefined;
+	if ('conversationEntries' in value && Array.isArray(value.conversationEntries)) {
+		return {
+			conversationEntries: value.conversationEntries,
+			previousSummary:
+				'previousSummary' in value && typeof value.previousSummary === 'string'
+					? value.previousSummary
+					: undefined,
+			sdkSessionId:
+				'sdkSessionId' in value && typeof value.sdkSessionId === 'string'
+					? value.sdkSessionId
+					: undefined,
+		};
+	}
+	if ('userMessages' in value && Array.isArray(value.userMessages)) {
+		return {
+			conversationEntries: value.userMessages
+				.filter((message): message is string => typeof message === 'string')
+				.map((message) => ({ type: 'build-request', message })),
+			previousSummary:
+				'previousSummary' in value && typeof value.previousSummary === 'string'
+					? value.previousSummary
+					: undefined,
+		};
+	}
+	return undefined;
 }
 
 /**
@@ -87,7 +104,7 @@ function isSessionCheckpoint(value: unknown): value is SessionCheckpoint {
  *
  * @param checkpointer - MemorySaver instance for persistence
  * @param threadId - Unique thread identifier
- * @returns Session data with userMessages and optional previousSummary
+ * @returns Session data with conversationEntries and optional previousSummary
  */
 export async function loadCodeBuilderSession(
 	checkpointer: MemorySaver,
@@ -107,32 +124,9 @@ export async function loadCodeBuilderSession(
 		}
 
 		const channelValues = checkpointTuple.checkpoint.channel_values;
-		const sessionData = channelValues?.codeBuilderSession;
-
-		if (isSessionCheckpoint(sessionData)) {
-			// New format
-			if (sessionData.conversationEntries) {
-				return {
-					conversationEntries: sessionData.conversationEntries,
-					previousSummary: sessionData.previousSummary,
-					sdkSessionId: sessionData.sdkSessionId,
-				};
-			}
-			//
-			// oxlint-disable-next-line typescript/no-deprecated - Legacy format — migrate each string to build-request
-			if (sessionData.userMessages) {
-				return {
-					// oxlint-disable-next-line typescript/no-deprecated - Legacy format
-					conversationEntries: sessionData.userMessages.map((msg) => ({
-						type: 'build-request' as const,
-						message: msg,
-					})),
-					previousSummary: sessionData.previousSummary,
-				};
-			}
-		}
-
-		return { conversationEntries: [] };
+		return (
+			decodeSessionCheckpoint(channelValues?.codeBuilderSession) ?? { conversationEntries: [] }
+		);
 	} catch {
 		// Thread doesn't exist yet or error reading
 		return { conversationEntries: [] };
