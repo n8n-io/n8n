@@ -161,6 +161,7 @@ export class Workflow {
 		this.staticData.__dataChanged = true;
 	}
 
+	/** @deprecated Use mapConnectionsByDestination() instead. */
 	static getConnectionsByDestination(connections: IConnections): IConnections {
 		return mapConnectionsByDestination(connections);
 	}
