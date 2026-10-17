@@ -166,7 +166,7 @@ export class Raindrop implements INodeType {
 						const collectionId = this.getNodeParameter('collectionId', i);
 						const endpoint = `/raindrops/${collectionId}`;
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
 
 						responseData = await raindropApiRequestAllItems.call(
 							this,

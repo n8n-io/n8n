@@ -49,7 +49,7 @@ describe('Raindrop node', () => {
 				'/raindrops/12345',
 				{},
 				{},
-				0,
+				undefined,
 			);
 			expect(result).toEqual([[{ json: mockBookmarks[0] }, { json: mockBookmarks[1] }]]);
 		});

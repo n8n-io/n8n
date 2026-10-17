@@ -62,14 +62,18 @@ export async function raindropApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	limit = 0,
-): Promise<any> {
+	limit?: number,
+): Promise<IDataObject[]> {
+	if (limit !== undefined && limit <= 0) {
+		return [];
+	}
+
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	let items: IDataObject[] = [];
 	let page = 0;
-	const perpage = limit > 0 && limit < 50 ? limit : 50;
+	const perpage = limit !== undefined && limit < 50 ? limit : 50;
 
 	do {
 		const qs: IDataObject = {
@@ -83,7 +87,7 @@ export async function raindropApiRequestAllItems(
 			: [];
 		returnData.push(...items);
 
-		if (limit > 0 && returnData.length >= limit) {
+		if (limit !== undefined && returnData.length >= limit) {
 			return returnData.slice(0, limit);
 		}
 
