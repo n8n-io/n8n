@@ -63,6 +63,40 @@ describe('AgentSetupCompletionService', () => {
 	});
 
 	describe('recordIfSetupComplete', () => {
+		it('uses the saved task bodies when the live draft has changed', async () => {
+			const { service, agentValidationService } = makeService();
+			const agent = makeAgent({
+				schema: { ...baseConfig, tasks: [{ type: 'task', id: 'task-1', enabled: true }] },
+			});
+			const tasks = new Map([
+				['task-1', { name: 'Summary', objective: 'Summarize notes', cronExpression: '0 9 * * *' }],
+			]);
+			agentValidationService.validateLoadedAgentConfiguration.mockRejectedValue(
+				new Error('The live revision changed'),
+			);
+			agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
+				status: 'valid',
+				issues: [],
+			});
+			const emit = await service.recordIfSetupComplete(
+				agent,
+				storedSkillRefs(agent),
+				projectId,
+				credentialProvider,
+				user,
+				tasks,
+			);
+			await emit?.();
+			expect(agent.setupCompletedAt).toBeInstanceOf(Date);
+			expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
+				agent,
+				storedSkillRefs(agent),
+				projectId,
+				tasks,
+				credentialProvider,
+			);
+		});
+
 		it('claims the marker and reports the configured capabilities once the agent is publishable', async () => {
 			const { service, telemetry, agentRepository } = makeService();
 			const agent = makeAgent({

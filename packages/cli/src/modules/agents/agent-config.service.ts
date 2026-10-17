@@ -5,7 +5,8 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
+import isEqual from 'lodash/isEqual';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
@@ -16,12 +17,16 @@ import {
 	diffAgentConfigParts,
 	isUnconfiguredAgent,
 	type AgentActor,
+	buildAgentMutationEvent,
+	captureAgentMutation,
 } from './agent-modification-telemetry.service';
 import { AgentConfigPreparationService } from './agent-config-preparation.service';
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
+import { AgentDefinitionService } from './agent-definition.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -36,6 +41,11 @@ import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
+import type {
+	CompleteAgentDefinition,
+	AgentDefinitionMetadata,
+	PlannedAgentDestinations,
+} from './utils/agent-definition';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 
@@ -89,6 +99,80 @@ export class AgentConfigService {
 
 	async validateConfig(raw: unknown) {
 		return await this.configPreparation.validateConfig(raw);
+	}
+
+	async replaceDefinition(
+		agentId: string,
+		projectId: string,
+		definition: CompleteAgentDefinition,
+		user: User,
+		options: {
+			expectedRevision: number;
+			metadata?: AgentDefinitionMetadata;
+			plannedDestinations?: PlannedAgentDestinations;
+		},
+	): Promise<Agent> {
+		await Container.get(AgentsSettingsService).assertEnabled();
+		await this.configPreparation.assertCanSaveDefinition(projectId, user, 'update');
+		const agent = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
+		if (agent.revision !== options.expectedRevision) {
+			throw new ConflictError('Agent was modified concurrently; please retry');
+		}
+		const prepared = await this.configPreparation.prepareDefinition(
+			agentId,
+			definition,
+			projectId,
+			user,
+			options.plannedDestinations,
+		);
+		const content = prepared.definition;
+		const previousSkills = await this.agentSkillRefs.readDraft(agent, {});
+		const previous = captureAgentMutation(agent, previousSkills.skillRefs);
+		await this.agentPolicyService.enforceSave(
+			projectId,
+			agentId,
+			content.config ?? { name: content.name },
+			agent.schema,
+			{ kind: 'user', user },
+		);
+		const sidecarChanges = {
+			skills: !isEqual(previousSkills.skills, content.skills),
+			tools: !isEqual(agent.tools, content.tools),
+		};
+		const decomposed = content.config
+			? decomposeJsonConfig(content.config)
+			: { schemaConfig: null, integrations: [] };
+		agent.name = content.config?.name ?? content.name;
+		agent.integrations = decomposed.integrations;
+		markAgentDraftDirty(agent);
+		const tasksChanged = await Container.get(AgentDefinitionService).replaceDraft(
+			agent,
+			{
+				schema: decomposed.schemaConfig,
+				skills: content.skills,
+				tools: content.tools,
+				tasks: content.tasks,
+			},
+			{},
+			undefined,
+			options.metadata,
+		);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		await this.saveCompletion.definitionSaved(
+			buildAgentMutationEvent(agent, skillRefs, projectId, { user, modifiedBy: 'user' }, previous, {
+				...sidecarChanges,
+				tasks: tasksChanged,
+			}),
+			previous.integrations,
+			prepared.credentialProvider,
+			content.tasks,
+		);
+		return agent;
 	}
 
 	/**
@@ -400,11 +484,7 @@ export class AgentConfigService {
 	}
 
 	validateSubAgentRefs(resolvedSubAgents: Array<{ agentId: string }>, ownerAgentId: string) {
-		for (const { agentId } of resolvedSubAgents) {
-			if (agentId === ownerAgentId) {
-				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
-			}
-		}
+		this.configPreparation.validateSubAgentRefs(resolvedSubAgents, ownerAgentId);
 	}
 }
 

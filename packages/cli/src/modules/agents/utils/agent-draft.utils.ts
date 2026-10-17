@@ -5,6 +5,7 @@ import { ConflictError } from '@n8n/errors';
 
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentDefinitionMetadata } from './agent-definition';
 
 /**
  * Start a new draft if the agent is currently in sync with the published snapshot.
@@ -27,8 +28,9 @@ export async function saveAgentDraftFenced(
 	agentRepository: AgentRepository,
 	agent: Agent,
 	ctx: OperationContext = {},
+	metadata?: AgentDefinitionMetadata,
 ): Promise<Agent> {
-	const won = await agentRepository.saveDraftFenced(agent, ctx);
+	const won = await agentRepository.saveDraftFenced(agent, ctx, metadata);
 	if (!won) {
 		throw new ConflictError('Agent was modified concurrently; please retry');
 	}

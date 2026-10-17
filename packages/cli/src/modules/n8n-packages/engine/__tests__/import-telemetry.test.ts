@@ -89,6 +89,7 @@ const scope = (input: {
 	const tags = input.tags ?? {};
 	const toTagRefs = (ids: string[] = []) => ids.map((id) => ({ id, name: `name-of-${id}` }));
 	const imported: ImportContentResult = {
+		agentOutcomes: [],
 		workflowOutcomes: input.outcomes,
 		removedWorkflows: input.removedWorkflows ?? [],
 		removedFolders: input.removedFolders ?? [],
