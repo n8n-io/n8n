@@ -124,6 +124,51 @@ export class RegularClass {
 				}`,
 			}),
 		},
+		// A method handed over as a reference is just as implemented as one
+		// written inline.
+		{
+			name: 'lifecycle methods provided as shorthand references',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { checkExists, create, delete: removeWebhook } }',
+			}),
+		},
+		{
+			name: 'lifecycle methods provided as member references',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { checkExists: hooks.checkExists, create: hooks.create, delete: hooks.delete } }',
+			}),
+		},
+		{
+			name: 'lifecycle group composed by spreading another object',
+			code: createTriggerNode({ webhookMethods: '{ default: { ...sharedLifecycle } }' }),
+		},
+		{
+			name: 'lifecycle group spreading another object and overriding one method',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { ...sharedLifecycle, delete: removeWebhook } }',
+			}),
+		},
+		{
+			name: 'lifecycle key superseded by a later spread',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { delete: undefined, ...sharedLifecycle } }',
+			}),
+		},
+		{
+			name: 'later lifecycle implementation supersedes an earlier duplicate key',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { delete: undefined, delete: removeWebhook, checkExists, create } }',
+			}),
+		},
+		{
+			name: 'later lifecycle implementation after a spread supersedes an earlier duplicate key',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { ...sharedLifecycle, delete: undefined, delete: removeWebhook } }',
+			}),
+		},
 	],
 	invalid: [
 		{
@@ -252,6 +297,105 @@ export class RegularClass {
 				{
 					messageId: 'missingLifecycleMethod',
 					data: { group: 'setup', missing: '`checkExists`' },
+				},
+			],
+		},
+		// A key that is present but supplies nothing is still not an implementation.
+		{
+			name: 'lifecycle method set to a nullish placeholder',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						checkExists,
+						create,
+						delete: null,
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'later nullish lifecycle value supersedes an earlier implementation',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { checkExists, create, delete: removeWebhook, delete: undefined } }',
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'later nullish lifecycle value after a spread supersedes an earlier implementation',
+			code: createTriggerNode({
+				webhookMethods:
+					'{ default: { ...sharedLifecycle, delete: removeWebhook, delete: undefined } }',
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'webhookMethods behind an as-expression, delete missing',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { checkExists, create } } as IWebhookMethods',
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'lifecycle group behind an as-expression, delete missing',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { checkExists, create } as IWebhookMethods }',
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'lifecycle method overridden with undefined after a spread',
+			code: createTriggerNode({
+				webhookMethods: '{ default: { ...sharedLifecycle, delete: undefined } }',
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
+				},
+			],
+		},
+		{
+			name: 'lifecycle method set to undefined',
+			code: createTriggerNode({
+				webhookMethods: `{
+					default: {
+						checkExists,
+						create,
+						delete: undefined,
+					},
+				}`,
+			}),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: { group: 'default', missing: '`delete`' },
 				},
 			],
 		},
