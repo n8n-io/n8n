@@ -455,6 +455,41 @@ describe('Source Control Helper', () => {
 			},
 		);
 
+		describe.each(directions)('settings changes (%s)', (direction) => {
+			test.each([
+				{ local: { availableInMCP: true }, remote: { availableInMCP: false } },
+				{ local: { availableInMCP: false }, remote: { availableInMCP: true } },
+				{ local: { timezone: 'Europe/Berlin' }, remote: { timezone: 'UTC' } },
+				{ local: {}, remote: { timezone: 'UTC' } },
+				{ local: { timezone: 'UTC' }, remote: undefined },
+			])('should detect different settings: %j', ({ local, remote }) => {
+				expect(
+					isWorkflowModified(
+						createWorkflowVersion({ settings: local }),
+						createWorkflowVersion({ settings: remote }),
+						direction,
+					),
+				).toBe(true);
+			});
+
+			test.each([
+				{ local: undefined, remote: {} },
+				{ local: {}, remote: undefined },
+				{
+					local: { availableInMCP: true, timezone: 'UTC' },
+					remote: { timezone: 'UTC', availableInMCP: true },
+				},
+			])('should treat equivalent settings as unchanged: %j', ({ local, remote }) => {
+				expect(
+					isWorkflowModified(
+						createWorkflowVersion({ settings: local }),
+						createWorkflowVersion({ settings: remote }),
+						direction,
+					),
+				).toBe(false);
+			});
+		});
+
 		test.each(directions)('should detect modifications when owner changes (%s)', (direction) => {
 			const local = createWorkflowVersion({
 				owner: {

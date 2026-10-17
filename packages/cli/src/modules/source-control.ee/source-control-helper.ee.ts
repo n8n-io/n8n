@@ -343,7 +343,7 @@ export function hasOwnerChanged(
 
 /**
  * Checks if a workflow has been modified by comparing version IDs, parent folder IDs,
- * descriptions and owners between local and remote versions
+ * descriptions, settings, and owners between local and remote versions.
  */
 function normalizeDescription(description: string | null | undefined): string | null {
 	return description ? description : null;
@@ -363,9 +363,16 @@ export function isWorkflowModified(
 		direction === 'pull' && remote.description === undefined
 			? false
 			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
+	const hasSettingsChanged = !isEqual(remote.settings ?? {}, local.settings ?? {});
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || hasDescriptionChanged || ownerChanged;
+	return (
+		hasVersionIdChanged ||
+		hasParentFolderIdChanged ||
+		hasDescriptionChanged ||
+		hasSettingsChanged ||
+		ownerChanged
+	);
 }
 
 /**
