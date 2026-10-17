@@ -300,6 +300,19 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
+	async findWorkflowIdByExecutionId(executionId: string): Promise<string | null> {
+		// Execution IDs are PostgreSQL `SERIAL` values. Anything else becomes `NaN`
+		// or an out-of-range integer in the query.
+		if (!/^\d+$/.test(executionId) || BigInt(executionId) > 2_147_483_647n) return null;
+
+		const execution = await this.findOne({
+			select: { workflowId: true },
+			where: { id: executionId },
+			withDeleted: true,
+		});
+		return execution?.workflowId ?? null;
+	}
+
 	async findSingleExecution(
 		id: string,
 		options?: {
