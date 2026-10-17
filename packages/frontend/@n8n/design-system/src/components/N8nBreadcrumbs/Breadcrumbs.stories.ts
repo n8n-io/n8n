@@ -70,6 +70,26 @@ export const Sizes: StoryFn = () => ({
 	`,
 });
 
+export const WithIcons = defaultTemplate.bind({});
+WithIcons.args = {
+	items: [
+		{
+			id: 'project',
+			label: 'My project',
+			href: '/project',
+			icon: { type: 'icon', value: 'folder' },
+		},
+		{ id: 'folder', label: 'Launch', href: '/launch', icon: { type: 'emoji', value: '🚀' } },
+		{ id: 'current', label: 'Current' },
+	],
+};
+
+export const SmallWithIcons = defaultTemplate.bind({});
+SmallWithIcons.args = {
+	...WithIcons.args,
+	theme: 'small',
+};
+
 export const CustomSeparator = defaultTemplate.bind({});
 CustomSeparator.args = {
 	items,
