@@ -40,6 +40,19 @@ export const isSamePromotionHostUrl = (current: string, next: string): boolean =
 	}
 };
 
+/**
+ * A short repository name, such as `acme/workflows`. GitLab targets store their full path. For
+ * other targets, the name comes from the clone URL. A URL in an unknown form shows as is.
+ */
+export const repositoryDisplayName = (target: PromotionConnection['target']): string => {
+	if (target.repositoryPath) return target.repositoryPath;
+	const url = target.remoteUrl.replace(/\/+$/, '').replace(/\.git$/, '');
+	// `https://host/acme/workflows`, `ssh://git@host:2222/acme/workflows` or `git@host:acme/workflows`
+	const match =
+		/^[a-z][a-z\d+.-]*:\/\/[^/]+\/(.+)$/i.exec(url) ?? /^[^@/\s]+@[^:/\s]+:(.+)$/.exec(url);
+	return match ? match[1] : url;
+};
+
 type DirectionFormState = {
 	enabled: boolean;
 	/** Keep this name when updating the settings. If absent, the API uses the direction label. */
