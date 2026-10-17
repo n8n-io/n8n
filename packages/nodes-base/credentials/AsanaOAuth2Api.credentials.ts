@@ -33,7 +33,7 @@ export class AsanaOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden',
+			type: 'string',
 			default: '',
 		},
 		{
