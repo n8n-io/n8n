@@ -420,6 +420,23 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
 			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true);
 		});
+		it('adds a file access step once the agent works where files are shared', async () => {
+			withBot();
+			const { getByTestId, queryByTestId, getByText } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await openAvailability(getByTestId);
+			expect(queryByTestId('teams-file-access-step')).toBeNull();
+
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+
+			await waitFor(() => expect(getByTestId('teams-file-access-step')).toBeVisible());
+			expect(getByTestId('teams-file-access-menu')).toBeVisible();
+			expect(
+				getByText('agents.channels.teams.setup.availability.fileAccessPermission'),
+			).toBeVisible();
+			expect(queryByTestId('teams-file-access')).toBeNull();
+		});
 	});
 
 	describe('step 5, connect', () => {
@@ -721,27 +738,7 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-done')).toBeDisabled();
 		});
 
-		it('asks to publish a connected agent that is not published, next to Done', async () => {
-			withBot();
-			const { getByTestId } = renderComponent({
-				props: props({ modelValue: 'cred-1', connected: true, isPublished: false }),
-			});
-
-			await waitFor(() => expect(getByTestId('teams-publish-notice')).toBeVisible());
-			expect(getByTestId('teams-install-step')).toContainElement(
-				getByTestId('teams-publish-notice'),
-			);
-		});
-
-		it('locks the availability once connected, so a new download matches what was saved', async () => {
-			const { getByTestId, rerender } = await downloadAndConnect();
-
-			await rerender(props({ modelValue: 'cred-1', connected: true }));
-
-			await waitFor(() => expect(getByTestId('teams-availability-step')).toHaveAttribute('inert'));
-		});
-
-		it('locks the availability from the download on, even when connecting fails', async () => {
+		it('locks the availability only while the package downloads', async () => {
 			withBot();
 			let release: ((blob: Blob) => void) | undefined;
 			vi.mocked(fetchTeamsAppPackage).mockImplementation(
@@ -758,10 +755,38 @@ describe('AgentChannelTeamsSetup', () => {
 
 			release?.(new Blob(['zip']));
 			await waitFor(() => expect(emitted().connect).toBeTruthy());
-			await rerender(props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }));
+			await rerender(props({ modelValue: 'cred-1', connected: true }));
 
-			await waitFor(() => expect(getByTestId('teams-connect-retry')).toBeVisible());
-			expect(getByTestId('teams-availability-step')).toHaveAttribute('inert');
+			await waitFor(() =>
+				expect(getByTestId('teams-availability-step')).not.toHaveAttribute('inert'),
+			);
+		});
+
+		it('keeps Retry for the downloaded package only', async () => {
+			const { getByTestId, emitted, rerender } = await downloadAndConnect();
+			await rerender(props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }));
+			await waitFor(() => expect(getByTestId('teams-connect-retry')).toBeEnabled());
+			expect(getByTestId('teams-availability-step')).not.toHaveAttribute('inert');
+
+			await openAvailability(getByTestId);
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+			expect(getByTestId('teams-connect-retry')).toBeDisabled();
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(emitted().connect).toHaveLength(2));
+		});
+
+		it('asks for a new download before Done once the availability changed', async () => {
+			const { getByTestId, rerender } = await downloadAndConnect();
+			await rerender(props({ modelValue: 'cred-1', connected: true }));
+			await waitFor(() => expect(getByTestId('teams-done')).toBeEnabled());
+
+			await openAvailability(getByTestId);
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+			expect(getByTestId('teams-done')).toBeDisabled();
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(getByTestId('teams-done')).toBeEnabled());
 		});
 
 		it('does not count a package for a credential that was swapped since', async () => {

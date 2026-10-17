@@ -414,6 +414,29 @@ describe('SkillsController', () => {
 			expect(response.body.message).toBe('That name is taken, choose another');
 		});
 
+		it('refuses a name of only spaces and trims the padding of a name', async () => {
+			await owner
+				.post('/skills')
+				.send({ scope: 'instance', skill: { ...body, name: '   ' } })
+				.expect(400);
+			const { id, skillHash } = await create(owner, {
+				scope: 'instance',
+				skill: { ...body, name: '  Padded name  ' },
+			});
+			expect((await owner.get(`/skills/${id}`).expect(200)).body.data.name).toBe('Padded name');
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ name: '   ', baseSkillHash: skillHash })
+				.expect(400);
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ name: ' Renamed ', baseSkillHash: skillHash })
+				.expect(200);
+
+			expect((await owner.get(`/skills/${id}`).expect(200)).body.data.name).toBe('Renamed');
+		});
+
 		it('allows the same name in another scope', async () => {
 			await create(editor, { scope: 'project', projectId: project.id, skill: body });
 
