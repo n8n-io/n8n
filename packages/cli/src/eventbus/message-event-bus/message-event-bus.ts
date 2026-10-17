@@ -45,6 +45,8 @@ export interface MessageWithCallback {
 export interface MessageEventBusInitializeOptions {
 	workerId?: string;
 	webhookProcessorId?: string;
+	/** Leave unfinished executions for a later `recoverUnfinishedExecutions()` call. */
+	deferExecutionRecovery?: boolean;
 }
 
 @Service()
@@ -52,6 +54,9 @@ export interface MessageEventBusInitializeOptions {
 // eslint-disable-next-line n8n-local-rules/no-type-unsafe-event-emitter
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
+
+	/** Read from the log files at startup; cleared once recovered, so recovery runs once. */
+	private unfinishedExecutions?: Record<string, EventMessageTypes[] | undefined>;
 
 	logWriter: MessageEventBusLogWriter;
 
@@ -109,6 +114,7 @@ export class MessageEventBus extends EventEmitter {
 		}
 
 		await this.performStartupRecovery();
+		if (!options?.deferExecutionRecovery) await this.recoverUnfinishedExecutions();
 
 		this.logger.debug('MessageEventBus initialized');
 		this.isInitialized = true;
@@ -274,8 +280,7 @@ export class MessageEventBus extends EventEmitter {
 	 * Does the following at startup:
 	 * - checks for unsent messages in the log files and tries to resend them
 	 * - cycles event logs and start the logging to a fresh file
-	 * - checks for unfinished executions (executions for which we have events in the log files,
-	 *   but no final execution event) and tries to recover them if needed
+	 * - keeps the unfinished executions found in the log files for `recoverUnfinishedExecutions`
 	 */
 	private async performStartupRecovery() {
 		this.logger.debug('Checking for unsent event messages');
@@ -285,10 +290,20 @@ export class MessageEventBus extends EventEmitter {
 		);
 		this.logWriter?.startLogging();
 		await this.send(unsentAndUnfinished.unsentMessages);
+		this.unfinishedExecutions = unsentAndUnfinished.unfinishedExecutions;
+	}
 
-		const unfinishedExecutionIds = await this.collectUnfinishedExecutionIds(
-			unsentAndUnfinished.unfinishedExecutions,
-		);
+	/**
+	 * Recovers executions with events in the log files but no final execution event, plus
+	 * in regular mode the in-progress executions in the database.
+	 */
+	async recoverUnfinishedExecutions() {
+		const { unfinishedExecutions } = this;
+		// A second pass would crash the executions this process has started since.
+		if (!unfinishedExecutions) return;
+		this.unfinishedExecutions = undefined;
+
+		const unfinishedExecutionIds = await this.collectUnfinishedExecutionIds(unfinishedExecutions);
 		if (unfinishedExecutionIds.length === 0) {
 			return;
 		}
@@ -310,7 +325,7 @@ export class MessageEventBus extends EventEmitter {
 			const crashedWorkflowIds: Set<string> = new Set();
 
 			for (const executionId of unfinishedExecutionIds) {
-				const logMessages = unsentAndUnfinished.unfinishedExecutions[executionId];
+				const logMessages = unfinishedExecutions[executionId];
 				const recoveredExecution = await this.recoveryService.recoverFromLogs(
 					executionId,
 					logMessages ?? [],

@@ -160,6 +160,9 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		// Recovery announces crashed executions, so it waits for the modules that listen, such as OTel.
+		await Container.get(MessageEventBus).recoverUnfinishedExecutions();
+
 		// Re-register pubsub event handlers after modules have been initialized
 		// As modules can add new event handlers we need to make sure they are registered
 		Container.get(PubSubRegistry).init();
@@ -171,6 +174,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async initEventBus() {
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.instanceSettings.hostId,
+			deferExecutionRecovery: true,
 		});
 		Container.get(LogStreamingEventRelay).init();
 	}
