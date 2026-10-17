@@ -45,15 +45,47 @@ CSS = """<style>
 .facts dt{font:10px/18px var(--mono);text-transform:uppercase;letter-spacing:.02em;color:var(--dim)}
 .facts dd{margin:0;word-break:break-word}
 .run-error{margin:var(--s12) 0 0;background:var(--pink-10);color:var(--pink-70);border-radius:var(--r8);padding:var(--s12);white-space:pre-wrap;word-break:break-word;font:12px/16px var(--mono);max-height:240px;overflow:auto}
-.tsteps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s8)}
-.tstep{display:grid;grid-template-columns:24px minmax(0,1fr) 200px;gap:var(--s12);align-items:start;background:var(--white);border-radius:var(--r8);padding:var(--s12);box-shadow:inset 0 0 0 1px var(--line)}
-.tstep.failed{background:var(--pink-10);box-shadow:inset 4px 0 0 var(--pink-70)}
-.tstep.running .num{background:var(--pink-10);color:var(--pink-70)}
-.tstep.passed .num{background:var(--pink)}
-.tstep.failed .num{background:var(--pink-70);color:var(--bg)}
-.tstep-title{display:flex;gap:var(--s8);align-items:baseline;flex-wrap:wrap}
-.tstep pre{margin:var(--s8) 0 0;white-space:pre-wrap;word-break:break-word;font:12px/16px var(--mono);color:var(--pink-70);max-height:200px;overflow:auto}
-.tstep img{display:block;width:200px;height:auto;border-radius:var(--r4);box-shadow:0 0 0 1px var(--line)}
+.tsteps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s16)}
+@media (max-width:1000px){.tsteps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.tsteps{grid-template-columns:minmax(0,1fr)}}
+.tstep{display:flex;flex-direction:column;min-width:0;background:var(--white);border:1px solid var(--line);border-radius:var(--r8);overflow:hidden}
+.tstep.failed{background:var(--pink-10);border-color:var(--pink-70);box-shadow:0 0 0 1px var(--pink-70)}
+.tstep-shot{display:block;width:100%;aspect-ratio:16/10;padding:0;border:0;border-bottom:1px solid var(--line);background:var(--bg-3);cursor:zoom-in;overflow:hidden}
+.tstep-shot img{display:block;width:100%;height:100%;object-fit:cover;object-position:top center;transition:transform .15s}
+.tstep-shot:hover img{transform:scale(1.03)}
+.tstep-shot:focus-visible{outline:2px solid var(--pink);outline-offset:-2px}
+@media (prefers-reduced-motion:reduce){.tstep-shot img{transition:none}}
+.tstep-noshot{display:grid;place-items:center;aspect-ratio:16/10;background:var(--bg-2);border-bottom:1px solid var(--line);color:var(--gray-50);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em}
+.tstep-info{display:flex;gap:var(--s12);align-items:flex-start;padding:var(--s12);min-width:0}
+.tstep-info > div{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--s4)}
+.tstep-info.running .num{background:var(--pink-10);color:var(--pink-70)}
+.tstep-info.passed .num{background:var(--pink)}
+.tstep-info.failed .num{background:var(--pink-70);color:var(--bg)}
+.tstep-title{font-weight:500;padding-top:3px;word-break:break-word}
+.tstep-title .mono-label{font-weight:400;margin-right:var(--s8)}
+.tstep-info pre{margin:var(--s4) 0 0;white-space:pre-wrap;word-break:break-word;font:12px/16px var(--mono);color:var(--pink-70);max-height:200px;overflow:auto}
+.shot-viewer .theater-bar{flex-wrap:nowrap;align-items:flex-start}
+.shot-viewer-info{flex:1;min-width:0;padding-top:3px}
+.shot-viewer-actions{flex:none;display:flex;align-items:center;gap:var(--s16)}
+.shot-viewer-info .tstep-info{padding:0}
+.shot-viewer-info .tstep-title{font-size:18px;line-height:22px}
+.shot-viewer-img{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+.shot-viewer-img img{display:block;max-width:100%;max-height:100%;border-radius:var(--r8);box-shadow:0 0 0 1px var(--line);cursor:default}
+.scenario-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1000px){.scenario-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.scenario-grid{grid-template-columns:minmax(0,1fr)}}
+.scenario-card{gap:0;background:var(--white);border:1px solid var(--line);border-radius:var(--r8);overflow:hidden}
+.scenario-card:has([data-live-badge] .st-failed){background:var(--pink-10);border-color:var(--pink-70);box-shadow:0 0 0 1px var(--pink-70)}
+.scenario-card .live-screen{aspect-ratio:16/10;min-height:0;border-radius:0;background:var(--bg-2);border-bottom:1px solid var(--line)}
+.scenario-card .live-zoom{height:100%;overflow:hidden}
+.scenario-card .live-zoom:focus-visible{outline:2px solid var(--pink);outline-offset:-2px}
+.scenario-card .live-screen img{height:100%;object-fit:cover;object-position:top center;transition:transform .15s}
+.scenario-card .live-zoom:hover img{transform:scale(1.03)}
+@media (prefers-reduced-motion:reduce){.scenario-card .live-screen img{transition:none}}
+.scenario-card .live-screen .live-empty{aspect-ratio:auto;height:100%}
+.scenario-card .reel-meta{align-items:flex-start;padding:var(--s12)}
+.scenario-card .run-name{padding-top:3px;word-break:break-word}
+.scenario-card [data-live-badge]{flex:none}
 .err-list{margin:0;padding-left:var(--s16);font:12px/16px var(--mono)}
 .err-list li{margin-bottom:var(--s4);word-break:break-word}
 .vis{background:var(--white);border-radius:var(--r8);padding:var(--s12);box-shadow:inset 0 0 0 1px var(--line);margin-top:var(--s12)}
@@ -213,14 +245,19 @@ def render_scenario_steps(steps, files):
 		        '<p class="dim">No steps yet.</p></div>')
 	items = []
 	for s in steps:
-		duration = f' · {s["duration"]:.1f}s' if s.get('duration') is not None else ''
-		thumb = (f'<a href="{files}{br.esc(s["shot"])}" target="_blank"><img src="{files}{br.esc(s["shot"])}" '
-		         f'loading="lazy" alt="Screen after: {br.esc(s["title"])}"></a>') if s.get('shot') else '<span></span>'
+		status, title = br.esc(s['status']), br.esc(s['title'])
+		duration = f' · took {s["duration"]:.1f}s' if s.get('duration') is not None else ''
+		if s.get('shot'):
+			src = f'{files}{br.esc(s["shot"])}'
+			thumb = (f'<button type="button" class="tstep-shot" data-src="{src}" aria-label="Show step {s["i"]} '
+			         f'full screen"><img src="{src}" loading="lazy" alt="Screen after: {title}"></button>')
+		else:
+			thumb = '<div class="tstep-noshot">No screenshot</div>'
 		error = f'<pre>{br.esc(s["error"])}</pre>' if s.get('error') else ''
 		items.append(
-			f'<li class="tstep {br.esc(s["status"])}"><span class="num">{s["i"]}</span><div>'
-			f'<div class="tstep-title"><span class="mono-label">{br.esc(s["kind"])}</span><span>{br.esc(s["title"])}</span></div>'
-			f'<div class="mono-label">{s["t"]:.1f}s{duration}</div>{error}</div>{thumb}</li>')
+			f'<li class="tstep {status}">{thumb}<div class="tstep-info {status}"><span class="num">{s["i"]}</span><div>'
+			f'<div class="tstep-title"><span class="mono-label">{br.esc(s["kind"])}</span><span>{title}</span></div>'
+			f'<div class="mono-label">at {s["t"]:.1f}s{duration}</div>{error}</div></div></li>')
 	passed = sum(s['status'] == 'passed' for s in steps)
 	return (f'<div class="box"><div class="head"><h2>Scenario steps</h2><span class="mono-label">{passed} of {len(steps)} '
 	        f'passed</span></div><ol class="tsteps">{"".join(items)}</ol></div>')
@@ -308,6 +345,73 @@ def render_visual(results, runs, files):
 	        'boxes are masked parts, such as LLM text. The accessibility tree diff shows changes in structure, roles '
 	        'and labels.</p>' + ''.join(cards) + '</div>')
 
+
+STEP_VIEWER_JS = """
+// A step screenshot opens full screen. The listeners are delegated, because the live page replaces the panels.
+(()=>{
+  const viewer = document.createElement('div');
+  viewer.className = 'theater shot-viewer';
+  viewer.hidden = true;
+  viewer.setAttribute('role', 'dialog');
+  viewer.setAttribute('aria-modal', 'true');
+  viewer.setAttribute('aria-label', 'Step screenshot');
+  viewer.innerHTML = '<div class="theater-bar"><div class="shot-viewer-info"></div><div class="shot-viewer-actions">'
+    + '<span class="mono-label" data-shot-count></span>'
+    + '<button type="button" class="btn" data-shot-move="-1">Previous</button>'
+    + '<button type="button" class="btn" data-shot-move="1">Next</button>'
+    + '<button type="button" class="btn accent" data-shot-close>Close</button></div></div>'
+    + '<div class="shot-viewer-img"><img alt=""></div>'
+    + '<p class="fineprint">Press the left or right arrow key to change the step. Press Esc to close.</p>';
+  document.body.append(viewer);
+  let run = null, index = 0, opener = null;
+  const shots = () => [...(document.getElementById(run)?.querySelectorAll('.tstep-shot') || [])];
+  function render(){
+    const items = shots();
+    if (!items.length) return close();
+    index = Math.min(index, items.length - 1);
+    const button = items[index], img = viewer.querySelector('.shot-viewer-img img');
+    img.src = button.dataset.src;
+    img.alt = button.querySelector('img').alt;
+    viewer.querySelector('.shot-viewer-info').replaceChildren(button.closest('.tstep').querySelector('.tstep-info').cloneNode(true));
+    viewer.querySelector('[data-shot-count]').textContent = `${index + 1} of ${items.length}`;
+  }
+  function open(button){
+    run = button.closest('.run').id;
+    index = Math.max(0, shots().indexOf(button));
+    opener = button;
+    viewer.hidden = false;
+    document.body.classList.add('theater-open');
+    render();
+    viewer.querySelector('[data-shot-close]').focus();
+  }
+  function close(){
+    viewer.hidden = true;
+    run = null;
+    document.body.classList.remove('theater-open');
+    if (opener?.isConnected) opener.focus();
+  }
+  function move(step){
+    const count = shots().length;
+    if (!count) return close();
+    index = (index + step + count) % count;
+    render();
+  }
+  document.addEventListener('click', e=>{
+    const button = e.target.closest('.tstep-shot');
+    if (button) open(button);
+  });
+  viewer.addEventListener('click', e=>{
+    const step = e.target.closest('[data-shot-move]');
+    if (step) move(Number(step.dataset.shotMove));
+    else if (e.target.closest('[data-shot-close]') || e.target.classList.contains('shot-viewer-img')) close();
+  });
+  document.addEventListener('keydown', e=>{
+    if (viewer.hidden) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); move(e.key === 'ArrowRight' ? 1 : -1); }
+  });
+})();
+"""
 
 RELOAD_JS = """
 // Served by the live page: reload when the report is built again, for example after the verdicts.
@@ -399,7 +503,8 @@ def _build(run_dir):
 		br.esc(plan.get('title') or 'Instance AI feature test'), ''.join(rows), notes(status, runs, verdicts),
 		''.join(panels), replay=replay, after_table=render_visual(results, runs, visual_file), head=CSS,
 		scripts=(f'<script>const SCREENS = {json.dumps(screens)}; const REPORT_VERSION = "{version}";</script>'
-		         f'<script>window.addEventListener("DOMContentLoaded", ()=>{{{RELOAD_JS}}});</script>'),
+		         f'<script>window.addEventListener("DOMContentLoaded", ()=>{{{RELOAD_JS}}});</script>'
+		         f'<script>{STEP_VIEWER_JS}</script>'),
 		case=render_case(plan, status), thead=THEAD)
 	(report / 'index.html').write_text(page)
 	(report / 'version.txt').write_text(version)
@@ -417,13 +522,14 @@ def live_box(status, runs):
 	for run in runs:
 		name, title = run['name'], br.esc(run_title(run))
 		cards.append(
-			f'<div class="live-card"><div class="reel-meta"><span class="run-name">{title}</span>'
-			f'<span data-live-badge="{name}">{status_badge(run["entry"].get("status", "waiting"))}</span></div>'
-			f'<div class="live-screen"><button type="button" class="live-zoom" data-zoom="{name}" '
-			f'aria-label="Show {title} larger"><img data-shot="{name}" alt="{title} in the n8n UI" hidden></button>'
-			f'<div class="live-empty" data-shot-empty="{name}">Waiting for the first screenshot</div></div></div>')
+			f'<div class="live-card scenario-card"><div class="live-screen"><button type="button" class="live-zoom" '
+			f'data-zoom="{name}" aria-label="Show {title} full screen"><img data-shot="{name}" '
+			f'alt="{title} in the n8n UI" hidden></button>'
+			f'<div class="live-empty" data-shot-empty="{name}">Waiting for the first screenshot</div></div>'
+			f'<div class="reel-meta"><span class="run-name">{title}</span>'
+			f'<span data-live-badge="{name}">{status_badge(run["entry"].get("status", "waiting"))}</span></div></div>')
 	return (f'<div class="box"><div class="head"><h2>Live</h2><span class="mono-label" id="live-clock">'
-	        f'{br.esc(clock(status))}</span></div><div class="live-grid">{"".join(cards)}</div></div>')
+	        f'{br.esc(clock(status))}</span></div><div class="live-grid scenario-grid">{"".join(cards)}</div></div>')
 
 
 def render_live(run_dir):
@@ -442,7 +548,7 @@ def render_live(run_dir):
 	return br.fill_template(
 		br.esc(plan.get('title') or 'Instance AI feature test'), ''.join(rows), br.esc(text), ''.join(panels),
 		replay=live_box(status, runs), head=CSS,
-		scripts=f'<script>const SCREENS = [];</script><script>{ls.LIVE_JS}</script>',
+		scripts=f'<script>const SCREENS = [];</script><script>{ls.LIVE_JS}</script><script>{STEP_VIEWER_JS}</script>',
 		case=render_case(plan, status), thead=THEAD)
 
 
