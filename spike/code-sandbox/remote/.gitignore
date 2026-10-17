@@ -1,0 +1,2 @@
+# Local wrappers with real hosts and key paths.
+*.local.sh
