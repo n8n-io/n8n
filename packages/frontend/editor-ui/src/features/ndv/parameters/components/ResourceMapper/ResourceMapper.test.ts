@@ -404,6 +404,34 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
+	it('reads its saved value from the parameter path when nested in a fixedCollection', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				path: 'parameters.options.entries.entry[0].columns',
+				node: createTestNode({
+					parameters: {
+						options: {
+							entries: { entry: [{ recordType: 'a', columns: { schema: UPDATED_SCHEMA } }] },
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
+		).toBe(4);
+	});
+
 	it('reconciles an incomplete cached schema by default when refreshIncompleteSchemaOnOpen is set', async () => {
 		// A cached schema that is structurally incomplete (missing the
 		// loader-populated `readOnly`), as produced by an AI builder rather than

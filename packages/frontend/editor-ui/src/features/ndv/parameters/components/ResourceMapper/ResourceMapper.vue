@@ -34,6 +34,7 @@ import { i18n as locale } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
+import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ParameterInputFull from '../ParameterInputFull.vue';
@@ -194,13 +195,15 @@ onMounted(async () => {
 		}
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
-	const parameterName = props.parameter.name;
+	// Read by path, not by name: the mapper can sit inside a collection or fixedCollection
+	const nodeValues = get(params, props.path.replace(/^parameters\./, '')) as
+		| ResourceMapperValue
+		| undefined;
 
-	if (!(parameterName in params)) {
+	if (!nodeValues) {
 		return;
 	}
 	let hasSchema = false;
-	const nodeValues = params[parameterName] as unknown as ResourceMapperValue;
 	// deepCopy so state.paramValue does not share nested references (value, schema,
 	// matchingColumns) with the store's node.parameters. The deepCopy in
 	// emitValueChanged is the intended write-out boundary; this is the matching

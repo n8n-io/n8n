@@ -601,7 +601,8 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
-			parameterPath = resolveRelativePath(props.path, parameterPath);
+			// resolveRelativePath expects the parameter's own path, not the path of this list
+			parameterPath = resolveRelativePath(getPath(parameter.name), parameterPath);
 
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
