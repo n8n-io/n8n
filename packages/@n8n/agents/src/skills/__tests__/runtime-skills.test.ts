@@ -107,6 +107,38 @@ Follow the workflow-building process.`);
 		});
 	});
 
+	it('reads the Agent Skills spelling of the tool lists as delimited strings', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: release-notes
+description: Write release notes.
+allowed-tools: Bash(git diff:*), Read, Grep
+recommended-tools: search_docs load_workflow
+---
+Steps.`);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.skill.allowedTools).toEqual(['Bash(git diff:*)', 'Read', 'Grep']);
+		expect(result.skill.recommendedTools).toEqual(['search_docs', 'load_workflow']);
+	});
+
+	it('rejects a tool list given under both spellings', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: release-notes
+description: Write release notes.
+allowed_tools:
+  - Read
+allowed-tools: Grep
+---
+Steps.`);
+
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.errors).toEqual([
+			expect.objectContaining({ code: 'invalid_field', field: 'allowed_tools' }),
+		]);
+	});
+
 	it('rejects invalid SKILL.md frontmatter contract fields', () => {
 		const result = parseRuntimeSkillMarkdown(`---
 name: Workflow Builder
