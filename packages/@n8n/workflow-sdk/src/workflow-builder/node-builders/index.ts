@@ -29,5 +29,6 @@ export {
 	documentLoader,
 	textSplitter,
 	reranker,
+	decisionModel,
 	fromAi,
 } from './subnode-builders';

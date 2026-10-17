@@ -37,6 +37,7 @@ export const ALLOWED_SDK_FUNCTIONS = new Set([
 	'documentLoader',
 	'textSplitter',
 	'reranker',
+	'decisionModel',
 
 	// Utility
 	'fromAi', // NEW: replaces ($) => $.fromAi() pattern
@@ -59,6 +60,7 @@ export const AUTO_RENAMEABLE_SDK_FUNCTIONS = new Set([
 	'documentLoader',
 	'textSplitter',
 	'reranker',
+	'decisionModel',
 ]);
 
 /**

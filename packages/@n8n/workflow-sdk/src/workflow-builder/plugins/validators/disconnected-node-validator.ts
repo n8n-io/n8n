@@ -37,6 +37,7 @@ const AI_CONNECTION_TYPES = [
 	'ai_document',
 	'ai_textSplitter',
 	'ai_reranker',
+	'ai_decisionModel',
 ];
 
 /**
