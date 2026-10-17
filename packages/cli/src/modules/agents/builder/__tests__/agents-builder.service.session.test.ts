@@ -2,12 +2,11 @@ import type { BuiltTelemetry, BuiltTool, CredentialProvider, StreamChunk } from 
 import type { Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService, BuilderSessionOptions } from '../builder-session';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeCatalogService } from '@/node-catalog';
 
-import type { InstanceAiCreditService } from '../../../instance-ai/instance-ai-credit.service';
 import type { AgentsService } from '../../agents.service';
 import type { Agent as AgentEntity } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
@@ -178,7 +177,6 @@ function setup(
 	const nodeCatalogService = mock<NodeCatalogService>();
 	const agentsBuilderToolsService = mock<AgentsBuilderToolsService>();
 	const n8nMemory = mock<N8nMemory>();
-	const instanceAiCreditService = mock<InstanceAiCreditService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 
 	nodeCatalogService.initialize.mockResolvedValue(undefined);
@@ -203,14 +201,13 @@ function setup(
 		nodeCatalogService,
 		agentsBuilderToolsService,
 		n8nMemory,
-		instanceAiCreditService,
 		n8nCheckpointStorage,
 		aiConfigMock,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
-	const credentialService = mock<InstanceAiCredentialService>();
+	const credentialService = mock<BuilderCredentialService>();
 	return {
 		service,
 		logger,
@@ -218,16 +215,17 @@ function setup(
 		user,
 		credentialProvider,
 		agentsBuilderToolsService,
-		instanceAiCreditService,
 		n8nCheckpointStorage,
 		credentialService,
 	};
 }
 
-const baseSession = {
+const baseSession: BuilderSessionOptions = {
 	threadId: 'ia-builder:t:agent-1',
-	hostThreadId: 'instance-thread-1',
-	runId: 'run-1',
+	reasoning: 'medium',
+	promptCaching: { enabled: true, anthropic: { ttl: '5m' } },
+	onMemoryUsage: vi.fn(),
+	hostTools: [],
 	modelConfig: 'anthropic/claude-sonnet-host-resolved',
 	abortSignal: new AbortController().signal,
 };
@@ -292,8 +290,7 @@ describe('AgentsBuilderService session isolation', () => {
 			credentialService,
 			user,
 			{
-				threadId: 'instance-thread-1',
-				runId: 'run-1',
+				track: undefined,
 				useEvalModelCatalog: true,
 			},
 		);
@@ -449,37 +446,41 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.registeredToolNames).toContain('notion_search');
 	});
 
-	it('does not let an MCP tool replace a native builder tool', async () => {
-		const nativeAgentContext = fakeTool('agent-context');
-		const mcpAgentContext = fakeTool('agent-context');
-		const { service, logger, user, credentialProvider, credentialService } = setup({
-			json: [],
-			shared: [nativeAgentContext],
-		});
+	it.each(['native', 'host'])(
+		'does not let an MCP tool replace a %s builder tool',
+		async (origin) => {
+			const nativeAgentContext = fakeTool('agent-context');
+			const mcpAgentContext = fakeTool('agent-context');
+			const { service, logger, user, credentialProvider, credentialService } = setup({
+				json: [],
+				shared: origin === 'native' ? [nativeAgentContext] : [],
+			});
 
-		await drain(
-			service.buildAgent(
-				'agent-1',
-				'project-1',
-				'hi',
-				credentialProvider,
-				credentialService,
-				user,
-				{
-					...baseSession,
-					mcpTools: new Map([[mcpAgentContext.name, mcpAgentContext]]),
-				},
-			),
-		);
+			await drain(
+				service.buildAgent(
+					'agent-1',
+					'project-1',
+					'hi',
+					credentialProvider,
+					credentialService,
+					user,
+					{
+						...baseSession,
+						hostTools: origin === 'host' ? [nativeAgentContext] : [],
+						mcpTools: new Map([[mcpAgentContext.name, mcpAgentContext]]),
+					},
+				),
+			);
 
-		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'agent-context')).toEqual([
-			'agent-context',
-		]);
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Skipped MCP tool that conflicts with an agent builder tool',
-			{ toolName: 'agent-context', agentId: 'agent-1' },
-		);
-	});
+			expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'agent-context')).toEqual(
+				['agent-context'],
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped MCP tool that conflicts with an agent builder tool',
+				{ toolName: 'agent-context', agentId: 'agent-1' },
+			);
+		},
+	);
 
 	it('cancelCheckpoint expires the checkpoint scoped to the agent', async () => {
 		const { service, n8nCheckpointStorage } = setup();
@@ -568,7 +569,7 @@ describe('AgentsBuilderService session isolation', () => {
 		]);
 	});
 
-	it('uses low reasoning and skips Anthropic prompt caching for proxied Kimi', async () => {
+	it('uses the host reasoning and caching options', async () => {
 		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
@@ -582,6 +583,8 @@ describe('AgentsBuilderService session isolation', () => {
 				{
 					...baseSession,
 					modelConfig: { provider: 'moonshotai', modelId: 'kimi-k3' } as never,
+					reasoning: 'low',
+					promptCaching: undefined,
 				},
 			),
 		);
@@ -685,9 +688,8 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.memoryTaskObserverCalls).toEqual([]);
 	});
 
-	it('constructs observer/reflector callbacks on the builder model and claims usage under the host thread/run/target-agent dedupe key', async () => {
-		const { service, user, credentialProvider, credentialService, instanceAiCreditService } =
-			setup();
+	it('forwards memory usage to the host after foreground streaming ends', async () => {
+		const { service, user, credentialProvider, credentialService } = setup();
 
 		await drain(
 			service.buildAgent(
@@ -713,12 +715,10 @@ describe('AgentsBuilderService session isolation', () => {
 			reportId: 'report-1',
 		});
 
-		expect(instanceAiCreditService.claimRunUsage).toHaveBeenCalledWith(
-			user,
-			'instance-thread-1',
-			'run-1:agent-builder:agent-1:memory:observer:report-1',
-			expect.arrayContaining([expect.objectContaining({ type: 'llmTokens' })]),
-			'completed',
+		expect(observe.options.onUsage).toBe(baseSession.onMemoryUsage);
+		expect(reflect.options.onUsage).toBe(baseSession.onMemoryUsage);
+		expect(baseSession.onMemoryUsage).toHaveBeenCalledWith(
+			expect.objectContaining({ reportId: 'report-1' }),
 		);
 	});
 });

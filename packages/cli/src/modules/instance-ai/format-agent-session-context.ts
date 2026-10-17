@@ -1,8 +1,8 @@
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 
-import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
-import type { AgentExecution } from '../entities/agent-execution.entity';
-import type { TimelineEvent } from '../execution-recorder';
+import type { AgentSessionThread, AgentSessionTurn } from '@/modules/agents/public-api';
+
+type TimelineEvent = NonNullable<AgentSessionTurn['timeline']>[number];
 
 /** Delimits the LLM-facing preview transcript block. */
 export const PREVIEW_CONTEXT_OPEN_TAG = '<preview_session_context>';
@@ -46,7 +46,7 @@ function formatInput(message: AgentPersistedMessageDto): string {
 	return `User: ${truncate(text, MAX_TEXT_CHARS)}`;
 }
 
-function formatTimelineEvent(event: TimelineEvent, execution: AgentExecution): string {
+function formatTimelineEvent(event: TimelineEvent, execution: AgentSessionTurn): string {
 	if (event.type === 'input') {
 		const message = execution.inputMessages?.find(({ id }) => id === event.messageId);
 		return message ? formatInput(message) : '';
@@ -82,7 +82,7 @@ function formatTimelineEvent(event: TimelineEvent, execution: AgentExecution): s
 	].join('\n');
 }
 
-function formatExecution(execution: AgentExecution): string {
+function formatExecution(execution: AgentSessionTurn): string {
 	const headerParts = [`status=${execution.status}`];
 	if (execution.model) headerParts.push(`model=${execution.model}`);
 	headerParts.push(`duration=${execution.duration}ms`);
@@ -108,9 +108,9 @@ function formatExecution(execution: AgentExecution): string {
 }
 
 function selectTurnExecutions(
-	executions: AgentExecution[],
+	executions: AgentSessionTurn[],
 	executionId: string,
-): AgentExecution[] | null {
+): AgentSessionTurn[] | null {
 	let anchorIndex = executions.findIndex((execution) => execution.id === executionId);
 	if (anchorIndex === -1) return null;
 
@@ -129,7 +129,7 @@ function selectTurnExecutions(
 	return selected;
 }
 
-function continuesExecution(previous: AgentExecution, current: AgentExecution): boolean {
+function continuesExecution(previous: AgentSessionTurn, current: AgentSessionTurn): boolean {
 	if (current.inputMessageIds !== undefined) {
 		const firstInputId = current.inputMessageIds[0];
 		if (!firstInputId) return false;
@@ -153,8 +153,8 @@ function continuesExecution(previous: AgentExecution, current: AgentExecution): 
  * already removed of secrets at record time.
  */
 export function formatPreviewSessionContext(
-	thread: AgentExecutionThread,
-	executions: AgentExecution[],
+	thread: AgentSessionThread,
+	executions: AgentSessionTurn[],
 	executionId?: string,
 ): string | null {
 	const scoped =

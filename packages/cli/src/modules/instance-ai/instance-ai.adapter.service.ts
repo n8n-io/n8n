@@ -165,14 +165,14 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { AgentsPublicApi } from '@/modules/agents/public-api';
 
 import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
 import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
@@ -657,8 +657,8 @@ export class InstanceAiAdapterService {
 							// The target agent id is only known per turn (a build-new-agent
 							// flow creates it after this context is built), so tag Gateway
 							// spend with the concrete id the delegate hands us each turn.
-							(targetAgentId) =>
-								this.createAgentCredentialProvider(
+							async (targetAgentId) =>
+								await this.createAgentCredentialProvider(
 									user,
 									projectId,
 									targetAgentId,
@@ -675,16 +675,15 @@ export class InstanceAiAdapterService {
 	/** The builder's credential list, narrowed to the eval thread's allowlist when one is set.
 	 *  The allowlist is read per list call, like the workflow builder's, so a credential the
 	 *  harness creates mid-run shows on the next card. */
-	private createAgentCredentialProvider(
+	private async createAgentCredentialProvider(
 		user: User,
 		projectId: string,
 		agentId: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
-	): AgentCredentialProvider {
-		const provider = new AgentsCredentialProvider(
-			this.credentialsService,
-			projectId,
+	): Promise<AgentCredentialProvider> {
+		const provider = await Container.get(AgentsPublicApi).createCredentialProvider(
 			user,
+			projectId,
 			agentId,
 		);
 		return getCredentialIdAllowlist

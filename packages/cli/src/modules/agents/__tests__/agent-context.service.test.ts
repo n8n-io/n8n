@@ -17,7 +17,7 @@ import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { Agent } from '../entities/agent.entity';
-import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
+import { AgentContextService } from '../agent-context.service';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
@@ -34,7 +34,7 @@ function makeService() {
 	const agentSkillRefs = createAgentSkillRefsService();
 	const agentsSettingsService = mock<AgentsSettingsService>();
 	agentsSettingsService.assertEnabled.mockResolvedValue(undefined);
-	const service = new InstanceAiAgentContextAdapterService(
+	const service = new AgentContextService(
 		agentsService,
 		agentSkillsService,
 		agentTaskService,
@@ -75,7 +75,7 @@ const agent = {
 	updatedAt: new Date('2026-09-17T10:00:00.000Z'),
 } as unknown as Agent;
 
-describe('InstanceAiAgentContextAdapterService', () => {
+describe('AgentContextService', () => {
 	beforeEach(() => {
 		vi.mocked(userHasScopes).mockReset();
 		vi.mocked(userHasScopes).mockResolvedValue(true);

@@ -1843,8 +1843,8 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
+import { AgentsPublicApi, type AgentCredentialProvider } from '@/modules/agents/public-api';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -7823,12 +7823,15 @@ describe('createContext — builder delegate wiring', () => {
 	function mockBuilderModuleActive(delegate: InstanceAiBuilderDelegate) {
 		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true), settings: new Map() };
 		const builderDelegateAdapter = { createDelegate: vi.fn().mockReturnValue(delegate) };
+		const credentialProvider = mock<AgentCredentialProvider>();
+		const agentsApi = { createCredentialProvider: vi.fn().mockResolvedValue(credentialProvider) };
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
 			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
+			if (token === AgentsPublicApi) return agentsApi;
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
-		return builderDelegateAdapter;
+		return { ...builderDelegateAdapter, agentsApi, credentialProvider };
 	}
 
 	it.each([
@@ -7877,7 +7880,7 @@ describe('createContext — builder delegate wiring', () => {
 		expect(tools.has('build-agent')).toBe(expected);
 	});
 
-	it('enables deterministic Agent Builder model catalogs for eval threads', () => {
+	it('enables deterministic Agent Builder model catalogs for eval threads', async () => {
 		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
 		const delegate = mock<InstanceAiBuilderDelegate>();
 		const builderDelegateAdapter = mockBuilderModuleActive(delegate);
@@ -7895,21 +7898,22 @@ describe('createContext — builder delegate wiring', () => {
 			expect.anything(),
 			{ useEvalModelCatalog: true },
 		);
-		// The third argument is a provider factory, not a pre-built provider: it
-		// is called per turn with the concrete target agent id so Gateway spend
-		// carries the right id even when the agent is created mid-build.
-		// An eval thread gets the allowlist-scoped wrapper, not the raw provider.
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
-		) => AgentsCredentialProvider;
-		const provider = providerFor('agent-42');
-		expect(provider).not.toBeInstanceOf(AgentsCredentialProvider);
-		expect(provider).toEqual(
-			expect.objectContaining({ list: expect.any(Function), resolve: expect.any(Function) }),
+		) => Promise<AgentCredentialProvider>;
+		const provider = await providerFor('agent-42');
+		builderDelegateAdapter.credentialProvider.list.mockResolvedValue([
+			{ id: 'other-eval-credential', name: 'Other eval', type: 'openAiApi' },
+		]);
+		expect(await provider.list()).toEqual([]);
+		expect(builderDelegateAdapter.agentsApi.createCredentialProvider).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			'agent-42',
 		);
 	});
 
-	it('hands production threads the raw provider, built per target agent id', () => {
+	it('hands production threads the raw provider, built per target agent id', async () => {
 		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
 		const builderDelegateAdapter = mockBuilderModuleActive(mock<InstanceAiBuilderDelegate>());
 
@@ -7917,8 +7921,13 @@ describe('createContext — builder delegate wiring', () => {
 
 		const providerFor = builderDelegateAdapter.createDelegate.mock.calls[0][2] as (
 			agentId: string,
-		) => AgentsCredentialProvider;
-		expect(providerFor('agent-42')).toBeInstanceOf(AgentsCredentialProvider);
+		) => Promise<AgentCredentialProvider>;
+		expect(await providerFor('agent-42')).toBe(builderDelegateAdapter.credentialProvider);
+		expect(builderDelegateAdapter.agentsApi.createCredentialProvider).toHaveBeenCalledWith(
+			mockUser,
+			'proj-1',
+			'agent-42',
+		);
 	});
 
 	it('exposes the delegate unwrapped, so creation telemetry stays in AgentsService', async () => {

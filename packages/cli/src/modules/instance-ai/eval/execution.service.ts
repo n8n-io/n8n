@@ -52,7 +52,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
-} from '@/modules/agents/agent-runtime-instrumentation';
+} from '@/modules/agents/public-api';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -62,7 +62,8 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-import { pruneConfigForEval, resolveCanonicalMcpCatalogs } from './agent-execution.service';
+import { pruneConfigForEval } from '@/modules/agents/public-api';
+import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { createMcpMockFetch } from './mcp-mock-fetch';

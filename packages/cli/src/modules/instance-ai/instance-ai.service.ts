@@ -151,9 +151,9 @@ import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
-import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
-import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
+import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
+import { InstanceAiAgentContextAdapterService } from './instance-ai-agent-context.adapter';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -273,8 +273,8 @@ import {
 } from './tracing';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
-import { AgentExecutionService } from '../agents/agent-execution.service';
-import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
+import { AgentsPublicApi } from '@/modules/agents/public-api';
+import { formatPreviewSessionContext } from './format-agent-session-context';
 
 /**
  * A resource attachment as the trace records it: the reference, not its contents.
@@ -2990,14 +2990,14 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Resolve the agents execution service only when the Assistant can use
+	 * Resolve the Agents public API only when the Assistant can use
 	 * Agents. Mirrors the builder-delegate gate so agent-preview handoff is
 	 * absent (rather than exploding) when Agents are off.
 	 */
-	private getAgentExecutionService(): AgentExecutionService | null {
+	private getAgentsApi(): AgentsPublicApi | null {
 		if (!isAgentsAccessEnabled()) return null;
 		try {
-			return Container.get(AgentExecutionService);
+			return Container.get(AgentsPublicApi);
 		} catch {
 			return null;
 		}
@@ -3041,9 +3041,9 @@ export class InstanceAiService {
 		}
 
 		context.resolvePreviewSession = async (ref) => {
-			const service = this.getAgentExecutionService();
+			const service = this.getAgentsApi();
 			if (!service) return null;
-			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId, user.id);
+			const detail = await service.readSession(user, projectId, ref.agentId, ref.threadId);
 			if (!detail) return null;
 			const transcript = formatPreviewSessionContext(
 				detail.thread,
@@ -4182,14 +4182,15 @@ export class InstanceAiService {
 					);
 				}
 				await this.assertAgentPreviewHandoffScopes(user, projectId);
-				const agentExecutionService = this.getAgentExecutionService();
-				if (!agentExecutionService) {
+				const agents = this.getAgentsApi();
+				if (!agents) {
 					throw new UserError('Agent preview handoff is not available');
 				}
 				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
 					projectId,
 					userId: user.id,
-					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
+					getThreadDetail: async (threadId, projectId, agentId) =>
+						await agents.readSession(user, projectId, agentId, threadId),
 				});
 				handoffContextBlock = resolved.block;
 				agentPreviewTitleFallback = resolved.titleFallback;
