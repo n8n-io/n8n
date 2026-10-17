@@ -246,6 +246,27 @@ describe('ZendeskTrigger Node', () => {
 			);
 			expect(deleteWebhookCalls).toHaveLength(0);
 		});
+
+		it('should treat triggers with missing or invalid actions as still in use to prevent accidental webhook deletion', async () => {
+			const apiRequestSpy = vi
+				.spyOn(GenericFunctions, 'zendeskApiRequest')
+				.mockResolvedValueOnce({});
+			vi.spyOn(GenericFunctions, 'zendeskApiRequestAllItems').mockResolvedValueOnce([
+				{
+					actions: undefined,
+				},
+			]);
+
+			const trigger = new ZendeskTrigger();
+			const result = await trigger.webhookMethods.default.delete.call(mockThis);
+
+			expect(result).toBe(true);
+			const deleteWebhookCalls = apiRequestSpy.mock.calls.filter(
+				([method, path]) =>
+					method === 'DELETE' && typeof path === 'string' && path.startsWith('/webhooks'),
+			);
+			expect(deleteWebhookCalls).toHaveLength(0);
+		});
 	});
 
 	describe('checkExists webhook method', () => {

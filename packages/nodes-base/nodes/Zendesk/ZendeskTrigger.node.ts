@@ -429,14 +429,17 @@ export class ZendeskTrigger implements INodeType {
 						actions?: Array<{ field?: string; value?: unknown }>;
 					}> = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', '/triggers/active');
 
-					const webhookStillInUse = remainingTriggers.some((trigger) =>
-						trigger?.actions?.some(
-							(action) =>
-								action?.field === 'notification_webhook' &&
-								(Array.isArray(action.value)
-									? String(action.value[0]) === String(webhookData.targetId)
-									: String(action.value) === String(webhookData.targetId)),
-						),
+					const webhookStillInUse = remainingTriggers.some(
+						(trigger) =>
+							!trigger?.actions ||
+							!Array.isArray(trigger.actions) ||
+							trigger.actions.some(
+								(action) =>
+									action?.field === 'notification_webhook' &&
+									(Array.isArray(action.value)
+										? String(action.value[0]) === String(webhookData.targetId)
+										: String(action.value) === String(webhookData.targetId)),
+							),
 					);
 
 					if (!webhookStillInUse) {
