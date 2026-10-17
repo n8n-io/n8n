@@ -4,37 +4,12 @@
 //   node capture_canvas.mjs <run-dir>
 //
 // Reads <run-dir>/<builder>/run.json and writes <run-dir>/<builder>/canvas.png and workflow.json.
-// Uses the Playwright copy in the repo test package. Falls back to the local Chrome install.
-import { createRequire } from 'node:module';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const repo = resolve(here, '../../../..');
-const require = createRequire(join(repo, 'packages/quality/testing/playwright/package.json'));
-const { chromium } = require('@playwright/test');
+import { baseUrl, launchBrowser, signIn } from './n8n_browser.mjs';
 
 const runDir = resolve(process.argv[2] ?? '.');
-// Same order as n8n_api.config(): .env.local, then .env.ai-surfaces, then the environment.
-const settings = {};
-for (const file of [
-	join(repo, '.env.local'),
-	process.env.AI_SURFACES_ENV ?? join(repo, '.env.ai-surfaces'),
-]) {
-	if (!existsSync(file)) continue;
-	for (const line of readFileSync(file, 'utf8').split('\n')) {
-		const match = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)$/);
-		if (!match) continue;
-		const value = match[2].trim().replace(/^(['"])(.*)\1$/, '$2');
-		if (value) settings[match[1]] = value;
-	}
-}
-const setting = (name, fallback) => process.env[name] || settings[name] || fallback;
-
-const baseUrl = setting('N8N_BASE_URL', 'http://localhost:5678').replace(/\/$/, '');
-const email = setting('N8N_EVAL_EMAIL', 'nathan@n8n.io');
-const password = setting('N8N_EVAL_PASSWORD', 'PlaywrightTest123');
 
 const runs = readdirSync(runDir, { withFileTypes: true })
 	.filter((d) => d.isDirectory() && existsSync(join(runDir, d.name, 'run.json')))
@@ -49,17 +24,11 @@ if (runs.length === 0) {
 	process.exit(0);
 }
 
-const launch = existsSync(chromium.executablePath()) ? {} : { channel: 'chrome' };
-const browser = await chromium.launch({ headless: true, ...launch });
+const browser = await launchBrowser();
 const VIEWPORT = { width: 1800, height: 1000 };
 const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 });
 const page = await context.newPage();
-
-await page.goto(`${baseUrl}/signin`);
-await page.getByRole('textbox', { name: 'Email' }).fill(email);
-await page.getByRole('textbox', { name: 'Password' }).fill(password);
-await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-await page.waitForURL((url) => !url.pathname.startsWith('/signin'), { timeout: 30_000 });
+await signIn(page);
 
 for (const { dir, meta } of runs) {
 	const id = meta.workflowId;
@@ -104,14 +73,34 @@ for (const { dir, meta } of runs) {
 			n.getBoundingClientRect(),
 		);
 		if (rects.length === 0) return null;
-		// Expanded groups overflow their node element downward, so the bottom edge uses descendants.
-		const inner = [...document.querySelectorAll('.vue-flow__node *')]
-			.map((n) => n.getBoundingClientRect())
-			.filter((r) => r.width > 0 && r.height > 0);
-		const left = Math.min(...rects.map((r) => r.left));
-		const top = Math.min(...rects.map((r) => r.top));
-		const right = Math.max(...rects.map((r) => r.right));
-		const bottom = Math.max(...rects.concat(inner).map((r) => r.bottom));
+		// Labels, subtitles and expanded groups overflow their node element, so use the descendants too.
+		// Only count what draws: hit areas and hover toolbars are empty boxes around the node.
+		const draws = (el) =>
+			el instanceof SVGSVGElement ||
+			el instanceof HTMLImageElement ||
+			[...el.childNodes].some((c) => c.nodeType === Node.TEXT_NODE && c.textContent.trim());
+		const visible = (el) => {
+			for (let e = el; e && !e.classList.contains('vue-flow__node'); e = e.parentElement) {
+				const style = getComputedStyle(e);
+				if (
+					style.visibility === 'hidden' ||
+					style.display === 'none' ||
+					Number(style.opacity) === 0
+				)
+					return false;
+			}
+			return true;
+		};
+		const all = rects.concat(
+			[...document.querySelectorAll('.vue-flow__node *')]
+				.filter((el) => draws(el) && visible(el))
+				.map((n) => n.getBoundingClientRect())
+				.filter((r) => r.width > 0 && r.height > 0),
+		);
+		const left = Math.min(...all.map((r) => r.left));
+		const top = Math.min(...all.map((r) => r.top));
+		const right = Math.max(...all.map((r) => r.right));
+		const bottom = Math.max(...all.map((r) => r.bottom));
 		return { left, top, right, bottom };
 	});
 	const pad = 40;

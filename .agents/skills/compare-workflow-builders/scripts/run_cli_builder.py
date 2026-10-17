@@ -10,6 +10,12 @@ Isolation modes:
   clean      Claude only. A clean process with an empty config directory, no built-in
              tools and only the n8n MCP server. It needs an API key, not a subscription login.
 
+Screen modes:
+  interactive  (default in a container) The normal terminal screen of the CLI runs in tmux.
+               screen.cast records the exact screen, and a terminal window can watch it live.
+               The trace comes from the session file of the CLI.
+  headless     `claude -p` or `codex exec` with a JSON event stream. Clean isolation uses this mode.
+
 Secrets: the model key and the MCP token go through environment variables only.
 They are never written to a file or put on a command line.
 """
@@ -27,7 +33,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
-from live import open_log_window
+from live import enabled as live_enabled
+from live import open_log_window, open_terminal
 from n8n_api import DEFAULT_BASE_URL, load_token, setting
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
@@ -35,6 +42,14 @@ IMAGE = 'n8n-builder-sandbox'
 # The builder-specific name comes first, so the CLI can use a different key than
 # the ANTHROPIC_API_KEY or OPENAI_API_KEY that the instance reads from .env.local.
 KEY_SETTINGS = {'claude': ['CLAUDE_API_KEY', 'ANTHROPIC_API_KEY'], 'codex': ['CODEX_API_KEY', 'OPENAI_API_KEY']}
+# Codex features that add tools or downloads beyond the n8n MCP server. shell_snapshot is off
+# because it writes the environment, with the API key, to a file.
+CODEX_FEATURES_OFF = ['apps', 'browser_use', 'browser_use_external', 'computer_use', 'image_generation',
+                      'in_app_browser', 'plugins', 'remote_plugin', 'shell_snapshot']
+SCREEN = {'cols': 120, 'rows': 36}
+# Interactive mode: the variable that the CLI reads the model key from.
+SANDBOX_KEY = {'claude': 'CLAUDE_SANDBOX_KEY', 'codex': 'CODEX_SANDBOX_KEY'}
+IDLE_LIMIT_S = 600
 
 
 def now_iso():
@@ -70,6 +85,18 @@ def claude_args(prompt, model, config_path):
 	return args
 
 
+def claude_interactive_args(model):
+	# dontAsk allows the pre-approved n8n tools and denies the rest without a prompt.
+	args = [
+		'claude', '--bare', '--strict-mcp-config', '--mcp-config', '/out/mcp.json',
+		'--tools', '', '--allowedTools', 'mcp__n8n', '--disable-slash-commands',
+		'--settings', '/out/.screen/claude-settings.json', '--permission-mode', 'dontAsk',
+	]
+	if model:
+		args += ['--model', model]
+	return args
+
+
 def codex_args(prompt, model):
 	args = ['codex', 'exec', '--json', '--skip-git-repo-check', '--sandbox', 'read-only']
 	if model:
@@ -77,15 +104,41 @@ def codex_args(prompt, model):
 	return args + [prompt]
 
 
-def write_codex_config(home, url):
+def codex_interactive_args(model):
+	# The background app server needs `ps`, which the slim image does not have.
+	args = ['codex', '--no-daemon']
+	if model:
+		args += ['--model', model]
+	return args
+
+
+def write_codex_config(home, url, key_env=None):
+	"""Write config.toml. With key_env, a provider reads the key from that variable, so the
+	interactive screen does not ask for a sign-in and no key is stored in auth.json."""
 	codex_home = home / '.codex'
 	codex_home.mkdir(parents=True, exist_ok=True)
-	(codex_home / 'config.toml').write_text(
-		'approval_policy = "never"\n'
-		'\n[mcp_servers.n8n]\n'
-		f'url = "{url}"\n'
-		'bearer_token_env_var = "N8N_MCP_TOKEN"\n'
-	)
+	lines = ['approval_policy = "never"', 'sandbox_mode = "read-only"']
+	if key_env:
+		lines.append('model_provider = "sandbox-openai"')
+	lines += ['', '[features]'] + [f'{name} = false' for name in CODEX_FEATURES_OFF]
+	if key_env:
+		lines += ['', '[model_providers.sandbox-openai]', 'name = "OpenAI"',
+		          'base_url = "https://api.openai.com/v1"', f'env_key = "{key_env}"', 'wire_api = "responses"']
+	lines += ['', '[projects."/out/work"]', 'trust_level = "trusted"',
+	          '', '[mcp_servers.n8n]', f'url = "{url}"', 'bearer_token_env_var = "N8N_MCP_TOKEN"', '']
+	(codex_home / 'config.toml').write_text('\n'.join(lines))
+
+
+def write_claude_interactive_config(out, home):
+	# Skip the first-run screens: theme, onboarding and the folder trust question.
+	(home / '.claude' / '.claude.json').write_text(json.dumps({
+		'hasCompletedOnboarding': True, 'theme': 'dark',
+		'projects': {'/out/work': {'hasTrustDialogAccepted': True, 'hasCompletedProjectOnboarding': True}},
+	}))
+	# With ANTHROPIC_API_KEY the screen asks to confirm the key and shows part of it.
+	# apiKeyHelper reads the key from the environment without that question.
+	(out / '.screen' / 'claude-settings.json').write_text(json.dumps(
+		{'apiKeyHelper': f'printenv {SANDBOX_KEY["claude"]}'}))
 
 
 def live_line(builder, event):
@@ -110,6 +163,35 @@ def live_line(builder, event):
 	return None
 
 
+def session_lines(builder, row):
+	"""Short terminal lines for one session-file row, and the end state: None, 'done' or 'error'."""
+	lines = []
+	if builder == 'claude':
+		if row.get('type') != 'assistant':
+			return lines, None
+		msg = row.get('message') or {}
+		for block in msg.get('content') or []:
+			if block.get('type') == 'tool_use':
+				lines.append(f'tool {block.get("name")}')
+			elif block.get('type') == 'text' and block.get('text', '').strip():
+				lines.append('text ' + block['text'].strip().splitlines()[0][:120])
+		if row.get('isApiErrorMessage'):
+			return lines, 'error'
+		return lines, 'done' if msg.get('stop_reason') == 'end_turn' else None
+	payload = row.get('payload') or {}
+	if row.get('type') != 'event_msg':
+		return lines, None
+	kind, item = payload.get('type'), payload.get('item') or {}
+	if kind == 'item_completed' and item.get('type') == 'McpToolCall':
+		lines.append(f'tool {item.get("server")}.{item.get("tool")}')
+	elif kind == 'item_completed' and item.get('type') == 'AgentMessage':
+		text = ' '.join(c.get('text', '') for c in item.get('content') or [] if isinstance(c, dict))
+		lines.append('text ' + text.strip()[:120])
+	elif kind == 'error':
+		lines.append(f'error {str(payload.get("message"))[:200]}')
+	return lines, {'task_complete': 'done', 'turn_aborted': 'error'}.get(kind)
+
+
 BOLD, DIM, CYAN, GREEN, RED, RESET = '\033[1m', '\033[2m', '\033[36m', '\033[32m', '\033[31m', '\033[0m'
 LABELS = {'claude': 'Claude Code + n8n MCP', 'codex': 'Codex + n8n MCP'}
 
@@ -126,7 +208,7 @@ def short(value, limit=400):
 
 
 def log_entries(builder, event):
-	"""Detailed, colored lines for live.log, the file that the live terminal window follows."""
+	"""Detailed, colored lines for live.log, the file that the headless live window follows."""
 	lines = []
 	if builder == 'claude':
 		content = (event.get('message') or {}).get('content')
@@ -170,100 +252,78 @@ def log_entries(builder, event):
 WORKFLOW_ID = re.compile(r'(?:workflowId|WORKFLOW_ID)\\*"?\s*[:=]\s*\\*"?([A-Za-z0-9]{10,})')
 
 
-def find_session_file(builder, home, session_id):
+def session_candidates(builder, home):
 	if builder == 'claude':
+		# Subagent transcripts are in deeper folders. The main session is at projects/<cwd>/<id>.jsonl.
 		root = home / '.claude' / 'projects'
-		matches = list(root.rglob(f'{session_id}.jsonl')) if session_id else list(root.rglob('*.jsonl'))
-	else:
-		matches = list((home / '.codex' / 'sessions').rglob('rollout-*.jsonl'))
+		return list(root.glob('*/*.jsonl')) if root.exists() else []
+	root = home / '.codex' / 'sessions'
+	return list(root.rglob('rollout-*.jsonl')) if root.exists() else []
+
+
+def find_session_file(builder, home, session_id=None):
+	matches = session_candidates(builder, home)
+	if session_id:
+		matches = [p for p in matches if session_id in p.name] or matches
 	matches.sort(key=lambda p: p.stat().st_mtime)
 	return matches[-1] if matches else None
 
 
-def main():
-	ap = argparse.ArgumentParser()
-	ap.add_argument('--builder', choices=['claude', 'codex'], required=True)
-	ap.add_argument('--out', required=True)
-	ap.add_argument('--prompt-file', required=True)
-	ap.add_argument('--isolation', choices=['container', 'clean'],
-	                default=setting('COMPARE_ISOLATION', default='container'))
-	ap.add_argument('--model', help='Model id. Default: CLAUDE_MODEL or CODEX_MODEL, else the CLI default.')
-	ap.add_argument('--key-env', help='Name of the setting with the model API key.')
-	ap.add_argument('--rebuild-image', action='store_true')
-	ap.add_argument('--timeout-min', type=float, default=30)
-	args = ap.parse_args()
+class SessionReader:
+	"""Reads the rows that the CLI appends to its session file."""
 
-	if args.builder == 'codex' and args.isolation != 'container':
-		sys.exit('Codex runs only in a container. Its shell tool can read the host disk.')
+	def __init__(self, builder, home):
+		self.builder, self.home, self.path, self.offset = builder, home, None, 0
 
-	prefix = args.builder.upper()
-	args.model = args.model or setting(f'{prefix}_MODEL')
-	key_names = [args.key_env] if args.key_env else KEY_SETTINGS[args.builder]
-	api_key = setting(*key_names)
-	if not api_key:
-		sys.exit(f'Set {" or ".join(key_names)} in .env.ai-surfaces, .env.local or the environment.')
-	token = load_token()
-	if not token:
-		sys.exit('No MCP token. Run prepare.py first.')
+	def rows(self):
+		self.path = self.path or find_session_file(self.builder, self.home)
+		if not self.path:
+			return []
+		with self.path.open('rb') as f:
+			f.seek(self.offset)
+			data = f.read()
+		end = data.rfind(b'\n') + 1
+		self.offset += end
+		rows = []
+		for line in data[:end].splitlines():
+			try:
+				rows.append(json.loads(line))
+			except json.JSONDecodeError:
+				continue
+		return rows
 
-	out = Path(args.out).resolve()
-	if out.exists():
-		shutil.rmtree(out)
-	work, home = out / 'work', out / 'home'
-	work.mkdir(parents=True)
-	(home / '.claude').mkdir(parents=True)
-	prompt = Path(args.prompt_file).read_text().strip()
-	base_url = setting('N8N_BASE_URL', default=DEFAULT_BASE_URL).rstrip('/')
-	url = mcp_url(base_url, args.isolation)
-	container = f'cwb-{args.builder}-{int(time.time())}'
 
-	child_env = {'N8N_MCP_TOKEN': token}
-	if args.builder == 'claude':
-		child_env['ANTHROPIC_API_KEY'] = api_key
-		(out / 'mcp.json').write_text(json.dumps({'mcpServers': {'n8n': {
-			'type': 'http', 'url': url, 'headers': {'Authorization': 'Bearer ${N8N_MCP_TOKEN}'},
-		}}}))
-	else:
-		child_env['OPENAI_API_KEY'] = api_key
-		child_env['CODEX_API_KEY'] = api_key
-		write_codex_config(home, url)
+def docker_command(container, out, env_names):
+	cmd = [
+		'docker', 'run', '--rm', '-i', '--name', container,
+		'--user', f'{os.getuid()}:{os.getgid()}',
+		'--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+		'--read-only', '--tmpfs', '/tmp',
+		'--add-host', 'host.docker.internal:host-gateway',
+		'-v', f'{out}:/out', '-w', '/out/work',
+		'-e', 'HOME=/out/home',
+		'-e', 'CLAUDE_CONFIG_DIR=/out/home/.claude',
+		'-e', 'CODEX_HOME=/out/home/.codex',
+		'-e', 'COLORTERM=truecolor',
+	]
+	# `-e NAME` without a value copies the value from this process, so secrets stay off argv.
+	for name in env_names:
+		cmd += ['-e', name]
+	return cmd + [IMAGE]
 
-	if args.isolation == 'container':
-		ensure_image(args.rebuild_image)
-		inner_home = '/out/home'
-		cmd = [
-			'docker', 'run', '--rm', '-i', '--name', container,
-			'--user', f'{os.getuid()}:{os.getgid()}',
-			'--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
-			'--read-only', '--tmpfs', '/tmp',
-			'--add-host', 'host.docker.internal:host-gateway',
-			'-v', f'{out}:/out', '-w', '/out/work',
-			'-e', f'HOME={inner_home}',
-			'-e', f'CLAUDE_CONFIG_DIR={inner_home}/.claude',
-			'-e', f'CODEX_HOME={inner_home}/.codex',
-		]
-		# `-e NAME` without a value copies the value from this process, so secrets stay off argv.
-		for name in child_env:
-			cmd += ['-e', name]
-		cmd.append(IMAGE)
-		cmd += claude_args(prompt, args.model, '/out/mcp.json') if args.builder == 'claude' else codex_args(prompt, args.model)
-		run_env = {**os.environ, **child_env}
-		cwd = None
-	else:
-		if not shutil.which('claude'):
-			sys.exit('claude is not on PATH.')
-		cmd = claude_args(prompt, args.model, str(out / 'mcp.json'))
-		run_env = {
-			'PATH': os.environ.get('PATH', '/usr/bin:/bin'),
-			'HOME': str(home),
-			'CLAUDE_CONFIG_DIR': str(home / '.claude'),
-			'DISABLE_AUTOUPDATER': '1',
-			'DISABLE_TELEMETRY': '1',
-			**child_env,
-		}
-		cwd = str(work)
 
-	started_at = now_iso()
+def check_no_secrets(out, secrets):
+	"""Warn if a secret value ended up in a file of the run directory. Never prints the value."""
+	needles = [s.encode() for s in secrets if s and len(s) >= 12]
+	for path in out.rglob('*'):
+		if not path.is_file() or path.stat().st_size > 50_000_000:
+			continue
+		data = path.read_bytes()
+		if any(n in data for n in needles):
+			print(f'WARNING: a secret value is in {path}. Delete the file before you share the run.', flush=True)
+
+
+def run_headless(args, out, prompt, cmd, run_env, cwd, container):
 	stream_path = out / 'stream.jsonl'
 	session_id, workflow_ids, result, errors_in_row = None, [], None, 0
 	live_log = (out / 'live.log').open('w', buffering=1)
@@ -311,24 +371,188 @@ def main():
 		if args.isolation == 'container':
 			subprocess.run(['docker', 'kill', container], capture_output=True)
 		live_log.write(f'{BOLD}=== finished, exit code {proc.returncode}. You can close this window. ==={RESET}\n')
+	return {'exitCode': proc.returncode, 'sessionId': session_id, 'workflowIds': workflow_ids,
+	        'reportedCostUsd': (result or {}).get('total_cost_usd')}
 
-	session_file = find_session_file(args.builder, home, session_id)
+
+def run_interactive(args, out, home, prompt, run_env, container):
+	screen_dir = out / '.screen'
+	argv = claude_interactive_args(args.model) if args.builder == 'claude' else codex_interactive_args(args.model)
+	# Claude Code shows its input box before the MCP servers connect, so it waits a few seconds more.
+	ready = {'claude': ('❯', 5000), 'codex': ('›', 2000)}[args.builder]
+	(screen_dir / 'command.json').write_text(json.dumps(
+		{'argv': argv, **SCREEN, 'input': prompt, 'readyText': ready[0], 'settleMs': ready[1]}))
+	cmd = docker_command(container, out, [n for n in run_env if n in (SANDBOX_KEY[args.builder], 'N8N_MCP_TOKEN')])
+	cmd += ['node', '/out/.screen/screen.mjs', 'run', '/out/.screen']
+
+	reader, workflow_ids, state, timed_out = SessionReader(args.builder, home), [], None, False
+	with (out / 'stderr.log').open('w') as err:
+		proc = subprocess.Popen(cmd, env=run_env, stdin=subprocess.DEVNULL, stdout=err, stderr=err)
+		for _ in range(120):
+			if (screen_dir / 'screen.cast').exists() or proc.poll() is not None:
+				break
+			time.sleep(0.25)
+		watch = f'docker exec -it {container} tmux attach -r -t run'
+		if live_enabled() and not open_terminal(LABELS[args.builder], watch, SCREEN['cols'], SCREEN['rows']):
+			print(f'watch {LABELS[args.builder]}: {watch}', flush=True)
+		deadline, last_growth = time.time() + args.timeout_min * 60, time.time()
+		while proc.poll() is None and not state:
+			rows = reader.rows()
+			if rows:
+				last_growth = time.time()
+			for row in rows:
+				lines, row_state = session_lines(args.builder, row)
+				for line in lines:
+					print(f'[{args.builder}] {line}', flush=True)
+				for match in WORKFLOW_ID.findall(json.dumps(row)):
+					if match not in workflow_ids:
+						workflow_ids.append(match)
+				state = state or row_state
+			if time.time() > deadline:
+				print('timeout: stopped the builder', flush=True)
+				timed_out = True
+				break
+			if reader.path and time.time() - last_growth > IDLE_LIMIT_S:
+				print(f'no progress for {IDLE_LIMIT_S // 60} minutes: stopped the builder', flush=True)
+				timed_out = True
+				break
+			time.sleep(1)
+		(screen_dir / 'stop').write_text('')
+		try:
+			proc.wait(timeout=30)
+		except subprocess.TimeoutExpired:
+			subprocess.run(['docker', 'kill', container], capture_output=True)
+			proc.wait()
+	for row in reader.rows():
+		for match in WORKFLOW_ID.findall(json.dumps(row)):
+			if match not in workflow_ids:
+				workflow_ids.append(match)
+	if (screen_dir / 'screen.cast').exists():
+		shutil.move(screen_dir / 'screen.cast', out / 'screen.cast')
+	# After a finished turn the driver stops tmux, so the exit code of the CLI means nothing.
+	exited = screen_dir / 'exited'
+	if state == 'done' and not timed_out:
+		code = 0
+	else:
+		code = int(exited.read_text() or 1) if exited.exists() else 1
+		code = code or 1
+	session = reader.path
+	return {'exitCode': code, 'sessionId': session.stem.split('rollout-')[-1] if session else None,
+	        'workflowIds': workflow_ids, 'reportedCostUsd': None}
+
+
+def main():
+	ap = argparse.ArgumentParser()
+	ap.add_argument('--builder', choices=['claude', 'codex'], required=True)
+	ap.add_argument('--out', required=True)
+	ap.add_argument('--prompt-file', required=True)
+	ap.add_argument('--isolation', choices=['container', 'clean'],
+	                default=setting('COMPARE_ISOLATION', default='container'))
+	ap.add_argument('--mode', choices=['interactive', 'headless'], default=setting('COMPARE_CLI_MODE'),
+	                help='Default: interactive in a container, headless in clean isolation.')
+	ap.add_argument('--model', help='Model id. Default: CLAUDE_MODEL or CODEX_MODEL, else the CLI default.')
+	ap.add_argument('--key-env', help='Name of the setting with the model API key.')
+	ap.add_argument('--rebuild-image', action='store_true')
+	ap.add_argument('--timeout-min', type=float, default=30)
+	args = ap.parse_args()
+
+	if args.builder == 'codex' and args.isolation != 'container':
+		sys.exit('Codex runs only in a container. Its shell tool can read the host disk.')
+	if args.isolation != 'container':
+		args.mode = 'headless'
+	args.mode = args.mode or 'interactive'
+
+	prefix = args.builder.upper()
+	args.model = args.model or setting(f'{prefix}_MODEL')
+	# Gateway-style ids such as anthropic/claude-opus-5-5 are not valid for the CLIs.
+	provider = {'claude': 'anthropic/', 'codex': 'openai/'}[args.builder]
+	if args.model and args.model.startswith(provider):
+		args.model = args.model.removeprefix(provider)
+	key_names = [args.key_env] if args.key_env else KEY_SETTINGS[args.builder]
+	api_key = setting(*key_names)
+	if not api_key:
+		sys.exit(f'Set {" or ".join(key_names)} in .env.ai-surfaces, .env.local or the environment.')
+	token = load_token()
+	if not token:
+		sys.exit('No MCP token. Run prepare.py first.')
+
+	out = Path(args.out).resolve()
+	if out.exists():
+		shutil.rmtree(out)
+	work, home = out / 'work', out / 'home'
+	work.mkdir(parents=True)
+	(home / '.claude').mkdir(parents=True)
+	prompt = Path(args.prompt_file).read_text().strip()
+	base_url = setting('N8N_BASE_URL', default=DEFAULT_BASE_URL).rstrip('/')
+	url = mcp_url(base_url, args.isolation)
+	container = f'cwb-{args.builder}-{int(time.time())}'
+	interactive = args.mode == 'interactive'
+
+	child_env = {'N8N_MCP_TOKEN': token}
+	if args.builder == 'claude':
+		(out / 'mcp.json').write_text(json.dumps({'mcpServers': {'n8n': {
+			'type': 'http', 'url': url, 'headers': {'Authorization': 'Bearer ${N8N_MCP_TOKEN}'},
+		}}}))
+	if interactive:
+		(out / '.screen').mkdir()
+		shutil.copy(SKILL_DIR / 'sandbox' / 'screen.mjs', out / '.screen' / 'screen.mjs')
+		child_env[SANDBOX_KEY[args.builder]] = api_key
+		if args.builder == 'claude':
+			write_claude_interactive_config(out, home)
+		else:
+			write_codex_config(home, url, SANDBOX_KEY['codex'])
+	elif args.builder == 'claude':
+		child_env['ANTHROPIC_API_KEY'] = api_key
+	else:
+		child_env['OPENAI_API_KEY'] = api_key
+		child_env['CODEX_API_KEY'] = api_key
+		write_codex_config(home, url)
+
+	started_at = now_iso()
+	if args.isolation == 'container':
+		ensure_image(args.rebuild_image)
+		run_env = {**os.environ, **child_env}
+		if interactive:
+			result = run_interactive(args, out, home, prompt, run_env, container)
+		else:
+			cmd = docker_command(container, out, child_env)
+			cmd += claude_args(prompt, args.model, '/out/mcp.json') if args.builder == 'claude' else codex_args(prompt, args.model)
+			result = run_headless(args, out, prompt, cmd, run_env, None, container)
+	else:
+		if not shutil.which('claude'):
+			sys.exit('claude is not on PATH.')
+		run_env = {
+			'PATH': os.environ.get('PATH', '/usr/bin:/bin'),
+			'HOME': str(home),
+			'CLAUDE_CONFIG_DIR': str(home / '.claude'),
+			'DISABLE_AUTOUPDATER': '1',
+			'DISABLE_TELEMETRY': '1',
+			**child_env,
+		}
+		cmd = claude_args(prompt, args.model, str(out / 'mcp.json'))
+		result = run_headless(args, out, prompt, cmd, run_env, str(work), container)
+
+	session_file = find_session_file(args.builder, home, result['sessionId'])
 	meta = {
 		'kind': args.builder,
 		'isolation': args.isolation,
+		'mode': args.mode,
 		'model': args.model,
 		'startedAt': started_at,
 		'finishedAt': now_iso(),
-		'exitCode': proc.returncode,
-		'sessionId': session_id,
+		'exitCode': result['exitCode'],
+		'sessionId': result['sessionId'],
 		'sessionFile': str(session_file.relative_to(out)) if session_file else None,
-		'workflowIds': workflow_ids,
-		'workflowId': workflow_ids[-1] if workflow_ids else None,
-		'reportedCostUsd': (result or {}).get('total_cost_usd'),
+		'workflowIds': result['workflowIds'],
+		'workflowId': result['workflowIds'][-1] if result['workflowIds'] else None,
+		'reportedCostUsd': result['reportedCostUsd'],
+		'screen': 'screen.cast' if (out / 'screen.cast').exists() else None,
 	}
 	(out / 'run.json').write_text(json.dumps(meta, indent=2))
-	print(json.dumps({k: meta[k] for k in ('exitCode', 'sessionId', 'workflowId', 'sessionFile')}, indent=2))
-	if proc.returncode:
+	shutil.rmtree(home / '.codex' / 'shell_snapshots', ignore_errors=True)
+	check_no_secrets(out, [api_key, token])
+	print(json.dumps({k: meta[k] for k in ('exitCode', 'sessionId', 'workflowId', 'sessionFile', 'screen')}, indent=2))
+	if meta['exitCode']:
 		print(f'see {out / "stderr.log"}', flush=True)
 
 

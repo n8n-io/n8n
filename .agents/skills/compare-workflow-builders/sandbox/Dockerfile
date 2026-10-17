@@ -6,8 +6,9 @@ ARG CLAUDE_CODE_VERSION=latest
 ARG CODEX_VERSION=latest
 
 # Codex uses the system trust store. Claude Code uses the CA list in Node.
+# tmux runs the interactive CLI screens so that they can be recorded and watched.
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends ca-certificates \
+	&& apt-get install -y --no-install-recommends ca-certificates tmux \
 	&& rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" "@openai/codex@${CODEX_VERSION}" \

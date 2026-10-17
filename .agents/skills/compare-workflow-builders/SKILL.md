@@ -17,9 +17,14 @@ instance. It then builds one page that shows, for each run:
 
 - the result against the expected outcome (pass, partial or fail, with reasons)
 - the canvas of the workflow that the builder made
-- the tokens of each LLM call (cache read, cache write, uncached input, output)
+- a replay of the run: the exact terminal screen, or a video of the n8n UI
 - the cost
-- the full trace (agent text, reasoning, tool calls with input and output)
+- the LLM steps: one entry for each LLM call, with its tokens (cache read,
+  cache write, uncached input, output) and the agent text, reasoning and tool
+  calls (with input and output) that the call made
+
+The page uses the light mode of the
+[n8n brand guidelines](https://guidelines.n8n.design/).
 
 All scripts are in `scripts/` next to this file. They use only the Python
 standard library and the Playwright copy in the repository.
@@ -47,7 +52,9 @@ The most important settings:
 |---|---|
 | `COMPARE_BUILDERS` | Default builders, for example `iai,claude,codex` |
 | `COMPARE_LIVE` | `1` (default) opens live views of each run. `0` turns them off |
-| `CLAUDE_MODEL`, `CODEX_MODEL` | Model ids. Empty uses the CLI default |
+| `COMPARE_RECORD` | `1` (default) records the Instance AI video for the replay. `0` turns it off |
+| `COMPARE_CLI_MODE` | `interactive` (default) records the real CLI screen. `headless` uses the JSON event stream |
+| `CLAUDE_MODEL`, `CODEX_MODEL` | Model ids. Empty uses the CLI default. A prefix such as `anthropic/` is removed |
 | `CLAUDE_API_KEY` | Anthropic key for Claude Code. Falls back to `ANTHROPIC_API_KEY` |
 | `CODEX_API_KEY` | OpenAI key for Codex. Falls back to `OPENAI_API_KEY` |
 | `N8N_MCP_TOKEN` | MCP key of the n8n user. Optional |
@@ -102,14 +109,56 @@ When a builder starts, the script opens a live view of it:
   continues. The browser must be logged in as `N8N_EVAL_EMAIL`, because a
   thread is visible only to its owner. The script answers the confirmation
   cards, so the user must not click them.
-- **Claude Code and Codex:** a terminal window follows `<builder>/live.log`.
-  It shows the agent text, the thinking, and each tool call with a short
-  input and result. On macOS the window opens in Terminal. The first time,
-  macOS asks if the agent's app can control Terminal.
+- **Claude Code and Codex:** a terminal window shows the real screen of the
+  CLI, read-only (`docker exec … tmux attach -r`). In headless mode, the
+  window follows `<builder>/live.log` instead. On macOS the window opens in
+  Terminal. The first time, macOS asks if the agent's app can control
+  Terminal.
 
-If a view cannot open, the script prints the URL or the `tail -f` command.
-Tell the user about the live views before the run starts. Use `--no-live`
-or `COMPARE_LIVE=0` for runs without a display, for example in CI.
+If a view cannot open, the script prints the URL or the command. Tell the
+user about the live views before the run starts. Use `--no-live` or
+`COMPARE_LIVE=0` for runs without a display, for example in CI.
+
+### Replay on the page
+
+The Replay section shows the last screen of each builder. The play button
+on a screen plays that run in place on the page. **Expand** opens a
+full-screen player. In that player, the user sees all builders side by
+side, or picks one builder, and plays the runs at 1× to 8×:
+
+- **Claude Code and Codex:** `<builder>/screen.cast` is an asciinema
+  recording of the exact terminal screen. The page plays it with the
+  asciinema player.
+- **Instance AI:** `iai/screen.webm` is a video of the thread in the n8n UI.
+  A headless browser records it while the run continues.
+
+`COMPARE_RECORD=0` skips the Instance AI video. The terminal recordings come
+with interactive mode. `COMPARE_CLI_MODE=headless` has no terminal
+recording.
+
+### Canvas on the page
+
+`capture_canvas.mjs` expands the node groups, zooms to fit, and crops the
+screenshot to the nodes, their labels and their subtitles. Empty click areas
+and hidden hover toolbars do not change the crop. The page shows the canvas
+next to the expected outcome, at its real size and at most 360 px high. A
+click opens the full image.
+
+### LLM steps on the page
+
+Each run has a list of LLM steps, like the LLM steps view in the Instance AI
+debug panel. The list shows the tools or text of each call, its time and a
+token bar. Select a step, or use the arrow keys, to see the token counts and
+what the call did. Step 1 starts with the user message. Tool output is
+collapsed, except when the tool failed.
+
+- **Claude Code:** the session file links each event to its LLM call.
+- **Codex:** text goes to the response that wrote it. A tool call goes to the
+  response that asked for it. Codex calls the n8n tools from scripts that it
+  runs with its `exec` tool. The page shows these scripts too, but does not
+  count them as tool calls.
+- **Instance AI:** the LangSmith call times place each event. Text times are
+  approximate (see the asterisk note on the page).
 
 ### When a check fails
 
@@ -130,6 +179,11 @@ builder used. The models are in `models` in the output of `compare.py`, and
 in `<runDir>/models.json`. Instance AI cost comes from LangSmith, so do not
 look up its model.
 
+Do not skip this step. In interactive mode neither CLI reports a cost, so
+without prices the page shows "not reported" for both. `build_report.py`
+prints `models without a published price in case.json: …` while a model has
+no price.
+
 For each model:
 
 1. Search the web for the official price page of the provider, for example
@@ -137,7 +191,8 @@ For each model:
    third-party price lists if the provider page has the model.
 2. Read four prices in USD per million tokens: input, cache read, cache
    write, output. If the provider has no cache-write price, use the input
-   price.
+   price. Anthropic has two cache-write prices. Use the 5-minute price, and
+   tell the user that the 1-hour price is higher.
 3. If you cannot find the model, write no price for it. The page then shows
    the estimate of Claude Code, or "not reported" for Codex. Tell the user.
 
@@ -193,6 +248,9 @@ results to people who did not see the runs.
 python3 $S/build_report.py <runDir>
 ```
 
+If the command prints `models without a published price`, do step 3 for
+those models and build the page again.
+
 The page is `<runDir>/report/index.html`. It works offline. Give the user the
 path. Then, in a few sentences, report:
 
@@ -217,8 +275,30 @@ each decision.
 - The container has no Linux capabilities and a read-only root file system.
 - Claude starts with `--bare`, no built-in tools, and only the `n8n` MCP
   server. Codex gets a new `CODEX_HOME` that holds only the n8n MCP server.
+  Its plugins, apps, browser use, computer use and image generation are off.
 - The container can still reach the internet and the host network. It needs
   them for the model API and for n8n.
+
+By default the CLIs run in interactive mode (`COMPARE_CLI_MODE=interactive`):
+
+- The normal terminal screen of the CLI runs in tmux, at 120 × 36
+  characters. tmux answers the terminal queries of the CLI, and its output
+  goes to `screen.cast`.
+- The CLIs connect MCP servers in the background. Thus the script pastes the
+  prompt when the input box shows, plus a short wait, not as an argument.
+- Claude uses `--permission-mode dontAsk`: the n8n tools are pre-approved,
+  and all other tools are denied without a question.
+- The model key reaches the CLI through a variable that only the CLI reads
+  (`apiKeyHelper` for Claude, a provider `env_key` for Codex). Thus no screen
+  asks to confirm the key or shows part of it, and no key is in a file.
+- The script reads the session file of the CLI for the progress lines, the
+  end of the turn, the trace and the tokens. Claude Code then shows no cost
+  estimate, so the cost needs the published prices.
+- After each run, the script searches the run folder for the model key and
+  the MCP token. It prints a warning with the file name if it finds one.
+
+`COMPARE_CLI_MODE=headless` uses `claude -p` and `codex exec` with a JSON
+event stream instead.
 
 The first run builds the image `n8n-builder-sandbox` from
 `sandbox/Dockerfile`. To get new CLI versions, run
@@ -238,7 +318,8 @@ the host disk.
 |---|---|
 | `prepare.py` | Check the setup. `--rotate` makes a new MCP key |
 | `run_instance_ai.py --out <dir>/iai --prompt-file <file>` | Run Instance AI |
-| `run_cli_builder.py --builder claude\|codex --out <dir>/<name> --prompt-file <file>` | Run a CLI builder |
+| `run_cli_builder.py --builder claude\|codex --out <dir>/<name> --prompt-file <file>` | Run a CLI builder. `--mode headless` skips the screen |
+| `node record_iai.mjs <dir>/iai` | Record the Instance AI video. `run_instance_ai.py` starts it |
 | `langsmith_usage.py --run-dir <dir>/iai` | Fetch Instance AI usage |
 | `node capture_canvas.mjs <dir>` | Save `workflow.json` and `canvas.png` for each run |
 | `summarize_runs.py <dir>` | Print the judge summary |
@@ -252,7 +333,8 @@ If a runner did not find a workflow id, read its trace for the id. Set
 
 - Cost sources: Instance AI cost comes from LangSmith. For Claude Code and
   Codex, the cost is tokens × the published prices in `case.json`. Without a
-  price, Claude Code shows its own estimate and Codex shows "not reported".
+  price, Claude Code in headless mode shows its own estimate. All other runs
+  show "not reported".
   The page lists the source of each cost.
 - The workflows stay in the n8n instance. Archive them in n8n when they are
   no longer necessary.

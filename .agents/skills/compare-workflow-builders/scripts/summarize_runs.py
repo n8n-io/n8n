@@ -14,12 +14,32 @@ from pathlib import Path
 PARAM_CHARS = 400
 
 
-def final_message(sub, kind):
+def session_final_message(sub, meta):
+	"""Final agent message from the session file of an interactive CLI run."""
+	if not meta.get('sessionFile'):
+		return None
+	text = None
+	for line in (sub / meta['sessionFile']).read_text().splitlines():
+		row = json.loads(line)
+		payload = row.get('payload') or {}
+		if row.get('type') == 'event_msg' and payload.get('type') == 'task_complete':
+			text = payload.get('last_agent_message') or text
+		if row.get('type') == 'assistant':
+			blocks = (row.get('message') or {}).get('content') or []
+			texts = [b['text'] for b in blocks if isinstance(b, dict) and b.get('type') == 'text' and b.get('text', '').strip()]
+			text = '\n'.join(texts) or text
+	return text
+
+
+def final_message(sub, meta):
+	kind = meta.get('kind')
 	if kind == 'instance-ai':
 		trace = json.loads((sub / 'trace.json').read_text())
 		rich = trace['rich'].get('data', trace['rich'])
 		assistant = [m for m in rich['messages'] if m.get('role') == 'assistant']
 		return (assistant[-1].get('agentTree') or {}).get('textContent') or assistant[-1].get('content') if assistant else None
+	if not (sub / 'stream.jsonl').exists():
+		return session_final_message(sub, meta)
 	text = None
 	for line in (sub / 'stream.jsonl').read_text().splitlines():
 		event = json.loads(line)
@@ -50,7 +70,7 @@ def main():
 		meta = json.loads(meta_file.read_text())
 		print(f'===== {sub.name} ({meta.get("kind")}) workflow={meta.get("workflowId")} =====')
 		try:
-			print('FINAL MESSAGE:\n' + (final_message(sub, meta.get('kind')) or '(none)').strip()[:3000])
+			print('FINAL MESSAGE:\n' + (final_message(sub, meta) or '(none)').strip()[:3000])
 		except Exception as e:
 			print(f'FINAL MESSAGE: unreadable ({e})')
 		wf_file = sub / 'workflow.json'

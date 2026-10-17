@@ -1,6 +1,7 @@
 """Live views of a run: a browser tab for Instance AI and a terminal window for each CLI builder.
 
 Set COMPARE_LIVE=0 to turn them off. If a view cannot open, the script prints how to open it.
+Set COMPARE_RECORD=0 to skip the screen recordings that the report replays.
 """
 
 import shlex
@@ -12,8 +13,16 @@ import webbrowser
 from n8n_api import setting
 
 
+def is_on(name):
+	return setting(name, default='1').strip().lower() not in ('0', 'false', 'no', 'off')
+
+
 def enabled():
-	return setting('COMPARE_LIVE', default='1').strip().lower() not in ('0', 'false', 'no', 'off')
+	return is_on('COMPARE_LIVE')
+
+
+def recording():
+	return is_on('COMPARE_RECORD')
 
 
 def open_url(url):
@@ -38,16 +47,25 @@ def log_window_launchers(command):
 			return
 
 
-def open_log_window(title, path):
-	"""Open a terminal window that follows the log file at path."""
+def open_terminal(title, command, cols=None, rows=None):
+	"""Open a terminal window with a title that runs a shell command. Returns False if none opened."""
 	if not enabled():
-		return
-	quoted = shlex.quote(str(path))
-	command = f"printf '\\033]0;%s\\007' {shlex.quote(title)}; tail -n +1 -f {quoted}"
-	for launcher in log_window_launchers(command):
+		return True
+	prefix = f"printf '\\033]0;%s\\007' {shlex.quote(title)}; "
+	if cols and rows:
+		# Resize the window so that the full screen of the CLI fits.
+		prefix += f"printf '\\033[8;{rows};{cols}t'; "
+	for launcher in log_window_launchers(prefix + command):
 		try:
 			if subprocess.run(launcher, capture_output=True, timeout=15).returncode == 0:
-				return
+				return True
 		except (OSError, subprocess.TimeoutExpired):
 			continue
-	print(f'watch {title}: tail -f {quoted}', flush=True)
+	return False
+
+
+def open_log_window(title, path):
+	"""Open a terminal window that follows the log file at path."""
+	quoted = shlex.quote(str(path))
+	if not open_terminal(title, f'tail -n +1 -f {quoted}'):
+		print(f'watch {title}: tail -f {quoted}', flush=True)

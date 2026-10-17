@@ -20,6 +20,8 @@ import json
 import os
 import queue
 import re
+import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -27,10 +29,54 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from live import open_url
+from live import open_url, recording
 from n8n_api import N8nClient
 
 DEFAULT_TEXT_ANSWER = 'Use sensible defaults and continue.'
+HERE = Path(__file__).resolve().parent
+
+
+class Recorder:
+	"""Video of the thread in the n8n UI, made by record_iai.mjs."""
+
+	def __init__(self, out):
+		self.proc, self.lines = None, queue.Queue()
+		node = shutil.which('node')
+		if not recording() or not node:
+			return
+		self.proc = subprocess.Popen([node, str(HERE / 'record_iai.mjs'), str(out.resolve())], cwd=HERE,
+		                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+		                             stderr=(out / 'record.log').open('w'), text=True)
+		threading.Thread(target=self._read, daemon=True).start()
+
+	def _read(self):
+		for line in self.proc.stdout:
+			self.lines.put(line.strip())
+
+	def wait_for(self, word, timeout):
+		deadline = time.time() + timeout
+		while self.proc and time.time() < deadline:
+			try:
+				if self.lines.get(timeout=max(deadline - time.time(), 0.1)) == word:
+					return True
+			except queue.Empty:
+				pass
+		return False
+
+	def send(self, line):
+		if self.proc and self.proc.poll() is None:
+			self.proc.stdin.write(line + '\n')
+			self.proc.stdin.flush()
+
+	def stop(self):
+		if not self.proc:
+			return
+		self.send('stop')
+		self.proc.stdin.close()
+		try:
+			self.proc.wait(timeout=120)
+		except subprocess.TimeoutExpired:
+			self.proc.kill()
 
 
 def now_iso():
@@ -124,6 +170,8 @@ def main():
 	out.mkdir(parents=True, exist_ok=True)
 	prompt = Path(args.prompt_file).read_text().strip()
 
+	# The recorder signs in while the event stream opens, so the video starts soon after the prompt.
+	recorder = Recorder(out)
 	client = N8nClient().login()
 	thread_id = str(uuid.uuid4())
 	events_file = (out / 'events.jsonl').open('w')
@@ -138,11 +186,18 @@ def main():
 	client.request('POST', '/rest/instance-ai/threads',
 	               {'threadId': thread_id, 'projectId': project['id'], 'source': 'assistant_page'})
 
+	if recorder.proc and not recorder.wait_for('ready', 60):
+		print(f'recording failed to start, see {out / "record.log"}', flush=True)
+		recorder.proc.kill()
+		recorder.proc = None
+
 	started_at = now_iso()
 	chat = client.request('POST', f'/rest/instance-ai/chat/{thread_id}',
 	                      {'message': prompt, 'timeZone': local_time_zone()})
 	print(f'thread {thread_id} run {chat.get("runId") if isinstance(chat, dict) else chat}', flush=True)
 	thread_url = f'{client.base_url}/instance-ai/{thread_id}'
+	# The UI shows the user message only after the chat request, so the recorder opens the thread now.
+	recorder.send(f'open {thread_url}')
 	print(f'watch: {thread_url}', flush=True)
 	open_url(thread_url)
 
@@ -200,6 +255,7 @@ def main():
 	finished_at = now_iso()
 	stop.set()
 	events_file.close()
+	recorder.stop()
 
 	trace = {}
 	for key, path in (
@@ -225,6 +281,7 @@ def main():
 		'langsmithRunIds': langsmith_run_ids,
 		'decisions': decisions,
 		'threadUrl': thread_url,
+		'screen': 'screen.webm' if (out / 'screen.webm').exists() else None,
 	}
 	(out / 'run.json').write_text(json.dumps(meta, indent=2))
 	print(json.dumps({k: meta[k] for k in ('threadId', 'workflowId', 'startedAt', 'finishedAt')}, indent=2))
