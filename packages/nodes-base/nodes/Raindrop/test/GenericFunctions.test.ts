@@ -74,7 +74,32 @@ describe('Raindrop -> GenericFunctions', () => {
 	});
 
 	describe('raindropApiRequestAllItems', () => {
-		it('should paginate across multiple pages when returnAll is true (limit=0)', async () => {
+		it('should return empty array immediately without making a request when limit is 0 or negative', async () => {
+			const zeroResult = await raindropApiRequestAllItems.call(
+				mockExecuteFunctions,
+				'items',
+				'GET',
+				'/raindrops/0',
+				{},
+				{},
+				0,
+			);
+			const negativeResult = await raindropApiRequestAllItems.call(
+				mockExecuteFunctions,
+				'items',
+				'GET',
+				'/raindrops/0',
+				{},
+				{},
+				-5,
+			);
+
+			expect(zeroResult).toEqual([]);
+			expect(negativeResult).toEqual([]);
+			expect(mockExecuteFunctions.helpers.requestOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('should paginate across multiple pages when returnAll is true (limit=undefined)', async () => {
 			const page0Items = Array.from({ length: 50 }, (_, i) => ({ _id: i + 1 }));
 			const page1Items = Array.from({ length: 25 }, (_, i) => ({ _id: i + 51 }));
 
