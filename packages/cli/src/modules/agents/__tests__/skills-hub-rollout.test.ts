@@ -13,20 +13,18 @@ describe('SkillsHubRollout', () => {
 		rollout = new SkillsHubRollout(config, mock<Logger>());
 	});
 
-	it('is off by default', () => {
+	it('is on by default', () => {
 		rollout.init();
 
-		expect(config.skillsHubEnabled).toBe(false);
-		expect(rollout.isEnabled).toBe(false);
+		expect(config.skillsHubEnabled).toBe(true);
+		expect(rollout.isEnabled).toBe(true);
 	});
 
 	it('is off until the setting is read', () => {
-		config.skillsHubEnabled = true;
-
 		expect(rollout.isEnabled).toBe(false);
 	});
 
-	it('reads N8N_AGENTS_SKILLS_HUB_ENABLED once and keeps the value until a restart', () => {
+	it('reads the setting once and keeps the value until a restart', () => {
 		config.skillsHubEnabled = true;
 
 		rollout.init();

@@ -3,7 +3,7 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 /**
- * Whether agents use the skills hub, from `N8N_AGENTS_SKILLS_HUB_ENABLED`. `init` reads it
+ * Whether agents use the skills hub, from `AgentsConfig.skillsHubEnabled`. `init` reads it
  * once at startup and the value holds for the life of the process, so the startup copy and
  * every read agree. A change needs a restart.
  */

@@ -67,13 +67,11 @@ export class AgentsConfig {
 	tracingRecordOutputs: boolean = true;
 
 	/**
-	 * Whether agents keep their skills in the skills hub instead of inline on the agent.
-	 * Read once when the agents module starts; a change needs a restart. Set the same value
-	 * on every main and worker. With it on, each main copies inline skills into the hub at
-	 * startup, once per agent.
+	 * Agents keep their skills in the skills hub. The migration `MigrateAgentSkillsToHub`
+	 * copies the inline skills there, so this is no longer an environment variable. Tests
+	 * still turn it off to cover the inline code, which a later release removes.
 	 */
-	@Env('N8N_AGENTS_SKILLS_HUB_ENABLED')
-	skillsHubEnabled: boolean = false;
+	skillsHubEnabled: boolean = true;
 
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
