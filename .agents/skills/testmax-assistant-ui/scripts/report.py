@@ -71,21 +71,6 @@ CSS = """<style>
 .shot-viewer-info .tstep-title{font-size:18px;line-height:22px}
 .shot-viewer-img{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
 .shot-viewer-img img{display:block;max-width:100%;max-height:100%;border-radius:var(--r8);box-shadow:0 0 0 1px var(--line);cursor:default}
-.scenario-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
-@media (max-width:1000px){.scenario-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:640px){.scenario-grid{grid-template-columns:minmax(0,1fr)}}
-.scenario-card{gap:0;background:var(--white);border:1px solid var(--line);border-radius:var(--r8);overflow:hidden}
-.scenario-card:has([data-live-badge] .st-failed){background:var(--pink-10);border-color:var(--pink-70);box-shadow:0 0 0 1px var(--pink-70)}
-.scenario-card .live-screen{aspect-ratio:16/10;min-height:0;border-radius:0;background:var(--bg-2);border-bottom:1px solid var(--line)}
-.scenario-card .live-zoom{height:100%;overflow:hidden}
-.scenario-card .live-zoom:focus-visible{outline:2px solid var(--pink);outline-offset:-2px}
-.scenario-card .live-screen img{height:100%;object-fit:cover;object-position:top center;transition:transform .15s}
-.scenario-card .live-zoom:hover img{transform:scale(1.03)}
-@media (prefers-reduced-motion:reduce){.scenario-card .live-screen img{transition:none}}
-.scenario-card .live-screen .live-empty{aspect-ratio:auto;height:100%}
-.scenario-card .reel-meta{align-items:flex-start;padding:var(--s12)}
-.scenario-card .run-name{padding-top:3px;word-break:break-word}
-.scenario-card [data-live-badge]{flex:none}
 .err-list{margin:0;padding-left:var(--s16);font:12px/16px var(--mono)}
 .err-list li{margin-bottom:var(--s4);word-break:break-word}
 .vis{background:var(--white);border-radius:var(--r8);padding:var(--s12);box-shadow:inset 0 0 0 1px var(--line);margin-top:var(--s12)}
@@ -206,14 +191,10 @@ def result_html(run, verdict):
 
 
 def render_expected(run, verdict):
-	head = br.badge(verdict.get('verdict')) if verdict else ''
+	head = br.verdict_head(verdict) if verdict else ''
 	body = f'<div class="msg">{br.esc(run["scenario"]["expected"])}</div>'
 	if verdict:
-		marks = {True: ('ok', '✓'), False: ('bad', '✗'), None: ('warn', '–')}
-		checks = ''.join(
-			f'<li class="{marks[c.get("ok")][0]}"><span class="mark">{marks[c.get("ok")][1]}</span>{br.esc(c.get("text", ""))}</li>'
-			for c in verdict.get('checks') or [])
-		body += f'<p class="summary">{br.esc(verdict.get("summary", ""))}</p><ul class="checks">{checks}</ul>'
+		body += f'<div class="verdict-body">{br.render_checks(verdict)}</div>'
 	elif run['entry'].get('status') in FINISHED:
 		body += '<p class="dim">Not judged yet.</p>'
 	return f'<div class="box"><div class="head"><h2>Expected outcome</h2>{head}</div>{body}</div>'
@@ -505,7 +486,7 @@ def _build(run_dir):
 		scripts=(f'<script>const SCREENS = {json.dumps(screens)}; const REPORT_VERSION = "{version}";</script>'
 		         f'<script>window.addEventListener("DOMContentLoaded", ()=>{{{RELOAD_JS}}});</script>'
 		         f'<script>{STEP_VIEWER_JS}</script>'),
-		case=render_case(plan, status), thead=THEAD)
+		case=render_case(plan, status), thead=THEAD, kicker='Assistant UI test')
 	(report / 'index.html').write_text(page)
 	(report / 'version.txt').write_text(version)
 	return report / 'index.html'
@@ -522,14 +503,14 @@ def live_box(status, runs):
 	for run in runs:
 		name, title = run['name'], br.esc(run_title(run))
 		cards.append(
-			f'<div class="live-card scenario-card"><div class="live-screen"><button type="button" class="live-zoom" '
+			f'<div class="live-card"><div class="live-screen"><button type="button" class="live-zoom" '
 			f'data-zoom="{name}" aria-label="Show {title} full screen"><img data-shot="{name}" '
 			f'alt="{title} in the n8n UI" hidden></button>'
 			f'<div class="live-empty" data-shot-empty="{name}">Waiting for the first screenshot</div></div>'
 			f'<div class="reel-meta"><span class="run-name">{title}</span>'
 			f'<span data-live-badge="{name}">{status_badge(run["entry"].get("status", "waiting"))}</span></div></div>')
 	return (f'<div class="box"><div class="head"><h2>Live</h2><span class="mono-label" id="live-clock">'
-	        f'{br.esc(clock(status))}</span></div><div class="live-grid scenario-grid">{"".join(cards)}</div></div>')
+	        f'{br.esc(clock(status))}</span></div><div class="live-grid">{"".join(cards)}</div></div>')
 
 
 def render_live(run_dir):
@@ -549,7 +530,7 @@ def render_live(run_dir):
 		br.esc(plan.get('title') or 'Instance AI feature test'), ''.join(rows), br.esc(text), ''.join(panels),
 		replay=live_box(status, runs), head=CSS,
 		scripts=f'<script>const SCREENS = [];</script><script>{ls.LIVE_JS}</script><script>{STEP_VIEWER_JS}</script>',
-		case=render_case(plan, status), thead=THEAD)
+		case=render_case(plan, status), thead=THEAD, kicker='Assistant UI test')
 
 
 class ScenarioApp:

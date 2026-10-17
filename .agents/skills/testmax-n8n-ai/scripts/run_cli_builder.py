@@ -18,9 +18,13 @@ Screen modes:
 
 Secrets: the model key and the MCP token go through environment variables only.
 They are never written to a file or put on a command line.
+
+Codex sends its model requests through a local recorder (request_recorder.py), which writes the
+request bodies, but not the headers, to requests.jsonl. Set COMPARE_RECORD_REQUESTS=0 to turn it off.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -36,6 +40,7 @@ from urllib.parse import urlparse
 from live import enabled as live_enabled
 from live import open_log_window, open_terminal
 from n8n_api import DEFAULT_BASE_URL, load_token, setting
+from request_recorder import RequestRecorder
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
 IMAGE = 'n8n-builder-sandbox'
@@ -47,6 +52,7 @@ KEY_SETTINGS = {'claude': ['CLAUDE_API_KEY', 'ANTHROPIC_API_KEY'], 'codex': ['CO
 CODEX_FEATURES_OFF = ['apps', 'browser_use', 'browser_use_external', 'computer_use', 'image_generation',
                       'in_app_browser', 'plugins', 'remote_plugin', 'shell_snapshot']
 SCREEN = {'cols': 120, 'rows': 36}
+OPENAI_BASE_URL = 'https://api.openai.com/v1'
 # Interactive mode: the variable that the CLI reads the model key from.
 SANDBOX_KEY = {'claude': 'CLAUDE_SANDBOX_KEY', 'codex': 'CODEX_SANDBOX_KEY'}
 IDLE_LIMIT_S = 600
@@ -57,11 +63,15 @@ def now_iso():
 
 
 def ensure_image(rebuild):
-	exists = subprocess.run(['docker', 'image', 'inspect', IMAGE], capture_output=True).returncode == 0
-	if exists and not rebuild:
+	# The label holds a hash of the Dockerfile, so an edit to the Dockerfile rebuilds the image.
+	digest = hashlib.sha256((SKILL_DIR / 'sandbox' / 'Dockerfile').read_bytes()).hexdigest()[:16]
+	found = subprocess.run(['docker', 'image', 'inspect', '--format',
+	                        '{{index .Config.Labels "dockerfile-sha"}}', IMAGE], capture_output=True, text=True)
+	if found.returncode == 0 and found.stdout.strip() == digest and not rebuild:
 		return
 	print(f'building docker image {IMAGE}', flush=True)
-	subprocess.run(['docker', 'build', '-t', IMAGE, str(SKILL_DIR / 'sandbox')], check=True)
+	subprocess.run(['docker', 'build', '--label', f'dockerfile-sha={digest}', '-t', IMAGE,
+	                str(SKILL_DIR / 'sandbox')], check=True)
 
 
 def mcp_url(base_url, isolation):
@@ -73,11 +83,21 @@ def mcp_url(base_url, isolation):
 	return f'{parsed.scheme}://{host}:{port}/mcp-server/http'
 
 
-def claude_args(prompt, model, config_path):
+def claude_tool_args(tools):
+	# 'default' gives the normal Claude Code tools, all allowed without a question, like Codex in the
+	# container. Only a container may use it, because Bash and Write can change the files they see.
+	if tools == 'default':
+		return ['--permission-mode', 'bypassPermissions']
+	# dontAsk allows the pre-approved n8n tools and denies the rest without a prompt.
+	return ['--tools', '', '--allowedTools', 'mcp__n8n', '--permission-mode', 'dontAsk']
+
+
+def claude_args(prompt, model, config_path, bare, tools='none'):
+	# --bare also replaces the system prompt with a minimal one. A container already isolates the CLI,
+	# so only the clean mode, which runs on the host, uses it.
 	args = [
-		'claude', '-p', prompt,
-		'--bare', '--strict-mcp-config', '--mcp-config', config_path,
-		'--tools', '', '--allowedTools', 'mcp__n8n',
+		'claude', '-p', prompt, *(['--bare'] if bare else []),
+		'--strict-mcp-config', '--mcp-config', config_path, *claude_tool_args(tools),
 		'--disable-slash-commands', '--output-format', 'stream-json', '--verbose',
 	]
 	if model:
@@ -85,12 +105,10 @@ def claude_args(prompt, model, config_path):
 	return args
 
 
-def claude_interactive_args(model):
-	# dontAsk allows the pre-approved n8n tools and denies the rest without a prompt.
+def claude_interactive_args(model, tools='none'):
 	args = [
-		'claude', '--bare', '--strict-mcp-config', '--mcp-config', '/out/mcp.json',
-		'--tools', '', '--allowedTools', 'mcp__n8n', '--disable-slash-commands',
-		'--settings', '/out/.screen/claude-settings.json', '--permission-mode', 'dontAsk',
+		'claude', '--strict-mcp-config', '--mcp-config', '/out/mcp.json', *claude_tool_args(tools),
+		'--disable-slash-commands', '--settings', '/out/.screen/claude-settings.json',
 	]
 	if model:
 		args += ['--model', model]
@@ -112,7 +130,7 @@ def codex_interactive_args(model):
 	return args
 
 
-def write_codex_config(home, url, key_env=None):
+def write_codex_config(home, url, key_env=None, api_base=OPENAI_BASE_URL):
 	"""Write config.toml. With key_env, a provider reads the key from that variable, so the
 	interactive screen does not ask for a sign-in and no key is stored in auth.json."""
 	codex_home = home / '.codex'
@@ -123,13 +141,13 @@ def write_codex_config(home, url, key_env=None):
 	lines += ['', '[features]'] + [f'{name} = false' for name in CODEX_FEATURES_OFF]
 	if key_env:
 		lines += ['', '[model_providers.sandbox-openai]', 'name = "OpenAI"',
-		          'base_url = "https://api.openai.com/v1"', f'env_key = "{key_env}"', 'wire_api = "responses"']
+		          f'base_url = "{api_base}"', f'env_key = "{key_env}"', 'wire_api = "responses"']
 	lines += ['', '[projects."/out/work"]', 'trust_level = "trusted"',
 	          '', '[mcp_servers.n8n]', f'url = "{url}"', 'bearer_token_env_var = "N8N_MCP_TOKEN"', '']
 	(codex_home / 'config.toml').write_text('\n'.join(lines))
 
 
-def write_claude_interactive_config(out, home):
+def write_claude_interactive_config(out, home, tools):
 	# Skip the first-run screens: theme, onboarding and the folder trust question.
 	(home / '.claude' / '.claude.json').write_text(json.dumps({
 		'hasCompletedOnboarding': True, 'theme': 'dark',
@@ -137,13 +155,18 @@ def write_claude_interactive_config(out, home):
 	}))
 	# With ANTHROPIC_API_KEY the screen asks to confirm the key and shows part of it.
 	# apiKeyHelper reads the key from the environment without that question.
-	(out / '.screen' / 'claude-settings.json').write_text(json.dumps(
-		{'apiKeyHelper': f'printenv {SANDBOX_KEY["claude"]}'}))
+	settings = {'apiKeyHelper': f'printenv {SANDBOX_KEY["claude"]}'}
+	if tools == 'default':
+		# The bypass-mode warning screen also has a ❯ marker, so the prompt would answer "No, exit".
+		settings['skipDangerousModePermissionPrompt'] = True
+	(out / '.screen' / 'claude-settings.json').write_text(json.dumps(settings))
 
 
 def live_line(builder, event):
 	"""One short terminal line for an interesting stream event, or None."""
 	if builder == 'claude':
+		if event.get('subtype') == 'permission_denied':
+			return f'denied {event.get("tool_name")}'
 		if event.get('type') == 'assistant':
 			for block in (event.get('message') or {}).get('content') or []:
 				if block.get('type') == 'tool_use':
@@ -211,7 +234,11 @@ def log_entries(builder, event):
 	"""Detailed, colored lines for live.log, the file that the headless live window follows."""
 	lines = []
 	if builder == 'claude':
-		content = (event.get('message') or {}).get('content')
+		# A permission_denied event has a string message, not an API message.
+		if event.get('subtype') == 'permission_denied':
+			lines.append(f'{RED}denied {event.get("tool_name")}{RESET}')
+		message = event.get('message')
+		content = message.get('content') if isinstance(message, dict) else None
 		for block in content if isinstance(content, list) else []:
 			kind = block.get('type')
 			if kind == 'thinking' and block.get('thinking', '').strip():
@@ -304,6 +331,7 @@ def docker_command(container, out, env_names):
 		'-e', 'HOME=/out/home',
 		'-e', 'CLAUDE_CONFIG_DIR=/out/home/.claude',
 		'-e', 'CODEX_HOME=/out/home/.codex',
+		'-e', 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1',
 		'-e', 'COLORTERM=truecolor',
 	]
 	# `-e NAME` without a value copies the value from this process, so secrets stay off argv.
@@ -377,7 +405,8 @@ def run_headless(args, out, prompt, cmd, run_env, cwd, container):
 
 def run_interactive(args, out, home, prompt, run_env, container):
 	screen_dir = out / '.screen'
-	argv = claude_interactive_args(args.model) if args.builder == 'claude' else codex_interactive_args(args.model)
+	argv = (claude_interactive_args(args.model, args.claude_tools) if args.builder == 'claude'
+	        else codex_interactive_args(args.model))
 	# Claude Code shows its input box before the MCP servers connect, so it waits a few seconds more.
 	ready = {'claude': ('❯', 5000), 'codex': ('›', 2000)}[args.builder]
 	(screen_dir / 'command.json').write_text(json.dumps(
@@ -452,14 +481,22 @@ def main():
 	                help='Default: interactive in a container, headless in clean isolation.')
 	ap.add_argument('--model', help='Model id. Default: CLAUDE_MODEL or CODEX_MODEL, else the CLI default.')
 	ap.add_argument('--key-env', help='Name of the setting with the model API key.')
+	ap.add_argument('--claude-tools', choices=['none', 'default'],
+	                default=setting('COMPARE_CLAUDE_TOOLS', default='none'),
+	                help='none: only the n8n tools. default: also the built-in Claude Code tools, all allowed.')
 	ap.add_argument('--rebuild-image', action='store_true')
 	ap.add_argument('--timeout-min', type=float, default=30)
 	args = ap.parse_args()
 
+	if args.claude_tools not in ('none', 'default'):
+		sys.exit(f'COMPARE_CLAUDE_TOOLS must be none or default, not {args.claude_tools!r}.')
 	if args.builder == 'codex' and args.isolation != 'container':
 		sys.exit('Codex runs only in a container. Its shell tool can read the host disk.')
 	if args.isolation != 'container':
 		args.mode = 'headless'
+		if args.builder == 'claude' and args.claude_tools != 'none':
+			print('[claude] clean isolation runs on the host, so COMPARE_CLAUDE_TOOLS=default is ignored.', flush=True)
+			args.claude_tools = 'none'
 	args.mode = args.mode or 'interactive'
 
 	prefix = args.builder.upper()
@@ -488,6 +525,13 @@ def main():
 	container = f'cwb-{args.builder}-{int(time.time())}'
 	interactive = args.mode == 'interactive'
 
+	# Codex does not save the tools it sends to the model, so a local proxy records the request bodies.
+	recorder = None
+	if args.builder == 'codex' and setting('COMPARE_RECORD_REQUESTS', default='1') != '0':
+		recorder = RequestRecorder(OPENAI_BASE_URL, out / 'requests.jsonl',
+		                           setting('COMPARE_RECORDER_BIND', default='127.0.0.1')).start()
+	api_base = recorder.base_url('host.docker.internal') if recorder else OPENAI_BASE_URL
+
 	child_env = {'N8N_MCP_TOKEN': token}
 	if args.builder == 'claude':
 		(out / 'mcp.json').write_text(json.dumps({'mcpServers': {'n8n': {
@@ -498,26 +542,33 @@ def main():
 		shutil.copy(SKILL_DIR / 'sandbox' / 'screen.mjs', out / '.screen' / 'screen.mjs')
 		child_env[SANDBOX_KEY[args.builder]] = api_key
 		if args.builder == 'claude':
-			write_claude_interactive_config(out, home)
+			write_claude_interactive_config(out, home, args.claude_tools)
 		else:
-			write_codex_config(home, url, SANDBOX_KEY['codex'])
+			write_codex_config(home, url, SANDBOX_KEY['codex'], api_base)
 	elif args.builder == 'claude':
 		child_env['ANTHROPIC_API_KEY'] = api_key
 	else:
 		child_env['OPENAI_API_KEY'] = api_key
 		child_env['CODEX_API_KEY'] = api_key
-		write_codex_config(home, url)
+		write_codex_config(home, url, 'CODEX_API_KEY' if recorder else None, api_base)
 
 	started_at = now_iso()
 	if args.isolation == 'container':
 		ensure_image(args.rebuild_image)
 		run_env = {**os.environ, **child_env}
-		if interactive:
-			result = run_interactive(args, out, home, prompt, run_env, container)
-		else:
-			cmd = docker_command(container, out, child_env)
-			cmd += claude_args(prompt, args.model, '/out/mcp.json') if args.builder == 'claude' else codex_args(prompt, args.model)
-			result = run_headless(args, out, prompt, cmd, run_env, None, container)
+		try:
+			if interactive:
+				result = run_interactive(args, out, home, prompt, run_env, container)
+			else:
+				cmd = docker_command(container, out, child_env)
+				cmd += (claude_args(prompt, args.model, '/out/mcp.json', False, args.claude_tools)
+				        if args.builder == 'claude' else codex_args(prompt, args.model))
+				result = run_headless(args, out, prompt, cmd, run_env, None, container)
+		finally:
+			if recorder:
+				recorder.stop()
+		if recorder and not recorder.count:
+			print(f'[{args.builder}] the request recorder saw no requests, so the report has no Codex tools.', flush=True)
 	else:
 		if not shutil.which('claude'):
 			sys.exit('claude is not on PATH.')
@@ -529,7 +580,7 @@ def main():
 			'DISABLE_TELEMETRY': '1',
 			**child_env,
 		}
-		cmd = claude_args(prompt, args.model, str(out / 'mcp.json'))
+		cmd = claude_args(prompt, args.model, str(out / 'mcp.json'), True)
 		result = run_headless(args, out, prompt, cmd, run_env, str(work), container)
 
 	session_file = find_session_file(args.builder, home, result['sessionId'])
@@ -538,6 +589,7 @@ def main():
 		'isolation': args.isolation,
 		'mode': args.mode,
 		'model': args.model,
+		**({'claudeTools': args.claude_tools} if args.builder == 'claude' else {}),
 		'startedAt': started_at,
 		'finishedAt': now_iso(),
 		'exitCode': result['exitCode'],
@@ -547,6 +599,7 @@ def main():
 		'workflowId': result['workflowIds'][-1] if result['workflowIds'] else None,
 		'reportedCostUsd': result['reportedCostUsd'],
 		'screen': 'screen.cast' if (out / 'screen.cast').exists() else None,
+		'requests': 'requests.jsonl' if recorder and recorder.count else None,
 	}
 	(out / 'run.json').write_text(json.dumps(meta, indent=2))
 	shutil.rmtree(home / '.codex' / 'shell_snapshots', ignore_errors=True)

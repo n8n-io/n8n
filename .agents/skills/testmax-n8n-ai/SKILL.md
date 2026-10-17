@@ -57,7 +57,9 @@ The most important settings:
 | `COMPARE_LIVE_WINDOWS` | `1` also opens the Instance AI thread and a terminal window for each CLI. Default `0` |
 | `COMPARE_RECORD` | `1` (default) records the Instance AI video for the replay. `0` turns it off |
 | `COMPARE_CLI_MODE` | `interactive` (default) records the real CLI screen. `headless` uses the JSON event stream |
+| `COMPARE_RECORD_REQUESTS` | `1` (default) records the Codex request bodies, without headers, for the tool list. `0` turns it off |
 | `CLAUDE_MODEL`, `CODEX_MODEL` | Model ids. Empty uses the CLI default. A prefix such as `anthropic/` is removed |
+| `COMPARE_CLAUDE_TOOLS` | `none` (default) gives Claude Code only the n8n tools. `default` also gives it its built-in tools, all allowed (see "How the builders run") |
 | `CLAUDE_API_KEY` | Anthropic key for Claude Code. Falls back to `ANTHROPIC_API_KEY` |
 | `CODEX_API_KEY` | OpenAI key for Codex. Falls back to `OPENAI_API_KEY` |
 | `N8N_MCP_TOKEN` | MCP key of the n8n user. Optional |
@@ -172,16 +174,40 @@ recording.
 `capture_canvas.mjs` expands the node groups, zooms to fit, and crops the
 screenshot to the nodes, their labels and their subtitles. Empty click areas
 and hidden hover toolbars do not change the crop. The page shows the canvas
-next to the expected outcome, at its real size and at most 360 px high. A
-click opens the full image.
+next to the expected outcome, at its real size and at most 360 px high.
+
+A click on the canvas opens a full-screen viewer. It has a tab for each run
+that has a canvas, the verdict and the n8n link of the run, and a zoom
+button. The left and right arrow keys switch runs. A click on the image
+zooms in to that point. Esc closes the viewer, and the page then shows the
+last run that the user looked at. Cmd-click or Ctrl-click still opens the
+image in a new tab.
 
 ### LLM steps on the page
 
 Each run has a list of LLM steps, like the LLM steps view in the Instance AI
 debug panel. The list shows the tools or text of each call, its time and a
 token bar. Select a step, or use the arrow keys, to see the token counts and
-what the call did. Step 1 starts with the user message. Tool output is
-collapsed, except when the tool failed.
+what the call did. Step 1 starts with what the model gets before the first
+call, then the user message. Tool output is collapsed, except when the tool
+failed.
+
+- **Claude Code:** the system prompt and the tool definitions, from the
+  request shape in the session file. The tools show as chips in groups:
+  System (the built-in tools of the CLI), one group for each MCP server, and
+  Other (for example tools that the model provider runs). System and MCP
+  show "None" when the model had no such tools. The tools that the run
+  called are highlighted, with a call count and a dot for failures. Select a chip to see the description and a table of
+  the parameters. A filter box searches names and descriptions.
+- **Codex:** the system prompt (base instructions), the developer messages
+  and the environment context, from the session file. Codex does not save
+  its tool definitions, so the runner records them (see "Isolation"). The
+  tools use the same chips. Codex declares most system tools inside the
+  description of its `exec` tool, so they show as "System · in exec" with
+  their TypeScript declaration. Codex does not put MCP tools in the prompt:
+  its scripts look them up in `ALL_TOOLS` at run time. The MCP group thus
+  shows only the MCP tools that the run called, with a dashed border and no
+  schema. Runs from before the recorder show no Codex tools.
 
 - **Claude Code:** the session file links each event to its LLM call.
 - **Codex:** text goes to the response that wrote it. A tool call goes to the
@@ -262,7 +288,7 @@ Write `<runDir>/verdicts.json`. Use the run folder names as keys (`iai`,
     "summary": "One sentence about the result.",
     "checks": [
       { "ok": true, "text": "WhatsApp trigger starts the workflow" },
-      { "ok": false, "text": "No Slack alert on the false branch" },
+      { "ok": false, "text": "Send Reply reads `$json.from`, which does not exist" },
       { "ok": null, "text": "Could not confirm the sheet columns" }
     ]
   }
@@ -272,6 +298,11 @@ Write `<runDir>/verdicts.json`. Use the run folder names as keys (`iai`,
 Use `pass` when all checks pass, `fail` when the main goal is not met, and
 `partial` for all other results. Be strict and factual. The page shows these
 results to people who did not see the runs.
+
+Write each check as one short sentence with one fact. Put the summary in one
+or two sentences, and do not repeat the failed checks in it. Put
+expressions, field paths and parameter names in backticks. The page shows
+them as code. The page shows the failed checks first.
 
 ## 5. Build the page again
 
@@ -305,11 +336,36 @@ each decision.
   cannot see host files, skills, memory, `CLAUDE.md`, `AGENTS.md` or user
   settings.
 - The container has no Linux capabilities and a read-only root file system.
-- Claude starts with `--bare`, no built-in tools, and only the `n8n` MCP
-  server. Codex gets a new `CODEX_HOME` that holds only the n8n MCP server.
+- Claude starts with a new config folder, no built-in tools, and only the
+  `n8n` MCP server. It does not use `--bare`, because `--bare` replaces the
+  normal system prompt with a 150-byte one. The container already keeps out
+  host settings, so Claude gets its normal system prompt, like Codex does.
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` stops update checks and
+  telemetry.
+- `COMPARE_CLAUDE_TOOLS=default` gives Claude the built-in tools of a normal
+  Claude Code session, such as Bash, Read, Write, Edit and WebFetch, with
+  `--permission-mode bypassPermissions`. Claude then uses every tool without
+  a question, as Codex does. The tools can change files in the run folder
+  and read the environment, which holds the model key and the MCP token.
+  The secret check after the run finds a key that a tool wrote to a file.
+  Claude Code also turns on tool search: the model gets only the names of
+  the n8n tools and of some built-in tools, and loads a schema with
+  `ToolSearch`. The page shows these deferred tools with a dashed border.
+  The default `none` keeps runs comparable with older runs, because the
+  extra tools change the tokens and the cost.
+- Codex gets a new `CODEX_HOME` that holds only the n8n MCP server.
   Its plugins, apps, browser use, computer use and image generation are off.
 - The container can still reach the internet and the host network. It needs
   them for the model API and for n8n.
+- Codex sends its model requests through a local recorder
+  (`request_recorder.py`). The recorder sends each request to OpenAI without
+  changes and writes the request body, but not the headers, to
+  `codex/requests.jsonl`. The key is in a header, so it stays out of the file.
+  The file does not hold the conversation input. It holds the tools and the
+  instructions only when they change. The recorder listens on `127.0.0.1`,
+  which Docker Desktop forwards to `host.docker.internal`. On Linux, set
+  `COMPARE_RECORDER_BIND` to the address of the Docker bridge. Set
+  `COMPARE_RECORD_REQUESTS=0` to send Codex straight to OpenAI.
 
 By default the CLIs run in interactive mode (`COMPARE_CLI_MODE=interactive`):
 
@@ -333,14 +389,17 @@ By default the CLIs run in interactive mode (`COMPARE_CLI_MODE=interactive`):
 event stream instead.
 
 The first run builds the image `n8n-builder-sandbox` from
-`sandbox/Dockerfile`. To get new CLI versions, run
-`docker rmi n8n-builder-sandbox`.
+`sandbox/Dockerfile`. A change to the Dockerfile rebuilds the image on the
+next run. The image has `python3`, `jq` and `ripgrep`, because Codex and
+Claude Code with `COMPARE_CLAUDE_TOOLS=default` use them in their shell. To get new CLI
+versions, run `docker rmi n8n-builder-sandbox`.
 
 `COMPARE_ISOLATION=clean` runs Claude as a clean process on the host: an
 empty environment, a new config folder, no built-in tools, and only the n8n
-MCP server. It needs an API key, because `--bare` does not read the
-subscription login. Codex has no clean mode, because its shell tool can read
-the host disk.
+MCP server. It ignores `COMPARE_CLAUDE_TOOLS`. It uses `--bare` to keep out host settings, so it gets the
+minimal system prompt. It needs an API key, because `--bare` does not read
+the subscription login. Codex has no clean mode, because its shell tool can
+read the host disk.
 
 ## Single steps
 

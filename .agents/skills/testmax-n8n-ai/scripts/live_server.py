@@ -158,17 +158,18 @@ def render_live_box(status, runs):
 		title = br.esc(br.run_title(name, meta))
 		screen = (status.get('screens') or {}).get(name)
 		if screen == 'cast':
-			inner = f'<div data-cast="{name}"></div>'
+			inner = (f'<div data-cast="{name}"></div><button type="button" class="live-zoom overlay" '
+			         f'data-zoom="{name}" aria-label="Show {title} full screen"></button>')
 		elif screen == 'shot':
-			inner = (f'<button type="button" class="live-zoom" data-zoom="{name}" aria-label="Show {title} larger">'
+			inner = (f'<button type="button" class="live-zoom" data-zoom="{name}" aria-label="Show {title} full screen">'
 			         f'<img data-shot="{name}" alt="{title} in the n8n UI" hidden></button>'
 			         f'<div class="live-empty" data-shot-empty="{name}">Waiting for the first screenshot</div>')
 		else:
 			inner = '<div class="live-empty">No live screen for this builder. The LLM steps below update live.</div>'
 		cards.append(
-			f'<div class="live-card"><div class="reel-meta"><span class="run-name">{title}</span>'
-			f'<span data-live-badge="{name}">{status_badge(entry.get("status", "waiting"))}</span></div>'
-			f'<div class="live-screen">{inner}</div></div>'
+			f'<div class="live-card"><div class="live-screen">{inner}</div>'
+			f'<div class="reel-meta"><span class="run-name">{title}</span>'
+			f'<span data-live-badge="{name}">{status_badge(entry.get("status", "waiting"))}</span></div></div>'
 		)
 	return (f'<div class="box"><div class="head"><h2>Live</h2><span class="mono-label" id="live-clock">'
 	        f'{br.esc(clock(status))}</span></div><div class="live-grid">{"".join(cards)}</div></div>')
@@ -216,12 +217,13 @@ window.addEventListener('DOMContentLoaded', ()=>{
   const seen = {}, shots = {};
   document.querySelectorAll('[data-cast]').forEach(el=>{
     AsciinemaPlayer.create({driver: 'eventsource', url: `/api/cast/${el.dataset.cast}`, bufferTime: 0}, el,
-      {fit: 'width', autoPlay: true, controls: false});
+      {fit: 'both', autoPlay: true, controls: false});
   });
-  // A live screen opens larger in a full-screen viewer. The viewer follows the newest screenshot.
+  // A live screen opens larger in a full-screen viewer. The viewer follows the newest screenshot, and a
+  // terminal gets its own player, because the stream starts with the whole recording so far.
   const zoomNames = [...document.querySelectorAll('[data-zoom]')].map(b=>b.dataset.zoom);
   const viewer = document.createElement('div');
-  let zoomed = null, opener = null;
+  let zoomed = null, opener = null, castPlayer = null, castName = null;
   viewer.className = 'theater live-theater';
   viewer.hidden = true;
   viewer.setAttribute('role', 'dialog');
@@ -229,7 +231,8 @@ window.addEventListener('DOMContentLoaded', ()=>{
   viewer.setAttribute('aria-label', 'Live screen');
   viewer.innerHTML = '<div class="theater-bar"><h2>Live</h2><span data-zoom-badge></span>'
     + '<button type="button" class="btn" data-zoom-close>Close</button></div><div class="tabs"></div>'
-    + '<div class="live-zoomed"><img alt=""><div class="live-empty">Waiting for the first screenshot</div></div>'
+    + '<div class="live-zoomed"><img alt=""><div class="live-empty">Waiting for the first screenshot</div>'
+    + '<div class="live-zoomed-cast" hidden></div></div>'
     + '<p class="fineprint">The screen updates every few seconds. Press the left or right arrow key to change the '
     + 'scenario. Press Esc to close.</p>';
   for (const name of zoomNames) {
@@ -240,17 +243,32 @@ window.addEventListener('DOMContentLoaded', ()=>{
     viewer.querySelector('.tabs').append(tab);
   }
   document.body.append(viewer);
+  function stopCast(){
+    castPlayer?.dispose();
+    castPlayer = castName = null;
+    viewer.querySelector('.live-zoomed-cast').replaceChildren();
+  }
   function showZoom(name){
     zoomed = name;
     viewer.querySelectorAll('[data-zoom-tab]').forEach(t=>t.classList.toggle('active', t.dataset.zoomTab === name));
     const shot = document.querySelector(`img[data-shot="${name}"]`);
-    const img = viewer.querySelector('.live-zoomed img');
-    img.hidden = shot.hidden;
-    if (!shot.hidden && img.getAttribute('src') !== shot.getAttribute('src')) { img.src = shot.src; img.alt = shot.alt; }
-    viewer.querySelector('.live-zoomed .live-empty').hidden = !shot.hidden;
+    const isCast = !!document.querySelector(`[data-cast="${name}"]`);
+    const img = viewer.querySelector('.live-zoomed img'), castBox = viewer.querySelector('.live-zoomed-cast');
+    if (castName !== name) stopCast();
+    castBox.hidden = !isCast;
+    if (isCast && !castPlayer) {
+      castName = name;
+      castPlayer = AsciinemaPlayer.create({driver: 'eventsource', url: `/api/cast/${name}`, bufferTime: 0}, castBox,
+        {fit: 'both', autoPlay: true, controls: false});
+    }
+    const shotHidden = !shot || shot.hidden;
+    img.hidden = isCast || shotHidden;
+    if (shot && !shot.hidden && img.getAttribute('src') !== shot.getAttribute('src')) { img.src = shot.src; img.alt = shot.alt; }
+    viewer.querySelector('.live-zoomed .live-empty').hidden = isCast || !shotHidden;
     viewer.querySelector('[data-zoom-badge]').innerHTML = document.querySelector(`[data-live-badge="${name}"]`)?.innerHTML || '';
   }
   function closeZoom(){
+    stopCast();
     viewer.hidden = true;
     zoomed = null;
     document.body.classList.remove('theater-open');
@@ -288,6 +306,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     const openState = {};
     section.querySelectorAll('.step-detail').forEach(d=>d.querySelectorAll('details').forEach((x, i)=>{ openState[`${d.dataset.step}:${i}`] = x.open; }));
     section.innerHTML = html;
+    addRunPickers();
     section.querySelectorAll('.step-detail').forEach(d=>d.querySelectorAll('details').forEach((x, i)=>{
       const key = `${d.dataset.step}:${i}`;
       if (key in openState) x.open = openState[key];

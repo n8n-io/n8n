@@ -389,6 +389,10 @@ Use `pass` when all checks pass, `fail` when the main goal is not met, and
 intended by the feature, a regression, or noise (for example, a timestamp
 that is not masked). Be strict and factual.
 
+Write each check as one short sentence with one fact. Put selectors, test
+IDs and UI text in backticks. The page shows them as code. The page shows
+the failed checks first.
+
 ## 5. The report
 
 While the live page runs, it builds the report again each time

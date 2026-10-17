@@ -18,9 +18,11 @@ Output: <run-dir>/report/index.html with the canvas images copied next to it.
 
 import html
 import json
+import re
 import shutil
 import sys
 import urllib.request
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -143,7 +145,7 @@ def load_claude(run_dir, meta, prices):
 			elif kind == 'tool_use':
 				end, res = results.get(c['id'], (None, {}))
 				events.append({
-					'kind': 'tool', 't': t, 'call': msg['id'], 'name': c['name'].replace('mcp__n8n__', ''),
+					'kind': 'tool', 't': t, 'call': msg['id'], 'name': split_tool_name(c['name'])[1], 'fullName': c['name'],
 					'duration': (ts(end) - start - t) if end else None,
 					'args': c.get('input'), 'result': content_text(res.get('content')),
 					'error': bool(res.get('is_error')),
@@ -156,8 +158,35 @@ def load_claude(run_dir, meta, prices):
 	else:
 		cost, source = 'not reported', None
 	duration = final['duration_ms'] / 1000 if final.get('duration_ms') else run_seconds(meta)
-	return {'events': events, 'calls': calls, 'model': model,
+	return {'events': events, 'calls': calls, 'model': model, 'context': claude_context(rows),
 	        'duration': f'{duration:.0f}s' if duration else '-', 'cost': cost, 'costSource': source}
+
+
+def claude_context(rows):
+	"""The system prompt and tools of the first API request, from the request shape in the session file."""
+	shape = next((r['shape'] for r in rows if r.get('type') == 'api-request-shape'), None)
+	if not shape:
+		return None
+	system = shape.get('system')
+	text = system if isinstance(system, str) else '\n\n'.join(b.get('text', '') for b in system or [])
+	tools = [{'name': t.get('name'), 'description': t.get('description') or '', 'schema': t.get('input_schema'),
+	          'type': t.get('type'), 'deferred': bool(t.get('defer_loading'))} for t in shape.get('tools') or []]
+	# With tool search on, the model gets only the names of deferred tools and loads a schema with ToolSearch.
+	deferred = {}
+	for r in rows:
+		delta = r.get('attachment') if isinstance(r.get('attachment'), dict) else {}
+		if delta.get('type') == 'deferred_tools_delta':
+			deferred.update(dict.fromkeys(delta.get('addedNames') or []))
+			for name in delta.get('removedNames') or []:
+				deferred.pop(name, None)
+	known = {t['name'] for t in tools}
+	tools += [{'name': name, 'description': '', 'schema': None, 'type': None, 'deferred': True}
+	          for name in deferred if name not in known]
+	return {'messages': [{'label': 'System prompt', 'text': text}] if text else [], 'tools': tools}
+
+
+def mcp_name(item):
+	return f'mcp__{item["server"]}__{item.get("tool")}' if item.get('server') else None
 
 
 def codex_session_events(rows):
@@ -187,8 +216,8 @@ def codex_session_events(rows):
 		elif kind == 'McpToolCall':
 			result = item.get('result')
 			events.append({
-				'kind': 'tool', 't': begin, 'name': item.get('tool'), 'duration': end - begin,
-				'args': item.get('arguments'),
+				'kind': 'tool', 't': begin, 'name': item.get('tool'), 'fullName': mcp_name(item),
+				'duration': end - begin, 'args': item.get('arguments'),
 				'result': content_text(result) if result else item.get('error'),
 				'error': bool(item.get('error')) or item.get('status') == 'failed'
 				         or (isinstance(result, dict) and bool(result.get('isError') or result.get('is_error'))),
@@ -199,8 +228,9 @@ def codex_session_events(rows):
 def load_codex(run_dir, meta, prices):
 	session = run_dir / meta['sessionFile'] if meta.get('sessionFile') else None
 	rows = read_jsonl(session) if session and session.exists() else []
+	tools = codex_request_tools(run_dir / (meta.get('requests') or 'requests.jsonl'), meta.get('sessionId'))
 	if not (run_dir / 'stream.jsonl').exists():
-		return codex_result(codex_session_events(rows), rows, meta, prices, run_seconds(meta))
+		return codex_result(codex_session_events(rows), rows, meta, prices, run_seconds(meta), tools)
 	stream = read_jsonl(run_dir / 'stream.jsonl')
 	times_file = run_dir / 'stream.times'
 	times = [float(x) for x in times_file.read_text().split()] if times_file.exists() else [0.0] * len(stream)
@@ -222,8 +252,8 @@ def load_codex(run_dir, meta, prices):
 		elif kind == 'mcp_tool_call':
 			begin = started.get(item.get('id'), t)
 			events.append({
-				'kind': 'tool', 't': begin, 'name': item.get('tool'), 'duration': t - begin,
-				'args': item.get('arguments'),
+				'kind': 'tool', 't': begin, 'name': item.get('tool'), 'fullName': mcp_name(item),
+				'duration': t - begin, 'args': item.get('arguments'),
 				'result': content_text(item.get('result')) if item.get('result') else item.get('error'),
 				'error': bool(item.get('error')) or item.get('status') == 'failed',
 			})
@@ -235,10 +265,10 @@ def load_codex(run_dir, meta, prices):
 				'error': item.get('exit_code') not in (0, None),
 			})
 
-	return codex_result(events, rows, meta, prices, (times[-1] - start) if times else None)
+	return codex_result(events, rows, meta, prices, (times[-1] - start) if times else None, tools)
 
 
-def codex_result(events, rows, meta, prices, duration):
+def codex_result(events, rows, meta, prices, duration, tools=None):
 	calls, model = [], meta.get('model')
 	first = next((ts(r['timestamp']) for r in rows if r.get('timestamp')), 0)
 	for r in rows:
@@ -252,10 +282,90 @@ def codex_result(events, rows, meta, prices, duration):
 			              'cache_write': u.get('cache_write_input_tokens') or 0,
 			              'out': u.get('output_tokens') or 0, 'cost': None})
 	priced = price_calls(calls, model, prices)
-	return {'events': events, 'calls': calls, 'model': model,
+	return {'events': events, 'calls': calls, 'model': model, 'context': codex_context(rows, tools),
 	        'duration': f'{duration:.0f}s' if duration else '-',
 	        'cost': f'${sum(c["cost"] for c in calls):.2f}' if priced else 'not reported',
 	        'costSource': 'prices' if priced else None}
+
+
+NESTED_TOOL = re.compile(r'^### `([^`]+)`[ \t]*$', re.M)
+TS_BLOCK = re.compile(r'```ts\n(.*?)```', re.S)
+
+
+def split_nested_tools(text):
+	"""In code mode, the exec description lists the tools that its scripts can call, one ### section
+	each with a TypeScript declaration. Returns the description before those sections and the tools."""
+	marks = list(NESTED_TOOL.finditer(text))
+	nested = []
+	for i, m in enumerate(marks):
+		body = text[m.end():marks[i + 1].start() if i + 1 < len(marks) else len(text)]
+		blocks = TS_BLOCK.findall(body)
+		if blocks:
+			nested.append((m.group(1), body.split('exec tool declaration:')[0].strip(), blocks[-1].strip()))
+	if not nested:
+		return text, []
+	return text[:marks[0].start()].rstrip(), nested
+
+
+def codex_tool(t, name):
+	tool = {'name': name, 'description': t.get('description') or '', 'schema': t.get('parameters'),
+	        'type': t.get('type')}
+	if t.get('type') != 'custom':
+		return [tool]
+	fmt = t.get('format') or {}
+	if fmt.get('definition'):
+		tool['code'] = {'label': f'Input grammar ({fmt.get("syntax") or fmt.get("type")})', 'text': fmt['definition']}
+	tool['description'], nested = split_nested_tools(tool['description'])
+	return [tool] + [{'name': n, 'description': d, 'schema': None, 'type': 'function', 'group': f'System · in {name}',
+	                  'code': {'label': f'Declaration in {name}', 'text': decl}} for n, d, decl in nested]
+
+
+def codex_request_tools(path, session_id=None):
+	"""The tools of the first model request of the session thread that the request recorder saved,
+	as one flat list. Side tasks, such as a title request, run on other threads with other tools."""
+	if not path.exists():
+		return None
+	rows = [r for r in read_jsonl(path) if r.get('tools')]
+	own = [r for r in rows if session_id and (r.get('client_metadata') or {}).get('thread_id')
+	       and session_id.endswith(r['client_metadata']['thread_id'])]
+	raw = (own or rows or [{}])[0].get('tools')
+	tools = []
+	for t in raw or []:
+		if t.get('type') != 'namespace':
+			tools += codex_tool(t, t.get('name') or t.get('type'))
+			continue
+		space = t.get('name') or ''
+		for sub in t.get('tools') or []:
+			name = sub.get('name') or ''
+			tools += codex_tool(sub, f'{space.rstrip("_")}__{name}' if space.startswith('mcp__') else name)
+	return tools or None
+
+
+def codex_context(rows, tools=None):
+	"""The base instructions and the messages that Codex adds before the prompt, from the session file,
+	and the tools from the request recording."""
+	meta = next((r.get('payload') or {} for r in rows if r.get('type') == 'session_meta'), {})
+	text = (meta.get('base_instructions') or {}).get('text')
+	messages = [{'label': 'System prompt', 'text': text}] if text else []
+	for r in rows:
+		payload = r.get('payload') or {}
+		if r.get('type') != 'response_item' or payload.get('type') != 'message':
+			continue
+		body = '\n'.join(c.get('text', '') for c in payload.get('content') or [] if isinstance(c, dict)).strip()
+		# Codex wraps its own context in tags. The first untagged user message is the prompt.
+		if payload.get('role') == 'user' and not body.startswith('<'):
+			break
+		if payload.get('role') in ('developer', 'user') and body:
+			messages.append({'label': 'Developer message' if payload['role'] == 'developer' else 'Context', 'text': body})
+	if not messages and not tools:
+		return None
+	if not tools:
+		return {'messages': messages, 'tools': None,
+		        'toolsNote': 'Codex does not save its tool definitions, and this run has no request recording.'}
+	notes = {}
+	if any(t.get('group') for t in tools) and not any(split_tool_name(t['name'])[0] for t in tools):
+		notes['MCP'] = 'Not in the prompt. Codex scripts look up MCP tools in ALL_TOOLS at run time.'
+	return {'messages': messages, 'tools': tools, 'toolNotes': notes}
 
 
 def tree_events(tree, start, label=''):
@@ -352,9 +462,9 @@ def token_bar(c, max_prompt, max_out):
 
 
 def step_preview(events, last):
-	tools = [e['name'] for e in events if e['kind'] == 'tool']
+	tools = Counter(e['name'] for e in events if e['kind'] == 'tool')
 	if tools:
-		return f'<code class="step-text">{esc(", ".join(tools))}</code>'
+		return f'<code class="step-text">{esc(", ".join(f"{n} ×{k}" if k > 1 else n for n, k in tools.items()))}</code>'
 	text = next((e['text'] for kind in ('text', 'reasoning') for e in events if e['kind'] == kind), None)
 	if text and last:
 		return '<span class="step-text">Final reply</span>'
@@ -398,26 +508,217 @@ def render_card(e, index):
 	)
 
 
-def render_steps(calls, events, max_prompt, max_out, prompt):
+def split_tool_name(name):
+	"""('n8n', 'search_nodes') for 'mcp__n8n__search_nodes'. Names without an MCP prefix have no server."""
+	parts = (name or '').split('__')
+	return (parts[1], '__'.join(parts[2:])) if len(parts) >= 3 and parts[0] == 'mcp' else (None, name or '')
+
+
+def tool_group(tool):
+	"""System for the built-in tools of the CLI, one group for each MCP server, and Other for the rest,
+	such as tools that the model provider runs."""
+	server = split_tool_name(tool['name'])[0]
+	if server:
+		return f'MCP · {server}'
+	if tool.get('type') not in (None, 'custom', 'function'):
+		return 'Other'
+	return 'System'
+
+
+def schema_type(s):
+	if not isinstance(s, dict):
+		return 'any'
+	if 'enum' in s:
+		values = [json.dumps(v) for v in s['enum']]
+		return ' | '.join(values[:6]) + (' | …' if len(values) > 6 else '')
+	if 'const' in s:
+		return json.dumps(s['const'])
+	for key in ('anyOf', 'oneOf'):
+		if key in s:
+			return ' | '.join(dict.fromkeys(schema_type(x) for x in s[key]))
+	t = s.get('type')
+	if isinstance(t, list):
+		return ' | '.join(t)
+	if t == 'array':
+		return f'{schema_type(s.get("items"))}[]'
+	return t or 'any'
+
+
+def schema_limits(s):
+	labels = (('minLength', 'min length'), ('maxLength', 'max length'), ('minimum', 'min'), ('maximum', 'max'),
+	          ('minItems', 'min items'), ('maxItems', 'max items'), ('format', 'format'), ('pattern', 'pattern'),
+	          ('default', 'default'))
+	return ' · '.join(f'{label} {json.dumps(s[k]) if k == "default" else s[k]}' for k, label in labels if k in s)
+
+
+def schema_rows(schema, prefix='', depth=0):
+	"""One row for each parameter. Nested objects add rows with a dotted name, two levels deep."""
+	if not isinstance(schema, dict):
+		return []
+	required = set(schema.get('required') or [])
+	rows = []
+	for key, s in (schema.get('properties') or {}).items():
+		s = s if isinstance(s, dict) else {}
+		rows.append({'name': prefix + key, 'type': schema_type(s), 'required': key in required,
+		             'description': s.get('description') or '', 'limits': schema_limits(s), 'depth': depth})
+		if depth < 2:
+			items = s.get('items') if isinstance(s.get('items'), dict) else {}
+			if s.get('properties'):
+				rows += schema_rows(s, f'{prefix}{key}.', depth + 1)
+			elif items.get('properties'):
+				rows += schema_rows(items, f'{prefix}{key}[].', depth + 1)
+	return rows
+
+
+def render_params(schema):
+	rows = schema_rows(schema)
+	if not rows:
+		return '<p class="dim">No parameters.</p>'
+	body = ''.join(
+		f'<tr><td style="padding-left:{8 + 16 * r["depth"]}px"><code>{esc(r["name"])}</code>'
+		+ ('<span class="req">required</span>' if r['required'] else '')
+		+ f'</td><td><code class="type">{esc(r["type"])}</code></td><td>{esc(r["description"])}'
+		+ (f'<div class="limits">{esc(r["limits"])}</div>' if r['limits'] else '') + '</td></tr>'
+		for r in rows
+	)
+	return f'<table class="params"><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>{body}</tbody></table>'
+
+
+def render_tool_spec(e):
+	if e.get('runtime'):
+		return '<p class="dim">Not in the prompt. The model found this tool at run time, so the report has no schema for it.</p>'
+	if e.get('deferred') and not e.get('schema'):
+		return ('<p class="dim">Deferred. The model got only the name, and loads the schema with ToolSearch '
+		        'when it needs the tool.</p>')
+	if e.get('code'):
+		return f'<div class="mono-label">{esc(e["code"]["label"])}</div><pre>{esc(e["code"]["text"])}</pre>'
+	return (f'{render_params(e["schema"])}<details><summary>JSON schema</summary>'
+	        f'<pre>{esc(json.dumps(e["schema"], indent=2))}</pre></details>')
+
+
+def render_tools(tools, events, notes=None):
+	"""Tool chips grouped by area, with the calls of this run, and the parameters of the selected tool.
+	notes replaces the text of an empty group."""
+	calls, failures = {}, {}
+	for e in events:
+		if e['kind'] in ('tool', 'code'):
+			name = e.get('fullName') or e['name']
+			calls[name] = calls.get(name, 0) + 1
+			failures[name] = failures.get(name, 0) + bool(e.get('error'))
+	entries = []
+	for t in tools:
+		short = split_tool_name(t['name'])[1]
+		count = calls.get(t['name'], 0) or calls.get(short, 0)
+		failed = failures.get(t['name'], 0) or failures.get(short, 0)
+		entries.append({**t, 'short': short, 'group': t.get('group') or tool_group(t), 'calls': count, 'failed': failed})
+	known = {t['name'] for t in tools}
+	for name, count in calls.items():
+		server, short = split_tool_name(name)
+		if server and name not in known:
+			entries.append({'name': name, 'short': short, 'description': '', 'group': f'MCP · {server}',
+			                'calls': count, 'failed': failures[name], 'runtime': True})
+	used = [e for e in entries if e['calls']]
+	selected = max(used, key=lambda e: e['calls'])['name'] if used else entries[0]['name']
+
+	names = {e['group'] for e in entries}
+	# System and MCP always show, so an empty group says that the model had none of these tools.
+	order = (['System'] + sorted(n for n in names if n.startswith('System ·'))
+	         + sorted(n for n in names if n.startswith('MCP')) + (['Other'] if 'Other' in names else []))
+	if not any(n.startswith('MCP') for n in names):
+		order.insert(order.index('Other') if 'Other' in order else len(order), 'MCP')
+	groups = []
+	for group in order:
+		members = sorted((e for e in entries if e['group'] == group), key=lambda e: (-e['calls'], e['short']))
+		note = (notes or {}).get(group.split(' · ')[0])
+		if not members:
+			groups.append(f'<div class="tool-group empty"><div class="mono-label">{esc(group)} · 0</div>'
+			              f'<span class="dim">{esc(note or "None given to the model.")}</span></div>')
+			continue
+		if all(e.get('runtime') for e in members):
+			note = note or 'Not in the prompt. The model found these tools at run time.'
+		elif any(e.get('deferred') and not e.get('schema') for e in members):
+			note = 'Dashed tools are deferred: the model got only their names, and loads a schema with ToolSearch.'
+		else:
+			note = None
+		chips = ''.join(
+			f'<button type="button" class="chip{" used" if e["calls"] else ""}'
+			f'{" runtime" if e.get("runtime") or e.get("deferred") else ""}'
+			f'{" active" if e["name"] == selected else ""}"'
+			f' data-tool="{esc(e["name"])}" data-search="{esc((e["short"] + " " + e["description"][:300]).lower())}">'
+			f'{esc(e["short"])}'
+			+ (f'<span class="count">×{e["calls"]}</span>' if e['calls'] else '')
+			+ (f'<span class="fail-dot" title="{e["failed"]} failed"></span>' if e['failed'] else '')
+			+ '</button>'
+			for e in members
+		)
+		groups.append(f'<div class="tool-group"><div class="mono-label">{esc(group)} · {len(members)}</div>'
+		              + (f'<span class="dim group-note">{esc(note)}</span>' if note else '')
+		              + f'<div class="chips">{chips}</div></div>')
+
+	details = []
+	for e in entries:
+		usage = ''
+		if e['calls']:
+			usage = f'<span class="badge partial">Called ×{e["calls"]}</span>'
+			if e['failed']:
+				usage += f'<span class="step-flag">{e["failed"]} failed</span>'
+		details.append(
+			f'<div class="tool-detail" data-tool="{esc(e["name"])}"{"" if e["name"] == selected else " hidden"}>'
+			f'<div class="tool-detail-head"><code class="tool-name" title="{esc(e["name"])}">{esc(e["short"])}</code>'
+			f'<span class="mono-label">{esc(e["group"])}</span>{usage}</div>'
+			+ (f'<div class="msg tool-desc">{esc(e["description"].strip())}</div>' if e['description'].strip() else '')
+			+ f'{render_tool_spec(e)}</div>'
+		)
+	return (
+		f'<details class="card context"><summary class="card-head"><span class="mono-label">Tools</span>'
+		f'<span class="mono-label">{len(tools)} tools · {len(used)} called · {size_label(json.dumps(tools))}</span></summary>'
+		f'<div class="tools-browser"><div class="tools-bar"><input type="search" class="tools-filter" '
+		f'placeholder="Filter tools" aria-label="Filter tools">'
+		f'<span class="dim">Highlighted tools were called in this run.</span></div>'
+		f'<div class="tool-groups">{"".join(groups)}</div>{"".join(details)}</div></details>'
+	)
+
+
+def render_context(context, events):
+	"""Collapsed cards for what the model gets before the prompt: system prompt, added messages and tools."""
+	if not context:
+		return []
+	cards = [
+		f'<details class="card context"><summary class="card-head"><span class="mono-label">{esc(m["label"])}</span>'
+		f'<span class="mono-label">{size_label(m["text"])}</span></summary><div class="msg">{esc(m["text"])}</div></details>'
+		for m in context.get('messages') or []
+	]
+	if context.get('tools'):
+		cards.append(render_tools(context['tools'], events, context.get('toolNotes')))
+	elif context.get('toolsNote'):
+		cards.append(f'<article class="card context"><div class="card-head"><span class="mono-label">Tools</span>'
+		             f'<span class="dim">{esc(context["toolsNote"])}</span></div></article>')
+	return cards
+
+
+def render_steps(calls, events, max_prompt, max_out, prompt, context=None):
 	steps = build_steps(calls, events)
 	if not steps:
-		return '<div class="box"><div class="head"><h2>LLM steps</h2></div><p class="dim">No trace for this run.</p></div>'
+		return '<div class="box steps"><div class="head"><h2>LLM steps</h2></div><p class="dim">No trace for this run.</p></div>'
 	names = {s['call'].get('name') for s in steps if s['call']}
 	items, panes, tool_index = [], [], 0
 	for i, step in enumerate(steps, 1):
 		c, evs = step['call'], step['events']
-		error = any(e['kind'] == 'tool' and e['error'] for e in evs)
-		# The first call answers the prompt, so the prompt opens its detail.
-		cards = [f'<article class="card user"><div class="card-head"><span class="mono-label">User</span>'
-		         f'<span class="mono-label">0.0s</span></div>'
-		         f'<div class="msg">{esc(prompt)}</div></article>'] if i == 1 and prompt else []
+		failed = sum(1 for e in evs if e['kind'] == 'tool' and e['error'])
+		# The first call answers the prompt, so the model context and the prompt open its detail.
+		cards = render_context(context, events) if i == 1 else []
+		if i == 1 and prompt:
+			cards.append(f'<article class="card user"><div class="card-head"><span class="mono-label">User</span>'
+			             f'<span class="mono-label">0.0s</span></div><div class="msg">{esc(prompt)}</div></article>')
 		for e in evs:
 			tool_index += e['kind'] == 'tool'
 			cards.append(render_card(e, tool_index))
 		t = c['t'] if c else evs[0]['t']
 		label = f'<span class="mono-label">{esc(c["name"])}</span>' if c and c.get('name') and len(names) > 1 else ''
+		if failed:
+			label += f'<span class="step-flag">{failed} failed</span>'
 		items.append(
-			f'<button type="button" class="step{" active" if i == 1 else ""}{" is-error" if error else ""}" data-step="{i}">'
+			f'<button type="button" class="step{" active" if i == 1 else ""}{" is-error" if failed else ""}" data-step="{i}">'
 			f'<span class="step-top"><span class="num">{i}</span>{step_preview(evs, i == len(steps))}'
 			f'<span class="mono-label">{t:.0f}s</span></span>'
 			+ (f'<span class="step-usage">{label}</span>' if label else '')
@@ -449,18 +750,42 @@ def render_steps(calls, events, max_prompt, max_out, prompt):
 	)
 
 
+def inline_code(text):
+	"""Escape text and show `backticked` parts as code. Text with an odd number of backticks stays plain."""
+	if text.count('`') % 2:
+		return esc(text)
+	return ''.join(f'<code>{part}</code>' if i % 2 else part for i, part in enumerate(esc(text).split('`')))
+
+
+CHECK_GROUPS = ((False, 'bad', '✗', 'Not met'), (None, 'warn', '?', 'Not confirmed'), (True, 'ok', '✓', 'Met'))
+
+
+def verdict_head(v):
+	checks = v.get('checks') or []
+	met = sum(1 for c in checks if c.get('ok') is True)
+	count = f'<span class="mono-label">{met} of {len(checks)} met</span>' if checks else ''
+	return f'<span class="head-meta">{count}{badge(v.get("verdict"))}</span>'
+
+
+def render_checks(v):
+	"""The judge summary and the checks, with the failed checks first."""
+	checks = v.get('checks') or []
+	groups = []
+	for ok, cls, mark, label in CHECK_GROUPS:
+		items = [c for c in checks if c.get('ok') is ok]
+		if items:
+			rows = ''.join(f'<li class="{cls}"><span class="mark" aria-hidden="true">{mark}</span>'
+			               f'<span>{inline_code(c.get("text", ""))}</span></li>' for c in items)
+			groups.append(f'<div class="check-group"><div class="mono-label">{label} · {len(items)}</div>'
+			              f'<ul class="checks">{rows}</ul></div>')
+	summary = f'<p class="summary">{inline_code(v["summary"])}</p>' if v.get('summary') else ''
+	return summary + ''.join(groups)
+
+
 def render_verdict(v):
 	if not v:
 		return '<div class="box"><div class="head"><h2>Expected outcome</h2></div><p class="dim">Not judged yet.</p></div>'
-	marks = {True: ('ok', '✓'), False: ('bad', '✗'), None: ('warn', '–')}
-	checks = ''.join(
-		f'<li class="{marks[c.get("ok")][0]}"><span class="mark">{marks[c.get("ok")][1]}</span>{esc(c.get("text", ""))}</li>'
-		for c in v.get('checks') or []
-	)
-	return (
-		f'<div class="box"><div class="head"><h2>Expected outcome</h2>{badge(v.get("verdict"))}</div>'
-		f'<p class="summary">{esc(v.get("summary", ""))}</p><ul class="checks">{checks}</ul></div>'
-	)
+	return f'<div class="box"><div class="head"><h2>Expected outcome</h2>{verdict_head(v)}</div>{render_checks(v)}</div>'
 
 
 PLAYER_CACHE = ASSET_CACHE / f'asciinema-player-{PLAYER_VERSION}'
@@ -537,6 +862,10 @@ REPLAY_FINEPRINT = ('Terminal screens are exact recordings of the interactive CL
                     'of the n8n UI. Skip pauses shortens idle time in the terminal recordings only. Press Esc to close.')
 
 
+def screen_kind(s):
+	return esc(s.get('label') or ('Terminal' if s['type'] == 'cast' else 'n8n UI'))
+
+
 def render_replay(screens, fineprint=REPLAY_FINEPRINT):
 	"""A strip of final screens that play in place, and a full-screen player that Expand opens.
 
@@ -551,7 +880,7 @@ def render_replay(screens, fineprint=REPLAY_FINEPRINT):
 			thumb = f'<img src="{esc(s["poster"])}" alt="">'
 		else:
 			thumb = f'<video muted preload="metadata" src="{esc(s["src"])}"></video>'
-		kind = s.get('label') or ('Terminal' if s['type'] == 'cast' else 'n8n UI')
+		kind = screen_kind(s)
 		cards.append(
 			f'<div class="reel-card"><div class="thumb" data-thumb="{esc(s["name"])}">'
 			f'<button type="button" class="thumb-poster" data-play="{esc(s["name"])}" aria-label="Play {esc(s["title"])}">'
@@ -565,23 +894,27 @@ def render_replay(screens, fineprint=REPLAY_FINEPRINT):
 	if len(screens) > 1:
 		tabs += '<button type="button" class="tab" data-replay="all">Side by side</button>'
 	figures = ''.join(
-		f'<figure class="screen" data-run="{esc(s["name"])}"><figcaption class="mono-label">{esc(s["title"])}</figcaption>'
+		f'<figure class="screen" data-run="{esc(s["name"])}"><figcaption class="screen-head">'
+		f'<span class="run-name">{esc(s["title"])}</span><span class="mono-label">{screen_kind(s)} · {esc(s["duration"])}</span>'
+		f'{badge(s["verdict"]) if s.get("verdict") else ""}</figcaption><div class="screen-frame">'
 		+ (f'<video controls muted playsinline preload="metadata" src="{esc(s["src"])}"'
 		   + (f' poster="{esc(s["poster"])}"' if s.get('poster') else '') + '></video>' if s['type'] == 'video'
 		   else '<div class="player"></div>')
-		+ '</figure>'
+		+ '</div></figure>'
 		for s in screens
 	)
+	speeds = ''.join(f'<button type="button" data-speed="{n}" aria-pressed="{str(n == 1).lower()}">{n}×</button>'
+	                 for n in (1, 2, 4, 8))
 	return (
 		f'<div class="box replay"><div class="head"><h2>Replay</h2>{side_by_side}</div>'
 		f'<div class="reel">{"".join(cards)}</div></div>'
 		'<div class="theater" id="theater" role="dialog" aria-modal="true" aria-label="Replay" hidden>'
-		f'<div class="theater-bar"><h2>Replay</h2><div class="tabs">{tabs}</div>'
-		'<label class="mono-label">Speed <select id="speed"><option value="1">1×</option><option value="2">2×</option>'
-		'<option value="4">4×</option><option value="8">8×</option></select></label>'
+		f'<div class="theater-bar"><h2>Replay</h2><div class="tabs">{tabs}</div><div class="theater-controls">'
+		f'<div class="speed" id="speed" role="group" aria-label="Speed"><span class="mono-label">Speed</span>{speeds}</div>'
 		'<label class="mono-label"><input type="checkbox" id="skip-idle" checked> Skip pauses</label>'
+		'<button type="button" class="btn" id="restart-all">Restart</button>'
 		'<button type="button" class="btn accent" id="play-all">Play all</button>'
-		'<button type="button" class="btn" id="theater-close">Close</button></div>'
+		'<button type="button" class="btn" id="theater-close">Close</button></div></div>'
 		f'<div class="replay-grid" id="replay-grid">{figures}</div>'
 		f'<p class="fineprint">{fineprint}</p></div>'
 	)
@@ -661,12 +994,14 @@ def render_canvas_box(name, meta, report, base_url, empty='No workflow was creat
 	image = report / 'img' / f'{name}.png'
 	# capture_canvas.mjs takes the screenshot at twice the CSS size.
 	size = ' '.join(f'{k}="{v // 2}"' for k, v in zip(('width', 'height'), png_size(image))) if image.exists() else ''
+	n8n_url = f'{base_url}/workflow/{wf}' if wf else ''
+	title = esc(run_title(name, meta))
 	canvas = (
-		f'<a class="canvas" href="img/{name}.png" target="_blank"><img src="img/{name}.png" {size} '
-		f'alt="{esc(run_title(name, meta))} canvas"></a>'
+		f'<a class="canvas" href="img/{name}.png" target="_blank" data-canvas="{name}" data-title="{title}" '
+		f'data-n8n="{esc(n8n_url)}"><img src="img/{name}.png" {size} alt="{title} canvas"></a>'
 		if image.exists() else f'<p class="dim">{esc(empty)}</p>'
 	)
-	link = f'<a href="{base_url}/workflow/{wf}" target="_blank">Open in n8n ↗</a>' if wf else ''
+	link = f'<a href="{n8n_url}" target="_blank">Open in n8n ↗</a>' if wf else ''
 	return f'<div class="box"><div class="head"><h2>Canvas</h2>{link}</div>{canvas}</div>'
 
 
@@ -674,7 +1009,7 @@ def render_panel_body(data, verdict, canvas_box, max_prompt, max_out, prompt):
 	"""The content of the section of one run: result, canvas and LLM steps."""
 	error = f'<div class="box err">Could not read this run: {esc(data["loadError"])}</div>' if data.get('loadError') else ''
 	return (f'{error}<div class="result-row">{render_verdict(verdict)}{canvas_box}</div>'
-	        f'{render_steps(data["calls"], data["events"], max_prompt, max_out, prompt)}')
+	        f'{render_steps(data["calls"], data["events"], max_prompt, max_out, prompt, data.get("context"))}')
 
 
 def main():
@@ -711,9 +1046,18 @@ def main():
 
 	notes = ['Token bars use one scale for all runs. Times are seconds from the prompt.']
 	status_file = run_dir / 'status.json'
-	if status_file.exists() and json.loads(status_file.read_text()).get('mode') == 'parallel':
+	status = json.loads(status_file.read_text()) if status_file.exists() else {}
+	if status.get('mode') == 'parallel':
 		notes.append('The builders ran at the same time on one n8n instance and one machine, '
 		             'so their times include the shared load.')
+	claude_tools = {meta.get('claudeTools', 'none') for _, meta, _ in runs if meta['kind'] == 'claude'}
+	if 'default' in claude_tools:
+		notes.append('Claude Code had its built-in tools, such as Bash, Read and Write, and could use all of them '
+		             'without a question (COMPARE_CLAUDE_TOOLS=default). Tool search was on, so the model loaded '
+		             'the schemas of deferred tools with ToolSearch.')
+	elif claude_tools:
+		notes.append('Claude Code ran without its built-in tools (COMPARE_CLAUDE_TOOLS=none). '
+		             'The model saw only the n8n tools.')
 	if any(meta['kind'] == 'instance-ai' for _, meta, _ in runs):
 		notes.append('Instance AI steps come from LangSmith call times. An asterisk on a time marks Instance AI text '
 		             'placed at the previous tool call.')
@@ -746,37 +1090,65 @@ def main():
 			f'<script src="{esc(s["src"])}"></script>' for s in screens if s['type'] == 'cast')
 	scripts += f'<script>const SCREENS = {json.dumps(screens)};</script>'
 
+	meta = [f'{len(runs)} builder' + ('s' if len(runs) > 1 else '')]
+	if status.get('startedAt'):
+		meta.insert(0, datetime.fromtimestamp(status['startedAt']).strftime('%b %-d, %Y · %H:%M'))
+	if status.get('mode') == 'parallel':
+		meta.append('run in parallel')
 	page = fill_template(esc(case.get('title') or 'Builder comparison'), ''.join(rows), ' '.join(notes),
 	                     ''.join(panels), replay=render_replay(screens), head=head, scripts=scripts,
-	                     prompt=esc(case['prompt']), expected=esc(case.get('expected') or '-'))
+	                     prompt=esc(case['prompt']), expected=esc(case.get('expected') or '-'),
+	                     meta=esc(' · '.join(meta)))
 	(report / 'index.html').write_text(page)
 	print(report / 'index.html')
 	if unpriced:
 		print('models without a published price in case.json: ' + ', '.join(unpriced))
 
 
-CASE_BOXES = ('<div class="case"><div class="box"><div class="mono-label">Prompt</div><div class="msg">{{PROMPT}}</div></div>\n'
-              '<div class="box"><div class="mono-label">Expected outcome</div><div class="msg">{{EXPECTED}}</div></div></div>')
+LIST_ITEM = re.compile(r'^\s*(?:\d+[.)]|[-*•])\s+')
+
+
+def render_brief(prompt, expected):
+	"""The prompt and expected outcome boxes. Both arguments are HTML.
+	An expected outcome with one numbered or bulleted item on each line shows as a numbered list."""
+	lines = [line for line in expected.splitlines() if line.strip()]
+	if len(lines) > 1 and all(LIST_ITEM.match(line) for line in lines):
+		items = ''.join(f'<li>{LIST_ITEM.sub("", line)}</li>' for line in lines)
+		body, count = f'<ol class="criteria">{items}</ol>', f'<span class="mono-label">{len(lines)} checks</span>'
+	else:
+		body, count = f'<div class="msg">{expected}</div>', ''
+	words = len(html.unescape(prompt).split())
+	return (
+		'<section class="brief"><div class="brief-card prompt"><div class="brief-head">'
+		'<span class="mono-label">Prompt</span><button type="button" class="btn" data-copy="brief-prompt">Copy</button></div>'
+		f'<blockquote class="msg" id="brief-prompt">{prompt}</blockquote>'
+		f'<span class="mono-label">Sent to every builder · {words} words</span></div>'
+		'<div class="brief-card expected"><div class="brief-head"><span class="mono-label">Expected outcome</span>'
+		f'{count}</div>{body}</div></section>'
+	)
+
+
 THEAD = ('<tr><th>Run</th><th>Model</th><th>Result</th><th>Active time</th><th>LLM calls</th><th>Tool calls</th>'
          '<th>Input tokens</th><th>Cached</th><th>Output tokens</th><th>Cost</th></tr>')
 
 
 def fill_template(title, rows, notes, panels, replay='', head='', scripts='', case=None, thead=THEAD,
-                  prompt='', expected='', after_table=''):
+                  prompt='', expected='', after_table='', kicker='Builder comparison', meta=''):
 	"""The full page. Text arguments are HTML. case defaults to the prompt and expected outcome boxes.
+	kicker is the label next to the logo, and meta the line under the title.
 	replay comes before the table, and after_table between the table and the panels."""
 	return (TEMPLATE
-	        .replace('{{CASE}}', CASE_BOXES if case is None else case)
 	        .replace('{{THEAD}}', thead)
 	        .replace('{{HEAD}}', head)
 	        .replace('{{REPLAY}}', replay)
 	        .replace('{{AFTER_TABLE}}', after_table)
 	        .replace('{{SCRIPTS}}', scripts)
+	        .replace('{{KICKER}}', kicker)
+	        .replace('{{META}}', f'<p class="page-meta mono-label">{meta}</p>' if meta else '')
 	        .replace('{{TITLE}}', title)
-	        .replace('{{PROMPT}}', prompt)
-	        .replace('{{EXPECTED}}', expected)
 	        .replace('{{ROWS}}', rows)
 	        .replace('{{NOTES}}', notes)
+	        .replace('{{CASE}}', render_brief(prompt, expected) if case is None else case)
 	        .replace('{{PANELS}}', panels))
 
 
@@ -810,8 +1182,24 @@ code,pre,.mono,.mono-label{font-family:var(--mono)}
 .dim{color:var(--dim)}
 .err{color:var(--pink-70)}
 button:focus-visible,select:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
-header{display:flex;align-items:center;gap:var(--s16);margin-bottom:var(--s24)}
-header img{height:24px}
+.page-head{margin-bottom:var(--s24)}
+.brand-row{display:flex;align-items:center;gap:var(--s12)}
+.brand-row img{height:20px}
+.brand-row img + .mono-label{padding-left:var(--s12);box-shadow:inset 1px 0 0 var(--line-strong)}
+.page-head h1{margin-top:var(--s16);font-size:32px;line-height:36px;letter-spacing:-.01em;max-width:960px}
+.page-meta{margin:var(--s8) 0 0}
+.brief{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:var(--s16);margin-bottom:var(--s32)}
+@media (max-width:900px){.brief{grid-template-columns:minmax(0,1fr)}}
+.brief-card{display:flex;flex-direction:column;gap:var(--s16);border-radius:var(--r12);padding:var(--s24)}
+.brief-card.prompt{background:var(--white);box-shadow:inset 0 0 0 1px var(--line),inset 4px 0 0 var(--pink)}
+.brief-card.expected{background:var(--bg-2)}
+.brief-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s12);min-height:30px}
+.brief-card blockquote{flex:1;margin:0;font-size:18px;line-height:26px}
+.criteria{list-style:none;margin:0;padding:0;counter-reset:crit}
+.criteria li{counter-increment:crit;display:grid;grid-template-columns:24px minmax(0,1fr);gap:var(--s12);padding:var(--s8) 0;text-wrap:pretty}
+.criteria li:first-child{padding-top:0}
+.criteria li + li{border-top:1px solid var(--line)}
+.criteria li::before{content:counter(crit);display:grid;place-items:center;height:24px;margin-top:-3px;border-radius:var(--full);background:var(--white);box-shadow:inset 0 0 0 1px var(--line);font:10px/14px var(--mono)}
 .case{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s16);margin-bottom:var(--s24)}
 .case .mono-label{margin-bottom:var(--s8)}
 .msg{white-space:pre-wrap;word-break:break-word;text-wrap:pretty}
@@ -838,28 +1226,50 @@ td:first-child{font-family:var(--sans)}
 .badge.st-failed{background:var(--pink-70);color:var(--bg)}
 @keyframes pulse{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.badge.st-running::before{animation:none}}
-.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:var(--s16)}
-.live-card{display:flex;flex-direction:column;gap:var(--s8);min-width:0}
-.live-screen{border-radius:var(--r8);overflow:hidden;background:var(--black);min-height:120px}
-.live-screen img{display:block;width:100%;height:auto}
+.live-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s16)}
+@media (max-width:1000px){.live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.live-grid{grid-template-columns:minmax(0,1fr)}}
+.live-card{display:flex;flex-direction:column;min-width:0;background:var(--white);border:1px solid var(--line);border-radius:var(--r8);overflow:hidden}
+.live-card:has([data-live-badge] :is(.st-failed,.st-error)){background:var(--pink-10);border-color:var(--pink-70);box-shadow:0 0 0 1px var(--pink-70)}
+.live-card .reel-meta{align-items:flex-start;padding:var(--s12)}
+.live-card .run-name{padding-top:3px;word-break:break-word}
+.live-card [data-live-badge]{flex:none}
+.live-screen{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--bg-2);border-bottom:1px solid var(--line)}
+.live-screen:has([data-cast]){background:var(--black)}
+.live-screen img{display:block;width:100%;height:100%;object-fit:cover;object-position:top center;transition:transform .15s}
 .live-screen img[hidden]{display:none}
-.live-screen .live-empty{display:grid;place-items:center;aspect-ratio:16/10;color:var(--gray-50);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em;padding:var(--s16);text-align:center}
-.live-screen .ap-control-bar,.live-screen .ap-overlay-info{display:none !important}
-.live-zoom{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
+.live-screen .live-empty{display:grid;place-items:center;height:100%;color:var(--gray-50);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em;padding:var(--s16);text-align:center}
+.live-screen [data-cast],.live-screen [data-cast] .ap-wrapper{width:100%;height:100%}
+.live-screen .ap-control-bar,.live-screen .ap-overlay-info,.live-zoomed .ap-control-bar,.live-zoomed .ap-overlay-info{display:none !important}
+.live-zoom{display:block;width:100%;height:100%;padding:0;border:0;background:none;cursor:zoom-in}
 .live-zoom:has(img[hidden]){display:none}
-.live-zoom:focus-visible{outline-offset:-2px}
+.live-zoom:hover img{transform:scale(1.03)}
+.live-zoom:focus-visible{outline:2px solid var(--pink);outline-offset:-2px}
+.live-zoom.overlay{position:absolute;inset:0}
+@media (prefers-reduced-motion:reduce){.live-screen img{transition:none}}
+.live-zoomed-cast{width:100%;height:100%}
+.live-zoomed-cast .ap-wrapper{width:100%;height:100%}
 .live-theater [data-zoom-close]{margin-left:auto}
 .live-theater{overflow:hidden}
 .live-zoomed{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 .live-zoomed img{display:block;max-width:100%;max-height:100%;border-radius:var(--r8);box-shadow:0 0 0 1px var(--line)}
 .live-zoomed .live-empty{display:grid;place-items:center;width:min(100%,960px);aspect-ratio:16/10;border-radius:var(--r8);background:var(--black);color:var(--gray-50);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em}
 .live-zoomed [hidden]{display:none}
-.summary{margin:0 0 var(--s8)}
-.checks{list-style:none;margin:0;padding:0}
-.checks li{display:flex;gap:var(--s8);padding:2px 0}
-.checks .mark{font-family:var(--mono);width:16px}
-.checks .bad .mark{color:var(--pink-70)}
-.checks .warn .mark{color:var(--dim)}
+.head-meta{display:flex;align-items:center;gap:var(--s12)}
+.verdict-body{margin-top:var(--s16)}
+.summary{margin:0 0 var(--s16);text-wrap:pretty}
+.check-group + .check-group{margin-top:var(--s16)}
+.check-group > .mono-label{margin-bottom:var(--s4)}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:var(--s4)}
+.checks li{display:flex;align-items:flex-start;gap:var(--s8);padding:var(--s8);border-radius:var(--r8);background:var(--white);text-wrap:pretty}
+.checks li.bad{background:var(--pink-10);box-shadow:inset 3px 0 0 var(--pink-70)}
+.checks li.ok{background:none;padding-block:var(--s4)}
+.checks .mark{flex:none;display:grid;place-items:center;width:16px;height:16px;margin-top:1px;border-radius:50%;font:10px/1 var(--mono)}
+.checks .ok .mark{background:var(--pink);color:var(--black)}
+.checks .bad .mark{background:var(--pink-70);color:var(--bg)}
+.checks .warn .mark{box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--dim)}
+.summary code,.checks code{font-size:12px;padding:0 2px;border-radius:var(--r4);background:var(--bg-3);word-break:break-word}
+.checks .bad code{background:var(--pink-20)}
 .run{display:none}
 .run.active{display:block}
 .box{background:var(--bg-2);border-radius:var(--r12);padding:var(--s16);margin-bottom:var(--s24)}
@@ -869,6 +1279,16 @@ td:first-child{font-family:var(--sans)}
 .result-row > .box{margin-bottom:0}
 .canvas{display:grid;place-items:center;background:var(--bg);border-radius:var(--r8);padding:var(--s16)}
 .canvas img{display:block;max-width:100%;height:auto;max-height:360px;object-fit:contain}
+a.canvas[data-canvas]{cursor:zoom-in}
+/* Full-screen canvas */
+#canvas-view{overflow:hidden}
+#canvas-badge{margin-left:auto}
+#canvas-n8n[hidden]{display:none}
+.canvas-stage{position:relative;flex:1;min-height:0;display:flex;overflow:auto;background:var(--white);border-radius:var(--r12);box-shadow:inset 0 0 0 1px var(--line);padding:var(--s24)}
+.canvas-stage img{display:block;margin:auto;max-width:100%;max-height:100%}
+.canvas-stage.zoomable img{cursor:zoom-in}
+.canvas-stage.zoomed img{max-width:none;max-height:none;cursor:zoom-out}
+.btn:disabled{opacity:.4;cursor:default;background:var(--bg-2)}
 .btn,.tab{font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em;color:var(--black);background:var(--bg-2);border:0;box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--full);padding:var(--s8) var(--s16);cursor:pointer;white-space:nowrap}
 .btn:hover,.tab:hover{background:var(--white)}
 .btn.accent,.tab.active{background:var(--pink);box-shadow:none}
@@ -877,7 +1297,7 @@ td:first-child{font-family:var(--sans)}
 .tabs{display:flex;flex-wrap:wrap;gap:var(--s4)}
 /* Replay strip */
 .reel{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--s16)}
-.reel-card{display:flex;flex-direction:column;gap:var(--s8);min-width:0}
+.reel-card{display:flex;flex-direction:column;gap:var(--s8);min-width:0;padding:var(--s12);background:var(--white);border-radius:var(--r12);box-shadow:inset 0 0 0 1px var(--line)}
 .thumb{position:relative;aspect-ratio:16/10;border-radius:var(--r8);overflow:hidden;background:var(--black);box-shadow:inset 0 0 0 1px var(--line)}
 .thumb-poster{position:absolute;inset:0;padding:0;border:0;background:none;cursor:pointer}
 .thumb-poster img,.thumb-poster video{display:block;width:100%;height:100%;object-fit:cover;object-position:top left}
@@ -895,24 +1315,33 @@ td:first-child{font-family:var(--sans)}
 .theater[hidden]{display:none}
 .theater-bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s16)}
 .theater-bar label{display:flex;align-items:center;gap:var(--s8)}
-.theater-bar select{font:10px/14px var(--mono);background:var(--white);color:var(--text);border:1px solid var(--line);border-radius:var(--r4);padding:2px var(--s4)}
 .theater-bar input{accent-color:var(--black)}
-#theater-close{margin-left:auto}
-.replay-grid{display:grid;gap:var(--s16);width:100%;margin:0 auto;grid-template-columns:minmax(0,1fr);max-width:calc((100vh - 184px) * 1.5)}
-.screen{margin:0;display:none}
-.screen.shown{display:block}
-.screen figcaption{margin-bottom:var(--s8)}
-.replay-grid:not(.all) figcaption{display:none}
-.player{overflow:hidden;border-radius:var(--r8)}
-.screen video{width:100%;display:block;border-radius:var(--r8);background:var(--black)}
+.theater-controls{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s16);margin-left:auto}
+.speed{display:flex;align-items:center;gap:var(--s4)}
+.speed .mono-label{margin-right:var(--s4)}
+.speed button{font:10px/14px var(--mono);color:var(--dim);background:none;border:0;border-radius:var(--full);padding:var(--s4) var(--s8);cursor:pointer}
+.speed button:hover{color:var(--text);background:var(--bg-2)}
+.speed button[aria-pressed="true"]{color:var(--black);background:var(--bg-3)}
+.replay-grid{display:grid;gap:var(--s16);width:100%;margin:0 auto;grid-template-columns:minmax(0,1fr);max-width:calc((100vh - 240px) * 1.6 + 24px)}
+.replay-grid.all{grid-template-columns:repeat(var(--cols),var(--cell));justify-content:center;max-width:none}
+.screen{margin:0;display:none;padding:var(--s12);background:var(--white);border-radius:var(--r12);box-shadow:inset 0 0 0 1px var(--line)}
+.screen.shown{display:flex;flex-direction:column;gap:var(--s8)}
+.screen:has(.badge.fail){background:var(--pink-10);box-shadow:inset 0 0 0 1px var(--pink-30)}
+.screen-head{display:flex;align-items:center;gap:var(--s12);min-height:22px}
+.screen-head .badge{margin-left:auto;padding-block:var(--s4)}
+.screen-frame{aspect-ratio:16/10;overflow:hidden;border-radius:var(--r8);background:var(--black)}
+.screen-frame video{display:block;width:100%;height:100%;object-fit:contain}
+.player,.player .ap-wrapper{width:100%;height:100%}
 .theater .fineprint{margin:0}
 /* LLM steps */
+.run-picker{margin-right:auto;max-width:320px;font:12px/16px var(--sans);color:var(--text);padding:var(--s4) var(--s12);border:0;border-radius:var(--full);background:var(--white);box-shadow:inset 0 0 0 1px var(--line);cursor:pointer}
+.run-picker:hover{box-shadow:inset 0 0 0 1px var(--line-strong)}
 .legend{display:flex;flex-wrap:wrap;gap:var(--s16);margin-bottom:var(--s12)}
 .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:var(--s4)}
 .read{background:var(--gray-50)}
 .write{background:var(--pink)}
 .fresh{background:var(--black)}
-.outp{background:var(--pink-70)}
+.outp{background:var(--dim)}
 .steps-layout{display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr);gap:var(--s16);height:min(720px,calc(100vh - 96px))}
 .step-list{display:flex;flex-direction:column;gap:var(--s4);overflow-y:auto;min-height:0;padding:2px}
 .step{display:flex;flex-direction:column;gap:var(--s8);width:100%;padding:var(--s8) var(--s12);border:0;border-radius:var(--r8);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
@@ -921,13 +1350,15 @@ td:first-child{font-family:var(--sans)}
 .step-top{display:flex;align-items:flex-start;gap:var(--s8);width:100%}
 .num{flex:none;display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 var(--s4);border-radius:var(--full);background:var(--bg-3);font:10px/14px var(--mono)}
 .step.active .num{background:var(--pink)}
-.step.is-error .num{background:var(--pink-70);color:var(--bg)}
+.step > .step-usage,.step > .mini{padding-left:calc(24px + var(--s8))}
+.step-flag{display:inline-flex;align-items:center;gap:var(--s4);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em;color:var(--pink-70)}
+.step-flag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--pink-70)}
 .step-text{flex:1;min-width:0;padding-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
 code.step-text{font-size:12px;line-height:16px}
 .step-top .mono-label{padding-top:5px}
 .step-usage{display:flex;gap:var(--s8)}
 .mini{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,1fr);gap:var(--s4);width:100%}
-.bar{display:flex;height:8px;background:var(--bg-3);border-radius:2px;overflow:hidden}
+.bar{display:flex;height:6px;background:var(--bg-3);border-radius:var(--full);overflow:hidden}
 .seg{display:block;height:100%}
 .step-pane{min-height:0;overflow-y:auto;background:var(--white);border-radius:var(--r8);box-shadow:inset 0 0 0 1px var(--line);padding:var(--s16)}
 .step-detail{display:flex;flex-direction:column;gap:var(--s12)}
@@ -944,12 +1375,47 @@ code.step-text{font-size:12px;line-height:16px}
 .card-head > .mono-label:last-child{margin-left:auto}
 summary.card-head{margin-bottom:0;cursor:pointer}
 .card.reasoning[open] summary{margin-bottom:var(--s8)}
+.card.context{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.card.context[open] > summary{margin-bottom:var(--s8)}
+.card.context > .msg{max-height:420px;overflow:auto;font-size:12px;line-height:16px}
+.card.context .card-head .dim{margin-left:auto}
+/* Tools browser */
+.tools-browser{display:flex;flex-direction:column;gap:var(--s16)}
+.tools-bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s12);font-size:12px;line-height:16px}
+.tools-filter{font:12px/16px var(--sans);padding:var(--s8) var(--s12);border:0;border-radius:var(--full);background:var(--white);box-shadow:inset 0 0 0 1px var(--line);min-width:200px}
+.tools-filter:focus-visible{outline:2px solid var(--pink);outline-offset:1px}
+.tool-groups{display:flex;flex-direction:column;gap:var(--s12);max-height:280px;overflow:auto;padding:2px}
+.tool-group{display:flex;flex-direction:column;gap:var(--s4)}
+.tool-group[hidden],.chip[hidden]{display:none}
+.tool-group.empty .dim,.group-note{font-size:12px;line-height:16px}
+.chip.runtime:not(.active){background:var(--white);border:1px dashed var(--pink-30);box-shadow:none;padding:calc(var(--s4) - 1px) calc(var(--s12) - 1px)}
+.chips{display:flex;flex-wrap:wrap;gap:var(--s4)}
+.chip{display:inline-flex;align-items:center;gap:var(--s4);font:12px/16px var(--mono);color:var(--dim);background:var(--white);border:0;box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--full);padding:var(--s4) var(--s12);cursor:pointer}
+.chip:hover{color:var(--text);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.chip.used{color:var(--text);background:var(--pink-10);box-shadow:inset 0 0 0 1px var(--pink-30)}
+.chip.active{color:var(--black);background:var(--pink);box-shadow:none}
+.chip .count{font-size:10px;color:var(--dim)}
+.chip.active .count{color:var(--black)}
+.fail-dot{width:6px;height:6px;border-radius:50%;background:var(--pink-70)}
+.tool-detail{display:flex;flex-direction:column;gap:var(--s12);padding-top:var(--s16);border-top:1px solid var(--line)}
+.tool-detail[hidden]{display:none}
+.tool-detail-head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s12)}
+.tool-desc{font-size:12px;line-height:16px;color:var(--dim);max-height:200px;overflow:auto}
+.params{margin:0;font-size:12px;line-height:16px;background:var(--white);border-radius:var(--r8);box-shadow:inset 0 0 0 1px var(--line)}
+.params th{padding:var(--s8)}
+.params td{padding:var(--s8);vertical-align:top;white-space:normal;font-family:var(--sans)}
+.params td:first-child{white-space:nowrap}
+.params code{font-size:12px}
+.params .type{color:var(--dim);word-break:break-word}
+.params .req{margin-left:var(--s8);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em;color:var(--pink-70)}
+.params .limits{margin-top:var(--s4);font:10px/14px var(--mono);color:var(--dim);word-break:break-all}
 .tool-name{font-size:14px;line-height:18px}
 .note{color:var(--dim);margin-bottom:var(--s4)}
 .card details summary{cursor:pointer;color:var(--dim);margin-top:var(--s8);font:10px/14px var(--mono);text-transform:uppercase;letter-spacing:.02em}
 .card pre{background:var(--white);border-radius:var(--r4);box-shadow:inset 0 0 0 1px var(--line);padding:var(--s12);margin:var(--s8) 0 0;overflow:auto;max-height:320px;font-size:12px;line-height:16px;white-space:pre-wrap;word-break:break-word}
 </style>{{HEAD}}</head><body>
-<header><img src="brand/n8n-logo-black-accent.svg" alt="n8n" onerror="this.remove()"><h1>{{TITLE}}</h1></header>
+<header class="page-head"><div class="brand-row"><img src="brand/n8n-logo-black-accent.svg" alt="n8n" onerror="this.remove()">
+<span class="mono-label">{{KICKER}}</span></div><h1>{{TITLE}}</h1>{{META}}</header>
 {{CASE}}
 {{REPLAY}}
 <table><thead>{{THEAD}}</thead>
@@ -957,9 +1423,25 @@ summary.card-head{margin-bottom:0;cursor:pointer}
 <p class="fineprint">{{NOTES}}</p>
 {{AFTER_TABLE}}
 {{PANELS}}
+<div class="theater" id="canvas-view" role="dialog" aria-modal="true" aria-label="Canvas" hidden>
+<div class="theater-bar"><h2>Canvas</h2><div class="tabs" id="canvas-tabs"></div><span id="canvas-badge"></span>
+<a id="canvas-n8n" target="_blank">Open in n8n ↗</a>
+<button type="button" class="btn" id="canvas-zoom">Zoom in</button>
+<button type="button" class="btn" id="canvas-close">Close</button></div>
+<div class="canvas-stage" id="canvas-stage"><img id="canvas-img" alt=""></div>
+<p class="fineprint">Pick a run, or press the left and right arrow keys. Click the canvas to zoom in where you click. Press Esc to close.</p></div>
 {{SCRIPTS}}
 <script>
 const $ = (id) => document.getElementById(id);
+// file:// pages can block the clipboard. Then the text is selected, so Cmd+C copies it.
+document.addEventListener('click', async e=>{
+  const b = e.target.closest('[data-copy]');
+  if (!b) return;
+  const el = $(b.dataset.copy);
+  try { await navigator.clipboard.writeText(el.textContent); b.textContent = 'Copied'; }
+  catch { getSelection().selectAllChildren(el); b.textContent = 'Selected'; }
+  setTimeout(()=>{ b.textContent = 'Copy'; }, 1500);
+});
 function show(id){
   document.querySelectorAll('.run').forEach(p=>p.classList.toggle('active',p.id===id));
   document.querySelectorAll('.row').forEach(r=>r.classList.toggle('active',r.dataset.run===id));
@@ -991,6 +1473,139 @@ document.addEventListener('keydown', e=>{
   if (items[i]) selectStep(root, items[i].dataset.step, true);
 });
 
+// Run picker in the LLM steps header. The live page calls it again after it replaces a panel.
+function addRunPickers(){
+  const rows = [...document.querySelectorAll('.row[data-run]')];
+  if (rows.length < 2) return;
+  document.querySelectorAll('.run .steps > .head').forEach(head=>{
+    if (head.querySelector('.run-picker')) return;
+    const run = head.closest('.run').id;
+    const select = Object.assign(document.createElement('select'), {className: 'run-picker'});
+    select.setAttribute('aria-label', 'Run');
+    for (const r of rows) {
+      const title = r.querySelector('.run-name')?.textContent || r.dataset.run;
+      select.add(new Option(title, r.dataset.run, false, r.dataset.run === run));
+    }
+    head.querySelector('h2').after(select);
+  });
+}
+// The new run's steps open at the same place on the screen as the old run's steps.
+document.addEventListener('change', e=>{
+  if (!e.target.matches || !e.target.matches('.run-picker')) return;
+  const select = e.target, top = select.closest('.steps').getBoundingClientRect().top;
+  show(select.value);
+  const next = document.getElementById(select.value)?.querySelector('.steps');
+  if (next) window.scrollBy(0, next.getBoundingClientRect().top - top);
+  select.value = select.closest('.run').id;
+  next?.querySelector('.run-picker')?.focus({preventScroll: true});
+});
+addRunPickers();
+
+// Tools browser: a chip selects a tool, the filter hides chips. Delegated, like the steps.
+document.addEventListener('click', e=>{
+  const chip = e.target.closest('.tools-browser .chip');
+  if (!chip) return;
+  const root = chip.closest('.tools-browser');
+  root.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active', c === chip));
+  root.querySelectorAll('.tool-detail').forEach(d=>{ d.hidden = d.dataset.tool !== chip.dataset.tool; });
+});
+document.addEventListener('input', e=>{
+  if (!e.target.matches || !e.target.matches('.tools-filter')) return;
+  const root = e.target.closest('.tools-browser');
+  const q = e.target.value.trim().toLowerCase();
+  root.querySelectorAll('.chip').forEach(c=>{ c.hidden = !!q && !c.dataset.search.includes(q); });
+  root.querySelectorAll('.tool-group').forEach(g=>{ g.hidden = !!q && !g.querySelector('.chip:not([hidden])'); });
+});
+
+// Canvas: full screen, with a tab for each run that has a canvas.
+// The runs come from the page on each open, so the live page works when it replaces the panels.
+let canvasRun = null;
+function canvasLinks(){
+  const seen = new Set();
+  return [...document.querySelectorAll('a.canvas[data-canvas]')]
+    .filter(a=>!seen.has(a.dataset.canvas) && seen.add(a.dataset.canvas));
+}
+function updateCanvasZoom(){
+  const img = $('canvas-img'), stage = $('canvas-stage'), btn = $('canvas-zoom');
+  const zoomed = stage.classList.contains('zoomed');
+  const zoomable = zoomed || (img.complete && img.naturalWidth > img.clientWidth + 1);
+  stage.classList.toggle('zoomable', zoomable);
+  btn.disabled = !zoomable;
+  btn.textContent = zoomed ? 'Fit to screen' : 'Zoom in';
+}
+// x and y are the clicked point as a fraction of the image. The zoom keeps that point in the middle.
+function zoomCanvas(on, x = 0.5, y = 0.5){
+  const img = $('canvas-img'), stage = $('canvas-stage');
+  if (on && !stage.classList.contains('zoomable')) return;
+  stage.classList.toggle('zoomed', on);
+  if (on) {
+    stage.scrollLeft = img.offsetLeft + x * img.offsetWidth - stage.clientWidth / 2;
+    stage.scrollTop = img.offsetTop + y * img.offsetHeight - stage.clientHeight / 2;
+  }
+  updateCanvasZoom();
+}
+function showCanvas(name){
+  const a = canvasLinks().find(x=>x.dataset.canvas === name);
+  if (!a) return;
+  canvasRun = name;
+  document.querySelectorAll('#canvas-tabs .tab').forEach(t=>t.classList.toggle('active', t.dataset.canvasTab === name));
+  const badge = document.querySelector(`.row[data-run="${name}"] .badge`);
+  $('canvas-badge').replaceChildren(...(badge ? [badge.cloneNode(true)] : []));
+  const link = $('canvas-n8n');
+  link.hidden = !a.dataset.n8n;
+  link.href = a.dataset.n8n || '#';
+  const img = $('canvas-img');
+  $('canvas-stage').classList.remove('zoomed');
+  img.onload = updateCanvasZoom;
+  img.alt = `${a.dataset.title} canvas`;
+  img.src = a.getAttribute('href');
+  updateCanvasZoom();
+  if (document.getElementById(name)) show(name);
+}
+function openCanvas(name){
+  $('canvas-tabs').replaceChildren(...canvasLinks().map(a=>{
+    const tab = Object.assign(document.createElement('button'), {type: 'button', className: 'tab', textContent: a.dataset.title});
+    tab.dataset.canvasTab = a.dataset.canvas;
+    return tab;
+  }));
+  pauseInline();
+  $('canvas-view').hidden = false;
+  document.body.classList.add('theater-open');
+  showCanvas(name);
+  $('canvas-close').focus();
+}
+function closeCanvas(){
+  $('canvas-view').hidden = true;
+  document.body.classList.remove('theater-open');
+  canvasRun = null;
+}
+document.addEventListener('click', e=>{
+  const a = e.target.closest('a.canvas[data-canvas]');
+  if (!a || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  openCanvas(a.dataset.canvas);
+});
+$('canvas-tabs').addEventListener('click', e=>{
+  const tab = e.target.closest('[data-canvas-tab]');
+  if (tab) showCanvas(tab.dataset.canvasTab);
+});
+$('canvas-zoom').addEventListener('click', ()=>zoomCanvas(!$('canvas-stage').classList.contains('zoomed')));
+$('canvas-img').addEventListener('click', e=>{
+  const r = e.target.getBoundingClientRect();
+  zoomCanvas(!$('canvas-stage').classList.contains('zoomed'), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+});
+$('canvas-close').addEventListener('click', closeCanvas);
+document.addEventListener('keydown', e=>{
+  if ($('canvas-view').hidden) return;
+  if (e.key === 'Escape') { closeCanvas(); return; }
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  e.preventDefault();
+  const names = canvasLinks().map(a=>a.dataset.canvas);
+  const i = names.indexOf(canvasRun) + (e.key === 'ArrowRight' ? 1 : -1);
+  showCanvas(names[(i + names.length) % names.length]);
+});
+window.addEventListener('resize', ()=>{ if (!$('canvas-view').hidden) updateCanvasZoom(); });
+
 // Replay
 let replayMode = null;
 const players = {};
@@ -998,11 +1613,23 @@ function npt(seconds){
   const s = Math.max(0, Math.ceil(seconds));
   return `npt:${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+let speed = 1;
+// Play all turns into Pause all, and turns back when every shown screen has ended.
+let ended = new Set();
+function setPlayingAll(on){
+  $('play-all').textContent = on ? 'Pause all' : 'Play all';
+  $('play-all').dataset.playing = on ? '1' : '';
+}
+function screenEnded(name){
+  ended.add(name);
+  if (ended.size >= document.querySelectorAll('.screen.shown').length) setPlayingAll(false);
+}
 function mountCast(s, el){
   if (players[s.name]) players[s.name].dispose();
   players[s.name] = AsciinemaPlayer.create({data: window.CASTS[s.name]}, el, {
-    speed: Number($('speed').value), idleTimeLimit: $('skip-idle').checked ? 2 : undefined, fit: 'width', poster: 'npt:0:8',
+    speed, idleTimeLimit: $('skip-idle').checked ? 2 : undefined, fit: 'both', poster: 'npt:0:8',
   });
+  players[s.name].addEventListener('ended', ()=>screenEnded(s.name));
 }
 function disposePlayers(){
   for (const name of Object.keys(players)) { players[name].dispose(); delete players[name]; }
@@ -1010,26 +1637,29 @@ function disposePlayers(){
 // Side by side uses the column count that gives the largest screens in the window.
 function layoutGrid(){
   const grid = $('replay-grid');
-  if (replayMode !== 'all') { grid.style.gridTemplateColumns = ''; grid.style.maxWidth = ''; return; }
-  const gap = 16, caption = 24, aspect = 1.5;
+  if (replayMode !== 'all') { grid.style.removeProperty('--cell'); grid.style.removeProperty('--cols'); return; }
+  const gap = 16, pad = 24, head = 30, aspect = 1.6;
   const width = grid.parentElement.clientWidth - 80;
   const height = window.innerHeight - grid.getBoundingClientRect().top - 72;
   let best = {cols: 1, cell: 0};
   for (let cols = 1; cols <= SCREENS.length; cols++) {
     const rows = Math.ceil(SCREENS.length / cols);
-    const cell = Math.min((width - gap * (cols - 1)) / cols, ((height - gap * (rows - 1)) / rows - caption) * aspect);
+    const byHeight = ((height - gap * (rows - 1)) / rows - pad - head) * aspect + pad;
+    const cell = Math.min((width - gap * (cols - 1)) / cols, byHeight);
     if (cell > best.cell) best = {cols, cell};
   }
-  grid.style.gridTemplateColumns = `repeat(${best.cols}, minmax(0, 1fr))`;
-  grid.style.maxWidth = `${Math.floor(best.cell * best.cols + gap * (best.cols - 1))}px`;
+  grid.style.setProperty('--cols', best.cols);
+  grid.style.setProperty('--cell', `${Math.floor(best.cell)}px`);
 }
 function showReplay(mode){
   replayMode = mode;
+  ended = new Set();
+  setPlayingAll(false);
   const grid = $('replay-grid');
   grid.classList.toggle('all', mode === 'all');
   layoutGrid();
   document.querySelectorAll('[data-replay]').forEach(b=>b.classList.toggle('active', b.dataset.replay === mode));
-  $('play-all').style.display = mode === 'all' ? '' : 'none';
+  $('play-all').style.display = $('restart-all').style.display = mode === 'all' ? '' : 'none';
   for (const s of SCREENS) {
     const fig = grid.querySelector(`.screen[data-run="${s.name}"]`);
     const shown = mode === 'all' || mode === s.name;
@@ -1040,7 +1670,8 @@ function showReplay(mode){
       else if (players[s.name]) { players[s.name].dispose(); delete players[s.name]; }
     } else {
       const video = fig.querySelector('video');
-      video.playbackRate = Number($('speed').value);
+      video.playbackRate = speed;
+      video.onended = ()=>screenEnded(s.name);
       if (!shown) video.pause();
     }
   }
@@ -1083,7 +1714,14 @@ if (SCREENS.length) {
   document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click', ()=>openTheater(b.dataset.open)));
   document.querySelectorAll('[data-play]').forEach(b=>b.addEventListener('click', ()=>playInline(b.dataset.play)));
   document.querySelectorAll('[data-replay]').forEach(b=>b.addEventListener('click', ()=>showReplay(b.dataset.replay)));
-  $('speed').addEventListener('change', ()=>showReplay(replayMode));
+  // The terminal player has no speed setting after it starts, so a new speed starts the recordings again.
+  $('speed').addEventListener('click', e=>{
+    const b = e.target.closest('[data-speed]');
+    if (!b) return;
+    speed = Number(b.dataset.speed);
+    $('speed').querySelectorAll('[data-speed]').forEach(x=>x.setAttribute('aria-pressed', String(x === b)));
+    showReplay(replayMode);
+  });
   $('skip-idle').addEventListener('change', ()=>showReplay(replayMode));
   $('theater-close').addEventListener('click', closeTheater);
   document.addEventListener('keydown', e=>{ if (e.key === 'Escape' && !$('theater').hidden) closeTheater(); });
@@ -1093,9 +1731,17 @@ if (SCREENS.length) {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(()=>showReplay('all'), 200);
   });
-  $('play-all').addEventListener('click', ()=>{
-    Object.values(players).forEach(p=>p.play());
-    document.querySelectorAll('.screen.shown video').forEach(v=>v.play());
+  const playAll = (on)=>{
+    if (on) ended = new Set();
+    Object.values(players).forEach(p=>on ? p.play() : p.pause());
+    document.querySelectorAll('.screen.shown video').forEach(v=>on ? v.play() : v.pause());
+    setPlayingAll(on);
+  };
+  $('play-all').addEventListener('click', ()=>playAll(!$('play-all').dataset.playing));
+  $('restart-all').addEventListener('click', ()=>{
+    showReplay(replayMode);
+    document.querySelectorAll('.screen.shown video').forEach(v=>{ v.currentTime = 0; });
+    playAll(true);
   });
   // The strip shows the last screen of each terminal recording.
   for (const s of SCREENS.filter(s=>s.type === 'cast')) {
