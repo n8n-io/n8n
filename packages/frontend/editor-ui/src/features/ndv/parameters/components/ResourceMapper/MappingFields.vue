@@ -232,7 +232,8 @@ function getFieldDescription(field: ResourceMapperField): string {
 		);
 	}
 
-	return '';
+	// Fall back to the description the node supplied for this field, if any
+	return field.description ?? '';
 }
 
 function getParameterValue(parameterName: string): string | number | boolean | null {
