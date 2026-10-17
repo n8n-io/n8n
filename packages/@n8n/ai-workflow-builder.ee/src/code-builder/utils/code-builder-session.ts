@@ -82,6 +82,13 @@ function isSessionCheckpoint(value: unknown): value is SessionCheckpoint {
 	return false;
 }
 
+function decodeLegacyUserMessages(userMessages: string[]): ConversationEntry[] {
+	return userMessages.map((msg) => ({
+		type: 'build-request' as const,
+		message: msg,
+	}));
+}
+
 /**
  * Load a CodeBuilder session from the checkpointer
  *
@@ -118,15 +125,11 @@ export async function loadCodeBuilderSession(
 					sdkSessionId: sessionData.sdkSessionId,
 				};
 			}
-			//
 			// oxlint-disable-next-line typescript/no-deprecated - Legacy format — migrate each string to build-request
 			if (sessionData.userMessages) {
 				return {
 					// oxlint-disable-next-line typescript/no-deprecated - Legacy format
-					conversationEntries: sessionData.userMessages.map((msg) => ({
-						type: 'build-request' as const,
-						message: msg,
-					})),
+					conversationEntries: decodeLegacyUserMessages(sessionData.userMessages),
 					previousSummary: sessionData.previousSummary,
 				};
 			}
