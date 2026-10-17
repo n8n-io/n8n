@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { N8nButton, N8nCopyInput, N8nIcon, N8nStepper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCopyInput, N8nIcon, N8nLink, N8nStepper, N8nText } from '@n8n/design-system';
 import {
 	resolveWhatsAppSettings,
 	type AgentJsonConfig,
@@ -19,6 +19,7 @@ import {
 } from '@/features/credentials/credentials.store';
 import { TIME } from '@/app/constants';
 import { getWhatsAppVerifyToken } from '../../composables/useAgentApi';
+import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
 import AgentChannelWhatsAppIdentityCard from './AgentChannelWhatsAppIdentityCard.vue';
@@ -76,6 +77,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
 
 const META_APP_DASHBOARD_URL = 'https://developers.facebook.com/apps';
 
@@ -142,7 +144,35 @@ const profile = computed(() =>
 	credentialCheck.value?.status === 'ok' ? credentialCheck.value.profile : null,
 );
 
-async function runCredentialCheck() {
+type CredentialCheckFailure = Extract<CredentialCheckResult, { status: 'failed' }>['reason'];
+
+/** The names the warehouse knows the reasons by, apart from how the view words them. */
+const CHECK_FAILURE_REASON = {
+	incomplete: 'incomplete',
+	temporaryToken: 'temporary_token',
+	mismatch: 'mismatch',
+	unreachable: 'unreachable',
+	notFound: 'not_found',
+} as const satisfies Record<CredentialCheckFailure, string>;
+
+/** Only the setup is measured: the settings check the credential again on every open. */
+function trackCredentialCheck(
+	trigger: 'auto' | 'recheck',
+	result: CredentialCheckResult,
+	requestFailed: boolean,
+) {
+	if (props.mode !== 'setup') return;
+	agentTelemetry.trackCheckedWhatsAppCredential({
+		agentId: props.agentId,
+		trigger,
+		status: result.status,
+		...(result.status === 'failed'
+			? { reason: requestFailed ? 'request_failed' : CHECK_FAILURE_REASON[result.reason] }
+			: {}),
+	});
+}
+
+async function runCredentialCheck(trigger: 'auto' | 'recheck' = 'auto') {
 	const request = ++latestCheck;
 	const id = credentialId.value;
 	// A result for the credential just replaced says nothing about this one.
@@ -159,6 +189,7 @@ async function runCredentialCheck() {
 			if (request !== latestCheck || unmounted) return;
 			checking.value = false;
 			credentialCheck.value = { status: 'failed', reason: 'unreachable' };
+			trackCredentialCheck(trigger, credentialCheck.value, true);
 			toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
 			return;
 		}
@@ -168,6 +199,9 @@ async function runCredentialCheck() {
 	}
 
 	let result: CredentialCheckResult;
+	// Shown as unreachable, but kept apart in telemetry: a failed request to n8n says
+	// nothing about whether Meta accepts the credential.
+	let requestFailed = false;
 	try {
 		result = await checkWhatsAppCredential(
 			rootStore.restApiContext,
@@ -178,13 +212,15 @@ async function runCredentialCheck() {
 	} catch (error) {
 		const notFound = error instanceof ResponseError && error.httpStatusCode === 404;
 		result = { status: 'failed', reason: notFound ? 'notFound' : 'unreachable' };
+		requestFailed = !notFound;
 	}
 	if (request !== latestCheck) return;
 	credentialCheck.value = result;
 	checking.value = false;
+	trackCredentialCheck(trigger, result, requestFailed);
 }
 
-watch(credentialId, runCredentialCheck, { immediate: true });
+watch(credentialId, () => runCredentialCheck(), { immediate: true });
 
 // Saving the picked credential keeps its ID, so the watch above does not see the edit.
 // Pinia removes this listener when the component unmounts.
@@ -299,9 +335,10 @@ watch(credentialId, (id) => {
 });
 
 onMounted(() => {
+	// Only the setup shows the webhook fields and this step. A connected channel has its own adapter answer Meta.
+	if (props.mode !== 'setup') return;
 	void loadVerifyToken();
-	// Only the setup shows this step. A connected channel has its own adapter answer Meta.
-	if (props.mode === 'setup') void resetThenPollWebhookStatus(webhookRun);
+	void resetThenPollWebhookStatus(webhookRun);
 });
 
 onBeforeUnmount(() => {
@@ -424,7 +461,11 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							target="_blank"
 							variant="outline"
 							size="medium"
+							icon="meta"
 							data-testid="whatsapp-meta-dashboard-link"
+							@click="
+								agentTelemetry.trackClickedWhatsAppLink({ agentId, target: 'meta_dashboard' })
+							"
 						>
 							{{ i18n.baseText('agents.channels.whatsapp.setup.createApp.button') }}
 						</N8nButton>
@@ -434,63 +475,66 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 						<N8nText :class="$style.hint" size="small">
 							{{ i18n.baseText('agents.channels.whatsapp.setup.credential.hint') }}
 						</N8nText>
-						<AgentIntegrationCredentialConnection
-							v-if="!connected"
-							v-model="credentialId"
-							:integration-type="integration.type"
-							:integration-label="integration.label"
-							:credentials="credentials"
-							:credential-permissions="credentialPermissions"
-							:credentials-loading="credentialsLoading"
-							:disabled="loading"
-							:loading="loading"
-							:error-message="showConnectError ? '' : errorMessage"
-							:error-is-conflict="errorIsConflict"
-							:force-new-credential="forceNewCredential"
-							@create="emit('create')"
-							@edit="emit('edit')"
-						/>
-						<template v-if="!connected && credentialId">
-							<N8nText
-								v-if="checking"
-								:class="$style.hint"
-								size="small"
-								data-testid="whatsapp-credential-checking"
-							>
-								{{ i18n.baseText('agents.channels.whatsapp.setup.credential.checking') }}
-							</N8nText>
-							<template v-else-if="credentialProblem">
+						<div :class="$style.credentialGroup">
+							<AgentIntegrationCredentialConnection
+								v-if="!connected"
+								compact-label
+								v-model="credentialId"
+								:integration-type="integration.type"
+								:integration-label="integration.label"
+								:credentials="credentials"
+								:credential-permissions="credentialPermissions"
+								:credentials-loading="credentialsLoading"
+								:disabled="loading"
+								:loading="loading"
+								:error-message="showConnectError ? '' : errorMessage"
+								:error-is-conflict="errorIsConflict"
+								:force-new-credential="forceNewCredential"
+								@create="emit('create')"
+								@edit="emit('edit')"
+							/>
+							<template v-if="!connected && credentialId">
 								<N8nText
+									v-if="checking"
+									:class="$style.hint"
 									size="small"
-									:class="$style.error"
-									data-testid="whatsapp-credential-problem"
+									data-testid="whatsapp-credential-checking"
 								>
-									{{
-										i18n.baseText(
-											`agents.channels.whatsapp.setup.credential.failed.${credentialProblem}`,
-										)
-									}}
+									{{ i18n.baseText('agents.channels.whatsapp.setup.credential.checking') }}
 								</N8nText>
-								<N8nButton
-									variant="ghost"
+								<template v-else-if="credentialProblem">
+									<N8nText
+										size="small"
+										:class="$style.error"
+										data-testid="whatsapp-credential-problem"
+									>
+										{{
+											i18n.baseText(
+												`agents.channels.whatsapp.setup.credential.failed.${credentialProblem}`,
+											)
+										}}
+									</N8nText>
+									<N8nButton
+										variant="ghost"
+										size="small"
+										data-testid="whatsapp-credential-recheck"
+										@click="runCredentialCheck('recheck')"
+									>
+										{{ i18n.baseText('agents.channels.whatsapp.setup.credential.recheck') }}
+									</N8nButton>
+								</template>
+								<N8nText
+									v-else-if="credentialVerified"
 									size="small"
-									data-testid="whatsapp-credential-recheck"
-									@click="runCredentialCheck"
+									color="success"
+									:class="$style.verified"
+									data-testid="whatsapp-credential-verified"
 								>
-									{{ i18n.baseText('agents.channels.whatsapp.setup.credential.recheck') }}
-								</N8nButton>
+									<N8nIcon icon="check" size="small" />
+									{{ i18n.baseText('agents.channels.whatsapp.setup.credential.verified') }}
+								</N8nText>
 							</template>
-							<N8nText
-								v-else-if="credentialVerified"
-								size="small"
-								color="success"
-								:class="$style.verified"
-								data-testid="whatsapp-credential-verified"
-							>
-								<N8nIcon icon="check" size="small" />
-								{{ i18n.baseText('agents.channels.whatsapp.setup.credential.verified') }}
-							</N8nText>
-						</template>
+						</div>
 					</div>
 
 					<div v-else-if="step.id === 'webhook'" :class="$style.stepStack">
@@ -598,14 +642,25 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 		</N8nStepper>
 
 		<div v-else :class="$style.formContent">
+			<div :class="$style.field">
+				<N8nText step="sm" bold>
+					{{ i18n.baseText('agents.channels.whatsapp.settings.label') }}
+				</N8nText>
+				<AgentChannelWhatsAppSettings :model-value="settings" @update:model-value="editSettings" />
+			</div>
+
 			<div :class="$style.field" data-testid="whatsapp-identity-field">
-				<N8nText size="small" bold>
+				<N8nText step="sm" bold>
 					{{ i18n.baseText('agents.channels.whatsapp.settings.identityLabel') }}
 				</N8nText>
 				<AgentChannelWhatsAppIdentityCard
 					:profile="profile"
 					:personalisation="personalisation"
 					:ready="credentialVerified"
+					show-manager-link
+					@open-manager="
+						agentTelemetry.trackClickedWhatsAppLink({ agentId, target: 'whatsapp_manager' })
+					"
 				/>
 				<N8nText
 					v-if="credentialProblem"
@@ -619,45 +674,19 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 				</N8nText>
 			</div>
 
-			<div :class="$style.field">
-				<label for="whatsapp-webhook-url">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.addTrigger.whatsapp.webhookUrl.label') }}
-					</N8nText>
-				</label>
-				<N8nCopyInput
-					id="whatsapp-webhook-url"
-					:value="webhookUrl"
-					size="large"
-					:class="$style.urlInput"
-					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
-					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
-					data-testid="whatsapp-webhook-url"
-				/>
-			</div>
-			<div :class="$style.field">
-				<label for="whatsapp-verify-token">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.addTrigger.whatsapp.verifyToken.label') }}
-					</N8nText>
-				</label>
-				<N8nCopyInput
-					id="whatsapp-verify-token"
-					:value="verifyToken"
-					size="large"
-					:class="$style.urlInput"
-					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
-					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
-					data-testid="whatsapp-verify-token"
-				/>
-			</div>
-
-			<div :class="$style.field">
-				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.channels.whatsapp.settings.label') }}
-				</N8nText>
-				<AgentChannelWhatsAppSettings :model-value="settings" @update:model-value="editSettings" />
-			</div>
+			<N8nLink
+				:href="META_APP_DASHBOARD_URL"
+				target="_blank"
+				rel="noopener noreferrer"
+				size="small"
+				data-testid="whatsapp-find-meta-app"
+				@click="agentTelemetry.trackClickedWhatsAppLink({ agentId, target: 'meta_app' })"
+			>
+				<span :class="$style.linkContent">
+					{{ i18n.baseText('agents.channels.whatsapp.settings.findMetaApp') }}
+					<N8nIcon icon="arrow-up-right" size="xsmall" />
+				</span>
+			</N8nLink>
 
 			<N8nText
 				v-if="connected && !isPublished"
@@ -701,7 +730,15 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 .field {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+/* The picker and its check result read as one control, so they sit closer than steps do. */
+.credentialGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	width: 100%;
 }
 
@@ -711,6 +748,12 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 
 .error {
 	color: var(--color--danger);
+}
+
+.linkContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .verified {

@@ -17,6 +17,7 @@ import GripLinesVertical from './custom/grip-lines-vertical.svg';
 import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
+import Meta from './custom/meta.svg';
 import Microsoft from './custom/microsoft.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/brand/dots-horizontal--solid-16.svg';
@@ -576,6 +577,7 @@ export const updatedIconSet = {
 	teams: Teams,
 	azure: Azure,
 	entra: Entra,
+	meta: Meta,
 	microsoft: Microsoft,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,

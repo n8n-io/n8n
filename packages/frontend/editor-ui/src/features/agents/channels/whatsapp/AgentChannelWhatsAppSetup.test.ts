@@ -8,6 +8,7 @@ import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { defineComponent, ref } from 'vue';
 import type { WhatsAppCredentialCheck } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import AgentChannelWhatsAppSetup from './AgentChannelWhatsAppSetup.vue';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -32,6 +33,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 		props: ['steps'],
 		template: `<div><div v-for="step in steps" :key="step.id" :data-testid="'step-' + step.id">{{ step.title }}<slot :step="step" /></div></div>`,
 	},
+}));
+
+const { trackMock } = vi.hoisted(() => ({ trackMock: vi.fn() }));
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
 }));
 
 const { showMessage, showError } = vi.hoisted(() => ({ showMessage: vi.fn(), showError: vi.fn() }));
@@ -124,6 +130,15 @@ describe('AgentChannelWhatsAppSetup', () => {
 				'href',
 				'https://developers.facebook.com/apps',
 			);
+		});
+
+		it('puts the Meta icon on the dashboard button', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+			await flushPromises();
+
+			expect(
+				getByTestId('whatsapp-meta-dashboard-link').querySelector('[data-icon="meta"]'),
+			).not.toBeNull();
 		});
 
 		it('shows the webhook URL and the verify token', async () => {
@@ -696,6 +711,138 @@ describe('AgentChannelWhatsAppSetup', () => {
 		});
 	});
 
+	describe('telemetry', () => {
+		const EVENT = TELEMETRY_EVENT.AGENTS.USER_CHECKED_WHATSAPP_CHANNEL_CREDENTIAL;
+
+		it('tracks a credential that checks out', async () => {
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					EVENT,
+					expect.objectContaining({ agent_id: 'a', trigger: 'auto', status: 'ok' }),
+				),
+			);
+		});
+
+		it.each([
+			['incomplete', 'incomplete'],
+			['temporaryToken', 'temporary_token'],
+			['mismatch', 'mismatch'],
+			['unreachable', 'unreachable'],
+		] as const)('tracks a %s credential as %s', async (reason, tracked) => {
+			vi.mocked(checkWhatsAppCredential).mockResolvedValue({ status: 'failed', reason });
+
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					EVENT,
+					expect.objectContaining({ status: 'failed', reason: tracked }),
+				),
+			);
+		});
+
+		it('tracks a credential the caller cannot use as not found', async () => {
+			vi.mocked(checkWhatsAppCredential).mockRejectedValue(
+				new ResponseError('missing', { httpStatusCode: 404 }),
+			);
+
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					EVENT,
+					expect.objectContaining({ status: 'failed', reason: 'not_found' }),
+				),
+			);
+		});
+
+		it('tracks a failed request to n8n apart from Meta being unreachable', async () => {
+			vi.mocked(checkWhatsAppCredential).mockRejectedValue(new Error('offline'));
+
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					EVENT,
+					expect.objectContaining({ status: 'failed', reason: 'request_failed' }),
+				),
+			);
+		});
+
+		it('tracks a recheck as one the user asked for', async () => {
+			vi.mocked(checkWhatsAppCredential).mockResolvedValue({
+				status: 'failed',
+				reason: 'mismatch',
+			});
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('whatsapp-credential-recheck')).toBeVisible());
+			trackMock.mockClear();
+
+			await fireEvent.click(getByTestId('whatsapp-credential-recheck'));
+
+			await waitFor(() =>
+				expect(trackMock).toHaveBeenCalledWith(
+					EVENT,
+					expect.objectContaining({ trigger: 'recheck', status: 'failed', reason: 'mismatch' }),
+				),
+			);
+		});
+
+		describe('links to Meta', () => {
+			const LINK_EVENT = TELEMETRY_EVENT.AGENTS.USER_CLICKED_WHATSAPP_CHANNEL_LINK;
+
+			it('tracks the Meta App Dashboard button in the setup', async () => {
+				const { getByTestId } = renderComponent({ props: props() });
+				await flushPromises();
+
+				await fireEvent.click(getByTestId('whatsapp-meta-dashboard-link'));
+
+				expect(trackMock).toHaveBeenCalledWith(
+					LINK_EVENT,
+					expect.objectContaining({ agent_id: 'a', target: 'meta_dashboard' }),
+				);
+			});
+
+			it.each([
+				['whatsapp-manager-link', 'whatsapp_manager'],
+				['whatsapp-find-meta-app', 'meta_app'],
+			])('tracks %s in the settings as %s', async (testId, target) => {
+				const { getByTestId } = renderComponent({
+					props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }),
+				});
+				await waitFor(() => expect(getByTestId(testId)).toBeVisible());
+
+				await fireEvent.click(getByTestId(testId));
+
+				expect(trackMock).toHaveBeenCalledWith(
+					LINK_EVENT,
+					expect.objectContaining({ agent_id: 'a', target }),
+				);
+			});
+		});
+
+		it('does not track the settings, which check again on every open', async () => {
+			renderComponent({
+				props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }),
+			});
+			await flushPromises();
+
+			expect(trackMock).not.toHaveBeenCalledWith(EVENT, expect.anything());
+		});
+
+		it('does not send the credential or the profile', async () => {
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(trackMock).toHaveBeenCalledWith(EVENT, expect.anything()));
+
+			const payload = JSON.stringify(trackMock.mock.calls);
+			expect(payload).not.toContain('cred-1');
+			expect(payload).not.toContain(PROFILE.verifiedName);
+			expect(payload).not.toContain(PROFILE.displayPhoneNumber);
+		});
+	});
+
 	describe('connect', () => {
 		const NEEDS = 'agents.channels.whatsapp.setup.connect';
 
@@ -947,7 +1094,7 @@ describe('AgentChannelWhatsAppSetup', () => {
 	});
 
 	describe('edit mode', () => {
-		it('shows the identity, settings and webhook fields, without the stepper', async () => {
+		it('shows the identity and settings, without the stepper or the webhook fields', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }),
 			});
@@ -956,9 +1103,23 @@ describe('AgentChannelWhatsAppSetup', () => {
 				expect(getByTestId('whatsapp-identity-name')).toHaveTextContent('Acme Support'),
 			);
 			expect(getByTestId('whatsapp-settings')).toBeInTheDocument();
-			expect(getByTestId('whatsapp-webhook-url')).toHaveValue(WEBHOOK_URL);
+			expect(queryByTestId('whatsapp-webhook-url')).toBeNull();
+			expect(queryByTestId('whatsapp-verify-token')).toBeNull();
+			expect(getWhatsAppVerifyToken).not.toHaveBeenCalled();
 			expect(queryByTestId('step-credential')).toBeNull();
 			expect(queryByTestId('whatsapp-connect')).toBeNull();
+		});
+
+		it('links to the Meta app dashboard in a new tab', async () => {
+			const { getByTestId } = renderComponent({
+				props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }),
+			});
+			await flushPromises();
+
+			const link = getByTestId('whatsapp-find-meta-app');
+			expect(link).toHaveAttribute('href', 'https://developers.facebook.com/apps');
+			expect(link).toHaveAttribute('target', '_blank');
+			expect(link).toHaveTextContent('agents.channels.whatsapp.settings.findMetaApp');
 		});
 
 		it('shows a credential problem under the identity', async () => {
