@@ -8,7 +8,7 @@
 | consecutiveErrors | integer | 0 | false |  |  | Polls that have failed since the last successful one. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | cursor | json | '{}'::json | false |  |  | How far the poll node has consumed its source, in whatever shape that node uses. |
-| nodeId | varchar(36) |  | false |  |  |  |
+| nodeId | varchar(64) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
@@ -43,7 +43,7 @@ erDiagram
   integer consecutiveErrors
   timestamp_3__with_time_zone createdAt
   json cursor
-  varchar_36_ nodeId
+  varchar_64_ nodeId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
 }

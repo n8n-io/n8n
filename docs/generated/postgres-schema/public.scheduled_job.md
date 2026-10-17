@@ -20,7 +20,7 @@
 | nextRunAt | timestamp(3) with time zone |  | true |  |  | Next time an occurrence is due; the scheduler sweep reads this to find work. NULL once disabled or a one-off has fired. |
 | orphanedAt | timestamp(3) with time zone |  | true |  |  | When the reconciliation sweep last confirmed this job's owner was gone; NULL while it is alive. Quarantine marker: the job's clock is cleared first and it is deleted only once this is older than the quarantine grace. |
 | ownerId | varchar(255) |  | false |  |  | Which owner of that kind: a workflow id, a system task name, an agent id. Deleting the owner does not delete this row; the owning module deprovisions explicitly and the reconciliation sweep is the backstop. |
-| ownerMemberId | varchar(36) |  | true |  |  | Optional sub-identity within the owner, e.g. the trigger node id for a workflow; NULL when the owner has no parts. |
+| ownerMemberId | varchar(64) |  | true |  |  | Optional sub-identity within the owner, e.g. the trigger node id for a workflow; NULL when the owner has no parts. |
 | ownerType | varchar(32) |  | false |  |  | What kind of thing owns this job, e.g. 'workflow' or 'system-task'. Not an enum: the scheduler only compares it, so a new owner kind needs no schema change. |
 | payload | json | '{}'::json | false |  |  | Input passed to the task handler when an occurrence runs. |
 | recurrenceSize | integer |  | true |  |  | The N in a recurring_cron schedule's every-N-periods filter, e.g. 3 for every 3 weeks; at least 2. Set only when kind is 'recurring_cron'. |
@@ -95,7 +95,7 @@ erDiagram
   timestamp_3__with_time_zone nextRunAt
   timestamp_3__with_time_zone orphanedAt
   varchar_255_ ownerId
-  varchar_36_ ownerMemberId
+  varchar_64_ ownerMemberId
   varchar_32_ ownerType
   json payload
   integer recurrenceSize
