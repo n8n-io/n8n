@@ -390,8 +390,11 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Return whether activating a workflow requires listening for webhook calls.
-	 * For every webhook call to listen for, also activate the webhook.
+	 * Register a test webhook for every webhook call the manual run must listen for.
+	 *
+	 * @returns The unique names of the nodes whose test webhooks were registered, in
+	 * registration order. An empty array means the run does not need to listen for a
+	 * webhook call.
 	 */
 	async needsWebhook(options: {
 		userId: string;
@@ -406,7 +409,7 @@ export class TestWebhooks implements IWebhookManager {
 		n8nAuthCookie?: string;
 		/** How long the test webhook stays registered, at most `TEST_WEBHOOK_MAX_TIMEOUT`. Defaults to `TEST_WEBHOOK_TIMEOUT`. */
 		timeoutMs?: number;
-	}) {
+	}): Promise<string[]> {
 		const {
 			userId,
 			workflowEntity,
@@ -438,7 +441,7 @@ export class TestWebhooks implements IWebhookManager {
 			// If we have a preferred trigger with data, we don't have to listen for a
 			// webhook.
 			if (triggerToStartFrom?.data) {
-				return false;
+				return [];
 			}
 
 			// If we have a preferred trigger without data we only want to listen for
@@ -448,7 +451,7 @@ export class TestWebhooks implements IWebhookManager {
 			}
 
 			if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
-				return false; // no webhooks found to start a workflow
+				return []; // no webhooks found to start a workflow
 			}
 
 			// A non-positive or oversized delay would fire the cancel timer at once, so clamp it.
@@ -470,6 +473,11 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			}
 
+			// Check before any registration, so an empty result never leaves registrations behind.
+			if (runData && webhooks.some((w) => w.node in runData)) {
+				return [];
+			}
+
 			const timeout = setTimeout(
 				async () => await this.cancelWebhook(workflow.id),
 				timeoutDuration,
@@ -480,6 +488,8 @@ export class TestWebhooks implements IWebhookManager {
 				webhooks,
 				n8nAuthCookie,
 			);
+
+			const registeredNodes = new Set<string>();
 
 			for (const webhook of webhooks) {
 				webhook.path = removeTrailingSlash(webhook.path);
@@ -499,10 +509,6 @@ export class TestWebhooks implements IWebhookManager {
 
 				const key = this.registrations.toKey(webhook);
 				const registrationByKey = await this.registrations.get(key);
-
-				if (runData && webhook.node in runData) {
-					return false;
-				}
 
 				// if registration already exists and is not a test webhook created by this user in this workflow throw an error
 				if (
@@ -553,6 +559,8 @@ export class TestWebhooks implements IWebhookManager {
 					// early and cancels the new registration.
 					if (this.timeouts[key] !== timeout) this.clearTimeout(key);
 					this.timeouts[key] = timeout;
+
+					registeredNodes.add(webhook.node);
 				} catch (error) {
 					await this.deactivateWebhooks(workflow);
 
@@ -562,7 +570,7 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			}
 
-			return true;
+			return [...registeredNodes];
 		} finally {
 			await workflow.expression.releaseIsolate();
 		}

@@ -14,8 +14,6 @@ import {
 } from './executions.utils';
 import type {
 	INode,
-	IRunData,
-	IPinData,
 	ExecutionError,
 	INodeTypeDescription,
 	Workflow,
@@ -30,11 +28,10 @@ import {
 	GITHUB_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { VNode } from 'vue';
-
-const WAIT_NODE_TYPE = 'waitNode';
 
 // `restoreMocks` restores spies before each test, so this is (re)established in beforeEach.
 let windowOpenSpy: MockInstance;
@@ -97,50 +94,40 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 describe('displayForm', () => {
 	const getTestUrlMock = vi.fn();
-	let fetchMock: MockInstance;
-	const successResponse = {
-		ok: true,
-	} as unknown as Response;
+	let fetchSpy: MockInstance;
+
+	const formTrigger = createTestNode({ name: 'Form Trigger', type: FORM_TRIGGER_NODE_TYPE });
+	const webhookTrigger = createTestNode({ name: 'Webhook', type: WEBHOOK_NODE_TYPE });
+	const chatTrigger = createTestNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// `restoreMocks` restores spies before each test, so re-establish them here.
-		windowOpenSpy = vi.spyOn(window, 'open');
-		fetchMock = vi.spyOn(global, 'fetch');
+		windowOpenSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+		fetchSpy = vi.spyOn(global, 'fetch');
+		getTestUrlMock.mockImplementation((node: INode) => `http://test-url.com/${node.name}`);
 	});
 
-	it('should not call openPopUpWindow if node has already run or is pinned', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'Node1',
-				typeVersion: 1,
-				type: FORM_TRIGGER_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-			{
-				id: '2',
-				name: 'Node2',
-				typeVersion: 1,
-				type: WAIT_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
+	it('should open the popup for a form trigger listed in registeredTriggerNodes', () => {
+		displayForm({
+			nodes: [formTrigger],
+			registeredTriggerNodes: ['Form Trigger'],
+			source: undefined,
+			getTestUrl: getTestUrlMock,
+		});
 
-		const runData: IRunData = { Node1: [] };
-		const pinData: IPinData = { Node2: [{ json: { data: {} } }] };
+		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'http://test-url.com/Form Trigger',
+			expect.any(String),
+			expect.any(String),
+		);
+	});
 
-		fetchMock.mockResolvedValue(successResponse);
-
-		await displayForm({
-			nodes,
-			runData,
-			pinData,
-			destinationNode: undefined,
-			triggerNode: undefined,
-			directParentNodes: [],
+	it('should not open the popup for a form trigger that is not listed in registeredTriggerNodes', () => {
+		displayForm({
+			nodes: [formTrigger, webhookTrigger],
+			registeredTriggerNodes: [],
 			source: undefined,
 			getTestUrl: getTestUrlMock,
 		});
@@ -148,30 +135,10 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should not call openPopUpWindow if node has run data and is not a form trigger node', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'RegularNode',
-				typeVersion: 1,
-				type: 'n8n-nodes-base.httpRequest',
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		const runData: IRunData = { RegularNode: [] };
-		const pinData: IPinData = {};
-
-		fetchMock.mockResolvedValue(successResponse);
-
-		await displayForm({
-			nodes,
-			runData,
-			pinData,
-			destinationNode: undefined,
-			triggerNode: undefined,
-			directParentNodes: [],
+	it('should not open the popup for non-form nodes even if they are listed', () => {
+		displayForm({
+			nodes: [webhookTrigger, chatTrigger],
+			registeredTriggerNodes: ['Webhook', 'Chat Trigger'],
 			source: undefined,
 			getTestUrl: getTestUrlMock,
 		});
@@ -179,96 +146,10 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should call openPopUpWindow for form trigger node even if it has run data', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'FormTrigger',
-				typeVersion: 1,
-				type: FORM_TRIGGER_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		const runData: IRunData = { FormTrigger: [] };
-		const pinData: IPinData = {};
-
-		getTestUrlMock.mockReturnValue('http://test-url.com');
-		fetchMock.mockResolvedValue(successResponse);
-
-		await displayForm({
-			nodes,
-			runData,
-			pinData,
-			destinationNode: undefined,
-			triggerNode: undefined,
-			directParentNodes: [],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
-
-		expect(windowOpenSpy).toHaveBeenCalled();
-	});
-
-	it('should skip nodes if destinationNode does not match and node is not a directParentNode', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'Node1',
-				typeVersion: 1,
-				type: FORM_TRIGGER_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-			{
-				id: '2',
-				name: 'Node2',
-				typeVersion: 1,
-				type: WAIT_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		fetchMock.mockResolvedValue(successResponse);
-		await displayForm({
-			nodes,
-			runData: undefined,
-			pinData: {},
-			destinationNode: 'Node3',
-			triggerNode: undefined,
-			directParentNodes: ['Node4'],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
-
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
-
-	it('should not open pop-up if source is "RunData.ManualChatMessage"', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'Node1',
-				typeVersion: 1,
-				type: FORM_TRIGGER_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		getTestUrlMock.mockReturnValue('http://test-url.com');
-
-		fetchMock.mockResolvedValue(successResponse);
-
-		await displayForm({
-			nodes,
-			runData: undefined,
-			pinData: {},
-			destinationNode: undefined,
-			triggerNode: undefined,
-			directParentNodes: [],
+	it('should not open the popup if source is "RunData.ManualChatMessage"', () => {
+		displayForm({
+			nodes: [formTrigger],
+			registeredTriggerNodes: ['Form Trigger'],
 			source: 'RunData.ManualChatMessage',
 			getTestUrl: getTestUrlMock,
 		});
@@ -276,79 +157,39 @@ describe('displayForm', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	describe('with trigger node', () => {
-		const nodes: INode[] = [
-			createTestNode({ name: 'Node1', type: FORM_TRIGGER_NODE_TYPE }),
-			createTestNode({ name: 'Node2', type: CHAT_TRIGGER_NODE_TYPE }),
-		];
-
-		beforeEach(() => {
-			getTestUrlMock.mockReturnValue('http://test-url.com');
+	it('should not send a request to the form test URL', () => {
+		displayForm({
+			nodes: [formTrigger],
+			registeredTriggerNodes: ['Form Trigger'],
+			source: undefined,
+			getTestUrl: getTestUrlMock,
 		});
 
-		it('should open pop-up if the trigger node is a form node', async () => {
-			fetchMock.mockResolvedValue(successResponse);
-			await displayForm({
-				nodes,
-				runData: undefined,
-				pinData: {},
-				destinationNode: undefined,
-				triggerNode: 'Node1',
-				directParentNodes: [],
-				source: undefined,
-				getTestUrl: getTestUrlMock,
-			});
+		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
 
-			expect(windowOpenSpy).toHaveBeenCalled();
+	it('should open the popup only for the listed form triggers when there are several', () => {
+		const otherFormTrigger = createTestNode({
+			name: 'Other Form Trigger',
+			type: FORM_TRIGGER_NODE_TYPE,
 		});
 
-		it('should not open pop-up if the trigger node is a form node but webhook url is not live', async () => {
-			fetchMock.mockResolvedValue({ ok: false });
-			await displayForm({
-				nodes,
-				runData: undefined,
-				pinData: {},
-				destinationNode: undefined,
-				triggerNode: 'Node1',
-				directParentNodes: [],
-				source: undefined,
-				getTestUrl: getTestUrlMock,
-			});
-
-			expect(windowOpenSpy).not.toHaveBeenCalled();
+		displayForm({
+			nodes: [formTrigger, otherFormTrigger],
+			registeredTriggerNodes: ['Other Form Trigger'],
+			source: undefined,
+			getTestUrl: getTestUrlMock,
 		});
 
-		it('should not open pop-up if the trigger node is a form node but fetch of webhook url throws', async () => {
-			fetchMock.mockRejectedValue(new Error());
-			await displayForm({
-				nodes,
-				runData: undefined,
-				pinData: {},
-				destinationNode: undefined,
-				triggerNode: 'Node1',
-				directParentNodes: [],
-				source: undefined,
-				getTestUrl: getTestUrlMock,
-			});
-
-			expect(windowOpenSpy).not.toHaveBeenCalled();
-		});
-
-		it("should not open pop-up if the trigger node is specified and it isn't a form node", async () => {
-			fetchMock.mockResolvedValue(successResponse);
-			await displayForm({
-				nodes,
-				runData: undefined,
-				pinData: {},
-				destinationNode: undefined,
-				triggerNode: 'Node2',
-				directParentNodes: [],
-				source: undefined,
-				getTestUrl: getTestUrlMock,
-			});
-
-			expect(windowOpenSpy).not.toHaveBeenCalled();
-		});
+		expect(getTestUrlMock).toHaveBeenCalledTimes(1);
+		expect(getTestUrlMock).toHaveBeenCalledWith(otherFormTrigger);
+		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
+		expect(windowOpenSpy).toHaveBeenCalledWith(
+			'http://test-url.com/Other Form Trigger',
+			expect.any(String),
+			expect.any(String),
+		);
 	});
 });
 

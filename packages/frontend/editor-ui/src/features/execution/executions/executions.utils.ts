@@ -11,7 +11,6 @@ import type {
 	ExecutionSummary,
 	IDataObject,
 	INode,
-	IPinData,
 	IRunData,
 	ExecutionError,
 	INodeTypeBaseDescription,
@@ -140,54 +139,29 @@ export const openFormPopupWindow = (url: string) => {
 
 export const clearPopupWindowState = () => (formPopupWindow = false);
 
-export async function displayForm({
+/**
+ * Opens the test form popup for Form Trigger nodes that the backend registered
+ * a test webhook for in this manual run.
+ */
+export function displayForm({
 	nodes,
-	runData,
-	pinData,
-	destinationNode,
-	triggerNode,
-	directParentNodes,
+	registeredTriggerNodes,
 	source,
 	getTestUrl,
 }: {
 	nodes: INode[];
-	runData: IRunData | undefined;
-	pinData: IPinData;
-	destinationNode: string | undefined;
-	triggerNode: string | undefined;
-	directParentNodes: string[];
+	registeredTriggerNodes: string[];
 	source: string | undefined;
 	getTestUrl: (node: INode) => string;
 }) {
+	if (source === 'RunData.ManualChatMessage') return;
+
 	for (const node of nodes) {
-		if (triggerNode !== undefined && triggerNode !== node.name) continue;
+		if (node.type !== FORM_TRIGGER_NODE_TYPE) continue;
+		if (!registeredTriggerNodes.includes(node.name)) continue;
 
-		const hasNodeRunAndIsNotFormTrigger =
-			runData?.hasOwnProperty(node.name) && node.type !== FORM_TRIGGER_NODE_TYPE;
-
-		if (hasNodeRunAndIsNotFormTrigger || pinData[node.name]) continue;
-
-		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
-
-		if (destinationNode && destinationNode !== node.name && !directParentNodes.includes(node.name))
-			continue;
-
-		if (node.name === destinationNode || !node.disabled) {
-			let testUrl = '';
-			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
-
-			try {
-				const res = await fetch(testUrl, { method: 'GET' });
-				if (!res.ok) continue;
-			} catch (error) {
-				continue;
-			}
-
-			if (testUrl && source !== 'RunData.ManualChatMessage') {
-				clearPopupWindowState();
-				openFormPopupWindow(testUrl);
-			}
-		}
+		clearPopupWindowState();
+		openFormPopupWindow(getTestUrl(node));
 	}
 }
 

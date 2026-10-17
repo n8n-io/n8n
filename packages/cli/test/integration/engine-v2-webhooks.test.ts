@@ -120,7 +120,10 @@ describe('webhook runs on engine v2', () => {
 		const workflow = await createV2Workflow(webhookNode(webhookId));
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			registeredTriggerNodes: [TRIGGER_NAME],
+		});
 
 		const response = await webhookAgent
 			.post(`/${webhookTestEndpoint}/${webhookId}`)
