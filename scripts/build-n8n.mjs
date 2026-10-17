@@ -98,6 +98,7 @@ async function installCanvasNativeBinding() {
 
 	for (const architecture of architectures) {
 		const packageName = `@napi-rs/canvas-linux-${architecture}-musl`;
+		const platformOptions = [`--cpu=${architecture}`, '--os=linux', '--libc=musl'];
 		const stagingDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-canvas-binding-'));
 		try {
 			await fs.writeJson(path.join(stagingDir, 'package.json'), {
@@ -105,14 +106,7 @@ async function installCanvasNativeBinding() {
 				private: true,
 				version: '1.0.0',
 			});
-			await $({
-				env: {
-					...process.env,
-					npm_config_arch: architecture,
-					npm_config_libc: 'musl',
-					npm_config_platform: 'linux',
-				},
-			})`pnpm --dir ${stagingDir} add --save-exact --save-prod --ignore-scripts --config.minimum-release-age=0 ${`${packageName}@${version}`}`;
+			await $`pnpm --dir ${stagingDir} add --save-exact --save-prod --ignore-scripts --config.minimum-release-age=0 ${platformOptions} ${`${packageName}@${version}`}`;
 
 			const sourceDir = await fs.realpath(path.join(stagingDir, 'node_modules', packageName));
 			const targetDir = path.join(config.compiledAppDir, 'node_modules', packageName);
