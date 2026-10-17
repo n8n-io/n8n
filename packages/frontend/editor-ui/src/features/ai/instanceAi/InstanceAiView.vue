@@ -8,6 +8,7 @@ import { claimDocumentTitle, useDocumentTitle } from '@/app/composables/useDocum
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useInstanceAiStore } from './instanceAi.store';
@@ -25,6 +26,7 @@ const router = useRouter();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
+const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const { isCtrlKeyPressed } = useDeviceSupport();
 const setupCompletionState = computed(
@@ -106,6 +108,7 @@ onMounted(() => {
 
 	void store.loadThreads();
 	void store.fetchCredits();
+	void nodeTypesStore.loadNodeTypesIfNotLoaded();
 
 	// Subscribe to push + fetch backend gateway state. The backend keeps the
 	// pairing alive across reloads, so the client never contacts the daemon

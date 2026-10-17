@@ -1,6 +1,8 @@
 import { effectScope, shallowReactive } from 'vue';
 import { camelCase } from 'change-case';
+import isEqual from 'lodash/isEqual';
 import type { INode } from 'n8n-workflow';
+import type { McpToolPermissions } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { TIME } from '@/app/constants/durations';
@@ -12,7 +14,7 @@ import {
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import type { ToolConnectionCredentialAdapter } from '@/features/shared/toolsConnection/types';
-import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
+import { useInstanceAiMcpStore, type InstanceAiMcpConnection } from '../instanceAiMcp.store';
 
 export interface McpConnectTarget {
 	slug: string;
@@ -20,7 +22,22 @@ export interface McpConnectTarget {
 	credentialTypes?: readonly string[];
 }
 
+/** The wanted state of the connection to a server */
+interface McpConnectionSaveInput {
+	serverSlug: string;
+	credentialId: string;
+	/** Without it a new connection gets the default permissions and a saved one keeps its own. */
+	toolPermissions?: McpToolPermissions;
+}
+
+export type McpCredentialSelectionHandler = (
+	serverSlug: string,
+	credentialId: string,
+	credentialType: string,
+) => Promise<string | null>;
+
 interface McpConnectAttemptState {
+	onCredentialSelected: McpCredentialSelectionHandler;
 	acceptCredential: boolean;
 	reopen: (() => void) | undefined;
 	unlockTimer: ReturnType<typeof setTimeout> | undefined;
@@ -49,43 +66,80 @@ export function useMcpServerConnect() {
 	const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
 
 	/**
-	 * Patches the existing connection instead of creating a second one — the
-	 * backend allows only one per server. Null when nothing changed or failed.
+	 * Saves the wanted connection to a server and shows the success message. The
+	 * backend allows only one connection per server, so a saved one is updated
+	 * and not created again. An update sends only the credential and the
+	 * permissions that differ from the saved connection, and sends nothing when
+	 * both are the same. Null when the request failed.
 	 */
-	async function connectWithCredential(
-		serverSlug: string,
-		credentialId: string,
-	): Promise<string | null> {
-		credentialRequestLockedServerSlugs.add(serverSlug);
+	async function saveConnection({
+		serverSlug,
+		credentialId,
+		toolPermissions,
+	}: McpConnectionSaveInput): Promise<InstanceAiMcpConnection | null> {
+		const saved = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
+		// A new credential reconnects the server. A permissions-only change does not.
+		const isCredentialChanged = saved?.credentialId !== credentialId;
+		const changedPermissions =
+			toolPermissions && !isEqual(saved?.toolPermissions, toolPermissions)
+				? toolPermissions
+				: undefined;
+		if (isCredentialChanged) credentialRequestLockedServerSlugs.add(serverSlug);
 		try {
-			const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
-			if (existing?.credentialId === credentialId) return null;
-
-			const connection = existing
-				? await mcpStore.updateConnection(existing.id, { credentialId })
-				: await mcpStore.connect({ serverSlug, credentialId });
+			let connection: InstanceAiMcpConnection | null;
+			if (!saved) {
+				connection = await mcpStore.connect({
+					serverSlug,
+					credentialId,
+					...(toolPermissions && { toolPermissions }),
+				});
+			} else if (!isCredentialChanged && !changedPermissions) {
+				connection = saved;
+			} else {
+				connection = await mcpStore.updateConnection(saved.id, {
+					...(isCredentialChanged && { credentialId }),
+					...(changedPermissions && { toolPermissions: changedPermissions }),
+				});
+			}
 			if (!connection) return null;
 
 			toast.showMessage({
 				type: 'success',
 				title: i18n.baseText(
-					existing ? 'instanceAi.mcp.success.changeCredential' : 'instanceAi.mcp.success.connect',
+					saved ? 'instanceAi.mcp.settings.saved' : 'instanceAi.mcp.success.connect',
 				),
 			});
-			return connection.id;
+			return connection;
 		} finally {
-			credentialRequestLockedServerSlugs.delete(serverSlug);
+			if (isCredentialChanged) credentialRequestLockedServerSlugs.delete(serverSlug);
 		}
 	}
 
+	/** Saves the credential at once. Null when nothing changed or failed. */
+	async function connectWithCredential(
+		serverSlug: string,
+		credentialId: string,
+	): Promise<string | null> {
+		const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
+		if (existing?.credentialId === credentialId) return null;
+
+		const connection = await saveConnection({ serverSlug, credentialId });
+		return connection?.id ?? null;
+	}
+
 	/**
-	 * Connects a server the user has no credential for yet: OAuth types needing no
-	 * manual input are authorized in place, the rest go through the credential edit
-	 * modal. Resolves once the user is done, with null if they backed out.
+	 * Gets a credential for a server. OAuth types needing no manual input are
+	 * authorized in place. Other types use the credential edit modal. The default
+	 * handler saves the connection. A caller can handle the credential as a draft.
 	 */
-	async function connectServer(server: McpConnectTarget): Promise<string | null> {
+	async function connectServer(
+		server: McpConnectTarget,
+		onCredentialSelected: McpCredentialSelectionHandler = async (serverSlug, credentialId) =>
+			await connectWithCredential(serverSlug, credentialId),
+	): Promise<string | null> {
 		const activeAttempt = connectAttemptsByServerSlug.get(server.slug);
 		if (activeAttempt) {
+			activeAttempt.state.onCredentialSelected = onCredentialSelected;
 			if (!isConnectLocked(server.slug) && activeAttempt.state.reopen) {
 				activeAttempt.state.acceptCredential = true;
 				activeAttempt.state.reopen();
@@ -97,6 +151,7 @@ export function useMcpServerConnect() {
 		const hasOneOption = (server.credentialTypes?.length ?? 0) <= 1;
 		const isQuickConnect = hasOneOption && canOAuthCredentialQuickConnect(server.credentialType);
 		const state: McpConnectAttemptState = {
+			onCredentialSelected,
 			acceptCredential: true,
 			reopen: undefined,
 			unlockTimer: undefined,
@@ -104,7 +159,7 @@ export function useMcpServerConnect() {
 
 		const connecting = isQuickConnect
 			? connectViaOAuth(server, state)
-			: connectViaCredentialModal(server);
+			: connectViaCredentialModal(server, state);
 		const promise = connecting.finally(() => {
 			if (state.unlockTimer) clearTimeout(state.unlockTimer);
 			connectAttemptsByServerSlug.delete(server.slug);
@@ -143,7 +198,7 @@ export function useMcpServerConnect() {
 			state.reopen = undefined;
 		});
 		if (!credential || !state.acceptCredential) return null;
-		return await connectWithCredential(server.slug, credential.id);
+		return await state.onCredentialSelected(server.slug, credential.id, credential.type);
 	}
 
 	function isConnectLocked(serverSlug: string): boolean {
@@ -174,13 +229,16 @@ export function useMcpServerConnect() {
 	}
 
 	/**
-	 * Opens the credential edit modal for the server and connects whatever
-	 * credential the user created there once they close it. Nothing is listening
-	 * outside an attempt, so unrelated credential edits stay free.
+	 * Opens the credential edit modal for the server and passes the created
+	 * credential to the current handler. Nothing listens outside an attempt, so
+	 * unrelated credential edits stay free.
 	 */
-	async function connectViaCredentialModal(server: McpConnectTarget): Promise<string | null> {
+	async function connectViaCredentialModal(
+		server: McpConnectTarget,
+		state: McpConnectAttemptState,
+	): Promise<string | null> {
 		return await new Promise<string | null>((settle) => {
-			let createdCredentialId: string | null = null;
+			let createdCredential: { id: string; type: string } | null = null;
 			const credentialTypes = server.credentialTypes ?? [server.credentialType];
 
 			// Detached because pinia disposes subscriptions with the effect scope they
@@ -190,7 +248,9 @@ export function useMcpServerConnect() {
 				listenForCredentialChanges({
 					store: credentialsStore,
 					onCredentialCreated: (credential) => {
-						if (credentialTypes.includes(credential.type)) createdCredentialId = credential.id;
+						if (credentialTypes.includes(credential.type)) {
+							createdCredential = { id: credential.id, type: credential.type };
+						}
 					},
 				});
 
@@ -200,12 +260,13 @@ export function useMcpServerConnect() {
 						if (modalName !== CREDENTIAL_EDIT_MODAL_KEY) return;
 						listeners.stop();
 
-						if (createdCredentialId === null) {
+						if (createdCredential === null) {
 							settle(null);
 							return;
 						}
-						// A failed connect settles the attempt rather than leaving it hanging
-						void connectWithCredential(server.slug, createdCredentialId)
+						// A failed selection settles the attempt rather than leaving it hanging.
+						void state
+							.onCredentialSelected(server.slug, createdCredential.id, createdCredential.type)
 							.catch(() => null)
 							.then(settle);
 					},
@@ -292,5 +353,6 @@ export function useMcpServerConnect() {
 		createCredentialAdapter,
 		ignorePendingConnectResult,
 		isConnectLocked,
+		saveConnection,
 	};
 }

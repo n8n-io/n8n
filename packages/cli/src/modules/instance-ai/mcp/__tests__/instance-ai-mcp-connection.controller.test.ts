@@ -146,14 +146,22 @@ describe('InstanceAiMcpConnectionController', () => {
 				server: linearServer,
 			});
 
+			const toolPermissions = {
+				categories: {
+					read: 'always_allow' as const,
+					write: 'require_approval' as const,
+				},
+			};
 			const result = await controller.create(authedRequest(), {} as never, {
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
+				toolPermissions,
 			});
 
 			expect(service.createConnection).toHaveBeenCalledWith(user, {
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
+				toolPermissions,
 			});
 			// The controller should rely on the service bundle, not refetch.
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();

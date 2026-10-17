@@ -9,6 +9,7 @@ import type {
 export interface CreateMcpConnectionBody {
 	serverSlug: string;
 	credentialId: string;
+	toolPermissions?: McpToolPermissions;
 }
 
 export interface UpdateMcpConnectionBody {
