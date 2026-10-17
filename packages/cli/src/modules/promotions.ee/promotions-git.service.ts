@@ -512,6 +512,40 @@ export class PromotionsGitService {
 		}
 	}
 
+	/** The paths among `filePaths` that exist at the commit. */
+	async findPathsAtCommit({
+		paths,
+		branchName,
+		configId,
+		commitSha,
+		filePaths,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'configId'> & {
+		commitSha: string;
+		filePaths: readonly string[];
+	}): Promise<Set<string>> {
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		if (filePaths.length === 0) return new Set();
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const output = await git.raw([
+					'ls-tree',
+					'-r',
+					'-z',
+					'--name-only',
+					commitSha,
+					'--',
+					...filePaths,
+				]);
+				return new Set(output.split('\0').filter(Boolean));
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName });
+		}
+	}
+
 	async readFilesAtCommit({
 		paths,
 		branchName,
