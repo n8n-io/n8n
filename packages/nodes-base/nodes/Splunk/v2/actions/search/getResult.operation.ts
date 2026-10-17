@@ -117,7 +117,7 @@ export async function execute(
 	}
 
 	populate(options, qs);
-	setReturnAllOrLimit.call(this, qs);
+	setReturnAllOrLimit.call(this, qs, i);
 
 	const endpoint = `/services/search/jobs/${searchJobId}/results`;
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint, {}, qs);
