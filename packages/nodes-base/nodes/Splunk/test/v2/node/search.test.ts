@@ -105,9 +105,7 @@ describe('Splunk, search resource', () => {
 	});
 
 	test('getResult operation reads returnAll and limit from the item it is running for', async () => {
-		// `setReturnAllOrLimit` read both off item 0, so the second item was given
-		// the first item's answer. With a per-item `searchJobId` that meant the
-		// wrong count — and an empty body instead of the job's rows (#38528).
+		// `returnAll` and `limit` can be expressions that resolve differently per item.
 		const executeFunctions = mock<IExecuteFunctions>();
 		executeFunctions.getNodeParameter.calledWith('searchJobId', 1).mockReturnValue('second-job');
 		executeFunctions.getNodeParameter.calledWith('filters', 1).mockReturnValue({});
