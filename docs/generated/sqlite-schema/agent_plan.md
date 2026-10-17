@@ -19,7 +19,7 @@ CREATE TABLE "agent_plan" ("id" varchar PRIMARY KEY NOT NULL, "threadId" varchar
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
 | formatVersion | INTEGER |  | false |  |  |  |
-| id | varchar |  | false | [agent_plan_history](agent_plan_history.md) |  |  |
+| id | varchar |  | false | [agent_background_job](agent_background_job.md) [agent_plan_history](agent_plan_history.md) |  |  |
 | revision | INTEGER | 1 | false |  |  |  |
 | threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -47,6 +47,7 @@ CREATE TABLE "agent_plan" ("id" varchar PRIMARY KEY NOT NULL, "threadId" varchar
 ```mermaid
 erDiagram
 
+"agent_background_job" }o--o| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_plan_history" |o--|| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_plan" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -59,6 +60,31 @@ erDiagram
   INTEGER revision
   varchar_128_ threadId FK
   datetime_3_ updatedAt
+}
+"agent_background_job" {
+  varchar_36_ childExecutionId
+  varchar_128_ childThreadId
+  datetime_3_ createdAt
+  TEXT error
+  varchar_36_ id PK
+  varchar_16_ kind
+  datetime_3_ notifiedAt
+  varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
+  varchar_128_ parentThreadId
+  varchar pauseRequestId
+  varchar planId FK
+  varchar planTaskId
+  TEXT result
+  datetime_3_ settledAt
+  varchar_36_ sourceExecutionId FK
+  varchar_16_ status
+  varchar_36_ subAgentId
+  datetime_3_ timeoutAt
+  varchar_255_ title
+  datetime_3_ updatedAt
+  varchar_36_ workflowId
 }
 "agent_plan_history" {
   datetime_3_ closedAt
@@ -81,6 +107,7 @@ erDiagram
   varchar_255_ projectId FK
   INTEGER sessionNumber
   varchar_32_ taskId
+  TEXT taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   INTEGER totalCompletionTokens
