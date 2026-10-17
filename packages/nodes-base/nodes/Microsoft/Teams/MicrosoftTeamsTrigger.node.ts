@@ -6,26 +6,23 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 	IDataObject,
-	ILoadOptionsFunctions,
 	JsonObject,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
+import type { LifecycleNotification, WebhookNotification } from './v2/helpers/types';
 import {
 	createSubscription,
 	generateClientState,
 	getResourcePath,
+	handleLifecycleNotifications,
+	isLifecycleNotification,
+	listOwnSubscriptions,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
-import {
-	microsoftApiRequest,
-	microsoftApiRequestAllItems,
-	SERVICE_PRINCIPAL_AUTH,
-	SP_HIDE,
-} from './v2/transport';
+import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH, SP_HIDE } from './v2/transport';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -358,16 +355,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				try {
-					const subscriptions = (await microsoftApiRequestAllItems.call(
-						this as unknown as ILoadOptionsFunctions,
-						'value',
-						'GET',
-						'/v1.0/subscriptions',
-					)) as SubscriptionResponse[];
-
-					const matchingSubscriptions = subscriptions.filter(
-						(subscription) => subscription.notificationUrl === webhookUrl,
-					);
+					const matchingSubscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 
 					const now = new Date();
 					const thresholdMs = 5 * 60 * 1000;
@@ -490,15 +478,44 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		const eventNotifications = req.body.value as WebhookNotification[];
-		const response: IWebhookResponseData = {
-			workflowData: eventNotifications.map((event) => [
-				{
-					json: (event.resourceData as IDataObject) ?? event,
-				} as INodeExecutionData,
-			]),
-		};
+		const notifications = req.body.value as Array<WebhookNotification | LifecycleNotification>;
+		const lifecycleNotifications: LifecycleNotification[] = [];
+		const changeNotifications: WebhookNotification[] = [];
+		for (const notification of notifications) {
+			if (isLifecycleNotification(notification)) {
+				lifecycleNotifications.push(notification);
+			} else {
+				changeNotifications.push(notification);
+			}
+		}
+		const workflowData = changeNotifications.map((event) => [
+			{
+				json: (event.resourceData as IDataObject) ?? event,
+			} as INodeExecutionData,
+		]);
 
+		if (lifecycleNotifications.length === 0) {
+			return { workflowData };
+		}
+
+		// Ack before any Graph call: a slow answer makes Graph re-deliver.
+		res.status(202).end();
+		if (this.getMode() === 'manual') {
+			// A test run would list by the production URL and write production ids into the
+			// test static data.
+			this.logger.debug(
+				'Microsoft Teams Trigger: ignored lifecycle notifications during a manual test run',
+				{ workflowId: this.getWorkflow().id, nodeName: this.getNode().name },
+			);
+		} else {
+			await handleLifecycleNotifications.call(this, lifecycleNotifications);
+		}
+
+		// A lifecycle-only batch must leave `workflowData` undefined: any value starts an execution.
+		const response: IWebhookResponseData = { noWebhookResponse: true };
+		if (changeNotifications.length > 0) {
+			response.workflowData = workflowData;
+		}
 		return response;
 	}
 }
