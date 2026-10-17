@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue, NodeToolTrustedMetadata } from '@n8n/api-types';
+import type {
+	AgentConfigValidationIssue,
+	NodeToolTrustedMetadata as NodeToolTrustedMetadataConfig,
+} from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import {
 	RestrictedToolCallout,
@@ -107,7 +110,7 @@ const approvalRequired = ref(false);
 const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
 const mcpApprovalValid = ref(true);
 const draftNode = ref<INode | null>(null);
-const trustedMetadata = ref<NodeToolTrustedMetadata | undefined>();
+const trustedMetadata = ref<NodeToolTrustedMetadataConfig | undefined>();
 const trustedMetadataValid = ref(true);
 
 const initialNode = computed<INode | null>(() =>
