@@ -354,17 +354,6 @@ describe('MigrationRuleDetail', () => {
 			expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalledTimes(1);
 		});
 
-		it('should disable every state when the user cannot change states', async () => {
-			rbacStore.hasScope.mockReturnValue(false);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-			await screen.findByText('2 affected');
-
-			expect(rbacStore.hasScope).toHaveBeenCalledWith('breakingChanges:migrate');
-			expect(isStateDisabled('Test Workflow 1')).toBe(true);
-			expect(isStateDisabled('Test Workflow 2')).toBe(true);
-			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open');
-		});
-
 		it('should disable the state of a migrated row and leave it out of the badge', async () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
@@ -604,12 +593,19 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.queryByTestId('migration-bulk-migrate-button')).not.toBeInTheDocument();
 		});
 
-		it('should not offer selection to a user without the migrate scope', async () => {
+		it('should let a user without the migrate scope triage, assign and migrate, but not notify', async () => {
 			rbacStore.hasScope.mockReturnValue(false);
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-			await screen.findByText('2 affected');
+			await screen.findByText('1 affected');
 
-			expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+			expect(getStateSelect('Test Workflow 1')).not.toHaveAttribute('data-disabled');
+			expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
+			expect(screen.getByTestId('migration-owner-select')).toBeInTheDocument();
+			expect(screen.getByTestId('migrate-workflow-button')).toBeInTheDocument();
+			expect(screen.queryByTestId('migration-notify-owner-button')).not.toBeInTheDocument();
 		});
 	});
 
@@ -659,45 +655,41 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.queryByTestId('migration-rule-unused-callout')).not.toBeInTheDocument();
 		});
 
-		it('should not show the callout when the user cannot change states', async () => {
-			rbacStore.hasScope.mockReturnValue(false);
-			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({ affectedWorkflows: [unusedWorkflow] }),
-			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-			await screen.findByText('1 affected');
+		it.each([
+			['with', true],
+			['without', false],
+		])(
+			"should mark every unused workflow as won't fix in one request and hide the callout, %s the migrate scope",
+			async (_, hasMigrateScope) => {
+				rbacStore.hasScope.mockReturnValue(hasMigrateScope);
+				vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							unusedWorkflow,
+							{ ...unusedWorkflow, id: 'workflow-3', name: 'Test Workflow 3' },
+							recentWorkflow,
+						],
+					}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
-			expect(screen.queryByTestId('migration-rule-unused-callout')).not.toBeInTheDocument();
-		});
+				await userEvent.click(await screen.findByTestId('migration-rule-unused-mark-all'));
 
-		it("should mark every unused workflow as won't fix in one request and hide the callout", async () => {
-			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
-			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({
-					affectedWorkflows: [
-						unusedWorkflow,
-						{ ...unusedWorkflow, id: 'workflow-3', name: 'Test Workflow 3' },
-						recentWorkflow,
-					],
-				}),
-			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-
-			await userEvent.click(await screen.findByTestId('migration-rule-unused-mark-all'));
-
-			await waitFor(() => {
-				expect(screen.queryByTestId('migration-rule-unused-callout')).not.toBeInTheDocument();
-				expect(screen.getByText('1 affected')).toBeInTheDocument();
-			});
-			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledTimes(1);
-			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
-				rootStore.restApiContext,
-				'rule-1',
-				['workflow-1', 'workflow-3'],
-				'wont_fix',
-			);
-			expect(breakingChangesApi.updateFindingStatus).not.toHaveBeenCalled();
-		});
+				await waitFor(() => {
+					expect(screen.queryByTestId('migration-rule-unused-callout')).not.toBeInTheDocument();
+					expect(screen.getByText('1 affected')).toBeInTheDocument();
+				});
+				expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledTimes(1);
+				expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
+					rootStore.restApiContext,
+					'rule-1',
+					['workflow-1', 'workflow-3'],
+					'wont_fix',
+				);
+				expect(breakingChangesApi.updateFindingStatus).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should revert the rows and keep the callout when the save fails', async () => {
 			const error = new Error('Request failed');
@@ -776,18 +768,6 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
 		});
 
-		it('does not render a Migrate button for a user without the migrate scope', async () => {
-			rbacStore.hasScope.mockReturnValue(false);
-			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
-			);
-
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-
-			await waitFor(() => expect(screen.getByText('Test Workflow 1')).toBeInTheDocument());
-			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
-		});
-
 		it('opens the migrate modal with the rule and workflow when Migrate is clicked', async () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
@@ -845,16 +825,12 @@ describe('MigrationRuleDetail', () => {
 		});
 
 		it('should show the owner name, or Unassigned when the workflow has none', async () => {
-			rbacStore.hasScope.mockReturnValue(false);
-			renderComponent({
-				props: {
-					migrationRuleId: 'rule-1',
-				},
-			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => {
-				expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
-				expect(screen.getByText('Unassigned')).toBeInTheDocument();
+				expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
+				const unassignedRow = screen.getByText('Test Workflow 2').closest('tr') as HTMLElement;
+				expect(within(unassignedRow).getByPlaceholderText('Unassigned')).toHaveValue('');
 			});
 		});
 
@@ -867,14 +843,6 @@ describe('MigrationRuleDetail', () => {
 			// No picker was opened yet, so no member search ran.
 			expect(usersApi.getUsers).not.toHaveBeenCalled();
 			expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
-		});
-
-		it('should show a plain label for a user without the migrate scope', async () => {
-			rbacStore.hasScope.mockReturnValue(false);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
-
-			await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
-			expect(screen.queryByTestId('migration-owner-select')).not.toBeInTheDocument();
 		});
 
 		it("searches the members of the row's project, assigns the picked user and shows the returned owner", async () => {
@@ -996,7 +964,6 @@ describe('MigrationRuleDetail', () => {
 		});
 
 		it('should fall back to the email when the owner has no name', async () => {
-			rbacStore.hasScope.mockReturnValue(false);
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
 					affectedWorkflows: [
@@ -1015,7 +982,7 @@ describe('MigrationRuleDetail', () => {
 			});
 
 			await waitFor(() => {
-				expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+				expect(screen.getByDisplayValue('ada@example.com')).toBeInTheDocument();
 			});
 		});
 
@@ -1175,7 +1142,6 @@ describe('MigrationRuleDetail', () => {
 		});
 
 		it('should sort by the shown owner label in both directions', async () => {
-			rbacStore.hasScope.mockReturnValue(false);
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
 					affectedWorkflows: [
@@ -1197,14 +1163,15 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
 			});
 
+			// Ada Lovelace owns Test Workflow 2 and Zed Zulu owns Test Workflow 1.
 			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
 			await waitFor(() => {
-				expect(screen.getAllByRole('row')[1].textContent).toContain('Ada Lovelace');
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 2');
 			});
 
 			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
 			await waitFor(() => {
-				expect(screen.getAllByRole('row')[1].textContent).toContain('Zed Zulu');
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
 			});
 		});
 	});

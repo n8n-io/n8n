@@ -11,7 +11,7 @@ import {
 	UpdateMigrationFindingStatusesRequestDto,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
-import { EventService, WorkflowSharingService } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
 import { AuthenticatedRequest, type User } from '@n8n/db';
 import {
 	Body,
@@ -28,6 +28,8 @@ import {
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
+
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
@@ -52,10 +54,10 @@ export class BreakingChangesController {
 		private readonly queryService: MigrationFindingQueryService,
 		private readonly ruleRegistry: RuleRegistry,
 		private readonly triageService: MigrationFindingTriageService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly ownerAssignmentService: MigrationOwnerAssignmentService,
 		private readonly notificationService: MigrationFindingNotificationService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	/**
@@ -64,11 +66,23 @@ export class BreakingChangesController {
 	 */
 	private async scopeFor(user: User): Promise<ReportScope> {
 		if (hasGlobalScope(user, 'workflow:update')) return { kind: 'instance' };
-		const workflowIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(user, [
+		const workflowIds = await this.workflowFinderService.findAllWorkflowIdsForUser(user, [
 			'workflow:update',
 		]);
-		// A workflow shared into two of the user's projects comes back twice.
-		return { kind: 'workflows', workflowIds: [...new Set(workflowIds)] };
+		return { kind: 'workflows', workflowIds };
+	}
+
+	/** The given workflows that the user can edit. Editing a workflow allows triaging its findings. */
+	private async editableWorkflowIds(user: User, workflowIds: string[]): Promise<string[]> {
+		const scope = await this.scopeFor(user);
+		if (scope.kind === 'instance') return workflowIds;
+		const editable = new Set(scope.workflowIds);
+		return workflowIds.filter((workflowId) => editable.has(workflowId));
+	}
+
+	private async assertCanEdit(user: User, workflowId: string): Promise<void> {
+		const [editable] = await this.editableWorkflowIds(user, [workflowId]);
+		if (!editable) throw new ForbiddenError('You do not have permission to update this workflow');
 	}
 
 	/**
@@ -145,16 +159,21 @@ export class BreakingChangesController {
 		return await this.queryService.getRuleFindings(version, ruleId, scope);
 	}
 
-	/** Sets the status a user picks for the findings of one rule on many workflows. */
+	/**
+	 * Sets the status a user picks for the findings of one rule on many workflows.
+	 * Only the workflows that the user can edit change.
+	 */
 	@Patch('/report/:ruleId/workflows')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async updateFindingStatuses(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('ruleId') ruleId: string,
 		@Body body: UpdateMigrationFindingStatusesRequestDto,
 	): Promise<void> {
-		await this.triageService.setStatuses(ruleId, body.workflowIds, body.status);
+		const workflowIds = await this.editableWorkflowIds(req.user, body.workflowIds);
+		if (workflowIds.length === 0) return;
+		await this.triageService.setStatuses(ruleId, workflowIds, body.status);
 	}
 
 	/**
@@ -175,48 +194,52 @@ export class BreakingChangesController {
 
 	/** Sets the status a user picks for the finding of one rule on one workflow. */
 	@Patch('/report/:ruleId/workflows/:workflowId')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async updateFindingStatus(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('ruleId') ruleId: string,
 		@Param('workflowId') workflowId: string,
 		@Body body: UpdateMigrationFindingStatusRequestDto,
 	): Promise<void> {
+		await this.assertCanEdit(req.user, workflowId);
 		await this.triageService.setStatus(ruleId, workflowId, body.status);
 	}
 
 	/** Makes the given user the owner of the workflow's findings. */
 	@Put('/workflows/:workflowId/owner')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async assignOwner(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 		@Body body: AssignMigrationOwnerDto,
 	): Promise<MigrationWorkflowOwnerResponse> {
+		await this.assertCanEdit(req.user, workflowId);
 		const owner = await this.ownerAssignmentService.assign(workflowId, body.userId, req.user);
 		return { owner };
 	}
 
 	/** Drops the assigned owner. The response carries the heuristic's suggestion, if any. */
 	@Delete('/workflows/:workflowId/owner')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async unassignOwner(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	): Promise<MigrationWorkflowOwnerResponse> {
+		await this.assertCanEdit(req.user, workflowId);
 		const owner = await this.ownerAssignmentService.unassign(workflowId);
 		return { owner };
 	}
 
 	/**
 	 * Apply the rule's automated migration to a single workflow, saving the
-	 * rewritten workflow as a new version.
+	 * rewritten workflow as a new version. The service checks that the user can
+	 * edit the workflow.
 	 */
 	@Post('/report/:ruleId/workflows/:workflowId/migrate')
-	@GlobalScope('breakingChanges:migrate')
+	@GlobalScope('breakingChanges:list')
 	async migrateWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,

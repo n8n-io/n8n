@@ -3,13 +3,15 @@ import type {
 	BreakingChangeReportQueryDto,
 	BreakingChangeRuleDetailResult,
 } from '@n8n/api-types';
-import type { EventService, WorkflowSharingService } from '@n8n/backend-services';
+import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock, type MockProxy } from 'vitest-mock-extended';
+
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { BreakingChangeMigrationService } from '../breaking-changes.migration.service';
 import { BreakingChangesController } from '../breaking-changes.controller';
@@ -66,10 +68,10 @@ describe('BreakingChangesController', () => {
 	let queryService: MockProxy<MigrationFindingQueryService>;
 	let ruleRegistry: MockProxy<RuleRegistry>;
 	let triageService: MockProxy<MigrationFindingTriageService>;
-	let workflowSharingService: MockProxy<WorkflowSharingService>;
 	let eventService: MockProxy<EventService>;
 	let ownerAssignmentService: MockProxy<MigrationOwnerAssignmentService>;
 	let notificationService: MockProxy<MigrationFindingNotificationService>;
+	let workflowFinderService: MockProxy<WorkflowFinderService>;
 	let controller: BreakingChangesController;
 
 	beforeEach(() => {
@@ -78,22 +80,22 @@ describe('BreakingChangesController', () => {
 		queryService = mock<MigrationFindingQueryService>();
 		ruleRegistry = mock<RuleRegistry>();
 		triageService = mock<MigrationFindingTriageService>();
-		workflowSharingService = mock<WorkflowSharingService>();
-		workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue(['wf-1', 'wf-2']);
 		req.user = admin;
 		eventService = mock<EventService>();
 		ownerAssignmentService = mock<MigrationOwnerAssignmentService>();
 		notificationService = mock<MigrationFindingNotificationService>();
+		workflowFinderService = mock<WorkflowFinderService>();
+		workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1', 'wf-2']);
 		controller = new BreakingChangesController(
 			migrationService,
 			syncService,
 			queryService,
 			ruleRegistry,
 			triageService,
-			workflowSharingService,
 			eventService,
 			ownerAssignmentService,
 			notificationService,
+			workflowFinderService,
 		);
 	});
 
@@ -123,6 +125,19 @@ describe('BreakingChangesController', () => {
 			expect(ownerAssignmentService.unassign).toHaveBeenCalledWith('wf-1');
 			expect(result).toEqual({ owner: null });
 		});
+
+		it('rejects a member on a workflow they cannot edit', async () => {
+			req.user = member;
+
+			await expect(
+				controller.assignOwner(req, res, 'wf-3', { userId: 'alice' }),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			await expect(controller.unassignOwner(req, res, 'wf-3')).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+			expect(ownerAssignmentService.assign).not.toHaveBeenCalled();
+			expect(ownerAssignmentService.unassign).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('GET /report', () => {
@@ -145,24 +160,7 @@ describe('BreakingChangesController', () => {
 			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', INSTANCE);
 			expect(callOrder).toEqual(['syncIfStale', 'getLightReport']);
 			expect(syncService.sync).not.toHaveBeenCalled();
-			expect(workflowSharingService.getSharedWorkflowIdsForScopes).not.toHaveBeenCalled();
-		});
-
-		it("lists each workflow once in the scope, even when it is shared into several of the user's projects", async () => {
-			req.user = member;
-			workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue([
-				'wf-1',
-				'wf-2',
-				'wf-1',
-			]);
-			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
-
-			await controller.getDetectionReport(req, res, { version: 'v3' });
-
-			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', {
-				kind: 'workflows',
-				workflowIds: ['wf-1', 'wf-2'],
-			});
+			expect(workflowFinderService.findAllWorkflowIdsForUser).not.toHaveBeenCalled();
 		});
 
 		it('scopes the overview to the workflows a user without global edit access can edit', async () => {
@@ -171,7 +169,7 @@ describe('BreakingChangesController', () => {
 
 			await controller.getDetectionReport(req, res, { version: 'v3' });
 
-			expect(workflowSharingService.getSharedWorkflowIdsForScopes).toHaveBeenCalledWith(member, [
+			expect(workflowFinderService.findAllWorkflowIdsForUser).toHaveBeenCalledWith(member, [
 				'workflow:update',
 			]);
 			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', {
@@ -355,15 +353,30 @@ describe('BreakingChangesController', () => {
 			expect(syncService.syncIfStale).not.toHaveBeenCalled();
 		});
 
-		it('requires the global breakingChanges:migrate scope', () => {
-			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-				BreakingChangesController as Controller,
-			);
+		it('changes only the workflows that a member can edit', async () => {
+			req.user = member;
 
-			expect(metadata.routes.get('updateFindingStatuses')?.accessScope).toEqual({
-				scope: 'breakingChanges:migrate',
-				globalOnly: true,
+			await controller.updateFindingStatuses(req, res, 'removed-nodes-v3', {
+				workflowIds: ['wf-1', 'wf-3'],
+				status: 'wont_fix',
 			});
+
+			expect(triageService.setStatuses).toHaveBeenCalledWith(
+				'removed-nodes-v3',
+				['wf-1'],
+				'wont_fix',
+			);
+		});
+
+		it('changes nothing when a member can edit none of the workflows', async () => {
+			req.user = member;
+
+			await controller.updateFindingStatuses(req, res, 'removed-nodes-v3', {
+				workflowIds: ['wf-3'],
+				status: 'wont_fix',
+			});
+
+			expect(triageService.setStatuses).not.toHaveBeenCalled();
 		});
 	});
 
@@ -417,15 +430,42 @@ describe('BreakingChangesController', () => {
 			).rejects.toBeInstanceOf(NotFoundError);
 		});
 
-		it('requires the global breakingChanges:migrate scope', () => {
-			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-				BreakingChangesController as Controller,
-			);
+		it('lets a member change a workflow they can edit', async () => {
+			req.user = member;
 
-			expect(metadata.routes.get('updateFindingStatus')?.accessScope).toEqual({
-				scope: 'breakingChanges:migrate',
-				globalOnly: true,
+			await controller.updateFindingStatus(req, res, 'removed-nodes-v3', 'wf-2', {
+				status: 'wont_fix',
 			});
+
+			expect(triageService.setStatus).toHaveBeenCalledWith('removed-nodes-v3', 'wf-2', 'wont_fix');
+		});
+
+		it('rejects a member on a workflow they cannot edit', async () => {
+			req.user = member;
+
+			await expect(
+				controller.updateFindingStatus(req, res, 'removed-nodes-v3', 'wf-3', { status: 'open' }),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			expect(triageService.setStatus).not.toHaveBeenCalled();
+		});
+	});
+
+	// Editing a workflow allows triaging its findings, so these routes check workflow
+	// access in the handler. A notification emails other users and stays with admins.
+	it.each([
+		'updateFindingStatuses',
+		'updateFindingStatus',
+		'assignOwner',
+		'unassignOwner',
+		'migrateWorkflow',
+	])('%s requires only the global breakingChanges:list scope', (route) => {
+		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+			BreakingChangesController as Controller,
+		);
+
+		expect(metadata.routes.get(route)?.accessScope).toEqual({
+			scope: 'breakingChanges:list',
+			globalOnly: true,
 		});
 	});
 });
