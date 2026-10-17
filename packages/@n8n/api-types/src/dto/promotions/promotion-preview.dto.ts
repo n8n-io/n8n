@@ -96,6 +96,8 @@ export type PromotionResourceDetail = z.infer<typeof promotionResourceDetailSche
 
 export const promotionResourceDetailsSchema = z.object({
 	details: z.array(promotionResourceDetailSchema),
+	/** Requested keys that neither side holds anymore. The resource changed after the summary. */
+	missingKeys: z.array(z.string()),
 });
 
 export type PromotionResourceDetails = z.infer<typeof promotionResourceDetailsSchema>;

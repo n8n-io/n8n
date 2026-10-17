@@ -999,7 +999,7 @@ describe('resources in the preview', () => {
 		]);
 	}, 30_000);
 
-	it('returns both sides of a changed workflow from the reviewed commit and shows later local edits', async () => {
+	it('returns both sides of a changed workflow from the reviewed commit and reports later local changes', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Finance', owner);
 		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
@@ -1007,6 +1007,7 @@ describe('resources in the preview', () => {
 		await promoteBaseline(connection.id, owner);
 		const workflows = Container.get(WorkflowRepository);
 		await workflows.update(workflow.id, { name: 'Invoice v2' });
+		const draft = await createWorkflow({ name: 'Draft', nodes: [], connections: {} }, project);
 		const agent = server.authAgentFor(owner);
 		const endpoint = `/promotions/${project.id}/changes/promote`;
 		const key = `workflow:${workflow.id}`;
@@ -1032,6 +1033,8 @@ describe('resources in the preview', () => {
 
 		// A local edit after the summary changes the local blob SHA, so the card can ask for a refresh.
 		await workflows.update(workflow.id, { name: 'Invoice v3' });
+		// The draft was never promoted, so after its deletion neither side holds it.
+		await workflows.delete(draft.id);
 		await Container.get(PromotionsService).promote(connection.id, owner, {
 			commitMessage: 'Moves the branch',
 			canExportVariableValues: true,
@@ -1042,10 +1045,13 @@ describe('resources in the preview', () => {
 		expect(later.revision.before).toBe(revision.before);
 		expect(later.before).toEqual(expect.objectContaining({ name: 'Invoice' }));
 
-		await agent
+		const draftKey = `workflow:${draft.id}`;
+		const { body } = await agent
 			.post(`${endpoint}/details`)
-			.send({ commitSha: summary.commitSha, keys: ['workflow:unknown'] })
-			.expect(400);
+			.send({ commitSha: summary.commitSha, keys: [key, draftKey] })
+			.expect(200);
+		expect(body.data.details).toEqual([expect.objectContaining({ key })]);
+		expect(body.data.missingKeys).toEqual([draftKey]);
 	}, 30_000);
 
 	it('loads details before the first promotion when the repository holds only a README', async () => {
