@@ -5,7 +5,7 @@ import {
 	type ContinueApplyPackageDto,
 	type PromotionProviderType,
 } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -51,6 +51,7 @@ import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
@@ -1972,6 +1973,11 @@ describe('Apply data table changes', () => {
 				packagesService,
 				Container.get(WorkflowRepository),
 				Container.get(VariablesRepository),
+				Container.get(CredentialsRepository),
+				Container.get(TagRepository),
+				dataTableService,
+				Container.get(DataTableSerializer),
+				Container.get(ModuleRegistry),
 				mockLogger(),
 			);
 			const { changes } = await changeService.getChanges(owner, project.id, 'apply', {
