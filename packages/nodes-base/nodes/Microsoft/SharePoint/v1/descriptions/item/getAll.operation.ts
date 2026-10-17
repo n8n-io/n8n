@@ -52,6 +52,10 @@ const properties: INodeProperties[] = [
 						request: {
 							url: '={{ $response.body?.["@odata.nextLink"] ?? $request.url }}',
 							qs: {
+								$filter:
+									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$filter }}',
+								$expand:
+									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$expand }}',
 								$select:
 									'={{ !!$response.body?.["@odata.nextLink"] ? undefined : $request.qs?.$select }}',
 							},
