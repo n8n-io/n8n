@@ -309,7 +309,6 @@ export class VectorStoreDatabricks extends createVectorStoreNode<DatabricksVecto
 			},
 		],
 	},
-	hidden: true,
 	// The index decides between query_text and query_vector inside the class
 	searchByText: true,
 	methods: { listSearch: { searchIndexes }, loadOptions: { getIndexColumns } },
