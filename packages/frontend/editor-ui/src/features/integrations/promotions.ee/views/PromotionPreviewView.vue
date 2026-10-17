@@ -337,7 +337,8 @@ const treeResizer = useResizablePanel({
 }
 
 .state {
-	padding: var(--spacing--2xl) var(--spacing--xl);
+	/* The empty states draw their own border, so the space goes outside them. */
+	margin: var(--spacing--sm);
 }
 
 .panes {
