@@ -345,9 +345,10 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
 (often 10–20 minutes cold). Both can outlast a turn's limit.
 
 - **Bring the app up with one command: `pnpm dev:up`.** It installs missing
-  dependencies, starts the backend, waits for health, and prints the URL. Add
-  `--build` only when a frontend change must appear (see below).
-- **Open the app** at `https://<codespace-name>-5678.app.github.dev`. `dev:up`
+  dependencies, starts the backend and editor dev server, and prints both URLs.
+  Use `pnpm session tunnel 5678 8080` from your laptop. Then open
+  http://localhost:8080 to see frontend changes as you make them.
+- **Open the backend editor** at `https://<codespace-name>-5678.app.github.dev`. `dev:up`
   makes that port visible to the org, thus any n8n member who is signed into
   GitHub can open it. You do not need a tunnel. GitHub makes every forwarded port
   private again at each container start, so `dev:up` shares it again on each run.
@@ -359,9 +360,9 @@ session rarely needs a cold `pnpm install` or a full `pnpm build`. Both are slow
 - **`pnpm dev` no longer exists.** Use `pnpm dev:be` for the backend (on 5678).
   Use `pnpm dev:fe:editor` for the editor UI with hot reload (on 8080).
 - **`dev:be` serves the editor from the `dist` build.** So a frontend edit does
-  not hot-reload there. Run `pnpm dev:up --build` (or `pnpm build`) and restart
-  to show it. For live frontend hot reload, use `pnpm dev:fe:editor`. That path
-  needs `pnpm session tunnel 5678 8080` from your laptop. Its API base is set to
+  not hot-reload on port 5678. Run `pnpm dev:up --build` to update that static
+  build. For live frontend hot reload, open port 8080 after you run
+  `pnpm session tunnel 5678 8080` from your laptop. Its API base is set to
   `localhost:5678`, so the `-8080.app.github.dev` URL does not work on its own.
 - Run `pnpm install` only when the dependencies change. `pnpm build` reuses the
   turbo cache and is fast when warm.
@@ -459,11 +460,9 @@ Attaching lands you in the agent (Claude), not a shell — open a shell in a new
 tmux window with `Ctrl-b c` (or ask the agent), then pick a dev server and open
 the matching port:
 
-- `pnpm dev:up` — backend on **5678** (editor served from the `dist` build).
-  Open http://localhost:5678.
-- `pnpm dev:fe:editor` — editor UI with hot reload on **8080**. Open
-  http://localhost:8080. It needs the backend on 5678 too, so run `pnpm dev:up`
-  alongside it.
+- `pnpm dev:up` — backend on **5678** and editor UI with hot reload on **8080**.
+  Open http://localhost:8080 for frontend changes. The backend on
+  http://localhost:5678 serves the editor from the `dist` build.
 
 The tunnel prints nothing while forwarding — that's normal. `Connection
 refused` means nothing is listening on that port in the codespace yet; it
