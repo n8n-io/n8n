@@ -8,6 +8,7 @@ import { toErrorWorkflowContext } from 'n8n-workflow';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
+import { staticErrorWorkflowId } from '@/workflows/error-workflow-validation.service';
 import { UrlService } from '@n8n/backend-services';
 
 /**
@@ -99,7 +100,8 @@ export function executeErrorWorkflow(
 		const { errorTriggerType } = Container.get(GlobalConfig).nodes;
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
-		const { errorWorkflow } = workflowData.settings ?? {};
+		// `DEFAULT`, an empty string, and a stored expression name no concrete workflow.
+		const errorWorkflow = staticErrorWorkflowId(workflowData.settings?.errorWorkflow);
 		if (errorWorkflow && !(mode === 'error' && workflowId && errorWorkflow === workflowId)) {
 			logger.debug('Start external error workflow', {
 				executionId,

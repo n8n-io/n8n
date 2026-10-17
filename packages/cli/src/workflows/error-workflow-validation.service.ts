@@ -26,12 +26,11 @@ export type ErrorWorkflowProblem =
 /**
  * True when the setting holds an n8n expression.
  *
- * Nothing ever evaluates it. `executeErrorWorkflow` reads `settings.errorWorkflow`
- * and passes it to the error-workflow lookup verbatim, so a stored `=…` string is
- * used as a literal workflow id and can never match one — the handler silently
- * never runs. The editor's setting is a workflow picker and cannot produce this;
- * only a caller that writes settings directly (API, MCP) can. Such callers should
- * reject it rather than save a reference that is dead on arrival.
+ * Nothing ever evaluates it. A stored expression has no concrete workflow target,
+ * so `executeErrorWorkflow` does not pass the `=…` string to the error-workflow
+ * lookup. The editor's setting is a workflow picker and cannot produce this;
+ * only a caller that writes settings directly (API, MCP) can. Write-time callers
+ * must still reject it rather than save a reference that names nothing.
  */
 export function isExpressionErrorWorkflowId(
 	errorWorkflow: IWorkflowSettings['errorWorkflow'],
