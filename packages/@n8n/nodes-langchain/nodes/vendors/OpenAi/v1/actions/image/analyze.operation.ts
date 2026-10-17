@@ -206,8 +206,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				content,
 			},
 		],
-		// Newer models refuse `max_tokens` and want `max_completion_tokens`. The
-		// text operation already sends the new name (#36932).
 		max_completion_tokens: (options.maxTokens as number) || 300,
 	};
 
