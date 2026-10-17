@@ -569,7 +569,7 @@ Runs on push to `master`:
 ```
 Push to master
 ├─ build-and-format (Blacksmith: build, then format check; populate master cache)
-├─ unit-test (matrix: Node 24.18.1, 26.5.1)
+├─ unit-test (matrix: Node 24.18.1, 26.10.0)
 │   └─ Coverage only on 24.18.1
 ├─ lint
 ├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
@@ -652,7 +652,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '26.5.1'
+  node-version:        # default: '26.10.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'

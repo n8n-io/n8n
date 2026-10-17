@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [24.18.1, 26.5.1]
+        node-version: [24.18.1, 26.10.0]
     with:
       ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
