@@ -254,21 +254,33 @@ export class ZendeskTrigger implements INodeType {
 				// ── Step 2: confirm our specific trigger still exists ────────────────
 				// If we have no stored trigger ID this is a fresh activation (e.g. first
 				// run, or the workflow was duplicated). Fall through to create().
-				if (webhookData.webhookId === undefined) {
+				const storedWebhookId =
+					webhookData.webhookId !== undefined && webhookData.webhookId !== null
+						? String(webhookData.webhookId)
+						: undefined;
+
+				if (!storedWebhookId) {
 					return false;
 				}
 
 				// https://developer.zendesk.com/api-reference/ticketing/business-rules/triggers/#list-triggers
 				const triggers: Array<{
-					id: string | number;
-					actions: Array<{ field: string; value: string[] }>;
+					id?: string | number;
+					actions?: Array<{ field?: string; value?: unknown }>;
 				}> = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', '/triggers/active');
 
 				const ourTriggerExists = triggers.some(
 					(trigger) =>
-						trigger.id.toString() === (webhookData.webhookId as string).toString() &&
-						trigger.actions[0]?.field === 'notification_webhook' &&
-						trigger.actions[0]?.value[0]?.toString() === matchingWebhook.id,
+						trigger?.id !== undefined &&
+						trigger.id !== null &&
+						String(trigger.id) === storedWebhookId &&
+						trigger.actions?.some(
+							(action) =>
+								action?.field === 'notification_webhook' &&
+								(Array.isArray(action.value)
+									? String(action.value[0]) === String(matchingWebhook.id)
+									: String(action.value) === String(matchingWebhook.id)),
+						),
 				);
 
 				if (ourTriggerExists) {
@@ -307,7 +319,7 @@ export class ZendeskTrigger implements INodeType {
 					if (conditionsAll) {
 						for (const conditionAll of conditionsAll) {
 							const aux: IDataObject = {};
-							aux.field = conditionAll.field;
+							aux.field = (conditionAll.field as string) || 'status';
 							aux.operator = conditionAll.operation;
 							if (
 								conditionAll.operation !== 'changed' &&
@@ -325,7 +337,7 @@ export class ZendeskTrigger implements INodeType {
 					if (conditionsAny) {
 						for (const conditionAny of conditionsAny) {
 							const aux: IDataObject = {};
-							aux.field = conditionAny.field;
+							aux.field = (conditionAny.field as string) || 'status';
 							aux.operator = conditionAny.operation;
 							if (
 								conditionAny.operation !== 'changed' &&
@@ -414,13 +426,20 @@ export class ZendeskTrigger implements INodeType {
 					// own trigger pointing at the same Zendesk webhook — deleting the webhook
 					// would silently break the sibling workflow's incoming events.
 					const remainingTriggers: Array<{
-						actions: Array<{ field: string; value: unknown[] }>;
+						actions?: Array<{ field?: string; value?: unknown }>;
 					}> = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', '/triggers/active');
 
 					const webhookStillInUse = remainingTriggers.some(
 						(trigger) =>
-							trigger.actions[0]?.field === 'notification_webhook' &&
-							String(trigger.actions[0]?.value[0]) === String(webhookData.targetId),
+							!trigger?.actions ||
+							!Array.isArray(trigger.actions) ||
+							trigger.actions.some(
+								(action) =>
+									action?.field === 'notification_webhook' &&
+									(Array.isArray(action.value)
+										? String(action.value[0]) === String(webhookData.targetId)
+										: String(action.value) === String(webhookData.targetId)),
+							),
 					);
 
 					if (!webhookStillInUse) {
