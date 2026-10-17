@@ -163,6 +163,23 @@ const properties: INodeProperties[] = [
 				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
+				displayName: 'In Reply To',
+				name: 'inReplyTo',
+				type: 'string',
+				default: '',
+				placeholder: '<msg-123@email.example.com>',
+				description: 'The Message ID of the email this message is replying to',
+			},
+			{
+				displayName: 'References',
+				name: 'references',
+				type: 'string',
+				default: '',
+				placeholder: '<msg-123@email.example.com> <msg-456@email.example.com>',
+				description:
+					'A whitespace-separated list of Message-IDs. If left empty, the value from In Reply To is automatically included.',
+			},
+			{
 				displayName: 'Reply To',
 				name: 'replyTo',
 				type: 'string',
@@ -204,6 +221,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const ccEmail = toMailString(options.ccEmail);
 			const bccEmail = toMailString(options.bccEmail);
+			const inReplyTo = toMailString(options.inReplyTo);
 			const replyTo = toMailString(options.replyTo);
 
 			const transporter = configureTransport(credentials, options);
@@ -213,6 +231,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				to: toEmail,
 				cc: ccEmail,
 				bcc: bccEmail,
+				inReplyTo,
 				subject,
 				replyTo,
 			};
@@ -278,6 +297,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				if (attachments.length) {
 					mailOptions.attachments = attachments;
 				}
+			}
+
+			if (options.inReplyTo && !options.references) {
+				mailOptions.references = mailOptions.inReplyTo;
+			} else if (options.references) {
+				mailOptions.references = options.references;
 			}
 
 			const info = await transporter.sendMail(mailOptions);
