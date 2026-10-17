@@ -51,6 +51,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	CONCISE_PROMPT_VERSION,
+	SELF_HEALING_PROFILE_VERSION,
 	MAX_STEPS,
 	assertInstanceAiPromptVersion,
 	createInstanceAgent,
@@ -253,6 +254,12 @@ import { InstanceAiObservationRepository } from './repositories/instance-ai-obse
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import {
+	SelfHealingAgentService,
+	type SelfHealingRunInput,
+	type SelfHealingRunLifecycle,
+	type SelfHealingRunResult,
+} from './self-healing/self-healing-agent.service';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
@@ -872,6 +879,7 @@ export class InstanceAiService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly selfHealingAgent: SelfHealingAgentService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -946,7 +954,7 @@ export class InstanceAiService {
 			settingsService: this.settingsService,
 			aiService: this.aiService,
 			resolveTracingConfig: async (threadId, userId) => {
-				const ownerId = userId ?? (await this.agentMemory.getThread(threadId))?.resourceId;
+				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
@@ -1503,6 +1511,76 @@ export class InstanceAiService {
 				);
 			}
 		}
+	}
+
+	/** Run one internal investigation under the normal host lifecycle. */
+	async startSelfHealingRun(
+		input: SelfHealingRunInput,
+		lifecycle: SelfHealingRunLifecycle,
+	): Promise<SelfHealingRunResult> {
+		this.selfHealingAgent.assertEnabled();
+		this.assertRunAdmissible(input.user);
+		const { threadId } = lifecycle;
+		this.liveness.clearThreadState(threadId);
+		const { runId, abortController, messageGroupId } = this.runState.startRun({
+			threadId,
+			runId: lifecycle.runId,
+			user: input.user,
+		});
+
+		const execution = this.selfHealingAgent
+			.execute(input, {
+				threadId,
+				runId,
+				messageGroupId,
+				signal: abortController.signal,
+				sandbox: this.sandboxService,
+				tracing: this.tracing,
+				createProxyRunConfig: async () => await this.createProxyRunConfig(input.user),
+				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
+				onActivity: () => this.runState.touchActiveRun(threadId),
+				onComplete: lifecycle.onComplete,
+				getAbortReason: () => {
+					if (this.liveness.consumeRunTimeout(runId).timedOut)
+						return INSTANCE_AI_RUN_TIMEOUT_REASON;
+					if (quotaExhaustedFromSignal(abortController.signal)) return 'quota_exhausted';
+
+					return getAbortReason(abortController.signal);
+				},
+				onFinish: (result, modelId, stream) => {
+					const status = result.status === 'suspended' ? 'errored' : result.status;
+
+					// A committed completion supersedes cancellation published during shutdown.
+					if (abortController.signal.reason !== 'service_shutdown' || status === 'completed') {
+						this.publishRunFinish(
+							threadId,
+							runId,
+							status,
+							result.reason ?? result.finishReason,
+							undefined,
+							input.user.id,
+							{
+								modelId,
+								promptVersion: SELF_HEALING_PROFILE_VERSION,
+							},
+						);
+					}
+
+					this.emitRunMetrics(threadId, status, {
+						modelId,
+						workSummary: stream?.workSummary,
+						usage: stream?.usage,
+					});
+				},
+			})
+			.finally(() => {
+				this.runState.clearActiveRun(threadId);
+				this.liveness.clearThreadState(threadId);
+			});
+
+		this.trackInFlightExecution(execution);
+
+		return await execution;
 	}
 
 	startRun(
@@ -2091,6 +2169,9 @@ export class InstanceAiService {
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
+			// Already cancelled runs report their own completion during the shutdown drain.
+			if (run.abortController.signal.aborted) continue;
+
 			// Runs holding an inline HITL confirmation (`create-tasks`,
 			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
@@ -2126,11 +2207,11 @@ export class InstanceAiService {
 				undefined,
 				{ promptVersion: run.promptVersion },
 			);
+			run.abortController.abort('service_shutdown');
 			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
-			run.abortController.abort();
 		}
 		for (const run of suspendedRuns) {
 			// Suspended runs are recoverable from the checkpoint store + pending
@@ -2206,9 +2287,10 @@ export class InstanceAiService {
 	 * tracking together in one method.
 	 */
 	private trackInFlightExecution(promise: Promise<unknown>): void {
-		const tracked = promise.finally(() => {
+		const clear = () => {
 			this.inFlightExecutions.delete(tracked);
-		});
+		};
+		const tracked = promise.then(clear, clear);
 		this.inFlightExecutions.add(tracked);
 	}
 
@@ -2600,6 +2682,11 @@ export class InstanceAiService {
 		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
 	) {
 		const memory = this.agentMemory;
+		const thread = await memory.getThread(threadId);
+		if (thread && thread.resourceId !== user.id) {
+			throw new ForbiddenError('Not authorized for this thread');
+		}
+
 		const boundProjectId = await memory.getThreadProjectId(threadId);
 		if (!boundProjectId) {
 			throw new UnexpectedError(
@@ -2674,7 +2761,6 @@ export class InstanceAiService {
 		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
 		// starts a build, so a thread that left gets the tool no more.
-		const thread = await memory.getThread(threadId);
 		const onboardingThread =
 			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
 		const context = this.adapterService.createContext(user, {
@@ -7017,7 +7103,7 @@ export class InstanceAiService {
 				status: effectiveStatus,
 				...(status === 'cancelled'
 					? { reason: reason ?? 'user_cancelled' }
-					: status === 'errored' && reason
+					: reason
 						? { reason }
 						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),

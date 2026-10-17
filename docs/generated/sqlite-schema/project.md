@@ -20,7 +20,7 @@ CREATE TABLE "project" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(25
 | customTelemetryTags | TEXT | '[]' | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [activity_event](activity_event.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [ai_preference](ai_preference.md) [data_table](data_table.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [project_pool_settings](project_pool_settings.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [promotion_connection_project](promotion_connection_project.md) [role_mapping_rule_project](role_mapping_rule_project.md) [self_healing_result](self_healing_result.md) [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [skill](skill.md) [type_availability_policy_scope](type_availability_policy_scope.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) [workflow_suggestion](workflow_suggestion.md) |  |  |
+| id | varchar(36) |  | false | [activity_event](activity_event.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [ai_preference](ai_preference.md) [data_table](data_table.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [project_pool_settings](project_pool_settings.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [promotion_connection_project](promotion_connection_project.md) [role_mapping_rule_project](role_mapping_rule_project.md) [self_healing_investigation](self_healing_investigation.md) [self_healing_result](self_healing_result.md) [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [skill](skill.md) [type_availability_policy_scope](type_availability_policy_scope.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) [workflow_suggestion](workflow_suggestion.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -59,6 +59,7 @@ erDiagram
 "project_secrets_provider_access" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_connection_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_investigation" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_credentials" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -231,6 +232,20 @@ erDiagram
 "role_mapping_rule_project" {
   varchar_36_ projectId PK
   varchar_16_ roleMappingRuleId PK
+}
+"self_healing_investigation" {
+  varchar backgroundUserId FK
+  TEXT baseline
+  datetime_3_ createdAt
+  varchar_36_ executionId
+  datetime_3_ finishedAt
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_36_ resultId FK
+  varchar runId
+  varchar threadId
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "self_healing_result" {
   varchar backgroundUserId FK

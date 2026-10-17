@@ -5,7 +5,10 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
-	/** Enable workflow suggestion runtime integrations at startup. */
+	/**
+	 * Enable workflow suggestions, self-healing investigations, and result review.
+	 * Restart n8n after changing this setting.
+	 */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
 	workflowSuggestionsEnabled: boolean = false;
 

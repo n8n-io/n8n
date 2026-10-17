@@ -32,11 +32,12 @@ export function substituteSkillPlaceholders(instructions: string): string {
 }
 
 /**
- * Every bundled runtime skill. The sandbox image, the snapshot and each sandbox
+ * Bundled skills for ordinary Assistant runs. The sandbox image, snapshot, and each sandbox
  * store this set. Hide gated skills per run with `disabledInstanceAiSkillIds`.
  */
 export function loadInstanceAiRuntimeSkillSource(): RuntimeSkillSource {
 	cachedRuntimeSkillSource ??= loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
+		exclude: ['self-healing'],
 		transformInstructions: substituteSkillPlaceholders,
 	});
 	return cachedRuntimeSkillSource;
