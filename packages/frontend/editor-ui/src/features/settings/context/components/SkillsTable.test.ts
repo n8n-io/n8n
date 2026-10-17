@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import type { SkillDetail, SkillListItem } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
-import { waitFor, within } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 
 import SkillsTable from './SkillsTable.vue';
 import { useSkillsStore } from '../skills.store';
@@ -31,6 +31,8 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		latestVersionLabel: null,
+		latestVersionSavedBy: null,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
@@ -138,7 +140,15 @@ describe('SkillsTable', () => {
 		const skillsStore = mockedStore(useSkillsStore);
 		skillsStore.fetchSkill.mockResolvedValue({
 			usedBy: {
-				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1' }],
+				drafts: [
+					{
+						agentId: 'a1',
+						agentName: 'FirstClassDarwin',
+						projectId: 'p1',
+						version: 1,
+						pinned: false,
+					},
+				],
 				pins: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1', version: 1 }],
 				hiddenAgents: 0,
 			},
@@ -151,6 +161,150 @@ describe('SkillsTable', () => {
 		expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1');
 		// A draft and a published version of one agent show as one entry.
 		expect(await findAllByText('FirstClassDarwin')).toHaveLength(1);
+	});
+
+	it('shows the version each agent uses next to its name', async () => {
+		const skillsStore = mockedStore(useSkillsStore);
+		skillsStore.fetchSkill.mockResolvedValue({
+			usedBy: {
+				drafts: [
+					{ agentId: 'a1', agentName: 'Support bot', projectId: 'p1', version: 4, pinned: false },
+					{
+						agentId: 'a2',
+						agentName: 'Returns triage',
+						projectId: 'p1',
+						version: 4,
+						pinned: false,
+					},
+					{ agentId: 'a3', agentName: 'Billing agent', projectId: 'p1', version: 3, pinned: true },
+				],
+				pins: [
+					{ agentId: 'a2', agentName: 'Returns triage', projectId: 'p1', version: 3 },
+					{ agentId: 'a4', agentName: 'Live only', projectId: 'p1', version: 2 },
+				],
+				hiddenAgents: 0,
+			},
+		} as SkillDetail);
+		const { getByTestId } = render([skill({ usedByAgents: 4, latestVersion: 4 })]);
+
+		await userEvent.click(getByTestId('skill-agents-trigger'));
+
+		await waitFor(() =>
+			expect(document.querySelectorAll('[data-test-id="skill-agents-version"]')).toHaveLength(4),
+		);
+		const badges = [...document.querySelectorAll('[data-test-id="skill-agents-version"]')];
+		expect(badges.map((badge) => badge.textContent?.trim())).toEqual([
+			'Latest (v4)',
+			'Latest (v4)',
+			'v3',
+			'Published (v2)',
+		]);
+		// No published agent runs it, the published agent is behind, pinned, published.
+		expect(badges.map((badge) => badge.className)).toEqual([
+			expect.stringMatching(/warning/),
+			expect.stringMatching(/warning/),
+			expect.stringMatching(/outline/),
+			expect.stringMatching(/success/),
+		]);
+		expect(badges[2].querySelector('svg')).not.toBeNull();
+		expect(document.querySelector('[data-test-id="skill-agents-menu"]')).toHaveTextContent(
+			'Used by',
+		);
+
+		await userEvent.hover(badges[1]);
+		expect(await screen.findByText('Published agent uses v3')).toBeInTheDocument();
+	});
+
+	it('names the agent count in the trigger label', () => {
+		const { getByTestId } = render([skill({ usedByAgents: 3 })]);
+
+		expect(getByTestId('skill-agents-trigger')).toHaveAttribute('aria-label', 'Show 3 agents');
+	});
+
+	it('shows a draft as latest when the published agent runs the same content', async () => {
+		const skillsStore = mockedStore(useSkillsStore);
+		skillsStore.fetchSkill.mockResolvedValue({
+			usedBy: {
+				drafts: [
+					{
+						agentId: 'a1',
+						agentName: 'Support bot',
+						projectId: 'p1',
+						version: 10,
+						pinned: false,
+						liveHasSameContent: true,
+					},
+				],
+				pins: [{ agentId: 'a1', agentName: 'Support bot', projectId: 'p1', version: 7 }],
+				hiddenAgents: 0,
+			},
+		} as SkillDetail);
+		const { getByTestId, findByText } = render([skill({ usedByAgents: 1, latestVersion: 10 })]);
+
+		await userEvent.click(getByTestId('skill-agents-trigger'));
+
+		const badge = await waitFor(() => {
+			const found = document.querySelector('[data-test-id="skill-agents-version"]');
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		expect(badge).toHaveTextContent('Latest (v10)');
+		expect(badge.className).toMatch(/success/);
+		await userEvent.hover(badge);
+		expect(await findByText('Same content as the published v7')).toBeInTheDocument();
+	});
+
+	it('shows the latest version and its name', () => {
+		const { getAllByTestId, getByTestId } = render([
+			skill({ id: 's1', latestVersion: 4, latestVersionLabel: 'EU rules' }),
+			skill({ id: 's2', latestVersion: 2 }),
+		]);
+
+		const [named, unnamed] = getAllByTestId('skills-table-version');
+		expect(named).toHaveTextContent('v4');
+		expect(getByTestId('skills-table-version-label')).toHaveTextContent('EU rules');
+		expect(unnamed).toHaveTextContent('v2');
+		expect(within(unnamed).queryByTestId('skills-table-version-label')).not.toBeInTheDocument();
+	});
+
+	it('shows who saved the latest version', () => {
+		const { getByTestId } = render([
+			skill({
+				latestVersionSavedBy: {
+					id: 'u1',
+					email: 'ada@example.com',
+					firstName: 'Ada',
+					lastName: null,
+				},
+			}),
+		]);
+
+		expect(getByTestId('skill-updated-by')).toHaveTextContent('by Ada');
+	});
+
+	it.each(['timeline', 'compare'] as const)('emits open with the %s view', async (view) => {
+		const row = skill({ latestVersion: 3 });
+		const { getByTestId, emitted } = render([row]);
+
+		await openActions(getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector(`[data-test-id="action-${view}"]`)).toBeInTheDocument(),
+		);
+		await userEvent.click(document.querySelector(`[data-test-id="action-${view}"]`)!);
+
+		expect(emitted('open')).toEqual([[row, view]]);
+	});
+
+	it('disables Compare versions for a skill with one version', async () => {
+		const { getByTestId } = render([skill({ latestVersion: 1 })]);
+
+		await openActions(getByTestId('skills-table'));
+
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-compare"]')).toHaveAttribute(
+				'data-disabled',
+			),
+		);
 	});
 
 	it('emits open when a row is clicked', async () => {

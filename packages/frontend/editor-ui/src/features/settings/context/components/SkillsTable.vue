@@ -8,11 +8,16 @@ import { useUsersStore } from '@n8n/stores/users.store';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
+import { skillUserName } from '@/features/agents/components/skillVersions/skillVersionDiff.utils';
+
 import SkillAgentsCell from './SkillAgentsCell.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 
-type SkillAction = 'edit' | 'delete';
+type SkillAction = 'edit' | 'timeline' | 'compare' | 'delete';
+
+/** Opens the skill with its timeline, or comparing its two newest versions. */
+export type SkillOpenView = 'timeline' | 'compare';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -21,6 +26,7 @@ type SkillActionItem = {
 	disabled?: boolean;
 	tooltip?: string;
 	destructive?: boolean;
+	divided?: boolean;
 };
 
 const props = defineProps<{
@@ -32,7 +38,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	open: [skill: SkillListItem];
+	open: [skill: SkillListItem, view?: SkillOpenView];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
 }>();
@@ -68,17 +74,29 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			),
 		},
 		{
+			value: 'timeline',
+			label: i18n.baseText('settings.context.skills.versions.actions.timeline'),
+		},
+		{
+			value: 'compare',
+			label: i18n.baseText('settings.context.skills.versions.actions.compare'),
+			// One version has nothing to compare with.
+			disabled: skill.latestVersion < 2,
+		},
+		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
 			disabled: !canDeleteNow(skill),
 			tooltip: deleteHint(skill),
 			destructive: true,
+			divided: true,
 		},
 	];
 }
 
 function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
+	else if (action === 'timeline' || action === 'compare') emit('open', skill, action);
 	else emit('delete', skill);
 }
 
@@ -92,35 +110,42 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
-		width: 300,
+		width: 280,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
-		width: 220,
+		width: 170,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.context.skills.versions.column'),
+		key: 'latestVersion',
+		width: 100,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.agents'),
 		key: 'usedByAgents',
-		width: 110,
+		width: 90,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.createdBy'),
 		key: 'createdBy',
-		width: 220,
+		width: 200,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
-		width: 130,
+		width: 140,
 		disableSort: true,
 		resize: false,
 	},
@@ -169,6 +194,27 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 				<SkillScopeBadge :skill="item" />
 			</template>
 
+			<template #[`item.latestVersion`]="{ item }">
+				<div :class="$style.versionCell" data-test-id="skills-table-version">
+					<N8nText size="small" color="text-dark">
+						{{
+							i18n.baseText('settings.context.skills.versions.number', {
+								interpolate: { version: String(item.latestVersion) },
+							})
+						}}
+					</N8nText>
+					<N8nText
+						v-if="item.latestVersionLabel"
+						size="small"
+						color="text-light"
+						:class="$style.description"
+						data-test-id="skills-table-version-label"
+					>
+						{{ item.latestVersionLabel }}
+					</N8nText>
+				</div>
+			</template>
+
 			<template #[`item.usedByAgents`]="{ item }">
 				<SkillAgentsCell :skill="item" />
 			</template>
@@ -189,9 +235,24 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			</template>
 
 			<template #[`item.updatedAt`]="{ item }">
-				<N8nText size="small" color="text-light" data-test-id="skill-updated-at">
-					<TimeAgo :date="item.updatedAt" />
-				</N8nText>
+				<div :class="$style.versionCell">
+					<N8nText size="small" color="text-light" data-test-id="skill-updated-at">
+						<TimeAgo :date="item.updatedAt" />
+					</N8nText>
+					<N8nText
+						v-if="skillUserName(item.latestVersionSavedBy)"
+						size="small"
+						color="text-light"
+						:class="$style.description"
+						data-test-id="skill-updated-by"
+					>
+						{{
+							i18n.baseText('settings.context.skills.versions.savedBy', {
+								interpolate: { name: skillUserName(item.latestVersionSavedBy) ?? '' },
+							})
+						}}
+					</N8nText>
+				</div>
 			</template>
 
 			<template #[`item.actions`]="{ item }">
@@ -210,6 +271,13 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 <style lang="scss" module>
 .skillCell {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.versionCell {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);

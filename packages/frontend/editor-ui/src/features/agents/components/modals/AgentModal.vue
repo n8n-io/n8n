@@ -27,6 +27,8 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		/** Replaces "Cancel", for example with "Close" where nothing is aborted. */
+		cancelLabel?: string;
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
 		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
@@ -45,6 +47,7 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		cancelLabel: undefined,
 		bodyScrollable: true,
 		bodyFlush: false,
 		stableHeight: false,
@@ -238,7 +241,7 @@ function onOpenAutoFocus(event: Event) {
 							data-testid="agent-modal-cancel"
 							@click="close"
 						>
-							{{ i18n.baseText('generic.cancel') }}
+							{{ props.cancelLabel ?? i18n.baseText('generic.cancel') }}
 						</N8nButton>
 						<slot name="footerActions" />
 					</div>

@@ -137,7 +137,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 7 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_version](public.skill_version.md) | 11 |  | BASE TABLE |
+| [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
@@ -1735,6 +1735,7 @@ erDiagram
   json frontmatter
   uuid id
   text instructions
+  varchar_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
   timestamp_3__with_time_zone updatedAt

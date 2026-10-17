@@ -410,7 +410,103 @@ describe('SkillRepository', () => {
 				name: 'Tone',
 				description: 'How we sound',
 				version: 2,
+				label: null,
+				createdById: null,
 			});
+		});
+
+		it('stores the label of a saved version and returns it in the summary', async () => {
+			const id = await createSkill();
+			await skills.insertSavedVersion(
+				id,
+				2,
+				content({ instructions: 'v2' }),
+				user.id,
+				{},
+				{
+					label: 'Launch copy',
+				},
+			);
+
+			expect((await skills.findLatestSummaries([id])).get(id)).toMatchObject({
+				version: 2,
+				label: 'Launch copy',
+				createdById: user.id,
+			});
+		});
+
+		it('lists the versions of one skill newest first, without content', async () => {
+			const id = await createSkill();
+			await skills.insertSavedVersion(
+				id,
+				2,
+				content({ instructions: 'v2' }),
+				user.id,
+				{},
+				{
+					label: 'Named',
+				},
+			);
+			await createSkill();
+
+			const list = await skills.findVersionList(id);
+
+			expect(list.map((version) => [version.version, version.label])).toEqual([
+				[2, 'Named'],
+				[1, null],
+			]);
+			expect(list[0].createdById).toBe(user.id);
+			expect(list[0].createdAt).toBeInstanceOf(Date);
+			expect(list[0]).not.toHaveProperty('instructions');
+		});
+
+		it('finds one version by number with its files', async () => {
+			const id = await createSkill();
+			await skills.insertSavedVersion(
+				id,
+				2,
+				content({ instructions: 'v2', files: [{ path: 'references/a.md', content: 'a' }] }),
+				null,
+			);
+
+			const found = await skills.findVersionByNumber(id, 1);
+
+			expect(found?.version).toMatchObject({ version: 1, instructions: 'Use short sentences.' });
+			expect(found?.files).toEqual([]);
+			expect((await skills.findVersionByNumber(id, 2))?.files.map((f) => f.content)).toEqual(['a']);
+			expect(await skills.findVersionByNumber(id, 3)).toBeUndefined();
+			expect(await skills.findVersionByNumber('skill_unknown', 1)).toBeUndefined();
+		});
+
+		it('names and unnames one version, and leaves the content and the list order alone', async () => {
+			const id = await createSkill();
+			const other = await createSkill();
+			const before = (await skills.findByIds([id]))[0].updatedAt;
+
+			const named = await skills.updateVersionLabel(id, 1, 'First');
+
+			expect(named).toMatchObject({ version: 1, label: 'First' });
+			expect((await skills.findVersionByNumber(id, 1))?.version.contentHash).toBe(
+				skillContentHash(content()),
+			);
+			expect((await skills.findByIds([id]))[0].updatedAt).toEqual(before);
+			expect((await skills.findVersionByNumber(other, 1))?.version.label).toBeNull();
+			expect((await skills.updateVersionLabel(id, 1, null))?.label).toBeNull();
+		});
+
+		it('names no version of a missing number', async () => {
+			const id = await createSkill();
+
+			expect(await skills.updateVersionLabel(id, 5, 'Nope')).toBeUndefined();
+		});
+
+		it('maps version ids to their skill and number', async () => {
+			const id = await createSkill();
+			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+
+			const numbers = await skills.findVersionNumbers([v2, randomUUID()]);
+
+			expect([...numbers]).toEqual([[v2, { skillId: id, version: 2 }]]);
 		});
 
 		it('resolves the latest of three versions with its own files', async () => {
@@ -455,6 +551,23 @@ describe('SkillRepository', () => {
 	});
 
 	describe('pins', () => {
+		it('maps each skill of one published agent version to the number it pins', async () => {
+			const a = await createSkill();
+			const b = await createSkill();
+			const agent = await createAgent('Published');
+			const agentVersion = await publish(agent.id);
+			const b2 = await skills.insertSavedVersion(b, 2, content({ instructions: 'v2' }), null);
+			await skills.insertPins([
+				{ agentVersionId: agentVersion, skillId: a, skillVersionId: await latestVersionId(a) },
+				{ agentVersionId: agentVersion, skillId: b, skillVersionId: b2 },
+			]);
+
+			const numbers = await skills.findPinnedVersionNumbers(agentVersion);
+
+			expect(Object.fromEntries(numbers)).toEqual({ [a]: 1, [b]: 2 });
+			expect((await skills.findPinnedVersionNumbers(randomUUID())).size).toBe(0);
+		});
+
 		it('finds the pinned version of each skill of one published agent version', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
@@ -596,7 +709,14 @@ describe('SkillRepository', () => {
 			const usage = await skills.findUsage(id);
 
 			expect(usage.drafts).toEqual([
-				{ agentId: drafting.id, agentName: 'Drafting', projectId: project.id },
+				{
+					agentId: drafting.id,
+					agentName: 'Drafting',
+					projectId: project.id,
+					version: 2,
+					pinned: false,
+					liveHasSameContent: false,
+				},
 			]);
 			expect(usage.pins).toHaveLength(2);
 			expect(usage.pins).toEqual(
@@ -623,10 +743,70 @@ describe('SkillRepository', () => {
 			const usage = await skills.findUsage(id, [project.id]);
 
 			expect(usage).toEqual({
-				drafts: [{ agentId: visible.id, agentName: 'Visible', projectId: project.id }],
+				drafts: [
+					{
+						agentId: visible.id,
+						agentName: 'Visible',
+						projectId: project.id,
+						version: 1,
+						pinned: false,
+						liveHasSameContent: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 2,
 			});
+		});
+
+		it('shows the version a pinned draft runs', async () => {
+			const id = await createSkill();
+			const v1 = await latestVersionId(id);
+			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+			const pinned = await createAgent('Pinned');
+			await skills.replaceDependencies(pinned.id, [{ skillId: id, versionId: v1 }]);
+
+			const usage = await skills.findUsage(id);
+
+			expect(usage.drafts).toEqual([
+				{
+					agentId: pinned.id,
+					agentName: 'Pinned',
+					projectId: project.id,
+					version: 1,
+					pinned: true,
+					liveHasSameContent: false,
+				},
+			]);
+		});
+
+		it('marks a draft whose version has the same content as the published version', async () => {
+			const id = await createSkill();
+			const v1 = await latestVersionId(id);
+			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+			// A restore of v1 saves its content again as v3.
+			await skills.insertSavedVersion(id, 3, content(), null);
+			const restored = await createAgent('Restored');
+			await skills.replaceDependencies(restored.id, [{ skillId: id }]);
+			const changed = await createAgent('Changed');
+			await skills.replaceDependencies(changed.id, [{ skillId: id }]);
+			const v2 = (await skills.findVersionByNumber(id, 2))!.version.id;
+			for (const [agentId, skillVersionId] of [
+				[restored.id, v1],
+				[changed.id, v2],
+			]) {
+				const agentVersionId = await publish(agentId);
+				await agents.update({ id: agentId }, { activeVersionId: agentVersionId });
+				await skills.insertPins([{ agentVersionId, skillId: id, skillVersionId }]);
+			}
+
+			const usage = await skills.findUsage(id);
+
+			expect(usage.drafts).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ agentId: restored.id, version: 3, liveHasSameContent: true }),
+					expect.objectContaining({ agentId: changed.id, version: 3, liveHasSameContent: false }),
+				]),
+			);
 		});
 
 		it('is empty for a skill nobody uses', async () => {

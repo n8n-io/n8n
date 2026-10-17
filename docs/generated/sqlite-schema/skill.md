@@ -117,6 +117,7 @@ erDiagram
   TEXT frontmatter
   varchar id PK
   TEXT instructions
+  VARCHAR_128_ label
   varchar_128_ name
   varchar_36_ skillId FK
   datetime_3_ updatedAt

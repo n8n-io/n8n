@@ -9,7 +9,7 @@ export type SkillFrontmatter = Record<string, unknown>;
 
 /**
  * One saved version of a skill. A Save that changes the content adds the next number;
- * a version never changes. Agents read the latest one unless a revert pinned an older one.
+ * the content of a version never changes, only its `label`. Agents read the latest one unless a revert pinned an older one.
  */
 @Entity({ name: 'skill_version' })
 @Index(['skillId', 'version'], { unique: true })
@@ -43,6 +43,10 @@ export class SkillVersion extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 64 })
 	contentHash: string;
+
+	/** Optional name a user gives this version ("Name version"). The content stays the same. */
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	label: string | null;
 
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;

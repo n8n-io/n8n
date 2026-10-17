@@ -5,6 +5,7 @@ import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
 import type { AgentBackgroundJobSignal } from './background-job';
 import type { ProviderAttachmentCapabilities } from './provider-capabilities';
+import type { SkillScope } from './skills.schema';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
 
@@ -213,6 +214,28 @@ export interface AgentSkill {
 	instructions: string;
 	allowedTools?: string[];
 	references?: AgentSkillReference[];
+}
+
+/**
+ * The versions of one attached hub skill, as the agent builder shows them. Numbers
+ * are `skill_version.version`.
+ */
+export interface AgentSkillVersionInfo {
+	/** The version the draft runs: the pinned one, else the latest. */
+	draft: number;
+	/** The version the published agent runs. Null when no published version uses the skill. */
+	live: number | null;
+	/** The newest saved version of the skill. */
+	latest: number;
+	/** True when the draft ref is pinned to a version. */
+	pinned: boolean;
+	/**
+	 * True when `live` is set, differs from `draft`, and both versions have the same
+	 * content. A restore saves old content as a new version, so the numbers can differ.
+	 */
+	liveHasSameContent: boolean;
+	/** Where the skill lives: the agent's project, this agent only, or the instance. */
+	scope: SkillScope;
 }
 
 export interface AgentConfigResponse {

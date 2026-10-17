@@ -57,6 +57,8 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		latestVersionLabel: null,
+		latestVersionSavedBy: null,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
@@ -448,6 +450,99 @@ describe('SettingsSkillsView', () => {
 				baseSkillHash: 'hash-1',
 			});
 			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Nothing to save', type: 'info' });
+		});
+	});
+
+	describe('versions', () => {
+		function savedVersion(created = true) {
+			return {
+				id: 's1',
+				versionId: 'v2',
+				version: 2,
+				created,
+				skill: detail().skill,
+				skillHash: 'hash-2',
+			};
+		}
+
+		async function openSkill() {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			const view = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(view.getByText('research-search'));
+			await new Promise(process.nextTick);
+			return view;
+		}
+
+		it('opens a saved skill with the version UI', async () => {
+			await openSkill();
+
+			expect(lastModalData().versioned).toBe(true);
+			expect(lastModalData().initialVersionView).toBeUndefined();
+		});
+
+		it('saves with the name and the hash the modal sends', async () => {
+			skillsStore.saveSkill.mockResolvedValue(savedVersion());
+			await openSkill();
+
+			const result = await lastModalData().onConfirm({
+				id: 's1',
+				skill: detail().skill,
+				label: 'EU rules',
+				baseSkillHash: 'hash-newer',
+			});
+
+			expect(skillsStore.saveSkill).toHaveBeenCalledWith('s1', {
+				...detail().skill,
+				references: [],
+				baseSkillHash: 'hash-newer',
+				label: 'EU rules',
+			});
+			expect(result).toEqual({ saved: true, created: true });
+		});
+
+		it('tells the modal when no version was made', async () => {
+			skillsStore.saveSkill.mockResolvedValue(savedVersion(false));
+			await openSkill();
+
+			const result = await lastModalData().onConfirm({ id: 's1', skill: detail().skill });
+
+			expect(result).toEqual({ saved: true, created: false });
+		});
+
+		it.each(['timeline', 'compare'] as const)(
+			'opens the %s from the row menu',
+			async (actionView) => {
+				skillsStore.skills = [skill({ latestVersion: 3 })];
+				skillsStore.count = 1;
+				skillsStore.fetchSkill.mockResolvedValue(detail({ latestVersion: 3 }));
+				const { getByTestId } = renderView();
+				await new Promise(process.nextTick);
+
+				await userEvent.click(getByTestId('skill-actions').querySelector('button')!);
+				await waitFor(() =>
+					expect(
+						document.querySelector(`[data-test-id="action-${actionView}"]`),
+					).toBeInTheDocument(),
+				);
+				await userEvent.click(document.querySelector(`[data-test-id="action-${actionView}"]`)!);
+				await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+
+				expect(lastModalData().initialVersionView).toBe(actionView);
+			},
+		);
+
+		it('opens the view named by ?view', async () => {
+			routeQuery.skillId = 's9';
+			routeQuery.view = 'timeline';
+			skillsStore.fetchSkill.mockResolvedValue(detail({ id: 's9' }));
+
+			renderView();
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+
+			expect(lastModalData().initialVersionView).toBe('timeline');
 		});
 	});
 

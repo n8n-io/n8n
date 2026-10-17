@@ -5,6 +5,9 @@ import type {
 	SkillListResponse,
 	SkillNewNameResponse,
 	SkillSaveResponse,
+	SkillVersionDetail,
+	SkillVersionListResponse,
+	SkillVersionSummary,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -73,4 +76,44 @@ export async function saveSkill(
 
 export async function deleteSkill(context: IRestApiContext, id: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}`);
+}
+
+/** Every saved version of a skill, newest first. */
+export async function getSkillVersions(
+	context: IRestApiContext,
+	id: string,
+): Promise<SkillVersionSummary[]> {
+	const response = await makeRestApiRequest<SkillVersionListResponse>(
+		context,
+		'GET',
+		`${ENDPOINT}/${id}/versions`,
+	);
+	return response.data;
+}
+
+export async function getSkillVersion(
+	context: IRestApiContext,
+	id: string,
+	version: number,
+): Promise<SkillVersionDetail> {
+	return await makeRestApiRequest<SkillVersionDetail>(
+		context,
+		'GET',
+		`${ENDPOINT}/${id}/versions/${version}`,
+	);
+}
+
+/** Names one saved version. A null label removes the name. */
+export async function updateSkillVersionLabel(
+	context: IRestApiContext,
+	id: string,
+	version: number,
+	label: string | null,
+): Promise<SkillVersionSummary> {
+	return await makeRestApiRequest<SkillVersionSummary>(
+		context,
+		'PATCH',
+		`${ENDPOINT}/${id}/versions/${version}`,
+		{ label },
+	);
 }

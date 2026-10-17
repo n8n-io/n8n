@@ -30,11 +30,12 @@ import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
 import { isSkillNameTakenError } from '@/features/agents/utils/agentSkill';
 import type {
 	AgentSkillConfirmFailure,
+	AgentSkillConfirmSuccess,
 	AgentSkillModalData,
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
 
-import SkillsTable from '../components/SkillsTable.vue';
+import SkillsTable, { type SkillOpenView } from '../components/SkillsTable.vue';
 import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
 import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
@@ -278,7 +279,7 @@ function scopeLock(
 	return {};
 }
 
-async function openEditModal(item: Pick<SkillListItem, 'id'>) {
+async function openEditModal(item: Pick<SkillListItem, 'id'>, view?: SkillOpenView) {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
@@ -287,7 +288,8 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			...(detail.projectId ? { project_id: detail.projectId } : {}),
 			read_only: !detail.canEdit,
 		});
-		const currentValue = scopeValueOf(detail);
+		// A save that moves the skill makes the new scope the current one.
+		let currentValue = scopeValueOf(detail);
 		// The current scope is listed even when the user could not create a skill there,
 		// such as an agent skill, which is only made from inside its agent.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
@@ -297,31 +299,40 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
+			versioned: true,
+			...(view ? { initialVersionView: view } : {}),
 			scopeOptions: options,
 			initialScope: currentValue,
 			...scopeLock(detail),
 			existingSkillNames: [],
-			onConfirm: async ({ skill, scope }) =>
-				await onSave(
-					detail.id,
-					skill,
-					detail.skillHash,
-					scope !== currentValue ? scope : undefined,
-				),
+			onConfirm: async ({ skill, scope, label, baseSkillHash }) => {
+				const newScope = scope !== currentValue ? scope : undefined;
+				const result = await onSave(detail.id, skill, {
+					// The modal reloads the skill after each save, so its hash is the newest one.
+					baseSkillHash: baseSkillHash ?? detail.skillHash,
+					...(newScope ? { newScope } : {}),
+					...(label ? { label } : {}),
+				});
+				if (result.saved && newScope) currentValue = newScope;
+				return result;
+			},
 		});
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
 	}
 }
 
-/** Saves the next version. There are no drafts: what the modal shows is what gets saved. */
-/** `newScope` is set when the user picked another scope: the save also moves the skill. */
+/**
+ * Saves the next version. There are no drafts: what the modal shows is what gets saved.
+ * `newScope` is set when the user picked another scope: the save also moves the skill.
+ * `label` names the new version.
+ */
 async function onSave(
 	id: string,
 	skill: AgentSkill,
-	baseSkillHash: string,
-	newScope?: string,
-): Promise<AgentSkillConfirmFailure | undefined> {
+	options: { baseSkillHash: string; newScope?: string; label?: string },
+): Promise<AgentSkillConfirmFailure | AgentSkillConfirmSuccess> {
+	const { baseSkillHash, newScope, label } = options;
 	let created: boolean;
 	try {
 		({ created } = await skillsStore.saveSkill(id, {
@@ -332,6 +343,7 @@ async function onSave(
 			references: skill.references ?? [],
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
+			...(label ? { label } : {}),
 		}));
 	} catch (error) {
 		return saveFailed(error);
@@ -344,7 +356,7 @@ async function onSave(
 	} else {
 		showMessage({ title: i18n.baseText('settings.context.skills.save.noChanges'), type: 'info' });
 	}
-	return undefined;
+	return { saved: true, created };
 }
 
 async function onDelete(skill: SkillListItem) {
@@ -385,9 +397,12 @@ onMounted(async () => {
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
-	const { skillId, create } = route.query;
+	const { skillId, create, view } = route.query;
 	if (typeof skillId === 'string') {
-		await openEditModal({ id: skillId });
+		await openEditModal(
+			{ id: skillId },
+			view === 'timeline' || view === 'compare' ? view : undefined,
+		);
 	} else if (create === 'true') {
 		openCreateModal();
 	}

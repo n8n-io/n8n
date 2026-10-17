@@ -8,7 +8,13 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { createAgentSkill, getHubSkill, getNewSkillName } from '../composables/useAgentApi';
+import {
+	createAgentSkill,
+	getHubSkill,
+	getNewSkillName,
+	updateAgentSkill,
+} from '../composables/useAgentApi';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import type {
@@ -39,6 +45,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: vi.fn(),
 	getHubSkill: vi.fn(),
 	getNewSkillName: vi.fn(),
+	updateAgentSkill: vi.fn(),
 }));
 
 const { hasScopeSpy } = vi.hoisted(() => ({
@@ -176,6 +183,8 @@ type SkillModalData = {
 	existingSkillNames?: string[];
 	hubSkillsEnabled?: boolean;
 	outdated?: boolean;
+	versioned?: boolean;
+	pinnedVersion?: number;
 	onUseLatestVersion?: (skillId: string) => void;
 	getAttachedSkills?: () => Array<{ id: string; name: string }>;
 	canCreateInstanceSkills?: boolean;
@@ -185,6 +194,8 @@ type SkillModalData = {
 		skill: AgentSkill;
 		availableTo?: 'project' | 'agent' | 'instance';
 		method?: 'manual' | 'upload';
+		label?: string;
+		baseSkillHash?: string;
 	}) => unknown;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;
@@ -648,6 +659,8 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			source: 'ui',
 			createdBy: null,
 			latestVersion: 1,
+			latestVersionLabel: null,
+			latestVersionSavedBy: null,
 			usedByAgents: 0,
 			canEdit: false,
 			canDelete: false,
@@ -985,34 +998,349 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(editData.outdated).toBe(false);
 	});
 
-	function openEdit(options: { skillsHubEnabled?: boolean } = {}) {
-		const result = setupHub(options);
-		result.actions.onOpenSkillFromList('tone');
-		const editData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
-			.data as unknown as SkillModalData;
-		return { ...result, editData };
-	}
+	it('marks a skill pinned behind the latest version from its version state', () => {
+		const { actions, uiStore, agent } = setupHub();
+		agent.value = {
+			...agent.value,
+			skillVersions: { tone: { draft: 2, live: 2, latest: 3, pinned: true } },
+		} as unknown as AgentResource;
 
-	it('saves the content and the target of an edited skill in one skill save', () => {
-		const { editData, scheduleSkillSave } = openEdit();
+		actions.onOpenSkillFromList('tone');
 
-		editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData.outdated).toBe(true);
+	});
 
-		expect(scheduleSkillSave).toHaveBeenCalledWith({
-			skillId: 'tone',
-			skill: supportTone,
-			availableTo: 'agent',
+	it('prefers the version state over the outdated list', () => {
+		const { actions, uiStore, agent } = setupHub();
+		agent.value = {
+			...agent.value,
+			outdatedSkillIds: ['tone'],
+			skillVersions: { tone: { draft: 3, live: 3, latest: 3, pinned: true } },
+		} as unknown as AgentResource;
+
+		actions.onOpenSkillFromList('tone');
+
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData.outdated).toBe(false);
+	});
+
+	describe('onSetSkillVersion', () => {
+		const versionId = '11111111-1111-4111-8111-111111111111';
+
+		function setupVersioned(
+			overrides: {
+				flushConfigSave?: () => Promise<unknown>;
+				refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
+			} = {},
+		) {
+			const events: string[] = [];
+			const flushConfigSave =
+				overrides.flushConfigSave ??
+				vi.fn(async () => {
+					events.push('flush');
+				});
+			const refreshAgentAfterMutation =
+				overrides.refreshAgentAfterMutation ??
+				vi.fn(async () => {
+					events.push('refresh');
+					return true;
+				});
+			const result = setup({
+				agent: ref<AgentResource | null>({
+					id: 'agent-1',
+					skills: { tone: supportTone, sql: sqlHelper },
+				} as unknown as AgentResource),
+				agentId: ref('agent-1'),
+				flushConfigSave,
+				refreshAgentAfterMutation,
+			});
+			result.scheduleConfigUpdate.mockImplementation(() => events.push('config'));
+			result.localConfig.value = makeConfig({
+				skills: [
+					{ type: 'skill', id: 'tone' },
+					{ type: 'skill', id: 'sql' },
+				],
+			});
+			return { ...result, events, flushConfigSave, refreshAgentAfterMutation };
+		}
+
+		it('pins the ref, saves the draft, then reloads the agent', async () => {
+			const { actions, scheduleConfigUpdate, events, refreshAgentAfterMutation } = setupVersioned();
+
+			await actions.onSetSkillVersion('tone', versionId);
+
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+				skills: [
+					{ type: 'skill', id: 'tone', versionId },
+					{ type: 'skill', id: 'sql' },
+				],
+			});
+			expect(events).toEqual(['config', 'flush', 'refresh']);
+			expect(refreshAgentAfterMutation).toHaveBeenCalledWith('project-1', 'agent-1');
+		});
+
+		it('drops the version to follow the latest one', async () => {
+			const { actions, scheduleConfigUpdate, localConfig } = setupVersioned();
+			localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone', versionId }] });
+
+			await actions.onSetSkillVersion('tone', null);
+
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+				skills: [{ type: 'skill', id: 'tone' }],
+			});
+		});
+
+		it('does nothing when the ref already has that version, or is not attached', async () => {
+			const { actions, scheduleConfigUpdate, flushConfigSave } = setupVersioned();
+
+			await actions.onSetSkillVersion('tone', null);
+			await actions.onSetSkillVersion('missing', versionId);
+
+			expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+			expect(flushConfigSave).not.toHaveBeenCalled();
+		});
+
+		it('puts the ref back when the save fails', async () => {
+			const { actions, scheduleConfigUpdate, refreshAgentAfterMutation } = setupVersioned({
+				flushConfigSave: vi.fn(async () => {
+					throw new Error('refused');
+				}),
+			});
+
+			await actions.onSetSkillVersion('tone', versionId);
+
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [
+					{ type: 'skill', id: 'tone' },
+					{ type: 'skill', id: 'sql' },
+				],
+			});
+			expect(refreshAgentAfterMutation).not.toHaveBeenCalled();
+		});
+
+		it('does not reload an agent the user left while the save ran', async () => {
+			let releaseFlush: () => void = () => {};
+			const { actions, agentId, refreshAgentAfterMutation } = setupVersioned({
+				flushConfigSave: vi.fn(
+					async () =>
+						await new Promise<void>((resolve) => {
+							releaseFlush = resolve;
+						}),
+				),
+			});
+
+			const pending = actions.onSetSkillVersion('tone', versionId);
+			agentId.value = 'agent-2';
+			releaseFlush();
+			await pending;
+
+			expect(refreshAgentAfterMutation).not.toHaveBeenCalled();
 		});
 	});
 
-	it('saves no target when the edit keeps it or the skills hub is off', () => {
-		const kept = openEdit();
-		kept.editData.onConfirm({ id: 'tone', skill: supportTone });
-		const hubOff = openEdit({ skillsHubEnabled: false });
-		hubOff.editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
+	function openEdit(
+		options: {
+			skillsHubEnabled?: boolean;
+			skillRef?: { versionId?: string };
+			refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
+		} = {},
+	) {
+		const events: string[] = [];
+		const flushConfigSave = vi.fn(async () => {
+			events.push('flush');
+		});
+		const refreshAgentAfterMutation =
+			options.refreshAgentAfterMutation ??
+			vi.fn(async () => {
+				events.push('refresh');
+				return true;
+			});
+		const agent = ref<AgentResource | null>({
+			id: 'agent-1',
+			skills: { tone: supportTone },
+			skillHashes: { tone: 'hash-tone' },
+		} as unknown as AgentResource);
+		const result = setup({
+			agent,
+			agentId: ref('agent-1'),
+			flushConfigSave,
+			refreshAgentAfterMutation,
+		});
+		useSettingsStore().moduleSettings.agents = {
+			enabled: true,
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled: false,
+			skillsHubEnabled: options.skillsHubEnabled ?? true,
+		};
+		result.scheduleConfigUpdate.mockImplementation(() => events.push('config'));
+		result.localConfig.value = makeConfig({
+			skills: [{ type: 'skill', id: 'tone', ...options.skillRef }],
+		});
+		const saveSkill = vi.spyOn(useSkillsStore(), 'saveSkill').mockImplementation(async () => {
+			events.push('save');
+			return {
+				id: 'tone',
+				versionId: 'version-4',
+				version: 4,
+				created: true,
+				skill: supportTone,
+				skillHash: 'hash-v4',
+			};
+		});
+		vi.mocked(updateAgentSkill).mockImplementation(async () => {
+			events.push('move');
+			return { id: 'tone', skill: supportTone, skillHash: 'hash-v4', versionId: null };
+		});
+		result.actions.onOpenSkillFromList('tone');
+		const editData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
+			.data as unknown as SkillModalData;
+		return { ...result, agent, editData, events, saveSkill, refreshAgentAfterMutation };
+	}
 
-		expect(kept.scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });
+	it('opens an attached hub skill with its versions', () => {
+		const { editData } = openEdit();
+
+		expect(editData.versioned).toBe(true);
+		expect(editData.pinnedVersion).toBeUndefined();
+	});
+
+	it('tells the modal which version a draft pinned behind the latest one runs', () => {
+		const { actions, uiStore, agent } = setupHub();
+		agent.value = {
+			...agent.value,
+			skillVersions: { tone: { draft: 2, live: 2, latest: 3, pinned: true } },
+		} as unknown as AgentResource;
+
+		actions.onOpenSkillFromList('tone');
+
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData.pinnedVersion).toBe(2);
+	});
+
+	it('saves a version through the skills API, then reloads the agent', async () => {
+		const { editData, events, saveSkill, scheduleSkillSave, refreshAgentAfterMutation } =
+			openEdit();
+		const edited = { ...supportTone, instructions: 'Be kind and brief.' };
+
+		const result = await editData.onConfirm({
+			id: 'tone',
+			skill: edited,
+			label: 'Shorter',
+			baseSkillHash: 'hash-latest',
+		});
+
+		expect(result).toEqual({ saved: true, created: true });
+		expect(saveSkill).toHaveBeenCalledWith('tone', {
+			name: edited.name,
+			description: edited.description,
+			instructions: edited.instructions,
+			references: [],
+			baseSkillHash: 'hash-latest',
+			label: 'Shorter',
+		});
+		expect(scheduleSkillSave).not.toHaveBeenCalled();
+		expect(updateAgentSkill).not.toHaveBeenCalled();
+		expect(refreshAgentAfterMutation).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(events).toEqual(['save', 'refresh']);
+	});
+
+	it("starts from the agent's skill hash when the modal sends none", async () => {
+		const { editData, saveSkill } = openEdit();
+
+		await editData.onConfirm({ id: 'tone', skill: supportTone });
+
+		expect(saveSkill).toHaveBeenCalledWith(
+			'tone',
+			expect.objectContaining({ baseSkillHash: 'hash-tone' }),
+		);
+	});
+
+	it('makes a pinned ref follow the latest version after a save that made one', async () => {
+		const { editData, events, scheduleConfigUpdate } = openEdit({
+			skillRef: { versionId: 'version-3' },
+		});
+
+		await editData.onConfirm({ id: 'tone', skill: supportTone, baseSkillHash: 'hash-v3' });
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [{ type: 'skill', id: 'tone' }] });
+		expect(events).toEqual(['save', 'config', 'flush', 'refresh']);
+	});
+
+	it('moves the skill after the save when "available to" changed', async () => {
+		const { editData, events } = openEdit();
+
+		await editData.onConfirm({
+			id: 'tone',
+			skill: supportTone,
+			availableTo: 'agent',
+			baseSkillHash: 'hash-tone',
+		});
+
+		expect(updateAgentSkill).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			'tone',
+			{},
+			undefined,
+			'agent',
+		);
+		expect(events).toEqual(['save', 'move', 'refresh']);
+	});
+
+	it('says there is nothing to save when the content matches the latest version', async () => {
+		const { editData, saveSkill } = openEdit();
+		saveSkill.mockResolvedValueOnce({
+			id: 'tone',
+			versionId: 'version-3',
+			version: 3,
+			created: false,
+			skill: supportTone,
+			skillHash: 'hash-tone',
+		});
+
+		const result = await editData.onConfirm({ id: 'tone', skill: supportTone });
+
+		expect(result).toEqual({ saved: true, created: false });
+		expect(showMessageSpy).toHaveBeenCalledWith({
+			title: 'settings.context.skills.save.noChanges',
+			type: 'info',
+		});
+	});
+
+	it('keeps the modal open with the error on the name when the name is taken', async () => {
+		const { editData, saveSkill, refreshAgentAfterMutation } = openEdit();
+		saveSkill.mockRejectedValueOnce(
+			new ResponseError(SKILL_NAME_TAKEN_MESSAGE, { httpStatusCode: 409 }),
+		);
+
+		const result = await editData.onConfirm({ id: 'tone', skill: supportTone });
+
+		expect(result).toEqual({ saved: false, nameError: 'settings.context.skills.error.nameTaken' });
+		expect(refreshAgentAfterMutation).not.toHaveBeenCalled();
+	});
+
+	it('keeps the modal open and reports any other failed save', async () => {
+		const { editData, saveSkill } = openEdit();
+		const error = new Error('conflict');
+		saveSkill.mockRejectedValueOnce(error);
+
+		const result = await editData.onConfirm({ id: 'tone', skill: supportTone });
+
+		expect(result).toEqual({ saved: false });
+		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.builder.skills.saveError');
+	});
+
+	it('schedules the skill save, with no target, when the skills hub is off', () => {
+		const hubOff = openEdit({ skillsHubEnabled: false });
+
+		void hubOff.editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
+
+		expect(hubOff.editData.versioned).toBe(false);
 		expect(hubOff.scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });
+		expect(hubOff.saveSkill).not.toHaveBeenCalled();
 	});
 
 	it('tells the edit modal to check the edit permission', () => {

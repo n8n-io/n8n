@@ -109,6 +109,7 @@ const emit = defineEmits<{
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
+	'set-skill-version': [id: string, versionId: string | null];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
 	'add-vector-store': [];
@@ -209,9 +210,11 @@ defineExpose({ onSetupTaskAction });
 							:show-label="false"
 							:validation-issues="configValidationIssues ?? []"
 							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+							:skill-versions="agent?.skillVersions"
 							@open-skill="emit('open-skill', $event)"
 							@add-skill="emit('add-skill')"
 							@remove-skill="emit('remove-skill', $event)"
+							@set-skill-version="(id, versionId) => emit('set-skill-version', id, versionId)"
 						/>
 					</AgentPanel>
 

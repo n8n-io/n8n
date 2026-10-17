@@ -247,6 +247,16 @@ describe('AgentSkillModal', () => {
 		).not.toBeInTheDocument();
 	});
 
+	it('says Cancel while creating a skill and Close for an existing one', async () => {
+		const created = renderModal();
+		await fireEvent.click(created.getByTestId('agent-skill-add-manually'));
+		expect(created.getByTestId('agent-modal-cancel')).toHaveTextContent('generic.cancel');
+		created.unmount();
+
+		const existing = renderModal({ skill: SAVED_SKILL, skillId: 'brand-voice' });
+		expect(existing.getByTestId('agent-modal-cancel')).toHaveTextContent('generic.close');
+	});
+
 	it('generates a unique title for a new manual skill', async () => {
 		const { container, getByTestId } = renderModal({
 			existingSkillNames: ['new skill', 'New skill 2'],
@@ -1057,7 +1067,15 @@ describe('AgentSkillModal', () => {
 					{
 						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 						usedBy: {
-							drafts: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1' }],
+							drafts: [
+								{
+									agentId: 'a1',
+									agentName: 'This agent',
+									projectId: 'p1',
+									version: 1,
+									pinned: false,
+								},
+							],
 							pins: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1', version: 1 }],
 							hiddenAgents: 0,
 						},
@@ -1093,7 +1111,9 @@ describe('AgentSkillModal', () => {
 				[
 					'a draft of another agent',
 					{
-						drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+						drafts: [
+							{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1, pinned: false },
+						],
 						pins: [],
 						hiddenAgents: 0,
 					},
@@ -1343,6 +1363,8 @@ function makeListItem(
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
+		latestVersionLabel: null,
+		latestVersionSavedBy: null,
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
