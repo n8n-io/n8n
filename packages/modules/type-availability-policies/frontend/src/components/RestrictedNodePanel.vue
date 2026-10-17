@@ -4,7 +4,7 @@ import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
-import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+import ContactAdminModal from './ContactAdminModal.vue';
 import { describeNodeTypeRestriction } from '../composables/useNodeTypeRestriction';
 
 const {
@@ -56,7 +56,7 @@ const description = computed(() =>
 				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.replaceNode') }}
 			</N8nButton>
 		</div>
-		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
+		<ContactAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</div>
 </template>
 

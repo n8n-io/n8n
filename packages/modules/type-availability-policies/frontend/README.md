@@ -39,7 +39,7 @@ shell reads restriction through these and never through the store directly.
 
 Tests stub the store through `mockRestrictedNodeTypes` and `mockRestrictedCredentialTypes` from the module's `__tests__/mocks`.
 
-`ContactInstanceAdminModal` lists the instance owners with a mail link. The surfaces below render it
+`ContactAdminModal` lists the instance owners with a mail link. The surfaces below render it
 as a sibling of their own content, so a popover that closes never unmounts the open dialog.
 `RestrictedNodePopover` is the explanation for a row in a list: the lock trigger, the hover-opened
 popover and the dialog. The caller passes the row element and whether the row is keyboard-active.

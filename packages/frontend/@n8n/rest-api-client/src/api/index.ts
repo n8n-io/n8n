@@ -16,6 +16,7 @@ export * from './mfa';
 export * from './nodeTypes';
 export * from './npsSurvey';
 export * from './orchestration';
+export * from './projects';
 export * from './provisioning';
 export * from './roleMappingRule';
 export * from './roles';

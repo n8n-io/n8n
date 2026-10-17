@@ -4,7 +4,7 @@ import { N8nButton, N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
-import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+import ContactAdminModal from './ContactAdminModal.vue';
 import { describeAgentToolRestriction } from '../composables/useNodeTypeRestriction';
 
 const { nodeTypeName, scope } = defineProps<{
@@ -34,6 +34,6 @@ const description = computed(() => describeAgentToolRestriction(nodeTypeName, sc
 				</N8nButton>
 			</template>
 		</N8nCallout>
-		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
+		<ContactAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</div>
 </template>

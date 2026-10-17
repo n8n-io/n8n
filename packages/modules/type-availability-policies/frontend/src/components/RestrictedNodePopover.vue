@@ -11,7 +11,7 @@ import {
 	SCOPE_LABEL_KEY,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
-import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
+import ContactAdminModal from './ContactAdminModal.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -136,7 +136,7 @@ function requestContactAdmin() {
 			</template>
 		</N8nPopover>
 		<!-- A sibling of the popover: its content unmounts on close and must not take the dialog with it. -->
-		<ContactInstanceAdminModal
+		<ContactAdminModal
 			v-if="!parentHandlesContactAdmin"
 			v-model:open="isContactAdminOpen"
 			:node-type-name="nodeTypeName"

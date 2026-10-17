@@ -12,11 +12,11 @@ const renderComponent = createComponentRenderer(RestrictedNodePopover, {
 	props: { nodeTypeName: 'Gmail', scope: 'instance' },
 	global: {
 		stubs: {
-			ContactInstanceAdminModal: {
+			ContactAdminModal: {
 				props: ['open', 'nodeTypeName'],
 				emits: ['update:open'],
 				template:
-					'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}<button data-test-id="contact-instance-admin-close" @click="$emit(\'update:open\', false)" /></div>',
+					'<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
 			},
 		},
 	},
@@ -113,7 +113,7 @@ describe('RestrictedNodePopover', () => {
 		await userEvent.hover(popover);
 		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
 
-		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Slack');
+		expect(screen.getByTestId('contact-admin-modal')).toHaveTextContent('Slack');
 		await waitFor(() =>
 			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
 		);
@@ -131,7 +131,7 @@ describe('RestrictedNodePopover', () => {
 		await userEvent.hover(await screen.findByTestId('node-restricted-popover'));
 		await userEvent.unhover(anchor);
 		await userEvent.click(screen.getByTestId('node-restricted-contact-admin'));
-		await userEvent.click(screen.getByTestId('contact-instance-admin-close'));
+		await userEvent.click(screen.getByTestId('contact-admin-close'));
 		await waitFor(() =>
 			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
 		);
@@ -168,16 +168,16 @@ describe('RestrictedNodePopover', () => {
 		await waitFor(() =>
 			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
 		);
-		expect(screen.getByTestId('contact-instance-admin-modal')).toBeInTheDocument();
+		expect(screen.getByTestId('contact-admin-modal')).toBeInTheDocument();
 	});
 
 	it('opens the contact-admin dialog for this node type', async () => {
 		renderPopover({ active: true });
-		expect(screen.queryByTestId('contact-instance-admin-modal')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
 
 		await userEvent.click(await screen.findByTestId('node-restricted-contact-admin'));
 
-		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Gmail');
+		expect(screen.getByTestId('contact-admin-modal')).toHaveTextContent('Gmail');
 	});
 
 	it('keeps the dialog open after the pointer leaves the row and the popover', async () => {
@@ -192,7 +192,7 @@ describe('RestrictedNodePopover', () => {
 			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
 		);
 
-		expect(screen.getByTestId('contact-instance-admin-modal')).toHaveTextContent('Gmail');
+		expect(screen.getByTestId('contact-admin-modal')).toHaveTextContent('Gmail');
 	});
 
 	it('uses the credential type copy', async () => {
@@ -213,7 +213,7 @@ describe('RestrictedNodePopover', () => {
 		await userEvent.click(await screen.findByTestId('node-restricted-contact-admin'));
 
 		expect(onContactAdmin).toHaveBeenCalledOnce();
-		expect(screen.queryByTestId('contact-instance-admin-modal')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
 	});
 
 	it('keeps a pointer-down inside the popover from reaching the document', async () => {
