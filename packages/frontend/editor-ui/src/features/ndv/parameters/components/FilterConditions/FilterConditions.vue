@@ -10,7 +10,7 @@ import {
 	type INode,
 	type NodeParameterValue,
 } from 'n8n-workflow';
-import { computed, reactive, watch, watchEffect } from 'vue';
+import { computed, reactive, ref, watch, watchEffect } from 'vue';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	DEFAULT_FILTER_OPTIONS,
@@ -42,12 +42,14 @@ const props = withDefaults(defineProps<Props>(), {
 	removeLastMargin: false,
 });
 
+type ParameterValueType = FilterValue | boolean | undefined;
+
 const emit = defineEmits<{
 	valueChanged: [
 		value: {
 			name: string;
 			node: string;
-			value: FilterValue;
+			value: ParameterValueType;
 		},
 	];
 }>();
@@ -87,6 +89,16 @@ const state = reactive<{ paramValue: FilterValue }>({
 	paramValue: createParamValue(props.value),
 });
 
+// Track the last resolved options to detect actual expression changes (vs initial load)
+const lastResolvedOptions = ref<FilterOptionsValue | null>(null);
+
+// Matches negated single-param patterns like ={{!$parameter.options.ignoreCase}}, or null (safe no-op).
+function extractSourceParamPath(expr: unknown): string | null {
+	if (typeof expr !== 'string') return null;
+	const match = expr.match(/^=\{\{\s*!\s*\$parameter\.([\w.]+)\s*\}\}$/);
+	return match ? match[1] : null;
+}
+
 const maxConditions = computed(
 	() => props.parameter.typeOptions?.filter?.maxConditions ?? DEFAULT_MAX_CONDITIONS,
 );
@@ -125,7 +137,44 @@ watchEffect(async () => {
 		// Keep default options
 	}
 
-	if (!isEqual(state.paramValue.options, newOptions)) {
+	// On initial load, preserve stored options that differ from the resolved expression.
+	// This prevents clobbering manually-set values and silent emissions on first render.
+	// On subsequent loads, only update if the resolved options actually changed.
+	const isInitialLoad = lastResolvedOptions.value === null;
+	const resolvedOptionsChanged = !isEqual(lastResolvedOptions.value, newOptions);
+
+	lastResolvedOptions.value = newOptions;
+
+	if (isInitialLoad) {
+		// If stored caseSensitive diverges from the resolved expression value,
+		// emit a correction to sync the source toggle (harm A fix).
+		const storedCaseSensitive = state.paramValue.options.caseSensitive;
+		if (
+			// Never mutate a read-only workflow just by viewing it.
+			!props.readOnly &&
+			storedCaseSensitive !== undefined &&
+			storedCaseSensitive !== newOptions.caseSensitive &&
+			typeof typeOptions.caseSensitive === 'string'
+		) {
+			// Extract source param path from expression (e.g., "options.ignoreCase" from "={{!$parameter.options.ignoreCase}}")
+			const sourceParamPath = extractSourceParamPath(typeOptions.caseSensitive);
+			if (sourceParamPath) {
+				// Emit correction to sync source toggle: set ignoreCase = !storedCaseSensitive so that
+				// the expression !ignoreCase re-resolves to storedCaseSensitive, making the UI truthful.
+				// Include "parameters." prefix for correct routing through NodeSettings handler.
+				// Tradeoff: node becomes dirty on open, but runtime behavior is preserved.
+				emit('valueChanged', {
+					name: `parameters.${sourceParamPath}`,
+					node: props.node?.name || '',
+					value: !storedCaseSensitive,
+				});
+			}
+		}
+		// Preserve any stored options on initial load, but note the resolved value for future comparison
+		return;
+	}
+
+	if (resolvedOptionsChanged) {
 		state.paramValue.options = newOptions;
 		debouncedEmitChange();
 	}
