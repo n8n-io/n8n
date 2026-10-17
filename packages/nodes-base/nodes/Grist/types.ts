@@ -8,7 +8,12 @@ export type GristCredentials = {
 };
 
 export type GristColumns = {
-	columns: Array<{ id: string }>;
+	columns: Array<{
+		id: string;
+		fields?: {
+			type?: string;
+		};
+	}>;
 };
 
 export type GristSortProperties = Array<{
