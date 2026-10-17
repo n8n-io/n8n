@@ -1,5 +1,6 @@
 import type {
 	AgentJsonMcpServerConfig,
+	McpRegistryDiscoveryRequest,
 	McpRegistryDiscoveryResponse,
 	McpRegistryServerResponse,
 } from '@n8n/api-types';
@@ -19,6 +20,11 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 
 import { useAgentMcpDiscovery } from './useAgentMcpDiscovery';
+import {
+	isAiGatewayMcpEntry,
+	toMcpEntryAuth,
+	toMcpRegistryCredentialRefs,
+} from '../utils/mcpRegistryCredentialRefs';
 
 export const MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS = 1_000;
 export const DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS = 60_000;
@@ -72,6 +78,16 @@ function applyDiscoveredConnection(
 		...(connection.credentialId ? { credential: connection.credentialId } : {}),
 		metadata: { ...server.metadata, ...connection.metadata },
 	};
+}
+
+/** Gateway credits discover without a stored credential (see the discovery endpoint). */
+function toDiscoveryRequest(
+	slug: string,
+	draft: AgentRegistryMcpDraft | null,
+	credentialId: string | undefined,
+): McpRegistryDiscoveryRequest | undefined {
+	if (draft && isAiGatewayMcpEntry(draft)) return { slug, aiGateway: true };
+	return credentialId ? { slug, credentialId } : undefined;
 }
 
 function removeApprovalRequirements(toolPermissions: McpToolSettings): McpToolSettings {
@@ -151,12 +167,7 @@ export function useAgentRegistryMcpConfig(
 				? { connectionFailureReason: discovery.value.failureReason }
 				: {}),
 			iconSource: iconForMcpRegistryServer(server.icons, uiStore.appliedTheme),
-			credentials: server.credentials.map(({ credentialType, name }) => ({
-				authType: credentialType,
-				displayName: name,
-				credentialId: draft.authentication === credentialType ? draft.credential : undefined,
-				required: true,
-			})),
+			credentials: toMcpRegistryCredentialRefs(server, draft),
 			availableTools: liveTools.map(toMcpServerTool),
 			isOfficial: server.isOfficial,
 			settings,
@@ -170,7 +181,8 @@ export function useAgentRegistryMcpConfig(
 
 	async function discover(credentialId = draftServer.value?.credential) {
 		const server = catalogServer.value;
-		if (!server || !credentialId) {
+		const request = server && toDiscoveryRequest(server.slug, draftServer.value, credentialId);
+		if (!request) {
 			discovery.value = {
 				status: 'disconnected',
 				failureReason: 'authentication',
@@ -180,7 +192,7 @@ export function useAgentRegistryMcpConfig(
 		}
 		const currentRequestId = ++requestId;
 		discovery.value = { status: 'connecting' };
-		const result = await discoverRegistry(server.slug, credentialId).catch(
+		const result = await discoverRegistry(request).catch(
 			(): McpRegistryDiscoveryResponse => ({
 				status: 'disconnected',
 				failureReason: 'unknown',
@@ -230,11 +242,7 @@ export function useAgentRegistryMcpConfig(
 
 	async function selectCredential(authType: string, credentialId: string) {
 		if (!draftServer.value) return;
-		draftServer.value = {
-			...draftServer.value,
-			authentication: authType,
-			credential: credentialId,
-		};
+		draftServer.value = { ...draftServer.value, ...toMcpEntryAuth(authType, credentialId) };
 		await discover(credentialId);
 	}
 
