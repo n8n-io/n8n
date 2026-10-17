@@ -41,10 +41,7 @@ const i18n = useI18n();
 					<strong>
 						{{
 							i18n.baseText('updatesPanel.version', {
-								interpolate: {
-									numberOfVersions: versionsStore.nextVersions.length,
-									howManySuffix: versionsStore.nextVersions.length > 1 ? 's' : '',
-								},
+								interpolate: { count: versionsStore.nextVersions.length },
 							})
 						}}
 					</strong>
