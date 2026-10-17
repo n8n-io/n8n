@@ -210,6 +210,9 @@ describe('Execution Lifecycle Hooks', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		binaryDataService.claimForExecution.mockImplementation(async (fileId, claimedExecutionId) =>
+			fileId.replace('/temp/', `/${claimedExecutionId}/`),
+		);
 		executionsConfig.preExecuteErrorCreatesExecution = false;
 		userRepository.findOne.mockResolvedValue(mock<User>());
 		redactionProxy.processExecution.mockImplementation(async (execution) => execution);
@@ -1351,9 +1354,9 @@ describe('Execution Lifecycle Hooks', () => {
 				}),
 					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(binaryDataService.rename).toHaveBeenCalledWith(
+				expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
 					'workflows/test-workflow-id/executions/temp/binary_data/123',
-					'workflows/test-workflow-id/executions/test-execution-id/binary_data/123',
+					'test-execution-id',
 				);
 			});
 		});
@@ -1689,6 +1692,37 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(errorReporter.error).toHaveBeenCalledWith(error);
 			});
+		});
+
+		it('should restore webhook binary data IDs before saving the execution', async () => {
+			mockInstance(BinaryDataConfig, { mode: 'filesystem' });
+			lifecycleHooks = createHooks('webhook');
+			const binaryData = {
+				id: `filesystem-v2:workflows/${workflowId}/executions/temp/binary_data/123`,
+				data: '',
+				mimeType: 'text/plain',
+			};
+			successfulRun.data.resultData.runData = {
+				[nodeName]: [
+					{
+						startTime: 1,
+						executionIndex: 0,
+						executionTime: 1,
+						source: [],
+						data: { main: [[{ json: {}, binary: { data: binaryData } }]] },
+					},
+				],
+			};
+
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
+				`workflows/${workflowId}/executions/temp/binary_data/123`,
+				executionId,
+			);
+			expect(binaryData.id).toBe(
+				`filesystem-v2:workflows/${workflowId}/executions/${executionId}/binary_data/123`,
+			);
 		});
 
 		describe('error workflow', () => {
