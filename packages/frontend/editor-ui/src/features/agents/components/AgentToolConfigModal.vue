@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon } from '@n8n/design-system';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -23,7 +23,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+useTypeAvailability(() => props.data.projectId);
 const content = ref<InstanceType<typeof AgentToolConfigContent> | null>(null);
 const credentialPicker = ref<InstanceType<typeof AgentToolConfigCredentialPicker> | null>(null);
 const formTitle = ref(initialTitle());
@@ -53,14 +53,6 @@ const canRender = computed(() => {
 });
 
 void nodeTypesStore.loadNodeTypesIfNotLoaded();
-
-watch(
-	() => props.data.projectId,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
 
 function initialTitle(): string {
 	if (props.data.kind === 'mcpServer' || props.data.kind === 'registryMcpServer') {
