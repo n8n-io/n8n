@@ -270,6 +270,20 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('data table events', () => {
+		it('should track when the storage limit is reached', () => {
+			eventService.emit('data-table-storage-limit-hit', {
+				totalBytes: 100,
+				maxBytes: 100,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('User hit data table storage limit', {
+				total_bytes: 100,
+				max_bytes: 100,
+			});
+		});
+	});
+
 	describe('project events', () => {
 		it('should track on `team-project-updated` event', () => {
 			const event: RelayEventMap['team-project-updated'] = {
