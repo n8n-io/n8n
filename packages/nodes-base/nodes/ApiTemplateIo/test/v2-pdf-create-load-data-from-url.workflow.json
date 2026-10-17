@@ -1,0 +1,52 @@
+{
+	"name": "APITemplate.io V2 PDF create loading data from a URL",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "88888888-8888-4888-8888-888888888881",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "pdfv2",
+				"operation": "create",
+				"pdfTemplateId": "tpl-pdf",
+				"dataSource": "url",
+				"loadDataFrom": "https://mydata.com/get-json-data?invoice=123"
+			},
+			"id": "88888888-8888-4888-8888-888888888882",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"download_url": "https://cdn.apitemplate.io/files/invoice.pdf"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

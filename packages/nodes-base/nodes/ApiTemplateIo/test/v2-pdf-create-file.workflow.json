@@ -1,0 +1,65 @@
+{
+	"name": "APITemplate.io V2 PDF create with file export",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "77777777-7777-4777-8777-777777777771",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "pdfv2",
+				"operation": "create",
+				"pdfTemplateId": "tpl-pdf",
+				"dataSource": "json",
+				"v2PdfData": "{\"invoice_number\": \"INV38379\"}",
+				"exportType": "file",
+				"v2BinaryProperty": "data",
+				"v2Options": {
+					"filename": "invoice_123.pdf",
+					"output_format": "pdf"
+				}
+			},
+			"id": "77777777-7777-4777-8777-777777777772",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"mimeType": "application/pdf",
+						"fileType": "pdf",
+						"fileExtension": "pdf",
+						"data": "JVBERi0xLjQKdGVzdC1wZGY=",
+						"fileName": "invoice_123.pdf",
+						"fileSize": "17 B"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

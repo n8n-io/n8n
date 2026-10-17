@@ -1,0 +1,53 @@
+{
+	"name": "APITemplate.io V2 PDF create on a node with no stored resource",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "66666666-6666-4666-8666-666666666661",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"pdfTemplateId": "tpl-pdf",
+				"dataSource": "json",
+				"v2PdfData": "{\"invoice_number\": \"INV38379\", \"date\": \"2021-09-30\"}"
+			},
+			"id": "66666666-6666-4666-8666-666666666662",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"download_url": "https://cdn.apitemplate.io/files/invoice.pdf",
+					"total_pages": 1,
+					"transaction_ref": "8f3f0a4e-7f5c-4a1a-9a3b-9f8d1c2b3a4e"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
