@@ -56,6 +56,7 @@ import {
 import {
 	buildImportResult,
 	identifyRequirements,
+	reconcileCredentialSummary,
 	reconcileVariableSummary,
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
@@ -227,6 +228,7 @@ export class ProjectPackageImporter {
 		let dataTablesUpdated = 0;
 		const seeded: string[] = [];
 		const incomplete: string[] = [];
+		const credentialsUpdated: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -251,6 +253,7 @@ export class ProjectPackageImporter {
 			dataTablesUpdated += content.dataTablePlan.updates.length;
 			seeded.push(...content.credentialResult.seeded);
 			incomplete.push(...content.credentialResult.incomplete);
+			credentialsUpdated.push(...content.credentialResult.updated);
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -276,7 +279,13 @@ export class ProjectPackageImporter {
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
-			credentials: { matched, stubbed, seeded, incomplete },
+			credentials: reconcileCredentialSummary({
+				matched,
+				stubbed,
+				seeded,
+				incomplete,
+				updated: credentialsUpdated,
+			}),
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,

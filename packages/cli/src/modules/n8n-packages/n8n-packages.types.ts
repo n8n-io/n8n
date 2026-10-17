@@ -432,6 +432,7 @@ export type ImportPackageEventCounts = {
 	credentials: {
 		matched: number;
 		created: number;
+		updated: number;
 		requirements: number;
 	};
 	dataTables: {
@@ -616,9 +617,11 @@ export type BlockingIssue =
 			violations: PolicyViolation[];
 	  }
 	| {
-			/** A credential write the import would make that the `credentialSave` policy refused. */
+			/** A credential write that a `credentialSave` or `contentImport` policy check refused. */
 			type: 'credential-policy-violation';
 			sourceId: string;
+			/** Set when policy refused an update of this matched destination credential. */
+			targetId?: string;
 			name?: string;
 			credentialType: string;
 			usedBy: PackageRequirementConsumer[];
@@ -721,6 +724,8 @@ export interface ImportCredentialSummary {
 	seeded: string[];
 	/** Source ids of credentials created from package data that is not confirmed as complete. */
 	incomplete: string[];
+	/** Source ids whose matched credential this import wrote under `credentialConflictPolicy=overwrite`. */
+	updated: string[];
 }
 
 export interface ImportVariableSummary {

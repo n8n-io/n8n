@@ -1,17 +1,24 @@
-import type { CredentialsFinderService } from '@n8n/backend-services';
-import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
+import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
+import type { CredentialsEntity, ICredentialsDb, Project, SharedCredentials, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { CredentialTypes } from '@/credential-types';
+import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsOverwrites } from '@/credentials-overwrites';
 
 import type { ImportContext } from '../../../n8n-packages.types';
 import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
 import type { SerializedCredential } from '../../../spec/serialized/credential.schema';
-import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
+import type {
+	CredentialBindingRequest,
+	CredentialImportPlan,
+	CredentialResolutionFailure,
+	CredentialUpdateCandidate,
+} from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
 import type { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
 import type { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
@@ -27,6 +34,9 @@ const usable = (id: string, type = 'githubApi'): UsableCredential =>
 describe('CredentialImporter', () => {
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinder = mock<CredentialsFinderService>();
+	const eventService = mock<EventService>();
+	const credentialDescriptions = mock<CredentialDescriptionsService>();
+	const credentialsOverwrites = mock<CredentialsOverwrites>();
 	const credentialTypes = mock<CredentialTypes>();
 	const targetProject = mock<Project>({ id: 'project-target' });
 	const user = mock<User>({ id: 'user-1' });
@@ -91,6 +101,9 @@ describe('CredentialImporter', () => {
 			),
 			credentialsService,
 			credentialsFinder,
+			eventService,
+			credentialDescriptions,
+			credentialsOverwrites,
 		);
 	});
 
@@ -470,6 +483,8 @@ describe('CredentialImporter', () => {
 				sourceId: 'cred-1',
 				targetId: 'cred-1',
 				targetName: 'Source GitHub',
+				targetType: 'githubApi',
+				ownerProjectId: targetProject.id,
 				name: 'Source GitHub',
 				data: { accessToken: EXPRESSION },
 				usedBy: [
@@ -624,6 +639,281 @@ describe('CredentialImporter', () => {
 
 			expect(result.candidates.map(({ sourceId }) => sourceId)).toEqual(['cred-1', 'cred-2']);
 			expect(credentialsFinder.findById).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('credential updates', () => {
+		const EXPRESSION = '={{ $vars.githubToken }}';
+
+		const update = (
+			overrides: Partial<CredentialUpdateCandidate> = {},
+		): CredentialUpdateCandidate => ({
+			sourceId: 'cred-1',
+			targetId: 'cred-1',
+			targetName: 'GitHub',
+			targetType: 'githubApi',
+			ownerProjectId: targetProject.id,
+			name: 'Renamed',
+			data: { accessToken: EXPRESSION },
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			...overrides,
+		});
+
+		const plan = (updates: CredentialUpdateCandidate[]): CredentialImportPlan => ({
+			successes: new Map(updates.map(({ sourceId, targetId }) => [sourceId, targetId])),
+			failures: [],
+			candidates: updates,
+			updates,
+			forbidden: [],
+		});
+
+		const stored = (overrides: Partial<CredentialsEntity> = {}) =>
+			mock<CredentialsEntity>({ id: 'cred-1', name: 'GitHub', type: 'githubApi', ...overrides });
+
+		const storedData = {
+			accessToken: 'stored-secret',
+			server: 'https://api.github.com',
+			oauthTokenData: { access_token: 'token' },
+		};
+
+		beforeEach(() => {
+			credentialsFinder.findById.mockResolvedValue(stored());
+			credentialsService.decrypt.mockResolvedValue(storedData);
+			// Plain objects: a mock would report every property as present.
+			credentialsService.prepareUpdateData.mockImplementation(
+				async (_user, data) => await Promise.resolve({ ...data } as unknown as CredentialsEntity),
+			);
+			credentialsService.createEncryptedData.mockImplementation(
+				async (credential) =>
+					await Promise.resolve({ ...credential, data: 'encrypted' } as ICredentialsDb),
+			);
+			credentialsService.update.mockResolvedValue(stored());
+		});
+
+		describe('assertCanUpdate', () => {
+			it('prepares each update without writing it', async () => {
+				await importer.assertCanUpdate(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(credentialsFinder.findById).toHaveBeenCalledWith('cred-1', {
+					includeSharedProject: true,
+				});
+				expect(credentialsService.decrypt).toHaveBeenCalledWith(expect.anything(), true);
+				expect(credentialsService.prepareUpdateData).toHaveBeenCalledWith(
+					user,
+					{
+						name: 'Renamed',
+						type: 'githubApi',
+						data: { accessToken: EXPRESSION, server: 'https://api.github.com' },
+					},
+					expect.objectContaining({ id: 'cred-1' }),
+				);
+				expect(credentialsService.createEncryptedData).not.toHaveBeenCalled();
+				expect(credentialsService.update).not.toHaveBeenCalled();
+			});
+
+			it.each(['keep-existing', 'fail'] as const)('prepares nothing under %s', async (policy) => {
+				await importer.assertCanUpdate(
+					context,
+					bindingRequest([], { conflictPolicy: policy }),
+					plan([update()]),
+				);
+
+				expect(credentialsFinder.findById).not.toHaveBeenCalled();
+				expect(credentialsService.prepareUpdateData).not.toHaveBeenCalled();
+			});
+
+			it('propagates an error of prepareUpdateData', async () => {
+				const error = new ForbiddenError('No access to the external secrets provider');
+				credentialsService.prepareUpdateData.mockRejectedValue(error);
+
+				await expect(
+					importer.assertCanUpdate(
+						context,
+						bindingRequest([], { conflictPolicy: 'overwrite' }),
+						plan([update()]),
+					),
+				).rejects.toBe(error);
+			});
+
+			it('prepares a destination once when two package credentials resolve to it', async () => {
+				await importer.assertCanUpdate(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update(), update({ sourceId: 'cred-2' })]),
+				);
+
+				expect(credentialsService.prepareUpdateData).toHaveBeenCalledTimes(1);
+			});
+
+			it('fails when the destination no longer exists', async () => {
+				credentialsFinder.findById.mockResolvedValue(null);
+
+				await expect(
+					importer.assertCanUpdate(
+						context,
+						bindingRequest([], { conflictPolicy: 'overwrite' }),
+						plan([update()]),
+					),
+				).rejects.toThrow(NotFoundError);
+			});
+		});
+
+		describe('applyUpdates', () => {
+			it('writes the package name and the merged data, and keeps the other columns', async () => {
+				const updated = await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(updated).toEqual(['cred-1']);
+				const written = { accessToken: EXPRESSION, server: 'https://api.github.com' };
+				expect(credentialsService.createEncryptedData).toHaveBeenCalledWith({
+					id: 'cred-1',
+					name: 'Renamed',
+					type: 'githubApi',
+					data: written,
+				});
+				expect(credentialsService.update).toHaveBeenCalledWith(
+					'cred-1',
+					expect.objectContaining({ id: 'cred-1', name: 'Renamed', type: 'githubApi' }),
+					{ kind: 'user', user },
+					written,
+					{ user },
+				);
+				const [, encrypted] = credentialsService.update.mock.calls[0];
+				expect(encrypted).not.toHaveProperty('isGlobal');
+				expect(encrypted).not.toHaveProperty('isResolvable');
+				expect(encrypted).not.toHaveProperty('description');
+			});
+
+			it('emits credentials-updated for the written credential', async () => {
+				credentialsService.update.mockResolvedValue(
+					stored({ name: 'Renamed', isResolvable: false, description: 'Team token' }),
+				);
+				credentialDescriptions.isEnabled.mockResolvedValue(true);
+				credentialsOverwrites.supportsManagedAuth.mockReturnValue(false);
+				credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
+
+				await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith('credentials-updated', {
+					user,
+					credentialType: 'githubApi',
+					credentialId: 'cred-1',
+					credentialName: 'Renamed',
+					credentialDescriptionLength: 10,
+					isDynamic: false,
+					usesExternalSecrets: false,
+					jweEnabled: false,
+					supportsManagedAuth: false,
+					usesManagedAuth: false,
+				});
+				expect(credentialsOverwrites.usesManagedAuth).toHaveBeenCalledWith('githubApi', {
+					accessToken: EXPRESSION,
+					server: 'https://api.github.com',
+				});
+			});
+
+			it('reports external secrets in the written data', async () => {
+				credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+
+				await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update({ data: { accessToken: '={{ $secrets.vault.githubToken }}' } })]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ usesExternalSecrets: true }),
+				);
+			});
+
+			it('leaves the stored token to prepareUpdateData', async () => {
+				await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				const [, input, , options] = credentialsService.prepareUpdateData.mock.calls[0];
+				expect(input.data).not.toHaveProperty('oauthTokenData');
+				expect(options).toBeUndefined();
+			});
+
+			it('skips a destination that no longer differs', async () => {
+				credentialsFinder.findById.mockResolvedValue(stored({ name: 'Renamed' }));
+				credentialsService.decrypt.mockResolvedValue({ accessToken: EXPRESSION });
+
+				const updated = await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(updated).toEqual([]);
+				expect(credentialsService.prepareUpdateData).not.toHaveBeenCalled();
+				expect(credentialsService.update).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('writes one destination once across two scopes', async () => {
+				const request = bindingRequest([], { conflictPolicy: 'overwrite' });
+				const first = await importer.applyUpdates(context, request, plan([update()]));
+				// The second scope reads what the first one wrote.
+				credentialsFinder.findById.mockResolvedValue(stored({ name: 'Renamed' }));
+				credentialsService.decrypt.mockResolvedValue({ ...storedData, accessToken: EXPRESSION });
+				const second = await importer.applyUpdates(context, request, plan([update()]));
+
+				expect(first).toEqual(['cred-1']);
+				expect(second).toEqual([]);
+				expect(credentialsService.update).toHaveBeenCalledTimes(1);
+			});
+
+			it('writes once and lists every package credential that resolves to the destination', async () => {
+				const updated = await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update(), update({ sourceId: 'cred-2' })]),
+				);
+
+				expect(updated).toEqual(['cred-1', 'cred-2']);
+				expect(credentialsService.update).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+			});
+
+			it.each(['keep-existing', 'fail'] as const)('writes nothing under %s', async (policy) => {
+				const updated = await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: policy }),
+					plan([update()]),
+				);
+
+				expect(updated).toEqual([]);
+				expect(credentialsService.update).not.toHaveBeenCalled();
+			});
+
+			it('fails when the update finds no credential', async () => {
+				credentialsService.update.mockResolvedValue(null);
+
+				await expect(
+					importer.applyUpdates(
+						context,
+						bindingRequest([], { conflictPolicy: 'overwrite' }),
+						plan([update()]),
+					),
+				).rejects.toThrow(NotFoundError);
+			});
 		});
 	});
 

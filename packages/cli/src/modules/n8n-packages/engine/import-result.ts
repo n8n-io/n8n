@@ -92,6 +92,28 @@ export function buildImportResult(input: {
 	};
 }
 
+/**
+ * Merges the credential outcomes of every scope: each list is a union. An updated source id
+ * matched first, but the import rewrote its credential, so `updated` wins.
+ */
+export function reconcileCredentialSummary(input: {
+	matched: Iterable<string>;
+	stubbed: Iterable<string>;
+	seeded: Iterable<string>;
+	incomplete: Iterable<string>;
+	updated: Iterable<string>;
+}): ImportCredentialSummary {
+	const updated = new Set(input.updated);
+
+	return {
+		matched: [...new Set(input.matched)].filter((sourceId) => !updated.has(sourceId)),
+		stubbed: [...new Set(input.stubbed)],
+		seeded: [...new Set(input.seeded)],
+		incomplete: [...new Set(input.incomplete)],
+		updated: [...updated],
+	};
+}
+
 export function reconcileVariableSummary(input: {
 	matched: Iterable<string>;
 	missing: Iterable<string>;
