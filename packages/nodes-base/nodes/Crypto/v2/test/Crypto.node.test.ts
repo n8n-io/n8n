@@ -516,6 +516,38 @@ describe('CryptoV2 Node', () => {
 		});
 
 		describe('Asymmetric round-trip', () => {
+			it('returns decrypted binary data with the selected encoding', async () => {
+				const rawKey = Buffer.from([
+					0x00, 0xff, 0x80, 0x7f, 0x13, 0x37, 0xc0, 0xde, 0x42, 0x91, 0xaa, 0x55, 0x10, 0x20, 0x30,
+					0x40,
+				]);
+				const ciphertext = publicEncrypt(
+					{
+						key: rsaPublicKey,
+						padding: constants.RSA_PKCS1_OAEP_PADDING,
+						oaepHash: 'sha256',
+					},
+					rawKey,
+				).toString('base64');
+
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					encryptionPrivateKey: rsaPrivateKey,
+				});
+				const decryptParams = mockDecryptParams(ciphertext, {
+					mode: 'asymmetric',
+					outputEncoding: 'base64',
+				});
+				delete decryptParams.cipher;
+				mockExecuteFunctions.getNodeParameter.mockImplementation(
+					(name: string, _itemIndex, fallback) => decryptParams[name] ?? fallback,
+				);
+
+				const result = await cryptoNode.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json.data).toBe(rawKey.toString('base64'));
+			});
+
 			it('encrypts with public key and decrypts with private key', async () => {
 				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 				expect(
