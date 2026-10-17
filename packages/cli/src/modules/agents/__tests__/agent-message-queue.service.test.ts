@@ -19,6 +19,7 @@ import type { AgentExecutionThreadRepository } from '../repositories/agent-execu
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentMessageRepository } from '../repositories/agent-message.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return mock<AgentExecutionThread>({
@@ -68,6 +69,7 @@ describe('AgentMessageQueueService', () => {
 			messages,
 			steering,
 			settingsService,
+			new SystemAgentRegistry(),
 		);
 	});
 
