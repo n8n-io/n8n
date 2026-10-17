@@ -11,7 +11,8 @@ import {
 	type ScheduledTaskGroup,
 } from '../scheduled-task-manager';
 
-const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) });
+const cronLogger = mock<Logger>();
+const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(cronLogger) });
 
 describe('ScheduledTaskManager', () => {
 	const workflow = mock<Workflow>({ id: 'workflow-1', timezone: 'GMT' });
@@ -62,6 +63,42 @@ describe('ScheduledTaskManager', () => {
 		expect(scheduledTaskManager.register(ctx, onTick)).toBe(false);
 
 		expect(scheduledTaskManager.getTargetIds(ctx.group)).toEqual(['test-node-id']);
+	});
+
+	it('logs registration fields for follower and duplicate skips', () => {
+		const ctx = cronContext({
+			group: agentTaskGroup(),
+			targetId: 'task-1',
+			timezone: 'Europe/Berlin',
+			expression: '0 */2 * * * *',
+			recurrence: { activated: true, index: 0, intervalSize: 2, typeInterval: 'minutes' },
+		});
+		const fields = {
+			groupType: 'agent-task',
+			groupId: 'agent-1',
+			targetId: 'task-1',
+			timezone: 'Europe/Berlin',
+			expression: '0 */2 * * * *',
+			recurrence: ctx.recurrence,
+		};
+
+		scheduledTaskManager = makeManager(false);
+		expect(scheduledTaskManager.register(ctx, onTick)).toBe(false);
+		expect(cronLogger.debug).toHaveBeenCalledWith(
+			'Skipped cron registration on follower instance',
+			{ ...fields, instanceRole: 'follower' },
+		);
+
+		scheduledTaskManager = makeManager();
+		expect(scheduledTaskManager.register(ctx, onTick)).toBe(true);
+		expect(scheduledTaskManager.register(ctx, onTick)).toBe(false);
+		expect(cronLogger.warn).toHaveBeenCalledWith(
+			'Skipped registration for already registered cron',
+			{
+				...fields,
+				instanceRole: 'leader',
+			},
+		);
 	});
 
 	it('does not fire duplicate cron contexts twice', () => {
