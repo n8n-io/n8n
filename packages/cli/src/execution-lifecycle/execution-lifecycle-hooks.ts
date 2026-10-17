@@ -662,6 +662,9 @@ function hookFunctionsSave(
 					workflowId: this.workflowData.id,
 					executionId: this.executionId,
 					storedAt: fullRunData.storedAt,
+					status: fullRunData.status,
+					finished: fullRunData.finished === true,
+					stoppedAt: fullRunData.stoppedAt,
 				});
 
 				return;
@@ -970,6 +973,9 @@ export function getLifecycleHooksForScalingMain(
 				workflowId: this.workflowData.id,
 				executionId: this.executionId,
 				storedAt: fullRunData.storedAt,
+				status: fullRunData.status,
+				finished: fullRunData.finished === true,
+				stoppedAt: fullRunData.stoppedAt,
 			});
 		} else {
 			// Only save metadata if execution is being kept
