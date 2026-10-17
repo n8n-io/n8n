@@ -210,6 +210,7 @@ const {
 	padding: var(--spacing--2xs) var(--spacing--3xs);
 	justify-content: space-between;
 	gap: var(--spacing--4xs);
+	height: var(--height--2xl);
 
 	img {
 		position: relative;
@@ -221,6 +222,7 @@ const {
 	&.collapsed {
 		flex-direction: column;
 		border-bottom: var(--border);
+		height: auto;
 	}
 }
 
