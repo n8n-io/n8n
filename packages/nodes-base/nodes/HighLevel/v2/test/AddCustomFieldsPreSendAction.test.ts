@@ -57,8 +57,8 @@ describe('addCustomFieldsPreSendAction', () => {
 		);
 
 		expect((result.body as IDataObject).customFields).toEqual([
-			{ id: '123', key: 'FieldName', field_value: 'TestValue' },
-			{ id: '456', key: 'default_key', field_value: 'AnotherValue' },
+			{ id: '123', fieldValue: 'TestValue' },
+			{ id: '456', fieldValue: 'AnotherValue' },
 		]);
 	});
 
