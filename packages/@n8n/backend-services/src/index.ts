@@ -1,5 +1,6 @@
 export { EventService, type EventMap } from './events/event.service';
-export { isBillableExecution } from './executions/is-billable-execution';
+export { isBillableExecution, isBillableExecutionMode } from './executions/is-billable-execution';
+export { computeTimeSavedMinutes } from './executions/time-saved';
 export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,

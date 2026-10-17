@@ -8,7 +8,6 @@
  */
 
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -20,6 +19,7 @@ import {
 	getCompactedInsightsByWorkflow,
 	initializeInsightsCollection,
 } from '@n8n/backend-module-insights/testing';
+import { ExecutionLedgerFoldService } from '@/execution-ledger/execution-ledger-fold.service';
 import { packagedModules } from '@/modules/modules.manifest';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -37,6 +37,8 @@ describe('Insights vs Workflow Statistics Integration', () => {
 
 		await testModules.loadModules(['insights'], packagedModules);
 		await testDb.init();
+		// On Postgres, statistics reach their counters through this fold participant.
+		await import('@/services/workflow-statistics-ledger.participant.js');
 
 		// Load required node types from dist folder
 		const nodeTypes = loadNodesFromDist([
@@ -135,15 +137,9 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		expectedCount: number,
 		timeout = 10000,
 	): Promise<void> {
-		const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
-			if (isPostgres) {
-				await workflowStatisticsRepository.rollupIncrements(
-					workflowStatisticsRepository.manager,
-					10_000,
-				);
-			}
+			await Container.get(ExecutionLedgerFoldService).foldBatch();
 			const stats = await workflowStatisticsRepository.findOne({
 				where: {
 					workflowId,

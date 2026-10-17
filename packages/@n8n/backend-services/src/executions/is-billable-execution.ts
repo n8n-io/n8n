@@ -27,6 +27,11 @@ const isModeRootExecution = {
 	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
+/** Whether a run in this mode would be billable once it completes. Known at admission. */
+export function isBillableExecutionMode(mode: WorkflowExecuteMode): boolean {
+	return isModeRootExecution[mode];
+}
+
 export function isBillableExecution(
 	runData: { mode: WorkflowExecuteMode; status: ExecutionStatus },
 	source?: WorkflowExecutionSource,

@@ -1,8 +1,8 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
-import { EventService, isBillableExecution } from '@n8n/backend-services';
-import { DatabaseConfig } from '@n8n/config';
+import { computeTimeSavedMinutes, EventService } from '@n8n/backend-services';
 import type { CrashedExecution } from '@n8n/db';
 import {
+	ExecutionLedgerRepository,
 	SettingsRepository,
 	StatisticsNames,
 	WorkflowRepository,
@@ -24,12 +24,35 @@ import { UserService } from '@/services/user.service';
 
 import { OwnershipService } from './ownership.service';
 
+/** PostgreSQL INTEGER bounds, as Insights clamps runtimes to them. */
+const MAX_RUNTIME_MS = 2 ** 31 - 1;
+
+/** Measures a completed run carries in the ledger, for readers such as Insights. */
+type RunMeasures = { runtimeMs: number | null; timeSavedMin: number | null };
+
+function measureRun(workflowData: IWorkflowBase, runData: IRun): RunMeasures {
+	const runtimeMs = runData.stoppedAt
+		? Math.min(
+				Math.max(runData.stoppedAt.getTime() - runData.startedAt.getTime(), 0),
+				MAX_RUNTIME_MS,
+			)
+		: null;
+	// Error workflows are operational, not productive work.
+	const savesTime = runData.status === 'success' && runData.mode !== 'error';
+	const timeSaved = savesTime ? computeTimeSavedMinutes(workflowData.settings, runData) : null;
+	return {
+		runtimeMs,
+		timeSavedMin:
+			timeSaved === null ? null : Number.isFinite(timeSaved) ? Math.round(timeSaved) : 0,
+	};
+}
+
 type CompletedRunOutcome = {
 	mode: WorkflowExecuteMode;
 	status: ExecutionStatus;
 };
 
-function getStatisticsNameForCompletedRun(
+export function getStatisticsNameForCompletedRun(
 	runData: CompletedRunOutcome,
 	source?: WorkflowExecutionSource,
 ): StatisticsNames | null {
@@ -73,7 +96,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly eventService: EventService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly databaseConfig: DatabaseConfig,
+		private readonly ledgerRepository: ExecutionLedgerRepository,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -101,20 +124,16 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		source?: WorkflowExecutionSource,
 	): Promise<void> {
 		const statisticsName = getStatisticsNameForCompletedRun(runData, source);
-
-		const isRoot = isBillableExecution(runData, source);
-
 		if (!statisticsName) return;
 
 		const workflowId = workflowData.id;
 		if (!workflowId) return;
 
 		await this.recordCompletedRun({
-			statisticsName,
 			workflowId,
 			workflowName: workflowData.name,
-			isRoot,
-			firstEventMs: runData.startedAt.getTime(),
+			outcome: { mode: runData.mode, status: runData.status, source },
+			measures: measureRun(workflowData, runData),
 		});
 	}
 
@@ -132,13 +151,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 			if (!statisticsName) return;
 
-			await this.recordCompletedRun({
-				statisticsName,
-				workflowId,
-				workflowName,
-				isRoot: isBillableExecution(outcome),
-				firstEventMs: Date.now(),
-			});
+			await this.recordCompletedRun({ workflowId, workflowName, outcome });
 		} catch (error) {
 			this.logger.error('Failed to record the outcome of an execution', {
 				workflowId,
@@ -147,55 +160,30 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		}
 	}
 
+	/** The ledger fold turns this row into counters, milestones, and Insights buckets. */
 	private async recordCompletedRun({
-		statisticsName,
 		workflowId,
 		workflowName,
-		isRoot,
-		firstEventMs,
+		outcome,
+		measures,
 	}: {
-		statisticsName: StatisticsNames;
 		workflowId: string;
 		workflowName?: string;
-		isRoot: boolean;
-		firstEventMs: number;
+		outcome: CompletedRunOutcome & { source?: WorkflowExecutionSource };
+		measures?: RunMeasures;
 	}): Promise<void> {
-		let upsertResult: Awaited<ReturnType<WorkflowStatisticsRepository['upsertWorkflowStatistics']>>;
-
 		try {
-			/**
-			 * For performance reasons, in Postgres we append and fold out of band,
-			 * whereas in SQLite we upsert directly.
-			 */
-			if (this.databaseConfig.type === 'postgresdb') {
-				await this.repository.appendIncrement(statisticsName, workflowId, isRoot, workflowName);
-				return;
-			}
-
-			upsertResult = await this.repository.upsertWorkflowStatistics(
-				statisticsName,
+			await this.ledgerRepository.appendFinished({
 				workflowId,
-				isRoot,
-				workflowName,
-			);
+				workflowName: workflowName ?? null,
+				mode: outcome.mode,
+				status: outcome.status,
+				source: outcome.source ?? null,
+				runtimeMs: measures?.runtimeMs ?? null,
+				timeSavedMin: measures?.timeSavedMin ?? null,
+			});
 		} catch (error) {
 			this.logger.error('Failed to record workflow statistic', { error: ensureError(error) });
-			return;
-		}
-
-		if (upsertResult !== 'insert') return;
-
-		try {
-			await this.emitFirstOccurrenceEvent(
-				statisticsName,
-				workflowId,
-				workflowName ?? null,
-				firstEventMs,
-			);
-		} catch (error) {
-			this.logger.debug('Failed to emit workflow statistics milestone', {
-				error: ensureError(error),
-			});
 		}
 	}
 

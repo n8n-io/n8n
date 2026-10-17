@@ -74,7 +74,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_annotations](execution_annotations.md) | 6 |  | table |
 | [execution_data](execution_data.md) | 4 |  | table |
 | [execution_entity](execution_entity.md) | 19 |  | table |
+| [execution_ledger](execution_ledger.md) | 12 |  | table |
+| [execution_ledger_fold_seq](execution_ledger_fold_seq.md) | 2 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
+| [execution_quota](execution_quota.md) | 7 |  | table |
+| [execution_quota_usage](execution_quota_usage.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
 | [idempotency_key](idempotency_key.md) | 9 |  | table |
@@ -292,6 +296,8 @@ erDiagram
 "execution_data" |o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_entity" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "execution_metadata" }o--|| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"execution_quota" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"execution_quota" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder_tag" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1131,11 +1137,44 @@ erDiagram
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
 }
+"execution_ledger" {
+  datetime_3_ createdAt
+  smallint delta
+  varchar_16_ event
+  INTEGER id
+  varchar_32_ mode
+  varchar_36_ projectId
+  INTEGER runtimeMs
+  varchar_32_ source
+  varchar_16_ status
+  INTEGER timeSavedMin
+  varchar_36_ workflowId
+  varchar_128_ workflowName
+}
+"execution_ledger_fold_seq" {
+  INTEGER id
+  INTEGER value
+}
 "execution_metadata" {
   INTEGER executionId FK
   INTEGER id
   varchar_255_ key
   TEXT value
+}
+"execution_quota" {
+  datetime_3_ createdAt
+  INTEGER id
+  INTEGER limit
+  varchar_8_ period
+  varchar_36_ projectId FK
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
+}
+"execution_quota_usage" {
+  date day PK
+  varchar_36_ scopeId PK
+  varchar_16_ scopeType PK
+  bigint used
 }
 "folder" {
   datetime_3_ createdAt
